@@ -1,5 +1,5 @@
 """Tests the light-wait gate in gradle/gametest.gradle.kts: a block-light read (getBrightness(LightLayer, getLightEngine) in a server GameTest class fails the build
-when it sits inside a thenWaitUntil or succeedWhen call, or in an @GameTest method with no FarChunks.Deadline.
+when it sits inside a thenWaitUntil or succeedWhen call, or in an @GameTest method that never awaits a FarChunks.Deadline.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
@@ -39,11 +39,35 @@ public class DeadlineTest {
 public class AwaitOnlyTest {
     @GameTest
     public void waits(GameTestHelper helper) {
+        FarChunks.Deadline[] lit = {null};
         TestTicks.each(helper, () -> {
-            lit[0].await(helper, level, level.getLightEngine().hasLightWork(), () -> "busy");
-            // a read through a stored deadline
+            lit[0] = FarChunks.deadline();
             int light = level.getBrightness(LightLayer.SKY, pos);
-            deadline.await(helper, level, light == 15, () -> "no light");
+            lit[0].await(helper, level, light == 15, () -> "no light");
+        });
+    }
+}
+""",
+    "FieldDeadlineTest.java": """
+public class FieldDeadlineTest {
+    private static final FarChunks.Deadline[] LIT = {null};
+
+    @GameTest(maxTicks = 5)
+    public void waits(GameTestHelper helper) {
+        TestTicks.each(helper, () -> {
+            int light = level.getBrightness(LightLayer.BLOCK, pos);
+            LIT[0].await(helper, level, light == 15, () -> "no light");
+        });
+    }
+}
+""",
+    "InlineDeadlineTest.java": """
+public class InlineDeadlineTest {
+    @GameTest
+    public void waits(GameTestHelper helper) {
+        TestTicks.each(helper, () -> {
+            int light = level.getBrightness(LightLayer.BLOCK, pos);
+            FarChunks.deadline().await(helper, level, light == 15, () -> "no light");
         });
     }
 }
@@ -107,6 +131,7 @@ public class ReadsLightSupport {
 # label: (statement, extra text before it in the method, line the gate reports)
 VIOLATIONS = {
     "no deadline": ("int light = level.getBrightness(LightLayer.BLOCK, pos);", "", 5),
+    "no deadline, with annotation arguments": ("int light = level.getBrightness(LightLayer.BLOCK, pos);", "", 5),
     "no deadline, sky": ("int light = level.getBrightness(LightLayer.SKY, pos);", "", 5),
     "no deadline, light engine": ("boolean busy = level.getLightEngine().hasLightWork();", "", 5),
     "no deadline, spaced": ("int light = level.getBrightness (\n            LightLayer.BLOCK, pos);", "", 5),
@@ -124,6 +149,21 @@ VIOLATIONS = {
     "thenWaitUntil in a method with a deadline": (
         "helper.startSequence().thenWaitUntil(() -> level.getBrightness(LightLayer.BLOCK, pos) == 15);",
         "FarChunks.Deadline deadline = FarChunks.deadline();\n        ",
+        6,
+    ),
+    "a deadline that is never awaited": (
+        "int light = level.getBrightness(LightLayer.BLOCK, pos);",
+        "FarChunks.Deadline unused = FarChunks.deadline();\n        ",
+        6,
+    ),
+    "a deadline created inline and never awaited": (
+        "int light = level.getBrightness(LightLayer.BLOCK, pos);",
+        "FarChunks.deadline();\n        ",
+        6,
+    ),
+    "an await on something that is not a deadline": (
+        "int light = level.getBrightness(LightLayer.BLOCK, pos);",
+        'lit[0].await(helper, level, true, () -> "x");\n        ',
         6,
     ),
     "a bare marker": ("// light-wait-ok:\n        int light = level.getBrightness(LightLayer.BLOCK, pos);", "", 6),
@@ -145,10 +185,14 @@ VIOLATIONS = {
 }
 
 
-def violating(statement: str, before: str) -> str:
+# Labels whose @GameTest carries arguments, which the scan skips to reach the method body.
+ANNOTATED = {"no deadline, with annotation arguments": "@GameTest(maxTicks = 5)"}
+
+
+def violating(statement: str, before: str, annotation: str = "@GameTest") -> str:
     return f"""
 public class LightsTest {{
-    @GameTest
+    {annotation}
     public void waits(GameTestHelper helper) {{
         {before}{statement}
     }}
@@ -162,7 +206,7 @@ def fixture(extra: dict[str, str]) -> dict[str, str]:
 
 CASES = {
     "clean": Case(fixture({}), None),
-    **{label: Case(fixture({"LightsTest.java": violating(statement, before)}), None) for label, (statement, before, _) in VIOLATIONS.items()},
+    **{label: Case(fixture({"LightsTest.java": violating(statement, before, ANNOTATED.get(label, "@GameTest"))}), None) for label, (statement, before, _) in VIOLATIONS.items()},
 }
 
 
@@ -183,5 +227,5 @@ class LightWaitGateTest(unittest.TestCase):
                 self.assertIn(f"LightsTest:{line} reads block light", result.message)
                 self.assertIn("FarChunks.Deadline", result.message)
                 self.assertIn("#1048", result.message)
-                for clean in ("DeadlineTest", "AwaitOnlyTest", "MarkedTest", "MentionsTest", "HelperOutsideAMethodTest", "ReadsLightClientTest", "ReadsLightSupport"):
+                for clean in ("DeadlineTest", "AwaitOnlyTest", "FieldDeadlineTest", "InlineDeadlineTest", "MarkedTest", "MentionsTest", "HelperOutsideAMethodTest", "ReadsLightClientTest", "ReadsLightSupport"):
                     self.assertNotIn(clean, result.message)

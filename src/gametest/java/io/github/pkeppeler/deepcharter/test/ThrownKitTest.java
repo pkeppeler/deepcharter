@@ -64,8 +64,13 @@ public class ThrownKitTest {
     private static final int SLACK_TICKS = 6;
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 600;
-    /** The flare burns this long in the tests that watch it go out, which is far under the shipped 90 seconds. */
-    private static final int SHORT_BURN_TICKS = 120;
+    /**
+     * The flare burns this long in the test that watches it go out: long enough that a light that takes a second or two of wall clock to settle
+     * is seen while the flare burns (a waiting tick sleeps {@link FarChunks#POLL_MILLIS}), short enough to wait out.
+     */
+    private static final int SHORT_BURN_TICKS = 1200;
+    /** The flare burns longer than any wait under a {@link FarChunks.Deadline} can last, in the test that waits for its light; the burn is {@code SHORT_BURN_TICKS}' and the pacing test's. */
+    private static final int OUTLASTING_BURN_TICKS = FarChunks.AWAIT_BUDGET_TICKS * FarChunks.CEILING_FACTOR;
 
     private static final int USED_UP_X = 7008;
     private static final int IN_POD_X = 7072;
@@ -221,9 +226,14 @@ public class ThrownKitTest {
         });
     }
 
-    /** The light is the engine's, on its own thread, so it is awaited on a wall clock; a burn is game time, so the burn here is the shipped one. */
+    /**
+     * The light is the engine's, on its own thread, so it is awaited on a wall clock, and a burn is game time: the flare keeps its shipped light and
+     * reach but burns past the wait, so a slow engine cannot fail this test by the flare going out. How long the shipped flare burns is
+     * {@code ThrownKitTuning}'s and {@link #aFlareBurnsOutAndItsLightGoesWithIt}'s.
+     */
     @GameTest(maxTicks = MAX_TICKS + FarChunks.AWAIT_BUDGET_TICKS)
     public void aFlareLightsTheDarkAroundIt(GameTestHelper helper) {
+        ThrownKitTuning tuning = withFlare(OUTLASTING_BURN_TICKS);
         int litBlockLight = CreatureTuning.DEFAULT.litBlockLight();
         @Nullable BlockPos[] landed = {null};
         FarChunks.Deadline deadline = FarChunks.deadline();
@@ -232,7 +242,7 @@ public class ThrownKitTest {
                 LIGHT_X,
                 room -> {
                     expectDark(helper, room.level(), room.cell(0, 0, 0), "before the throw");
-                    throwIt(helper, room, Consumable.THROWN_FLARE, DEFAULT);
+                    throwIt(helper, room, Consumable.THROWN_FLARE, tuning);
                 },
                 room -> {
                     ServerLevel level = room.level();
@@ -291,12 +301,15 @@ public class ThrownKitTest {
                 });
     }
 
-    @GameTest(maxTicks = MAX_TICKS + FarChunks.AWAIT_BUDGET_TICKS)
+    @GameTest(maxTicks = MAX_TICKS + FarChunks.AWAIT_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS)
     public void aFlareBurnsOutAndItsLightGoesWithIt(GameTestHelper helper) {
         ThrownKitTuning tuning = withFlare(SHORT_BURN_TICKS);
+        int litBlockLight = CreatureTuning.DEFAULT.litBlockLight();
         @Nullable BlockPos[] landed = {null};
         int[] landedAt = {0};
-        FarChunks.Deadline[] deadline = {null};
+        boolean[] lightSeen = {false};
+        FarChunks.Deadline lit = FarChunks.deadline();
+        FarChunks.Deadline[] dark = {null};
         ThrowRoom.start(
                 helper,
                 BURNS_OUT_X,
@@ -317,24 +330,39 @@ public class ThrownKitTest {
                     }
                     BlockPos flare = landed[0];
                     int since = room.ticks() - landedAt[0];
+                    boolean burning = level.getBlockState(flare).is(RepairRegistry.FLARE_LIGHT);
+                    if (since < SHORT_BURN_TICKS - SLACK_TICKS) {
+                        expect(
+                                helper,
+                                burning,
+                                "the flare went out %d ticks after landing, before its burn of %d",
+                                since,
+                                SHORT_BURN_TICKS);
+                    }
+                    if (!lightSeen[0]) {
+                        boolean lightIsOn = level.getBrightness(LightLayer.BLOCK, flare) >= litBlockLight;
+                        lit.await(
+                                helper,
+                                level,
+                                lightIsOn || !burning,
+                                () -> "the flare never lit its place while it burned");
+                        expect(helper, lightIsOn, "the flare burnt out before its light was ever seen");
+                        lightSeen[0] = true;
+                    }
                     if (since <= SHORT_BURN_TICKS + SLACK_TICKS) {
                         return;
                     }
-                    expect(
-                            helper,
-                            !level.getBlockState(flare).is(RepairRegistry.FLARE_LIGHT),
-                            "the flare still burns %d ticks after landing",
-                            since);
+                    expect(helper, !burning, "the flare still burns %d ticks after landing", since);
                     expect(
                             helper,
                             !DrawSources.litByFlare(level, Vec3.atCenterOf(flare)),
                             "a burnt out flare still lights its place");
-                    if (deadline[0] == null) {
-                        deadline[0] = FarChunks.deadline();
+                    if (dark[0] == null) {
+                        dark[0] = FarChunks.deadline();
                     }
-                    boolean dark = level.getBrightness(LightLayer.BLOCK, flare) == 0;
-                    deadline[0].await(helper, level, dark, () -> "the light stayed after the flare went out");
-                    if (dark) {
+                    boolean gone = level.getBrightness(LightLayer.BLOCK, flare) == 0;
+                    dark[0].await(helper, level, gone, () -> "the light stayed after the flare went out");
+                    if (gone) {
                         helper.succeed();
                     }
                 });

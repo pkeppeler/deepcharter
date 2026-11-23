@@ -86,13 +86,15 @@ object GametestScan {
 
 	// Block light is made on Util.backgroundExecutor(), which other tests' chunk work can fill, so a server GameTest that counts ticks for light flakes
 	// (#1042, #1048). A light read (getBrightness(LightLayer..., getLightEngine) in a server GameTest class is flagged when it sits inside a
-	// thenWaitUntil or succeedWhen call, which counts ticks, or in an @GameTest method that names no FarChunks.Deadline (a `Deadline` type or a
-	// `deadline.await`). Wait under a Deadline, polled from TestTicks.each. A read that is not a wait (an assertion after a deadline-based wait,
+	// thenWaitUntil or succeedWhen call, which counts ticks, or in an @GameTest method that never awaits a Deadline (`.await(` on a name declared with a `Deadline` type in the file, a
+	// `[n]` index of one included, or on `FarChunks.deadline()` inline). Wait under a Deadline, polled from TestTicks.each. A read that is not a wait (an assertion after a deadline-based wait,
 	// a call from a helper the method's deadline covers) carries the comment below, with a reason, on its statement or the comment line above it.
-	// Heuristic: a read in a helper method outside every @GameTest method is only flagged inside a poll call of its own; a Deadline anywhere in the method counts.
+	// Heuristic: a read in a helper method outside every @GameTest method is only flagged inside a poll call of its own; an await on a Deadline anywhere in the method counts,
+	// even one that guards another wait.
 	private const val LIGHT_WAIT_MARKER = "// light-wait-ok:"
 	private val lightRead = Regex("""\bgetBrightness\s*\(\s*LightLayer\b|\bgetLightEngine\b""")
-	private val deadlineUse = Regex("""\bDeadline\b|\bdeadline\s*\.\s*await""")
+	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
+	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal is not seen.
@@ -162,15 +164,20 @@ object GametestScan {
 			val bodyClose = if (bodyOpen < 0) -1 else closing(text, bodyOpen)
 			if (bodyClose < 0) null else bodyOpen..bodyClose
 		}.toList()
+		val deadlineAwait = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
+			.takeIf { it.isNotEmpty() }
+			?.let { names -> Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
 		val problems = mutableListOf<String>()
 		for (read in lightRead.findAll(text)) {
 			val at = read.range.first
 			val inPoll = polls.any { at > it.first && at < it.second }
 			val method = methods.firstOrNull { at in it }
-			val noDeadline = method != null && !deadlineUse.containsMatchIn(text.substring(method.first, method.last))
+			val noDeadline = method != null && text.substring(method.first, method.last).let {
+				!inlineDeadlineAwait.containsMatchIn(it) && deadlineAwait?.containsMatchIn(it) != true
+			}
 			val line = lineOf(text, at)
 			if ((inPoll || noDeadline) && !marked(markedNear, rawLines, line, LIGHT_WAIT_MARKER)) {
-				val where = if (inPoll) "inside thenWaitUntil or succeedWhen, which count ticks" else "in a test method with no FarChunks.Deadline"
+				val where = if (inPoll) "inside thenWaitUntil or succeedWhen, which count ticks" else "in a test method that awaits no FarChunks.Deadline"
 				problems.add("$className:${line + 1} reads block light $where, and the light engine runs on Util.backgroundExecutor(), which other tests' chunk work can starve; wait for it under FarChunks.Deadline (poll from TestTicks.each, see #1042 and #1048), or mark a read that is not a wait with '$LIGHT_WAIT_MARKER <reason>'")
 			}
 		}
