@@ -10,7 +10,7 @@ import net.minecraft.resources.Identifier;
  *
  * <p>Prices follow issue 201's scale (PR 206), not the original's $2,000 to $10,000. The tools cost a quarter of a run to one run's net
  * of the layer where they start to matter; SPEC section 11 calls the two teleport items expensive, so they cost about 2 and 4 layer 2
- * runs. A stock Mole's run in layer 1 nets about $115 and a Mole with tier 2 parts in layer 2 about $348, after the braked drive down the shaft ({@code EarlyRunModel});
+ * runs. What a run nets in each layer is {@code EarlyRunModel}'s, after the braked drive down the shaft;
  * {@code EconomyAffordabilityTest} holds each item to its band.
  */
 public enum Consumable {
@@ -33,14 +33,67 @@ public enum Consumable {
     // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs (3.6 from the outpost, #320; $1,650 since #963,
     // which made fuel cheaper and a run's net $455); the cargo drop is
     // the rest of the cost.
-    MATTER_TRANSMITTER("matter_transmitter", 1_650);
+    MATTER_TRANSMITTER("matter_transmitter", 1_650),
+    // Thrown by hand on foot (#985, CREATURES section 8): the operator's rounds without the launcher. Each costs a
+    // fraction of a layer 1 run, so a fight costs money without ending the run. ThrownKitPacingTest holds the three to
+    // their bands.
+    THROWN_FLARE("thrown_flare", 12, true),
+    // Not sold yet: nothing on main is drawn to the drill, so no creature feels its pull. On sale with the first
+    // drill-drawn creature (Drifters, #918, PR #975): whichever lands second flips this and adds the steer call.
+    THROWN_DECOY("thrown_decoy", 25, false),
+    THROWN_CHARGE("thrown_charge", 55, true),
+    // On foot (#986): not used up. A person on foot clips it to a pod's winch, and it is theirs to keep. Priced at
+    // about
+    // three quarters of a stock layer 1 run, so the first descent pays for it once and no pod is ever without one.
+    TETHER("tether", 90, Kind.TOOL);
+
+    /** What using the item does to it. */
+    public enum Kind {
+        /** Used from the pilot's seat through {@code Consumables.use}, and used up. */
+        CONSUMED,
+        /** Kept: the item handles its own use on foot, and {@code Consumables.use} is never called for it. */
+        TOOL
+    }
 
     private final Identifier itemId;
     private final long price;
+    private final Kind kind;
+    private final boolean thrown;
+    private final boolean sold;
 
     Consumable(String path, long price) {
+        this(path, price, Kind.CONSUMED, false, true);
+    }
+
+    /** A thrown item: {@code sold} is whether the repair station offers it. */
+    Consumable(String path, long price, boolean sold) {
+        this(path, price, Kind.CONSUMED, true, sold);
+    }
+
+    Consumable(String path, long price, Kind kind) {
+        this(path, price, kind, false, true);
+    }
+
+    private Consumable(String path, long price, Kind kind, boolean thrown, boolean sold) {
         this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
         this.price = price;
+        this.kind = kind;
+        this.thrown = thrown;
+        this.sold = sold;
+    }
+
+    public Kind kind() {
+        return kind;
+    }
+
+    /** Whether the item is thrown by hand on foot ({@link ThrownKit}), not used from the pilot's seat. */
+    public boolean thrown() {
+        return thrown;
+    }
+
+    /** Whether the repair station lists the item and sells it. An item that is not sold is still registered, priced and works when held. */
+    public boolean sold() {
+        return sold;
     }
 
     public Identifier itemId() {

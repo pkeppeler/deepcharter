@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.client.pod;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
@@ -18,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
@@ -42,6 +44,52 @@ public final class SonarHud {
 
     public static void init() {
         HudElementRegistry.addLast(ID, SonarHud::extract);
+        HudKeepClear.register(SonarHud::keepClear);
+    }
+
+    private static Component title() {
+        return Component.translatable("deepcharter.pod.sonar.title");
+    }
+
+    private static Component hint() {
+        return Component.translatable("deepcharter.pod.sonar.hint", Component.keybind("key.deepcharter.sonar_ping"));
+    }
+
+    /** Where the scope sits on a GUI {@code guiHeight} high: its left, its top and its side. Drawing and keeping clear both start here. */
+    private record Scope(int left, int top, int side) {
+        static Scope of(SonarLook look, int guiHeight) {
+            return new Scope(look.margin(), (guiHeight - look.scopePixels()) / 2, look.scopePixels());
+        }
+
+        int barTop() {
+            return top + side + LINE_GAP;
+        }
+
+        int hintTop() {
+            return barTop() + BAR_HEIGHT + LINE_GAP;
+        }
+    }
+
+    /**
+     * The box of everything the scope draws: its frame, the title over it, the charge bar and the hint under it, as wide as the widest of
+     * them. What is drawn and what is kept clear are this one box.
+     */
+    private static HudKeepClear.Rect box(Font font, SonarLook look, int guiHeight) {
+        Scope scope = Scope.of(look, guiHeight);
+        int left = scope.left() - 1;
+        int top = scope.top() - TITLE_GAP;
+        int right = Math.max(
+                scope.left() + scope.side() + 1, scope.left() + Math.max(font.width(title()), font.width(hint())));
+        int bottom = scope.hintTop() + font.lineHeight;
+        return new HudKeepClear.Rect("sonar scope", left, top, right - left, bottom - top);
+    }
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        if (client.gui.screen() == null
+                && !client.gui.hud.isHidden()
+                && frame(client).isPresent()) {
+            into.add(box(client.font, SonarLook.current(), guiHeight));
+        }
     }
 
     /**
@@ -84,22 +132,18 @@ public final class SonarHud {
         PodSonar.State state = frame.get().state();
         long now = frame.get().now();
         SonarLook look = SonarLook.current();
-        int side = look.scopePixels();
+        Scope scope = Scope.of(look, graphics.guiHeight());
+        int side = scope.side();
         int radius = side / 2;
-        int left = look.margin();
-        int top = (graphics.guiHeight() - side) / 2;
+        int left = scope.left();
+        int top = scope.top();
         int cx = left + radius;
         int cy = top + radius;
 
         graphics.fill(left - 1, top - 1, left + side + 1, top + side + 1, look.frameColor());
         graphics.fill(left, top, left + side, top + side, look.backgroundColor());
         rings(graphics, look, cx, cy, radius);
-        graphics.text(
-                client.font,
-                Component.translatable("deepcharter.pod.sonar.title"),
-                left,
-                top - TITLE_GAP,
-                look.titleColor());
+        graphics.text(client.font, title(), left, top - TITLE_GAP, look.titleColor());
 
         int alpha = look.minAlpha() + Math.round((255 - look.minAlpha()) * state.strength(now));
         for (SonarEcho echo : state.shown(now)) {
@@ -118,16 +162,11 @@ public final class SonarHud {
         graphics.fill(cx - 1, cy - 1, cx + 2, cy + 2, look.podColor());
         graphics.fill(cx, cy - 3, cx + 1, cy - 1, look.podColor());
 
-        int barTop = top + side + LINE_GAP;
+        int barTop = scope.barTop();
         graphics.fill(left, barTop, left + side, barTop + BAR_HEIGHT, look.chargeBackColor());
         graphics.fill(
                 left, barTop, left + Math.round(side * state.charged(now)), barTop + BAR_HEIGHT, look.chargeColor());
-        graphics.text(
-                client.font,
-                Component.translatable("deepcharter.pod.sonar.hint", Component.keybind("key.deepcharter.sonar_ping")),
-                left,
-                barTop + BAR_HEIGHT + LINE_GAP,
-                look.hintColor());
+        graphics.text(client.font, hint(), left, scope.hintTop(), look.hintColor());
     }
 
     private static Optional<SonarScope.Dot> project(PodEntity pod, BlockPos pos, int radius) {
