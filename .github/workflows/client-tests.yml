@@ -117,6 +117,10 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: merged-main-${{ matrix.shard }}
+          # A re-run of this shard uploads the same name again, which v4+ otherwise rejects. After a `--failed`
+          # re-run the aggregate downloads the earlier attempt's artifact for each shard that did not re-run, which
+          # is that shard's sha from its successful attempt; if main moved since, the shas differ and it fails closed.
+          overwrite: true
           path: ${{ runner.temp }}/main-sha-${{ matrix.shard }}
           retention-days: 1
       - uses: ./.github/actions/client-gametest

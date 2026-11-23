@@ -48,6 +48,8 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIn("main-sha-${{ matrix.shard }}", job)
         self.assertIn("name: merged-main-${{ matrix.shard }}", job)
         self.assertIn("MAIN_SHA: ${{ steps.merge.outputs.main-sha }}", job)
+        # upload-artifact v4+ rejects a name already used in the run, so a re-run shard would fail before its tests.
+        self.assertIn("overwrite: true", job)
 
     def test_the_aggregate_records_the_shards_agreed_main_sha_without_merging(self):
         job = self.aggregate_job()
