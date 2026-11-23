@@ -167,7 +167,7 @@ public final class SpecSheets {
             }
             case QUANTUM_TELEPORTER ->
                 ratings.add(rating("scatter", "blocks", number((float) tuning.quantumScatter())));
-            case MATTER_TRANSMITTER, TETHER -> {}
+            case MATTER_TRANSMITTER, TETHER, THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE, BOLT_DRIVER, BOLT -> {}
         }
     }
 

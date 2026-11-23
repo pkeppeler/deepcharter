@@ -5,7 +5,7 @@ import net.minecraft.world.entity.Entity;
 
 /**
  * Where a rider sits in a pod, which is the order they boarded: the first aboard is the pilot, who drives, and the second is the
- * navigator, who sees the scanner and nothing else (SPEC section 8; sonar comes in M3). When the pilot gets off, the navigator is
+ * navigator, who sees the scanner and works the sonar ({@link PodSonar}). When the pilot gets off, the navigator is
  * the first aboard, and is the pilot.
  */
 public enum PodSeat {
@@ -22,6 +22,11 @@ public enum PodSeat {
             return Optional.empty();
         }
         return Optional.of(index == 0 ? PILOT : NAVIGATOR);
+    }
+
+    /** True when {@code rider} is the navigator, who works the sonar. */
+    public static boolean isNavigator(PodEntity pod, Entity rider) {
+        return find(pod, rider).filter(seat -> seat == NAVIGATOR).isPresent();
     }
 
     /** True when {@code rider} is the pilot, who sees the pod's hull, fuel, cargo and depth and hears its low-fuel beep. */

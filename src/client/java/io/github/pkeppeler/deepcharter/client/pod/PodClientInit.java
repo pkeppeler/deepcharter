@@ -17,5 +17,8 @@ public final class PodClientInit {
         SignalDecayCue.init();
         PilotFire.init();
         LiningKeys.register();
+        SonarKeys.register();
+        SonarHud.init();
+        SonarMarksHud.init();
     }
 }

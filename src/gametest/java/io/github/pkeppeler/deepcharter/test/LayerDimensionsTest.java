@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -37,10 +38,11 @@ import org.joml.Vector3fc;
 
 /** Server GameTests for layer dimensions and depth math. */
 public class LayerDimensionsTest {
+    private static final String CAMPAIGN = "deepcharter:campaign_sample";
     private static final Identifier CRUST_ID = Identifier.fromNamespaceAndPath("deepcharter", "breach_crust");
 
     /** Runs inside deepcharter:campaign_sample: proves the GameTest server loads the test pack's campaign dimension, and that it holds every layer. */
-    @GameTest(dimension = "deepcharter:campaign_sample")
+    @GameTest(environment = CampaignEnvironments.B, dimension = CAMPAIGN)
     public void gameTestRunsInTheCampaignLevel(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         if (!LayerChain.isCampaign(level)
@@ -53,8 +55,8 @@ public class LayerDimensionsTest {
 
     /**
      * {@code TestLayers.band} of a level that does not hold the layer fails loud: the flat test overworld holds the surface only, and the
-     * Nether is no layer's level. ({@code TestLayers.dimension(server, n)} returns the overworld for a layer once the overworld is the
-     * campaign level (#803), so that branch has no test before then.)
+     * Nether is no layer's level. (The GameTest server's overworld is flat, so {@code TestLayers.dimension(server, n)} returns
+     * the sample here; its overworld branch is tested in {@code CampaignWorldClientTest}, in a default-preset world.)
      */
     @GameTest
     public void aLevelThatDoesNotHoldALayerHasNoBandForIt(GameTestHelper helper) {
@@ -69,7 +71,7 @@ public class LayerDimensionsTest {
     }
 
     /** The surface is a band of the campaign level, and a position is in exactly the band its Y falls in. */
-    @GameTest(dimension = "deepcharter:campaign_sample")
+    @GameTest(environment = CampaignEnvironments.B, dimension = CAMPAIGN)
     public void theSurfaceIsABandOfTheCampaignLevel(GameTestHelper helper) {
         ServerLevel campaign = helper.getLevel();
         LayerChain.Band surface = TestLayers.band(campaign, TestLayers.SURFACE);
@@ -120,7 +122,7 @@ public class LayerDimensionsTest {
     }
 
     /** The darkening is the zone biomes' ambient light colour (ADR 0059): layer 2 reads a darker one than layer 1, and neither is lit by the sky. */
-    @GameTest(dimension = "deepcharter:campaign_sample")
+    @GameTest(environment = CampaignEnvironments.B, dimension = CAMPAIGN)
     public void layersAreDarkerWithDepth(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         float one = brightness(level, TestLayers.pos(1, 0, 100, 0));
