@@ -52,10 +52,14 @@ public class BoltDriverPacingTest {
     private static final float EAST = -90f;
     private static final int SPAWN_PROTECTION_TICKS = 100;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
+    /**
+     * Blocks of tunnel, from chunk column 21 of {@code BoltRoom}: it spans columns 21 to 23, and the roof it reads reaches 3 blocks past each end. No
+     * other corridor may have air within that, or the test reads that roof as loose when the neighbour carves second (#1084).
+     */
     private static final int TUNNEL = 40;
     /** The rock of a cave-in has fallen, and the last of it is down, this many ticks after the warning. */
     private static final int ROCK_FELL_TICKS = 30;
-    /** The longest spacing tried, in blocks: far more than a bolt reaches. */
+    /** The longest spacing tried, in blocks: far more than a bolt reaches. The shortest is the driver's own, since it refuses a bolt nearer another. */
     private static final int WIDEST_SPACING = 12;
 
     /** A Retained takes this many bolts, at least and at most: more than one, so a fight is a choice, and few enough to be a fight and not a siege. */
@@ -116,7 +120,7 @@ public class BoltDriverPacingTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aRetainedTakesAFewBoltsAndATallyOne(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, 14, 20);
+        Corridor corridor = corridor(helper, 14, 16);
         MockPlayer shooter = walker(helper, corridor, "pacing-shooter", 1, EAST);
         arm(shooter.player(), 24);
         ServerLevel level = corridor.level();
@@ -189,7 +193,8 @@ public class BoltDriverPacingTest {
     }
 
     /** Roof bolts at {@code first}, {@code first + spacing}, and so on along the corridor; the number of roof blocks left loose to a person anywhere in it. */
-    private static int looseWithBoltsEvery(Corridor corridor, int first, int spacing, int[] placed) {
+    private static int looseWithBoltsEvery(
+            GameTestHelper helper, Corridor corridor, int first, int spacing, int[] placed) {
         ServerLevel level = corridor.level();
         for (int along = 0; along < corridor.length(); along++) {
             BlockPos cell = corridor.roof(along).below();
@@ -199,9 +204,16 @@ public class BoltDriverPacingTest {
         }
         placed[0] = 0;
         for (int along = first; along < corridor.length(); along += spacing) {
-            if (CaveIns.boltRefusal(level, corridor.roof(along), DRIVER.boltSpacing())
-                    .isPresent()) {
-                throw new IllegalStateException("a bolt at " + along + " was refused");
+            Optional<String> refusal = CaveIns.boltRefusal(level, corridor.roof(along), DRIVER.boltSpacing());
+            if (refusal.isPresent()) {
+                throw failure(
+                        helper,
+                        "a bolt at %d (spacing %d, roof %s, cell %s) was refused: %s",
+                        along,
+                        spacing,
+                        level.getBlockState(corridor.roof(along)),
+                        level.getBlockState(corridor.roof(along).below()),
+                        refusal.get());
             }
             CaveIns.hangBolt(level, corridor.roof(along));
             placed[0]++;
@@ -225,15 +237,15 @@ public class BoltDriverPacingTest {
             int reach = (int) Math.floor(Math.sqrt(CAVE_IN.boltReach() * CAVE_IN.boltReach() - 1.0));
             int[] placed = {0};
             int spacing = 0;
-            for (int candidate = WIDEST_SPACING; candidate >= 1 && spacing == 0; candidate--) {
-                if (looseWithBoltsEvery(corridor, reach, candidate, placed) == 0) {
+            for (int candidate = WIDEST_SPACING; candidate > DRIVER.boltSpacing() && spacing == 0; candidate--) {
+                if (looseWithBoltsEvery(helper, corridor, reach, candidate, placed) == 0) {
                     spacing = candidate;
                 }
             }
             if (spacing == 0) {
                 throw failure(helper, "no spacing of roof bolts holds the tunnel");
             }
-            looseWithBoltsEvery(corridor, reach, spacing, placed);
+            looseWithBoltsEvery(helper, corridor, reach, spacing, placed);
             double per100 = 100.0 / spacing;
             double cost = per100 * boltPrice();
             Run layerTwo = layerTwoRun();
