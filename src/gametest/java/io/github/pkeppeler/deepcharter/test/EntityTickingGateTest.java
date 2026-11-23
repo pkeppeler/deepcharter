@@ -19,7 +19,6 @@ import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.gametest.framework.GameTestInfo;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -29,7 +28,9 @@ import org.jspecify.annotations.Nullable;
  * Server GameTests for {@link EntityTickingGate} (#1089), end to end: a pod driven east out of a chunk the test awaits into the
  * next one, which the game loads (it neighbours a forced chunk) but does not entity-tick. Each case has a chunk column of its own that no
  * other test forces. The cases that must fail are {@code required = false} tests the gate fails, and a {@code ...Fails...} test beside
- * them reads the outcome; the environment keeps all of them in one batch, so the reader is never in a batch before its subject.
+ * them reads the outcome. The environment keeps all of them in one batch, so a reader is never in a batch before its subject; a
+ * batch holds at most 20 tests ({@code TestBatches}) and this class has 13, so cases past 20 would split them. The gate watches pods and
+ * the players riding them: a mock player on foot is never moved by its input, so a crossing on foot cannot happen.
  */
 public class EntityTickingGateTest {
     private static final String ENVIRONMENT = "deepcharter-test:entity_ticking_gate";
@@ -43,6 +44,7 @@ public class EntityTickingGateTest {
     private static final int SHORT_COLUMN = EXACT_COLUMN + COLUMN_GAP;
     private static final int OPT_OUT_COLUMN = SHORT_COLUMN + COLUMN_GAP;
     private static final int SET_POS_COLUMN = OPT_OUT_COLUMN + COLUMN_GAP;
+    private static final int SHARED_COLUMN = SET_POS_COLUMN + COLUMN_GAP;
     private static final float EAST = -90f;
     private static final int DRIVE_TICKS = 10;
     private static final int SETTLE_TICKS = 10;
@@ -54,6 +56,7 @@ public class EntityTickingGateTest {
     private static final AtomicReference<@Nullable AABB> CROSSING = new AtomicReference<>();
     private static final AtomicReference<@Nullable AABB> EXACT = new AtomicReference<>();
     private static final AtomicReference<@Nullable AABB> OPTED_OUT = new AtomicReference<>();
+    private static final AtomicReference<Boolean> SHARED_DRIVEN = new AtomicReference<>(false);
     private static final AtomicReference<Boolean> OPTED_OUT_WHILE_RUNNING = new AtomicReference<>(false);
 
     private static <T> T got(AtomicReference<@Nullable T> ref) {
@@ -130,13 +133,12 @@ public class EntityTickingGateTest {
         FarChunks.Deadline deadline = FarChunks.deadline();
         TestTicks.each(helper, () -> {
             AABB bounds = subject.get();
-            GameTestInfo failed = bounds == null ? null : EntityTickingGate.failureOf(bounds);
+            String failed = bounds == null ? null : EntityTickingGate.failureOf(bounds);
             deadline.await(helper, helper.getLevel(), failed != null, () -> "the gate did not fail " + what);
             if (failed == null) {
                 return;
             }
-            String message = String.valueOf(
-                    failed.getError() == null ? null : failed.getError().getMessage());
+            String message = failed;
             String chunk = "[" + (column + 1) + ", " + CHUNK_Z + "]";
             for (String part : List.of(chunk, "not entity-ticking", "awaitAllEntityTicking", "allowUnticked")) {
                 if (!message.contains(part)) {
@@ -151,7 +153,7 @@ public class EntityTickingGateTest {
     @GameTest(maxTicks = MAX_TICKS, environment = ENVIRONMENT, required = false)
     public void subjectAPodDrivenAcrossTheBorder(GameTestHelper helper) {
         CROSSING.set(helper.getBounds());
-        EntityTickingGate.clearFailure(helper.getBounds());
+        EntityTickingGate.expectFailure(helper.getBounds());
         driveEast(helper, CROSSING_COLUMN, OVERSHOOT, pod -> {
             throw failure(helper, "the gate let the pod drive into a chunk that does not tick");
         });
@@ -166,7 +168,7 @@ public class EntityTickingGateTest {
     @GameTest(maxTicks = MAX_TICKS, environment = ENVIRONMENT, required = false)
     public void subjectAPodStoppingExactlyOnTheBorder(GameTestHelper helper) {
         EXACT.set(helper.getBounds());
-        EntityTickingGate.clearFailure(helper.getBounds());
+        EntityTickingGate.expectFailure(helper.getBounds());
         driveEast(helper, EXACT_COLUMN, 0, pod -> {
             throw failure(helper, "the gate let the pod stop on the border of a chunk that does not tick");
         });
@@ -262,5 +264,64 @@ public class EntityTickingGateTest {
                     }
                     helper.succeed();
                 });
+    }
+
+    /** Two tests hold the chunk the pod drives out of, so neither owns the pod: the gate blames neither. This one drives and passes. */
+    @GameTest(maxTicks = MAX_TICKS, environment = ENVIRONMENT)
+    public void aPodDrivenOutOfAChunkTwoTestsHoldIsNobodysToBlame(GameTestHelper helper) {
+        driveEast(helper, SHARED_COLUMN, OVERSHOOT, pod -> {
+            if (pod.getX() < border(SHARED_COLUMN)) {
+                throw failure(helper, "the pod never entered the chunk that does not tick, at x %s", pod.getX());
+            }
+            SHARED_DRIVEN.set(true);
+            helper.succeed();
+        });
+    }
+
+    /** The second holder of that chunk drives nothing and must pass: it stays running until the drive is over, so the gate could blame it. */
+    @GameTest(maxTicks = MAX_TICKS, environment = ENVIRONMENT)
+    public void theOtherHolderOfTheChunkIsNotBlamedForTheDrive(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos inChunk = new BlockPos(
+                SHARED_COLUMN * 16 + 8, helper.absolutePos(BlockPos.ZERO).getY() + 2, CHUNK_Z * 16 + 8);
+        FarChunks.awaitAllEntityTicking(helper, level, List.of(inChunk), () -> {});
+        TestTicks.each(helper, () -> {
+            if (SHARED_DRIVEN.get()) {
+                helper.succeed();
+            }
+        });
+    }
+
+    /** Who owns a position: the one test whose bounds contain it, else the one that holds its chunk; none, or two of either, is nobody. */
+    @GameTest(environment = ENVIRONMENT)
+    public void aPositionHasAnOwnerOnlyWhenOneTestClaimsIt(GameTestHelper helper) {
+        AABB here = new AABB(0, 0, 0, 10, 10, 10);
+        AABB elsewhere = new AABB(100, 0, 0, 110, 10, 10);
+        Vec3 inHere = new Vec3(5, 5, 5);
+        Vec3 nowhere = new Vec3(50, 5, 5);
+        int[] got = {
+            // Bounds own it, whatever holds the chunk.
+            EntityTickingGate.ownerOf(claims(elsewhere, false, here, true), inHere),
+            EntityTickingGate.ownerOf(claims(elsewhere, true, here, true), inHere),
+            // Two structures whose bounds contain it: nobody.
+            EntityTickingGate.ownerOf(claims(here, false, here, false), inHere),
+            // One holder owns it; two holders, or none, do not.
+            EntityTickingGate.ownerOf(claims(here, false, elsewhere, true), nowhere),
+            EntityTickingGate.ownerOf(claims(here, true, elsewhere, true), nowhere),
+            EntityTickingGate.ownerOf(claims(here, false, elsewhere, false), nowhere)
+        };
+        int[] expected = {1, 1, -1, 1, -1, -1};
+        for (int i = 0; i < got.length; i++) {
+            if (got[i] != expected[i]) {
+                throw failure(helper, "case %s: owner %s, expected %s", i, got[i], expected[i]);
+            }
+        }
+        helper.succeed();
+    }
+
+    private static List<EntityTickingGate.Claim> claims(
+            AABB first, boolean firstHolds, AABB second, boolean secondHolds) {
+        return List.of(
+                new EntityTickingGate.Claim(first, firstHolds), new EntityTickingGate.Claim(second, secondHolds));
     }
 }

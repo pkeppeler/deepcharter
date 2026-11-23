@@ -20,13 +20,16 @@ import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Fails the running test whose pod or player drives into a chunk that is not entity-ticking (#1089). The game stops such an entity dead
  * at the border, so the test sees a pod that "covered 0.0 blocks", and which neighbour tests keep the next chunk ticking decides
  * whether it passes. {@code GameTestTickerMixin} calls {@link #scan} once per server tick with the running tests.
  *
- * <p>An entity is the test's own when its chunk lies in the test's structure bounds or in a chunk the test holds
+ * <p>It watches pods and the players riding them: a mock player on foot is never driven (the server takes a player's position from
+ * client packets, and a mock sends none), so nothing on foot can stall. An entity is the test's own when its chunk lies in the test's structure bounds or in a chunk the test holds
  * ({@link FarChunks}); one that belongs to no test or to two is nobody's, and is not blamed. A move is a drive when its length is
  * what the entity's {@code getDeltaMovement()} explains; a {@code setPos} or a teleport is not, and the gate leaves it alone (a
  * teleported entity is not stalled by the chunk it left). A test about a chunk that must not tick calls
@@ -47,8 +50,13 @@ public final class EntityTickingGate {
 
     private static final Set<AABB> ALLOWED = new HashSet<>();
 
-    /** The tests the gate has failed, by their bounds, for {@code EntityTickingGateTest} to read. */
-    private static final Map<AABB, GameTestInfo> FAILED = new HashMap<>();
+    /** The bounds of the tests whose failure {@code EntityTickingGateTest} will read; only these have their message kept. */
+    private static final Set<AABB> EXPECTED = new HashSet<>();
+
+    /** The message the gate failed each of {@link #EXPECTED} with. */
+    private static final Map<AABB, String> FAILED = new HashMap<>();
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(EntityTickingGate.class);
 
     private EntityTickingGate() {}
 
@@ -67,14 +75,19 @@ public final class EntityTickingGate {
         return ALLOWED.contains(testBounds);
     }
 
-    /** The test with these bounds, if the gate failed it. For {@code EntityTickingGateTest}. */
-    public static @Nullable GameTestInfo failureOf(AABB testBounds) {
-        return FAILED.get(testBounds);
+    /** Keeps the message the gate fails the test with these bounds with, for {@link #failureOf}. For {@code EntityTickingGateTest}. */
+    public static void expectFailure(AABB testBounds) {
+        EXPECTED.add(testBounds);
+        FAILED.remove(testBounds);
     }
 
-    /** Forgets that the gate failed the test with these bounds, so a stale failure of an earlier test cannot be read as this one's. */
-    public static void clearFailure(AABB testBounds) {
-        FAILED.remove(testBounds);
+    /** The message the gate failed the test with these bounds with, once it has; the entry is dropped when it is read. For {@code EntityTickingGateTest}. */
+    public static @Nullable String failureOf(AABB testBounds) {
+        String message = FAILED.remove(testBounds);
+        if (message != null) {
+            EXPECTED.remove(testBounds);
+        }
+        return message;
     }
 
     /**
@@ -113,6 +126,7 @@ public final class EntityTickingGate {
                 // The runner finishes a test whose block entity is missing; it never ran its body.
             }
         }
+        Set<AABB> failed = new HashSet<>();
         for (ServerLevel level : levels) {
             for (Entity entity : watched(level)) {
                 Vec3 now = entity.position();
@@ -124,14 +138,26 @@ public final class EntityTickingGate {
                     continue;
                 }
                 Running owner = owner(tests, level, before.pos(), now);
-                if (owner == null || ALLOWED.contains(owner.bounds())) {
+                if (owner == null) {
+                    if (!level.isPositionEntityTicking(BlockPos.containing(now))) {
+                        LOGGER.info(
+                                "{} moved from {} into a chunk that is not entity-ticking, and no running test holds either chunk",
+                                entity.getName().getString(),
+                                before.pos());
+                    }
+                    continue;
+                }
+                if (ALLOWED.contains(owner.bounds()) || failed.contains(owner.bounds())) {
                     continue;
                 }
                 double speed =
                         Math.max(before.speed(), entity.getDeltaMovement().length());
                 Optional<String> problem = problem(level, entity, before.pos(), now, speed);
                 if (problem.isPresent()) {
-                    FAILED.put(owner.bounds(), owner.info());
+                    failed.add(owner.bounds());
+                    if (EXPECTED.contains(owner.bounds())) {
+                        FAILED.put(owner.bounds(), problem.get());
+                    }
                     owner.info().fail(Component.literal(problem.get()));
                 }
             }
@@ -153,16 +179,37 @@ public final class EntityTickingGate {
     }
 
     private static @Nullable Running ownerOf(List<Running> tests, ServerLevel level, Vec3 at) {
-        List<Running> inBounds = tests.stream()
-                .filter(test -> test.info().getLevel() == level && test.bounds().contains(at))
-                .toList();
-        if (!inBounds.isEmpty()) {
-            return inBounds.size() == 1 ? inBounds.getFirst() : null;
-        }
         ChunkPos chunk = ChunkPos.containing(BlockPos.containing(at));
-        List<Running> holders = tests.stream()
-                .filter(test -> FarChunks.holds(test.bounds(), level, chunk.x(), chunk.z()))
-                .toList();
-        return holders.size() == 1 ? holders.getFirst() : null;
+        List<Running> inLevel =
+                tests.stream().filter(test -> test.info().getLevel() == level).toList();
+        int owner = ownerOf(
+                inLevel.stream()
+                        .map(test ->
+                                new Claim(test.bounds(), FarChunks.holds(test.bounds(), level, chunk.x(), chunk.z())))
+                        .toList(),
+                at);
+        return owner < 0 ? null : inLevel.get(owner);
+    }
+
+    /** What a running test claims of a position: its structure bounds, and whether it holds the position's chunk. */
+    public record Claim(AABB bounds, boolean holdsChunk) {}
+
+    /**
+     * The index of the one claim that owns {@code at}, or -1 when none or several do. The tests whose bounds contain it own it; if none
+     * does, the tests that hold its chunk do. One test only: two owners are nobody's, so no neighbour is blamed.
+     */
+    public static int ownerOf(List<Claim> claims, Vec3 at) {
+        List<Integer> inBounds = new ArrayList<>();
+        List<Integer> holders = new ArrayList<>();
+        for (int i = 0; i < claims.size(); i++) {
+            if (claims.get(i).bounds().contains(at)) {
+                inBounds.add(i);
+            }
+            if (claims.get(i).holdsChunk()) {
+                holders.add(i);
+            }
+        }
+        List<Integer> owners = inBounds.isEmpty() ? holders : inBounds;
+        return owners.size() == 1 ? owners.getFirst() : -1;
     }
 }
