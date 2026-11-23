@@ -5,7 +5,9 @@ Its fixture trees go through the scan of generateGametestModJson in one Gradle r
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
 Usage: tools/py tools/tests/gate_checks.py light_wait
 """
+import re
 import unittest
+from pathlib import PurePosixPath
 
 import gate_batch
 from gate_batch import Case
@@ -227,5 +229,6 @@ class LightWaitGateTest(unittest.TestCase):
                 self.assertIn(f"LightsTest:{line} reads block light", result.message)
                 self.assertIn("FarChunks.Deadline", result.message)
                 self.assertIn("#1048", result.message)
-                for clean in ("DeadlineTest", "AwaitOnlyTest", "FieldDeadlineTest", "InlineDeadlineTest", "MarkedTest", "MentionsTest", "HelperOutsideAMethodTest", "ReadsLightClientTest", "ReadsLightSupport"):
-                    self.assertNotIn(clean, result.message)
+                for path in CLEAN:
+                    # An exact class name: "DeadlineTest" must not match FieldDeadlineTest or InlineDeadlineTest.
+                    self.assertNotRegex(result.message, rf"(?<!\w){re.escape(PurePosixPath(path).stem)}:\d")
