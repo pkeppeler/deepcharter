@@ -139,13 +139,8 @@ public class LayerStructuresTest {
     @GameTest
     public void everyKindHasOneSiteInEachCellInsideItsCellAndZone(GameTestHelper helper) {
         BlockPos conduit = conduit(helper);
-        ServerLevel[] layers = {TestLayers.level(helper, 1), TestLayers.level(helper, 2)};
-        for (ServerLevel level : layers) {
-            int layer = LayerChain.layerOf(level.dimensionTypeRegistration()
-                            .unwrapKey()
-                            .orElseThrow()
-                            .identifier())
-                    .getAsInt();
+        for (int layer = 1; layer <= 2; layer++) {
+            ServerLevel level = TestLayers.level(helper, layer);
             for (StructureKind kind : StructureKind.inLayer(layer)) {
                 for (int cellX = -2; cellX <= 1; cellX++) {
                     for (int cellZ = -2; cellZ <= 1; cellZ++) {

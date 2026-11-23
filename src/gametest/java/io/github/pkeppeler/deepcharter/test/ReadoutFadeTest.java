@@ -22,7 +22,7 @@ public class ReadoutFadeTest {
     private static final Optional<Readout> NOTHING = Optional.empty();
     private static final float EPSILON = 1e-4f;
 
-    private static void tick(ReadoutFade fade, Optional<Readout> looked, int times) {
+    private static void tick(ReadoutFade<Readout> fade, Optional<Readout> looked, int times) {
         for (int i = 0; i < times; i++) {
             fade.tick(looked, LOOK);
         }
@@ -30,7 +30,7 @@ public class ReadoutFadeTest {
 
     @GameTest
     public void aReadoutFadesInOverTheLooksTicks(GameTestHelper helper) {
-        ReadoutFade fade = new ReadoutFade();
+        ReadoutFade<Readout> fade = new ReadoutFade<>();
         tick(fade, STONE, 1);
         expect(helper, fade.alpha(1f) == 0f, "nothing shows before the crosshair has settled, got %s", fade.alpha(1f));
         tick(fade, STONE, 2);
@@ -46,7 +46,7 @@ public class ReadoutFadeTest {
 
     @GameTest
     public void aReadoutFadesOutWhenTheCrosshairLeaves(GameTestHelper helper) {
-        ReadoutFade fade = new ReadoutFade();
+        ReadoutFade<Readout> fade = new ReadoutFade<>();
         tick(fade, STONE, 10);
         tick(fade, NOTHING, 3);
         float half = fade.alpha(1f);
@@ -59,7 +59,7 @@ public class ReadoutFadeTest {
 
     @GameTest
     public void aSweepAcrossBlocksNeverShowsOneThatDidNotSettle(GameTestHelper helper) {
-        ReadoutFade fade = new ReadoutFade();
+        ReadoutFade<Readout> fade = new ReadoutFade<>();
         tick(fade, STONE, 10);
         for (int i = 0; i < 6; i++) {
             tick(fade, i % 2 == 0 ? DIRT : STONE, 1);
@@ -70,7 +70,7 @@ public class ReadoutFadeTest {
 
     @GameTest
     public void aNewBlockReplacesTheOldOnceItHasSettledAndTheOldHasFaded(GameTestHelper helper) {
-        ReadoutFade fade = new ReadoutFade();
+        ReadoutFade<Readout> fade = new ReadoutFade<>();
         tick(fade, STONE, 10);
         tick(fade, DIRT, 12);
         expect(helper, fade.shown().equals(DIRT), "dirt replaced stone, got %s", fade.shown());
@@ -81,7 +81,7 @@ public class ReadoutFadeTest {
 
     @GameTest
     public void aBlinkOfNothingBetweenTwoLikeBlocksStillFadesRatherThanJumps(GameTestHelper helper) {
-        ReadoutFade fade = new ReadoutFade();
+        ReadoutFade<Readout> fade = new ReadoutFade<>();
         tick(fade, STONE, 10);
         tick(fade, NOTHING, 1);
         float dipped = fade.alpha(1f);
@@ -92,7 +92,7 @@ public class ReadoutFadeTest {
     @GameTest
     public void aBlockMustHoldTheCrosshairForTheSettleTicksBeforeItReplacesTheOne(GameTestHelper helper) {
         ReadoutLook slow = new ReadoutLook(14, 2, 1.0, 0xFF00FF00, 0xFFFFFF00, 4, 1, 5);
-        ReadoutFade fade = new ReadoutFade();
+        ReadoutFade<Readout> fade = new ReadoutFade<>();
         for (int i = 0; i < 10; i++) {
             fade.tick(STONE, slow);
         }
@@ -115,7 +115,7 @@ public class ReadoutFadeTest {
 
     @GameTest
     public void theFadeInIsExactlyTheLooksTicks(GameTestHelper helper) {
-        ReadoutFade fade = new ReadoutFade();
+        ReadoutFade<Readout> fade = new ReadoutFade<>();
         tick(fade, STONE, 2);
         float[] expected = {0.25f, 0.5f, 0.75f, 1f};
         for (int step = 0; step < expected.length; step++) {
