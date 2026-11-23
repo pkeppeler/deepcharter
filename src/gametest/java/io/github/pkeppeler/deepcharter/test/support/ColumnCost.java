@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.test.mixin.MinecraftServerAccess;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -13,7 +14,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
@@ -62,12 +62,12 @@ public final class ColumnCost {
             int rounds,
             Consumer<Map<String, List<Measurement>>> report) {
         boolean smoke = rounds == 0;
-        MinecraftServer server = helper.getLevel().getServer();
-        boolean autosave = server.isAutoSave();
+        MinecraftServerAccess server = (MinecraftServerAccess) helper.getLevel().getServer();
+        int autosave = server.deepcharter$ticksUntilAutosave();
         if (!smoke) {
             // The server's autosave writes every level's chunks every few thousand ticks, into whichever reading is
             // open.
-            server.setAutoSave(false);
+            server.deepcharter$setTicksUntilAutosave(Integer.MAX_VALUE);
         }
         ArrayDeque<Run> queue = new ArrayDeque<>();
         if (smoke) {
@@ -113,7 +113,7 @@ public final class ColumnCost {
             cooldown[0] = smoke ? 0 : COOL_DOWN_TICKS;
             if (queue.isEmpty()) {
                 if (rounds > 0) {
-                    server.setAutoSave(autosave);
+                    server.deepcharter$setTicksUntilAutosave(autosave);
                     report.accept(results);
                 }
                 helper.succeed();

@@ -12,6 +12,7 @@
     "GameTestInfoMixin",
     "GameTestTickerMixin",
     "LightSyncSendMixin",
+    "MinecraftServerAccess",
     "ServerLevelForcedMixin"
   ],
   "client": [
