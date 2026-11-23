@@ -80,8 +80,6 @@ public class RetainedOnFootTest {
     private static final int WATCH_TICKS = 160;
     /** Ticks between two blows by hand: a hurt mob ignores a blow that is no stronger than the last for 10 ticks. */
     private static final int BLOW_SPACING_TICKS = 12;
-    /** Ticks for the light of a block to spread to a cell, or to go from it: slow on a loaded runner. */
-    private static final int LIGHT_BUDGET_TICKS = 200;
     /** Ticks a test flare burns. */
     private static final int FLARE_BURN_TICKS = 60;
     /** The reach a test flare keeps the dark off within: a stand-in, smaller than the real flare's reach. */
@@ -414,13 +412,13 @@ public class RetainedOnFootTest {
     }
 
     /** Block light 3 where a person stands is lit, and 2 is dark: the same line the spawn rule and the lit pod use. */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 2 * LIGHT_BUDGET_TICKS + 60)
+    @GameTest(maxTicks = 3 * FarChunks.AWAIT_BUDGET_TICKS + 60)
     public void aPersonDrawsAFigureOnlyWhereTheBlockLightIsUnderThree(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos origin = slot(2);
         Room[] made = {null};
         int[] phase = {0};
-        long[] since = {0};
+        FarChunks.Deadline[] deadline = {FarChunks.deadline()};
         int lit = TUNING.litBlockLight();
         TestTicks.each(helper, () -> {
             Room room = made[0];
@@ -430,21 +428,20 @@ public class RetainedOnFootTest {
             BlockPos feet = room.player().blockPosition();
             int expected = phase[0] == 0 ? lit : lit - 1;
             int brightness = level.getBrightness(LightLayer.BLOCK, feet);
+            deadline[0].await(
+                    helper,
+                    level,
+                    brightness == expected,
+                    () -> String.format(
+                            "block light at the person's feet is %s, expected %s after a light block was set",
+                            brightness, expected));
             if (brightness != expected) {
-                if (helper.getTick() - since[0] > LIGHT_BUDGET_TICKS) {
-                    throw failure(
-                            helper,
-                            "block light at the person's feet is %s, %s ticks after a light block of %s was set",
-                            brightness,
-                            LIGHT_BUDGET_TICKS,
-                            expected);
-                }
                 return;
             }
             expectDraws(helper, room.player(), phase[0] == 1, "a person at block light " + expected);
             if (phase[0] == 0) {
                 phase[0] = 1;
-                since[0] = helper.getTick();
+                deadline[0] = FarChunks.deadline();
                 level.setBlock(feet, light(lit - 1), 3);
             } else {
                 room.clear();
@@ -456,7 +453,7 @@ public class RetainedOnFootTest {
             // Far from the person, so that it never reaches them while the light settles.
             made[0].figure.discard();
             level.setBlock(made[0].player().blockPosition(), light(lit), 3);
-            since[0] = helper.getTick();
+            deadline[0] = FarChunks.deadline();
         });
     }
 
@@ -968,6 +965,8 @@ public class RetainedOnFootTest {
             expectDraws(helper, player, true, "a person in the dark before the flare lands");
             burnsOutAt[0] = level.getGameTime() + FLARE_BURN_TICKS;
             landFlare(level, player.blockPosition().west(2), burnsOutAt[0]);
+            // light-wait-ok: asserts the inert stone stand-in emits no light; the read checks an absence, not a wait
+            // for light
             if (level.getBrightness(LightLayer.BLOCK, player.blockPosition()) >= TUNING.litBlockLight()) {
                 throw failure(helper, "the test's flare block lit the person; it must stay dark");
             }

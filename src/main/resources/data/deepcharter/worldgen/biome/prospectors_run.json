@@ -26,6 +26,7 @@
       "can_sleep": "never",
       "destroy_on_use": false
     },
+    "minecraft:gameplay/can_pillager_patrol_spawn": false,
     "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
     "minecraft:gameplay/natural_mob_spawns": {
       "argument": {
