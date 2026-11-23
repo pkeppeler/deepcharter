@@ -1,5 +1,6 @@
 {
   "death.attack.deepcharter.suit_exposure": "%1$s's suit gave out",
+  "death.attack.deepcharter.suit_exposure.player": "%1$s's suit gave out while fighting %2$s",
   "hud.deepcharter.suit.axis.flooding": "FLOODING",
   "hud.deepcharter.suit.axis.heat": "HEAT",
   "hud.deepcharter.suit.axis.pressure": "PRESSURE",

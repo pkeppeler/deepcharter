@@ -5,7 +5,6 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostData.Outpost;
 import io.github.pkeppeler.deepcharter.terminal.TerminalNotices;
 import java.util.List;
 import java.util.Optional;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -36,29 +35,26 @@ public final class OutpostRisks {
             return List.of();
         }
         Optional<Ratings> required = OutpostHabitability.requiredAt(level, hall.get());
-        if (required.isPresent() && required.get().equals(Ratings.NONE)) {
-            return List.of();
-        }
         return lines(required, OutpostHabitability.of(level, hall.get(), required));
     }
 
-    /** The line for a shell in {@code status} against a depth that asks {@code required}: none where the depth asks nothing. */
+    /**
+     * The line for a shell in {@code status} against a depth that asks {@code required}: none where the depth asks nothing. Only the
+     * holding line is marked good, so the screens draw it in phosphor and the others in amber.
+     */
     public static List<Component> lines(Optional<Ratings> required, OutpostHabitability.Status status) {
         if (required.isPresent() && required.get().equals(Ratings.NONE)) {
             return List.of();
         }
         if (required.isEmpty()) {
-            return List.of(
-                    Component.translatable("notice.deepcharter.outpost.unrated").withStyle(ChatFormatting.GOLD));
+            return List.of(Component.translatable("notice.deepcharter.outpost.unrated"));
         }
         if (status.habitable()) {
-            return List.of(
-                    Component.translatable("notice.deepcharter.outpost.holds").withStyle(ChatFormatting.GREEN));
+            return List.of(TerminalNotices.good(Component.translatable("notice.deepcharter.outpost.holds")));
         }
         return List.of(Component.translatable(
-                        "notice.deepcharter.outpost.leaks",
-                        RatingAxis.list(status.shortOn().stream().sorted().toList()),
-                        status.unrated())
-                .withStyle(ChatFormatting.GOLD));
+                "notice.deepcharter.outpost.leaks",
+                RatingAxis.list(status.shortOn().stream().sorted().toList()),
+                status.unrated()));
     }
 }

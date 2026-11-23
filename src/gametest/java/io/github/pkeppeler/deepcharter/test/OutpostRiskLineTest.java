@@ -85,11 +85,15 @@ public class OutpostRiskLineTest {
                 }
             }
             Status holding = OutpostHabitability.of(hall.level(), outpost, Optional.of(EXAMPLE_LAYER));
+            List<Component> holds = OutpostRisks.lines(Optional.of(EXAMPLE_LAYER), holding);
+            expect(helper, keys(holds).equals(List.of(HOLDS)), "a shell that holds says so");
             expect(
                     helper,
-                    keys(OutpostRisks.lines(Optional.of(EXAMPLE_LAYER), holding))
-                            .equals(List.of(HOLDS)),
-                    "a shell that holds says so");
+                    TerminalNotices.isGood(holds.getFirst())
+                            && !TerminalNotices.isGood(leaks.getFirst())
+                            && !TerminalNotices.isGood(OutpostRisks.lines(Optional.empty(), holding)
+                                    .getFirst()),
+                    "only the holding line is good news, drawn in phosphor; a leak and an unrated depth are amber");
             expect(
                     helper,
                     keys(OutpostRisks.lines(Optional.empty(), holding)).equals(List.of(UNRATED)),

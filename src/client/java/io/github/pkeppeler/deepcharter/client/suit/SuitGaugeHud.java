@@ -79,12 +79,15 @@ public final class SuitGaugeHud {
         return gauge(state);
     }
 
-    /** What the gauge shows for a suit in {@code state}, for a person on foot: empty for a suit that is inert. */
+    /**
+     * What the gauge shows for a suit in {@code state}, for a person on foot: empty for a suit that is inert, and for a full one that
+     * refills (a sound hall in layer 1 shelters all the time).
+     */
     public static Optional<Gauge> gauge(SuitState state) {
-        if (state.mode() == Mode.INERT) {
+        SuitTuning tuning = SuitTuning.DEFAULT;
+        if (state.mode() == Mode.INERT || (state.mode().refills() && state.reserve() >= tuning.capacity())) {
             return Optional.empty();
         }
-        SuitTuning tuning = SuitTuning.DEFAULT;
         float fraction = Math.clamp(state.reserve() / tuning.capacity(), 0f, 1f);
         float secondsLeft = state.rate() > 0f ? state.reserve() / state.rate() : state.reserve();
         Component axes = state.axesText(" ");

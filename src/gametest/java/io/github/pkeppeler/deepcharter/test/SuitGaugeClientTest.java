@@ -150,6 +150,12 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
                             && refilling.axes().getString().isEmpty(),
                     mode + " refills in the OK tone with no axes, read " + describe(refilling));
         }
+        for (Mode mode : List.of(Mode.SHELTERED, Mode.POD_REFILL)) {
+            // A sound hall in layer 1 is SHELTERED all the time: a full suit there has nothing to say.
+            require(
+                    SuitGaugeHud.gauge(new SuitState(180f, true, mode, 0, 0f)).isEmpty(),
+                    mode + " with a full reserve shows nothing");
+        }
         Gauge held = SuitGaugeHud.gauge(new SuitState(50f, true, Mode.POD_HOLD, 0, 0f))
                 .orElseThrow();
         require(held.tone() == Tone.DIM, "a held suit is dim, read " + describe(held));
