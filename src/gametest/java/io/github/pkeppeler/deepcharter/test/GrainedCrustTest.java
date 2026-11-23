@@ -663,9 +663,7 @@ public class GrainedCrustTest {
             }
             int tick = (int) helper.getTick();
             if (step[0] == 0) {
-                // Set beside the grain when the player uses it: the grain sheds a block that changes next to it at its
-                // next pulse, which
-                // a chest set while the chunk loaded would not outlast.
+                // The grain sheds the chest at its next pulse, so set it on the tick of the click.
                 level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
                 ItemStack stack = new ItemStack(Items.COBBLESTONE);
                 player.player().setItemInHand(InteractionHand.MAIN_HAND, stack);
