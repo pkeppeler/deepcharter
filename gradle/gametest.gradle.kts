@@ -84,6 +84,16 @@ object GametestScan {
 	private val flagSet = Regex("""\]\s*=\s*true\s*;|\bthis\s*\.\s*\w+\s*=\s*true\s*;|\.\s*set\s*\(\s*true\s*\)""")
 	private val oneShotCheck = Regex("""\bthrow\b|\bfail\s*\(|\bassert\w*\s*\(|\bexpect\w*\s*\(\s*helper\b""")
 
+	// Block light is made on Util.backgroundExecutor(), which other tests' chunk work can fill, so a server GameTest that counts ticks for light flakes
+	// (#1042, #1048). A light read (getBrightness(LightLayer..., getLightEngine) in a server GameTest class is flagged when it sits inside a
+	// thenWaitUntil or succeedWhen call, which counts ticks, or in an @GameTest method that names no FarChunks.Deadline (a `Deadline` type or a
+	// `deadline.await`). Wait under a Deadline, polled from TestTicks.each. A read that is not a wait (an assertion after a deadline-based wait,
+	// a call from a helper the method's deadline covers) carries the comment below, with a reason, on its statement or the comment line above it.
+	// Heuristic: a read in a helper method outside every @GameTest method is only flagged inside a poll call of its own; a Deadline anywhere in the method counts.
+	private const val LIGHT_WAIT_MARKER = "// light-wait-ok:"
+	private val lightRead = Regex("""\bgetBrightness\s*\(\s*LightLayer\b|\bgetLightEngine\b""")
+	private val deadlineUse = Regex("""\bDeadline\b|\bdeadline\s*\.\s*await""")
+
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal is not seen.
 	private val campaignConstant = Regex("""\bString\s+(\w+)\s*=\s*"deepcharter:campaign_sample"\s*;""")
@@ -131,6 +141,37 @@ object GametestScan {
 			val dimension = dimensionArg.find(args)?.groupValues?.get(1)
 			if (dimension in campaign && !named.containsMatchIn(args)) {
 				problems.add("$className:${lineOf(text, call.range.first) + 1} runs in the campaign world ($dimension) without an environment; add environment = CampaignEnvironments.<one of ${environments.joinToString(", ")}> (the fewest tests or forced chunks)")
+			}
+		}
+		return problems
+	}
+
+	private fun lightWaitProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val polls = pollCall.findAll(text).map { it.range.last to closing(text, it.range.last) }.filter { it.second > 0 }.toList()
+		val methods = gameTestAnnotation.findAll(text).mapNotNull { annotation ->
+			var from = annotation.range.last + 1
+			if (text.substring(from).trimStart().startsWith("(")) {
+				from = closing(text, text.indexOf('(', from)) + 1
+			}
+			val bodyOpen = text.indexOf('{', from)
+			val bodyClose = if (bodyOpen < 0) -1 else closing(text, bodyOpen)
+			if (bodyClose < 0) null else bodyOpen..bodyClose
+		}.toList()
+		val problems = mutableListOf<String>()
+		for (read in lightRead.findAll(text)) {
+			val at = read.range.first
+			val inPoll = polls.any { at > it.first && at < it.second }
+			val method = methods.firstOrNull { at in it }
+			val noDeadline = method != null && !deadlineUse.containsMatchIn(text.substring(method.first, method.last))
+			val line = lineOf(text, at)
+			if ((inPoll || noDeadline) && !marked(markedNear, rawLines, line, LIGHT_WAIT_MARKER)) {
+				val where = if (inPoll) "inside thenWaitUntil or succeedWhen, which count ticks" else "in a test method with no FarChunks.Deadline"
+				problems.add("$className:${line + 1} reads block light $where, and the light engine runs on Util.backgroundExecutor(), which other tests' chunk work can starve; wait for it under FarChunks.Deadline (poll from TestTicks.each, see #1042 and #1048), or mark a read that is not a wait with '$LIGHT_WAIT_MARKER <reason>'")
 			}
 		}
 		return problems
@@ -279,6 +320,9 @@ object GametestScan {
 				}
 			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
+			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
+				problems.addAll(lightWaitProblems(className, text, rawLines, markedNear))
+			}
 			problems.addAll(campaignEnvironmentProblems(className, text, sourceText, campaignEnvironments))
 			if (abstractClass.containsMatchIn(text)) {
 				continue
