@@ -659,7 +659,6 @@ public class GrainedCrustTest {
         ServerLevel level = room(helper, x);
         box(level, x + 3, x + 3, FLOOR, FLOOR + 3, Z, Z, LayerBlocks.GRAINED_CRUST);
         BlockPos chest = new BlockPos(x + 2, FLOOR, Z);
-        level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
         MockPlayer player = MockPlayers.join(helper, "grain-chest");
         player.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 2.5), 0f, 0f);
         Arrival<Boolean> ready = ready(helper, level, x);
@@ -671,11 +670,8 @@ public class GrainedCrustTest {
             }
             int tick = (int) helper.getTick();
             if (step[0] == 0) {
-                // The chest is set again once the chunk ticks: the far chunk of the tall world finishes generating
-                // after the room is carved at the test's start, and what it writes there can replace the chest (a
-                // cobblestone in a gone chest's place), so the click would place a block and not open a chest.
+                // The grain sheds the chest at its next pulse, so set it on the tick of the click.
                 level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
-                level.setBlock(chest.above(), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
                 ItemStack stack = new ItemStack(Items.COBBLESTONE);
                 player.player().setItemInHand(InteractionHand.MAIN_HAND, stack);
                 BlockHitResult hit =
@@ -688,14 +684,7 @@ public class GrainedCrustTest {
                         || Versioned.readable(player.player(), GrainedCrust.EXPLAINED)
                                 .orElseThrow()
                                 .told()) {
-                    throw failure(
-                            helper,
-                            "opening a chest is no placement: nothing should be said or spent (told %d, chest %s, above %s, crouching %s, hand %s)",
-                            told(player),
-                            level.getBlockState(chest),
-                            level.getBlockState(chest.above()),
-                            player.player().isShiftKeyDown(),
-                            player.player().getMainHandItem());
+                    throw failure(helper, "opening a chest is no placement: nothing should be said or spent");
                 }
                 player.player().closeContainer();
                 place(player, level, x + 2, FLOOR + 1);

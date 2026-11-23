@@ -3,8 +3,10 @@ package io.github.pkeppeler.deepcharter.client.layer;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.layer.BlockReadouts;
 import io.github.pkeppeler.deepcharter.layer.BlockReadouts.Readout;
+import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -35,6 +37,31 @@ public final class BlockReadoutHud {
         HudElementRegistry.attachElementAfter(VanillaHudElements.CROSSHAIR, ID, BlockReadoutHud::extract);
         ClientTickEvents.END_CLIENT_TICK.register(BlockReadoutHud::tick);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> FADE.reset());
+        HudKeepClear.register(BlockReadoutHud::keepClear);
+    }
+
+    /**
+     * The box of the lines under the crosshair on a GUI {@code guiWidth} x {@code guiHeight}, as the scale puts them: as wide as the wider
+     * line, the name and the hint under it. What is drawn and what is kept clear are this one box.
+     */
+    private static HudKeepClear.Rect box(Font font, Readout readout, int guiWidth, int guiHeight) {
+        ReadoutLook look = ReadoutLook.current();
+        int widest = font.width(readout.name());
+        int height = font.lineHeight;
+        if (readout.hint().isPresent()) {
+            widest = Math.max(widest, font.width(readout.hint().get()));
+            height += font.lineHeight + look.lineGap();
+        }
+        int width = (int) Math.ceil(widest * look.scale());
+        return new HudKeepClear.Rect(
+                "block readout", (guiWidth - width) / 2, guiHeight / 2 + look.offsetY(), width, (int)
+                        Math.ceil(height * look.scale()));
+    }
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        if (visible(client)) {
+            shown().ifPresent(readout -> into.add(box(client.font, readout, guiWidth, guiHeight)));
+        }
     }
 
     /** What the crosshair rests on, as the readout says it: empty with no world, in a screen, or with the HUD hidden. */
@@ -63,7 +90,7 @@ public final class BlockReadoutHud {
         FADE.tick(looked(client), ReadoutLook.current());
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         Optional<Readout> shown = shown();
         if (shown.isEmpty() || !visible(client)) {
@@ -76,9 +103,9 @@ public final class BlockReadoutHud {
         ReadoutLook look = ReadoutLook.current();
         Font font = client.font;
         graphics.pose().pushMatrix();
+        HudKeepClear.Rect box = box(font, shown.get(), graphics.guiWidth(), graphics.guiHeight());
         int centreX = graphics.guiWidth() / 2;
-        int top = graphics.guiHeight() / 2 + look.offsetY();
-        graphics.pose().translate(centreX, top);
+        graphics.pose().translate(centreX, box.y());
         graphics.pose().scale((float) look.scale(), (float) look.scale());
         centred(graphics, font, shown.get().name(), 0, Colors.withAlpha(look.nameColor(), alpha));
         shown.get()
