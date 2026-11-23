@@ -477,17 +477,10 @@ public class DimensionCrossingTest {
                             helper,
                             mock.player().startRiding(pods[0], true, false),
                             "the mock could not board the tower");
-                    // The pocket's rows of air at the arrival, over a stone floor level with the pocket's: without a
-                    // floor, follow() snaps the pod onto its tower on its first tick (#1122); drop the floor when #1122
-                    // is fixed.
+                    // The pocket's rows of air at the arrival, wide enough that the towed pod's trail spot is open
+                    // air: in solid rock trailSpot falls back to the tower's place.
                     BlockPos arrival = BlockPos.containing(
                             x, TestLayers.dimensionBand(two).maxY() - LayerTuning.DEFAULT.pocketHeight(), z);
-                    RoomCarver.carve(
-                            two,
-                            arrival.offset(-gallery, -1, -gallery),
-                            arrival.offset(gallery, -1, gallery),
-                            Blocks.STONE.defaultBlockState(),
-                            Block.UPDATE_ALL);
                     RoomCarver.carve(
                             two,
                             arrival.offset(-gallery, 0, -gallery),
