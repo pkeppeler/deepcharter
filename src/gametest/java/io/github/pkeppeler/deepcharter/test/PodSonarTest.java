@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSeats;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.SonarEcho;
@@ -237,6 +238,62 @@ public class PodSonarTest {
                     "a player in no pod has no sonar");
             expect(helper, echoes(scene.pod()).isEmpty(), "and the pod heard nothing");
         });
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void theSeatAssignmentFollowsBoardingOrder(GameTestHelper helper) {
+        int x = 8152;
+        boolean[] left = {false};
+        run(helper, x, level -> {}, scene -> {
+            List<UUID> boarded = List.of(
+                    scene.pilot().player().getUUID(), scene.navigator().player().getUUID());
+            if (!left[0]) {
+                expect(
+                        helper,
+                        Versioned.readable(scene.pod(), PodSeats.STATE)
+                                .orElseThrow()
+                                .riders()
+                                .equals(boarded),
+                        "the synced assignment is the pilot then the navigator, got %s",
+                        Versioned.readable(scene.pod(), PodSeats.STATE));
+                scene.pilot().player().stopRiding();
+                left[0] = true;
+                return false;
+            }
+            // The assignment is rewritten at the end of the pod's tick, so it catches up on the tick after the pilot
+            // gets off.
+            if (!Versioned.readable(scene.pod(), PodSeats.STATE)
+                    .orElseThrow()
+                    .riders()
+                    .equals(List.of(scene.navigator().player().getUUID()))) {
+                return false;
+            }
+            expect(
+                    helper,
+                    PodSeats.pilot(scene.pod())
+                            .filter(scene.navigator().player().getUUID()::equals)
+                            .isPresent(),
+                    "once the pilot gets off the navigator holds the pilot's seat");
+            return true;
+        });
+    }
+
+    @GameTest
+    public void aSeatAssignmentOfAnotherVersionIsKeptAndNeverThrows(GameTestHelper helper) {
+        PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, helper.getLevel());
+        UnreadableChecks.makeUnreadable(pod, PodSeats.STATE);
+        UnreadableChecks.assertNoThrow(
+                helper,
+                "pod seats",
+                Map.of(
+                        "the pilot", () -> PodSeats.pilot(pod),
+                        "the tick", () -> PodEvents.AFTER_TICK.invoker().afterTick(pod)));
+        expect(
+                helper,
+                pod.getAttached(PodSeats.STATE) instanceof Versioned.Unreadable<PodSeats.State>,
+                "an unreadable seat assignment is left as it was read");
+        pod.discard();
+        helper.succeed();
     }
 
     // ---- what a ping returns ----
