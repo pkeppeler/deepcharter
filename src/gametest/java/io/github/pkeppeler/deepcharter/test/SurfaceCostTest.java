@@ -100,10 +100,17 @@ public class SurfaceCostTest {
         JsonObject dimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject()
                 .getAsJsonObject("dimensions");
-        JsonElement shippedBiomes = read(helper, "/data/minecraft/dimension/overworld.json")
-                .getAsJsonObject()
-                .getAsJsonObject("generator")
-                .get("biome_source");
+        // The shipped overworld's surface band holds the biomes the tall fixtures' multi_noise source takes.
+        JsonObject shippedBiomes = new JsonObject();
+        shippedBiomes.addProperty("type", "minecraft:multi_noise");
+        shippedBiomes.add(
+                "biomes",
+                read(helper, "/data/minecraft/dimension/overworld.json")
+                        .getAsJsonObject()
+                        .getAsJsonObject("generator")
+                        .getAsJsonObject("biome_source")
+                        .getAsJsonObject("surface")
+                        .get("biomes"));
         for (String world : List.of("tall_surface_biomes", "tall_baseline_biomes")) {
             if (!dimensions
                     .getAsJsonObject("deepcharter:" + world)

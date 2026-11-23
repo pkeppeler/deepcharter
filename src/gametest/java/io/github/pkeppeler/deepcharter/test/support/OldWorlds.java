@@ -30,8 +30,7 @@ public final class OldWorlds {
 
     /**
      * Makes a world, replaces its stamp through {@link WorldData} with one of format 0, saves it and closes it. The save holds its
-     * colony and a stamp below {@link WorldFormat#LEGACY}, so it is refused today: a world with no stamp at all is the legacy format and
-     * starts until #803 raises the format.
+     * colony and a stamp below {@link WorldFormat#LEGACY}, so it is refused, as is a world with no stamp at all (the legacy format).
      */
     public static TestWorldSave make(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
