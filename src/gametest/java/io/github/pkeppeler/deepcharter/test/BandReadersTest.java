@@ -55,9 +55,11 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -230,6 +232,30 @@ public class BandReadersTest {
 
     // ---- OutpostRates and OutpostBuilder ----
 
+    /** Carves the hall above {@code floor} and joins a survival player who has founded a charter. */
+    private static MockPlayer foundedBuilderBesideHall(
+            GameTestHelper helper, ServerLevel level, BlockPos floor, String name) {
+        RoomCarver.carve(
+                level,
+                floor.getX() - 8,
+                floor.getX() + 8,
+                floor.getY() + 1,
+                floor.getY() + 16,
+                Z - 8,
+                Z + 8,
+                Blocks.STONE);
+        MockPlayer mock = MockPlayers.join(helper, name);
+        mock.player().setGameMode(GameType.SURVIVAL);
+        if (Charters.found(
+                        level.getServer(),
+                        mock.player().getUUID(),
+                        name + " " + UUID.randomUUID().toString().substring(0, 8))
+                .isPresent()) {
+            throw failure(helper, "founding the charter should succeed");
+        }
+        return mock;
+    }
+
     /** An outpost is built at the crust top of layer 1's band, and its rates apply by the band of the terminal's Y. */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void anOutpostIsBuiltInLayer1sBandAndPricesByBand(GameTestHelper helper) {
@@ -237,16 +263,7 @@ public class BandReadersTest {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         BlockPos floor = new BlockPos(x, ONE.minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
-        RoomCarver.carve(level, x - 8, x + 8, floor.getY() + 1, floor.getY() + 16, Z - 8, Z + 8, Blocks.STONE);
-        MockPlayer mock = MockPlayers.join(helper, "band-outposter");
-        mock.player().setGameMode(GameType.SURVIVAL);
-        if (Charters.found(
-                        server,
-                        mock.player().getUUID(),
-                        "Band Outpost " + UUID.randomUUID().toString().substring(0, 8))
-                .isPresent()) {
-            throw failure(helper, "founding the charter should succeed");
-        }
+        MockPlayer mock = foundedBuilderBesideHall(helper, level, floor, "band-outposter");
         CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID())
                 .orElseThrow()
                 .id();
@@ -255,14 +272,32 @@ public class BandReadersTest {
                 level,
                 floor,
                 () -> WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
+                    expect(
+                            helper,
+                            mock.player().isAlive(),
+                            "the builder died while it waited at %s for the chunk",
+                            helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN));
                     // On the build tick, so the far-chunk wait cannot suffocate the builder in the carved rock.
                     mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
                     Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
-                    expect(
-                            helper,
-                            refusal.isEmpty(),
-                            "the outpost in layer 1's band was refused: %s",
-                            refusal.map(Component::getString).orElse(""));
+                    if (refusal.isPresent()) {
+                        // entity-query: names what refused the kit, in the chunk this test forced and waited on
+                        List<String> inShell = level.getEntities(mock.player(), new AABB(floor).inflate(8)).stream()
+                                .map(entity -> entity.getType().toShortString() + " " + entity.getUUID() + " tick "
+                                        + entity.tickCount + " at " + entity.blockPosition()
+                                        + (entity instanceof ItemEntity item ? " holding " + item.getItem() : ""))
+                                .toList();
+                        throw failure(
+                                helper,
+                                "the outpost in layer 1's band was refused: %s; entities near the hall: %s; the builder is %s (removed %s, health %s) at %s; game time %s",
+                                refusal.get().getString(),
+                                inShell,
+                                mock.player().isAlive() ? "alive" : "dead",
+                                mock.player().isRemoved(),
+                                mock.player().getHealth(),
+                                mock.player().blockPosition(),
+                                level.getGameTime());
+                    }
                     expect(
                             helper,
                             OutpostData.get(server).of(charter, 1).isPresent(),
@@ -284,6 +319,36 @@ public class BandReadersTest {
                             OutpostRates.fuelPricePerLitre(level, CampaignBands.SURFACE.minY() + 100) == colony,
                             "a litre on the surface costs %s",
                             OutpostRates.fuelPricePerLitre(level, CampaignBands.SURFACE.minY() + 100));
+                    helper.succeed();
+                }));
+    }
+
+    /** A builder that dies in the rock of the hall drops its starting rations there, and the kit is refused while they lie in it. */
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void aBuilderWhoDiesInTheHallLeavesItsRationsInTheWay(GameTestHelper helper) {
+        int x = 23704;
+        ServerLevel level = helper.getLevel();
+        MinecraftServer server = level.getServer();
+        BlockPos floor = new BlockPos(x, ONE.minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
+        MockPlayer mock = foundedBuilderBesideHall(helper, level, floor, "band-dying-outposter");
+        FarChunks.awaitEntityTicking(
+                helper,
+                level,
+                floor,
+                () -> WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
+                    mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
+                    mock.player().kill(level);
+                    Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
+                    String said = refusal.map(
+                                    message -> message.getContents() instanceof TranslatableContents translatable
+                                            ? translatable.getKey()
+                                            : message.getString())
+                            .orElse("nothing: it built");
+                    expect(
+                            helper,
+                            said.equals("message.deepcharter.outpost.occupied"),
+                            "the kit should be refused as occupied by the rations, it said %s",
+                            said);
                     helper.succeed();
                 }));
     }
