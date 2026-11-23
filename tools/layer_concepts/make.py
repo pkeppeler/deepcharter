@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Writes the layers' rock and lava (the shipped blocks of layers 1 and 2, #241), the layer concept packs and scenes (docs/design/layer-concepts-2.md,
+"""Writes the layers' rock and lava (the shipped blocks of layers 1 and 2, #241, and of layer 3, #972), the layer concept packs and scenes (docs/design/layer-concepts-2.md,
 #447; round 1 was #241) from the Python sources in this directory.
 
 Usage: tools/layer_concepts/make.py [--check]
        tools/py tools/textures/texgen.py            draws the shipped textures from the recipes written here
        tools/py tools/textures/texgen.py --variant layer_grain   (and layer_form_1, _2, _3): draws a test pack's textures
 
-  - the shipped rock of layers 1 and 2, the user's pick of round 2 (Grain): the texgen recipes tools/textures/recipes/layer_rock.json, and the
-    blockstates, models and item definitions of the four blocks (packed shale and its rubble, green shale and its rubble) in the mod's assets
+  - the shipped rock of layers 1 to 3, the user's pick of round 2 (Grain): the texgen recipes tools/textures/recipes/layer_rock.json, and the
+    blockstates, models and item definitions of its blocks in the mod's assets: packed shale and green shale and their rubble, cubes; layer 3's
+    columnar basalt, round 1's hexagonal columns in Grain, which line the faces open to its caverns, and the dark basalt core between them (#504)
   - the lava of every layer, minecraft:block/lava_still and lava_flow, animated, under the mod's assets/minecraft (the one block texture of vanilla
     that the mod redraws)
   - three kinds of test pack under src/gametest/resources/resourcepacks/layer_concept_<pack>/:
-      grain, the rock and rubble of layer 3: vanilla andesite and diorite stand in for them until layer 3 has its own blocks (#504, with M3);
+      grain, the rock and rubble of layer 3 as round 2 drew it, on vanilla andesite and diorite, for the scenes;
       a layer's form (form_1, form_2, form_3): the Company Rock and the breach crust of that layer, in the formation the user assigned it. One block
       has one blockstate, so the scenario turns on the form of the layer it shoots
   - the atmosphere of the scenes, shared by all packs: one biome per layer and kind of light, under
@@ -48,8 +49,8 @@ STRUCTURES = DATA / "structure/layer_concepts"
 SCENES = DATA / "layer_concepts/scenes.json"
 MOD_ASSETS = ROOT / "src/main/resources/assets"
 SHIPPED_RECIPES = ROOT / "tools/textures/recipes/layer_rock.json"
-# The user's pick of round 2 (2026-10-11) was Grain for all three layers. The rock of layers 1 and 2 is the mod's own blocks, with their rubble; layer 3's
-# is the test pack of that name, because layer 3 waits for M3 (#504).
+# The user's pick of round 2 (2026-10-11) was Grain for all three layers. The rock of layers 1 to 3 is the mod's own blocks; the scenes still draw layer
+# 3's on the test pack of that name.
 GRAIN = "grain"
 # The fixed form of each layer: its formation's Company Rock and breach crust.
 FORMS = tuple(f"form_{layer}" for layer in scenes.LAYERS)
@@ -91,6 +92,11 @@ SHIPPED_LAYERS = tuple(BLOCKS)
 # Layer 3's rock and rubble: the vanilla blocks that stand in for them in the test pack, and the stem of their textures and models.
 LAYER_3 = ("andesite", "diorite")
 LAYER_3_STEMS = ("lc_rock_3", "lc_rubble_3")
+# Layer 3's own blocks (#972): the columns that line its caverns, and the dark core between them (#504).
+COLUMNS = "columnar_basalt"
+CORE = "basalt_core"
+# The seed of the core of the Grain pack (lc_core_3), the first of the shipped core's.
+CORE_SEED = 309
 
 # The colour ramp of each layer's rock: rust-brown shale, grey-green shale, and the cold basalt of the columns.
 SHADES = {1: art.ramp("shale1", 6), 2: art.ramp("shale2", 6), 3: art.ramp("basalt3", 6)}
@@ -188,9 +194,20 @@ def form_textures(layer: int) -> dict[str, dict]:
     return out
 
 
+def column_grids() -> dict[str, art.Grid]:
+    """The textures of layer 3's own blocks, by name: the Grain pack's column sides and ends, the textures the user picked, and the core in as
+    many sides and ends as a rock of layers 1 and 2 has, so an ore has the same number of looks in it (overlays.json). Core 0 is the pack's."""
+    rock, _ = LAYER_3_STEMS
+    columns = {name.replace(rock, COLUMNS): grid for name, grid in rock_grids(3).items() if name.startswith(rock)}
+    core = {f"{CORE}_{i}": art.core(SHADES[3], CORE_SEED + i) for i in range(ROCK_VARIANTS[1])}
+    ends = {f"{CORE}_end_{j}": art.core(SHADES[3], CORE_SEED + ROCK_VARIANTS[1] + j) for j in range(END_VARIANTS)}
+    return columns | core | ends
+
+
 def shipped_recipes() -> dict[str, dict]:
-    """The texgen recipes of the mod's rock of layers 1 and 2, by key (block/<name>): tools/textures/recipes/layer_rock.json."""
-    return {f"block/{name}": art.recipe(grid) for layer in SHIPPED_LAYERS for name, grid in rock_grids(layer).items()}
+    """The texgen recipes of the mod's rock of layers 1 to 3, by key (block/<name>): tools/textures/recipes/layer_rock.json."""
+    grids = {name: grid for layer in SHIPPED_LAYERS for name, grid in rock_grids(layer).items()} | column_grids()
+    return {f"block/{name}": art.recipe(grid) for name, grid in grids.items()}
 
 
 def textures(pack: str) -> dict[str, dict]:
@@ -208,6 +225,16 @@ def shipped_models(layer: int) -> dict[str, dict]:
     rock, rubble = BLOCKS[layer]
     out = {f"{rock}_{i}": shapes.cube(f"{rock}_{i}", f"{rock}_end_{i % END_VARIANTS}") for i in range(ROCK_VARIANTS[layer])}
     return out | {f"{rubble}_{i}": shapes.cube(f"{rubble}_{i}", f"{rubble}_end") for i in range(RUBBLE_VARIANTS)}
+
+
+def column_models() -> dict[str, dict]:
+    """The models of layer 3's own blocks, by name: the columns of the Grain pack, on the mod's textures, and plain cubes of the core."""
+    out = {}
+    for i in range(ROCK_VARIANTS[3]):
+        m = shapes.prism(i)
+        m.textures = shapes.rock_textures(f"{COLUMNS}_{i}", f"{COLUMNS}_end_{i % END_VARIANTS}", f"{CORE}_0")
+        out[f"{COLUMNS}_{i}"] = m.json(f"layer 3 {COLUMNS} {i}")
+    return out | {f"{CORE}_{i}": shapes.cube(f"{CORE}_{i}", f"{CORE}_end_{i % END_VARIANTS}") for i in range(ROCK_VARIANTS[1])}
 
 
 def grain_models() -> dict[str, dict]:
@@ -262,8 +289,9 @@ def blockstates(pack: str, models: dict[str, dict]) -> dict[str, dict]:
 
 
 def shipped_files() -> dict[Path, bytes]:
-    """The files of the mod's rock blocks of layers 1 and 2 under src/main: the recipes of their textures, and each block's blockstate (a plain cube,
-    never turned or mirrored: see the model guard), its models and its item."""
+    """The files of the mod's rock blocks of layers 1 to 3 under src/main: the recipes of their textures, and each block's blockstate (a plain cube,
+    never turned or mirrored: see the model guard; layer 3's columns are hexagons, turned about the vertical as the Grain pack turns them), its
+    models and its item."""
     files = {SHIPPED_RECIPES: _json({"recipes": shipped_recipes()})}
     for layer in SHIPPED_LAYERS:
         models = shipped_models(layer)
@@ -273,6 +301,15 @@ def shipped_files() -> dict[Path, bytes]:
             names = [n for n in models if re.fullmatch(rf"{block}_\d", n)]
             files[MOD_ASSETS / f"deepcharter/blockstates/{block}.json"] = _json({"variants": {"": shapes.variants(names, (0,))}})
             files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(f"{block}_0")}})
+    models = column_models()
+    for name, body in models.items():
+        files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(body)
+    columns = [n for n in models if n.startswith(f"{COLUMNS}_")]
+    files[MOD_ASSETS / f"deepcharter/blockstates/{COLUMNS}.json"] = _json({"variants": {"": shapes.variants(columns, shapes.HEX_Y_TURNS)}})
+    cores = [n for n in models if n.startswith(f"{CORE}_")]
+    files[MOD_ASSETS / f"deepcharter/blockstates/{CORE}.json"] = _json({"variants": {"": shapes.variants(cores, (0,))}})
+    for block, model in ((COLUMNS, columns[0]), (CORE, cores[0])):
+        files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(model)}})
     return files
 
 
@@ -413,7 +450,7 @@ def problems(files: dict[Path, bytes], structures: dict[Path, bytes]) -> list[st
         for path in sorted(list(assets.glob("*/models/block/*.json")) + list(assets.glob("*/blockstates/*.json"))):
             if path not in made:
                 out.append(f"{path.relative_to(ROOT)}: no source makes it")
-    for block in (name for pair in BLOCKS.values() for name in pair):
+    for block in (*(name for pair in BLOCKS.values() for name in pair), COLUMNS, CORE):
         for path in sorted([*MOD_ASSETS.glob(f"deepcharter/*/{block}*.json"), *MOD_ASSETS.glob(f"deepcharter/models/block/{block}_*.json")]):
             if path not in files:
                 out.append(f"{path.relative_to(ROOT)}: no source makes it")

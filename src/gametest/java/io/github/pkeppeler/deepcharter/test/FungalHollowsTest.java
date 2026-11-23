@@ -1,0 +1,316 @@
+package io.github.pkeppeler.deepcharter.test;
+
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.layer.gen.AirFaceLiningFeature;
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Server GameTests for layer 3, the Fungal Hollows (#972), a band of the campaign world: its caverns are mostly air, columns line every face
+ * of its rock that is open to them and only those (#504), its zones are the biomes of the {@code deepcharter:fungal_hollows} tag, its
+ * glowcaps grow on floors, and its zone fill puts the most gas in the Spore Fields. The band's edges, crust and zone biomes are
+ * {@link CampaignTerrainTest}'s, which judges every layer of the band table.
+ */
+public class FungalHollowsTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(FungalHollowsTest.class);
+    private static final String SAMPLE = "deepcharter:campaign_sample";
+    private static final int MAX_TICKS = 6000;
+    private static final int LAYER = 3;
+    /** The low corner chunk of the sample, a square of {@link #SAMPLE_CHUNKS} chunks a side: no other campaign test generates it. */
+    private static final int SAMPLE_CHUNK = 24;
+
+    private static final int SAMPLE_CHUNKS = 2;
+    private static final TagKey<Biome> FUNGAL_HOLLOWS = TagKey.create(
+            Registries.BIOME, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "fungal_hollows"));
+    /** The share of the band's cells that must be open: huge caverns, mostly air (SPEC section 3). */
+    private static final double MOSTLY_AIR = 0.5;
+
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void theCavernsAreMostlyAir(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        LayerChain.Band band = TestLayers.band(level, LAYER);
+        long[] open = new long[Zones.COUNT];
+        long[] cells = new long[Zones.COUNT];
+        for (BlockPos column : columns()) {
+            for (int y = band.minY(); y < band.minY() + band.height(); y++) {
+                int zone = Zones.index(band.minY(), band.height(), y);
+                cells[zone]++;
+                if (AirFaceLiningFeature.isOpen(state(level, column.atY(y)))) {
+                    open[zone]++;
+                }
+            }
+        }
+        long allOpen = 0;
+        long all = 0;
+        for (int zone = 0; zone < Zones.COUNT; zone++) {
+            LOGGER.info("[fungal-hollows] zone {}: {} of {} cells open", zone, open[zone], cells[zone]);
+            allOpen += open[zone];
+            all += cells[zone];
+            expect(helper, open[zone] > 0, "zone %s of layer 3 has no cavern", zone);
+        }
+        double share = (double) allOpen / all;
+        expect(helper, share > MOSTLY_AIR, "layer 3 is %.2f open, not mostly air", share);
+        helper.succeed();
+    }
+
+    /**
+     * Every column stands within the lining's depth of an open cell, straight along an axis, and every block of the core does not (#504): both
+     * sides of the knob, so a lining one block too deep or too shallow fails.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void onlyTheFacesOpenToTheCavernsAreLined(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        LayerChain.Band band = TestLayers.band(level, LAYER);
+        int depth = lining().get("depth").getAsInt();
+        int columns = 0;
+        int cores = 0;
+        for (BlockPos column : columns()) {
+            for (int y = band.minY(); y < band.minY() + band.height(); y++) {
+                BlockPos pos = column.atY(y);
+                BlockState state = state(level, pos);
+                if (state.is(LayerBlocks.COLUMNAR_BASALT)) {
+                    columns++;
+                    expect(helper, nearOpen(level, pos, depth), "a column at %s faces no cavern", pos.toShortString());
+                } else if (state.is(LayerBlocks.BASALT_CORE)) {
+                    cores++;
+                    expect(
+                            helper,
+                            !nearOpen(level, pos, depth),
+                            "the core at %s faces a cavern within %s blocks and is not lined",
+                            pos.toShortString(),
+                            depth);
+                }
+            }
+        }
+        LOGGER.info("[fungal-hollows] {} columns and {} core blocks in the sample", columns, cores);
+        expect(helper, columns > 0 && cores > 0, "the sample has %s columns and %s core blocks", columns, cores);
+        helper.succeed();
+    }
+
+    /** The biome tag the creatures of layer 3 key on (#918, #919) holds every zone of the layer and nothing else. */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void theZonesAreTheFungalHollowsBiomes(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        LayerChain.Band band = TestLayers.band(level, LAYER);
+        Set<String> zones = new TreeSet<>();
+        for (int zone = 0; zone < Zones.COUNT; zone++) {
+            Zones.Span span = Zones.span(band.minY(), band.height(), zone);
+            zones.add(Zones.of(LAYER, band.minY(), band.height(), span.low())
+                    .orElseThrow()
+                    .id()
+                    .toString());
+        }
+        Set<String> tagged = new TreeSet<>();
+        level.registryAccess()
+                .lookupOrThrow(Registries.BIOME)
+                .getTagOrEmpty(FUNGAL_HOLLOWS)
+                .forEach(biome ->
+                        tagged.add(biome.unwrapKey().orElseThrow().identifier().toString()));
+        expect(helper, tagged.equals(zones), "the fungal_hollows tag holds %s, the zones are %s", tagged, zones);
+        helper.succeed();
+    }
+
+    /** Glowcaps grow in the sample, each standing on a solid block, and the Garden grows the most of them. */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void glowcapsGrowOnTheFloorsMostOfAllInTheGarden(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        LayerChain.Band band = TestLayers.band(level, LAYER);
+        int[] found = new int[Zones.COUNT];
+        for (BlockPos column : allColumns()) {
+            for (int y = band.minY(); y < band.minY() + band.height(); y++) {
+                BlockPos pos = column.atY(y);
+                if (state(level, pos).is(LayerBlocks.GLOWCAP)) {
+                    found[Zones.index(band.minY(), band.height(), y)]++;
+                    expect(
+                            helper,
+                            state(level, pos.below()).isFaceSturdy(level, pos.below(), Direction.UP),
+                            "the glowcap at %s stands on nothing",
+                            pos.toShortString());
+                }
+            }
+        }
+        LOGGER.info("[fungal-hollows] glowcaps by zone, top first: {} {} {}", found[0], found[1], found[2]);
+        expect(
+                helper,
+                found[0] > found[1] && found[0] > found[2],
+                "the Garden grows %s glowcaps, the Spore Fields %s and the Quiet %s",
+                found[0],
+                found[1],
+                found[2]);
+        helper.succeed();
+    }
+
+    /**
+     * Each zone's gas pockets are its fill's table, within five standard deviations, and the Spore Fields' table holds the most gas of the
+     * layer: spore gas is its hazard (SPEC section 3). A candidate is a block the fill decided: the rock (core or column, which the lining
+     * made of core after the fill), an ore, Company rock, gas or a lava source.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void theSporeFieldsHoldTheMostGas(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        LayerChain.Band band = TestLayers.band(level, LAYER);
+        long[] candidates = new long[Zones.COUNT];
+        long[] gas = new long[Zones.COUNT];
+        for (BlockPos column : allColumns()) {
+            // The crust rows at the floor are the material rule's, which the fill never sees.
+            for (int y = band.minY() + LayerTuning.DEFAULT.crustThickness(); y < band.minY() + band.height(); y++) {
+                BlockState state = state(level, column.atY(y));
+                int zone = Zones.index(band.minY(), band.height(), y);
+                if (isCandidate(state)) {
+                    candidates[zone]++;
+                    if (state.is(HazardBlocks.GAS_POCKET)) {
+                        gas[zone]++;
+                    }
+                }
+            }
+        }
+        double[] chances = new double[Zones.COUNT];
+        for (int zone = 0; zone < Zones.COUNT; zone++) {
+            JsonObject fill = fill(band, zone);
+            double ores = 0;
+            for (JsonElement ore : fill.getAsJsonArray("ores")) {
+                ores += ore.getAsJsonObject().get("chance").getAsDouble();
+            }
+            double chance = (1 - ores) * hazard(fill, "deepcharter:gas_pocket");
+            chances[zone] = chance;
+            double expected = candidates[zone] * chance;
+            double tolerance = 5 * Math.sqrt(candidates[zone] * chance * (1 - chance)) + 1;
+            LOGGER.info(
+                    "[fungal-hollows] zone {}: {} gas pockets in {} candidates, expected {} +- {}",
+                    zone,
+                    gas[zone],
+                    candidates[zone],
+                    Math.round(expected),
+                    Math.round(tolerance));
+            expect(
+                    helper,
+                    Math.abs(gas[zone] - expected) <= tolerance,
+                    "zone %s has %s gas pockets in %s candidates, expected %.0f +- %.0f",
+                    zone,
+                    gas[zone],
+                    candidates[zone],
+                    expected,
+                    tolerance);
+        }
+        expect(
+                helper,
+                chances[1] > chances[0] && chances[1] > chances[2],
+                "the Spore Fields' gas %s is not the most of the layer: %s and %s",
+                chances[1],
+                chances[0],
+                chances[2]);
+        helper.succeed();
+    }
+
+    private static boolean isCandidate(BlockState state) {
+        return state.is(LayerBlocks.BASALT_CORE)
+                || state.is(LayerBlocks.COLUMNAR_BASALT)
+                || OreRegistry.typeOf(state.getBlock()).isPresent()
+                || state.is(HazardBlocks.COMPANY_ROCK)
+                || state.is(HazardBlocks.GAS_POCKET)
+                || (state.is(Blocks.LAVA) && state.getFluidState().isSource());
+    }
+
+    private static boolean nearOpen(ServerLevel level, BlockPos pos, int depth) {
+        for (Direction direction : Direction.values()) {
+            for (int step = 1; step <= depth; step++) {
+                if (AirFaceLiningFeature.isOpen(state(level, pos.relative(direction, step)))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** One column in three each way of the sample: enough cells for the shape, few enough reads for one tick. */
+    private static Iterable<BlockPos> columns() {
+        return grid(3);
+    }
+
+    private static Iterable<BlockPos> allColumns() {
+        return grid(1);
+    }
+
+    private static Iterable<BlockPos> grid(int step) {
+        List<BlockPos> out = new ArrayList<>();
+        int span = SAMPLE_CHUNKS * 16;
+        for (int x = 0; x < span; x += step) {
+            for (int z = 0; z < span; z += step) {
+                out.add(new BlockPos((SAMPLE_CHUNK << 4) + x, 0, (SAMPLE_CHUNK << 4) + z));
+            }
+        }
+        return out;
+    }
+
+    private static BlockState state(ServerLevel level, BlockPos pos) {
+        return level.getChunk(pos).getBlockState(pos);
+    }
+
+    private static JsonObject lining() {
+        return json("/data/deepcharter/worldgen/feature/line_hollows.json");
+    }
+
+    /** The fill of one zone of layer 3, from the same JSON the generator reads. */
+    private static JsonObject fill(LayerChain.Band band, int zone) {
+        Zones.Span span = Zones.span(band.minY(), band.height(), zone);
+        String name = Zones.of(LAYER, band.minY(), band.height(), span.low())
+                .orElseThrow()
+                .id()
+                .getPath();
+        return json("/data/deepcharter/worldgen/feature/fill_" + name + ".json");
+    }
+
+    private static double hazard(JsonObject fill, String block) {
+        for (JsonElement entry : fill.getAsJsonArray("hazards")) {
+            if (entry.getAsJsonObject().get("block").getAsString().equals(block)) {
+                return entry.getAsJsonObject().get("chance").getAsDouble();
+            }
+        }
+        return 0;
+    }
+
+    private static JsonObject json(String resource) {
+        var stream = FungalHollowsTest.class.getResourceAsStream(resource);
+        if (stream == null) {
+            throw new IllegalStateException("no resource " + resource);
+        }
+        try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+            return JsonParser.parseReader(reader).getAsJsonObject();
+        } catch (IOException e) {
+            throw new UncheckedIOException(resource, e);
+        }
+    }
+}

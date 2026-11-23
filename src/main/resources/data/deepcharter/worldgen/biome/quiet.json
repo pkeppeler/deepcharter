@@ -1,7 +1,7 @@
 {
   "attributes": {
     "minecraft:audio/ambient_sounds": {},
-    "minecraft:audio/music_volume": 0.0,
+    "minecraft:audio/background_music": {},
     "minecraft:gameplay/bed_rule": {
       "can_set_spawn": "never",
       "can_sleep": "never",
