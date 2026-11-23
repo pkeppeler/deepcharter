@@ -18,6 +18,7 @@ public class DedicatedServerReleaseClientTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
         WeakReference<MinecraftServer> left = joinAndLeave(context);
         long start = System.currentTimeMillis();
         long lastGc = 0;
