@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import com.google.gson.JsonArray;
@@ -8,6 +9,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -17,6 +19,7 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -54,6 +57,10 @@ import net.minecraft.world.level.levelgen.RandomState;
  */
 public class SurfaceTerrainTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
+    private static final String FULL = "deepcharter:campaign_full";
+    /** The top of the depth that campaign_sample leaves as air: two sections of the shipped rock stay under layer 2's floor. */
+    private static final int EMPTY_BELOW = -544;
+
     private static final int MAX_TICKS = 6000;
     /** The ground of the colony pad: the first block above it is free. */
     private static final int PAD_GROUND = 64;
@@ -470,19 +477,75 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    // The GameTest server bakes its overworld from the flat preset, so the surface is tried in the test pack's copy of
-    // the shipped overworld: this keeps the copy, in the pack and in the preset, equal to it.
+    // The GameTest server bakes its overworld from the flat preset, so the surface is tried in the test pack's copies
+    // of
+    // the shipped overworld: campaign_full is an exact copy, and campaign_sample, where most tests run, differs from it
+    // in one place (below). This keeps both copies, in the pack and in the preset, equal to the shipped overworld.
     @GameTest
-    public void theSampleDimensionMatchesTheShippedOverworld(GameTestHelper helper) throws IOException {
+    public void theSampleDimensionsMatchTheShippedOverworld(GameTestHelper helper) throws IOException {
         JsonElement shipped = read(helper, "/data/minecraft/dimension/overworld.json");
-        JsonObject preset = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
+        JsonObject presetDimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
+                .getAsJsonObject()
+                .getAsJsonObject("dimensions");
+        if (!shipped.equals(presetDimensions.get(FULL))) {
+            throw failure(helper, "flat_all_dimensions preset entry %s differs from the shipped overworld", FULL);
+        }
+        if (!shipped.equals(read(helper, "/data/deepcharter/dimension/campaign_full.json"))) {
+            throw failure(helper, "the test pack's campaign_full differs from the shipped overworld");
+        }
+        // campaign_sample is the same world with its own noise settings, and nothing else.
+        for (JsonElement sample : List.of(
+                presetDimensions.get(SAMPLE), read(helper, "/data/deepcharter/dimension/campaign_sample.json"))) {
+            JsonObject withShippedSettings = sample.deepCopy().getAsJsonObject();
+            JsonObject generator = withShippedSettings.getAsJsonObject("generator");
+            expect(
+                    helper,
+                    generator.get("settings").getAsString().equals("deepcharter:campaign_sample"),
+                    "campaign_sample names the noise settings of the test pack");
+            generator.addProperty("settings", "deepcharter:campaign");
+            expect(helper, shipped.equals(withShippedSettings), "campaign_sample differs from the shipped overworld");
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The one place the test pack's campaign_sample noise settings differ from the shipped ones: below {@link #EMPTY_BELOW} the density
+     * is air, so a chunk is not filled with 1500 rows of rock that no layer test reads (#823). Taking that one term out gives the shipped
+     * settings back exactly, so the copy cannot drift from them.
+     */
+    @GameTest
+    public void theSampleNoiseSettingsAreTheShippedOnesWithAnEmptyUnbuiltDepth(GameTestHelper helper)
+            throws IOException {
+        JsonObject shipped = read(helper, "/data/deepcharter/worldgen/noise_settings/campaign.json")
                 .getAsJsonObject();
-        if (!shipped.equals(preset.getAsJsonObject("dimensions").get(SAMPLE))) {
-            throw failure(helper, "flat_all_dimensions preset entry %s differs from the shipped overworld", SAMPLE);
-        }
-        if (!shipped.equals(read(helper, "/data/deepcharter/dimension/campaign_sample.json"))) {
-            throw failure(helper, "the test pack's campaign_sample differs from the shipped overworld");
-        }
+        JsonObject sample = read(helper, "/data/deepcharter/worldgen/noise_settings/campaign_sample.json")
+                .getAsJsonObject();
+        // final_density: add(squeeze(interpolated(max(range_choice over the layers and unbuilt depth, surface))),
+        // beardifier)
+        JsonObject choice = sample.getAsJsonObject("noise_router")
+                .getAsJsonObject("final_density")
+                .getAsJsonObject("left")
+                .getAsJsonObject("input")
+                .getAsJsonObject("input")
+                .getAsJsonObject("left");
+        JsonObject empty = choice.getAsJsonObject("when_in_range");
+        expect(
+                helper,
+                empty.get("type").getAsString().equals("minecraft:range_choice")
+                        && empty.get("input").getAsString().equals("minecraft:y")
+                        && empty.get("min_inclusive").getAsInt() == CampaignBands.UNBUILT.minY()
+                        && empty.get("max_exclusive").getAsInt() == EMPTY_BELOW
+                        && empty.get("when_in_range").getAsDouble() == -1.0,
+                "campaign_sample's density is not air from %d to %d",
+                CampaignBands.UNBUILT.minY(),
+                EMPTY_BELOW);
+        choice.add("when_in_range", empty.get("when_out_of_range"));
+        expect(helper, shipped.equals(sample), "campaign_sample's noise settings differ from the shipped ones");
+        // The rock kept under layer 2's floor is what the unbuilt band keeps of the shipped rock.
+        expect(
+                helper,
+                EMPTY_BELOW < CampaignBands.LAYER_2.minY() && EMPTY_BELOW >= CampaignBands.UNBUILT.minY(),
+                "the empty depth must lie below layer 2");
         helper.succeed();
     }
 

@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Measures what the campaign generator (#742) costs a new column (ADR 0029's bar: 1.15x). The campaign world, {@code campaign_sample} (the
+ * Measures what the campaign generator (#742) costs a new column (ADR 0029's bar: 1.15x). The campaign world, {@code campaign_full} (the
  * surface, two layers and the unbuilt rock on our own generator, 2352 blocks), is read against two baselines of 2048 blocks:
  *
  * <ul>
@@ -46,7 +46,7 @@ public class CampaignCostTest {
     private static final String REQUESTED_ROUNDS = System.getenv(ROUNDS_ENV);
     private static final String REQUESTED_WORLD = System.getenv(ONLY_ENV);
 
-    private static final String CAMPAIGN = "campaign_sample";
+    private static final String CAMPAIGN = "campaign_full";
     /** Vanilla stone, no zone fill: the bar's comparison. */
     private static final String BASELINE = "tall_baseline";
     /** The layer's own rock, the zone fill in every row: context for the bar. */
