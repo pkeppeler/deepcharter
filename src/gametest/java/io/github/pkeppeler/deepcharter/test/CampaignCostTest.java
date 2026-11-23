@@ -100,7 +100,7 @@ public class CampaignCostTest {
      * other band may have one ({@link #RATCHETED}): a band added since is held to {@value BandCost#BAR}x.
      */
     private static final List<Ratchet> RATCHETS =
-            List.of(new Ratchet(CampaignBands.LAYER_1, 1.583, 1132), new Ratchet(CampaignBands.LAYER_2, 1.834, 1132));
+            List.of(new Ratchet(CampaignBands.LAYER_1, 1.265, 1132), new Ratchet(CampaignBands.LAYER_2, 1.598, 1132));
 
     /** The only bands a ratchet may hold. */
     private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_1, CampaignBands.LAYER_2);
