@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +46,19 @@ public final class ClientChecks {
         if (!condition) {
             throw new AssertionError(message);
         }
+    }
+
+    /** Fails, naming the cause, unless the client is its pod's navigator: only a navigator draws the scope and sends the ping (#1082). */
+    public static void requireNavigator(ClientGameTestContext context) {
+        String seat = context.computeOnClient(client -> {
+            int passengers = client.player != null && client.player.getVehicle() instanceof PodEntity pod
+                    ? pod.getPassengers().size()
+                    : 0;
+            return SonarHud.frame(client).isPresent()
+                    ? ""
+                    : "the client is not the navigator: its pod shows " + passengers + " passengers";
+        });
+        require(seat.isEmpty(), seat);
     }
 
     /**
