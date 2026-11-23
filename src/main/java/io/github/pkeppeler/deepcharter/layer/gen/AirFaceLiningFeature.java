@@ -6,6 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
@@ -28,6 +29,10 @@ import net.minecraft.world.level.levelgen.feature.Feature;
  * blocks from an open cell is lined, one more is not. Layer 3's columns line its caves this way, and the cheap dark cubes of its rock stay
  * between them, so the see-through corners of a column always show rock (the user's decision on #504).
  *
+ * <p>A block of {@code seals} the zone fill left within that depth of an open cell is lined too, and one a block further in becomes
+ * {@code rock}: the lining does not fill its cell, so it passes light, and lava behind it would light thousands of open cells, the most
+ * costly thing in the band to generate (#972). In layer 3 lava stays inside the rock, a hazard for the drill and not a lamp.
+ *
  * <p>Open is air or growth ({@link #OPEN}), never a block the zone fill or the noise placed, so a chunk decides the same whatever its
  * neighbours have already grown: a stalk a neighbour grew into a cave still leaves the cave open. A chunk changes only its own blocks and
  * reads its neighbours' across its sides.
@@ -40,8 +45,10 @@ import net.minecraft.world.level.levelgen.feature.Feature;
  * @param rock   the rock it lines
  * @param lining the block a lined rock becomes
  * @param depth  how many blocks deep the lining goes from an open face, from 1
+ * @param seals  blocks besides the rock that the lining replaces where they face a cavern, and that become rock one block further in
  */
-public record AirFaceLiningFeature(int layer, Block rock, Block lining, int depth) implements Feature {
+public record AirFaceLiningFeature(int layer, Block rock, Block lining, int depth, List<Block> seals)
+        implements Feature {
     /** Growth in a cave that leaves it open to the lining: what the layers' features grow into air. */
     public static final TagKey<Block> OPEN =
             TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "open_to_lining"));
@@ -53,8 +60,17 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
                     Codec.intRange(1, Integer.MAX_VALUE).fieldOf("layer").forGetter(AirFaceLiningFeature::layer),
                     BuiltInRegistries.BLOCK.byNameCodec().fieldOf("rock").forGetter(AirFaceLiningFeature::rock),
                     BuiltInRegistries.BLOCK.byNameCodec().fieldOf("lining").forGetter(AirFaceLiningFeature::lining),
-                    Codec.intRange(1, MAX_DEPTH).fieldOf("depth").forGetter(AirFaceLiningFeature::depth))
+                    Codec.intRange(1, MAX_DEPTH).fieldOf("depth").forGetter(AirFaceLiningFeature::depth),
+                    BuiltInRegistries.BLOCK
+                            .byNameCodec()
+                            .listOf()
+                            .fieldOf("seals")
+                            .forGetter(AirFaceLiningFeature::seals))
             .apply(instance, AirFaceLiningFeature::new));
+
+    public AirFaceLiningFeature {
+        seals = List.copyOf(seals);
+    }
 
     public static void register() {
         Registry.register(
@@ -87,25 +103,32 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         boolean placed = false;
         for (int index = chunk.getSectionIndex(low); index <= chunk.getSectionIndex(high); index++) {
             LevelChunkSection section = chunk.getSection(index);
-            if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(rock))) {
+            if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(rock) || seals(state))) {
                 continue;
             }
-            // A lining is at most MAX_DEPTH (half a section) deep, so it reaches no further than the sections next to its own.
+            // A lining reads at most MAX_DEPTH + 1 blocks out (a seal, one further in), under a section, so it reaches
+            // no further than the
+            // sections next to its own.
             boolean sidesOnly =
                     !mayBeOpen(chunk, index - 1) && !mayBeOpen(chunk, index) && !mayBeOpen(chunk, index + 1);
             int sectionY = chunk.getSectionYFromSectionIndex(index) << 4;
             for (int y = Math.max(low, sectionY); y <= Math.min(high, sectionY + 15); y++) {
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
-                        if (sidesOnly && x >= depth && x < 16 - depth && z >= depth && z < 16 - depth) {
+                        if (sidesOnly && x > depth && x < 15 - depth && z > depth && z < 15 - depth) {
                             continue;
                         }
-                        if (!section.getBlockState(x, y & 15, z).is(rock)) {
+                        BlockState state = section.getBlockState(x, y & 15, z);
+                        boolean seal = seals(state);
+                        if (!seal && !state.is(rock)) {
                             continue;
                         }
                         pos.set(firstX + x, y, firstZ + z);
-                        if (nearOpen(level, chunk, pos, probe)) {
+                        if (nearOpen(level, chunk, pos, probe, depth)) {
                             chunk.setBlockState(pos, lined, Block.UPDATE_CLIENTS);
+                            placed = true;
+                        } else if (seal && nearOpen(level, chunk, pos, probe, depth + 1)) {
+                            chunk.setBlockState(pos, rock.defaultBlockState(), Block.UPDATE_CLIENTS);
                             placed = true;
                         }
                     }
@@ -115,11 +138,23 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         return placed;
     }
 
-    /** Whether an open cell lies within {@link #depth} blocks of {@code pos} straight along an axis. */
-    private boolean nearOpen(WorldGenLevel level, ChunkAccess chunk, BlockPos pos, BlockPos.MutableBlockPos probe) {
+    /** Whether {@code state} is one of the blocks the lining seals. */
+    private boolean seals(BlockState state) {
+        for (Block seal : seals) {
+            if (state.is(seal)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Whether an open cell lies within {@code reach} blocks of {@code pos} straight along an axis. */
+    private static boolean nearOpen(
+            WorldGenLevel level, ChunkAccess chunk, BlockPos pos, BlockPos.MutableBlockPos probe, int reach) {
         for (Direction direction : Direction.values()) {
-            for (int step = 1; step <= depth; step++) {
-                probe.setWithOffset(pos, direction.getStepX() * step, direction.getStepY() * step, direction.getStepZ() * step);
+            for (int step = 1; step <= reach; step++) {
+                probe.setWithOffset(
+                        pos, direction.getStepX() * step, direction.getStepY() * step, direction.getStepZ() * step);
                 if (isOpen(stateAt(level, chunk, probe))) {
                     return true;
                 }
@@ -130,7 +165,8 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
 
     /** The block at {@code pos}: from the chunk's own sections when it is in the chunk, through the region next door. */
     private static BlockState stateAt(WorldGenLevel level, ChunkAccess chunk, BlockPos pos) {
-        if (pos.getX() >> 4 == chunk.getPos().x() && pos.getZ() >> 4 == chunk.getPos().z()) {
+        if (pos.getX() >> 4 == chunk.getPos().x()
+                && pos.getZ() >> 4 == chunk.getPos().z()) {
             return chunk.getBlockState(pos);
         }
         return level.getBlockState(pos);

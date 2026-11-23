@@ -53,8 +53,8 @@ public class FungalHollowsTest {
     private static final int SAMPLE_CHUNK = 24;
 
     private static final int SAMPLE_CHUNKS = 2;
-    private static final TagKey<Biome> FUNGAL_HOLLOWS = TagKey.create(
-            Registries.BIOME, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "fungal_hollows"));
+    private static final TagKey<Biome> FUNGAL_HOLLOWS =
+            TagKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "fungal_hollows"));
     /** The share of the band's cells that must be open: huge caverns, mostly air (SPEC section 3). */
     private static final double MOSTLY_AIR = 0.5;
 
@@ -88,7 +88,8 @@ public class FungalHollowsTest {
 
     /**
      * Every column stands within the lining's depth of an open cell, straight along an axis, and every block of the core does not (#504): both
-     * sides of the knob, so a lining one block too deep or too shallow fails.
+     * sides of the knob, so a lining one block too deep or too shallow fails. No lava stands within one block more than that either: the lining seals
+     * it, so its light stays in the rock and never shines through a column.
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void onlyTheFacesOpenToTheCavernsAreLined(GameTestHelper helper) {
@@ -104,6 +105,12 @@ public class FungalHollowsTest {
                 if (state.is(LayerBlocks.COLUMNAR_BASALT)) {
                     columns++;
                     expect(helper, nearOpen(level, pos, depth), "a column at %s faces no cavern", pos.toShortString());
+                } else if (state.is(Blocks.LAVA)) {
+                    expect(
+                            helper,
+                            !nearOpen(level, pos, depth + 1),
+                            "the lava at %s lights a cavern",
+                            pos.toShortString());
                 } else if (state.is(LayerBlocks.BASALT_CORE)) {
                     cores++;
                     expect(

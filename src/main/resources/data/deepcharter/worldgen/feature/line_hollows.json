@@ -3,5 +3,8 @@
   "layer": 3,
   "rock": "deepcharter:basalt_core",
   "lining": "deepcharter:columnar_basalt",
-  "depth": 1
+  "depth": 1,
+  "seals": [
+    "minecraft:lava"
+  ]
 }

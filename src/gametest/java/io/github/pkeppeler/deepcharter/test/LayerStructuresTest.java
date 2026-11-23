@@ -782,7 +782,9 @@ public class LayerStructuresTest {
                 for (int v = -1; v <= 0; v++) {
                     BlockState state = level.getBlockState(at(shaft, u, y, v));
                     if (!state.isAir()) {
-                        unmet.add(String.format("the crust under the hollow at (%d, %d, %d) is %s, not broken through", u, y, v, state));
+                        unmet.add(String.format(
+                                "the crust under the hollow at (%d, %d, %d) is %s, not broken through",
+                                u, y, v, state));
                         return unmet;
                     }
                 }

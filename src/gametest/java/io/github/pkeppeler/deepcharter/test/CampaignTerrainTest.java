@@ -354,7 +354,8 @@ public class CampaignTerrainTest {
         collectGradientCoordinates(density, gradients);
         Set<Integer> expectedGradients =
                 new TreeSet<>(List.of(CampaignBands.SURFACE.minY() - 4, CampaignBands.SURFACE.minY()));
-        // Layers 1 and 2 each have a layer dimension, whose noise settings hold the profile the band moves. Layer 3 has its profile
+        // Layers 1 and 2 each have a layer dimension, whose noise settings hold the profile the band moves. Layer 3 has
+        // its profile
         // only in the campaign world (#972): its gradients must lie in its band.
         int withDimensions = 2;
         for (int y : gradients) {

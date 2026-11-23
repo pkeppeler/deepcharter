@@ -40,7 +40,8 @@ public record LayerTuning(
         float grainSqueezeDamage,
         float grainSkateHeatPerSecond,
         int glowcapLight) {
-    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 6);
+    public static final LayerTuning DEFAULT =
+            new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 6);
 
     public LayerTuning {
         if (glowcapLight < 0 || glowcapLight > 15) {

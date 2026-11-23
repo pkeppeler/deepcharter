@@ -108,7 +108,9 @@ public class CampaignWorldHashTest {
         for (int y = 0; y < 4; y++) {
             for (int z = 0; z < 4; z++) {
                 for (int x = 0; x < 4; x++) {
-                    hash = mix(hash, keyHashes.computeIfAbsent(section.getNoiseBiome(x, y, z), CampaignWorldHashTest::key));
+                    hash = mix(
+                            hash,
+                            keyHashes.computeIfAbsent(section.getNoiseBiome(x, y, z), CampaignWorldHashTest::key));
                 }
             }
         }
