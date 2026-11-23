@@ -94,6 +94,8 @@ public class CampaignContentTest {
     private static final String DIMENSION = "/data/deepcharter/dimension/campaign_sample.json";
 
     private static final String UNBUILT_BIOME = "deepcharter:unbuilt_depth";
+    /** The layers whose zones spawn the lampless figure: the Claim and the Old Workings (CREATURES section 5). */
+    private static final int FIGURE_LAYERS = 2;
 
     /**
      * The layers the world generates from (the biome source's data, which {@code LayerChain.campaignLayers} reads) are the band table
@@ -523,15 +525,22 @@ public class CampaignContentTest {
     }
 
     /**
-     * The lampless figure's natural spawn is part of the biome data of both layers' zones (the rail-line spawns are the creature
-     * feature's own), so it follows the bands: every zone biome of the layers carries it, and the surface and the unbuilt depth do not.
+     * The lampless figure's natural spawn is part of the biome data of the zones of layers 1 and 2 (the rail-line spawns are the creature
+     * feature's own), so it follows the bands: every zone biome of those layers carries it, and the surface, layer 3 (whose creatures are
+     * its own, CREATURES section 5) and the unbuilt depth do not.
      */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void theLamplessFigureSpawnsInTheZonesOfBothLayersAndNowhereElse(GameTestHelper helper) throws IOException {
+    public void theLamplessFigureSpawnsInTheZonesOfLayers1And2AndNowhereElse(GameTestHelper helper) throws IOException {
         for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
             for (int zone = 0; zone < Zones.COUNT; zone++) {
                 String id = zoneBiomeId(number, zone);
-                expect(helper, spawnsFigure(helper, id), "%s lacks the lampless figure", id);
+                boolean figure = number <= FIGURE_LAYERS;
+                expect(
+                        helper,
+                        spawnsFigure(helper, id) == figure,
+                        "%s %s the lampless figure",
+                        id,
+                        figure ? "lacks" : "spawns");
             }
         }
         expect(helper, !spawnsFigure(helper, UNBUILT_BIOME), "unbuilt depth spawns the figure");

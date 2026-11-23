@@ -113,13 +113,13 @@ public class CampaignCrossingTest {
                 new Step(layer1Floor + crust + 0.5, "1>2", "2>1"),
                 new Step(layer1Floor + 2, "1>2", "2>1"),
                 new Step(layer1Floor - 0.5, "1>2", "2>1", "1>2"),
-                new Step(CampaignBands.UNBUILT.minY() + 100, "1>2", "2>1", "1>2"),
-                new Step(layer1Floor + 100, "1>2", "2>1", "1>2", "2>1"),
-                new Step(surfaceFloor + crust + 0.5, "1>2", "2>1", "1>2", "2>1", "1>0"),
-                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>1", "1>0"),
-                new Step(surfaceFloor - 0.5, "1>2", "2>1", "1>2", "2>1", "1>0", "0>1"),
-                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>1", "1>0", "0>1"),
-                new Step(surfaceFloor + 100, "1>2", "2>1", "1>2", "2>1", "1>0", "0>1", "1>0"));
+                new Step(CampaignBands.UNBUILT.minY() + 100, "1>2", "2>1", "1>2", "2>3"),
+                new Step(layer1Floor + 100, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1"),
+                new Step(surfaceFloor + crust + 0.5, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0"),
+                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0"),
+                new Step(surfaceFloor - 0.5, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0", "0>1"),
+                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0", "0>1"),
+                new Step(surfaceFloor + 100, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0", "0>1", "1>0"));
         TestTicks.each(helper, () -> {
             long tick = helper.getTick();
             int index = (int) (tick / STEP_TICKS);

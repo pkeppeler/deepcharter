@@ -79,3 +79,7 @@ The stamp that the Decision names is the saved record `colony/WorldFormat`, unde
 ## Amended, 2026-11-23 (#1111): the bands are not final
 
 The bands fix the overworld, the first dimension of a stack, not the whole game. Depth continues in deep dimensions below y -2032, and a layer can span two dimensions ([ADR 0085](0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). The clause of item 7 of the cutover list that deletes the layer types with the layer dimensions no longer applies (the deletion of the test dimension, #761, stands): the layer dimensions and their types stay as the base of the seam. The surface stays at y -64 to 319.
+
+## Amended, 2026-11-23 (#972): layer 3
+
+Layer 3, the Fungal Hollows, is built in unbuilt depth: Y -768 to -513 (256 blocks), its floor on a section edge. Unbuilt depth is now Y -2032 to -769 (1264 blocks), still plain rock of layer 2's green shale. The world-format stamp goes to 3, so a world made before layer 3 is refused, as the Decision says of every release that adds a layer. The rows above -512 are unchanged: `CampaignWorldHashTest` writes one line per section, and the only sections that differ from the tree before are those of layer 3.

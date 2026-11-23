@@ -1522,7 +1522,7 @@ The heat shield's Goldium is the slow one: the sales forgone are 4.4 minutes of 
 
 ## The deepest point (#476)
 
-A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, currently means reaching the floor of layer 2 (`LayerChain.topDepth(3)`), because layer 3 does not exist yet. The threshold moves down when layer 3 lands.
+A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, means reaching the top of layer 3 (`LayerChain.topDepth(3)`, depth 575, the bottom row of layer 2's crust): a charter has drilled through the crust, or come down the Kells' shaft. Since layer 3 was built (#972) the number is the top of a real band; it was the same number before, as the floor of layer 2.
 
 ## Company Rock and the straight shaft (#509, A)
 
@@ -1734,7 +1734,7 @@ The bite is 9.6 times slower than stone and costs about a charge's price per sla
 
 **Problem.** The lava ladder (#232) ends with "abandoned lined shafts from earlier charters are something to find". The Kells drilled from the Workings toward the Hollows ([LORE](../LORE.md), CY 19 and 20), so layer 2 has one: a place that shows what lining is for, and lets a pilot meet the counter on purpose.
 
-**What it is.** One shaft at the end of every rail line in Prospector's Run (a structure of [ADR 0025](../adr/0025-layer-structures-are-drawn-from-the-seed-when-a-fresh-chunk-loads.md), `KELLS_SHAFT`). A drift with a rail runs from the line's last column to a lip. A 2 x 2 hollow, 20 to 80 blocks deep, goes from the lip to the first block above the crust. The layer 3 end is not built: the shaft stops at the crust until layer 3 has worldgen (#716 keeps that part open).
+**What it is.** One shaft at the end of every rail line in Prospector's Run (a structure of [ADR 0025](../adr/0025-layer-structures-are-drawn-from-the-seed-when-a-fresh-chunk-loads.md), `KELLS_SHAFT`). A drift with a rail runs from the line's last column to a lip. A 2 x 2 hollow, 20 to 80 blocks deep, goes from the lip to the first block above the crust, and the crust under it is broken through (#972): the shaft opens into the roof of layer 3's Garden, as the Kells drilled it (LORE, CY 19).
 - **Gaps.** 2 to 4 per shaft. A gap is a block of lava standing in the brick wall (one more behind it), with three rows of slag brick round it.
 - **Bulkhead.** At each gap the Kells sealed the hollow from below with a plug of brick. It has a hole beside the gap, and lava stands in the cell under the hole. A pod lands on the plug with the gap one row below its feet.
 - **Decay.** Timber sets every third row, a quarter of their blocks fallen. A reserve of slag bricks, 3 for each gap, stands in the walls of the drift.
@@ -1774,7 +1774,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Tuning knobs.** The `KELLS_*` constants in `StructureKind`, and `StructureKind.margin()`: the rail line's placement margin grows by the shaft's reach.
 
 **Open questions.**
-- The layer 3 end waits on layer 3 worldgen: should the shaft's crust be a breach?
+- The layer 3 end (#972, A) is a hole through the crust and nothing more: it opens into the open rows under layer 2's crust, or onto layer 3's rock where a column stands under it. A ladder or a marker of Tomas's lost lamp at the foot is not built.
 - Should a pod with the liner part (rung 2) skip the bulkheads' lava, since it lines as it drills? It lines only cells lava can reach, so it should: not measured.
 - Does a bare shaft cost enough hull (23 on average over 3 gaps) to make a shaft with no lining a real choice, or is it too cheap?
 - One of 30 lined Moles touched lava once, and why is not traced. It cost under 1 hull on average.
@@ -2059,11 +2059,12 @@ A default build is not harder than on main: nothing changes for a pod with no na
 |---|---|---|---|---|
 | Packed shale, breach crust (layer 1's own rock) | 1 | 1 | 1 | 1 |
 | Green shale (layer 2's own rock) | 2 | 2 | 2 | 2 |
+| Basalt and columnar basalt (layer 3's own rock) | 3 | 3 | 3 | 3 |
 | Slag brick (fused from spoil) | 2 | 2 | 2 | 2 |
 | Company kit (plate, concrete, beam, terminals, lamps) | 2 | 2 | 2 | 2 |
 | Window glass | 2 | 0 | 2 | 0 |
 | Grating | 2 | 0 | 0 | 2 |
-| Vanilla blocks, regolith, stalks, ore, rubble | 0 | 0 | 0 | 0 |
+| Vanilla blocks, regolith, stalks, glowcaps, ore, rubble | 0 | 0 | 0 | 0 |
 
 **The readout and the sheet.** Where a depth asks something, holding a block and aiming at a block puts a word two lines under the crosshair (`PlacementReadoutHud`, fading as the block readout does): HOLDS HERE or WILL NOT HOLD UNATTENDED, and for the last "Short on: heat, quake". A block's tooltip, its spec sheet, states "Rated: heat 2, pressure 2, flooding 2, quake 2"; a block rated nothing has no such line. Where a block holds comes with the first layer that asks.
 
@@ -2079,4 +2080,22 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Knobs.** `RatingTuning.DEFAULT` (the layer rows and the highest tag level), the tags in `data/deepcharter/tags/block/rating/`.
 
-**Open questions.** What layer 3 asks, which is its worldgen's to say.
+**Layer 3's row (#972, A).** Heat 1, pressure 2, flooding 1, quake 2: its caverns are huge and their roofs far, so pressure and quake are what it asks; it has no water and little heat. Green shale, slag brick and the Company kit hold there; layer 1's packed shale falls short on pressure and quake. Layer 3's own basalt is rated 3 on every axis, one above green shale, as each layer's rock has been one above the last's.
+
+**Open questions.** None for the row; layer 4 states its own.
+
+## The Fungal Hollows (#972, A)
+
+**Problem.** SPEC section 3 makes layer 3 huge caverns of glowing fungi with spore gas and the first real exploring on foot, and #504 settled its rock: columns that line only the faces open to air, cheap dark cubes behind. The band must stay cheap to generate (ADR 0029).
+
+**The band.** Y -768 to -513 (256 blocks), the three zones in equal thirds: the Garden on top, the Spore Fields, the Quiet at the bottom. The caverns are three stacked halls, each about 85 blocks: the band's density is a floor, two holed rock shelves at the zone edges, and 2D basalt columns that stand from floor to roof, fewer in the Quiet. The roof rows under layer 2's crust are open, as layer 2's top is under layer 1's. Every block of the core within `depth` (1) blocks of an open cell, straight along an axis, becomes a column (`AirFaceLiningFeature`), after the zone fill, so exposed ore keeps its basalt host.
+
+**The hazard: spore gas.** The Spore Fields' fill holds the layer's most gas pockets (12% of non-ore rock against 5 and 6), and the pockets are the existing `gas_pocket`: the same blast, sounder, scanner tier and sideways share. No new counter is needed, so the gas ladder serves layer 3 as it is; drifting spores (ambient particles) mark the zone. Spore-gas clouds that drift in the open caverns belong to the Drifters (#918).
+
+**Light.** Glowcaps, a small fungus on cavern floors, give block light 6 (`LayerTuning.glowcapLight`): cold, small and scattered, so the caverns stay dark and a lamp still matters.
+
+**Ore and hazards.** The original's rows 134 to 203 in thirds, by the formula of ADR 0015: more Goldium and Platinium, Einsteinium in every zone, Cicatrium 0.08% to 0.12%. Company Rock 10% to 13% and lava 5% to 6% of non-ore rock, never less than Prospector's Run.
+
+**Tuning knobs.** The noise in `campaign.json` (column threshold 0.40, 0.62 in the Quiet; shelf thickness and holes), `line_hollows.json` (`depth`), the glowcap counts in `glowcaps_<zone>.json`, the fills in `fill_<zone>.json`, `LayerTuning.glowcapLight`.
+
+**Open questions.** The look calls go to the user as stills: fog, glow, ambient light, giant fungus forms, the gas's look, the Quiet's cathedral and shrine, the Drifters and Overgrowth, the basalt's tint and lava. The Garden and the Spore Fields borrow layer 2's drone and music until layer 3 has its own; the Quiet is silent on purpose.
