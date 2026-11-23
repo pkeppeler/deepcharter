@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.client.hangar.HangarClientInit;
 import io.github.pkeppeler.deepcharter.client.layer.LayerClientInit;
 import io.github.pkeppeler.deepcharter.client.market.MarketClientInit;
 import io.github.pkeppeler.deepcharter.client.ore.OreClientInit;
+import io.github.pkeppeler.deepcharter.client.outpost.OutpostClientInit;
 import io.github.pkeppeler.deepcharter.client.pod.PodClientInit;
 import io.github.pkeppeler.deepcharter.client.repair.RepairClientInit;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerClientInit;
@@ -36,6 +37,7 @@ public class DeepCharterClient implements ClientModInitializer {
         LayerClientInit.init();
         MarketClientInit.init();
         OreClientInit.init();
+        OutpostClientInit.init();
         PodClientInit.init();
         RepairClientInit.init();
         ScannerClientInit.init();

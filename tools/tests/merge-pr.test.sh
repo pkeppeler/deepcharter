@@ -47,6 +47,9 @@ for a in "$@"; do
   [[ $prev == -X ]] && method=$a
   [[ $prev == --jq ]] && jq=$a
   [[ $a == repos/* ]] && path=$a
+  # The commit message the merge request sends, byte for byte, for the tests to judge.
+  [[ $a == commit_message=* ]] && printf '%s' "${a#commit_message=}" >"$LOG.message"
+  [[ $a == commit_title=* ]] && printf '%s' "${a#commit_title=}" >"$LOG.title"
   prev=$a
 done
 case "$method $path" in
@@ -82,7 +85,10 @@ case "$method $path" in
     fi ;;
   "GET "*/pulls\?base=*) [[ ${STUB_LIST_FAIL-0} == 1 ]] && exit 1; printf '%s' "${STUB_STACKED-}" ;; # open PR numbers whose base is the head branch
   "PATCH "*/pulls/*) [[ ${STUB_EDIT_FAIL-0} == 1 ]] && exit 1; exit 0 ;;
-  "PUT "*/pulls/*/merge) touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
+  "PUT "*/pulls/*/merge)
+    touch "$LOG.merged"
+    [[ -z ${STUB_MERGE_ERR-} ]] || echo "$STUB_MERGE_ERR" >&2
+    exit "${STUB_MERGE_RC:-0}" ;;
   "POST "*/issues/*) exit 0 ;;
   "GET "*/pulls/*)
     [[ ${STUB_VIEW_FAIL-0} == 1 ]] && exit 1
@@ -102,7 +108,7 @@ case "$method $path" in
       .draft) [[ ${STUB_DRAFT_FAIL-0} == 1 ]] && exit 1; echo "${STUB_DRAFT-false}" ;;
       .head.ref) echo "${STUB_BRANCH-12-some-slug}" ;;
       .base.ref) [[ ${STUB_BASE_FAIL-0} == 1 ]] && exit 1; echo "${STUB_BASE-main}" ;;
-      .title) echo "A title" ;;
+      .title) echo "${STUB_TITLE-A title}" ;;
       *.body*)
         # The gate reads the body twice before the closing set is re-read: reads after those answer with
         # STUB_BODY_LATER, STUB_BODY_FAIL_AT=<n> fails the nth read.
@@ -159,7 +165,7 @@ STUB
 cat >"$work/bin/uv" <<'STUB'
 #!/usr/bin/env bash
 # The closing-reference parser really runs (through the real uv) and is not logged; everything else is the roadmap.
-if [[ $* == *closing_refs.py* ]]; then PATH=$REAL_PATH exec uv "$@"; fi
+if [[ $* == *closing_refs.py* || $* == *merge_message.py* ]]; then PATH=$REAL_PATH exec uv "$@"; fi
 echo "uv $*" >>"$LOG"
 exit "${STUB_ROADMAP_RC:-0}"
 STUB
@@ -197,7 +203,9 @@ files() {
 # fake runs report each one as succeeding, plus an unrelated skipped one.
 required=$(sed -n 's/^REQUIRED_CHECKS=(\(.*\))$/\1/p' "$script")
 [[ -n $required ]] || { echo "cannot read REQUIRED_CHECKS from $script" >&2; exit 1; }
-default_specs=(docs:1:skipped client-gametest:3:success)
+# The client suite is `client-gametest-shard <i>` jobs plus the aggregate `client-gametest` (#1079).
+cg_pass_specs=("client-gametest:3:success" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:success")
+default_specs=(docs:1:skipped "${cg_pass_specs[@]}")
 skipped_required_specs=(docs:1:skipped)
 required_pass_specs=()
 for name in $required; do
@@ -216,7 +224,7 @@ rc=0
 pass() { cases=$((cases + 1)); echo "ok   $1"; }
 fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
-reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.body"; : >"$LOG"; }
+reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.body" "$LOG.message" "$LOG.title"; : >"$LOG"; }
 
 # run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
@@ -314,7 +322,8 @@ refusal "no closing reference" "has no closing reference (put 'Closes #12' in th
 refusal "closing set changes before the merge" "closing set changed during the gate (was #12, now #12 #13); re-run" \
   "STUB_BODY_LATER=Closes #12${nl}Closes #13"
 refusal "closing set emptied before the merge" "closing set changed during the gate (was #12, now empty)" STUB_BODY_LATER=
-refusal "closes branch issue and another" "closes #12 #13 but" "STUB_BODY=Closes #12${nl}Closes #13"
+refusal "closes branch issue and another" "closes #12 #13 but branch 12-some-slug is for issue #12 only (the closing set must be exactly {#12}): mention any other issue in prose, not after a closing keyword, and close it by hand after the merge" \
+  "STUB_BODY=Closes #12${nl}Closes #13"
 refusal "closes two others" "closes #13 #14 but" "STUB_BODY=Closes #13${nl}Closes #14"
 refusal "closes the same number in another repo" "closes owner/repo#12 but" "STUB_BODY=Closes owner/repo#12"
 refusal "closes branch issue and another repo's" "closes #12 owner/repo#54 but" "STUB_BODY=Closes #12${nl}Closes owner/repo#54"
@@ -455,16 +464,55 @@ client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:skipped)" "$ga
 refusal "game path, client run only skipped" "$client_msg" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:failure)" "$game"
 refusal "game path, client run failed" "client-gametest (newest non-skipped run: failure)" "${client_vars[@]}"
-client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success client-gametest:4:skipped)" "$game"
+# A failed shard refuses by name, even when the aggregate is absent or passed.
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:failure")" "$game"
+refusal "game path, one shard failed" "client-gametest-shard 2 (newest non-skipped run: failure)" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:cancelled")" "$game"
+refusal "game path, one shard cancelled, no aggregate" "client-gametest-shard 2 (newest non-skipped run: cancelled)" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:in_progress")" "$game"
+refusal "game path, one shard still running" "client-gametest-shard 2 (newest non-skipped run: in_progress)" "${client_vars[@]}"
+# Only the shard template is dropped: another template-named check that failed still refuses.
+# shellcheck disable=SC2016 # a literal template, not an expansion
+client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" 'other-job ${{ matrix.x }}:7:failure')" "$game"
+# shellcheck disable=SC2016 # a literal template, not an expansion
+refusal "game path, a different template-named check failed" 'other-job ${{ matrix.x }} (newest non-skipped run: failure)' "${client_vars[@]}"
+# A cancelled matrix job that never started keeps its template name; it must not refuse a passing suite.
+# shellcheck disable=SC2016 # a literal template, not an expansion
+client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" 'client-gametest-shard ${{ matrix.shard }}:7:cancelled')" "$game"
+run_script "${client_vars[@]}"
+exited "game path, passing shards beside a never-started cancelled matrix job merges" 0
+# Legacy (temporary, #1116): the pre-#1079 single `client-gametest` job has no shards and records merged-main itself.
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success)" "$game"
+run_script "${client_vars[@]}"
+exited "game path, legacy single client-gametest job with its merged-main notice merges" 0
+logged "legacy client-gametest run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/3/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
+refusal "aggregate passed, no shard and no notice" "client-gametest run 3 recorded no merged main sha" "STUB_MERGED_MAIN_3=" "${client_vars[@]}"
+refusal "legacy client-gametest merged an older main" "client-gametest run 3 merged main" "STUB_MERGED_MAIN_3=$OLD_MAIN" "STUB_DIFF=src/A.java" "${client_vars[@]}"
+# The sharded aggregate carries a notice of its own (the shards' agreed main, for the gate on main); this gate reads the
+# shards, so a stale aggregate notice beside fresh passing shards still merges and a fresh one never stands in for shards.
+client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}")" "$game"
+run_script "STUB_MERGED_MAIN_3=$OLD_MAIN" "STUB_DIFF=src/A.java" "${client_vars[@]}"
+exited "aggregate with a notice plus passing shards merges on the shards' notices" 0
+# Any shard run, even a never-started template one, means the aggregate is not legacy.
+# shellcheck disable=SC2016 # a literal template, not an expansion
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success 'client-gametest-shard ${{ matrix.shard }}:7:cancelled')" "$game"
+refusal "aggregate with a notice beside only a template shard, so not legacy" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success "client-gametest-shard 1:5:failure")" "$game"
+refusal "aggregate with a notice beside a failed shard, so not legacy" "client-gametest-shard 1 (newest non-skipped run: failure)" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success "client-gametest-shard 1:5:skipped")" "$game"
+refusal "aggregate with a notice beside only a skipped shard, so not legacy" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:success")" "$game"
+refusal "game path, shards passed but the aggregate never ran" "$client_msg" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" client-gametest:4:skipped)" "$game"
 run_script "${client_vars[@]}"
 exited "game path, client passed then skipped later merges" 0
-client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:skipped)" "$docs_files"
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:skipped "client-gametest-shard 1:5:skipped")" "$docs_files"
 run_script "${client_vars[@]}"
 exited "docs/tools-only, client skipped merges" 0
 client_args "$(runs "${required_pass_specs[@]}")" "$docs_files"
 run_script "${client_vars[@]}"
 exited "docs/tools-only, no client run merges" 0
-client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success)" "$(files modified:README.md)" "$cg_labels${nl}gameplay"
+client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}")" "$(files modified:README.md)" "$cg_labels${nl}gameplay"
 run_script "${client_vars[@]}" "STUB_BODY=$cg_body${nl}No map change: x"
 exited "gameplay label, client passed merges" 0
 client_args "$(runs "${required_pass_specs[@]}")" "$(files modified:README.md)" "$cg_labels${nl}gameplay"
@@ -561,7 +609,7 @@ exited "runs as ./merge-pr.sh from tools/" 0
 # script has no override seam).
 mkdir "$work/tools"
 cp -R "$tools/lib" "$work/tools/lib"
-cp "$tools/py" "$tools/closing_refs.py" "$tools/ci-client-needed.sh" "$work/tools/"
+cp "$tools/py" "$tools/closing_refs.py" "$tools/merge_message.py" "$tools/ci-client-needed.sh" "$work/tools/"
 cp "$tools/../.python-version" "$work/.python-version"
 sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
 grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
@@ -587,14 +635,14 @@ for name in $required; do
 done
 
 # Stale base (#979): CI records the main sha it merged in a `merged-main` annotation on each job's check run; the gate
-# refuses unless the deciding run of every required job (and of client-gametest) recorded the current origin/main.
+# refuses unless the deciding run of every required job (and of each passing client-gametest-shard) recorded the current origin/main.
 # Default stubs: every run recorded $MAIN_SHA, which is origin/main.
-stale_hint="by closing and reopening the PR [stale-base]"
+stale_hint="by re-running the whole runs holding the head's newest non-skipped build, tool-tests and client-gametest jobs [stale-base]"
 run_script
 exited "runs that merged the current main pass" 0
 logged "main fetched before comparing" "git fetch origin main"
 logged "build run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/2/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
-logged "client-gametest run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/3/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
+logged "client-gametest-shard run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/5/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
 not_logged "equal sha needs no file comparison" "^git diff"
 refusal "a run that merged an older main is stale" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=src/main/java/Charters.java"
 refusal "refusal names the run, both shas and the moved path" "build run 2 merged main bbbbbbbbb but origin/main is aaaaaaaaa: src/main/java/Charters.java changed since" \
@@ -603,7 +651,8 @@ refusal "a run with no record is stale (a run from before CI recorded it)" "reco
 refusal "a run with no record carries the marker" "$stale_hint" "STUB_MERGED_MAIN="
 refusal "a record that is not a sha is stale" "recorded no merged main sha" "STUB_MERGED_MAIN=main"
 refusal "annotations unreadable" "could not read the annotations of build run 2" STUB_ANN_FAIL=1
-refusal "only client-gametest merged an older main" "client-gametest run 3 merged main" "STUB_MERGED_MAIN_3=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "only a client shard merged an older main" "client-gametest-shard 2 run 6 merged main" "STUB_MERGED_MAIN_6=$OLD_MAIN" "STUB_DIFF=src/A.java"
+not_logged "with passing shards the aggregate's annotations are not read" "check-runs/3/annotations"
 refusal "only tool-tests merged an older main" "tool-tests run 4 merged main" "STUB_DIFF=src/A.java" \
   "STUB_RUNS=$(runs build:1:success tool-tests:4:success)" "STUB_MERGED_MAIN_1=$MAIN_SHA" "STUB_MERGED_MAIN_4=$OLD_MAIN"
 refusal "a recorded sha off origin/main is stale" "which is not on origin/main" "STUB_MERGED_MAIN=$OLD_MAIN" STUB_MERGE_BASE_RC=1
@@ -683,6 +732,47 @@ run_script STUB_MERGE_RC=1 STUB_STATE_AFTER=OPEN
 exited "failed merge exits nonzero" 1
 printed "failed merge says not merged" "PR #7 is not merged"
 not_logged "failed merge skips roadmap" "^uv"
+
+# The API's refusal text reaches the output (#1007).
+run_script STUB_MERGE_RC=1 STUB_STATE_AFTER=OPEN "STUB_MERGE_ERR=gh: Merge refused: commit_message contains a URL (HTTP 403)"
+printed "failed merge prints the API's error" "Merge refused: commit_message contains a URL (HTTP 403)"
+
+# Long URLs in the body are shortened in the commit message only (#1007).
+adr_path=docs/adr/0074-pods-stay-server-authoritative-and-the-client-slides-them-over-two-ticks.md
+adr_url=https://github.com/pkeppeler/deepcharter/blob/961-smooth-pod-driving/$adr_path
+run80=$(printf 'a%.0s' {1..80})
+short_url=https://github.com/pkeppeler/deepcharter/blob/main/docs/SPEC.md
+sent() { cat "$LOG.message"; }
+sent_is() { if [[ $(sent) == "$2" ]]; then pass "$1"; else fail "$1 (sent: $(sent))"; fi; }
+sent_has_no_tripping_url() {
+  local tripping
+  tripping=$(tools/py tools/merge_message.py --list <"$LOG.message")
+  if [[ -z $tripping ]]; then pass "$1"; else fail "$1 (sent: $(sent))"; fi
+}
+sent_title_has_no_tripping_url() {
+  local tripping
+  tripping=$(tools/py tools/merge_message.py --list <"$LOG.title")
+  if [[ -z $tripping ]]; then pass "$1"; else fail "$1 (sent: $(cat "$LOG.title"))"; fi
+}
+run_script "STUB_BODY=Closes #12${nl}ADR: [74]($adr_url) and $adr_url"
+exited "a 150-character ADR blob link: merged" 0
+sent_is "the ADR blob link is sent as its backticked path" "Closes #12${nl}ADR: 74 (\`$adr_path\`) and \`$adr_path\`"
+sent_has_no_tripping_url "the sent message has no tripping URL (ADR link)"
+run_script "STUB_BODY=Closes #12${nl}Clip https://example.com/m/$run80.mp4 end"
+sent_is "a URL with an 80-character run is removed" "Closes #12${nl}Clip  end"
+sent_has_no_tripping_url "the sent message has no tripping URL (long run)"
+run_script "STUB_BODY=Closes #12${nl}[spec]($short_url) https://example.com/a?b=c"
+sent_is "short URLs are kept" "Closes #12${nl}[spec]($short_url) https://example.com/a?b=c"
+run_script "STUB_TITLE=Fix $adr_url"
+if [[ $(cat "$LOG.title") == "Fix \`$adr_path\` (#7)" ]]; then pass "a tripping URL in the title is rewritten"; else fail "a tripping URL in the title is rewritten (sent: $(cat "$LOG.title"))"; fi
+run_script "STUB_TITLE=Fix https://example.com/m/$run80"
+sent_title_has_no_tripping_url "the sent title has no tripping URL"
+run_check "STUB_BODY=Closes #12${nl}ADR $adr_url"
+exited "--check with a long URL still passes" 0
+printed "--check warns about a long URL" "WARNING: the title or body holds 1 URL(s) the merge proxy refuses"
+printed "--check says the merge rewrites it" "the merge rewrites them in the commit message"
+run_check STUB_BODY="Closes #12${nl}[spec]($short_url)"
+if [[ $out == *"merge proxy refuses"* ]]; then fail "--check is quiet about a short URL"; else pass "--check is quiet about a short URL"; fi
 
 # Roadmap script missing on main: warn, still succeed.
 run_script STUB_ROADMAP_PRESENT=0
@@ -806,7 +896,7 @@ fi
 # mark runs the merge gate's closing-reference, demo and map checks (tools/lib/pr-body-checks.sh), and never waits for CI.
 SCRIPT=$mark run_script STUB_SHA=def456 STUB_REMOTE_SHA=abc123
 exited "mark refuses a head that lags the pushed branch" 1
-printed "mark names both shas and the fix" "head def456 on GitHub but origin/12-some-slug is at abc123 (wait, or close and reopen the PR)"
+printed "mark names both shas and the fix" "head def456 on GitHub but origin/12-some-slug is at abc123 (wait and retry)"
 not_logged "mark stale head refused before commenting" "^gh api -X POST"
 SCRIPT=$mark run_script STUB_REMOTE_SHA=
 exited "mark refuses a branch missing on origin" 1

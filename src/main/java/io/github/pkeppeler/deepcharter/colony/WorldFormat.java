@@ -29,14 +29,13 @@ public final class WorldFormat extends SavedData {
 
     /**
      * The world format this build makes and runs. 1 is the format of a world whose overworld is the 384-tall surface with the layer
-     * dimensions beside it; #803 raises it to 2 for the 2352-tall campaign overworld (ADR 0059). A world with a colony and a lower
+     * dimensions beside it; 2 is the format of the 2352-tall campaign overworld (#803, ADR 0059). A world with a colony and a lower
      * number is refused.
      */
-    public static final int CURRENT = 1;
+    public static final int CURRENT = 2;
 
     /**
-     * The format of a world with no stamp: every world made before the stamp existed. It is also the format that {@link #CURRENT}
-     * has until #803, so those worlds are not refused before they cannot be played.
+     * The format of a world with no stamp: every world made before the stamp existed. Those worlds are format 1, so they are refused.
      */
     public static final int LEGACY = 1;
 

@@ -75,3 +75,7 @@ The stamp that the Decision names is the saved record `colony/WorldFormat`, unde
 
 - **Throw from the server's start in singleplayer.** Rejected: it is a crash report, and the client's world-load loop waits for a ready server.
 - **Stop the integrated server and show the screen from the client.** Rejected: the server's start continues through `initServer` after a stop, so it generates the spawn chunks first, and the client loop waits until it is ready.
+
+## Amended, 2026-11-23 (#1111): the bands are not final
+
+The bands fix the overworld, the first dimension of a stack, not the whole game. Depth continues in deep dimensions below y -2032, and a layer can span two dimensions ([ADR 0085](0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). The clause of item 7 of the cutover list that deletes the layer types with the layer dimensions no longer applies (the deletion of the test dimension, #761, stands): the layer dimensions and their types stay as the base of the seam. The surface stays at y -64 to 319.

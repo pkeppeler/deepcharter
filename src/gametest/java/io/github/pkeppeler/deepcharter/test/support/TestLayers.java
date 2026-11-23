@@ -1,9 +1,12 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -16,21 +19,37 @@ import net.minecraft.world.phys.Vec3;
  * number ({@link LayerChain#SURFACE} for the surface); a local Y is a height inside that layer. Tests never name
  * {@code LayerChain.dimension} or a layer's Y themselves ({@code checkFixedPosGate}), so a change in how layers are laid out
  * edits this class only. {@code SURFACE} positions are in the flat test overworld; GameTests reach it through the helper's level.
+ *
+ * <p>A layer is a Y band of the campaign level (ADR 0059): the overworld when its type is the campaign type, otherwise
+ * {@code deepcharter:campaign_sample}, the test data pack's copy of it. A layer never resolves to a layer dimension; {@link #level}
+ * fails if it would.
  */
 public final class TestLayers {
     /** The surface, the overworld of the chain. */
     public static final int SURFACE = LayerChain.SURFACE;
 
+    /** The campaign world's test dimension, which the data pack adds to every world. */
+    private static final ResourceKey<Level> SAMPLE =
+            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "campaign_sample"));
+
     private TestLayers() {}
 
-    /** The level key of {@code layer}, for comparing with a {@code level.dimension()} or passing to a teleport. */
-    public static ResourceKey<Level> dimension(int layer) {
-        return LayerChain.dimension(layer);
+    /** The level key that holds {@code layer} on {@code server}: the overworld for the surface, the campaign level otherwise. */
+    public static ResourceKey<Level> dimension(MinecraftServer server, int layer) {
+        if (layer == SURFACE) {
+            return Level.OVERWORLD;
+        }
+        return LayerChain.isCampaign(server.overworld()) ? Level.OVERWORLD : SAMPLE;
     }
 
-    /** The server's level for {@code layer}; fails, naming the dimension, when the server has none. */
+    /** The server's level for {@code layer}: the overworld for the surface, the campaign level otherwise. Never a layer dimension. */
     public static ServerLevel level(MinecraftServer server, int layer) {
-        return ClientLight.serverLevel(server, dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(server, dimension(server, layer));
+        if (layer != SURFACE && !LayerChain.isCampaign(level)) {
+            throw new IllegalStateException("layer " + layer + " resolved to "
+                    + level.dimension().identifier() + ", which is not a campaign level");
+        }
+        return level;
     }
 
     /** The level for {@code layer} of the server running {@code helper}'s test. */
@@ -38,13 +57,23 @@ public final class TestLayers {
         return level(helper.getLevel().getServer(), layer);
     }
 
-    /** The band of {@code layer} in {@code level}, which must be the level that holds it. */
+    /**
+     * The band of {@code layer} in {@code level}, which must be the level that holds it: a campaign level for a layer, the overworld for
+     * the surface (the whole level, unless it is a campaign level).
+     */
     public static LayerChain.Band band(Level level, int layer) {
-        if (!level.dimension().equals(dimension(layer))) {
-            throw new IllegalArgumentException(
-                    "level " + level.dimension() + " does not hold layer " + layer + " (" + dimension(layer) + ")");
+        if (layer == SURFACE && !LayerChain.isCampaign(level)) {
+            if (!level.dimension().equals(Level.OVERWORLD)) {
+                throw new IllegalArgumentException("level " + level.dimension() + " is not the overworld");
+            }
+            return new LayerChain.Band(SURFACE, level.getMinY(), level.getHeight());
         }
-        return new LayerChain.Band(layer, level.getMinY(), level.getHeight());
+        if (!LayerChain.isCampaign(level)) {
+            throw new IllegalArgumentException(
+                    "level " + level.dimension() + " does not hold layer " + layer + ": it is not a campaign level");
+        }
+        CampaignBands.Band band = CampaignBands.ofLayer(layer);
+        return new LayerChain.Band(layer, band.minY(), band.height());
     }
 
     /** The band of {@code layer} in the server's level for it. */
@@ -54,7 +83,9 @@ public final class TestLayers {
 
     /** True when block position {@code pos} of {@code level} is in {@code layer}. */
     public static boolean isIn(Level level, BlockPos pos, int layer) {
-        return level.dimension().equals(dimension(layer)) && inBand(band(level, layer), pos.getY());
+        boolean holds = LayerChain.isCampaign(level)
+                || (layer == SURFACE && level.dimension().equals(Level.OVERWORLD));
+        return holds && inBand(band(level, layer), pos.getY());
     }
 
     private static boolean inBand(LayerChain.Band band, int y) {
@@ -71,14 +102,14 @@ public final class TestLayers {
         return client.player != null && isIn(client.player, layer);
     }
 
-    /** The world Y of {@code localY} in {@code layer}. */
+    /** The world Y of {@code localY} in {@code layer}: the band's lowest block plus {@code localY}; the surface keeps its own Ys. */
     public static int worldY(int layer, int localY) {
-        return localY;
+        return layer == SURFACE ? localY : CampaignBands.layer(layer).minY() + localY;
     }
 
     /** The world Y of a fractional {@code localY} in {@code layer}. */
     public static double worldY(int layer, double localY) {
-        return localY;
+        return layer == SURFACE ? localY : CampaignBands.layer(layer).minY() + localY;
     }
 
     /** The world position of ({@code x}, {@code localY}, {@code z}) in {@code layer}. */

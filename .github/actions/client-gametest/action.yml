@@ -1,7 +1,7 @@
 # Runs the client GameTests headless on a Linux runner. Shared by client-tests.yml (all
 # tests) and record-evidence.yml (one evidence scenario). The caller checks out the repo
 # first; this action does the rest. Composite steps take no timeout, so the run step
-# enforces its own 22 minute deadline.
+# enforces its own deadline.
 name: Client GameTests
 description: Headless client GameTests on a Linux runner, optionally selecting one evidence scenario.
 
@@ -12,6 +12,14 @@ inputs:
     default: ""
   client-tests:
     description: Client test class filter (-PclientTests). Empty runs every client test. For an evidence scenario, its class (tools/record-evidence.sh --print-class).
+    required: false
+    default: ""
+  client-shard:
+    description: Shard i/n of the client classes (-PclientShard, balanced by gradle/client-test-weights.txt), so parallel jobs split the suite. Empty runs them all.
+    required: false
+    default: ""
+  artifact-suffix:
+    description: Appended to the screenshots artifact name, so parallel shards do not collide.
     required: false
     default: ""
 
@@ -61,11 +69,17 @@ runs:
         DEEPCHARTER_EVIDENCE: ${{ inputs.evidence-scenario }}
         DEEPCHARTER_EVIDENCE_DIR: ${{ github.workspace }}/build/evidence
         CLIENT_TESTS: ${{ inputs.client-tests }}
+        CLIENT_SHARD: ${{ inputs.client-shard }}
+        # The live heap by class at the start of each test class (HeapHistogram): the leak shows as the type that grows.
+        DEEPCHARTER_CLIENT_HEAP_HISTOGRAM: ${{ github.workspace }}/build/client-heap
       run: |
         log="$RUNNER_TEMP/client-gametest.log"
         filter=()
         if [ -n "$CLIENT_TESTS" ]; then
           filter=("-PclientTests=$CLIENT_TESTS")
+        fi
+        if [ -n "$CLIENT_SHARD" ]; then
+          filter+=("-PclientShard=$CLIENT_SHARD")
         fi
         ./gradlew runClientGameTest -x deleteGameTestRunDir "${filter[@]}" > "$log" 2>&1 &
         gradle_pid=$!
@@ -85,10 +99,12 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
-        # A passing run takes about 14 minutes. $SECONDS starts after setup, and both callers set
-        # timeout-minutes: 30, so 22 minutes keeps at least 5 minutes of job-limit margin for
-        # setup, the post steps and the stop. Raise only together with both job limits.
-        max_seconds=1320
+        # One shard of three runs a third of the suite: the tests took 30 minutes whole on #841's tall world (run
+        # 45122099960), so a shard takes about 10 minutes of tests plus 3 of build and client start-up, all inside
+        # this deadline. $SECONDS starts after the dependency resolve; the job limits (30 minutes for a shard, 60
+        # for an evidence recording) leave room for setup, the post steps and the stop. Raise only together with
+        # the job limits.
+        max_seconds=1200
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then
             stop_gradle "Minecraft could not create a graphics backend"
@@ -112,12 +128,45 @@ runs:
           echo "::error::The client did not use the OpenGL backend that options.txt asks for"
           exit 1
         fi
+    # The heap the client JVM used, from its GC log (gradle/run-jvm.gradle.kts): the largest occupancy before any collection is the
+    # peak; the live set is the largest occupancy after a Pause Full only, because a young pause leaves garbage in the heap. The
+    # per-class histograms force full collections, so the log has them. Size -Xmx for the client run from these.
+    - name: Client heap peak
+      if: always()
+      shell: bash
+      run: |
+        gclog=build/client-gc.log
+        if [ ! -f "$gclog" ]; then
+          echo "No $gclog: the client JVM never started."
+          exit 0
+        fi
+        peak=$(grep -oE '[0-9]+[MG]->[0-9]+[MG]\([0-9]+[MG]\)' "$gclog" | awk -F'[>(]' '
+          function mb(v) { n = v + 0; return v ~ /G$/ ? n * 1024 : n }
+          { sub(/-$/, "", $1); before = mb($1); if (before > peak) peak = before }
+          END { printf "%d", peak }')
+        live=$(grep 'Pause Full' "$gclog" | grep -oE '[0-9]+[MG]->[0-9]+[MG]\([0-9]+[MG]\)' | awk -F'[>(]' '
+          function mb(v) { n = v + 0; return v ~ /G$/ ? n * 1024 : n }
+          { after = mb($2); if (after > live) live = after; fulls++ }
+          END { if (fulls) printf "largest live set after a full collection %d MB, %d full collections", live, fulls; else printf "no full collection logged" }')
+        summary="peak before a collection $peak MB, $live"
+        echo "::notice title=Client heap::$summary"
+        echo "Client heap: $summary" >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload the client GC log
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: client-gc-log${{ inputs.artifact-suffix }}
+        path: |
+          build/client-gc.log
+          build/client-heap
+        if-no-files-found: ignore
+        retention-days: 7
     # The screenshots the tests took (the failing frame is the last one), for a failure that only the runner shows.
     - name: Upload the test screenshots
       if: failure()
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
-        name: client-gametest-screenshots
+        name: client-gametest-screenshots${{ inputs.artifact-suffix }}
         path: build/run/clientGameTest/screenshots
         if-no-files-found: ignore
         retention-days: 7
