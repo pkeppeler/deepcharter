@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -12,6 +13,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +21,6 @@ import java.util.Optional;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.Direction;
@@ -37,10 +38,11 @@ public final class PodStatusHud {
 
     public static void init() {
         HudElementRegistry.addLast(ID, PodStatusHud::extract);
+        HudKeepClear.register(PodStatusHud::keepClear);
     }
 
     /**
-     * The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has and whether the pod is stranded. The hull is shown as points out of
+     * The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has, and whether the pod is stranded and how long until the Company's winch crew hauls it home (#963). The hull is shown as points out of
      * the most the pod's parts allow: the client works the maximum out itself, from the synced component state
      * ({@link io.github.pkeppeler.deepcharter.pod.PodComponents#STATE}).
      */
@@ -67,6 +69,11 @@ public final class PodStatusHud {
         }
         if (pod.stranded()) {
             lines.add(new Line(Component.translatable("hud.deepcharter.pod.stranded"), look.podStatusColor()));
+            CompanyRecovery.secondsLeft(pod)
+                    .ifPresent(seconds -> lines.add(new Line(
+                            Component.translatable(
+                                    "hud.deepcharter.pod.recovery", seconds, CompanyRecovery.feeFor(pod)),
+                            look.podStatusColor())));
         }
         return lines;
     }
@@ -222,6 +229,7 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_spent", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.recovery", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.crust_ahead", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.crust_in", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_waits", Kind.ALERT),
@@ -267,21 +275,53 @@ public final class PodStatusHud {
         return readout;
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-        Minecraft client = Minecraft.getInstance();
+    /** The readout as it is drawn: its lines and the box they cover, top left. */
+    private record Block(List<Line> lines, HudKeepClear.Rect box) {}
+
+    /**
+     * The plain readout on a GUI {@code guiWidth} x {@code guiHeight}: a pilot's pod and no cockpit on this GUI; empty otherwise. What is
+     * drawn and what is kept clear are this one box.
+     */
+    private static Optional<Block> block(Minecraft client, int guiWidth, int guiHeight) {
         LocalPlayer player = client.player;
         if (player == null
                 || !(player.getVehicle() instanceof PodEntity pod)
                 || !PodSeat.showsPodStatus(pod, player)
-                || CockpitHud.seated(client).isPresent()) {
+                || CockpitHud.seated(client, guiWidth, guiHeight).isPresent()) {
+            return Optional.empty();
+        }
+        HudLook look = HudLook.current();
+        List<Line> lines = readout(player, pod);
+        int widest = lines.stream()
+                .mapToInt(line -> client.font.width(line.text()))
+                .max()
+                .orElse(0);
+        int pitch = client.font.lineHeight + look.podStatusLineGap();
+        return Optional.of(new Block(
+                lines,
+                new HudKeepClear.Rect(
+                        "pod readout",
+                        look.podStatusMargin(),
+                        look.podStatusMargin(),
+                        widest,
+                        lines.size() * pitch - look.podStatusLineGap())));
+    }
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        block(client, guiWidth, guiHeight).ifPresent(block -> into.add(block.box()));
+    }
+
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+        Minecraft client = Minecraft.getInstance();
+        Optional<Block> block = block(client, graphics.guiWidth(), graphics.guiHeight());
+        if (block.isEmpty()) {
             return;
         }
-        Font font = client.font;
         HudLook look = HudLook.current();
-        int y = look.podStatusMargin();
-        for (Line line : readout(player, pod)) {
-            graphics.text(font, line.text(), look.podStatusMargin(), y, line.color());
-            y += font.lineHeight + look.podStatusLineGap();
+        int y = block.get().box().y();
+        for (Line line : block.get().lines()) {
+            graphics.text(client.font, line.text(), block.get().box().x(), y, line.color());
+            y += client.font.lineHeight + look.podStatusLineGap();
         }
     }
 }

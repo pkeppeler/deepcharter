@@ -17,5 +17,6 @@ public final class ColonyInit {
         ColonyDisplays.init();
         ColonyPhonograph.init();
         ColonyRations.init();
+        ColonyReadout.init();
     }
 }

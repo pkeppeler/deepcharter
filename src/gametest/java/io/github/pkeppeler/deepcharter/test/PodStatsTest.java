@@ -546,7 +546,7 @@ public class PodStatsTest {
     @GameTest(maxTicks = FAR_TICKS)
     public void halvedTicksPerHardnessBoresInAboutHalfTheTicks(GameTestHelper helper) {
         int x = 4000;
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - 3, x + 8, floor - 8, floor - 1, Z - 3, Z + 4, Blocks.STONE);
         RoomCarver.carve(level, x - 3, x + 8, floor, floor + 10, Z - 3, Z + 4, Blocks.AIR);
@@ -598,8 +598,10 @@ public class PodStatsTest {
     private static void borePodThroughCrust(
             GameTestHelper helper, int x, float hull, float crustDamage, Consumer<PodEntity> check) {
         ServerLevel one = TestLayers.level(helper, 1);
-        RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
+        int floor = TestLayers.band(one, 1).minY();
+        RoomCarver.carve(one, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(one, x - 2, x + 2, floor + 1, floor + 8, Z - 2, Z + 2, Blocks.AIR);
+        RoomCarver.carvePocketBelow(one, 1, x - 2, x + 2, Z - 2, Z + 2);
         UUID[] id = new UUID[1];
         FarRig rig = FarRig.await(helper, one, TestLayers.vec(1, x, 1, Z), "crust-stats-" + x, pod -> {
             id[0] = pod.getUUID();
@@ -641,8 +643,9 @@ public class PodStatsTest {
         // cross.
         int x = 4128;
         ServerLevel one = TestLayers.level(helper, 1);
-        RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
+        int floor = TestLayers.band(one, 1).minY();
+        RoomCarver.carve(one, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(one, x - 2, x + 2, floor + 1, floor + 8, Z - 2, Z + 2, Blocks.AIR);
         FarRig rig = FarRig.await(helper, one, TestLayers.vec(1, x, 1, Z), "crust-stats-" + x, pod -> {
             OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(20f));
             pod.setHull(15f);

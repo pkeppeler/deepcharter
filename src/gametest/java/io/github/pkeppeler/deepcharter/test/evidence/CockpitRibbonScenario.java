@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -19,7 +20,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -33,7 +33,9 @@ import net.minecraft.world.level.block.Blocks;
  * Evidence scenario "cockpit-ribbon" for #247: the Ribbon, the cockpit HUD the user picked, from the seat of a Mole with a scanner, in sealed stone rooms (never the void). At GUI
  * scale 2 it shoots calm, low fuel, hull burning (lava under the pod), stranded and burning together, a game message on the action bar, and deep (the last layer's floor); calm
  * at GUI scale 1 and at GUI scale 4 (on a 1920 x 1080 window, the least window that makes a GUI scale of 4); and once on foot beside the pod, where the vanilla HUD is back. A
- * short drive down a long room is the GIF. Stills are named {@code ribbon-<state>}.
+ * short drive down a long room is the GIF. Stills are named {@code ribbon-<state>}. With a step popup (#1030) it also shoots the calm and the burning cockpit and the pilot on foot
+ * with the popup of a finished step, which sits clear of the lamps and the gauges, as {@code ribbon-step-toast}, {@code ribbon-burning-step-toast} and
+ * {@code ribbon-on-foot-step-toast}.
  */
 public class CockpitRibbonScenario extends EvidenceScenario {
     private static final int X = 5000;
@@ -63,6 +65,9 @@ public class CockpitRibbonScenario extends EvidenceScenario {
     private static final int BIG_WINDOW_WIDTH = 1920;
     private static final int BIG_WINDOW_HEIGHT = 1080;
     private static final int WINDOW_SETTLE_TICKS = 20;
+    private static final int TOAST_TICKS = 40;
+    /** The step that fires on arriving at the Deep Claim floor, where the hull lamp matters most. */
+    private static final String STEP_TOAST_KEY = "deepcharter.handbook.directive.staying_safe.reach_deep_claim";
 
     @Override
     protected String name() {
@@ -81,18 +86,15 @@ public class CockpitRibbonScenario extends EvidenceScenario {
             EvidencePins.handsHidden = true;
             try {
                 Room upper = singleplayer.getServer().computeOnServer(server -> {
-                    var type = server.registryAccess()
-                            .lookupOrThrow(Registries.DIMENSION_TYPE)
-                            .getValueOrThrow(LayerChain.type(1));
-                    return new Room(TestLayers.dimension(1), type.minY() + type.height() - UPPER_FLOOR_BELOW_TOP);
+                    LayerChain.Band band = TestLayers.band(server, 1);
+                    return new Room(
+                            TestLayers.dimension(server, 1), band.minY() + band.height() - UPPER_FLOOR_BELOW_TOP);
                 });
                 Room deep = singleplayer.getServer().computeOnServer(server -> {
-                    int last = LayerChain.count(server.registryAccess());
-                    int minY = server.registryAccess()
-                            .lookupOrThrow(Registries.DIMENSION_TYPE)
-                            .getValueOrThrow(LayerChain.type(last))
-                            .minY();
-                    return new Room(TestLayers.dimension(last), minY + DEEP_FLOOR_ABOVE_MIN);
+                    int last = LayerChain.layerCount(TestLayers.level(server, 1));
+                    return new Room(
+                            TestLayers.dimension(server, last),
+                            TestLayers.band(server, last).minY() + DEEP_FLOOR_ABOVE_MIN);
                 });
                 singleplayer.getServer().runOnServer(server -> {
                     buildRoom(server, upper, ROOM_RADIUS, ROOM_RADIUS);
@@ -121,6 +123,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
             pod.setFuel(CALM_FUEL);
         });
         shoot(context, "ribbon-calm");
+        shootWithStepToast(context, "ribbon-step-toast");
         singleplayer.getServer().runOnServer(server -> pod.setFuel(LOW_FUEL));
         shoot(context, "ribbon-low-fuel");
         singleplayer.getServer().runOnServer(server -> {
@@ -132,6 +135,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                 "the pod's hull burning on the client",
                 client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown && shown.hullBurning());
         shoot(context, "ribbon-burning");
+        shootWithStepToast(context, "ribbon-burning-step-toast");
         singleplayer.getServer().runOnServer(server -> {
             pod.setFuel(0f);
             pod.setStranded(true);
@@ -229,6 +233,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                 "the cockpit gone on foot",
                 client -> CockpitHud.seated(client).isEmpty());
         shoot(context, "ribbon-on-foot");
+        shootWithStepToast(context, "ribbon-on-foot-step-toast");
     }
 
     private PodEntity enter(ClientGameTestContext context, TestSingleplayerContext singleplayer, Room room) {
@@ -307,6 +312,16 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                 level.setBlock(new BlockPos(X + x, floor + 4, Z + z), Blocks.GLOWSTONE.defaultBlockState(), 3);
             }
         }
+    }
+
+    /** The step popup (#1030) of a directive finished, shown over the state the last {@link #shoot} left: a still, then the popup cleared. */
+    private void shootWithStepToast(ClientGameTestContext context, String still) {
+        context.runOnClient(
+                client -> client.gui.toastManager().addToast(StepToast.of(Component.translatable(STEP_TOAST_KEY))));
+        context.waitTicks(
+                TOAST_TICKS); // tick-wait: the popup slides in over wall time, as the quest map scenario's popup does
+        screenshot(context, still);
+        context.runOnClient(client -> client.gui.toastManager().clear());
     }
 
     private void shoot(ClientGameTestContext context, String still) {
