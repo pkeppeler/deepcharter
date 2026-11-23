@@ -28,6 +28,10 @@ import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.IncidentReportPayload;
+import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability;
+import io.github.pkeppeler.deepcharter.outpost.OutpostRisks;
+import io.github.pkeppeler.deepcharter.outpost.RatingAxis;
+import io.github.pkeppeler.deepcharter.outpost.Ratings;
 import io.github.pkeppeler.deepcharter.outpost.VisitCause;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
@@ -53,6 +57,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -516,6 +521,21 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                 }));
             }
             cases.add(new Case(id + " online", () -> TerminalScreens.create(online), variants));
+            if (type == TerminalTypes.FUEL_PUMP || type == TerminalTypes.ORE_PROCESSOR) {
+                // The outposts' two terminals draw a risk line under the header: the longest it can say, a whole shell
+                // short on all four axes.
+                TerminalView risky = new TerminalView(
+                        POS,
+                        type.id(),
+                        true,
+                        true,
+                        online.parts(),
+                        online.feature(),
+                        OutpostRisks.lines(
+                                Optional.of(new Ratings(5, 5, 5, 5)),
+                                new OutpostHabitability.Status(false, 442, 442, EnumSet.allOf(RatingAxis.class))));
+                cases.add(new Case(id + " online, longest risk line", () -> TerminalScreens.create(risky)));
+            }
         }
         return cases;
     }

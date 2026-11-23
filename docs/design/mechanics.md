@@ -2107,3 +2107,51 @@ A default build is not harder than on main: nothing changes for a pod with no na
 **Knobs.** `RatingTuning.DEFAULT` (the layer rows and the highest tag level), the tags in `data/deepcharter/tags/block/rating/`.
 
 **Open questions.** What layer 3 asks, which is its worldgen's to say.
+
+## Suit timer and habitable outposts (#993, A)
+
+**Problem.** SPEC section 9 gives a person on foot a suit timer and section 11 says an outpost below its depth's rating is uninhabitable: "heat leaks in, water seeps in, the suit timer keeps running inside". Until now nothing on foot read the depth and no outpost said whether its shell held. The model is ADR 0083 (`docs/adr/0083-*.md`).
+
+**Ladder.**
+1. **By hand.** Time every trip, retreat before the amber line, patch a hall's open pit and hatch with slag brick, and read the placement readout and the risk line to see what is short.
+2. **A suit track and an air canister** raise what the suit holds and top the reserve up in the field ([#1064](https://github.com/pkeppeler/deepcharter/issues/1064), not in this change). The stock suit is rated (0,0,0), as a block is, so a track is a step in every row.
+3. **Mastery.** Rated halls at every depth, and the top suit tiers: the timer stops being a trip's limit. The deeper-floor kit ([#1063](https://github.com/pkeppeler/deepcharter/issues/1063)) is the answer to a hall that does not hold.
+
+**The suit.** A reserve of 180 suit-seconds, kept for each player across logins, levels and crossings (a versioned attachment, `deepcharter:suit`). It pays only on foot (alive, not creative or spectator, not seated in a pod), and only where the depth's row asks something (`DepthRatings.requiredAt`). A depth with no row, the campaign's unbuilt depth, reads as (5,5,5). The surface, layers 1 and 2 and any level outside the chain ask nothing, so the suit is inert there: **the default build is no harder than before**, in the unpacked and the early game alike. A second on foot costs `0.5 + 0.5 * (heat the depth asks over the suit's) + 0.5 * (pressure over) + [submerged] 1.0 * (flooding over)`, summed so that every suit-track step shows. Quake is ignored. Submerged, or seeping inside a hall that is short on flooding, is wet.
+
+**Rest.** A powered pod seat or a habitable hall gives back 15 a second (full in 12 s). A pod with no power holds the reserve. Under water with reserve left the air holds at full; at zero vanilla drowning resumes.
+
+**Warnings and harm.** An amber line and a beep at 30 s left, a red, blinking line and a faster beep at 10 s, "SUIT BREACHED" at zero. A breach hurts 2 hit points every 40 ticks with a new damage type (`deepcharter:suit_exposure`, which armour does not cut and difficulty does not scale, so it runs on Peaceful too) where the depth still asks something. The first drain says once, for each player and across deaths, what is short: "SUIT RATING EXCEEDED: HEAT, PRESSURE". A respawn refills the suit.
+
+**Outposts.** `OutpostHabitability.of(level, outpost)` reads the hall's shell, its 442 cells less the 405 inside, against the row at the hall's middle: habitable when a row exists and every block of the shell meets it. A gap (air or a fluid) is not judged; it is the creature rule's exposure ([#926](https://github.com/pkeppeler/deepcharter/issues/926)), which later replaces the box with its flood fill. Inside a hall that holds, the suit refills. Inside one that does not it runs at `leakShare`, half the outside rate however many blocks fall short, so an unrated hall doubles a person's time, and dripping water shows the seep. No fluid is placed and nothing is destroyed. The kit's hall leaves its crust pit and rock hatch open, so against a row of heat 2 it holds only once they are patched with slag brick.
+
+**The risk line.** One line under the header of the outpost's fuel pump and sell terminal: "SHELL HOLDS: SUIT REFILLS HERE" in phosphor, "SHELL LEAKS: heat, pressure (14 blocks): SUIT RUNS AT HALF" in amber, or "NOTHING IS RATED AT THIS DEPTH". Hidden where the depth asks nothing, so today it shows only in the unbuilt depth. A guest sees the line the owner does.
+
+**Pacing in player units (`SuitPacingTest` prints `[suit-pacing]` lines; whole seconds until the reserve is spent).**
+
+| Case | Result | Measured or modelled |
+|---|---|---|
+| Unbuilt depth, on foot, dry (5.5 a second) | 33 s | measured |
+| Unbuilt depth, submerged (10.5 a second) | 18 s | measured |
+| Unbuilt depth, inside an unrated hall (2.75 a second) | 66 s | measured |
+| Refill from empty in a powered pod seat | 12 s | measured |
+| Zero to death, full health (10 hits, 40 ticks apart) | 20 s | measured |
+| A row (1,1,1), dry | 120 s | modelled |
+| A row (2,2,2), dry | 72 s | modelled |
+| A row (2,3,3), submerged | 30 s | modelled |
+| A row (5,3,0), dry | 40 s | modelled |
+
+The test fails if a layer-3 row ever leaves a stock suit under 60 s dry.
+
+**Decisions (A).**
+- The environment is the depth's row, and the suit is rated like a block: one table for what a block and a person must hold.
+- Costs are summed, not maxed; a hall leaks at half, whatever the number of bad blocks; the capacity is 180 s.
+- The suit is inert in layers 1 and 2 and on the surface, and its breach is harmless where the depth asks nothing. The only place this is harder than before is the unbuilt depth below layer 2, which no early run reaches: the unpacked and the early-game columns are unchanged.
+- "Water seeps in" is particles and the drain, with no real water: placing fluid would delete a player's blocks.
+- Flooding is answered by the oxygen and toxins track (#1064), so the SPEC's four suit tracks stay four.
+- The air holds only where the suit is active, so a swim at the surface is as it was.
+
+**Knobs.** `SuitTuning.DEFAULT` (capacity, base and per-level costs, the stock suit's ratings, the uncharted row, `leakShare`, refill, warning times, breach damage and cadence), `RatingTuning.DEFAULT` (the rows), `theme/suit.json` (the gauge).
+
+**Open questions.** What layer 3 asks (its worldgen's to say, and this test holds it to a minute); whether a hall's leak should grow with its worst axis rather than stay a flat share.
+

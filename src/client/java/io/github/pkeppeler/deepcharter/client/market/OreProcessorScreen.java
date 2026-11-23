@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.market;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalNoticeLine;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
@@ -362,8 +363,14 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
         return contentTop(MARGIN)
                 + font.lineHeight
                 + 14
+                + noticeHeight()
                 + introLines * (font.lineHeight + CrtTuning.current().lineSpacing())
                 + GAP * 2;
+    }
+
+    /** The room the view's risk line takes under the header, which everything below it moves down by. */
+    private int noticeHeight() {
+        return TerminalNoticeLine.height(font, view, contentWidth(MARGIN));
     }
 
     private int rightColumn() {
@@ -371,12 +378,19 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     }
 
     private int pricesBottom() {
-        return accountTop() + OreType.values().length * (font.lineHeight + 2);
+        return accountTop() + OreType.values().length * priceStep();
+    }
+
+    /** The pitch of the price lines: a risk line takes room from the right column, which has none to spare, so they close up by a pixel. */
+    private int priceStep() {
+        return font.lineHeight + (noticeHeight() > 0 ? 1 : 2);
     }
 
     /** The y of the work order heading, under the prices. */
     private int headingTop() {
-        return pricesBottom() + GAP * 2;
+        // A risk line pushes the right column down, which has no room to spare: the heading closes up under the prices
+        // by what the line took.
+        return pricesBottom() + (noticeHeight() > 0 ? GAP : GAP * 2);
     }
 
     private Optional<WorkOrdersView> orders() {
@@ -499,11 +513,12 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
             super.extractRenderState(graphics, mouseX, mouseY, partialTick);
             return;
         }
+        TerminalNoticeLine.draw(graphics, font, view, contentLeft(MARGIN), contentTop(MARGIN), contentWidth(MARGIN));
         drawTypewriter(
                 graphics,
                 typewriter,
                 contentLeft(MARGIN),
-                contentTop(MARGIN) + font.lineHeight + 14,
+                contentTop(MARGIN) + font.lineHeight + 14 + noticeHeight(),
                 contentWidth(MARGIN));
         int top = accountTop();
         CrtDraw.glowText(graphics, font, accountLine(), contentLeft(MARGIN), top, tuning.phosphorColor());
@@ -523,7 +538,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
                                 OutpostRates.orePrice(level, view.pos().getY(), ore))
                         .getString();
                 CrtDraw.glowText(graphics, font, price, x, y, PanelLook.dimText(tuning.dimColor()));
-                y += font.lineHeight + 2;
+                y += priceStep();
             }
             // The rows are buttons; only the heading (or the reason there are none) is text.
             List<String> lines = orderLines();
