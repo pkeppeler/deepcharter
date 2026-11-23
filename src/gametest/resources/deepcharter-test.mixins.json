@@ -3,26 +3,28 @@
   "package": "io.github.pkeppeler.deepcharter.test.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BatchKeyMixin",
     "ChunkHolderLightSuppressMixin",
     "ChunkMapAccess",
     "ChunkMapSaveMixin",
     "ChunkMapUnloadMixin",
+    "GameTestBatchFactoryMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
-    "LightSyncSendMixin"
+    "LightSyncSendMixin",
+    "ServerLevelForcedMixin"
   ],
   "client": [
-    "BreachEffectsMixin",
     "CardinalLightingMixin",
     "ClientGameTestImplMixin",
+    "ClientPacketListenerMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudMixin",
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
-    "SpriteAnimationStateMixin",
-    "TransmissionOverlayMixin"
+    "SpriteAnimationStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1
