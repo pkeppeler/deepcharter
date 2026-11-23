@@ -943,12 +943,7 @@ public class RetainedTest {
     }
 
     /** A sealed dark room in {@code layer}'s band, with its column. */
-    private record DarkRoom(int layer, ServerLevel level, BlockPos column) {
-        /** The block light the room's blocks give its air. */
-        BlockLightOracle.Field expectedLight() {
-            return BlockLightOracle.expected(level, airOf(column));
-        }
-    }
+    private record DarkRoom(int layer, ServerLevel level, BlockPos column) {}
 
     /**
      * In a dark room of layer 1 and of layer 2 a figure may appear; beside a light and over air it may not;
@@ -972,7 +967,7 @@ public class RetainedTest {
         List<BlockLightOracle.Field> darkness = new ArrayList<>();
         Runnable built = () -> {
             if (++ready[0] == 3) {
-                rooms.forEach(room -> darkness.add(room.expectedLight()));
+                rooms.forEach(room -> darkness.add(BlockLightOracle.expected(room.level(), airOf(room.column()))));
                 lightDeadline[0] = FarChunks.deadline();
             }
         };
