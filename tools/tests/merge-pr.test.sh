@@ -481,8 +481,20 @@ refusal "game path, a different template-named check failed" 'other-job ${{ matr
 client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" 'client-gametest-shard ${{ matrix.shard }}:7:cancelled')" "$game"
 run_script "${client_vars[@]}"
 exited "game path, passing shards beside a never-started cancelled matrix job merges" 0
+# Legacy (temporary, #1116): a PR whose CI ran the single pre-#1079 `client-gametest` job has no shard runs; that job
+# itself recorded merged-main, as it did before sharding. The new aggregate records none, so aggregate-only is refused.
 client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success)" "$game"
-refusal "aggregate passed but no shard did" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
+run_script "${client_vars[@]}"
+exited "game path, legacy single client-gametest job with its merged-main notice merges" 0
+logged "legacy client-gametest run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/3/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
+refusal "aggregate passed, no shard and no notice" "client-gametest run 3 recorded no merged main sha" "STUB_MERGED_MAIN_3=" "${client_vars[@]}"
+refusal "legacy client-gametest merged an older main" "client-gametest run 3 merged main" "STUB_MERGED_MAIN_3=$OLD_MAIN" "STUB_DIFF=src/A.java" "${client_vars[@]}"
+# Any shard run, even a never-started template one, means the sharded workflow ran: the aggregate is not legacy.
+# shellcheck disable=SC2016 # a literal template, not an expansion
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success 'client-gametest-shard ${{ matrix.shard }}:7:cancelled')" "$game"
+refusal "aggregate passed beside only a template shard, so not legacy" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success "client-gametest-shard 1:5:failure")" "$game"
+refusal "aggregate passed beside a failed shard, so not legacy" "client-gametest-shard 1 (newest non-skipped run: failure)" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:success")" "$game"
 refusal "game path, shards passed but the aggregate never ran" "$client_msg" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" client-gametest:4:skipped)" "$game"
