@@ -9,6 +9,8 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,7 +55,7 @@ public final class BoltRoom {
 
     private BoltRoom() {}
 
-    /** A corridor starting at {@code x}; its chunk is forced, and ticks entities once {@code ready}. Roof is the row of stone over it. */
+    /** A corridor starting at {@code x}; its chunks tick entities once {@code ready}. Roof is the row of stone over it. */
     public record Corridor(ServerLevel level, int x, int length, Arrival<Boolean> ready) {
         public BlockPos floor(int along) {
             return new BlockPos(x + along, FLOOR, Z);
@@ -78,19 +80,21 @@ public final class BoltRoom {
      */
     public static Corridor corridor(GameTestHelper helper, int length, int k) {
         Corridor corridor = cut(TestLayers.level(helper, 1), length, k);
-        FarChunks.awaitEntityTicking(
-                helper,
-                corridor.level(),
-                corridor.floor(0),
-                () -> corridor.ready().set(true));
+        // Every chunk the carved bed covers, not the first alone: a test works along the whole corridor (#1083).
+        List<BlockPos> chunks = new ArrayList<>();
+        for (int chunkX = bedStart(corridor.x()) >> 4; chunkX <= bedEnd(corridor.x(), length) >> 4; chunkX++) {
+            chunks.add(new BlockPos(chunkX << 4, FLOOR, Z));
+        }
+        FarChunks.awaitAllEntityTicking(
+                helper, corridor.level(), chunks, () -> corridor.ready().set(true));
         return corridor;
     }
 
     /** As {@link #corridor}, for a test that manages its own chunk loading: {@code ready} never arrives. */
     public static Corridor cut(ServerLevel level, int length, int k) {
         int x = FIRST_X + STRIDE * k + 1;
-        int bedStart = x - BED_MARGIN;
-        int bedEnd = x + length - 1 + BED_MARGIN;
+        int bedStart = bedStart(x);
+        int bedEnd = bedEnd(x, length);
         for (Map.Entry<Integer, int[]> other : BEDS.entrySet()) {
             int[] bed = other.getValue();
             if (other.getKey() != k && bed[0] <= bedEnd && bedStart <= bed[1]) {
@@ -102,6 +106,14 @@ public final class BoltRoom {
         RoomCarver.carve(level, bedStart, bedEnd, FLOOR - 3, FLOOR + 6, Z - 3, Z + 3, Blocks.STONE);
         RoomCarver.carve(level, x, x + length - 1, FLOOR, FLOOR + 1, Z, Z, Blocks.AIR);
         return new Corridor(level, x, length, new Arrival<>("the corridor", "the far chunk ticks"));
+    }
+
+    private static int bedStart(int x) {
+        return x - BED_MARGIN;
+    }
+
+    private static int bedEnd(int x, int length) {
+        return x + length - 1 + BED_MARGIN;
     }
 
     /** A survival player on foot in the corridor, {@code along} blocks from its start, facing {@code yaw}. */
