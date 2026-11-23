@@ -14,6 +14,7 @@
   "block.deepcharter.company_horn": "Company Horn",
   "hint.deepcharter.phonograph": "Wind and play a cylinder",
   "hint.deepcharter.colony_phonograph": "Start or stop the song",
+  "hint.deepcharter.wreck_phonograph": "Hush the song, or wake it",
   "item.deepcharter.wax_cylinder": "Wax Cylinder",
   "deepcharter.phonograph.label": "%1$s, %2$s",
   "deepcharter.phonograph.rack_shut": "The rack is bolted shut.",
