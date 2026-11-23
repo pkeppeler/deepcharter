@@ -1840,6 +1840,49 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
 
+## The navigator's sonar (#988, A)
+
+**Problem.** The Prospector's second seat has been a passenger seat since #507. SPEC section 8 gives it a job: the navigator, who sees what the pilot cannot, and is loud for it. This is the first crew seat with its own tool, and the ground #924 (creature signatures) and the Sleeper's answer to noise build on.
+
+**The tool.** The navigator presses V (the ping key). The pod pays power, a ring goes out, and the scope on the navigator's screen (left edge, a round plan view, the pod at the middle and facing up) fills with echoes. The pilot's scanner and Ribbon are not touched; the scope is the one thing only the navigator sees past the headlights.
+- **Echoes are contacts of four kinds, drawn as four shapes** so they read without colour: ore (filled square), gas (hollow square), an empty cave (small dot), something that moved (cross). A tick over or under a shape says it is 2 or more blocks above or below the pod.
+- **Ambiguous on purpose.** A block echo is a 4-block cell of the world's grid, reported at its middle, so the navigator knows the neighbourhood and not the block. A cell with any ore in it is ore; else a cell with a gas pocket is gas; else a cell at least half air is a cave. Gas reads as gas only inside 12 blocks: farther off it reads as an empty cave, the SPEC's ambiguous echo, so the navigator has to get closer or listen for the hiss. A creature in the `deepcharter:sonar_echoes` entity tag returns an echo at its block: moved if it is faster than 1 block a second, else ore (a body standing still is a dense return). The tag ships empty: **until #924 fills it, nothing in the game returns a moved echo**, and the moved shape and its speed rule have no production source.
+- **Cells within 6 blocks of the pod are silent**: its own cab and bore are not a cave. Chunks that are not loaded return nothing, as the scanner shows them. A ping returns at most 32 echoes: what moves first, then ore, gas and open space, nearest first.
+- **Marks.** The navigator looks toward an echo (within 12 degrees of the look) and presses G: it goes on the HUD of everyone riding the pod as a diamond in its kind's colour with its kind and distance, at the screen's edge toward it when it is off screen or behind. A mark holds a minute and outlives the echo it came from, so the pilot flies by it after the next ping. A pod holds three; a fourth drops the oldest; G toward a marked echo (even after its echo faded) takes its mark off. A pod takes a mark at most every 5 ticks; a refused one changes nothing and syncs nothing. The server checks the seat and that the echo is on the pod's picture.
+- **Costs and refusals.** Power: a ping takes 0.4 L from the tank and never takes it under the pod's urgent-fuel reserve (6%): the navigator cannot ping the pod dry. A pod without power cannot ping. The sonar rings for 4 seconds before the next ping. Each refusal says why on the action bar.
+- **Loud.** The ping plays a sound at the pod and fires `SonarEvents.PINGED`, a noise 48 blocks wide: twice what the ping sees. **The 48-block radius is a placeholder: nothing consumes it yet**, #924 makes the Sleeper's creatures answer it and adds the distance test with its first caller.
+
+**Ladder.** By hand: ping and read, mark what the pilot should fly to or from. A part: passive listening (silent, short range; #924) and the sonar burst (#928). Mastery: the robot navigator (`robot-crew`) pings on a fixed timer and cannot stay quiet; it calls `PodSonar.ping(pod)`, which asks nothing of a seat.
+
+**What sonar reveals against the scanner.** Ore: the scanner shows ore at every tier, as a one-block slice in the pod's facing plane; sonar's ore echoes are 3D (a 24-block radius, coarse to a 4-block cell) and need no scanner part, so they reveal no ore the scanner hides, only more of it at less precision. Gas: the scanner shows gas pockets only from tier 3 (`ScannerTuning.gasTier`), and a pocket otherwise looks like stone. Sonar does reveal gas pockets, within 12 blocks, with no scanner tier. This is chosen, not matched: SPEC section 8 names gas among the navigator's echoes, it needs a Prospector with a navigator, it is ambiguous beyond 12 blocks, and it costs power and noise. It makes the Prospector's navigator a second gas counter beside the tier 3 scanner and the seep sounder; if playtests find gas trivial on a Prospector, lower `gasResolveBlocks` or make gas resolve only from the scanner's tier.
+
+**Who gets the state.** `pod_sonar` syncs to every client tracking the pod (`AttachmentSyncPredicate.all()`), not only its riders. Fabric offers `all`, `targetOnly` and `allButTarget`, and the interface is a plain `BiPredicate`, so a "riders only" predicate is one line, but it is evaluated only when tracking starts and when the value changes: a player who boards later gets nothing until the next ping or mark, and there is no public resend. A navigator who boards a pod with marks set would see none. Left as `all()`; the data is a few dozen bytes on ping and mark.
+
+**Trade-offs.** Power from the tank the pilot also needs; noise that calls the Sleeper's once #924 lands; the navigator's eyes on the scope and not the view; a mark list of three.
+
+**Hooks for #924.** `SonarEvents.COLLECT` (a listener adds echoes with a `SonarKind` to the sink: a Sleeper creature a real echo, the hollow ones none, a Company machine ore), `SonarEvents.PINGED` (the noise: the ping carries its origin and `noiseBlocks()`; the distance test comes with its first caller), the `sonar_echoes` entity tag for the plain case, and `PodSonar.State` on the pod (synced, versioned) for anything that reads what the pod holds. Passive listening is a ping that skips the sound and `PINGED` and uses a shorter range: `SonarTuning` is the record to extend.
+
+### Pacing, in player units
+
+Each row is asserted in `PodSonarTest`. *Measured*: read off the running game (the tank's own reading, the world clock, the event a listener receives). *Modelled*: worked out from the tuning tables, not run.
+
+| Row | Value | |
+|---|---|---|
+| Power per ping | 0.4 L, 4% of a stock 10 L tank | measured (the tank before and after a real ping) |
+| Pings from a full stock tank to the 6% reserve | 23 | measured (pinging until refused, the wait cleared between) |
+| What a ping costs in the pod's other burn | 6.3 s of idling, 2.1 s of driving, 1.3 s of drilling | modelled (0.4 L over 0.063, 0.19 and 0.32 L/s) |
+| Pings in one tank pinging as soon as the sonar clears, idling between | about 14, over about a minute | modelled (9.4 L usable over 0.1 L/s of pinging and 0.063 L/s of idling) |
+| Range | 24 blocks to the middle of a cell: the farthest echoing ore cell was 22.8 blocks off, the nearest silent one 26.6 | measured |
+| Noise radius | 48 blocks | measured (the event's radius, and a listener at 48 and at 48.01) |
+| An echo shows | 200 ticks, 10 s | measured on the world clock (the picture clears on tick 200 or 201) |
+| Sonar rings between pings | 80 ticks, 4 s | measured (refused on every tick before 80, accepted on it) |
+| A mark holds | 1200 ticks, 60 s, three at a time | measured (lapses on its tick; the fourth drops the oldest) |
+| Server cost of a ping | 2.8 ms for the first ping in a cold test JVM | measured (one reading, logged as `[sonar]`, not asserted) |
+
+A default build is not harder than on main: nothing changes for a pod with no navigator, and a navigator who never pings spends nothing.
+
+**Knobs.** `SonarTuning` (range, noise, power, wait, lifetime, cell, blind zone, gas distance, moving speed, echo cap, mark life, marks, aim) and `theme/sonar.json` (the scope's look). **Open questions.** Should the ping's cost grow with depth? Should a ping light the echoes' cells for the pilot's lamps? Should marks be shared between a towed pair? None is built.
+
 ## The first tank and the Company recovery (#963, A)
 
 **Problem.** The third playtest: the first pod "can only dig like 10 blocks before it runs out of fuel", then sits dark at the bottom of the shaft. The burn rates came from the original's per-second values (0.063, 0.19 and 0.32 L/s on a 10 L tank), but our drill takes 2.4 s a block in layer 1 (24 ticks of stone, slowed by depth, plus the pod's settling), so the same seconds bought far fewer blocks. Nobody had measured a tank in blocks. And a pilot who ran dry, broke and alone had no way out at all.

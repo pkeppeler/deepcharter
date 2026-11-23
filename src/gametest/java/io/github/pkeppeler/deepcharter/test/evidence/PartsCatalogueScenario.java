@@ -4,20 +4,16 @@ import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueFavourites;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
-import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
-import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 /**
  * Evidence scenario "m2-parts-catalogue" for #846: the inventory with the parts catalogue, five items starred, and the recipe of the
@@ -40,24 +36,7 @@ public class PartsCatalogueScenario extends EvidenceScenario {
     @Override
     protected void run(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
-            singleplayer.getServer().runCommand("give @p minecraft:iron_ingot 2");
-            singleplayer.getServer().runCommand("give @p minecraft:copper_ingot 2");
-            ClientWait.until(
-                    context,
-                    "the iron and the copper in the inventory",
-                    client -> ClientSession.player(client).getInventory().contains(new ItemStack(Items.IRON_INGOT, 2))
-                            && ClientSession.player(client)
-                                    .getInventory()
-                                    .contains(new ItemStack(Items.COPPER_INGOT, 2)));
-            CatalogueScene.openInventory(context);
-            CataloguePanel panel = CatalogueScene.panel(context);
-            ClientWait.until(
-                    context,
-                    "the scanner unit's recipe, taught by what the player holds",
-                    client -> !panel.catalogue()
-                            .recipesFor(ScannerRegistry.SCANNER_UNIT)
-                            .isEmpty());
+            CataloguePanel panel = CatalogueScene.teachScannerRecipe(context, singleplayer);
             context.waitTicks(TOAST_TICKS);
 
             ClientChecks.withHudHidden(context, () -> recordStills(context, panel));
@@ -67,15 +46,12 @@ public class PartsCatalogueScenario extends EvidenceScenario {
 
     /** The three stills: the recipe of the scanner unit looked up, a hover, and a search typed. */
     private void recordStills(ClientGameTestContext context, CataloguePanel panel) {
-        context.runOnClient(client -> {
-            panel.state().setQuery("");
-            panel.state().clear();
-        });
+        CatalogueScene.clearSearch(context, panel);
         context.waitTicks(2);
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         int perPage = layout.shelf().perPage();
         int index = CatalogueScene.indexOf(context, panel, ScannerRegistry.SCANNER_UNIT);
-        showPage(context, panel, perPage, index / perPage);
+        CatalogueScene.showPage(context, panel, perPage, index / perPage);
         star(context, panel, layout, index / perPage);
         int cell = index % perPage;
         CatalogueScene.hover(context, CatalogueScene.gridCell(layout, cell));
@@ -95,14 +71,6 @@ public class PartsCatalogueScenario extends EvidenceScenario {
         hold(context);
         screenshot(context, "console-search");
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
-    }
-
-    /** Turns the catalogue to {@code page}, counting from 0. */
-    private void showPage(ClientGameTestContext context, CataloguePanel panel, int perPage, int page) {
-        context.runOnClient(client -> {
-            int pages = CatalogueState.pages(panel.shownItems().size(), perPage);
-            panel.state().turn(page - panel.state().page(pages), pages);
-        });
     }
 
     /** Stars the scanner unit and four more of {@code page}, the ones not starred already (a run keeps its favourites). */
