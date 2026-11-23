@@ -46,13 +46,17 @@ public class SealedRoomArrivalLightTest {
         int[] waited = {0};
         BlockPos[] floor = {null};
         List<ChunkPos> room = new ArrayList<>();
+        for (int cx = (X - 12) >> 4; cx <= (X + 12) >> 4; cx++) {
+            for (int cz = (Z - 12) >> 4; cz <= (Z + 12) >> 4; cz++) {
+                FarChunks.force(helper, level, cx, cz);
+            }
+        }
         TestTicks.each(helper, () -> {
             switch (phase[0]) {
                 case 0 -> {
                     boolean loaded = true;
                     for (int cx = (X - 12) >> 4; cx <= (X + 12) >> 4; cx++) {
                         for (int cz = (Z - 12) >> 4; cz <= (Z + 12) >> 4; cz++) {
-                            FarChunks.force(helper, level, cx, cz);
                             loaded &= level.getChunkSource().getChunkNow(cx, cz) != null;
                         }
                     }

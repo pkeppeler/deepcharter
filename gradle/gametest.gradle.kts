@@ -67,10 +67,10 @@ object GametestScan {
 	// that every server GameTest in the batch shares, so a test beside it makes no progress; the suite spent most of its time there (#1016, #1020).
 	// A server test or its support waits with FarChunks.whenLoaded or awaitEntityTicking, which load the chunk on the worker threads, or marks the
 	// load with the comment below, with a reason, on its statement or the comment line above it: a load that must happen in one tick (under a
-	// WorldData.with), a chunk of the test's own structure or one an earlier wait loaded, which loads nothing. A getChunk whose last argument is the
+	// WorldData.with), a chunk of the test's own structure or one an earlier wait loaded, which loads nothing. A getChunk or getChunkAt call or method reference is flagged; one whose last argument is the
 	// literal false does not load and is exempt. Client tests and evidence (test/evidence) run in a world of their own and are exempt too.
 	private const val SYNC_LOAD_MARKER = "// sync-load:"
-	private val chunkLoad = Regex("""\bgetChunk(?:At)?\s*\(""")
+	private val chunkLoad = Regex("""\bgetChunk(?:At)?\s*\(|::\s*getChunk(?:At)?\b""")
 	private val nonLoadingArgument = Regex(""",\s*false\s*$""")
 	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
@@ -290,7 +290,8 @@ object GametestScan {
 			if (!isClientSide && !className.contains(".test.evidence.")) {
 				for (load in chunkLoad.findAll(text)) {
 					val open = load.range.last
-					val arguments = text.substring(open + 1, closing(text, open).coerceAtLeast(open + 1))
+					// A method reference has no argument list, so it has no non-loading form either.
+					val arguments = if (text[open] == '(') text.substring(open + 1, closing(text, open).coerceAtLeast(open + 1)) else ""
 					val line = lineOf(text, load.range.first)
 					if (!nonLoadingArgument.containsMatchIn(arguments) && !marked(markedNear, rawLines, line, SYNC_LOAD_MARKER)) {
 						problems.add("$className:${line + 1} loads a chunk synchronously on the server thread, which stalls every test in the batch; wait for it with FarChunks.whenLoaded(helper, chunks, body) or FarChunks.awaitEntityTicking(helper, level, pos, body) (test/support), which load it on the worker threads, or mark a load that must be synchronous, or of a chunk that is loaded already, with '$SYNC_LOAD_MARKER <why>'")

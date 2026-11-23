@@ -51,6 +51,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -391,13 +392,32 @@ public class ColonyTest {
 
     /** Runs {@code body} once, when every chunk of the pad ticks: a rebuild takes the first try's displays away only in chunks that tick. */
     private static void whenThePadTicks(GameTestHelper helper, ColonySite.Placed colony, Runnable body) {
+        whenThePadTicks(helper, colony, () -> true, body);
+    }
+
+    /** As above, and once {@code also} holds. */
+    private static void whenThePadTicks(
+            GameTestHelper helper, ColonySite.Placed colony, BooleanSupplier also, Runnable body) {
         MinecraftServer server = helper.getLevel().getServer();
         ColonyChunks.whenTicking(
                 helper,
                 server.overworld(),
                 ColonyChunks.of(colony),
-                () -> ColonyChunks.displaysOnThePad(server.overworld(), colony) == ColonyChunks.displaysOf(server),
+                () -> also.getAsBoolean()
+                        && ColonyChunks.displaysOnThePad(server.overworld(), colony) == ColonyChunks.displaysOf(server),
                 body);
+    }
+
+    /** The chunks of {@link #eastLand}, which reaches past the chunks of the pad. */
+    private static List<FarChunks.At> eastLandChunks(ServerLevel level, ColonySite.Placed colony) {
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        BlockPos centre = colony.center();
+        return FarChunks.rect(
+                level,
+                (centre.getX() + half + 1) >> 4,
+                (centre.getZ() - 20) >> 4,
+                (centre.getX() + half + 32) >> 4,
+                (centre.getZ() + 20) >> 4);
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
@@ -796,8 +816,7 @@ public class ColonyTest {
         BlockPos centre = colony.center();
         Map<BlockPos, BlockState> land = new LinkedHashMap<>();
         for (BlockPos at : BlockPos.betweenClosed(centre.offset(half + 1, -3, -20), centre.offset(half + 32, 8, 20))) {
-            // sync-load: the strip is within two chunks of the pad, whose ticking chunks hold their neighbourhood
-            // loaded
+            // sync-load: the caller waited for the strip's chunks with FarChunks.awaitLoaded (eastLandChunks)
             level.getChunk(at.getX() >> 4, at.getZ() >> 4);
             land.put(at.immutable(), level.getBlockState(at));
         }
@@ -823,7 +842,9 @@ public class ColonyTest {
         MinecraftServer server = server(helper);
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
-        whenThePadTicks(helper, colony, () -> {
+        boolean[] stripLoaded = {false};
+        FarChunks.awaitLoaded(helper, eastLandChunks(level, colony), () -> stripLoaded[0] = true);
+        whenThePadTicks(helper, colony, () -> stripLoaded[0], () -> {
             int half = ColonyTuning.DEFAULT.padSize() / 2;
             BlockPos centre = colony.center();
             Map<BlockPos, BlockState> original = eastLand(level, colony);
@@ -872,7 +893,9 @@ public class ColonyTest {
         MinecraftServer server = server(helper);
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
-        whenThePadTicks(helper, colony, () -> {
+        boolean[] stripLoaded = {false};
+        FarChunks.awaitLoaded(helper, eastLandChunks(level, colony), () -> stripLoaded[0] = true);
+        whenThePadTicks(helper, colony, () -> stripLoaded[0], () -> {
             int half = ColonyTuning.DEFAULT.padSize() / 2;
             BlockPos centre = colony.center();
             Map<BlockPos, BlockState> original = eastLand(level, colony);

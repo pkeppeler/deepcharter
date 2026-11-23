@@ -89,6 +89,8 @@ VIOLATIONS = {
     "getChunkAt": "level.getChunkAt(pos);",
     "a chained load": "campaign.getChunk(player.getBlockX() >> 4, player.getBlockZ() >> 4).getBlockState(pos);",
     "a lambda": "chunks.forEach(chunk -> level.getChunk(chunk.x(), chunk.z()));",
+    "a method reference": "chunks.forEach(level::getChunk);",
+    "a getChunkAt reference": "BlockSurvey.find(level, 2, wanted, level::getChunkAt);",
     "multi-line": "level.getChunk(\n            3 >> 4,\n            4 >> 4,\n            ChunkStatus.FULL);",
     "a false that is not the last argument": "level.getChunk(3, false ? 4 : 5);",
 }

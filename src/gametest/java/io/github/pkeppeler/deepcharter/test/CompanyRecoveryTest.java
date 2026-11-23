@@ -596,6 +596,7 @@ public class CompanyRecoveryTest {
         Scene scene = run(helper, 12_800, plan);
         Map<BlockPos, BlockState> flooded = new HashMap<>();
         boolean[] restored = {false};
+        Set<BlockPos> area = new HashSet<>();
         TestTicks.each(helper, () -> {
             if (!scene.arrived() || restored[0]) {
                 return;
@@ -604,7 +605,8 @@ public class CompanyRecoveryTest {
                 flood(scene, flooded);
             }
             if (told(scene.pilot, "message.deepcharter.repair.teleport_blocked")) {
-                restore(scene.server, flooded);
+                area.addAll(floodedArea(flooded));
+                restore(scene.server, flooded, area);
                 restored[0] = true;
             }
         });
@@ -612,9 +614,9 @@ public class CompanyRecoveryTest {
             if (!restored[0]) {
                 throw helper.assertionException("waiting for the crew to find the landing blocked");
             }
-            if (waterLeft(scene.server, flooded)) {
-                // The water that ran from the layer while it was put back drains by itself; the colony tests after this
-                // one read the pad.
+            if (waterLeft(scene.server, area)) {
+                // restore drained the water beside the flooded layer; this waits for the flowing water beyond it, which
+                // has no source left and decays, before the colony tests after this one read the pad.
                 throw helper.assertionException("waiting for the water that ran from the flood to drain");
             }
             PodEntity pod = scene.current();
@@ -676,10 +678,10 @@ public class CompanyRecoveryTest {
         return area;
     }
 
-    /** Whether any water stands in {@link #floodedArea}, flowing water included. */
-    private static boolean waterLeft(MinecraftServer server, Map<BlockPos, BlockState> flooded) {
+    /** Whether any water stands in {@code area} (see {@link #floodedArea}), flowing water included. */
+    private static boolean waterLeft(MinecraftServer server, Set<BlockPos> area) {
         ServerLevel overworld = server.overworld();
-        for (BlockPos pos : floodedArea(flooded)) {
+        for (BlockPos pos : area) {
             if (overworld.getFluidState(pos).is(FluidTags.WATER)) {
                 return true;
             }
@@ -692,10 +694,10 @@ public class CompanyRecoveryTest {
      * layer's saved blocks do not name, and nothing else would take them away from the pad that the colony tests read. The blocks are
      * written for the clients only, so that no neighbour update starts the flow again.
      */
-    private static void restore(MinecraftServer server, Map<BlockPos, BlockState> flooded) {
+    private static void restore(MinecraftServer server, Map<BlockPos, BlockState> flooded, Set<BlockPos> area) {
         ServerLevel overworld = server.overworld();
         flooded.forEach((pos, state) -> overworld.setBlock(pos, state, Block.UPDATE_CLIENTS));
-        for (BlockPos pos : floodedArea(flooded)) {
+        for (BlockPos pos : area) {
             if (overworld.getFluidState(pos).is(FluidTags.WATER)) {
                 // room-carver: the water the flood left on the colony pad, not layer rock
                 overworld.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);

@@ -782,20 +782,21 @@ public class TransmissionsTest {
         helper.succeed();
     }
 
-    @GameTest(maxTicks = TRIGGER_TICKS)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + TRIGGER_TICKS)
     public void aBreachCrossingFiresItsTransmissionAndItsBonusForTheCharter(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ServerLevel one = TestLayers.level(server, 1);
         ServerLevel two = TestLayers.level(server, 2);
-        // Load the arrival area in layer 2 now so the crossing does not wait on it; it loads on the worker threads.
-        for (FarChunks.At chunk : FarChunks.rect(
-                two,
-                (int) BREACH_COLUMN / 16 - 2,
-                (int) BREACH_COLUMN / 16 - 2,
-                (int) BREACH_COLUMN / 16 + 2,
-                (int) BREACH_COLUMN / 16 + 2)) {
-            FarChunks.force(helper, two, chunk.chunkX(), chunk.chunkZ());
-        }
+        // The crew crosses once the arrival area in layer 2 is loaded, so the crossing does not load it on the server
+        // thread.
+        int arrival = (int) BREACH_COLUMN / 16;
+        FarChunks.whenLoaded(
+                helper,
+                FarChunks.rect(two, arrival - 2, arrival - 2, arrival + 2, arrival + 2),
+                () -> crossBreach(helper, one));
+    }
+
+    private static void crossBreach(GameTestHelper helper, ServerLevel one) {
         MockPlayer crew = MockPlayers.join(helper, "tx-breach");
         CharterId charter = foundedCharter(helper, crew.player().getUUID());
         crew.player().setPermanentlyInvulnerable(true);

@@ -40,12 +40,15 @@ import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A real {@link ServerPlayer} whose connection is a Netty {@link EmbeddedChannel}. Create one
  * with {@link MockPlayers#join}. Everything here runs on the server thread.
  */
 public final class MockPlayer {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MockPlayer.class);
     private static final int TELEPORT_IDS = 32;
     private final MinecraftServer server;
     private final ServerPlayer player;
@@ -65,6 +68,8 @@ public final class MockPlayer {
     private final Set<RecipeDisplayId> recipeDisplaysEverSent = new HashSet<>();
     private int recipeToasts;
     private boolean loaded;
+    /** Server ticks in a row that the mock has not ticked, for want of a loaded chunk. */
+    private int skippedTicks;
 
     @Nullable
     private ChunkPos ticketedChunk;
@@ -295,8 +300,22 @@ public final class MockPlayer {
         // it (#1020). The mock holds a ticket on its chunk, which loads it on the worker threads, and does not tick
         // until it has loaded.
         if (!standsInLoadedChunk()) {
+            // The level's own entity tick never reaches a mock here: it ticks only entities of entity-ticking chunks,
+            // which are loaded.
+            if (++skippedTicks >= FarChunks.AWAIT_BUDGET_TICKS) {
+                // Not a throw: an exception in a tick event stops the server and every test with it. The mock goes, so
+                // its test fails on it.
+                LOGGER.error(
+                        "Mock player {} stood in the unloaded chunk {} of {} for {} ticks; load it with FarChunks.whenLoaded before teleporting the mock there",
+                        player.getGameProfile().name(),
+                        player.chunkPosition(),
+                        player.level().dimension().identifier(),
+                        skippedTicks);
+                leave();
+            }
             return;
         }
+        skippedTicks = 0;
         connection.tick();
         Object outbound;
         while ((outbound = channel.readOutbound()) != null) {
