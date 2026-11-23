@@ -19,7 +19,7 @@
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
-# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and client-gametest, when it ran) runs
+# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each client-gametest-shard, when they ran) runs
 # each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
 # from it only by docs/ROADMAP.md or .papercuts.jsonl.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
@@ -135,7 +135,7 @@ done
 
 # CI merges the PR head with origin/main fetched at run time and records that main sha in a `merged-main` notice
 # annotation on its check run (.github/actions/merge-main; REST reads it, a job summary it cannot). The gate refuses
-# unless every deciding run of a required job (and of client-gametest, when it has a passing run) merged exactly
+# unless every deciding run of a required job (and of each passing client-gametest-shard) merged exactly
 # the current origin/main: a time test cannot see that GitHub served a stale refs/pull/N/merge (#979). A run with
 # no record (one from before this check) is refused as stale. The merge is invisible to a path no job reads, so a
 # main that differs from the recorded sha only by docs/ROADMAP.md and .papercuts.jsonl (the roadmap and papercut commits that land
@@ -145,7 +145,16 @@ main_sha=$(git rev-parse origin/main 2>/dev/null) || main_sha=
 [[ $main_sha =~ ^[0-9a-f]{40}$ ]] || refuse "could not read the sha of origin/main"
 stale_fix="re-run CI on the current main by closing and reopening the PR [stale-base] (the head sha is unchanged, so the review pass stays valid)"
 based_names=("${REQUIRED_CHECKS[@]}")
-grep -qxF "pass"$'\t'"client-gametest" <<<"$checks" && based_names+=(client-gametest) # pipe-grep-q: fail-closed
+# The suite runs as `client-gametest-shard <i>` jobs, and `client-gametest` is the aggregate that passes only when
+# every shard did (#1079). The aggregate does no merge of its own, so each passing shard is the run that must have
+# merged the current main. An aggregate pass with no passing shard is not trusted.
+shard_names=$(awk -F'\t' '$1 == "pass" && $2 ~ /^client-gametest-shard / { print $2 }' <<<"$checks")
+if grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then # pipe-grep-q: fail-closed
+  [[ -n $shard_names ]] || refuse "client-gametest passed but no client-gametest-shard run did, so nothing shows what the suite ran"
+fi
+while IFS= read -r shard; do
+  [[ -z $shard ]] || based_names+=("$shard")
+done <<<"$shard_names"
 for based in "${based_names[@]}"; do
   run_id=$(awk -F'\t' -v n="$based" '$2 == n { print $3 }' <<<"$checks_full")
   [[ $run_id =~ ^[0-9]+$ ]] || refuse "has no deciding run id for $based"

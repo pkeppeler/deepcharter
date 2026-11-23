@@ -67,12 +67,23 @@ jobs:
           git diff --no-renames --name-only "$MAIN_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
           echo "run=$(tools/ci-client-needed.sh "$GAMEPLAY_LABEL" < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
 
-  client-gametest:
-    name: client-gametest
+  # The suite runs as CLIENT_SHARDS parallel jobs, each its own runner and Minecraft client. Each takes the
+  # shard `i/n` of the client classes that gradle/gametest.gradle.kts picks by weight (-PclientShard), so every class
+  # runs in exactly one shard. The matrix and CLIENT_SHARDS must agree: tools/tests/test_client_shards.py checks it.
+  client-shard:
+    name: client-gametest-shard ${{ matrix.shard }}
     needs: changes
     if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # One shard is ~1/3 of the suite: about 12 minutes on #841's tall world (28 minutes whole), with 3 minutes of setup
+    # before it. The action's own deadline is 20 minutes of test time; this leaves room for setup and the post steps.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      CLIENT_SHARDS: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -97,3 +108,23 @@ jobs:
           fi
       - uses: ./.ci-main/.github/actions/merge-main
       - uses: ./.github/actions/client-gametest
+        with:
+          client-shard: ${{ matrix.shard }}/${{ env.CLIENT_SHARDS }}
+          artifact-suffix: -${{ matrix.shard }}
+
+  # The one name tools/merge-pr.sh requires for the suite (#1079). Succeeds only when every shard did; skipped
+  # when the shards were (the changes job decided no run), which the gate reads as "skipping" like any skipped run.
+  client-gametest:
+    name: client-gametest
+    needs: [changes, client-shard]
+    if: ${{ always() && needs.changes.outputs.run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          SHARDS: ${{ needs.client-shard.result }}
+        run: |
+          if [ "$SHARDS" != success ]; then
+            echo "::error::The client shards finished as '$SHARDS', not success"
+            exit 1
+          fi

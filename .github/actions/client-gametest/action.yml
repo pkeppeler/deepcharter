@@ -14,6 +14,14 @@ inputs:
     description: Client test class filter (-PclientTests). Empty runs every client test. For an evidence scenario, its class (tools/record-evidence.sh --print-class).
     required: false
     default: ""
+  client-shard:
+    description: Shard i/n of the client classes (-PclientShard, balanced by gradle/client-test-weights.txt), so parallel jobs split the suite. Empty runs them all.
+    required: false
+    default: ""
+  artifact-suffix:
+    description: Appended to the screenshots artifact name, so parallel shards do not collide.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -61,11 +69,15 @@ runs:
         DEEPCHARTER_EVIDENCE: ${{ inputs.evidence-scenario }}
         DEEPCHARTER_EVIDENCE_DIR: ${{ github.workspace }}/build/evidence
         CLIENT_TESTS: ${{ inputs.client-tests }}
+        CLIENT_SHARD: ${{ inputs.client-shard }}
       run: |
         log="$RUNNER_TEMP/client-gametest.log"
         filter=()
         if [ -n "$CLIENT_TESTS" ]; then
           filter=("-PclientTests=$CLIENT_TESTS")
+        fi
+        if [ -n "$CLIENT_SHARD" ]; then
+          filter+=("-PclientShard=$CLIENT_SHARD")
         fi
         ./gradlew runClientGameTest -x deleteGameTestRunDir "${filter[@]}" > "$log" 2>&1 &
         gradle_pid=$!
@@ -85,12 +97,12 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
-        # Client-gametest job durations (job completed_at minus started_at). Passing runs on main-merged branches:
-        # 16m47s (run 45081951417), 19m39s (45097523345), 19m53s (45099883446), 21m17s (45102149991). #841's tall
-        # world: 28m32s (run 45062159956). $SECONDS starts after setup, and both callers set timeout-minutes: 60,
-        # which leaves room for setup, the post steps and the stop. Raise only together with both job limits.
-        # A stopgap: sharding is #1079.
-        max_seconds=3000
+        # One shard of three runs about a third of the suite: tests took 18 minutes whole on main (run
+        # 45102149991) and 25 on #841's tall world (45062159956), so a shard takes about 6 and 9 minutes of
+        # tests plus 3 of build and client start-up, all inside this deadline. $SECONDS starts after the dependency
+        # resolve; the job limits (30 minutes for a shard, 60 for an evidence recording) leave room for setup, the
+        # post steps and the stop. Raise only together with the job limits.
+        max_seconds=1200
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then
             stop_gradle "Minecraft could not create a graphics backend"
@@ -119,7 +131,7 @@ runs:
       if: failure()
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
-        name: client-gametest-screenshots
+        name: client-gametest-screenshots${{ inputs.artifact-suffix }}
         path: build/run/clientGameTest/screenshots
         if-no-files-found: ignore
         retention-days: 7

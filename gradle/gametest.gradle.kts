@@ -17,6 +17,7 @@ tasks.named("runGameTest") { dependsOn(deleteGameTestWorld) }
 //   client GameTest    implements FabricClientGameTest        -> fabric-client-gametest
 //   evidence scenario  extends EvidenceScenario               -> fabric-client-gametest
 // Filter: -PclientTests=<name or glob>[,...] keeps only matching client classes, so one client test can run alone (see .claude/skills/deepcharter-conventions/tests.md).
+// Shard: -PclientShard=i/n keeps the i-th of n shards of what is left, so CI runs the suite in parallel jobs (weights: gradle/client-test-weights.txt).
 // Order: classes are listed sorted by name. The suite must not depend on that order: -PgametestOrder=reverse
 // lists them in reverse name order, to catch a test that leaks world state into a later one.
 //
@@ -200,6 +201,54 @@ object GametestScan {
 	private fun marked(markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean, rawLines: List<String>, line: Int, marker: String): Boolean =
 		markedNear(rawLines, line) { hasMarker(it, marker) }
 
+	/** A class with no entry in client-test-weights.txt counts as this many seconds, so a new class lands in a shard without anyone editing the file. */
+	const val DEFAULT_CLIENT_WEIGHT = 10
+
+	/**
+	 * Shard `i/n` (1-based) of [classes]: longest-processing-time-first onto the lightest shard, by [weights] (simple class name to seconds).
+	 * Every shard computes the same partition from the same list, and each class lands in exactly one, so the union of the n shards is the whole list.
+	 */
+	fun shardOf(classes: List<String>, shard: String, weights: Map<String, Int>): List<String> {
+		val match = Regex("""(\d+)/(\d+)""").matchEntire(shard)
+		val index = match?.groupValues?.get(1)?.toInt() ?: 0
+		val count = match?.groupValues?.get(2)?.toInt() ?: 0
+		if (index < 1 || index > count) {
+			throw GradleException("-PclientShard is '$shard', expected i/n with 1 <= i <= n, like 2/3")
+		}
+		fun weight(name: String) = weights[name.substring(name.lastIndexOf(".") + 1)] ?: DEFAULT_CLIENT_WEIGHT
+		val loads = IntArray(count)
+		val mine = mutableListOf<String>()
+		for (name in classes.sortedWith(compareBy({ -weight(it) }, { it }))) {
+			val target = loads.indices.minBy { loads[it] }
+			loads[target] += weight(name)
+			if (target == index - 1) {
+				mine.add(name)
+			}
+		}
+		if (mine.isEmpty()) {
+			throw GradleException("-PclientShard=$shard selects no client class: only ${classes.size} class(es) to share among $count shards")
+		}
+		return mine
+	}
+
+	/** Lines of `<simple class name> <seconds>`; blank lines and `#` comments are skipped. */
+	fun parseWeights(file: File): Map<String, Int> {
+		val weights = mutableMapOf<String, Int>()
+		for ((number, raw) in file.readLines().withIndex()) {
+			val line = raw.substringBefore("#").trim()
+			if (line.isEmpty()) {
+				continue
+			}
+			val parts = line.split(Regex("\\s+"))
+			val seconds = parts.getOrNull(1)?.toIntOrNull()
+			if (parts.size != 2 || seconds == null || seconds < 1) {
+				throw GradleException("${file.name}:${number + 1} is '$raw', expected '<client class name> <seconds>'")
+			}
+			weights[parts[0]] = seconds
+		}
+		return weights
+	}
+
 	/**
 	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [mainSources] and
 	 * [guardSource] are the files WorldDataGuard must list every saved-data record of the mod in, or it misses a swap of a new one.
@@ -207,6 +256,8 @@ object GametestScan {
 	fun scan(
 		javaRoot: File,
 		clientFilter: String?,
+		clientShard: String?,
+		clientWeights: Map<String, Int>,
 		order: String,
 		mainSources: Collection<File>,
 		guardSource: File,
@@ -341,6 +392,9 @@ object GametestScan {
 			}
 			client = client.filter { kept.contains(it) }.toMutableList()
 		}
+		if (clientShard != null) {
+			client = shardOf(client, clientShard, clientWeights).toMutableList()
+		}
 
 		fun ordered(names: List<String>): List<String> = if (order == "reverse") names.sorted().reversed() else names.sorted()
 		return GametestFound(ordered(server), ordered(client))
@@ -367,6 +421,11 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	// An input, so changing the filter regenerates the list.
 	val clientFilter = providers.gradleProperty("clientTests").orNull
 	inputs.property("clientTests", clientFilter).optional(true)
+	// -PclientShard=i/n keeps the i-th of n balanced shards of the client list (after -PclientTests), weighted by client-test-weights.txt.
+	val clientShard = providers.gradleProperty("clientShard").orNull
+	inputs.property("clientShard", clientShard).optional(true)
+	val weightsFile = file("gradle/client-test-weights.txt")
+	inputs.file(weightsFile).withPropertyName("clientWeights")
 	val outputFile = generatedGametestResources.map { it.file("fabric.mod.json") }
 	val sources = fileTree(javaRoot) { include("**/*.java") }
 	inputs.files(sources).withPropertyName("gametestSources")
@@ -374,7 +433,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
 	doLast {
-		val found = GametestScan.scan(javaRoot, clientFilter, order, mainSources.files, guardSource, blankLiterals, markedNear)
+		val found = GametestScan.scan(javaRoot, clientFilter, clientShard, GametestScan.parseWeights(weightsFile), order, mainSources.files, guardSource, blankLiterals, markedNear)
 		var json = template.readText()
 		mapOf("SERVER_TESTS" to found.server, "CLIENT_TESTS" to found.client).forEach { (token, names) ->
 			val placeholder = "\"@$token@\""
@@ -387,7 +446,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -480,7 +539,7 @@ tasks.register("checkGametestFixtures") {
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue
 				}
-				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, "name", mainSources.files, guardSource, blankLiterals, markedNear)
+				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, c["clientShard"] as String?, (c["clientWeights"] as Map<*, *>? ?: emptyMap<String, Int>()).entries.associate { it.key as String to (it.value as Number).toInt() }, "name", mainSources.files, guardSource, blankLiterals, markedNear)
 				report[name] = linkedMapOf("ok" to true, "message" to "", "server" to found.server, "client" to found.client)
 			} catch (e: GradleException) {
 				report[name] = linkedMapOf("ok" to false, "message" to e.message!!, "server" to emptyList<String>(), "client" to emptyList<String>())

@@ -203,7 +203,9 @@ files() {
 # fake runs report each one as succeeding, plus an unrelated skipped one.
 required=$(sed -n 's/^REQUIRED_CHECKS=(\(.*\))$/\1/p' "$script")
 [[ -n $required ]] || { echo "cannot read REQUIRED_CHECKS from $script" >&2; exit 1; }
-default_specs=(docs:1:skipped client-gametest:3:success)
+# The client suite is `client-gametest-shard <i>` jobs plus the aggregate `client-gametest` (#1079).
+cg_pass_specs=("client-gametest:3:success" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:success")
+default_specs=(docs:1:skipped "${cg_pass_specs[@]}")
 skipped_required_specs=(docs:1:skipped)
 required_pass_specs=()
 for name in $required; do
@@ -462,16 +464,27 @@ client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:skipped)" "$ga
 refusal "game path, client run only skipped" "$client_msg" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:failure)" "$game"
 refusal "game path, client run failed" "client-gametest (newest non-skipped run: failure)" "${client_vars[@]}"
-client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success client-gametest:4:skipped)" "$game"
+# A failed shard refuses by name, even when the aggregate is absent or passed.
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:failure")" "$game"
+refusal "game path, one shard failed" "client-gametest-shard 2 (newest non-skipped run: failure)" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:cancelled")" "$game"
+refusal "game path, one shard cancelled, no aggregate" "client-gametest-shard 2 (newest non-skipped run: cancelled)" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:in_progress")" "$game"
+refusal "game path, one shard still running" "client-gametest-shard 2 (newest non-skipped run: in_progress)" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success)" "$game"
+refusal "aggregate passed but no shard did" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:success")" "$game"
+refusal "game path, shards passed but the aggregate never ran" "$client_msg" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" client-gametest:4:skipped)" "$game"
 run_script "${client_vars[@]}"
 exited "game path, client passed then skipped later merges" 0
-client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:skipped)" "$docs_files"
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:skipped "client-gametest-shard 1:5:skipped")" "$docs_files"
 run_script "${client_vars[@]}"
 exited "docs/tools-only, client skipped merges" 0
 client_args "$(runs "${required_pass_specs[@]}")" "$docs_files"
 run_script "${client_vars[@]}"
 exited "docs/tools-only, no client run merges" 0
-client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success)" "$(files modified:README.md)" "$cg_labels${nl}gameplay"
+client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}")" "$(files modified:README.md)" "$cg_labels${nl}gameplay"
 run_script "${client_vars[@]}" "STUB_BODY=$cg_body${nl}No map change: x"
 exited "gameplay label, client passed merges" 0
 client_args "$(runs "${required_pass_specs[@]}")" "$(files modified:README.md)" "$cg_labels${nl}gameplay"
@@ -594,14 +607,14 @@ for name in $required; do
 done
 
 # Stale base (#979): CI records the main sha it merged in a `merged-main` annotation on each job's check run; the gate
-# refuses unless the deciding run of every required job (and of client-gametest) recorded the current origin/main.
+# refuses unless the deciding run of every required job (and of each passing client-gametest-shard) recorded the current origin/main.
 # Default stubs: every run recorded $MAIN_SHA, which is origin/main.
 stale_hint="by closing and reopening the PR [stale-base]"
 run_script
 exited "runs that merged the current main pass" 0
 logged "main fetched before comparing" "git fetch origin main"
 logged "build run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/2/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
-logged "client-gametest run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/3/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
+logged "client-gametest-shard run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/5/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
 not_logged "equal sha needs no file comparison" "^git diff"
 refusal "a run that merged an older main is stale" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=src/main/java/Charters.java"
 refusal "refusal names the run, both shas and the moved path" "build run 2 merged main bbbbbbbbb but origin/main is aaaaaaaaa: src/main/java/Charters.java changed since" \
@@ -610,7 +623,8 @@ refusal "a run with no record is stale (a run from before CI recorded it)" "reco
 refusal "a run with no record carries the marker" "$stale_hint" "STUB_MERGED_MAIN="
 refusal "a record that is not a sha is stale" "recorded no merged main sha" "STUB_MERGED_MAIN=main"
 refusal "annotations unreadable" "could not read the annotations of build run 2" STUB_ANN_FAIL=1
-refusal "only client-gametest merged an older main" "client-gametest run 3 merged main" "STUB_MERGED_MAIN_3=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "only a client shard merged an older main" "client-gametest-shard 2 run 6 merged main" "STUB_MERGED_MAIN_6=$OLD_MAIN" "STUB_DIFF=src/A.java"
+not_logged "the aggregate merges nothing, so its annotations are not read" "check-runs/3/annotations"
 refusal "only tool-tests merged an older main" "tool-tests run 4 merged main" "STUB_DIFF=src/A.java" \
   "STUB_RUNS=$(runs build:1:success tool-tests:4:success)" "STUB_MERGED_MAIN_1=$MAIN_SHA" "STUB_MERGED_MAIN_4=$OLD_MAIN"
 refusal "a recorded sha off origin/main is stale" "which is not on origin/main" "STUB_MERGED_MAIN=$OLD_MAIN" STUB_MERGE_BASE_RC=1
