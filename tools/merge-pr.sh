@@ -150,13 +150,17 @@ main_sha=$(git rev-parse origin/main 2>/dev/null) || main_sha=
 stale_fix="record the current main by re-running the whole runs holding the head's newest non-skipped build, tool-tests and client-gametest jobs [stale-base] (the head sha is unchanged, so the review pass stays valid)"
 based_names=("${REQUIRED_CHECKS[@]}")
 # The suite runs as `client-gametest-shard <i>` jobs, and `client-gametest` is the aggregate that passes only when
-# every shard did (#1079). The aggregate does no merge of its own, so each passing shard is the run that must have
-# merged the current main. An aggregate pass with no passing shard is not trusted.
+# every shard did (#1079). The aggregate does no merge of its own: it re-publishes the sha its shards agreed on as a
+# `merged-main` notice (tools/ci-shard-main.sh) only so the gate on main, from before this one, can read it. Here each
+# passing shard is the run that must have merged the current main, so the aggregate's notice is never read. An
+# aggregate pass with no passing shard is not trusted.
 shard_names=$(awk -F'\t' '$1 == "pass" && $2 ~ /^client-gametest-shard / { print $2 }' <<<"$checks")
 if grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then # pipe-grep-q: fail-closed
   # TEMPORARY legacy path (delete with #1116): CI from before #1079 ran one `client-gametest` job that recorded the
   # merged-main notice itself, and a stale-base re-run reuses that workflow. Legacy only when the head has no
-  # client-gametest-shard run of any kind (even a never-started template one); the new aggregate records no notice.
+  # client-gametest-shard run of any kind (even a never-started template one). The sharded aggregate now records a
+  # notice too, but the shard runs sit in run_lines beside it (failed, skipped or never started alike), so a sharded
+  # head cannot take this path and have its aggregate notice stand in for shards that did not pass.
   if [[ -z $shard_names ]]; then
     if grep -q '^client-gametest-shard ' <<<"$run_lines"; then
       refuse "client-gametest passed but no client-gametest-shard run did, so nothing shows what the suite ran"

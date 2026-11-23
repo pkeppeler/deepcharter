@@ -488,14 +488,19 @@ exited "game path, legacy single client-gametest job with its merged-main notice
 logged "legacy client-gametest run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/3/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
 refusal "aggregate passed, no shard and no notice" "client-gametest run 3 recorded no merged main sha" "STUB_MERGED_MAIN_3=" "${client_vars[@]}"
 refusal "legacy client-gametest merged an older main" "client-gametest run 3 merged main" "STUB_MERGED_MAIN_3=$OLD_MAIN" "STUB_DIFF=src/A.java" "${client_vars[@]}"
+# The sharded aggregate carries a notice of its own (the shards' agreed main, for the gate on main); this gate reads the
+# shards, so a stale aggregate notice beside fresh passing shards still merges and a fresh one never stands in for shards.
+client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}")" "$game"
+run_script "STUB_MERGED_MAIN_3=$OLD_MAIN" "STUB_DIFF=src/A.java" "${client_vars[@]}"
+exited "aggregate with a notice plus passing shards merges on the shards' notices" 0
 # Any shard run, even a never-started template one, means the aggregate is not legacy.
 # shellcheck disable=SC2016 # a literal template, not an expansion
 client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success 'client-gametest-shard ${{ matrix.shard }}:7:cancelled')" "$game"
-refusal "aggregate passed beside only a template shard, so not legacy" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
+refusal "aggregate with a notice beside only a template shard, so not legacy" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success "client-gametest-shard 1:5:failure")" "$game"
-refusal "aggregate passed beside a failed shard, so not legacy" "client-gametest-shard 1 (newest non-skipped run: failure)" "${client_vars[@]}"
+refusal "aggregate with a notice beside a failed shard, so not legacy" "client-gametest-shard 1 (newest non-skipped run: failure)" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success "client-gametest-shard 1:5:skipped")" "$game"
-refusal "aggregate passed beside only a skipped shard, so not legacy" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
+refusal "aggregate with a notice beside only a skipped shard, so not legacy" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:success")" "$game"
 refusal "game path, shards passed but the aggregate never ran" "$client_msg" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" client-gametest:4:skipped)" "$game"
@@ -647,7 +652,7 @@ refusal "a run with no record carries the marker" "$stale_hint" "STUB_MERGED_MAI
 refusal "a record that is not a sha is stale" "recorded no merged main sha" "STUB_MERGED_MAIN=main"
 refusal "annotations unreadable" "could not read the annotations of build run 2" STUB_ANN_FAIL=1
 refusal "only a client shard merged an older main" "client-gametest-shard 2 run 6 merged main" "STUB_MERGED_MAIN_6=$OLD_MAIN" "STUB_DIFF=src/A.java"
-not_logged "the aggregate merges nothing, so its annotations are not read" "check-runs/3/annotations"
+not_logged "with passing shards the aggregate's annotations are not read" "check-runs/3/annotations"
 refusal "only tool-tests merged an older main" "tool-tests run 4 merged main" "STUB_DIFF=src/A.java" \
   "STUB_RUNS=$(runs build:1:success tool-tests:4:success)" "STUB_MERGED_MAIN_1=$MAIN_SHA" "STUB_MERGED_MAIN_4=$OLD_MAIN"
 refusal "a recorded sha off origin/main is stale" "which is not on origin/main" "STUB_MERGED_MAIN=$OLD_MAIN" STUB_MERGE_BASE_RC=1
