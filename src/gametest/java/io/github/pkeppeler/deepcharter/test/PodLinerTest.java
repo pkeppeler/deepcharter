@@ -846,9 +846,7 @@ public class PodLinerTest {
         ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR - 8, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
         RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.AIR);
-        // Lava high on the east wall, poured once the chunk ticks: in the liner's view at the landing and in the fall,
-        // and a stream that has
-        // not reached the pod when it lands.
+        // Lava high on the east wall, poured once the chunk ticks: in view at the landing, a stream not yet at the pod.
         Rig rig = Rig.await(
                 helper,
                 level,

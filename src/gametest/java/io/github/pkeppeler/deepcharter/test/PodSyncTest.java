@@ -59,8 +59,7 @@ public class PodSyncTest {
             }
         }
         boolean[] ticking = {false};
-        int[] waiting = {chunks.size()};
-        FarChunks.awaitEntityTicking(helper, helper.getLevel(), chunks, index -> ticking[0] = --waiting[0] == 0);
+        FarChunks.awaitAllEntityTicking(helper, helper.getLevel(), chunks, () -> ticking[0] = true);
         for (int x = -FLOOR_RADIUS; x <= FLOOR_RADIUS; x++) {
             for (int z = -FLOOR_RADIUS; z <= FLOOR_RADIUS; z++) {
                 helper.setBlock(

@@ -71,12 +71,8 @@ public final class BoltRoom {
         for (int chunkX = (corridor.x() - 3) >> 4; chunkX <= (corridor.x() + length + 2) >> 4; chunkX++) {
             chunks.add(new BlockPos(chunkX << 4, FLOOR, Z));
         }
-        int[] waiting = {chunks.size()};
-        FarChunks.awaitEntityTicking(helper, corridor.level(), chunks, index -> {
-            if (--waiting[0] == 0) {
-                corridor.ready().set(true);
-            }
-        });
+        FarChunks.awaitAllEntityTicking(
+                helper, corridor.level(), chunks, () -> corridor.ready().set(true));
         return corridor;
     }
 
