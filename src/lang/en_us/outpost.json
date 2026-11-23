@@ -13,6 +13,14 @@
   "message.deepcharter.outpost.occupied": "Something stands in the hall's volume: clear it, and stand clear yourself",
   "message.deepcharter.outpost.overlaps": "Another outpost is too close: set the kit at least 11 blocks clear of its middle",
   "message.deepcharter.outpost.unreadable": "The outposts were saved by another version of the mod",
+  "rating.deepcharter.axis.flooding": "flooding",
+  "rating.deepcharter.axis.heat": "heat",
+  "rating.deepcharter.axis.pressure": "pressure",
+  "rating.deepcharter.axis.quake": "quake",
+  "readout.deepcharter.placement.holds_here": "HOLDS HERE",
+  "readout.deepcharter.placement.nothing_rated": "Nothing is rated this deep yet",
+  "readout.deepcharter.placement.short_on": "Short on: %s",
+  "readout.deepcharter.placement.will_not_hold": "WILL NOT HOLD UNATTENDED",
   "screen.deepcharter.incident_report.broken": "Lost: %s x %s",
   "screen.deepcharter.incident_report.dark": "The hall was dark.",
   "screen.deepcharter.incident_report.filed": "FILED",
@@ -21,5 +29,6 @@
   "screen.deepcharter.incident_report.none": "Nothing lost",
   "screen.deepcharter.incident_report.ore": "Removed from storage: %s x %s",
   "screen.deepcharter.incident_report.title": "INCIDENT REPORT: OUTPOST %s",
-  "screen.deepcharter.incident_report.visits": "%s visits while unattended"
+  "screen.deepcharter.incident_report.visits": "%s visits while unattended",
+  "spec.deepcharter.ratings": "Rated: heat %s, pressure %s, flooding %s, quake %s"
 }
