@@ -8,10 +8,7 @@ import java.util.Arrays;
  *
  * @param seaLevel       the Y of depth 0 on the surface
  * @param feetPerBlock   the altimeter's feet per block
- * @param crustThickness blocks of breach crust at the floor of each layer; the layer JSONs stack this many
- * @param pocketRadius   a crossing carves a pocket this many blocks out from the arrival column on each side
- * @param pocketHeight   blocks of air in that pocket; an entity arrives at its bottom, so this is also how far
- *                       from the crossing line it starts
+ * @param crustThickness blocks of breach crust at the floor of each layer; the campaign world's density stacks this many
  * @param structureSpacing  each kind of structure has one site in every square of this many blocks (a multiple of 16)
  * @param structureFloorMargin  structures keep this many blocks above the floor of the layer, clear of the crust and the rock floor
  * @param structureCeilingMargin  structures keep this many blocks below the top of the layer, clear of the rock roof
@@ -26,8 +23,6 @@ public record LayerTuning(
         int seaLevel,
         double feetPerBlock,
         int crustThickness,
-        int pocketRadius,
-        int pocketHeight,
         int structureSpacing,
         int structureFloorMargin,
         int structureCeilingMargin,
@@ -37,7 +32,7 @@ public record LayerTuning(
         float grainSqueezeHull,
         float grainSqueezeDamage,
         float grainSkateHeatPerSecond) {
-    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f);
+    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f);
 
     public LayerTuning {
         if (grainPulseTicks < 2) {

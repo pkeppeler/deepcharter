@@ -172,8 +172,7 @@ public class OrePlacementTest {
     /** Lava rarity rises with depth (#232, #717): every zone, top to bottom through the chain, has at least the lava of the one above. */
     @GameTest
     public void lavaNeverFallsWithDepth(GameTestHelper helper) {
-        List<String> names =
-                zoneNames(LayerChain.count(helper.getLevel().getServer().registryAccess()));
+        List<String> names = zoneNames(LayerChain.layerCount());
         double above = 0;
         String aboveName = "";
         List<String> excepted = new ArrayList<>();
@@ -367,7 +366,7 @@ public class OrePlacementTest {
             level.destroyBlock(centre, false);
             GasHazard.vent(level, centre);
 
-            float damage = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), 1f);
+            float damage = GasHazard.damage(Depth.feet(Depth.of(centre.getY())), 1f);
             if (damage <= 0f || damage >= before) {
                 throw failure(helper, "the test depth gives a damage of %s on a hull of %s", damage, before);
             }
@@ -413,7 +412,7 @@ public class OrePlacementTest {
             float stockLoss = ventLoss(level, centre, stock);
             stock.discard();
 
-            float base = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), 1f);
+            float base = GasHazard.damage(Depth.feet(Depth.of(centre.getY())), 1f);
             if (Math.abs(stockLoss - base) > 1e-3f) {
                 throw failure(helper, "the stock pod lost %s, expected the base %s", stockLoss, base);
             }
@@ -454,7 +453,7 @@ public class OrePlacementTest {
             }
             if (level.getBlockState(gas).isAir()) {
                 rig.pilot.releaseInput();
-                float damage = GasHazard.damage(Depth.feet(Depth.of(level, gas.getY())), 1f);
+                float damage = GasHazard.damage(Depth.feet(Depth.of(gas.getY())), 1f);
                 if (damage <= 0f) {
                     throw failure(helper, "the test depth gives no gas damage");
                 }

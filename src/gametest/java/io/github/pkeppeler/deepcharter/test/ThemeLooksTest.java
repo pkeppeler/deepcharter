@@ -207,7 +207,7 @@ public class ThemeLooksTest {
                 "transmission",
                 new TransmissionLook(0xEA050A06, 0xFF7CFC9A, 0xFF7CFC9A, 0xFFFFC857, 0xFFFF5A4F, 320, 16, 0.4, 6, 100),
                 TransmissionLook.of(area("transmission", null)));
-        expect(helper, "breach", new BreachLook(20, 8, 4, 10, 3, 0xFF000000), BreachLook.of(area("breach", null)));
+        expect(helper, "breach", new BreachLook(10, 3), BreachLook.of(area("breach", null)));
         expect(helper, "cargo", new CargoLook(0xFF404040), CargoLook.of(area("cargo", null)));
         expect(helper, "tow", new TowChainLook(0.28, 0.2, 1.35, 0xFFFFFFFF, 7), TowChainLook.of(area("tow", null)));
         expect(
@@ -764,19 +764,10 @@ public class ThemeLooksTest {
     }
 
     @GameTest
-    public void theBreachFadeMustComeBackAndMustNotStall(GameTestHelper helper) {
-        String sum = rejected(
-                helper, () -> BreachLook.of(area("breach", "{ \"fadeInTicks\": 12, \"blackTicks\": 8 }")), "fadeTicks");
-        requireContains(helper, sum, "fadeInTicks");
-        requireContains(helper, sum, "blackTicks");
-        rejected(helper, () -> BreachLook.of(area("breach", "{ \"fadeTicks\": 101 }")), "fadeTicks");
-        rejected(
-                helper,
-                () -> BreachLook.of(area("breach", "{ \"fadeTicks\": 1000, \"fadeInTicks\": 8 }")),
-                "fadeTicks");
+    public void theBreachShakeMustNotStall(GameTestHelper helper) {
         rejected(helper, () -> BreachLook.of(area("breach", "{ \"jitterTicks\": 101 }")), "jitterTicks");
         rejected(helper, () -> BreachLook.of(area("breach", "{ \"jitterPixels\": 33 }")), "jitterPixels");
-        BreachLook.of(area("breach", "{ \"fadeTicks\": 100, \"fadeInTicks\": 40, \"blackTicks\": 20 }"));
+        BreachLook.of(area("breach", "{ \"jitterTicks\": 100, \"jitterPixels\": 32 }"));
         helper.succeed();
     }
 

@@ -54,7 +54,7 @@ public class LayerAtmosphereTest {
 
     @GameTest
     public void everyZoneBiomeSetsItsLayersFogLightAndBedRules(GameTestHelper helper) {
-        for (int layer = 1; layer <= LayerChain.count(helper.getLevel().registryAccess()); layer++) {
+        for (int layer = 1; layer <= LayerChain.layerCount(); layer++) {
             Atmosphere wanted = Objects.requireNonNull(ATMOSPHERE.get(layer), "a layer has no atmosphere in this test");
             ServerLevel level = TestLayers.level(helper, layer);
             zones(helper, level, layer).forEach((zone, pos) -> {
@@ -106,7 +106,7 @@ public class LayerAtmosphereTest {
     /** The value a player's client and the server read at a place in the layer is the biome's, through the level's attribute system. */
     @GameTest
     public void theLevelReadsTheBiomeValueAtEachZone(GameTestHelper helper) {
-        for (int layer = 1; layer <= LayerChain.count(helper.getLevel().registryAccess()); layer++) {
+        for (int layer = 1; layer <= LayerChain.layerCount(); layer++) {
             Atmosphere wanted = Objects.requireNonNull(ATMOSPHERE.get(layer), "a layer has no atmosphere in this test");
             ServerLevel level = TestLayers.level(helper, layer);
             zones(helper, level, layer).forEach((zone, pos) -> {

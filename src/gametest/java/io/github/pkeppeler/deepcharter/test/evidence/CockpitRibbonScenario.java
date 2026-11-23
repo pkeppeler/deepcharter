@@ -91,7 +91,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                             TestLayers.dimension(server, 1), band.minY() + band.height() - UPPER_FLOOR_BELOW_TOP);
                 });
                 Room deep = singleplayer.getServer().computeOnServer(server -> {
-                    int last = LayerChain.layerCount(TestLayers.level(server, 1));
+                    int last = LayerChain.layerCount();
                     return new Room(
                             TestLayers.dimension(server, last),
                             TestLayers.band(server, last).minY() + DEEP_FLOOR_ABOVE_MIN);

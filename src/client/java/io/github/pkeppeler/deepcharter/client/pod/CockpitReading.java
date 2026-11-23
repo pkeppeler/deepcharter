@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import net.minecraft.world.level.Level;
 
 /**
  * What the cockpit's five gauges read, each from 0 to 1: the fuel tank, the hull out of the most the pod's parts allow, the depth out of the deepest
@@ -22,12 +21,11 @@ public record CockpitReading(double fuel, double hull, double depth, double heat
     private static final double FULL_TANK_PERCENT = 100.0;
 
     public static CockpitReading of(PodEntity pod, double heat) {
-        Level level = pod.level();
-        double deepest = LayerChain.deepestDepth(level);
+        double deepest = LayerChain.deepestDepth();
         return new CockpitReading(
                 clamp(pod.fuel() / FULL_TANK_PERCENT),
                 pod.maxHull() > 0f ? clamp(pod.hull() / pod.maxHull()) : 0.0,
-                clamp(Depth.of(level, pod.getBlockY()) / deepest),
+                clamp(Depth.of(pod.getBlockY()) / deepest),
                 clamp(heat),
                 cargoShare(pod));
     }

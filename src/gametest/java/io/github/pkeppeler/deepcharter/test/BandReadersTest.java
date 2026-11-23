@@ -465,36 +465,27 @@ public class BandReadersTest {
 
     // ---- WorkOrders.offered and CockpitReading.deepestBlocks, from the band table ----
 
-    /** The depths the work orders open at and the cockpit's depth gauge ends at are the ones the layer dimensions gave. */
+    /** The depths the work orders open at and the cockpit's depth gauge ends at come from the band table. */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
-    public void theBandTableGivesTheDepthsTheLayerDimensionsGave(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        expect(
-                helper,
-                LayerChain.layerCount(level) == 2,
-                "the campaign level holds %d layers",
-                LayerChain.layerCount(level));
+    public void theBandTableGivesTheDepthsTheChainOpensAt(GameTestHelper helper) {
+        expect(helper, LayerChain.layerCount() == 2, "the campaign level holds %d layers", LayerChain.layerCount());
         int[] tops = {127, 319, 575};
         for (int layer = 1; layer <= tops.length; layer++) {
             expect(
                     helper,
-                    LayerChain.topDepth(level, layer) == tops[layer - 1],
+                    LayerChain.topDepth(layer) == tops[layer - 1],
                     "layer %d opens at depth %d, expected %d",
                     layer,
-                    LayerChain.topDepth(level, layer),
+                    LayerChain.topDepth(layer),
                     tops[layer - 1]);
         }
+        expect(helper, LayerChain.deepestDepth() == 575, "the deepest depth is %d", LayerChain.deepestDepth());
         expect(
                 helper,
-                LayerChain.deepestDepth(level) == 575,
-                "the deepest depth is %d",
-                LayerChain.deepestDepth(level));
-        expect(
-                helper,
-                Depth.of(level, ONE.maxY()) == 128 && Depth.of(level, TWO.minY()) == 575,
+                Depth.of(ONE.maxY()) == 128 && Depth.of(TWO.minY()) == 575,
                 "the first block of layer 1 is at depth %d and the floor of layer 2 at %d",
-                Depth.of(level, ONE.maxY()),
-                Depth.of(level, TWO.minY()));
+                Depth.of(ONE.maxY()),
+                Depth.of(TWO.minY()));
         helper.succeed();
     }
 

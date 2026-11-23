@@ -67,20 +67,20 @@ public final class LayerConceptScenes {
      * One scene.
      *
      * @param layer     1, 2 or 3: the layer whose rock, light and fog the scene shows
-     * @param dimension the layer whose band the scene is built in: its own, except that layer 3 has none yet and uses layer 2's
+     * @param band      the layer whose band the scene is built in: its own, except that layer 3 has none yet and uses layer 2's
      * @param structure the structure file the scene is built from
-     * @param origin    where its lowest corner goes in the layer's dimension
+     * @param origin    where its lowest corner goes in the campaign level
      * @param lava      its lava sources, in blocks from its corner
      * @param views     the cameras, in the order they are shot
      */
     public record Scene(
-            int layer, int dimension, Identifier structure, BlockPos origin, List<BlockPos> lava, List<View> views) {
+            int layer, int band, Identifier structure, BlockPos origin, List<BlockPos> lava, List<View> views) {
         public String key() {
             return "layer_" + layer;
         }
 
         public ServerLevel level(MinecraftServer server) {
-            return TestLayers.level(server, dimension);
+            return TestLayers.level(server, band);
         }
 
         public Vec3 absolute(Vec3 local) {
@@ -128,8 +128,8 @@ public final class LayerConceptScenes {
     }
 
     private static Scene parse(int layer, JsonObject body) {
-        int dimension = body.get("dimension").getAsInt();
-        BlockPos origin = TestLayers.pos(dimension, ORIGIN_X + GAP * (layer - 1), 40, ORIGIN_Z);
+        int band = body.get("band").getAsInt();
+        BlockPos origin = TestLayers.pos(band, ORIGIN_X + GAP * (layer - 1), 40, ORIGIN_Z);
         List<BlockPos> lava = new ArrayList<>();
         for (JsonElement at : body.getAsJsonArray("lava")) {
             JsonArray xyz = at.getAsJsonArray();
@@ -149,7 +149,7 @@ public final class LayerConceptScenes {
         }
         return new Scene(
                 layer,
-                dimension,
+                band,
                 Identifier.parse(body.get("structure").getAsString()),
                 origin,
                 List.copyOf(lava),

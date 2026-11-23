@@ -261,7 +261,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
                                                     .getUUID())
                                     .orElseThrow()
                                     .id(),
-                            LayerChain.topDepth(server.registryAccess(), 3)));
+                            LayerChain.topDepth(3)));
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
             ClientWait.screen(context, OreProcessorScreen.class);
             OreProcessorScreen two =

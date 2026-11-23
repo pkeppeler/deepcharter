@@ -541,9 +541,8 @@ public class ColonyTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void theConduitFillsEveryLayerWhenItsChunkLoads(GameTestHelper helper) {
-        MinecraftServer server = server(helper);
         BlockPos centre = TestColony.anchor(placed(helper), ColonyAnchor.CONDUIT);
-        int layers = LayerChain.count(server.registryAccess());
+        int layers = LayerChain.layerCount();
         int[] loaded = {0};
         for (int layer = 0; layer <= layers; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
@@ -585,9 +584,8 @@ public class ColonyTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void theConduitCannotBeBrokenByHandInAnyLayer(GameTestHelper helper) {
-        MinecraftServer server = server(helper);
         BlockPos centre = TestColony.anchor(placed(helper), ColonyAnchor.CONDUIT);
-        int layers = LayerChain.count(server.registryAccess());
+        int layers = LayerChain.layerCount();
         MockPlayer mock = MockPlayers.join(helper, "conduit-hands");
         int[] loaded = {0};
         for (int layer = 0; layer <= layers; layer++) {

@@ -88,7 +88,7 @@ public class SoundAmbienceTest {
     @GameTest
     public void everyBiomeOfTheSurfaceAndEachLayerHasItsOwnDroneBed(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        int layers = LayerChain.count(server.registryAccess());
+        int layers = LayerChain.layerCount();
         expect(helper, layers == 2, "the chain has %s layers; a drone bed is written for 2", layers);
         check(helper, server, surfaceBiomes(helper), "surface", List.of("groan"));
         for (int layer = 1; layer <= layers; layer++) {
@@ -175,7 +175,7 @@ public class SoundAmbienceTest {
     public void noLayerMusicInAnyModeIsAVanillaTrack(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
-        for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
+        for (int layer = 1; layer <= LayerChain.layerCount(); layer++) {
             for (Identifier biomeId : layerBiomes(server, layer)) {
                 Biome biome =
                         Objects.requireNonNull(registry.getValue(biomeId), "registry.getValue(biomeId) is absent");
@@ -235,7 +235,7 @@ public class SoundAmbienceTest {
     public void theDeeperTheZoneTheMoreOftenItCreaksAndKnocks(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
-        for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
+        for (int layer = 1; layer <= LayerChain.layerCount(); layer++) {
             List<String> zones = Objects.requireNonNull(ZONES.get(layer), "a layer has no zone list in this test");
             Set<Identifier> listed = new TreeSet<>();
             zones.forEach(zone -> listed.add(id(zone)));

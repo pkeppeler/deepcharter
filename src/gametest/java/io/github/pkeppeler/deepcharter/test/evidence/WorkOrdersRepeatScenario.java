@@ -98,7 +98,7 @@ public class WorkOrdersRepeatScenario extends EvidenceScenario {
                 CharterId charter = Charters.charterOfOrThrow(server, player.getUUID())
                         .orElseThrow()
                         .id();
-                Charters.recordDeepestPoint(server, charter, LayerChain.topDepth(server.registryAccess(), 3));
+                Charters.recordDeepestPoint(server, charter, LayerChain.topDepth(3));
                 park(server, colony, charter, HOLD_SILVERIUM);
                 park(server, colony, charter, 10 - HOLD_SILVERIUM);
                 if (Terminals.parkedPods(

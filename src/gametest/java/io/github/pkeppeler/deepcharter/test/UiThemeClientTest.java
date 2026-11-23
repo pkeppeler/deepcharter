@@ -67,9 +67,9 @@ public class UiThemeClientTest implements FabricClientGameTest {
                 0xFFFFC857,
                 context.computeOnClient(client -> TransmissionLook.current()).relayColor());
         expect(
-                "default fade ticks",
-                20,
-                context.computeOnClient(client -> BreachLook.current()).fadeTicks());
+                "default breach shake ticks",
+                10,
+                context.computeOnClient(client -> BreachLook.current()).jitterTicks());
         expect(
                 "default cargo text",
                 0xFF404040,

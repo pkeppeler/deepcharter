@@ -1,4 +1,4 @@
-"""Tests the room-carver gate in gradle/gametest.gradle.kts: a direct air write in a file that touches a layer dimension fails the build.
+"""Tests the room-carver gate in gradle/gametest.gradle.kts: a direct air write in a file that touches a layer level fails the build.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
@@ -25,7 +25,7 @@ CLEAN = {
     "CarvesThroughTheHelperFixture.java": """
 public class CarvesThroughTheHelperFixture {
     void room(ServerLevel level) {
-        level = server.getLevel(LayerChain.dimension(1));
+        level = TestLayers.level(server, 1);
         RoomCarver.carve(level, min, max, Blocks.AIR.defaultBlockState());
     }
 }
@@ -33,7 +33,7 @@ public class CarvesThroughTheHelperFixture {
     "MarkedWriteFixture.java": """
 public class MarkedWriteFixture {
     void one(ServerLevel level) {
-        level = server.getLevel(LayerChain.dimension(1));
+        level = TestLayers.level(server, 1);
         // room-carver: one block inside a room that RoomCarver sealed
         level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
     }
@@ -43,7 +43,7 @@ public class MarkedWriteFixture {
 public class ReadsAndMentionsFixture {
     // level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3) in a comment is not a write
     void read(ServerLevel level) {
-        level = server.getLevel(LayerChain.dimension(1));
+        level = TestLayers.level(server, 1);
         String text = "level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3)";
         if (count(level, 0, 1, 0, 1, 0, 1, Blocks.AIR) != 8) {
             throw new AssertionError(text);
@@ -54,7 +54,7 @@ public class ReadsAndMentionsFixture {
     "SameLineMarkerFixture.java": """
 public class SameLineMarkerFixture {
     void one(ServerLevel level) {
-        level = server.getLevel(LayerChain.dimension(1));
+        level = TestLayers.level(server, 1);
         level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3); // room-carver: one block of a sealed room
     }
 }
@@ -84,7 +84,7 @@ def flooded_room(body: str) -> str:
     return f"""
 public class FloodedRoomFixture {{
     void room(ServerLevel level) {{
-        level = server.getLevel(LayerChain.dimension(1));
+        level = TestLayers.level(server, 1);
 {body}
     }}
 }}
@@ -129,7 +129,7 @@ class RoomCarverGateTest(unittest.TestCase):
             with self.subTest(label):
                 result = outcome(f"violation/{label}")
                 self.assertFalse(result.ok, "the gate should fail the build")
-                self.assertIn("FloodedRoomFixture:5 writes air in a file that touches a layer dimension", result.message)
+                self.assertIn("FloodedRoomFixture:5 writes air in a file that touches a layer level", result.message)
                 self.assertIn("RoomCarver.carve", result.message)
                 self.assertNotIn("MarkedWriteFixture", result.message)
                 self.assertNotIn("SurfaceOnlyFixture", result.message)
@@ -139,5 +139,5 @@ class RoomCarverGateTest(unittest.TestCase):
             with self.subTest(label):
                 result = outcome(f"marker/{label}")
                 self.assertFalse(result.ok, f"the gate should fail the build for {label}")
-                self.assertIn(f"FloodedRoomFixture:{line} writes air in a file that touches a layer dimension", result.message)
+                self.assertIn(f"FloodedRoomFixture:{line} writes air in a file that touches a layer level", result.message)
 

@@ -23,13 +23,7 @@ final class LayerReadouts {
                         : Optional.empty());
     }
 
-    /**
-     * {@link LayerRock#isOutOfReachOfHands}, for a level the client may have with a dimension type given inline by a data pack, which
-     * {@link LayerChain#bandAt} refuses: such a level is no layer, and a readout drawn every tick must not throw.
-     */
     private static boolean outOfReachOfHands(Level level, BlockPos pos, BlockState state) {
-        return state.is(LayerRock.DEEP_ROCK)
-                && level.dimensionTypeRegistration().unwrapKey().isPresent()
-                && LayerRock.isOutOfReachOfHands(level, pos, state);
+        return state.is(LayerRock.DEEP_ROCK) && LayerRock.isOutOfReachOfHands(level, pos, state);
     }
 }

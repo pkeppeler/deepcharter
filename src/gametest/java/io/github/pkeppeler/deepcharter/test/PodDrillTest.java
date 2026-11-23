@@ -526,8 +526,7 @@ public class PodDrillTest {
                 start[0] = pod.hull();
             }
             if (!level.getBlockState(pocket).is(HazardBlocks.GAS_POCKET)) {
-                float whole =
-                        GasHazard.damage(Depth.feet(Depth.of(level, pocket.getY())), PodComponents.radiatorRatio(pod));
+                float whole = GasHazard.damage(Depth.feet(Depth.of(pocket.getY())), PodComponents.radiatorRatio(pod));
                 float lost = start[0] - pod.hull();
                 rig.pilot.releaseInput();
                 pod.discard();
@@ -815,7 +814,7 @@ public class PodDrillTest {
         return PodDrill.drillTicks(
                 PodStats.base(),
                 Blocks.STONE.defaultBlockState().getDestroySpeed(level, BlockPos.ZERO),
-                Depth.feet(Depth.of(level, y)));
+                Depth.feet(Depth.of(y)));
     }
 
     private static void expectNear(GameTestHelper helper, int actual, int expected, String label) {

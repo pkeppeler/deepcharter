@@ -16,13 +16,12 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The one place a test or evidence scenario turns a layer and a local Y into a level and a world position. A layer is its
- * number ({@link LayerChain#SURFACE} for the surface); a local Y is a height inside that layer. Tests never name
- * {@code LayerChain.dimension} or a layer's Y themselves ({@code checkFixedPosGate}), so a change in how layers are laid out
- * edits this class only. {@code SURFACE} positions are in the flat test overworld; GameTests reach it through the helper's level.
+ * number ({@link LayerChain#SURFACE} for the surface); a local Y is a height inside that layer. Tests never name a layer's Y
+ * themselves ({@code checkFixedPosGate}), so a change in how layers are laid out edits this class only. {@code SURFACE} positions are in the flat test overworld; GameTests reach it through the helper's level.
  *
  * <p>A layer is a Y band of the campaign level (ADR 0059): the overworld when its type is the campaign type, otherwise
- * {@code deepcharter:campaign_sample}, the test data pack's copy of it. A layer never resolves to a layer dimension; {@link #level}
- * fails if it would.
+ * {@code deepcharter:campaign_sample}, the test data pack's copy of it, because the GameTest server's own overworld is the flat test
+ * one. {@link #level} fails if a layer resolves to any other level.
  */
 public final class TestLayers {
     /** The surface, the overworld of the chain. */
@@ -42,7 +41,7 @@ public final class TestLayers {
         return LayerChain.isCampaign(server.overworld()) ? Level.OVERWORLD : SAMPLE;
     }
 
-    /** The server's level for {@code layer}: the overworld for the surface, the campaign level otherwise. Never a layer dimension. */
+    /** The server's level for {@code layer}: the overworld for the surface, the campaign level otherwise. */
     public static ServerLevel level(MinecraftServer server, int layer) {
         ServerLevel level = ClientLight.serverLevel(server, dimension(server, layer));
         if (layer != SURFACE && !LayerChain.isCampaign(level)) {

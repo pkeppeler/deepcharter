@@ -65,7 +65,7 @@ public final class GasHazard {
         venting = true;
         try {
             int radius = OreTuning.DEFAULT.blastRadius();
-            int depthFeet = Depth.feet(Depth.of(level, pos.getY()));
+            int depthFeet = Depth.feet(Depth.of(pos.getY()));
             // entity-query: the blast reaches blastRadius blocks round a pocket that a ticking pod has just bored, so
             // its chunks are entity-ticking
             for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius))) {

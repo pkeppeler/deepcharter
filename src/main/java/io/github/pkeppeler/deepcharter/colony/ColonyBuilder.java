@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.colony;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
@@ -205,8 +204,8 @@ public final class ColonyBuilder {
                 centre.getY());
         layout.pieces().forEach(piece -> piece.place(level, centre));
         terminals(anchors);
-        // The pad's chunks are loaded already, so the Conduit's overworld part is set now and not when they load.
-        forEachPadChunk(level, centre, chunk -> Conduit.place(level, chunk, started, LayerChain.SURFACE));
+        // The pad's chunks are loaded already, so the Conduit's casing is set now and not when they load.
+        forEachPadChunk(level, centre, chunk -> Conduit.place(level, chunk, started));
     }
 
     /** Every registered terminal type that has an anchor stands on the ground there, both halves, facing the square. */

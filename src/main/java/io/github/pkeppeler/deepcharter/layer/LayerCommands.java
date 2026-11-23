@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.layer;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.Dynamic2CommandExceptionType;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import io.github.pkeppeler.deepcharter.command.FeatureCommands;
 import java.util.Set;
 import net.minecraft.commands.CommandSourceStack;
@@ -15,12 +16,14 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
-import net.minecraft.world.level.levelgen.Heightmap;
 
 /** {@code /deepcharter layer ...}, op-only. */
 public final class LayerCommands {
     private static final Dynamic2CommandExceptionType NO_SUCH_LAYER = new Dynamic2CommandExceptionType(
             (layer, count) -> Component.translatable("deepcharter.layer.goto.no_such_layer", layer, count));
+
+    private static final SimpleCommandExceptionType NOT_CAMPAIGN =
+            new SimpleCommandExceptionType(Component.translatable("deepcharter.layer.goto.not_campaign"));
 
     /** Blocks under the top of a band where a pocket is cut for a column of solid rock: clear of the roof, in the layer's rock. */
     private static final int POCKET_DEPTH = 3;
@@ -38,32 +41,16 @@ public final class LayerCommands {
     }
 
     /**
-     * Moves the player to the surface of layer {@code n}, keeping their x and z: the top of the layer's dimension, or, in a campaign world
-     * (one level, the layers as bands), the highest floor of the layer's band with room to stand, in the player's own level.
+     * Moves the player to layer {@code n}, keeping their x and z: the highest floor of the layer's band with room to stand, in the
+     * player's own level, which must be the campaign world.
      */
     private static int goTo(CommandSourceStack source, int n) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (LayerChain.isCampaign(player.level())) {
-            return goToBand(source, player, n);
-        }
-        int count = LayerChain.count(source.getServer().registryAccess());
-        ServerLevel level = n > count ? null : source.getServer().getLevel(LayerChain.dimension(n));
-        if (level == null) {
-            throw NO_SUCH_LAYER.create(n, count);
-        }
-        int x = player.getBlockX();
-        int z = player.getBlockZ();
-        // The heightmap of an unloaded chunk reads as the layer's minY, so force the chunk first.
-        level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL);
-        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
-        player.teleportTo(level, x + 0.5, y, z + 0.5, Set.of(), player.getYRot(), player.getXRot(), true);
-        source.sendSuccess(() -> Component.translatable("deepcharter.layer.goto.success", n), true);
-        return n;
-    }
-
-    private static int goToBand(CommandSourceStack source, ServerPlayer player, int n) throws CommandSyntaxException {
         ServerLevel level = player.level();
-        int count = LayerChain.layerCount(level);
+        if (!LayerChain.isCampaign(level)) {
+            throw NOT_CAMPAIGN.create();
+        }
+        int count = LayerChain.layerCount();
         if (n > count) {
             throw NO_SUCH_LAYER.create(n, count);
         }

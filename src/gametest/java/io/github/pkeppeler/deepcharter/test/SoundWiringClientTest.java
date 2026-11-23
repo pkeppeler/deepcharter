@@ -352,7 +352,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                             && !heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 
             // Each layer's zone biomes carry its music, and the client plays what the biome at the player says.
-            int layers = singleplayer.getServer().computeOnServer(server -> LayerChain.count(server.registryAccess()));
+            int layers = singleplayer.getServer().computeOnServer(server -> LayerChain.layerCount());
             require(
                     layers == LAYER_MUSIC.size(),
                     "LAYER_MUSIC lists " + LAYER_MUSIC.size() + " layers, the world has " + layers);

@@ -31,11 +31,11 @@ object GametestScan {
 	private const val DIRECT_SWAP_MARKER = "// world-data:"
 	private val directSwap = Regex("""getDataStorage\(\)\s*\.\s*set\s*\(|getDataStorage\(\)\s*[;,)]""")
 	// A test or scenario that opens a room in layer rock with a direct air write skips the RoomSeal that keeps worldgen lava out of it
-	// (PR 229 found one that flooded). In a file that touches a layer dimension, only RoomCarver.carve, which seals first, writes a
+	// (PR 229 found one that flooded). In a file that touches a layer level (it names TestLayers), only RoomCarver.carve, which seals first, writes a
 	// room's air. A setBlock, setBlockState, setBlockAndUpdate or box/fill helper call that names Blocks.AIR is flagged; a write that is not layer
 	// rock (the surface, one block inside a sealed room) carries the comment below, with its reason, on its statement or the comment line above it.
 	// This misses a carve whose air is not spelled Blocks.AIR, one through destroyBlock, removeBlock or a differently named helper,
-	// and one in a file that reaches a layer level without LayerChain.dimension(.
+	// and one in a file that reaches a layer level without naming TestLayers.
 	private const val CARVE_MARKER = "// room-carver:"
 	private val carveWrite = Regex("""\b(?:setBlock|setBlockState|setBlockAndUpdate|box|fill|fillFloor|fillRock)\s*\([^;]*\bBlocks\.(?:CAVE_)?AIR\b""")
 	// A client GameTest, client test support file or evidence scenario (anything under test/evidence) that waits with context.waitFor(pred[, ticks]) or waitForScreen waits on a tick budget
@@ -285,11 +285,11 @@ object GametestScan {
 					}
 				}
 			}
-			if (text.contains("LayerChain.dimension(")) {
+			if (text.contains("TestLayers.")) {
 				for (carve in carveWrite.findAll(text)) {
 					val line = lineOf(text, carve.range.first)
 					if (!marked(markedNear, rawLines, line, CARVE_MARKER)) {
-						problems.add("$className:${line + 1} writes air in a file that touches a layer dimension; carve a room with RoomCarver.carve, which seals the shell against worldgen lava first, or mark a write that is not layer rock with '$CARVE_MARKER <reason>'")
+						problems.add("$className:${line + 1} writes air in a file that touches a layer level; carve a room with RoomCarver.carve, which seals the shell against worldgen lava first, or mark a write that is not layer rock with '$CARVE_MARKER <reason>'")
 					}
 				}
 			}
@@ -494,7 +494,7 @@ tasks.register("checkGametestFixtures") {
 					val root = File(c["root"] as String)
 					val problems = fixedPosProblems(root, root, blankLiterals, markedNear)
 					if (problems.isNotEmpty()) {
-						throw GradleException("Literal world Y, LayerChain.dimension or a raw level-height read in tests and scenarios. $fixedPosAdvice\n  " + problems.joinToString("\n  "))
+						throw GradleException("Literal world Y or a raw level-height read in tests and scenarios. $fixedPosAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue

@@ -84,14 +84,14 @@ public class WorldFormatTest {
         helper.succeed();
     }
 
-    /** The format is the campaign overworld's, 2 (#803, ADR 0059): a world made before the stamp existed, with a colony, is refused. */
+    /** The format is the campaign overworld without the layer dimensions, 3 (#804, ADR 0059): a world made before the stamp existed, with a colony, is refused. */
     @GameTest
-    public void theFormatOfThisBuildIsTwoAndAWorldWithNoStampIsRefusedAtIt(GameTestHelper helper) {
+    public void theFormatOfThisBuildIsThreeAndAWorldWithNoStampIsRefusedAtIt(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        if (WorldFormat.CURRENT != 2 || WorldFormat.LEGACY != 1) {
+        if (WorldFormat.CURRENT != 3 || WorldFormat.LEGACY != 1) {
             throw failure(
                     helper,
-                    "the format of the campaign overworld is 2 over the legacy 1, got %s over %s",
+                    "the format of the campaign overworld alone is 3 over the legacy 1, got %s over %s",
                     WorldFormat.CURRENT,
                     WorldFormat.LEGACY);
         }
@@ -127,6 +127,14 @@ public class WorldFormatTest {
         MinecraftServer server = server(helper);
         WorldData.with(
                 server, WorldFormat.TYPE, stamped(WorldFormat.LEGACY), () -> expectRefused(helper, server, REFUSED));
+        helper.succeed();
+    }
+
+    /** Format 2 is a world that saved the layer dimensions in its settings (#804): it is refused, so it never starts on a random seed. */
+    @GameTest
+    public void aWorldOfTheFormatThatSavedTheLayerDimensionsIsRefused(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        WorldData.with(server, WorldFormat.TYPE, stamped(2), () -> expectRefused(helper, server, REFUSED));
         helper.succeed();
     }
 

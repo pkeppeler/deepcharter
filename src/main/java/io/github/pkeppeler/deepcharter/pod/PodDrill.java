@@ -215,8 +215,8 @@ public final class PodDrill {
         }
 
         int drillTicks(PodStats stats) {
-            int depth = Depth.feet(Depth.of(
-                    level, cells.stream().mapToInt(BlockPos::getY).min().orElseThrow()));
+            int depth = Depth.feet(
+                    Depth.of(cells.stream().mapToInt(BlockPos::getY).min().orElseThrow()));
             int ticks = 1;
             for (BlockPos pos : cells) {
                 BlockState state = state(pos);
@@ -281,7 +281,7 @@ public final class PodDrill {
          */
         private boolean crustLeadsOn(BlockPos crust) {
             Optional<Band> band = LayerChain.layerAt(level, crust.getY());
-            return band.isEmpty() || band.get().layer() < LayerChain.layerCount(level);
+            return band.isEmpty() || band.get().layer() < LayerChain.layerCount();
         }
     }
 }

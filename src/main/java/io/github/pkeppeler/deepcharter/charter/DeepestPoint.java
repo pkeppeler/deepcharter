@@ -33,7 +33,7 @@ public final class DeepestPoint {
                 continue;
             }
             Charters.readableCharterOf(server, player.getUUID()).ifPresent(charter -> {
-                int depth = Depth.of(player.level(), player.getBlockY());
+                int depth = Depth.of(player.getBlockY());
                 if (depth > charter.deepestPoint()) {
                     Charters.recordDeepestPoint(server, charter.id(), depth);
                 }

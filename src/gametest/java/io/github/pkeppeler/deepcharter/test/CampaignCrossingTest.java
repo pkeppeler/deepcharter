@@ -160,7 +160,7 @@ public class CampaignCrossingTest {
                 .isPresent()) {
             throw failure(helper, "founding a charter should succeed");
         }
-        int depthBefore = Depth.of(helper.getLevel(), layer1Floor + 50);
+        int depthBefore = Depth.of(layer1Floor + 50);
         Identifier breachDirective = id("handbook/first_breach/breach_workings");
         helper.runAfterDelay(SETTLE_TICKS, () -> {
             if (!crossings(player).isEmpty()) {
@@ -310,19 +310,17 @@ public class CampaignCrossingTest {
         });
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
-    public void aCrossingInOneLevelSendsTheRumbleWithNoFade(GameTestHelper helper) {
+    @GameTest
+    public void theBreachPayloadSurvivesTheWire(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel campaign = helper.getLevel();
-        ServerLevel overworld = server.overworld();
-        BreachPayload inPlace = BreachPayload.of(campaign, campaign, 1, 2);
-        BreachPayload moved = BreachPayload.of(overworld, campaign, 0, 1);
-        if (inPlace.fades() || !moved.fades()) {
-            throw failure(helper, "in place: %s, between levels: %s", inPlace, moved);
+        BreachPayload down = new BreachPayload(1, 2);
+        BreachPayload up = new BreachPayload(2, 1);
+        if (!down.descent() || up.descent()) {
+            throw failure(helper, "descent: 1 to 2 is %s, 2 to 1 is %s", down.descent(), up.descent());
         }
         RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), server.registryAccess());
-        BreachPayload.CODEC.encode(buffer, inPlace);
-        if (!BreachPayload.CODEC.decode(buffer).equals(inPlace)) {
+        BreachPayload.CODEC.encode(buffer, down);
+        if (!BreachPayload.CODEC.decode(buffer).equals(down) || buffer.isReadable()) {
             throw failure(helper, "the payload did not survive the wire");
         }
         helper.succeed();

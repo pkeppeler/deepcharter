@@ -25,12 +25,9 @@ public final class DepthRatings {
     /**
      * What a block at height {@code y} of {@code level} must hold. Empty in the campaign world's unbuilt depth and in a layer with no
      * ratings yet: nothing is rated there. A level outside the chain (the Nether, a level whose dimension type a data pack gives inline) asks
-     * nothing, so the readout drawn every tick never throws.
+     * nothing.
      */
     public static Optional<Ratings> requiredAt(Level level, int y) {
-        if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
-            return Optional.of(Ratings.NONE);
-        }
         Optional<Band> band = LayerChain.bandAt(level, y);
         if (band.isEmpty()) {
             return LayerChain.isCampaign(level) ? Optional.empty() : Optional.of(Ratings.NONE);

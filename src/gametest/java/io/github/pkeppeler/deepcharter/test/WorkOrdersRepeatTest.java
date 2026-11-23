@@ -54,7 +54,7 @@ public class WorkOrdersRepeatTest {
     /** Lets the player's charter see the act 2 order: it has reached the top of layer 3. */
     private static void reachLayerThree(MinecraftServer server, ServerPlayer player) {
         Charters.recordDeepestPoint(
-                server, WorkOrdersTest.charter(server, player).id(), LayerChain.topDepth(server.registryAccess(), 3));
+                server, WorkOrdersTest.charter(server, player).id(), LayerChain.topDepth(3));
     }
 
     private static PodEntity podAt(GameTestHelper helper, Vec3 at, OreType... ores) {

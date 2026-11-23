@@ -5,7 +5,6 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -132,27 +131,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     greenPixels(context.takeScreenshot("transmission-overlay")) >= 50,
                     "The overlay should draw its text on screen");
 
-            // The breach fade keeps running under the text: at its black plateau the text is the only bright thing on
-            // screen.
-            context.runOnClient(client -> {
-                TransmissionOverlay.reset();
-                BreachEffects.begin(true);
-                TransmissionOverlay.enqueue(new TransmissionPayload(id("t01"), CREW_NAME, player));
-            });
-            ClientWait.until(
-                    context,
-                    "the breach fade done with the transmission header shown",
-                    client -> BreachEffects.fadeAlpha(0f) >= 1f
-                            && TransmissionOverlay.active()
-                            && !TransmissionOverlay.headerShown().isEmpty(),
-                    client -> seen());
-            require(
-                    greenPixels(context.takeScreenshot("transmission-over-fade")) >= 20,
-                    "The transmission should be drawn over the black of the fade, not under it");
-            context.runOnClient(client -> {
-                BreachEffects.reset();
-                TransmissionOverlay.reset();
-            });
+            context.runOnClient(client -> TransmissionOverlay.reset());
 
             // A transmission the data file does not list must be dropped, not thrown from the packet handler, which
             // would disconnect the player.

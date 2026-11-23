@@ -109,7 +109,7 @@ public class DeepestPointScenario extends EvidenceScenario {
                 int deepest = Charters.charterOfOrThrow(minecraftServer, player.getUUID())
                         .orElseThrow()
                         .deepestPoint();
-                if (deepest < LayerChain.topDepth(minecraftServer.registryAccess(), 3)) {
+                if (deepest < LayerChain.topDepth(3)) {
                     throw new AssertionError(
                             "the floor of layer 2 should have set the deepest point to the top of layer 3, got "
                                     + deepest);

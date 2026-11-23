@@ -438,7 +438,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                             bottom + 1 - margin));
         }
         if (seated.isEmpty()) {
-            Component reading = Altimeter.reading(level, player.getBlockY());
+            Component reading = Altimeter.reading(player.getBlockY());
             hud.put(
                     "altimeter",
                     new Box(

@@ -78,7 +78,7 @@ public class DeepestPointTest {
         Vec3 at = new Vec3(X, FLOOR, Z);
         pilot.teleportTo(level, at, 0f, 0f);
         boolean[] seated = {false};
-        int startDepth = Depth.of(level, FLOOR);
+        int startDepth = Depth.of(FLOOR);
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(at);
@@ -93,7 +93,7 @@ public class DeepestPointTest {
             if (!seated[0]) {
                 throw helper.assertionException("waiting for the far chunk to tick");
             }
-            int reached = Depth.of(level, pilot.player().getBlockY());
+            int reached = Depth.of(pilot.player().getBlockY());
             if (reached < startDepth + 3) {
                 throw helper.assertionException("the pod is at depth %s, waiting for %s", reached, startDepth + 3);
             }
@@ -117,11 +117,11 @@ public class DeepestPointTest {
         crew.player().setNoGravity(true);
         int above = twoBand.minY() + 4;
         crew.teleportTo(two, new Vec3(X + 100.5, above, Z + 100.5), 0, 0);
-        int layerThreeTop = LayerChain.topDepth(server.registryAccess(), 3);
+        int layerThreeTop = LayerChain.topDepth(3);
         boolean[] moved = {false};
         helper.succeedWhen(() -> {
             if (!moved[0]) {
-                if (deepest(server, crew) < Depth.of(two, above)) {
+                if (deepest(server, crew) < Depth.of(above)) {
                     throw helper.assertionException(
                             "waiting for the poll to record the depth above the floor of layer 2");
                 }
@@ -167,7 +167,7 @@ public class DeepestPointTest {
         // level-height: the Nether is not in the chain, so it has no layer band
         crew.teleportTo(nether, new Vec3(X + 300.5, nether.getMinY() + 4, Z + 300.5), 0, 0);
         // level-height: the Nether is not in the chain, so it has no layer band
-        if (Depth.of(nether, nether.getMinY() + 4) <= 0) {
+        if (Depth.of(nether.getMinY() + 4) <= 0) {
             throw helper.assertionException(
                     "the Nether test position should read as a positive depth, or it proves nothing");
         }

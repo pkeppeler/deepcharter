@@ -4,12 +4,10 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
-import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import java.util.List;
 import java.util.Optional;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -17,25 +15,14 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
-/**
- * The altimeter, top centre (the pod readout is top left), always on screen while in a world. Then the
- * breach fade over the whole HUD. The transmission of a crossing is drawn on top of it by the transmission feature.
- *
- * <p>The fade is a full blackout, so it is registered when the client has started, after every mod's
- * initializer has registered its own elements. {@code addLast} puts it after all of them, so no other
- * HUD element draws over the black. An element registered later than that would draw over it.
- */
+/** The altimeter, top centre (the pod readout is top left), always on screen while in a world. It shakes for a moment after a crossing. */
 public final class BreachHud {
     private static final Identifier ALTIMETER = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "altimeter");
-    private static final Identifier BREACH = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "breach_fade");
 
     private BreachHud() {}
 
     public static void init() {
         HudElementRegistry.addLast(ALTIMETER, BreachHud::extractAltimeter);
-        // keep-clear-ok: the fade is the whole screen going black, there is nothing in it to keep a popup off
-        ClientLifecycleEvents.CLIENT_STARTED.register(
-                client -> HudElementRegistry.addLast(BREACH, BreachHud::extractBreach));
         HudKeepClear.register(BreachHud::keepClear);
     }
 
@@ -52,8 +39,7 @@ public final class BreachHud {
         if (client.player == null || client.level == null) {
             return Optional.empty();
         }
-        return CockpitHud.altimeter(
-                        client, guiWidth, guiHeight, Altimeter.reading(client.level, client.player.getBlockY()))
+        return CockpitHud.altimeter(client, guiWidth, guiHeight, Altimeter.reading(client.player.getBlockY()))
                 .map(text -> {
                     int width = client.font.width(text);
                     int top = CockpitHud.seated(client, guiWidth, guiHeight)
@@ -86,17 +72,5 @@ public final class BreachHud {
                         reading.box().x(),
                         reading.box().y(),
                         HudLook.current().altimeterColor()));
-    }
-
-    private static void extractBreach(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-        float alpha = BreachEffects.fadeAlpha(deltaTracker.getGameTimeDeltaPartialTick(false));
-        if (alpha > 0f) {
-            graphics.fill(
-                    0,
-                    0,
-                    graphics.guiWidth(),
-                    graphics.guiHeight(),
-                    Colors.withAlpha(BreachLook.current().fadeColor(), Math.round(alpha * 255)));
-        }
     }
 }

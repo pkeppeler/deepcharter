@@ -18,8 +18,8 @@ import net.minecraft.resources.Identifier;
 
 /**
  * Draws {@link TransmissionOverlay} as a CRT panel over the whole HUD: a dark window with a border, the header in its framing's colour,
- * the text typed below it, and scanlines over the panel. It is registered once the client has started, with {@code addLast}, after the
- * breach fade of the layer feature, so the text is drawn over the black and not under it.
+ * the text typed below it, and scanlines over the panel. It is registered once the client has started, with {@code addLast}, after every
+ * other HUD element, so the panel is drawn over all of them.
  */
 public final class TransmissionHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "transmission");

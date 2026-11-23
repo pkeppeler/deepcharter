@@ -29,10 +29,12 @@ public final class WorldFormat extends SavedData {
 
     /**
      * The world format this build makes and runs. 1 is the format of a world whose overworld is the 384-tall surface with the layer
-     * dimensions beside it; 2 is the format of the 2352-tall campaign overworld (#803, ADR 0059). A world with a colony and a lower
-     * number is refused.
+     * dimensions beside it; 2 is the format of the 2352-tall campaign overworld (#803, ADR 0059), which still saved the layer
+     * dimensions in its world settings; 3 is the format of the campaign overworld alone (#804): a saved world that names a dimension
+     * the data no longer holds fails to decode, and vanilla then starts it on a random seed. A world with a colony and a lower number
+     * is refused.
      */
-    public static final int CURRENT = 2;
+    public static final int CURRENT = 3;
 
     /**
      * The format of a world with no stamp: every world made before the stamp existed. Those worlds are format 1, so they are refused.

@@ -7,7 +7,7 @@ import net.minecraft.world.entity.Entity;
 
 /** Events fired by breach crossing. */
 public final class BreachEvents {
-    /** Fired once per entity in a crossing vehicle tree, with the arrived instance: vanilla recreates non-players. */
+    /** Fired once per entity in a crossing vehicle tree. Nobody moves, so {@code from} and {@code to} are the same level. */
     public static final Event<Crossed> CROSSED =
             EventFactory.createArrayBacked(Crossed.class, listeners -> (entity, from, to, fromLayer, toLayer) -> {
                 for (Crossed listener : listeners) {

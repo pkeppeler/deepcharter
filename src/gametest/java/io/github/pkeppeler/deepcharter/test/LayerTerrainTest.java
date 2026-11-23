@@ -200,9 +200,9 @@ public class LayerTerrainTest {
     /** The names must cover every layer in the chain; this is the start-up check, run here as well. */
     @GameTest
     public void zoneNamesCoverEveryLayerInTheChain(GameTestHelper helper) {
-        Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()));
+        Zones.requireNamesFor(LayerChain.layerCount());
         try {
-            Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()) + 1);
+            Zones.requireNamesFor(LayerChain.layerCount() + 1);
         } catch (IllegalStateException expected) {
             helper.succeed();
             return;

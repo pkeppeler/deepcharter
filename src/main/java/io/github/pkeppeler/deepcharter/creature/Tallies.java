@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.creature;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import java.util.HashSet;
@@ -47,7 +48,7 @@ public final class Tallies {
 
     /** The layer (1 or 2) a Tally may come in at {@code y} in {@code level}, or empty: the surface, unbuilt depth and every other level have none. */
     private static Optional<Integer> layerAt(ServerLevel level, int y) {
-        return LamplessFigures.bandAt(level, y)
+        return LayerChain.bandAt(level, y)
                 .filter(Band::isLayer)
                 .map(Band::layer)
                 .filter(layer -> layer <= 2);

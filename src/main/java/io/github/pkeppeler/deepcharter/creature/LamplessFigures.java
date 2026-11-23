@@ -36,22 +36,18 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * {@link CreatureTuning#maxPerSite} on a site and {@link CreatureTuning#maxPerBand} in the band, and none until
  * {@link CreatureTuning#respawnDelayTicks} after the last one was killed. Nothing is saved: a figure is made from the rails as they stand.
  *
- * <p>Everything here keys on the band at a Y ({@link LayerChain#bandAt}), not on the level: a layer dimension is one band, and the
- * campaign world holds the surface and both layers as bands of one level. A figure that appears of itself does so in the band of a player who
+ * <p>Everything here keys on the band at a Y ({@link LayerChain#bandAt}): the campaign world holds the surface and both layers as bands of one level. A figure that appears of itself does so in the band of a player who
  * is in it, with its own cap and its own wait after a kill, and never in the surface band, so the game's spawner, which picks a Y at random
  * under every player, cannot pile figures into the layers below one who stands on the surface.
  */
 public final class LamplessFigures {
-    /** The rail level, kept so that a tick does not build the key again. */
-    private static final ResourceKey<Level> RAIL_LEVEL = LayerChain.dimension(StructureKind.RAILS.layer());
-
     /**
      * The layers where a figure appears of itself, in the open dark: 1 and 2. The surface is not one of them, and the colony, the hangar
      * and the founding Mole's bay are in the surface band; an outpost is lit.
      */
     private static final Set<Integer> NATURAL_LAYERS = Set.of(1, 2);
 
-    /** A band of a level, for what is counted for each: a layer dimension is one, the campaign world has one for each layer and the surface. */
+    /** A band of a level, for what is counted for each: the campaign world has one for each layer and the surface. */
     private record Span(ResourceKey<Level> dimension, int minY, int height) {
         boolean contains(int y) {
             return y >= minY && y < minY + height;
@@ -81,26 +77,17 @@ public final class LamplessFigures {
 
     /**
      * Whether a level looks for sites to put a figure on at this game time: a level that holds the rail's layer, every
-     * {@link CreatureTuning#spawnIntervalTicks}. That is layer 2's dimension, and the campaign world.
+     * {@link CreatureTuning#spawnIntervalTicks}. That is the campaign world.
      */
     public static boolean isSpawnTick(ServerLevel level, long gameTime) {
-        return (level.dimension().equals(RAIL_LEVEL) || LayerChain.isCampaign(level))
-                && gameTime % CreatureTuning.DEFAULT.spawnIntervalTicks() == 0;
+        return LayerChain.isCampaign(level) && gameTime % CreatureTuning.DEFAULT.spawnIntervalTicks() == 0;
     }
 
     /** The band at {@code y} in {@code level}, as far as figures are counted: the level's own height where it is in no band. */
     private static Span spanAt(ServerLevel level, int y) {
-        return bandAt(level, y)
+        return LayerChain.bandAt(level, y)
                 .map(band -> new Span(level.dimension(), band.minY(), band.height()))
                 .orElseGet(() -> new Span(level.dimension(), level.getMinY(), level.getHeight()));
-    }
-
-    /** {@link LayerChain#bandAt}, empty for a dimension type given inline by a data pack, which has no key: a spawner callback never throws. */
-    static Optional<Band> bandAt(ServerLevel level, int y) {
-        if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
-            return Optional.empty();
-        }
-        return LayerChain.bandAt(level, y);
     }
 
     static void killed(ServerLevel level, boolean natural, int y) {
@@ -121,8 +108,8 @@ public final class LamplessFigures {
             double range = CreatureTuning.DEFAULT.spawnRangeBlocks();
             for (ServerPlayer player : level.players()) {
                 // A player on the surface or in unbuilt depth, in a campaign world, is in no band with rails.
-                Optional<Band> inRailLayer =
-                        bandAt(level, player.getBlockY()).filter(found -> found.layer() == StructureKind.RAILS.layer());
+                Optional<Band> inRailLayer = LayerChain.bandAt(level, player.getBlockY())
+                        .filter(found -> found.layer() == StructureKind.RAILS.layer());
                 if (inRailLayer.isEmpty()) {
                     continue;
                 }
@@ -215,7 +202,7 @@ public final class LamplessFigures {
      * player: a player on the surface draws no figure into the layers below.
      */
     static boolean mayAppearNaturally(ServerLevel level, BlockPos pos, RandomSource random) {
-        Optional<Band> band = bandAt(level, pos.getY()).filter(Band::isLayer);
+        Optional<Band> band = LayerChain.bandAt(level, pos.getY()).filter(Band::isLayer);
         return band.isPresent()
                 && rolls(band.get().layer(), random)
                 && canAppearAt(level, pos)
@@ -227,7 +214,7 @@ public final class LamplessFigures {
     private static boolean playerIn(ServerLevel level, Band band) {
         for (ServerPlayer player : level.players()) {
             if (!player.isSpectator()
-                    && bandAt(level, player.getBlockY())
+                    && LayerChain.bandAt(level, player.getBlockY())
                             .filter(found -> found.layer() == band.layer())
                             .isPresent()) {
                 return true;
@@ -250,7 +237,7 @@ public final class LamplessFigures {
      */
     public static boolean canAppearAt(ServerLevel level, BlockPos pos) {
         CreatureTuning tuning = CreatureTuning.DEFAULT;
-        if (bandAt(level, pos.getY())
+        if (LayerChain.bandAt(level, pos.getY())
                         .filter(band -> NATURAL_LAYERS.contains(band.layer()))
                         .isEmpty()
                 || !level.isPositionEntityTicking(pos)

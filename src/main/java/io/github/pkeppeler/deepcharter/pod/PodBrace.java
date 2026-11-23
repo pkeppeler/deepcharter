@@ -84,7 +84,7 @@ public final class PodBrace {
         Level level = pod.level();
         int feetY = PodFootprint.of(pod).feetY();
         Optional<Band> band = LayerChain.layerAt(level, feetY);
-        if (band.isEmpty() || band.get().layer() >= LayerChain.layerCount(level)) {
+        if (band.isEmpty() || band.get().layer() >= LayerChain.layerCount()) {
             return Optional.empty();
         }
         int thickness = LayerTuning.DEFAULT.crustThickness();

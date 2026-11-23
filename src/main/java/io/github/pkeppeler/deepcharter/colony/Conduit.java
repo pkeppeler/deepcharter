@@ -14,12 +14,10 @@ import net.minecraft.world.level.chunk.LevelChunk;
  * The Conduit: a Company pipe that runs from the colony's ore processor straight down through every layer, at the same X and Z
  * in each (lore canon, section 11; ADR 0016). Its casing is {@link ColonyBlocks#CONDUIT}, a block nothing can break.
  *
- * <p>It is not worldgen. When a chunk of the overworld or a layer loads and it holds part of the casing, the missing blocks
+ * <p>It is not worldgen. When a chunk of the overworld loads and it holds part of the casing, the missing blocks
  * are set, so a chunk that generates later, or one that lost a block, gets the casing back. The casing is a square of
- * {@link ColonyTuning#conduitRadius()} blocks out from the centre column on each side. It fills the layer from its lowest
- * block to its highest, and in the overworld from the lowest block up to {@link ColonyTuning#conduitStack()} blocks above
- * the pad's ground. In a campaign world (#743) it runs unbroken from the floor of the deepest layer up to the same top: the unbuilt
- * rock below has none.
+ * {@link ColonyTuning#conduitRadius()} blocks out from the centre column on each side. It runs unbroken from the floor of the
+ * deepest layer up to {@link ColonyTuning#conduitStack()} blocks above the pad's ground: the unbuilt rock below has none.
  */
 public final class Conduit {
     private Conduit() {}
@@ -29,27 +27,21 @@ public final class Conduit {
     }
 
     private static void onChunkLoad(ServerLevel level, LevelChunk chunk) {
-        // A dimension type given inline by a data pack has no key: it is no layer. A callback never throws.
-        if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
-            return;
-        }
-        // A campaign world is one level that holds the surface and the layers: its casing is the surface's, taller. It
-        // is told by its layers: bandAt at the level floor names unbuilt depth there, which is no layer.
-        Optional<Integer> layer = LayerChain.campaignLayers(level).isEmpty()
-                ? LayerChain.bandAt(level, level.getMinY()).map(Band::layer)
-                : Optional.of(LayerChain.SURFACE);
-        if (layer.isEmpty()) {
+        // The campaign world is one level that holds the surface and the layers: its casing is the surface's, taller.
+        // The
+        // test pack's flat overworld is the surface only. Any other level has none.
+        if (LayerChain.bandAt(level, level.getMaxY()).isEmpty()) {
             return;
         }
         Optional<ColonySite.Placed> placed = Colony.placed(level.getServer());
         if (placed.isEmpty()) {
             return;
         }
-        place(level, chunk, placed.get(), layer.get());
+        place(level, chunk, placed.get());
     }
 
     /** Sets the missing casing blocks that lie in {@code chunk}. */
-    static void place(ServerLevel level, LevelChunk chunk, ColonySite.Placed colony, int layer) {
+    static void place(ServerLevel level, LevelChunk chunk, ColonySite.Placed colony) {
         BlockPos centre = ColonyAnchor.CONDUIT.in(colony.anchors());
         int radius = ColonyTuning.DEFAULT.conduitRadius();
         ChunkPos chunkPos = chunk.getPos();
@@ -60,8 +52,7 @@ public final class Conduit {
         if (fromX > toX || fromZ > toZ) {
             return;
         }
-        int top =
-                layer == LayerChain.SURFACE ? colony.groundY() + ColonyTuning.DEFAULT.conduitStack() : level.getMaxY();
+        int top = colony.groundY() + ColonyTuning.DEFAULT.conduitStack();
         int bottom = LayerChain.campaignLayers(level).stream()
                 .mapToInt(Band::minY)
                 .min()

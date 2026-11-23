@@ -31,10 +31,9 @@ public final class Zones {
      */
     public record Zone(int layer, int index, Identifier id) {}
 
-    /** Checks at server start that the names cover every layer of the chain, as the overworld lays it out. */
+    /** Checks at server start that the names cover every layer of the chain. */
     public static void init() {
-        ServerLifecycleEvents.SERVER_STARTED.register(
-                server -> requireNamesFor(LayerChain.layerCount(server.overworld())));
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> requireNamesFor(LayerChain.layerCount()));
     }
 
     /** A chain with a layer that has no zone names is a bug, found at start-up and not on a tick. */

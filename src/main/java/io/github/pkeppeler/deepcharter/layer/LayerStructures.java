@@ -58,11 +58,7 @@ public final class LayerStructures {
     }
 
     private static void draw(ServerLevel level, LevelChunk chunk) {
-        // A dimension type given inline by a data pack has no key: it is no layer. A callback never throws.
-        if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
-            return;
-        }
-        List<Band> bands = layerBands(level);
+        List<Band> bands = LayerChain.campaignLayers(level);
         if (bands.isEmpty()) {
             return;
         }
@@ -137,18 +133,6 @@ public final class LayerStructures {
         }
     }
 
-    /**
-     * The layers a level holds: the one layer of a layer dimension, every layer of a campaign world (#743), or none for the surface and
-     * any other level.
-     */
-    private static List<Band> layerBands(ServerLevel level) {
-        List<Band> campaign = LayerChain.campaignLayers(level);
-        if (!campaign.isEmpty()) {
-            return campaign;
-        }
-        return LayerChain.layerAt(level, level.getMinY()).stream().toList();
-    }
-
     /** A pod that cannot be made is logged and skips its own site only: it must not drop the blocks of the other sites in the chunk. */
     private static void placeWreck(ServerLevel level, StructureSite site, LevelChunk chunk, boolean famous) {
         try {
@@ -216,7 +200,7 @@ public final class LayerStructures {
     public static Optional<StructureSite> prospector(ServerLevel level) {
         StructureKind kind = StructureKind.WRECK;
         return Colony.plannedAnchor(level.getServer(), ColonyAnchor.CONDUIT)
-                .flatMap(conduit -> layerBands(level).stream()
+                .flatMap(conduit -> LayerChain.campaignLayers(level).stream()
                         .filter(band -> band.layer() == kind.layer())
                         .findFirst()
                         .map(band -> nearest(level.getSeed(), kind, band.minY(), band.height(), conduit, conduit)));

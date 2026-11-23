@@ -35,8 +35,7 @@ public class HymnMomentsTest {
 
     @GameTest
     public void everyDepthHasItsOwnHymnSlowerAndMoreWornThanTheLast(GameTestHelper helper) {
-        MinecraftServer server = helper.getLevel().getServer();
-        int layers = LayerChain.count(server.registryAccess());
+        int layers = LayerChain.layerCount();
         List<DeepSound> expected = List.of(DeepSound.HYMN_COLONY, DeepSound.HYMN_LAYER_1, DeepSound.HYMN_LAYER_2);
         expect(
                 helper,

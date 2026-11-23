@@ -79,7 +79,6 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
     private static final int POLL_TICKS = 4;
     private static final int TICKS_PER_FRAME = 16;
-    private static final int TICKS_PER_FADE_FRAME = 2;
     private static final int ARRIVAL_FRAMES = 8;
     private static final int ARRIVAL_TICKS_PER_FRAME = 8;
     private static final int RGB = 0xFFFFFF;
@@ -161,10 +160,9 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 "the mock stone block",
                 client ->
                         ClientLight.clientLevel(client).getBlockState(mockStone).is(Blocks.STONE));
-        float idleFade = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
         require(
-                idleFade == 0f,
-                "A breach fade is already running before the drive, so it could not be this crossing's: " + idleFade);
+                context.computeOnClient(client -> BreachEffects.jitter().equals(new BreachEffects.Offset(0, 0))),
+                "The HUD already shakes before the drive, so the shake could not be this crossing's");
         two.server().runOnServer(server -> {
             rig.realPod().setFuel(100f);
             rig.mockPod().setFuel(100f);
@@ -174,17 +172,14 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
         boolean realReleased = false;
         boolean mockReleased = false;
-        boolean fadeStarted = false;
         boolean rumbled = false;
         boolean clientSawMockBore = false;
         int sinceFrame = 0;
         for (int tick = 1; tick <= CLIENT_TICK_FUSE; tick++) {
             context.waitTick();
-            float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-            fadeStarted |= alpha > 0;
             rumbled |=
                     !context.computeOnClient(client -> BreachEffects.jitter().equals(new BreachEffects.Offset(0, 0)));
-            if (++sinceFrame >= (alpha > 0 ? TICKS_PER_FADE_FRAME : TICKS_PER_FRAME)) {
+            if (++sinceFrame >= TICKS_PER_FRAME) {
                 frame.run();
                 sinceFrame = 0;
             }
@@ -218,14 +213,12 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
         for (int i = 0; i < ARRIVAL_FRAMES; i++) {
             context.waitTicks(ARRIVAL_TICKS_PER_FRAME);
-            fadeStarted |= context.computeOnClient(client -> BreachEffects.fadeAlpha(0f)) > 0;
             rumbled |=
                     !context.computeOnClient(client -> BreachEffects.jitter().equals(new BreachEffects.Offset(0, 0)));
             frame.run();
         }
 
         require(rumbled, "The client never received the breach effect: the HUD did not shake");
-        require(!fadeStarted, "A crossing in place never fades, but the fade started");
         require(clientSawMockBore, "While in layer 1 the client never saw the mock pod's bore at " + mockStone);
         expectEndState(context, two, rig, mockId);
         expectScannerShowsPod(context, "m1-two-pods-layer-2");

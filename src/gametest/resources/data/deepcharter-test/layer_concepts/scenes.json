@@ -7,7 +7,7 @@
   "scenes": {
     "layer_1": {
       "structure": "deepcharter-test:layer_concepts/layer_1",
-      "dimension": 1,
+      "band": 1,
       "lava": [
         [
           30,
@@ -216,7 +216,7 @@
     },
     "layer_2": {
       "structure": "deepcharter-test:layer_concepts/layer_2",
-      "dimension": 2,
+      "band": 2,
       "lava": [
         [
           31,
@@ -399,7 +399,7 @@
     },
     "layer_3": {
       "structure": "deepcharter-test:layer_concepts/layer_3",
-      "dimension": 2,
+      "band": 2,
       "lava": [
         [
           29,
