@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.SettlingRooms;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -71,6 +72,18 @@ public class OutpostSettlingSweepTest {
                 .id();
         builder.teleportTo(one, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
         boolean[] ticking = {false};
+        // The hall's light is made on a background thread, so its going dark is awaited under a wall-clock Deadline,
+        // not counted in ticks.
+        FarChunks.Deadline[] darkBy = {null};
+        boolean[] dark = {false};
+        TestTicks.each(helper, () -> {
+            if (darkBy[0] == null || dark[0]) {
+                return;
+            }
+            int light = one.getBrightness(LightLayer.BLOCK, floor.above());
+            darkBy[0].await(helper, one, light < 3, () -> "the hall did not go dark (block light " + light + ")");
+            dark[0] = light < 3;
+        });
         BlockPos barrel = floor.offset(3, 1, 3);
         FarChunks.awaitEntityTicking(helper, one, floor, () -> ticking[0] = true);
         helper.startSequence()
@@ -88,6 +101,7 @@ public class OutpostSettlingSweepTest {
                     for (BlockPos lamp : LAMPS) {
                         RoomCarver.carve(one, floor.offset(lamp), floor.offset(lamp), Blocks.AIR.defaultBlockState());
                     }
+                    darkBy[0] = FarChunks.deadline();
                     one.setBlock(barrel, Blocks.BARREL.defaultBlockState(), 3);
                     Container storage = SettlingRooms.containerAt(one, barrel);
                     for (int slot = 0; slot < storage.getContainerSize(); slot++) {
@@ -103,10 +117,7 @@ public class OutpostSettlingSweepTest {
                                     Pending.NONE,
                                     Report.NONE));
                 })
-                .thenWaitUntil(() -> {
-                    int light = one.getBrightness(LightLayer.BLOCK, floor.above());
-                    expect(helper, light < 3, "waiting for the hall to go dark (block light %s)", light);
-                })
+                .thenWaitUntil(() -> expect(helper, dark[0], "waiting for the hall to go dark"))
                 .thenWaitUntil(() -> {
                     int coal = SettlingRooms.count(SettlingRooms.containerAt(one, barrel), Items.COAL);
                     expect(helper, coal < 27 * 64, "waiting for a sweep to take fuel, the barrel still holds %s", coal);

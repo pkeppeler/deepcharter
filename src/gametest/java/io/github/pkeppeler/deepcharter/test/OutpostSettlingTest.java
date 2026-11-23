@@ -38,6 +38,7 @@ import io.github.pkeppeler.deepcharter.test.support.SettlingRooms;
 import io.github.pkeppeler.deepcharter.test.support.SettlingRooms.Room;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.SalvageHeaps;
@@ -209,12 +210,25 @@ public class OutpostSettlingTest {
         SettlingRooms.stock(lit, Items.COAL, 64);
         BlockPos lamp = lit.floor().offset(0, 3, 0);
         RoomCarver.carve(lit.level(), lamp, lamp, Blocks.GLOWSTONE.defaultBlockState());
+        // The lamp's light is made on a background thread, so it is awaited under a wall-clock Deadline, not counted in
+        // ticks.
+        FarChunks.Deadline[] litBy = {null};
+        boolean[] reached = {false};
+        TestTicks.each(helper, () -> {
+            if (litBy[0] == null || reached[0]) {
+                return;
+            }
+            int light = lit.level().getBrightness(LightLayer.BLOCK, lit.floor().above());
+            litBy[0].await(
+                    helper,
+                    lit.level(),
+                    light >= 3,
+                    () -> "the lamp's light did not reach the lit hall (is " + light + ")");
+            reached[0] = light >= 3;
+        });
         whenLoaded(helper, dark, lit)
-                .thenWaitUntil(() -> {
-                    int light = lit.level()
-                            .getBrightness(LightLayer.BLOCK, lit.floor().above());
-                    expect(helper, light >= 3, "waiting for the lamp's light to reach the lit hall (is %s)", light);
-                })
+                .thenExecute(() -> litBy[0] = FarChunks.deadline())
+                .thenWaitUntil(() -> expect(helper, reached[0], "waiting for the lamp's light to reach the lit hall"))
                 .thenExecute(() -> {
                     // 3 visits at 64 coal: ceil(0.25 * 64) = 16, then ceil(0.25 * 48) = 12, then ceil(0.25 * 36) = 9.
                     Ledger after = settle(dark, dark.ledger(), 3, SettlingRooms.SURE_RETAINED);
