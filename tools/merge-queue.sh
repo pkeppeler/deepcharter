@@ -128,7 +128,7 @@ wait_ci() {
 # re-runs its dependents and is refused while its run is in progress, so jobs of one run are re-run together
 # by one run re-run, never by two job re-runs.
 rerun_ci() {
-  local sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit n handled=","
+  local sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit job_id count handled=","
   rerun_err=
   rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" --paginate \
     --jq '.workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
@@ -142,9 +142,9 @@ rerun_ci() {
       jobs_rows=$(gh api "repos/$repo/actions/runs/$run_id/jobs?per_page=100" --paginate \
         --jq '.jobs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
         || { rerun_err="PR #$1: could not list the jobs of $workflow run $run_id"; return 1; }
-      n=$(awk -F'\t' -v j="$job" '$2 == j && $4 != "skipped" { print $1; exit }' <<<"$jobs_rows")
-      if [[ -n $n ]]; then
-        hit="$run_id"$'\t'"$n"$'\t'"$job"$'\t'"$workflow"$'\t'"$run_status"
+      job_id=$(awk -F'\t' -v j="$job" '$2 == j && $4 != "skipped" { print $1; exit }' <<<"$jobs_rows")
+      if [[ -n $job_id ]]; then
+        hit="$run_id"$'\t'"$job_id"$'\t'"$job"$'\t'"$workflow"$'\t'"$run_status"
         break
       fi
     done < <(awk -F'\t' -v w="$workflow" '$2 == w && $4 != "skipped" { print $1 "\t" $3 }' <<<"$rows")
@@ -155,7 +155,6 @@ rerun_ci() {
       return 1
     fi
   done
-  local job_id
   while IFS=$'\t' read -r run_id job_id job workflow run_status; do
     [[ -n $run_id ]] || continue
     if [[ $run_status != completed ]]; then
@@ -164,8 +163,8 @@ rerun_ci() {
     fi
     [[ $handled != *",$run_id,"* ]] || continue
     handled+="$run_id,"
-    n=$(awk -F'\t' -v r="$run_id" '$1 == r' <<<"$picks" | wc -l)
-    if ((n > 1)); then
+    count=$(awk -F'\t' -v r="$run_id" '$1 == r' <<<"$picks" | wc -l)
+    if ((count > 1)); then
       say "re-running $workflow run $run_id"
       gh api -X POST "repos/$repo/actions/runs/$run_id/rerun" >/dev/null 2>&1 \
         || { rerun_err="PR #$1: GitHub refused to re-run $workflow run $run_id (older than 30 days? push a commit instead)"; return 1; }
