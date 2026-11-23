@@ -112,7 +112,8 @@ public record CatalogueLayout(
      * The layout on a screen {@code width} by {@code height}, or null when the window is too narrow for the units' bands or too short for
      * them.
      */
-    // const-param: the callers pass their font's line height, which a resource pack's font changes; tests pass 9
+    // const-param: callers pass font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font); the
+    // parameter keeps the layout tied to the font, and tests pass 9
     public static @Nullable CatalogueLayout of(
             int width, int height, CatalogueLook look, CrtTuning crt, int lineHeight) {
         int inventoryLeft = (width - IMAGE_WIDTH) / 2;
