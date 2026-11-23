@@ -143,7 +143,7 @@ done
 git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
 main_sha=$(git rev-parse origin/main 2>/dev/null) || main_sha=
 [[ $main_sha =~ ^[0-9a-f]{40}$ ]] || refuse "could not read the sha of origin/main"
-stale_fix="re-run CI on the current main by closing and reopening the PR [stale-base] (the head sha is unchanged, so the review pass stays valid)"
+stale_fix="re-run CI on the current main by re-running the head's CI and Client tests workflow runs [stale-base] (the head sha is unchanged, so the review pass stays valid)"
 based_names=("${REQUIRED_CHECKS[@]}")
 grep -qxF "pass"$'\t'"client-gametest" <<<"$checks" && based_names+=(client-gametest) # pipe-grep-q: fail-closed
 for based in "${based_names[@]}"; do
@@ -228,7 +228,7 @@ has_label gameplay && gameplay_flag=1
 client_needed=$(cut -f2,3 <<<"$pr_files" | tr '\t' '\n' | tools/ci-client-needed.sh "$gameplay_flag") \
   || refuse "could not decide whether the client suite is needed"
 if [[ $client_needed == true ]] && ! grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then
-  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push, or close and reopen the PR" # pipe-grep-q: fail-closed
+  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push, or re-run the head's Client tests workflow run" # pipe-grep-q: fail-closed
 fi
 
 # Read the closing set again: a body edit may have reached GitHub's parse after the first read.

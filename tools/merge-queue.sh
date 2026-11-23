@@ -4,8 +4,11 @@
 # Merges the given PRs one at a time, in order, through tools/merge-pr.sh (the gate).
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
-#   - refusal carrying the "[stale-base]" marker (stale base): close and reopen the PR, sleep, wait
-#     for CI again, retry (up to MERGE_QUEUE_STALE_RETRIES, default 3)
+#   - refusal carrying the "[stale-base]" marker (stale base): re-run the head sha's newest "CI" and
+#     "Client tests" workflow runs (every CI job merges the live main when it runs; the PR's state and head
+#     are never touched), sleep, wait for CI again, retry (up to MERGE_QUEUE_STALE_RETRIES, default 3).
+#     A run still in progress is skipped (it merged the live main when it started, and the API refuses
+#     to re-run it); no run for the sha, or a refused re-run, stops the queue
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
 # After a merge, cleanup never loses work. It removes the PR's worktree only when that
@@ -115,6 +118,32 @@ wait_ci() {
     say "waiting for CI on ${sha:0:9} ($(tr '\n' ' ' <<<"$pending")) ..."
     sleep "$ci_poll"
   done
+}
+
+# rerun_ci <pr> <sha>: re-run the newest CI and Client tests runs of the head sha. Returns 1 and sets
+# $rerun_err when no such run exists, the runs cannot be listed or the API refuses a re-run (for example a
+# run older than 30 days). An unfinished run is skipped: wait_ci waits for it.
+rerun_ci() {
+  local sha=$2 rows latest id name status
+  rerun_err=
+  rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" \
+    --jq '.workflow_runs[] | [.id, .name, .status] | @tsv' 2>/dev/null) \
+    || { rerun_err="PR #$1: could not list the workflow runs of ${sha:0:9}"; return 1; }
+  # The API lists newest first: the first row of each workflow is its latest run.
+  latest=$(awk -F'\t' '($2 == "CI" || $2 == "Client tests") && !seen[$2]++' <<<"$rows")
+  if [[ -z $latest ]]; then
+    rerun_err="PR #$1: no CI or Client tests run exists for $sha to re-run (push, or start the workflows by hand)"
+    return 1
+  fi
+  while IFS=$'\t' read -r id name status; do
+    if [[ $status != completed ]]; then
+      say "$name run $id is still in progress ($status): not re-running it"
+      continue
+    fi
+    say "re-running $name run $id"
+    gh api -X POST "repos/$repo/actions/runs/$id/rerun" >/dev/null 2>&1 \
+      || { rerun_err="PR #$1: GitHub refused to re-run $name run $id (older than 30 days? push a commit instead)"; return 1; }
+  done <<<"$latest"
 }
 
 # real <dir>: physical path of a directory, empty if it does not exist.
@@ -286,13 +315,9 @@ run_pr() {
         return 0
       fi
       stale_n=$((stale_n + 1))
-      say "PR #$pr has a stale base; close and reopen to rerun CI ($stale_n of $stale_max)"
-      if ! gh api -X PATCH "repos/$repo/pulls/$pr" -f state=closed >/dev/null; then
-        detail="PR #$pr: closing it failed"
-        return 0
-      fi
-      if ! gh api -X PATCH "repos/$repo/pulls/$pr" -f state=open >/dev/null; then
-        detail="PR #$pr: reopening it failed (the PR is closed now)"
+      say "PR #$pr has a stale base; re-running CI ($stale_n of $stale_max)"
+      if ! rerun_ci "$pr" "$sha"; then
+        detail=$rerun_err
         return 0
       fi
       sleep "$stale_sleep"

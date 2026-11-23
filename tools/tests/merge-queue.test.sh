@@ -27,7 +27,7 @@ source "$FIXTURE_LIB"
 
 # gh: REST only. state (OPEN, CLOSED or MERGED, answered as the REST merged flag plus open/closed),
 # branch and sha come from $ST/state.N (default OPEN), $ST/branch.N (default N-slug).
-# $ST/fixture.N replaces those with a recorded response (tools/tests/fixtures/gh-rest). $ST/rest_fail makes every PR read fail. `run list` pops one line per call from $ST/runs ("-" or no line = nothing unfinished).
+# $ST/wfruns holds the head sha's workflow runs. $ST/fixture.N replaces those with a recorded response (tools/tests/fixtures/gh-rest). $ST/rest_fail makes every PR read fail. `run list` pops one line per call from $ST/runs ("-" or no line = nothing unfinished).
 cat >"$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "gh $*" >>"$LOG"
@@ -44,6 +44,12 @@ done
 case "$1 $method" in
   "api GET")
     [[ ! -e $ST/rest_fail ]] || exit 1
+    # actions/runs?head_sha=...: every run row ("id<TAB>name<TAB>status", newest first) of $ST/wfruns, or the API failing.
+    if [[ $path == */actions/runs\?head_sha=* ]]; then
+      [[ ! -e $ST/wfruns_fail ]] || exit 1
+      cat "$ST/wfruns" 2>/dev/null || true
+      exit 0
+    fi
     n=${path##*/}
     if [[ -e $ST/fixture.$n ]]; then
       # shellcheck source=lib/gh-fixture.sh
@@ -62,6 +68,8 @@ case "$1 $method" in
       .head.sha) echo "sha$n" ;;
     esac ;;
   "api PATCH") exit 0 ;;
+  # a rerun POST fails (the API refuses) when $ST/rerun_fail.<run id> exists
+  "api POST") [[ ! $path == */actions/runs/*/rerun || ! -e "$ST/rerun_fail.$(basename "$(dirname "$path")")" ]] || exit 1 ;;
   "run "*)
     if [[ -s $ST/runs ]]; then
       line=$(head -n 1 "$ST/runs")
@@ -132,7 +140,7 @@ STUB
 chmod +x "$work/bin/"* "$work/gate"
 
 # The refusal as merge-pr.sh prints it: the queue keys on the "[stale-base]" marker, not on a command hint.
-stale_msg() { echo "REFUSED: PR #$1 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run CI on the current main by closing and reopening the PR [stale-base] (the head sha is unchanged)"; }
+stale_msg() { echo "REFUSED: PR #$1 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run CI on the current main by re-running CI [stale-base] (the head sha is unchanged)"; }
 
 # gate N K "<rc> [flag]" [output]
 gate() { { echo "$3"; [[ -z ${4-} ]] || echo "$4"; } >"$ST/gate.$1.$2"; }
@@ -324,26 +332,106 @@ count "ci wait: polled until nothing unfinished" "gh run list -R pkeppeler/deepc
 count "ci wait: slept between polls" "sleep 5" 2
 count "ci wait: gate ran once, after CI" "merge-pr 7" 1
 
-# --- stale base: close, reopen, wait, merge ---
+# --- stale base: re-run the head's CI and Client tests runs, wait, merge ---
+# Run rows as the API lists them (newest first): the newest CI and Client tests runs are re-run, an older CI run
+# and other workflows are not.
+wfruns() { printf '%s\n' "$@" | tr '|' '\t' >"$ST/wfruns"; }
+rerun_url() { echo "gh api -X POST repos/pkeppeler/deepcharter/actions/runs/$1/rerun"; }
 reset
+wfruns "301|CI|completed" "302|Client tests|completed" "303|audit|completed" "290|CI|completed"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
 exited "stale retry: exit 0" 0
-logged "stale retry: closes the PR" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/7 -f state=closed"
-logged "stale retry: reopens the PR" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/7 -f state=open"
+logged "stale retry: lists the runs of the head sha" "gh api repos/pkeppeler/deepcharter/actions/runs?head_sha=sha7&per_page=100 --jq .workflow_runs[] | [.id, .name, .status] | @tsv"
+logged "stale retry: re-runs the CI run" "$(rerun_url 301)"
+logged "stale retry: re-runs the Client tests run" "$(rerun_url 302)"
+count "stale retry: two reruns only (no other workflow, no older run)" "/rerun" 2
+not_logged "stale retry: never PATCHes a state" "PATCH"
+not_logged "stale retry: never closes or reopens" "state="
 logged "stale retry: sleeps for the rerun" "sleep 9"
 count "stale retry: gate ran twice" "merge-pr 7" 2
 printed "stale retry: merged" "merged:  #7"
 
+# --- a run still in progress is skipped, not cancelled: it merges the live main when it started ---
+reset
+wfruns "301|CI|in_progress" "302|Client tests|completed"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale in progress: exit 0" 0
+count "stale in progress: only the completed run is re-run" "/rerun" 1
+logged "stale in progress: re-runs the completed Client tests run" "$(rerun_url 302)"
+not_logged "stale in progress: never cancels" "cancel"
+printed "stale in progress: says it skipped" "CI run 301 is still in progress"
+
+# --- every run still in progress: nothing to re-run, wait and retry ---
+reset
+wfruns "301|CI|queued" "302|Client tests|in_progress"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale all in progress: exit 0" 0
+count "stale all in progress: no rerun" "/rerun" 0
+count "stale all in progress: gate ran twice" "merge-pr 7" 2
+
+# --- only one of the two workflows has a run: re-run it ---
+reset
+wfruns "301|CI|completed"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale one workflow: exit 0" 0
+count "stale one workflow: one rerun" "/rerun" 1
+
+# --- no run for the sha: stop, say what to do ---
+reset
+wfruns "303|audit|completed"
+gate 7 1 "1" "$(stale_msg 7)"
+run_q 7
+exited "stale no run: exit 1" 1
+count "stale no run: no rerun" "/rerun" 0
+count "stale no run: gate ran once" "merge-pr 7" 1
+printed "stale no run: summary says why" "no CI or Client tests run exists for sha7"
+not_logged "stale no run: never PATCHes" "PATCH"
+
+# --- the runs cannot be listed: stop ---
+reset
+: >"$ST/wfruns_fail"
+gate 7 1 "1" "$(stale_msg 7)"
+run_q 7
+exited "stale list fails: exit 1" 1
+printed "stale list fails: summary says why" "could not list the workflow runs"
+
+# --- the API refuses a rerun (a run older than 30 days): stop, no close and reopen fallback ---
+reset
+wfruns "301|CI|completed" "302|Client tests|completed"
+: >"$ST/rerun_fail.301"
+gate 7 1 "1" "$(stale_msg 7)"
+run_q 7
+exited "stale refused: exit 1" 1
+printed "stale refused: summary names the run" "GitHub refused to re-run CI run 301"
+count "stale refused: gate ran once" "merge-pr 7" 1
+not_logged "stale refused: never PATCHes" "PATCH"
+
 # --- stale base that never clears stops after 3 reruns ---
 reset
+wfruns "301|CI|completed" "302|Client tests|completed"
 for k in 1 2 3 4; do gate 7 "$k" "1" "$(stale_msg 7)"; done
 run_q 7
 exited "stale exhausted: exit 1" 1
-count "stale exhausted: three close/reopen cycles" "state=closed" 3
+count "stale exhausted: three rerun cycles" "$(rerun_url 301)" 3
 count "stale exhausted: gate ran four times" "merge-pr 7" 4
 printed "stale exhausted: summary says why" "still stale after 3 reruns"
+
+# --- MERGE_QUEUE_STALE_RETRIES=0: never re-runs, stops at the first stale refusal ---
+reset
+wfruns "301|CI|completed"
+gate 7 1 "1" "$(stale_msg 7)"
+QENV="MERGE_QUEUE_STALE_RETRIES=0" run_q 7
+exited "stale retries 0: exit 1" 1
+count "stale retries 0: no rerun" "/rerun" 0
+printed "stale retries 0: summary says why" "still stale after 0 reruns"
 
 # --- mergeable UNKNOWN: wait, retry, merge ---
 reset
@@ -352,7 +440,7 @@ gate 7 2 "0 merged"
 run_q 7
 exited "unknown: exit 0" 0
 logged "unknown: sleeps before retrying" "sleep 3"
-not_logged "unknown: does not close the PR" "state=closed"
+not_logged "unknown: does not touch the PR state" "state="
 count "unknown: gate ran twice" "merge-pr 7" 2
 
 # --- UNKNOWN that never clears stops after 4 retries ---
