@@ -495,6 +495,8 @@ client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success 'clien
 refusal "aggregate passed beside only a template shard, so not legacy" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success "client-gametest-shard 1:5:failure")" "$game"
 refusal "aggregate passed beside a failed shard, so not legacy" "client-gametest-shard 1 (newest non-skipped run: failure)" "${client_vars[@]}"
+client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success "client-gametest-shard 1:5:skipped")" "$game"
+refusal "aggregate passed beside only a skipped shard, so not legacy" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:success")" "$game"
 refusal "game path, shards passed but the aggregate never ran" "$client_msg" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" client-gametest:4:skipped)" "$game"
