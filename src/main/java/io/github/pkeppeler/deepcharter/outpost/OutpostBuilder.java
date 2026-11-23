@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -18,11 +19,16 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Builds the outpost of a charter at the floor of layer 1 (the band at the clicked block's Y, in a campaign world), the start of layer 2: a lit steel hall with the colony's fuel pump and ore processor
@@ -35,8 +41,8 @@ import net.minecraft.world.phys.AABB;
  * ends over the hall stays open and a pod can drop in. A pod that climbs out of layer 2 arrives in the hall (the crossing keeps the column), where
  * the pump fills its tank and the terminal buys its ore, at {@link OutpostRates}.
  *
- * <p>The shell is sealed against lava and gas before the cut ({@link RoomSeal}); a block entity or any entity but the builder in the hall's volume, or another outpost within two
- * halls' reach, refuses the build, and every check is made before the first block, so a refusal keeps the kit and changes nothing. The outpost is recorded in {@link OutpostData}.
+ * <p>The shell is sealed against lava and gas before the cut ({@link RoomSeal}); a block entity or a living thing but the builder in the hall's volume (a mob, another player, a pod: the refusal names the first), or another outpost within two
+ * halls' reach, refuses the build, and every check is made before the first block, so a refusal keeps the kit and changes nothing. Loose items and XP orbs in the volume do not refuse it: once the build is certain they are swept to the builder. The outpost is recorded in {@link OutpostData}.
  */
 public final class OutpostBuilder {
     static final int RADIUS_BLOCKS = 4;
@@ -89,18 +95,52 @@ public final class OutpostBuilder {
             return refusal("no_room_above");
         }
         AABB shell = AABB.encapsulatingFullBlocks(shellMin, shellMax);
-        // entity-query: the hall is cut with whatever stands in it, so any entity but the builder refuses the kit
-        if (!level.getEntities(player, shell).isEmpty()) {
-            return refusal("occupied");
+        // entity-query: the hall is cut with whatever stands in it, so a living thing but the builder refuses the kit
+        List<Entity> inShell = level.getEntities(player, shell);
+        Optional<Entity> blocker =
+                inShell.stream().filter(entity -> !isSweepable(entity)).findFirst();
+        if (blocker.isPresent()) {
+            return Optional.of(Component.translatable(
+                    "message.deepcharter.outpost.occupied", blocker.get().getName()));
         }
         for (BlockPos pos : BlockPos.betweenClosed(shellMin, shellMax)) {
             if (level.getBlockEntity(pos) != null) {
                 return refusal("blocked");
             }
         }
+        sweep(player, level, inShell);
         cut(level, clicked);
         data.add(new OutpostData.Outpost(charter.get().id(), LAYER, clicked.immutable()));
         return Optional.empty();
+    }
+
+    /** Loose items and XP orbs do not block the hall: they are swept to the builder. */
+    private static boolean isSweepable(Entity entity) {
+        return entity instanceof ItemEntity || entity instanceof ExperienceOrb;
+    }
+
+    /**
+     * Moves every loose item and XP orb of the hall's volume to the builder before the cut, so nothing is entombed: a stack goes into the
+     * inventory and what does not fit is dropped at the builder's feet, an orb pays its experience. Each entity is discarded once its
+     * contents have moved.
+     */
+    private static void sweep(ServerPlayer player, ServerLevel level, List<Entity> inShell) {
+        for (Entity entity : inShell) {
+            if (entity instanceof ItemEntity item) {
+                ItemStack stack = item.getItem().copy();
+                item.discard();
+                player.getInventory().add(stack);
+                if (!stack.isEmpty()) {
+                    ItemEntity overflow = new ItemEntity(level, player.getX(), player.getY(), player.getZ(), stack);
+                    overflow.setDeltaMovement(Vec3.ZERO);
+                    level.addFreshEntity(overflow);
+                }
+            } else if (entity instanceof ExperienceOrb orb) {
+                int value = orb.getValue();
+                orb.discard();
+                player.giveExperiencePoints(value);
+            }
+        }
     }
 
     private static Optional<Component> refusal(String key) {

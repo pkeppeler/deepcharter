@@ -7,6 +7,8 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
+import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.creature.Tally;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
@@ -54,6 +56,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
@@ -62,6 +66,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -623,6 +628,168 @@ public class OutpostTest {
                     .isPresent()) {
                 throw failure(helper, "a refused kit records no outpost");
             }
+        });
+    }
+
+    private static Optional<Component> build(Stage stage) {
+        return OutpostBuilder.build(stage.player(), stage.level(), stage.floor(), Direction.UP);
+    }
+
+    private static AABB shellOf(BlockPos floor) {
+        return AABB.encapsulatingFullBlocks(floor.offset(-5, 0, -5), floor.offset(5, 6, 5));
+    }
+
+    /** Items lying in {@code area}. */
+    private static List<ItemEntity> itemsIn(ServerLevel level, AABB area) {
+        // entity-query: the area is in the chunk this test forced and waited on
+        return level.getEntitiesOfClass(ItemEntity.class, area);
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aLooseStackInTheHallIsSweptToTheBuilderNotRefused(GameTestHelper helper) {
+        Stage stage = stage(helper, 9600, true);
+        whenReady(helper, stage, () -> {
+            ItemEntity stack = new ItemEntity(
+                    stage.level(),
+                    stage.floor().getX() + 3.5,
+                    stage.floor().getY() + 2,
+                    stage.floor().getZ() + 3.5,
+                    new ItemStack(Items.DIAMOND, 7));
+            stage.level().addFreshEntity(stack);
+            Optional<Component> refusal = build(stage);
+            if (refusal.isPresent()) {
+                throw failure(
+                        helper,
+                        "a loose stack must not refuse the kit, it said %s",
+                        refusal.get().getString());
+            }
+            if (!stack.isRemoved()) {
+                throw failure(helper, "the swept stack's entity should be discarded");
+            }
+            int held = stage.player().getInventory().countItem(Items.DIAMOND);
+            if (held != 7) {
+                throw failure(helper, "the builder should hold the 7 swept diamonds, held %s", held);
+            }
+            if (!itemsIn(stage.level(), shellOf(stage.floor()).inflate(2)).isEmpty()) {
+                throw failure(helper, "no item should be left lying in or round the hall");
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSweptStackThatDoesNotFitDropsAtTheBuildersFeetOutsideTheHall(GameTestHelper helper) {
+        Stage stage = stage(helper, 9700, true);
+        whenReady(helper, stage, () -> {
+            Vec3 outside = Vec3.atBottomCenterOf(stage.floor().offset(7, 1, 0));
+            stage.mock().teleportTo(stage.level(), outside, 0f, 0f);
+            for (int slot = 0; slot < 36; slot++) {
+                stage.player().getInventory().setItem(slot, new ItemStack(Items.DIRT, 64));
+            }
+            stage.level()
+                    .addFreshEntity(new ItemEntity(
+                            stage.level(),
+                            stage.floor().getX() + 0.5,
+                            stage.floor().getY() + 2,
+                            stage.floor().getZ() + 3.5,
+                            new ItemStack(Items.DIAMOND, 5)));
+            Optional<Component> refusal = build(stage);
+            if (refusal.isPresent()) {
+                throw failure(
+                        helper,
+                        "a loose stack must not refuse the kit, it said %s",
+                        refusal.get().getString());
+            }
+            if (stage.player().getInventory().countItem(Items.DIAMOND) != 0) {
+                throw failure(helper, "a full inventory takes no diamond");
+            }
+            List<ItemEntity> dropped = itemsIn(stage.level(), new AABB(BlockPos.containing(outside)).inflate(1.5));
+            int total =
+                    dropped.stream().mapToInt(item -> item.getItem().getCount()).sum();
+            if (dropped.size() != 1
+                    || total != 5
+                    || !dropped.getFirst().getItem().is(Items.DIAMOND)) {
+                throw failure(helper, "the 5 diamonds should drop once at the builder's feet, found %s", dropped);
+            }
+            if (shellOf(stage.floor()).intersects(dropped.getFirst().getBoundingBox())) {
+                throw failure(
+                        helper,
+                        "the overflow lies inside the hall's shell at %s",
+                        dropped.getFirst().position());
+            }
+            if (!itemsIn(stage.level(), shellOf(stage.floor())).isEmpty()) {
+                throw failure(helper, "no item should be left inside the hall's shell");
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void anExperienceOrbInTheHallIsAwardedToTheBuilderNotRefused(GameTestHelper helper) {
+        Stage stage = stage(helper, 9800, true);
+        whenReady(helper, stage, () -> {
+            ExperienceOrb orb = new ExperienceOrb(
+                    stage.level(),
+                    stage.floor().getX() + 2.5,
+                    stage.floor().getY() + 2,
+                    stage.floor().getZ() + 2.5,
+                    11);
+            stage.level().addFreshEntity(orb);
+            int before = stage.player().totalExperience;
+            Optional<Component> refusal = build(stage);
+            if (refusal.isPresent()) {
+                throw failure(
+                        helper,
+                        "an orb must not refuse the kit, it said %s",
+                        refusal.get().getString());
+            }
+            if (!orb.isRemoved()) {
+                throw failure(helper, "the swept orb should be discarded");
+            }
+            int gained = stage.player().totalExperience - before;
+            if (gained != 11) {
+                throw failure(helper, "the builder should gain the orb's 11 experience, gained %s", gained);
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aMobInTheHallRefusesTheKitAndTheRefusalNamesIt(GameTestHelper helper) {
+        Stage stage = stage(helper, 9900, true);
+        whenReady(helper, stage, () -> {
+            Tally tally = TestEntities.create(CreatureRegistry.TALLY, stage.level());
+            tally.setPos(Vec3.atBottomCenterOf(stage.floor().offset(2, 2, 2)));
+            stage.level().addFreshEntity(tally);
+            ItemEntity stack = new ItemEntity(
+                    stage.level(),
+                    stage.floor().getX() + 3.5,
+                    stage.floor().getY() + 2,
+                    stage.floor().getZ() + 3.5,
+                    new ItemStack(Items.DIAMOND, 7));
+            stage.level().addFreshEntity(stack);
+            try {
+                expectRefusal(helper, stage, stage.floor(), Direction.UP, OCCUPIED, "a mob in the hall");
+                Component said = build(stage).orElseThrow();
+                if (!(said.getContents() instanceof TranslatableContents translatable)
+                        || translatable.getArgs().length != 1
+                        || !tally.getName().equals(translatable.getArgs()[0])) {
+                    throw failure(helper, "the refusal should be given the Tally's name, it was %s", said);
+                }
+                if (stack.isRemoved() || stage.player().getInventory().countItem(Items.DIAMOND) != 0) {
+                    throw failure(helper, "a refused kit must sweep nothing");
+                }
+            } finally {
+                tally.discard();
+                stack.discard();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void anotherPlayerInTheHallRefusesTheKit(GameTestHelper helper) {
+        Stage stage = stage(helper, 10000, true);
+        whenReady(helper, stage, () -> {
+            MockPlayer other = MockPlayers.join(helper, "outposter-crewmate");
+            other.teleportTo(stage.level(), Vec3.atBottomCenterOf(stage.floor().offset(3, 1, 3)), 0f, 0f);
+            expectRefusal(helper, stage, stage.floor(), Direction.UP, OCCUPIED, "another player in the hall");
         });
     }
 
