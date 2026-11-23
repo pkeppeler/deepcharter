@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.requireNavigator;
 
 import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
@@ -165,22 +166,6 @@ public class SonarHudClientTest implements FabricClientGameTest {
                     !context.computeOnClient(client -> SonarHud.frame(client).isPresent()),
                     "the pilot of a Prospector sees no sonar scope: it is the navigator's");
         }
-    }
-
-    /**
-     * Fails, naming the cause, unless the client is the navigator of its pod now: the scope is drawn and the ping key is sent only for a navigator. A client
-     * that lost the other rider for a tick (#1082) is told apart from a wrong pixel or a ping that never came.
-     */
-    public static void requireNavigator(ClientGameTestContext context) {
-        String seat = context.computeOnClient(client -> {
-            int passengers = client.player != null && client.player.getVehicle() instanceof PodEntity pod
-                    ? pod.getPassengers().size()
-                    : 0;
-            return SonarHud.frame(client).isPresent()
-                    ? ""
-                    : "the client is not the navigator: its pod shows " + passengers + " passengers";
-        });
-        require(seat.isEmpty(), seat);
     }
 
     /** A screenshot with the geometry of the scope: where its middle pixel is on the screen. */

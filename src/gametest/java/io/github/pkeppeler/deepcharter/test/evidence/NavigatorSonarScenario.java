@@ -9,7 +9,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.SonarKind;
-import io.github.pkeppeler.deepcharter.test.SonarHudClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
@@ -77,7 +77,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
             }
             scopeStill(context, "sonar-before-the-ping");
 
-            SonarHudClientTest.requireNavigator(context);
+            ClientChecks.requireNavigator(context);
             context.getInput().pressKey(SonarKeys.PING);
             ClientWait.until(
                     context,
@@ -136,7 +136,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
 
     /** A still of the whole screen and its zoom on the scope, as the navigator reads it. */
     private void scopeStill(ClientGameTestContext context, String name) {
-        SonarHudClientTest.requireNavigator(context);
+        ClientChecks.requireNavigator(context);
         clearNotices(context);
         screenshot(context, name);
         frame(context);

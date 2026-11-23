@@ -72,10 +72,9 @@ public final class ClientWait {
     }
 
     /**
-     * Waits until the client holds every chunk that the square of {@code radius} blocks round {@code (x, z)} touches. A test that seats
-     * players at a spot it just built calls this before it seats them: the server tracks an entity for a player only once it has sent the chunk the
-     * entity stands in, and a rider moves chunk when it boards, so a chunk still queued for sending makes the other rider vanish from the client
-     * for a tick, and with them the client's seat in the pod. It relies on the server sending a chunk before any entity in it.
+     * Waits until the client holds every chunk the square of {@code radius} blocks round {@code (x, z)} touches. Call it before seating players at a
+     * spot just built: the server tracks an entity for a player only after sending that entity's chunk, so a chunk still queued makes the other
+     * rider vanish from the client for a tick.
      */
     public static void chunksAround(ClientGameTestContext context, int x, int z, int radius) {
         int minX = SectionPos.blockToSectionCoord(x - radius);
