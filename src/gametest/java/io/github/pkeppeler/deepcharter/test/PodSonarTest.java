@@ -245,37 +245,48 @@ public class PodSonarTest {
         int x = 8152;
         boolean[] left = {false};
         run(helper, x, level -> {}, scene -> {
-            List<UUID> boarded = List.of(
-                    scene.pilot().player().getUUID(), scene.navigator().player().getUUID());
+            // The assignment is written at the end of the pod's tick, so each step waits for it to catch up.
+            List<UUID> synced = Versioned.readable(scene.pod(), PodSeats.STATE)
+                    .orElseThrow()
+                    .riders();
+            UUID pilot = scene.pilot().player().getUUID();
+            UUID navigator = scene.navigator().player().getUUID();
             if (!left[0]) {
-                expect(
-                        helper,
-                        Versioned.readable(scene.pod(), PodSeats.STATE)
-                                .orElseThrow()
-                                .riders()
-                                .equals(boarded),
-                        "the synced assignment is the pilot then the navigator, got %s",
-                        Versioned.readable(scene.pod(), PodSeats.STATE));
+                if (!synced.equals(List.of(pilot, navigator))) {
+                    return false;
+                }
                 scene.pilot().player().stopRiding();
                 left[0] = true;
                 return false;
             }
-            // The assignment is rewritten at the end of the pod's tick, so it catches up on the tick after the pilot
-            // gets off.
-            if (!Versioned.readable(scene.pod(), PodSeats.STATE)
-                    .orElseThrow()
-                    .riders()
-                    .equals(List.of(scene.navigator().player().getUUID()))) {
+            if (!synced.equals(List.of(navigator))) {
                 return false;
             }
             expect(
                     helper,
-                    PodSeats.pilot(scene.pod())
-                            .filter(scene.navigator().player().getUUID()::equals)
-                            .isPresent(),
+                    PodSeats.pilot(scene.pod()).filter(navigator::equals).isPresent(),
                     "once the pilot gets off the navigator holds the pilot's seat");
             return true;
         });
+    }
+
+    @GameTest
+    public void aRiderThatIsNoPlayerDoesNotPilot(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
+        Entity stand = TestEntities.create(EntityTypes.ARMOR_STAND, level);
+        expect(helper, stand.startRiding(pod, true, false), "the armour stand boards the pod");
+        PodEvents.AFTER_TICK.invoker().afterTick(pod);
+        PodSeats.State state = Versioned.readable(pod, PodSeats.STATE).orElseThrow();
+        expect(
+                helper,
+                state.riders().equals(List.of(stand.getUUID())) && !state.pilotIsPlayer(),
+                "the stand holds seat 0 and the assignment says it is no player, got %s",
+                state);
+        expect(helper, PodSeats.pilot(pod).isEmpty(), "a pod whose first rider is no player has no pilot");
+        stand.discard();
+        pod.discard();
+        helper.succeed();
     }
 
     @GameTest
