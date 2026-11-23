@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.sound;
 
+import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographReadout;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 
 /**
@@ -12,6 +13,7 @@ public final class SoundInit {
     public static void init() {
         SoundRegistry.register();
         PhonographRegistry.register();
+        PhonographReadout.init();
         TerminalSounds.init();
         HymnMoments.init();
     }
