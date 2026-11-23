@@ -9,9 +9,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.AABB;
@@ -51,7 +53,28 @@ public final class FarChunks {
     /** The chunks {@link #pin} holds for the world's life. */
     private static final Set<Chunk> PINNED = new HashSet<>();
 
+    static {
+        // A world's levels must not outlive its server. A pinned chunk's record holds its ServerLevel, the colony pad's
+        // chunks are pinned in every world, and a client run makes a server for each test class: 6 levels and 70 MB of
+        // each world stayed on the heap until it ran out (#803).
+        ServerLifecycleEvents.SERVER_STOPPED.register(FarChunks::forget);
+    }
+
     private FarChunks() {}
+
+    /** How many chunks tests hold forced or pinned in the servers that run. */
+    public static int heldCount() {
+        return HOLDS.size() + PINNED.size();
+    }
+
+    private static void forget(MinecraftServer server) {
+        HOLDS.keySet().removeIf(chunk -> chunk.level().getServer() == server);
+        PINNED.removeIf(chunk -> chunk.level().getServer() == server);
+        HELD_BY_TEST
+                .values()
+                .forEach(chunks -> chunks.removeIf(chunk -> chunk.level().getServer() == server));
+        HELD_BY_TEST.values().removeIf(List::isEmpty);
+    }
 
     /**
      * Forces a chunk until {@code helper}'s test finishes. A chunk that is forced already and that no test holds (a colony's pad,
@@ -291,6 +314,17 @@ public final class FarChunks {
                     }
                 })
                 .thenExecute(body);
+    }
+
+    /** As the list form, for a test that needs every column ticking: runs {@code then} once on the tick when the last one is. */
+    public static void awaitAllEntityTicking(
+            GameTestHelper helper, ServerLevel level, List<BlockPos> positions, Runnable then) {
+        int[] waiting = {positions.size()};
+        awaitEntityTicking(helper, level, positions, index -> {
+            if (--waiting[0] == 0) {
+                then.run();
+            }
+        });
     }
 
     /**

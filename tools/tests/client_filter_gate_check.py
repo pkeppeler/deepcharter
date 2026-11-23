@@ -215,9 +215,10 @@ class GenerationTest(unittest.TestCase):
             self.assertEqual(alpha["fabric-gametest"], list(names("FixtureTest")))
             beta = self.generate(tree, "-PclientTests=BetaClientTest")
             self.assertEqual(beta["fabric-client-gametest"], list(names("BetaClientTest")))
-            shard = self.generate(tree, "-PclientShard=1/2", "-PclientTests=*ClientTest")
-            self.assertEqual(shard["fabric-client-gametest"], list(names("AlphaClientTest", "PodDrillClientTest")))
-            self.assertEqual(self.generate(tree, "-PclientShard=2/2", "-PclientTests=*ClientTest")["fabric-client-gametest"], list(names("BetaClientTest")))
+            # PodDrillClientTest is a real class, so its checked-in weight (17 s, over the 10 s default) puts it alone in shard 1.
+            for i, expected in ((1, names("PodDrillClientTest")), (2, names("AlphaClientTest", "BetaClientTest"))):
+                shard = self.generate(tree, f"-PclientShard={i}/2", "-PclientTests=*ClientTest")
+                self.assertEqual(shard["fabric-client-gametest"], list(expected))
             reverse = self.generate(tree, "-PgametestOrder=reverse")
             self.assertEqual(
                 reverse["fabric-client-gametest"],
