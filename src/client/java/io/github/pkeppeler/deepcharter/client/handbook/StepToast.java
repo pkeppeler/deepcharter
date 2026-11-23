@@ -40,6 +40,8 @@ public final class StepToast implements Toast {
     /** Where the slip was put when {@link #placedAtMillis} says; null when it found no clear place. */
     private HudKeepClear.@Nullable Rect placement;
 
+    private boolean inRightColumn;
+
     private long placedAtMillis = Long.MIN_VALUE;
     private long lastUpdateMillis = -1;
     private long waitedMillis;
@@ -85,19 +87,24 @@ public final class StepToast implements Toast {
                 .ifPresent(text -> client.gui.toastManager().addToast(of(text)));
     }
 
+    /** Where a slip is and which column it is in; the column is not worked out from the rectangle, which two columns can share. */
+    public record Placement(HudKeepClear.Rect slip, boolean right) {}
+
     /**
      * The top left of a {@code width} x {@code height} slip on a GUI {@code guiWidth} x {@code guiHeight}: against the left margin, at
      * the highest place that is clear of every rectangle of {@code avoid} by the tuned gap and inside the bottom margin; failing
      * that, the same against the right margin; empty when neither column has one.
      */
-    public static Optional<HudKeepClear.Rect> place(
+    public static Optional<Placement> place(
             int guiWidth, int guiHeight, int width, int height, List<HudKeepClear.Rect> avoid) {
         QuestMapTuning q = QuestMapTuning.current();
         if (width > guiWidth - 2 * q.toastMargin()) {
             return Optional.empty();
         }
         return inColumn(q.toastMargin(), guiHeight, width, height, avoid)
-                .or(() -> inColumn(guiWidth - q.toastMargin() - width, guiHeight, width, height, avoid));
+                .map(slip -> new Placement(slip, false))
+                .or(() -> inColumn(guiWidth - q.toastMargin() - width, guiHeight, width, height, avoid)
+                        .map(slip -> new Placement(slip, true)));
     }
 
     private static Optional<HudKeepClear.Rect> inColumn(
@@ -163,8 +170,7 @@ public final class StepToast implements Toast {
     @Override
     public float xPos(int guiWidth, float visiblePortion) {
         int margin = QuestMapTuning.current().toastMargin();
-        HudKeepClear.Rect slip = settle();
-        if (slip != null && slip.x() > margin) {
+        if (settle() != null && inRightColumn) {
             return guiWidth - (width() + margin) * visiblePortion;
         }
         return margin - width() * (1 - visiblePortion);
@@ -185,7 +191,9 @@ public final class StepToast implements Toast {
         List<HudKeepClear.Rect> avoid = HudKeepClear.rects(client, guiWidth, guiHeight);
         PLACED.removeIf(other -> other == this || other.placement().isEmpty());
         PLACED.forEach(other -> other.placement().ifPresent(avoid::add));
-        placement = place(guiWidth, guiHeight, width(), height(), avoid).orElse(null);
+        Optional<Placement> placed = place(guiWidth, guiHeight, width(), height(), avoid);
+        placement = placed.map(Placement::slip).orElse(null);
+        inRightColumn = placed.map(Placement::right).orElse(false);
         placedAtMillis = Util.getMillis();
         if (placement != null) {
             PLACED.add(this);

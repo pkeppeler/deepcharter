@@ -215,6 +215,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                                     toast[0].width(),
                                     toast[0].height(),
                                     HudKeepClear.rects(client, width, height))
+                            .map(StepToast.Placement::slip)
                             .map(StepToastClearOfHudClientTest::box)
                             .equals(Optional.of(slip)),
                     "the popup is where StepToast.place puts it, not somewhere the toast manager moved it");
@@ -303,6 +304,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         String when = "'" + step.substring(0, Math.min(24, step.length())) + "' on " + gui[0] + " x " + gui[1];
         Optional<Box> slip = StepToast.place(
                         gui[0], gui[1], toast.width(), toast.height(), HudKeepClear.rects(client, gui[0], gui[1]))
+                .map(StepToast.Placement::slip)
                 .map(StepToastClearOfHudClientTest::box);
         if (slip.isPresent()) {
             requireClear("the step popup " + when, slip.get(), hud);

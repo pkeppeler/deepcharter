@@ -30,13 +30,20 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.toasts.Toast;
+import net.minecraft.client.gui.components.toasts.ToastManager;
 import net.minecraft.network.chat.Component;
 
 /** The popup's keep-clear check for the navigator's sonar scope: a sibling of {@link StepToastClearOfHudClientTest}, which has one player. */
 public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
     /** Longer than the popup's {@code toastMillis} (5 s at 20 ticks a second), shorter than its {@code toastWaitMillis}. */
     private static final int WAIT_TICKS = 140;
-    /** Whether the test's own keep-clear rectangle, over the whole GUI, is up; the source stays registered and adds nothing when off. */
+    /**
+     * Whether the test's own keep-clear rectangle, over the whole GUI, is up. The source stays registered, as {@link HudKeepClear} has no
+     * unregister; that is safe because the flag is reset in a {@code finally} and a source that is off adds nothing.
+     */
     private static final AtomicBoolean FILL_THE_GUI = new AtomicBoolean();
 
     static {
@@ -76,6 +83,7 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
                 expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, SHORT_STEP, "as the navigator", true);
                 expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, LONG_STEP, "as the navigator, long", true);
                 expectTheLongSlipIsInTheRightColumn(context);
+                expectTheLongSlipIsBelowAVanillaToast(context);
                 expectTheSlipIsClearOfTheScopeOnEveryCockpitGui(context);
                 expectASlipWithNoRoomWaitsQueuedUntilThereIsRoom(context);
             } finally {
@@ -130,13 +138,68 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
                             && height - margin - (scope.bottom() + gap) < toast.height(),
                     "the long step " + toast.width() + " x " + toast.height() + " fits above or below the scope "
                             + scope + ", so the left column would take it");
-            Optional<Rect> slip = StepToast.place(
+            Optional<StepToast.Placement> slip = StepToast.place(
                     width, height, toast.width(), toast.height(), HudKeepClear.rects(client, width, height));
             require(slip.isPresent(), "the long step finds a place beside the navigator's scope");
             require(
-                    slip.get().x() == width - margin - toast.width(),
+                    slip.get().right() && slip.get().slip().x() == width - margin - toast.width(),
                     "the long step is in the right column, not " + slip.get());
         });
+    }
+
+    /**
+     * A vanilla toast takes the right column's top slot, so the long step goes under it, never over it (#1075): the toast manager
+     * draws a toast at the top right, which no HUD part lists.
+     */
+    private static void expectTheLongSlipIsBelowAVanillaToast(ClientGameTestContext context) {
+        StepToast[] toast = {null};
+        context.runOnClient(client -> client.gui.toastManager().addToast(new SlotToast()));
+        ClientWait.until(
+                context,
+                "the vanilla toast among the rectangles the popup keeps clear of",
+                client ->
+                        HudKeepClear.rects(
+                                        client,
+                                        client.getWindow().getGuiScaledWidth(),
+                                        client.getWindow().getGuiScaledHeight())
+                                .stream()
+                                .anyMatch(rect -> rect.what().equals("vanilla toast")));
+        context.runOnClient(client -> {
+            toast[0] = StepToast.of(Component.literal(LONG_STEP));
+            client.gui.toastManager().addToast(toast[0]);
+        });
+        ClientWait.until(
+                context,
+                "the long step placed beside the vanilla toast",
+                client -> toast[0].placement().isPresent(),
+                client -> "placement " + toast[0].placement());
+        context.runOnClient(client -> {
+            int width = client.getWindow().getGuiScaledWidth();
+            int height = client.getWindow().getGuiScaledHeight();
+            Box slip = box(toast[0].placement().orElseThrow());
+            Rect vanilla = HudKeepClear.rects(client, width, height).stream()
+                    .filter(rect -> rect.what().equals("vanilla toast"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("the vanilla toast is gone"));
+            require(!ClientChecks.overlaps(slip, box(vanilla)), "the popup at " + slip + " covers the " + vanilla);
+            require(slip.y() >= vanilla.bottom(), "the popup at " + slip + " is not under the " + vanilla);
+            requireClearOfEvery(slip, HudKeepClear.rects(client, width, height));
+            client.gui.toastManager().clear();
+        });
+    }
+
+    /** A plain toast as vanilla's are: the default size and place, top right, and shown until cleared. */
+    private static final class SlotToast implements Toast {
+        @Override
+        public Visibility getWantedVisibility() {
+            return Visibility.SHOW;
+        }
+
+        @Override
+        public void update(ToastManager manager, long fullyVisibleForMs) {}
+
+        @Override
+        public void extractRenderState(GuiGraphicsExtractor graphics, Font font, long fullyVisibleForMs) {}
     }
 
     /**

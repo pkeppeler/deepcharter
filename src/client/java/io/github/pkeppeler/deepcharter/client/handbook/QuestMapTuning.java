@@ -59,7 +59,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param toastHeight least height of the step-done popup; it grows to fit a step that wraps to more lines
  * @param toastMillis how long the step-done popup shows
  * @param toastInset space between the step-done popup's edge and its text
- * @param toastMargin space between the step-done popup and the left and top and bottom edges of the screen
+ * @param toastMargin space between the step-done popup and the left, right, top and bottom edges of the screen
  * @param toastGap the least space between the step-done popup and any part of the HUD it keeps clear of
  * @param toastStaleMillis how long after its last frame a step-done popup still counts as on screen, to the popups placed under it
  * @param toastWaitMillis how long a step-done popup waits for room before it gives up: on a GUI with no clear place for it, it

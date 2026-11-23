@@ -28,6 +28,7 @@ public class StepToastPlaceClientTest implements FabricClientGameTest {
             expectTheRightColumnWhenTheLeftHasNoRoom();
             expectTheLeftColumnEvenWhenTheRightIsHigher();
             expectNowhereWhenNeitherColumnHasRoom();
+            expectTheColumnIsExplicitWhenTheColumnsShareAnX();
         });
     }
 
@@ -44,7 +45,13 @@ public class StepToastPlaceClientTest implements FabricClientGameTest {
     }
 
     private static Optional<Rect> place(int height, List<Rect> avoid) {
-        return StepToast.place(GUI_WIDTH, GUI_HEIGHT, width(), height, avoid);
+        return StepToast.place(GUI_WIDTH, GUI_HEIGHT, width(), height, avoid).map(StepToast.Placement::slip);
+    }
+
+    private static boolean right(int height, List<Rect> avoid) {
+        return StepToast.place(GUI_WIDTH, GUI_HEIGHT, width(), height, avoid)
+                .orElseThrow()
+                .right();
     }
 
     /** A band across the left column only, like the sonar scope's. */
@@ -68,6 +75,8 @@ public class StepToastPlaceClientTest implements FabricClientGameTest {
                         () -> new AssertionError("a slip too tall for the left column's gaps has room on the right"));
         require(slip.x() == rightX() && slip.y() == margin(), "it is top right, against the margin, not " + slip);
         require(!slip.overlaps(leftBand()), "and clear of the band");
+        require(right(tall, List.of(leftBand())), "and it says it is in the right column");
+        require(!right(40, List.of()), "a slip in the left column says so");
     }
 
     private static void expectTheLeftColumnEvenWhenTheRightIsHigher() {
@@ -78,6 +87,22 @@ public class StepToastPlaceClientTest implements FabricClientGameTest {
         require(
                 slip.x() == margin() && slip.y() >= band.bottom(),
                 "a slip that fits under the band takes the left column, though the right is higher: " + slip);
+    }
+
+    /** On a GUI as wide as a slip and its margins, both columns start at the same x, so the column cannot be read off the rectangle. */
+    private static void expectTheColumnIsExplicitWhenTheColumnsShareAnX() {
+        int guiWidth = width() + 2 * margin();
+        Rect band = new Rect("band", 0, 0, guiWidth, 30);
+        StepToast.Placement placed =
+                StepToast.place(guiWidth, GUI_HEIGHT, width(), 40, List.of()).orElseThrow();
+        require(!placed.right(), "with both columns at one x the left is still the left: " + placed);
+        require(
+                StepToast.place(guiWidth, GUI_HEIGHT, width(), 40, List.of(band))
+                                .orElseThrow()
+                                .slip()
+                                .y()
+                        >= band.bottom(),
+                "a band over the top pushes the slip under it");
     }
 
     private static void expectNowhereWhenNeitherColumnHasRoom() {
