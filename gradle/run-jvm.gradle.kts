@@ -19,14 +19,15 @@ addVmArgToRuns(exitOnOom)
 val gameTestHeap = "-Xmx3072m"
 addVmArgToRun("gameTest", gameTestHeap)
 
-// Client GameTest heap, 3G (the default is a quarter of RAM). The suite's live set after a full collection (CI 4 vCPU) was 1.35 GB at the last
-// of 69 classes by the per-class histogram (HeapHistogram; run 45062159956, passing) and up to 1.93 GB after a full collection mid-suite by the
-// GC log (run 45090031870, head 464c91b6, 70 full collections, peak before a collection 3070 MB), so 3G is 1.6 to 2.2 times it. The live set still grows by about
-// 20 MB a class: the dedicated servers a test starts (TwoPlayerServer, CampaignWorldClientTest) stay on the heap with their 6 levels (#914).
-// Do not raise the heap for it; fix #914, and re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each
-// fit a 16 GB Mac, so the default two client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest
-// action prints the peak and the live set from it.
-val clientGameTestHeap = "-Xmx3G"
+// Client GameTest heap, 4G (the default is a quarter of RAM). The suite's live set after a full collection (CI 4 vCPU) was 1.35 GB at the last
+// of 69 classes by the per-class histogram (HeapHistogram; run 45062159956, passing), and 1985 MB after a full collection over 90 full
+// collections of the GC log, with a peak before a collection of 3070 MB at a 3G heap (client job 137471282960, head 9ba994a4): the live set
+// was two thirds of 3G and the peak at its ceiling. It grows by about 20 MB a class, from the dedicated servers a test starts (TwoPlayerServer,
+// CampaignWorldClientTest), which stay on the heap with their 6 levels (#914); fixing #914 is the real cure, and the heap is the margin until
+// then. Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac (11 GB), so the
+// default two client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest action prints the peak and
+// the live set from it.
+val clientGameTestHeap = "-Xmx4G"
 addVmArgToRun("clientGameTest", clientGameTestHeap)
 addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")
 
