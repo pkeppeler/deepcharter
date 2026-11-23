@@ -2,7 +2,8 @@
 literal for a world Y fails the build unless a `// fixed-pos: <reason>` marker with a reason sits on its statement or the comment lines above it. A call to
 `LayerChain.dimension(` fails the same way anywhere but in TestLayers.java, which is the one place a layer becomes a level. A literal Y is a
 `*_Y` constant set to a number, a literal Y in a BlockPos or Vec3 beside literal X and Z of 100 or more (new BlockPos(3616, 40, 3616)), and a literal Y in
-teleportTo, setPos, moveTo, snapTo or atY. A relative offset (a vector with a small or variable X or Z, pos.offset(1, 0, 2), above(3)) is left alone.
+teleportTo, setPos, moveTo, snapTo or atY. An int or long named `*floor`, `*ceiling` or `*roomY` (floor, shallowFloor, LOCAL_FLOOR) set to a number
+fails too: a bare `int floor = 60` in a layer test stages in the surface band. A relative offset (a vector with a small or variable X or Z, pos.offset(1, 0, 2), above(3)) is left alone.
 
 A raw read of a level's height (getMinY, getMaxY, getMinBuildHeight, getMaxBuildHeight, and getHeight on a receiver that names a level) fails the same
 way anywhere but in TestLayers.java, unless a `// level-height: <reason>` marker sits on its statement or the comment lines above it: a layer is a band of
@@ -30,6 +31,9 @@ public class RelativeScenario extends EvidenceScenario {
     private static final BlockPos CAVE = new BlockPos(-6, 0, -7);
     private static final BlockPos NEAR_Z = new BlockPos(2000, 100, 5);
     private static final Vec3 CAMERA = new Vec3(0.5, -60, 0.5);
+    private static final int FLOOR_RADIUS = 3;
+    private static final double SEPARATION_FLOOR = 0.8;
+    private static final int GALLERY_FLOOR = 10; // fixed-pos: a height above the shaft floor, not a world Y
     private static final BlockPos VARIABLE_XZ = new BlockPos(X, 100, Z); // a known blind spot, listed in the gate header
     void stage(ServerLevel level, ServerPlayer player, BlockPos pad) {
         BlockPos a = pad.offset(1, 0, 2);
@@ -43,6 +47,9 @@ public class RelativeScenario extends EvidenceScenario {
         player.setPos(pad.getX(), pad.getY() + 2, pad.getZ());
         BlockPos f = pad.atY(FLOOR_Y);
         BlockPos g = BlockPos.containing(X, 0, Z);
+        int floor = TestLayers.worldY(1, 60);
+        int ceiling = floor + 8;
+        int crustTop = 3;
     }
 }
 """,
@@ -115,6 +122,11 @@ STATEMENTS = {
     "constant of a name that is only Y": ("static final int Y = 64;", 3),
     "double constant": ("private static final double START_Y = 40.5;", 3),
     "negative constant": ("private static final int FEET_Y = -60;", 3),
+    "local floor": ("void go() { int floor = 60; }", 3),
+    "local ceiling": ("void go() { int ceiling = 150; }", 3),
+    "local named for a layer": ("void go() { int shallowFloor = 150; }", 3),
+    "constant floor": ("private static final int LOCAL_FLOOR = 60;", 3),
+    "long room Y": ("void go() { long roomY = -200L; }", 3),
     "BlockPos": ("BlockPos at = new BlockPos(3616, 40, 3616);", 3),
     "BlockPos with a small Y": ("BlockPos at = new BlockPos(2000, 4, 2000);", 3),
     "negative BlockPos": ("BlockPos at = new BlockPos(-2000, 100, -100);", 3),
