@@ -48,6 +48,8 @@ public class SuitTimerScenario extends EvidenceScenario {
     private static final int OUTSIDE_X = 7900;
     private static final float FACE_NORTH = 180f;
     private static final float LOOK_SLIGHTLY_DOWN = 8f;
+    /** Blocks round the player whose chunks the client must hold before a still: the hall's stone shell and a little more. */
+    private static final int SETTLE_RADIUS = 16;
 
     @Override
     protected String name() {
@@ -78,11 +80,11 @@ public class SuitTimerScenario extends EvidenceScenario {
                     client -> SuitGaugeHud.gauge(client)
                             .filter(gauge -> gauge.label().getString().equals("SUIT REFILLING"))
                             .isPresent());
-            clearTransmissions(context);
+            settle(context);
             hold(context);
             screenshot(context, "suit-1-refilling-in-a-sound-hall");
 
-            // An uninhabitable hall in the unbuilt depth, with the first drain still to be said.
+            // An uninhabitable hall in the unbuilt depth; the first drain says what is short once the hall is drawn.
             BlockPos hallFloor = SuitScenes.unbuiltHallFloor(HALL_X, HALL_Z);
             CharterId charter = scene.charter();
             singleplayer.getServer().runOnServer(server -> {
@@ -99,12 +101,15 @@ public class SuitTimerScenario extends EvidenceScenario {
                                 SuitScenes.dataWith(new Outpost(charter, 3, level.dimension(), hallFloor)));
                 ServerPlayer player = first(server);
                 player.setPermanentlyInvulnerable(true);
-                SuitScenes.setReserve(player, 180f, false);
+                // Said already, so that the first line waits until the hall is drawn.
+                SuitScenes.setReserve(player, 180f, true);
+                // The middle of the floor: the pump and the processor on the north wall are within the server's
+                // terminal reach.
                 player.teleportTo(
                         level,
                         hallFloor.getX() + 0.5,
                         hallFloor.getY() + 1,
-                        hallFloor.getZ() + 3.5,
+                        hallFloor.getZ() + 0.5,
                         Set.of(),
                         FACE_NORTH,
                         LOOK_SLIGHTLY_DOWN,
@@ -117,7 +122,17 @@ public class SuitTimerScenario extends EvidenceScenario {
                             && SuitGaugeHud.gauge(client)
                                     .filter(gauge -> gauge.label().getString().startsWith("SUIT 1:"))
                                     .isPresent());
-            clearTransmissions(context);
+            settle(context);
+            // The action bar fades in about three seconds, so the first line is said only now.
+            singleplayer.getServer().runOnServer(server -> SuitScenes.setReserve(first(server), 180f, false));
+            ClientWait.until(
+                    context,
+                    "the suit's first line said",
+                    () -> singleplayer
+                            .getServer()
+                            .computeOnServer(
+                                    server -> SuitScenes.state(first(server)).explained()),
+                    () -> "not said yet");
             hold(context);
             screenshot(context, "suit-2-leaking-hall-first-line");
 
@@ -154,6 +169,7 @@ public class SuitTimerScenario extends EvidenceScenario {
                             .filter(gauge -> gauge.tone() != Tone.OK
                                     && gauge.axes().getString().contains("HEAT"))
                             .isPresent());
+            settle(context);
             hold(context);
             screenshot(context, "suit-6-exposed-outside");
             singleplayer.getServer().runOnServer(server -> SuitScenes.setReserve(first(server), 6f, true));
@@ -189,8 +205,20 @@ public class SuitTimerScenario extends EvidenceScenario {
         hold(context);
     }
 
-    private static void clearTransmissions(ClientGameTestContext context) {
-        context.runOnClient(client -> TransmissionOverlay.reset());
+    /**
+     * Clears the transmissions and toasts, and waits until the client holds the chunks round the player and has meshed every
+     * section in view: the gauge reads the server's state, so it shows before a place just teleported to is drawn.
+     */
+    private static void settle(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            TransmissionOverlay.reset();
+            client.gui.toastManager().clear();
+        });
+        BlockPos at =
+                context.computeOnClient(client -> ClientSession.player(client).blockPosition());
+        ClientWait.chunksAround(context, at.getX(), at.getZ(), SETTLE_RADIUS);
+        ClientWait.until(
+                context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
     }
 
     private void hold(ClientGameTestContext context) {
