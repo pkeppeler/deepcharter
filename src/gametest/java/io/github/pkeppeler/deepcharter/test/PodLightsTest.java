@@ -481,6 +481,9 @@ public class PodLightsTest {
      */
     @GameTest(maxTicks = 3 * (COST_WARMUP_TICKS + COST_TICKS) + 40)
     public void twoPodsCostLittleOfATick(GameTestHelper helper) {
+        FarChunks.allowUnticked(
+                helper,
+                "the pods are shifted by setPos to time the listener, not driven: nothing needs their chunk to tick");
         CharterId charter = charter(helper);
         PodEntity[][] stages = {
             {litPod(helper, charter, 2, 0), litPod(helper, charter, 2, 1)},

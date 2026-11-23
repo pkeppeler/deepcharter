@@ -48,16 +48,6 @@ public class PodDriveStepTest {
         List<MockPlayer> pilots = new ArrayList<>();
         List<Arrival<PodEntity>> arrivals = new ArrayList<>();
         for (int i = 0; i < PODS; i++) {
-            int z = Z + i * ROW;
-            RoomCarver.carve(level, X - 4, X + 5, FLOOR - 8, FLOOR - 1, z - 4, z + 4, Blocks.STONE);
-            RoomCarver.carve(level, X - 4, X + 5, FLOOR, FLOOR + 10, z - 4, z + 4, Blocks.AIR);
-            for (int x = X + 3; x < X + 3 + SLABS; x++) {
-                for (int y = FLOOR; y <= FLOOR + 10; y++) {
-                    for (int dz = -3; dz <= 3; dz++) {
-                        level.setBlock(new BlockPos(x, y, z + dz), Blocks.STONE.defaultBlockState(), 2);
-                    }
-                }
-            }
             Vec3 at = start(i);
             MockPlayer pilot = MockPlayers.join(helper, "drive-step-" + i);
             pilot.teleportTo(level, at, EAST, 0f);
@@ -66,6 +56,9 @@ public class PodDriveStepTest {
             spots.add(BlockPos.containing(at));
         }
         FarChunks.awaitEntityTicking(helper, level, spots, i -> {
+            // Cut once the row's chunk is held and ticking: a room cut before it can unload unsaved and come back as
+            // natural rock (#1083).
+            room(level, i);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(start(i));
             level.addFreshEntity(pod);
@@ -113,6 +106,20 @@ public class PodDriveStepTest {
                 helper.succeed();
             }
         });
+    }
+
+    /** Row {@code i}: a room with a stone bed, and {@link #SLABS} slabs of stone across its east end for the pod to drill. */
+    private static void room(ServerLevel level, int i) {
+        int z = Z + i * ROW;
+        RoomCarver.carve(level, X - 4, X + 5, FLOOR - 8, FLOOR - 1, z - 4, z + 4, Blocks.STONE);
+        RoomCarver.carve(level, X - 4, X + 5, FLOOR, FLOOR + 10, z - 4, z + 4, Blocks.AIR);
+        for (int x = X + 3; x < X + 3 + SLABS; x++) {
+            for (int y = FLOOR; y <= FLOOR + 10; y++) {
+                for (int dz = -3; dz <= 3; dz++) {
+                    level.setBlock(new BlockPos(x, y, z + dz), Blocks.STONE.defaultBlockState(), 2);
+                }
+            }
+        }
     }
 
     private static Vec3 start(int i) {
