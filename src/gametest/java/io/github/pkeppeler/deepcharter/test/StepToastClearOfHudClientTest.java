@@ -180,9 +180,8 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                     if (placed.isEmpty()) {
                         return false;
                     }
-                    List<Drawn> drawn =
-                            DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics));
                     Box slip = box(placed.get());
+                    List<Drawn> drawn = probeText(client, slip);
                     return !drawn.isEmpty()
                             && drawn.stream()
                                     .allMatch(text -> text.box().x() >= slip.x()
@@ -201,6 +200,12 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             Box slip = box(toast[0].placement().orElseThrow());
             Map<String, Box> hud = critical(client, width, height);
             requireClear("the step popup " + when + " at " + width + " x " + height, slip, hud);
+            for (HudKeepClear.Rect kept : HudKeepClear.rects(client, width, height)) {
+                require(
+                        !ClientChecks.overlaps(slip, box(kept)),
+                        "the step popup " + when + " at " + slip + " covers the registered keep-clear '" + kept.what()
+                                + "' at " + box(kept));
+            }
             if (cockpit) {
                 require(hud.containsKey("hull and alert lamps"), "the cockpit HUD has lamps to keep clear of");
                 if (width <= COCKPIT_GUIS[1][0]) {
@@ -227,6 +232,16 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             }
         });
         context.runOnClient(client -> client.gui.toastManager().clear());
+    }
+
+    /**
+     * The text the toast manager draws for the probe alone. Other toasts (the campaign's step popups) draw too, and are not the probe's:
+     * the probe's text is its step's words, and its heading, which is whatever else lands on its box.
+     */
+    private static List<Drawn> probeText(Minecraft client, Box slip) {
+        return DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics)).stream()
+                .filter(text -> LONG_STEP.contains(text.text()) || ClientChecks.overlaps(slip, text.box()))
+                .toList();
     }
 
     private static void expectTheSlipIsClearOnEveryCockpitGui(ClientGameTestContext context) {

@@ -28,12 +28,8 @@ public final class LayerChain {
 
     private static final String PREFIX = "layer_";
 
-    /**
-     * The dimension type of the campaign world's test dimension, where a layer is a Y band of one level ({@link CampaignBands}). The
-     * shipped campaign type joins it at the cutover (#214).
-     */
-    private static final Identifier CAMPAIGN_TYPE =
-            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "campaign_sample");
+    /** The dimension type of the campaign world (#214): the overworld's own, which is tall, with a band for the surface and for each layer. */
+    private static final Identifier CAMPAIGN_TYPE = BuiltinDimensionTypes.OVERWORLD.identifier();
 
     private LayerChain() {}
 
@@ -204,11 +200,13 @@ public final class LayerChain {
                 + types.getValueOrThrow(type(last)).height();
     }
 
-    /** Layer 1 starts at the overworld's floor; each later layer starts where the one above ends. */
+    /**
+     * Layer 1 starts at the floor of the surface band (the overworld's floor, before the overworld became the campaign world); each later
+     * layer starts where the one above ends.
+     */
     public static int topDepth(RegistryAccess registries, int layer) {
         Registry<DimensionType> types = registries.lookupOrThrow(Registries.DIMENSION_TYPE);
-        int depth = LayerTuning.DEFAULT.seaLevel()
-                - types.getValueOrThrow(BuiltinDimensionTypes.OVERWORLD).minY();
+        int depth = LayerTuning.DEFAULT.seaLevel() - CampaignBands.SURFACE.minY();
         for (int above = 1; above < layer; above++) {
             depth += types.getValueOrThrow(type(above)).height();
         }

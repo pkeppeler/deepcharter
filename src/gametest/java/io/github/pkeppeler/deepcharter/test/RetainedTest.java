@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.BlockLightOracle;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -951,7 +952,7 @@ public class RetainedTest {
      * off the server thread, so the test waits on a wall clock for the light of each phase: dark (the cut's own light work done), lit, dark
      * again. Each room is shut in stone, so no light from outside it, a neighbour's or the rock's own lava, reaches the column (#1104).
      */
-    @GameTest(maxTicks = 4 * FarChunks.AWAIT_BUDGET_TICKS + 400)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = 4 * FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aFigureMayAppearInTheDarkOfLayersOneAndTwoAndNowhereElse(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         // The two layers are bands of one level: each has its own room, at the same height over its floor.
