@@ -268,24 +268,48 @@ public class ActiveStateTest {
     }
 
     /** In the world: a lit lamp lights its block to 15, and the same lamp turned dark leaves it unlit. */
-    @GameTest
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aLitLampGivesFullLightAndADarkOneNone(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
         BlockPos lamp = new BlockPos(2, 1, 2);
         BlockPos absolute = helper.absolutePos(lamp);
-        helper.setBlock(lamp, ColonyBlocks.COMPANY_LAMP.defaultBlockState());
-        helper.startSequence()
-                .thenWaitUntil(() -> requireLight(helper, absolute, 15))
-                .thenExecute(() -> helper.setBlock(
-                        lamp, ColonyBlocks.COMPANY_LAMP.defaultBlockState().setValue(TextureProperties.ACTIVE, false)))
-                .thenWaitUntil(() -> requireLight(helper, absolute, 0))
-                .thenSucceed();
+        BlockState lit = ColonyBlocks.COMPANY_LAMP.defaultBlockState();
+        helper.setBlock(lamp, lit);
+        int[] phase = {0};
+        FarChunks.Deadline[] deadline = {FarChunks.deadline()};
+        TestTicks.each(helper, () -> {
+            switch (phase[0]) {
+                case 0 -> {
+                    if (awaitLight(helper, level, absolute, 15, deadline[0])) {
+                        helper.setBlock(lamp, lit.setValue(TextureProperties.ACTIVE, false));
+                        deadline[0] = FarChunks.deadline();
+                        phase[0] = 1;
+                    }
+                }
+                case 1 -> {
+                    if (awaitLight(helper, level, absolute, 0, deadline[0])) {
+                        phase[0] = 2;
+                        helper.succeed();
+                    }
+                }
+                case 2 -> {}
+                default -> throw new IllegalStateException("phase " + phase[0]);
+            }
+        });
     }
 
-    private static void requireLight(GameTestHelper helper, BlockPos absolute, int expected) {
-        int light = helper.getLevel().getBrightness(LightLayer.BLOCK, absolute);
-        if (light != expected) {
-            throw helper.assertionException("the block light at the lamp is %s, expected %s", light, expected);
-        }
+    /** Whether the block light at {@code absolute} is {@code expected}; fails the test once the deadline passes. */
+    private static boolean awaitLight(
+            GameTestHelper helper, ServerLevel level, BlockPos absolute, int expected, FarChunks.Deadline deadline) {
+        int light = level.getBrightness(LightLayer.BLOCK, absolute);
+        deadline.await(
+                helper,
+                level,
+                light == expected,
+                () -> String.format(
+                        "the block light at the lamp is %s, expected %s (light work pending: %s)",
+                        light, expected, level.getLightEngine().hasLightWork()));
+        return light == expected;
     }
 
     /** Pins the property name: blockstate files and saved worlds use it. */

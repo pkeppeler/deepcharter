@@ -17,16 +17,15 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.attribute.BedRule;
 import net.minecraft.world.attribute.EnvironmentAttribute;
 import net.minecraft.world.attribute.EnvironmentAttributes;
-import net.minecraft.world.level.CardinalLighting;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 
 /**
- * Server GameTests for #744 (campaign world plan, #214): a layer's fog, ambient light colour, sky light factor of 0, music and bed rules
- * come from its zone biomes and not from its dimension type, which has to be one type for every band of the campaign world (ADR 0059). A
- * biome value wins over a dimension value, so the game reads the same either way: these tests pin where the values live. The three
- * things a biome cannot set stay on the type and are listed in ADR 0059.
+ * Server GameTests for #744 (campaign world plan, #214): a layer's fog, ambient light colour, sky light factor of 0 and bed rules come
+ * from its zone biomes, in the campaign level, where the one dimension type serves every band (ADR 0059, ADR 0062). These tests pin
+ * the biomes' values and what the level reads at each zone; {@code CampaignAtmosphereTest} pins that they hold at every sky time.
  */
 public class LayerAtmosphereTest {
     /** The fog and light of each layer, written out here, not read from the data. */
@@ -36,43 +35,21 @@ public class LayerAtmosphereTest {
             1, new Atmosphere(8f, 64f, 0x1c1814),
             2, new Atmosphere(2f, 32f, 0x0c0a09));
 
-    /** What the zone biomes set, and the type must not. */
-    private static final List<EnvironmentAttribute<?>> MOVED = List.of(
-            EnvironmentAttributes.FOG_START_DISTANCE,
-            EnvironmentAttributes.FOG_END_DISTANCE,
-            EnvironmentAttributes.AMBIENT_LIGHT_COLOR,
-            EnvironmentAttributes.SKY_LIGHT_FACTOR,
-            EnvironmentAttributes.BACKGROUND_MUSIC,
-            EnvironmentAttributes.BED_RULE,
-            EnvironmentAttributes.STRAW_BED_RULE);
-
-    /** The biome at a quart in each third of the layer, by name: the zones top to bottom. */
+    /**
+     * The biome in the middle of each third of the layer's band, by name: the zones top to bottom. The middle, because a cell at a band's edge
+     * blends with the band beside it.
+     */
     private static Map<Identifier, BlockPos> zones(GameTestHelper helper, ServerLevel level, int layer) {
         Map<Identifier, BlockPos> zones = new LinkedHashMap<>();
         LayerChain.Band band = TestLayers.band(level, layer);
-        for (int y = band.minY(); y < band.minY() + band.height(); y += 8) {
-            BlockPos pos = new BlockPos(0, y, 0);
+        for (int zone = 0; zone < 3; zone++) {
+            BlockPos pos = new BlockPos(0, band.minY() + band.height() * (5 - 2 * zone) / 6, 0);
+            level.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.FULL);
             Holder<Biome> biome = level.getBiome(pos);
             zones.putIfAbsent(biome.unwrapKey().orElseThrow().identifier(), pos);
         }
         expect(helper, zones.size() == 3, "layer %s has zones %s, wanted 3", layer, zones.keySet());
         return zones;
-    }
-
-    @GameTest
-    public void aLayerTypeSetsNoneOfTheValuesTheZoneBiomesSet(GameTestHelper helper) {
-        for (int layer = 1; layer <= LayerChain.count(helper.getLevel().registryAccess()); layer++) {
-            var attributes = TestLayers.level(helper, layer).dimensionType().attributes();
-            for (EnvironmentAttribute<?> attribute : MOVED) {
-                expect(
-                        helper,
-                        !attributes.contains(attribute),
-                        "the dimension type of layer %s still sets %s; the zone biomes do",
-                        layer,
-                        attribute);
-            }
-        }
-        helper.succeed();
     }
 
     @GameTest
@@ -152,22 +129,6 @@ public class LayerAtmosphereTest {
                         zone,
                         ambient);
             });
-        }
-        helper.succeed();
-    }
-
-    /** The three things a biome cannot set stay on the type; the cutover (#214) has to carry them another way. */
-    @GameTest
-    public void theThreeThingsABiomeCannotSetStayOnTheLayerType(GameTestHelper helper) {
-        for (int layer = 1; layer <= LayerChain.count(helper.getLevel().registryAccess()); layer++) {
-            var type = TestLayers.level(helper, layer).dimensionType();
-            expect(helper, type.ambientLight() > 0f, "layer %s type has no ambient_light", layer);
-            expect(helper, !type.hasSkyLight(), "layer %s type has skylight", layer);
-            expect(
-                    helper,
-                    type.cardinalLightType() == CardinalLighting.Type.NETHER,
-                    "layer %s type is not nether cardinal light",
-                    layer);
         }
         helper.succeed();
     }

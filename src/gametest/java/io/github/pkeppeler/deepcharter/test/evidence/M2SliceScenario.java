@@ -117,6 +117,10 @@ import org.jspecify.annotations.Nullable;
  * climbs and descents, the crafting of parts) is stated on screen as it happens. See the PR's list of shortcuts.
  */
 public class M2SliceScenario extends EvidenceScenario {
+    static {
+        M2SliceEndState.watchCrossings();
+    }
+
     private static final int TICKS_PER_FRAME = 3;
     private static final int HOLD_FRAMES = 6;
     private static final int WAIT_TICKS = 600;
@@ -146,13 +150,13 @@ public class M2SliceScenario extends EvidenceScenario {
 
     private static final int BORE_SEARCH_BLOCKS = 24;
     /** The Mole is set this far above the floor of the overworld for the rest of the bore. */
-    private static final int BORE_RESUMED_ABOVE_FLOOR = 6;
+    private static final int BORE_RESUMED_ABOVE_FLOOR = 6; // fixed-pos: a height above the floor, not a world Y
 
     /** The room at the floor of layer 1, in the Deep Claim, far from everything else. */
     private static final int X = 4000;
 
     private static final int Z = 4000;
-    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    private static final int FLOOR_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
     private static final int ROOM_WEST = 6;
     private static final int ROOM_EAST = 16;
     private static final int ROOM_RADIUS_Z = 6;
@@ -497,7 +501,7 @@ public class M2SliceScenario extends EvidenceScenario {
             refuelWithCoal();
             ctx.getInput().holdKey(options -> options.keySprint);
             recordUntil(
-                    server -> podIn(server, mole.get(), TestLayers.dimension(1)),
+                    server -> podInLayer(server, mole.get(), 1),
                     WAIT_TICKS * 3,
                     "The Mole did not cross into layer 1",
                     () -> {});
@@ -572,23 +576,26 @@ public class M2SliceScenario extends EvidenceScenario {
                     + " blocks east of the pad's edge, from x " + (center.getX() + edge + BORE_OFF_PAD));
         }
 
-        /** Sets the Mole in a sealed pocket in the rock {@link #BORE_RESUMED_ABOVE_FLOOR} blocks above the floor of the overworld, under where it is. */
+        /** Sets the Mole in a sealed pocket in the rock {@link #BORE_RESUMED_ABOVE_FLOOR} blocks above the floor of the campaign level's surface band, under where it is. */
         private void skipTheBoreToTheFloor() {
             onServer(server -> {
-                ServerLevel overworld = server.overworld();
+                // The descent resumes in the surface band of the campaign level, where the layers are bands of one
+                // level, so
+                // the drill carries the Mole across each floor in place.
+                ServerLevel campaign = TestLayers.level(server, 1);
                 PodEntity pod = pod(server, mole.get());
                 int x = pod.getBlockX();
                 int z = pod.getBlockZ();
-                int floor = TestLayers.band(overworld, TestLayers.SURFACE).minY();
+                int floor = TestLayers.band(campaign, TestLayers.SURFACE).minY();
                 int low = floor + BORE_RESUMED_ABOVE_FLOOR;
                 RoomCarver.carve(
-                        overworld,
+                        campaign,
                         new BlockPos(x - 2, low, z - 2),
                         new BlockPos(x + 2, low + 4, z + 2),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
                 Entity arrived = pod.teleport(new TeleportTransition(
-                        overworld,
+                        campaign,
                         new Vec3(x + 0.5, low, z + 0.5),
                         Vec3.ZERO,
                         pod.getYRot(),
@@ -602,7 +609,7 @@ public class M2SliceScenario extends EvidenceScenario {
             });
             ClientWait.until(
                     ctx,
-                    "the player riding a pod near the floor of the overworld",
+                    "the player riding a pod near the floor of the surface band",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity
                             && ClientSession.player(client).getY()
                                     < TestLayers.band(ClientLight.clientLevel(client), TestLayers.SURFACE)
@@ -763,7 +770,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ctx.runOnClient(client -> ClientSession.player(client).setXRot(35f));
             ctx.getInput().holdKey(options -> options.keySprint);
             recordUntil(
-                    server -> podIn(server, mole.get(), TestLayers.dimension(2)),
+                    server -> podInLayer(server, mole.get(), 2),
                     WAIT_TICKS * 5,
                     "The Mole did not cross into layer 2",
                     stillOnce(
@@ -1564,9 +1571,10 @@ public class M2SliceScenario extends EvidenceScenario {
                     return;
                 }
                 if (deadline.expired()) {
-                    throw new AssertionError("chunk " + chunkOf(BlockPos.containing(waiting)) + " in "
-                            + TestLayers.dimension(2) + " was not entity-ticking after " + FarChunks.WAIT_SECONDS
-                            + " s (beat " + beat + ")");
+                    throw new AssertionError(
+                            "chunk " + chunkOf(BlockPos.containing(waiting)) + " in layer 2 of the campaign level"
+                                    + " was not entity-ticking after " + FarChunks.WAIT_SECONDS
+                                    + " s (beat " + beat + ")");
                 }
                 ctx.waitTicks(1);
             }
@@ -1600,6 +1608,12 @@ public class M2SliceScenario extends EvidenceScenario {
                 }
             }
             return Optional.empty();
+        }
+
+        private static boolean podInLayer(MinecraftServer server, UUID id, int layer) {
+            return findPod(server, id)
+                    .filter(pod -> TestLayers.isIn(pod, layer))
+                    .isPresent();
         }
 
         private static boolean podIn(
@@ -1709,6 +1723,7 @@ public class M2SliceScenario extends EvidenceScenario {
                     Z - ROOM_RADIUS_Z,
                     Z + ROOM_RADIUS_Z,
                     LayerBlocks.BREACH_CRUST);
+            RoomCarver.carvePocketBelow(level, 1, X - ROOM_WEST, X + ROOM_EAST, Z - ROOM_RADIUS_Z, Z + ROOM_RADIUS_Z);
             // The wall ores sit in this stone shell, so it is carved sealed as well: lava must not be one block behind
             // them.
             RoomCarver.carve(
