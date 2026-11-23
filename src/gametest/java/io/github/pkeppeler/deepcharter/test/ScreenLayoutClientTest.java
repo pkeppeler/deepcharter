@@ -4,7 +4,9 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import static io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields.intField;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterTuning;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminalTuning;
@@ -12,6 +14,7 @@ import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
+import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.outpost.IncidentReportScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
@@ -78,6 +81,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
@@ -110,6 +114,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
     private static final double TYPING_SECONDS = 3600;
     /** The longest a charter or player name can be. */
     private static final int NAME_LENGTH = CharterTuning.DEFAULT.maxNameLength();
+    /** A balance with as many digits as an account is likely to show. */
+    private static final long BALANCE = 999_999_999L;
 
     /** One thing to check after a screen is open: a track chosen, a page turned. */
     private record Variant(String name, VariantStep step) {}
@@ -176,7 +182,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         checkTheGateSeesAnOverflow(context);
         List<String> problems = new ArrayList<>();
-        try (TestSingleplayerContext _ = context.worldBuilder().create()) {
+        try (TestSingleplayerContext world = context.worldBuilder().create()) {
             List<Case> cases = new ArrayList<>();
             cases.addAll(terminalCases());
             cases.addAll(menuCases());
@@ -184,6 +190,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             for (Case screenCase : cases) {
                 check(context, screenCase, problems);
             }
+            checkWithACharter(context, world, problems);
             context.setScreen(() -> null);
             System.out.println("[screen-layout] checked " + cases.size() + " screens at " + WIDTH + " x " + HEIGHT
                     + ": " + cases.stream().map(Case::name).toList());
@@ -481,9 +488,6 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             List<TerminalView.PartStatus> missing = type.parts().stream()
                     .map(part -> new TerminalView.PartStatus(BuiltInRegistries.ITEM.getKey(part), false))
                     .toList();
-            List<TerminalView.PartStatus> inserted = type.parts().stream()
-                    .map(part -> new TerminalView.PartStatus(BuiltInRegistries.ITEM.getKey(part), true))
-                    .toList();
             String id = type.id().getPath();
             if (type.needsRepair()) {
                 TerminalView locked = new TerminalView(POS, type.id(), false, false, missing, Optional.empty());
@@ -493,13 +497,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                 }
                 cases.add(new Case(id + " offline, parts missing", () -> TerminalScreens.create(open)));
             }
-            TerminalView online = new TerminalView(
-                    POS,
-                    type.id(),
-                    true,
-                    true,
-                    type.needsRepair() ? inserted : List.of(),
-                    Optional.ofNullable(features.get(type)));
+            TerminalView online = onlineView(type, features);
             List<Variant> variants = List.of();
             if (type == ContractTerminal.TYPE) {
                 // The server's state arrives after the screen is open, so each role is a variant of the open screen.
@@ -520,22 +518,98 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             }
             cases.add(new Case(id + " online", () -> TerminalScreens.create(online), variants));
             if (type == TerminalTypes.FUEL_PUMP || type == TerminalTypes.ORE_PROCESSOR) {
-                // The outposts' two terminals draw a risk line under the header: the longest it can say, a whole shell
-                // short on every axis it is judged on.
-                TerminalView risky = new TerminalView(
-                        POS,
-                        type.id(),
-                        true,
-                        true,
-                        online.parts(),
-                        online.feature(),
-                        OutpostRisks.lines(
-                                Optional.of(new Ratings(5, 5, 5, 5)),
-                                new OutpostHabitability.Status(false, 442, 442, OutpostHabitability.AXES)));
+                TerminalView risky = riskyView(online);
                 cases.add(new Case(id + " online, longest risk line", () -> TerminalScreens.create(risky)));
             }
         }
         return cases;
+    }
+
+    /** The online view of {@code type}, its parts all in and its feature at its largest. */
+    private static TerminalView onlineView(TerminalType type, Map<TerminalType, TerminalFeature> features) {
+        List<TerminalView.PartStatus> inserted = type.parts().stream()
+                .map(part -> new TerminalView.PartStatus(BuiltInRegistries.ITEM.getKey(part), true))
+                .toList();
+        return new TerminalView(
+                POS,
+                type.id(),
+                true,
+                true,
+                type.needsRepair() ? inserted : List.of(),
+                Optional.ofNullable(features.get(type)));
+    }
+
+    /**
+     * {@code online} with the risk line the outposts' two terminals draw under the header: the longest it can say, a whole shell short on
+     * every axis it is judged on.
+     */
+    private static TerminalView riskyView(TerminalView online) {
+        return new TerminalView(
+                POS,
+                online.type(),
+                true,
+                true,
+                online.parts(),
+                online.feature(),
+                OutpostRisks.lines(
+                        Optional.of(new Ratings(5, 5, 5, 5)),
+                        new OutpostHabitability.Status(false, 442, 442, OutpostHabitability.AXES)));
+    }
+
+    /**
+     * The ore processor draws its account line only for a player on a charter, and the order rows sit under that line, so its online cases
+     * are checked again once the player has founded one (#993: the risk line pushed the line under the rows). Every work order is listed.
+     * With the risk line no row fits under the account line, so the heading opens the order sheet: each of its pages is a variant.
+     */
+    private static void checkWithACharter(
+            ClientGameTestContext context, TestSingleplayerContext world, List<String> problems) {
+        world.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            require(
+                    Charters.found(server, player.getUUID(), "W".repeat(NAME_LENGTH))
+                            .isEmpty(),
+                    "founding the charter should succeed");
+            CharterId charter = Charters.charterOfOrThrow(server, player.getUUID())
+                    .orElseThrow()
+                    .id();
+            require(Charters.deposit(server, charter, BALANCE).isEmpty(), "the deposit should succeed");
+        });
+        ClientWait.until(
+                context,
+                "the account line showing the deposit",
+                client -> OreProcessorScreen.accountLine().endsWith("$" + BALANCE),
+                client -> "account line '" + OreProcessorScreen.accountLine() + "'");
+        TerminalView online = onlineView(TerminalTypes.ORE_PROCESSOR, features());
+        TerminalView risky = riskyView(online);
+        check(context, new Case("ore_processor online, on a charter", () -> TerminalScreens.create(online)), problems);
+        check(
+                context,
+                new Case(
+                        "ore_processor online, longest risk line, on a charter",
+                        () -> TerminalScreens.create(risky),
+                        List.of(new Variant("every page of the order sheet", ScreenLayoutClientTest::everyOrderPage))),
+                problems);
+    }
+
+    /** Opens the order sheet from its heading and checks each page, turning with the pager while it can. */
+    private static List<String> everyOrderPage(ClientGameTestContext context, Screen screen) {
+        context.clickScreenButton("WORK ORDERS");
+        require(
+                context.computeOnClient(client -> ((OreProcessorScreen) screen).showingOrders()),
+                "WORK ORDERS opens the order sheet");
+        List<String> problems = new ArrayList<>();
+        for (int page = 1; page <= WorkOrder.values().length; page++) {
+            int shown = page;
+            problems.addAll(context.computeOnClient(
+                    client -> problemsOf("ore_processor order sheet / page " + shown, screen, List.of())));
+            if (!context.computeOnClient(client -> ClientChecks.buttons(screen).stream()
+                    .anyMatch(button ->
+                            button.active && button.getMessage().getString().equals(">")))) {
+                return problems;
+            }
+            context.clickScreenButton(">");
+        }
+        throw new AssertionError("the order sheet turned more pages than there are work orders");
     }
 
     /** The contract terminal at each role, with the longest names and as many rows as it lists. */
