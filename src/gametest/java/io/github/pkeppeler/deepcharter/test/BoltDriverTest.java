@@ -48,6 +48,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -280,38 +281,60 @@ public class BoltDriverTest {
         Corridor corridor = corridor(helper, LENGTH, 5);
         MockPlayer shooter = walker(helper, corridor, "bolt-pvp-shooter", 0, EAST);
         MockPlayer other = walker(helper, corridor, "bolt-pvp-other", 9, 90f);
-        // Two bolts a try.
-        arm(shooter.player(), 60);
         MinecraftServer server = helper.getLevel().getServer();
         TestTicks.each(helper, () -> {
             if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
                 return;
             }
-            // A joined player takes no damage until its client has loaded, and for its first ticks: wait it out.
-            if (other.player()
-                    .isInvulnerableTo(
+            ServerPlayer target = other.player();
+            // A joined player takes no damage until its client has loaded, and for its first ticks: wait it out. Wait
+            // too for the
+            // target to be alive, in the corridor's level and in a chunk that ticks entities, which a bolt's sweep
+            // needs.
+            if (!target.isAlive()
+                    || target.level() != corridor.level()
+                    || !corridor.level().isPositionEntityTicking(target.blockPosition())
+                    || target.isInvulnerableTo(
                             corridor.level(), corridor.level().damageSources().generic())) {
                 return;
             }
+            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a pack
+            // holds.
+            arm(shooter.player(), 2);
             // A full stomach heals: keep it low, so a loss is the bolt's.
-            other.player().getFoodData().setFoodLevel(6);
+            target.getFoodData().setFoodLevel(6);
             boolean was = server.getGameRules().get(GameRules.PVP);
-            float health = other.player().getHealth();
+            float health = target.getHealth();
             try {
                 server.getGameRules().set(GameRules.PVP, false, server);
                 fire(shooter.player());
-                if (other.player().getHealth() < health) {
+                if (target.getHealth() < health) {
                     throw failure(helper, "a bolt hurt a player on a server with PvP off");
                 }
                 server.getGameRules().set(GameRules.PVP, true, server);
                 fire(shooter.player());
-                if (other.player().getHealth() >= health) {
+                if (target.getHealth() >= health) {
                     // A mock under load can still be in its first ticks of protection although it reads as hittable:
                     // try again.
                     if (helper.getTick() < SPAWN_PROTECTION_TICKS + PROTECTION_RETRY_TICKS) {
                         return;
                     }
-                    throw failure(helper, "a bolt spared a player on a server with PvP on");
+                    throw failure(
+                            helper,
+                            "a bolt spared a player on a server with PvP on: target at %s alive %s loaded %s health %s hurt cooldown %s, shooter at %s facing %s with %s bolts, creatures near the line %s",
+                            target.position(),
+                            target.isAlive(),
+                            target.connection.hasClientLoaded(),
+                            target.getHealth(),
+                            target.damageCooldownTime,
+                            shooter.player().position(),
+                            shooter.player().getYRot(),
+                            bolts(shooter.player()),
+                            corridor.level()
+                                    .getEntitiesOfClass(
+                                            LivingEntity.class,
+                                            shooter.player().getBoundingBox().inflate(DRIVER.range()),
+                                            entity -> entity != shooter.player()));
                 }
             } finally {
                 server.getGameRules().set(GameRules.PVP, was, server);
