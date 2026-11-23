@@ -62,13 +62,13 @@ object GametestScan {
 	// any addTicket* of TicketType.FORCED, outside FarChunks.java is flagged, or marked with the comment below, with a reason, on its statement
 	// or the comment line above it.
 	private const val FORCE_MARKER = "// force-ok:"
-	// A dedicated server a client test starts goes through DedicatedServerRelease.createServer, which gives it no watchdog; a raw createServer
-	// leaves the stopped server on the heap for a minute and the next test pays for it (#914).
-	private val rawCreateServer = Regex("""\bworldBuilder\s*\(\s*\)\s*\.\s*createServer\b""")
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
 	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
 	private val onEachTickCall = Regex("""\bonEachTick\b""")
+	// A dedicated server a client test starts goes through DedicatedServerRelease.createServer, which gives it no watchdog; a raw createServer
+	// leaves the stopped server on the heap for a minute and the next test pays for it (#914).
+	private val rawCreateServer = Regex("""\bworldBuilder\s*\(\s*\)\s*\.\s*createServer\b""")
 	// A copy of test/support/Failures: a static failure(...) or fail(...), or a void expect(...) or require(...) over a boolean, with or without a GameTestHelper before it.
 	private val failureNameCopy = Regex("""\bstatic\s+[\w.<>?]+\s+(?:failure|fail)\s*\(""")
 	private val conditionCopy = Regex("""\bstatic\s+void\s+(?:expect|require)\s*\(\s*(?:final\s+)?(?:@\w+\s+)*(?:GameTestHelper\s+\w+\s*,\s*(?:final\s+)?(?:@\w+\s+)*)?boolean\b""")

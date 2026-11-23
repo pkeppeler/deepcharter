@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
@@ -27,12 +27,8 @@ import net.minecraft.server.MinecraftServer;
  * {@code DedicatedServerReleaseClientTest} guards all of it.
  */
 public final class DedicatedServerRelease implements ModInitializer {
-    /**
-     * The shutdown hook of each running dedicated server. An entry goes when its server stops: Fabric fires {@code SERVER_STOPPED} at
-     * the tail of {@code MinecraftServer.stopServer}, which {@code runServer} calls on every exit, a failed start included. (A weak key
-     * would not help: the hook, the value, references the server.)
-     */
-    private static final Map<MinecraftServer, Thread> HOOKS = new HashMap<>();
+    /** The shutdown hook of each running dedicated server, removed on {@code SERVER_STOPPED}, which fires on every exit. */
+    private static final Map<MinecraftServer, Thread> HOOKS = new ConcurrentHashMap<>();
 
     @Override
     public void onInitialize() {
@@ -40,10 +36,7 @@ public final class DedicatedServerRelease implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPED.register(DedicatedServerRelease::stopped);
     }
 
-    /**
-     * Creates the dedicated server of a client test, with {@code properties} merged over the harness defaults and no watchdog.
-     * Every client test that starts one calls this, never {@code worldBuilder().createServer} itself.
-     */
+    /** Creates the dedicated server of a client test, with {@code properties} and no watchdog. */
     public static TestDedicatedServerContext createServer(ClientGameTestContext context, Properties properties) {
         Properties withoutWatchdog = new Properties();
         withoutWatchdog.putAll(properties);
@@ -52,11 +45,11 @@ public final class DedicatedServerRelease implements ModInitializer {
     }
 
     /** Called by the mixin when {@code Main} has registered {@code hook} for {@code server}. */
-    public static synchronized void registered(MinecraftServer server, Thread hook) {
+    public static void registered(MinecraftServer server, Thread hook) {
         HOOKS.put(server, hook);
     }
 
-    private static synchronized void stopped(MinecraftServer server) {
+    private static void stopped(MinecraftServer server) {
         Thread hook = HOOKS.remove(server);
         if (hook == null) {
             return;
@@ -64,8 +57,7 @@ public final class DedicatedServerRelease implements ModInitializer {
         try {
             Runtime.getRuntime().removeShutdownHook(hook);
         } catch (IllegalStateException shuttingDown) {
-            // The JVM is already exiting (the hook itself stopped the server); the hook holds nothing that outlives the
-            // process.
+            // The JVM is already exiting.
         }
     }
 }
