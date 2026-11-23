@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.COCKPIT_GUIS;
+import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.GUI_SCALE;
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.LONG_STEP;
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.SHORT_STEP;
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.critical;
@@ -26,10 +27,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 
-/** Client GameTest for #1056, a sibling of {@link StepToastClearOfHudClientTest} because the navigator needs a two-player server. */
+/** The popup's keep-clear check for the navigator's sonar scope: a sibling of {@link StepToastClearOfHudClientTest}, which has one player. */
 public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
-    private static final int GUI_SCALE = 2;
-
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);

@@ -77,7 +77,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     private static final int FEET_Y = TestLayers.worldY(1, 150);
     private static final int ROOM_RADIUS = 8;
     private static final int ROOM_HEIGHT = 30;
-    private static final int GUI_SCALE = 2;
+    static final int GUI_SCALE = 2;
     /** The GUI sizes with a cockpit: the game's smallest (320 x 240), the default window's (427 x 240), and two larger. */
     static final int[][] COCKPIT_GUIS = {{320, 240}, {427, 240}, {640, 360}, {854, 480}};
     /** A GUI too small for the cockpit, where the plain HUD is drawn. */
@@ -496,7 +496,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         return new Box(decal.left(width), decal.top(height), decal.width(), decal.height());
     }
 
-    static Box box(HudKeepClear.Rect rect) {
+    private static Box box(HudKeepClear.Rect rect) {
         return new Box(rect.x(), rect.y(), rect.width(), rect.height());
     }
 }
