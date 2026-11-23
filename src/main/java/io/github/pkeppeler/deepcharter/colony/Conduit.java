@@ -62,7 +62,7 @@ public final class Conduit {
         }
         int top =
                 layer == LayerChain.SURFACE ? colony.groundY() + ColonyTuning.DEFAULT.conduitStack() : level.getMaxY();
-        int bottom = LayerChain.campaignLayers(level).stream()
+        int bottom = LayerChain.campaignLayersIn(level).stream()
                 .mapToInt(Band::minY)
                 .min()
                 .orElse(level.getMinY());

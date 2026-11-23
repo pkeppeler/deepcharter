@@ -6,7 +6,13 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.StructureKind;
+import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.test.support.BandCost;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Pool;
@@ -14,6 +20,7 @@ import io.github.pkeppeler.deepcharter.test.support.BandCost.Ratchet;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Ratio;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Reading;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Window;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColumnCost;
 import io.github.pkeppeler.deepcharter.test.support.ColumnCost.Measurement;
@@ -23,17 +30,22 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import org.slf4j.Logger;
@@ -42,20 +54,18 @@ import org.slf4j.LoggerFactory;
 /**
  * Measures what the campaign generator (#742) costs a new column, per band (ADR 0086, which amends ADR 0029's bar). Each band's window
  * is the shipped campaign world cut to that band's rows ({@code campaign_surface}, {@code campaign_layer_1}, {@code campaign_layer_2}),
- * and {@code campaign_floor} is the same world cut to its bottom 16 rows. A band's marginal CPU per filled row is its window's pooled
- * median over the floor's, per row of the difference; {@code tall_layer} (one layer's rock and fill in every row) over
- * {@code tall_layer_floor} is the reference. The gate: every band at most {@value BandCost#BAR}x the reference, except the bands
- * {@link #RATCHETS} holds to their own measured ratio plus 15% until #1132. The whole world,
- * {@code campaign_sample} per block of height against {@code tall_baseline} (vanilla stone, no fill), is printed as a tracked number
- * and no longer gates.
+ * and its floor is the window cut to its bottom 16 rows ({@code campaign_surface_floor} and so on). A band's marginal CPU per filled
+ * row is its window's pooled median over its floor's, per row of the difference; {@code tall_layer} (one layer's rock and fill in every
+ * row) over {@code tall_layer_floor} is the reference. The gate: every band at most {@value BandCost#BAR}x the reference, except the
+ * bands {@link #RATCHETS} holds to their own measured ratio plus 15% until their issue. The whole world, {@code campaign_sample} per
+ * block of height against {@code tall_baseline} (vanilla stone, no fill), is printed as a tracked number and no longer gates.
  *
- * <p>By default it generates a few columns of each world and checks they exist. With the number of rounds in the environment, for
- * example {@code DEEPCHARTER_CAMPAIGN_COST=6 tools/gametest.sh 'campaign_cost_test*'}, it takes that many readings of each world,
- * alternating which is first, and prints them as {@code [campaign-cost]} lines; a run needs at least {@value #MIN_ROUNDS} rounds.
- * {@value #POOL_ENV}=<absolute file> pools runs: each run appends its readings to the file and reads every run's back, and the gate
- * judges the pool once it holds {@value BandCost#RUNS} runs and {@value BandCost#ROUNDS} rounds of each world it reads
- * ({@link BandCost}). A pool short of that prints the ratios and asserts nothing. {@value #ONLY_ENV}=<world> (or a comma-separated
- * list) measures only those worlds.
+ * <p>{@code everyCostWorldGeneratesColumns} generates a few columns of each world and checks they exist. With the number of rounds in
+ * the environment, for example {@code DEEPCHARTER_CAMPAIGN_COST=6 tools/gametest.sh 'campaign_cost_test_each_band*'}, the measured run
+ * takes that many readings of each world, alternating which is first, and prints them as {@code [campaign-cost]} lines; a run needs at
+ * least {@value #MIN_ROUNDS} rounds. {@value #POOL_ENV}=<absolute file> pools runs: each run appends its readings to the file and reads
+ * every run's back, and the gate judges the pool once it is full ({@link BandCost.Pool#judged}). A pool short of that prints the ratios
+ * and asserts nothing. {@value #ONLY_ENV}=<world> (or a comma-separated list) measures only those worlds.
  */
 public class CampaignCostTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(CampaignCostTest.class);
@@ -75,32 +85,30 @@ public class CampaignCostTest {
     private static final String REFERENCE = "tall_layer";
 
     private static final String REFERENCE_FLOOR = "tall_layer_floor";
-    /** The campaign world's bottom 16 rows, unbuilt depth: what a column of the campaign generator costs apart from its rows. */
-    private static final String FLOOR = "campaign_floor";
 
     private static final int FLOOR_ROWS = 16;
 
     /** Every band but unbuilt depth, which is no band of content. */
     private static final List<Window> WINDOWS = List.of(
-            new Window(CampaignBands.SURFACE.name(), "campaign_surface"),
-            new Window(CampaignBands.LAYER_1.name(), "campaign_layer_1"),
-            new Window(CampaignBands.LAYER_2.name(), "campaign_layer_2"));
+            new Window(CampaignBands.SURFACE, "campaign_surface", "campaign_surface_floor"),
+            new Window(CampaignBands.LAYER_1, "campaign_layer_1", "campaign_layer_1_floor"),
+            new Window(CampaignBands.LAYER_2, "campaign_layer_2", "campaign_layer_2_floor"));
 
     /**
-     * The bands that were over the bar when the gate was written (ADR 0086): each is held to its pooled ratio of #1129 plus the bar's
-     * 15%, so it cannot get worse. #1132 makes the campaign generator's layer bands cost about one layer per row and deletes these; a
-     * band added since gets no entry and is held to {@value BandCost#BAR}x.
+     * The bands that were over the bar when the gate was written (ADR 0086): each is held to its pooled ratio plus the bar's 15%, so it
+     * cannot get worse, until its issue makes the campaign generator's layer bands cost about one layer per row and deletes it. No
+     * other band may have one ({@link #RATCHETED}): a band added since is held to {@value BandCost#BAR}x.
      */
-    private static final List<Ratchet> RATCHETS = List.of(
-            // #1132: layer 1's rows cost more in the campaign generator than in its own dimension; delete once it is
-            // fixed
-            new Ratchet(CampaignBands.LAYER_1.name(), 1.583),
-            // #1132: as layer 1
-            new Ratchet(CampaignBands.LAYER_2.name(), 1.834));
+    private static final List<Ratchet> RATCHETS =
+            List.of(new Ratchet(CampaignBands.LAYER_1, 1.583, 1132), new Ratchet(CampaignBands.LAYER_2, 1.834, 1132));
+
+    /** The only bands a ratchet may hold. */
+    private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_1, CampaignBands.LAYER_2);
 
     /** The worlds the gate reads. */
     private static final List<String> GATED = Stream.concat(
-                    WINDOWS.stream().map(Window::world), Stream.of(FLOOR, REFERENCE, REFERENCE_FLOOR))
+                    WINDOWS.stream().flatMap(window -> Stream.of(window.world(), window.floor())),
+                    Stream.of(REFERENCE, REFERENCE_FLOOR))
             .toList();
 
     private static final List<String> ALL_WORLDS =
@@ -113,14 +121,18 @@ public class CampaignCostTest {
             REQUESTED_WORLD == null ? ALL_WORLDS : List.of(REQUESTED_WORLD.split(","));
     /** A chunk of each world's own, away from the origin that the measured columns centre on. */
     private static final int CHUNK = 600;
-    /** A chunk no other check of this class generates, so both worlds make it fresh. */
-    private static final int SAME_ROWS_CHUNK = 700;
+    /** The chunks whose rows each window must share with the campaign world, besides one that holds a site of its layer. */
+    private static final List<ChunkPos> SAME_ROWS_CHUNKS =
+            List.of(new ChunkPos(700, 700), new ChunkPos(703, -697), new ChunkPos(-706, 709));
+    /** Chunks to each side searched for a site of a layer: a structure spacing (384 blocks) is 24. */
+    private static final int SITE_SEARCH_CHUNKS = 24;
 
     private static final int MIN_ROUNDS = 4;
     private static final int MAX_TICKS = 200_000;
     /**
-     * Four hours: each tick a measured run waits on sleeps {@link FarChunks#POLL_MILLIS}, and a judged run takes about 20 minutes. Only
-     * the measured run, which {@value #ROUNDS_ENV} opts into and CI never sets, has it; the smoke case keeps {@link #MAX_TICKS}.
+     * Four hours: each tick a measured run waits on sleeps {@link FarChunks#POLL_MILLIS}, and one run takes about 7 minutes, a judged
+     * pool of {@value BandCost#RUNS} about 20. Only the measured run, which {@value #ROUNDS_ENV} opts into and CI never sets, has it;
+     * the smoke case keeps {@link #MAX_TICKS}.
      */
     private static final int MEASURED_MAX_TICKS = 4 * 3600 * 1000 / FarChunks.POLL_MILLIS;
 
@@ -143,35 +155,109 @@ public class CampaignCostTest {
     }
 
     /**
-     * A window's rows are the campaign world's, block for block, in a fresh column of both: cutting the height off changes nothing the
-     * generator makes in the band, so a window costs what its band does in the whole world.
+     * A window's rows are the campaign world's, so it costs what its band does there: in each of {@link #SAME_ROWS_CHUNKS} and, for a
+     * layer, a chunk that holds a site of that layer, every block state and every biome cell of every row of the window, both band
+     * edges among them, are the campaign world's. It loads the chunks on the server thread, so it has a batch of its own.
      */
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = MAX_TICKS)
     public void eachWindowHoldsTheCampaignWorldsRows(GameTestHelper helper) {
-        LevelChunk whole = world(helper, CAMPAIGN).getChunk(SAME_ROWS_CHUNK, SAME_ROWS_CHUNK);
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        ServerLevel campaign = world(helper, CAMPAIGN);
+        BlockPos conduit = Colony.plannedAnchor(helper.getLevel().getServer(), ColonyAnchor.CONDUIT)
+                .orElseThrow(() -> failure(helper, "the colony's pad is not chosen, so no site can be found"));
         for (Window window : WINDOWS) {
             ServerLevel level = world(helper, window.world());
-            LevelChunk cut = level.getChunk(SAME_ROWS_CHUNK, SAME_ROWS_CHUNK);
-            int differ = 0;
-            // level-height: a window is a test world cut to a band's rows, and every row it has is compared
-            for (int y = level.getMinY(); y <= level.getMaxY(); y++) {
-                for (int x = 0; x < 16; x++) {
-                    for (int z = 0; z < 16; z++) {
-                        pos.set(whole.getPos().getBlockX(x), y, whole.getPos().getBlockZ(z));
-                        if (!whole.getBlockState(pos).equals(cut.getBlockState(pos))) {
-                            differ++;
-                        }
-                    }
-                }
+            Set<ChunkPos> chunks = new LinkedHashSet<>(SAME_ROWS_CHUNKS);
+            LayerChain.campaignLayersIn(level).forEach(band -> chunks.add(siteChunk(helper, campaign, band, conduit)));
+            for (ChunkPos chunk : chunks) {
+                expectSameRows(helper, campaign.getChunk(chunk.x(), chunk.z()), level, window.world());
             }
-            expect(helper, differ == 0, "%s blocks of %s differ from %s's", differ, window.world(), CAMPAIGN);
         }
         helper.succeed();
     }
 
+    private static void expectSameRows(GameTestHelper helper, LevelChunk whole, ServerLevel level, String world) {
+        LevelChunk cut = level.getChunk(whole.getPos().x(), whole.getPos().z());
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        int blocks = 0;
+        int biomes = 0;
+        // level-height: a window is a test world cut to a band's rows, and every row it has is compared
+        for (int y = level.getMinY(); y <= level.getMaxY(); y++) {
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    pos.set(whole.getPos().getBlockX(x), y, whole.getPos().getBlockZ(z));
+                    if (!whole.getBlockState(pos).equals(cut.getBlockState(pos))) {
+                        blocks++;
+                    }
+                    if ((x & 3) == 0 && (y & 3) == 0 && (z & 3) == 0) {
+                        int qx = QuartPos.fromBlock(pos.getX());
+                        int qy = QuartPos.fromBlock(y);
+                        int qz = QuartPos.fromBlock(pos.getZ());
+                        if (!whole.getNoiseBiome(qx, qy, qz)
+                                .unwrapKey()
+                                .equals(cut.getNoiseBiome(qx, qy, qz).unwrapKey())) {
+                            biomes++;
+                        }
+                    }
+                }
+            }
+        }
+        expect(
+                helper,
+                blocks == 0 && biomes == 0,
+                "%s blocks and %s biome cells of %s differ from %s's in chunk %s",
+                blocks,
+                biomes,
+                world,
+                CAMPAIGN,
+                whole.getPos());
+    }
+
+    /** A chunk near {@link #SAME_ROWS_CHUNKS}' first that a site of {@code band}'s layer reaches into, by the sites the draw uses. */
+    private static ChunkPos siteChunk(
+            GameTestHelper helper, ServerLevel campaign, LayerChain.Band band, BlockPos conduit) {
+        ChunkPos origin = SAME_ROWS_CHUNKS.getFirst();
+        for (int dx = 0; dx < SITE_SEARCH_CHUNKS; dx++) {
+            for (int dz = 0; dz < SITE_SEARCH_CHUNKS; dz++) {
+                ChunkPos chunk = new ChunkPos(origin.x() + dx, origin.z() + dz);
+                List<StructureSite> sites = LayerStructures.sitesIn(
+                        campaign.getSeed(), band.layer(), band.minY(), band.height(), chunk, conduit);
+                if (sites.stream()
+                        .anyMatch(site -> site.bounds()
+                                .intersects(
+                                        chunk.getMinBlockX(),
+                                        chunk.getMinBlockZ(),
+                                        chunk.getMaxBlockX(),
+                                        chunk.getMaxBlockZ()))) {
+                    return chunk;
+                }
+            }
+        }
+        throw failure(helper, "no site of layer %s within %s chunks of %s", band.layer(), SITE_SEARCH_CHUNKS, origin);
+    }
+
+    /**
+     * A window draws only its own band's structures (ADR 0086): the Prospector wreck is layer 2's, so the layer 1 window has none and
+     * the layer 2 window has the campaign world's. Without the filter in {@code LayerChain.campaignLayersIn} the layer 1 window would
+     * draw layer 2's sites outside its rows.
+     */
+    @GameTest
+    public void aWindowDrawsOnlyItsOwnBandsStructures(GameTestHelper helper) {
+        expect(
+                helper,
+                StructureKind.WRECK.layer() == 2,
+                "the wreck is in layer %s, not 2",
+                StructureKind.WRECK.layer());
+        Optional<StructureSite> whole = LayerStructures.prospector(world(helper, CAMPAIGN));
+        expect(helper, whole.isPresent(), "%s has no Prospector wreck", CAMPAIGN);
+        Optional<StructureSite> layer2 = LayerStructures.prospector(world(helper, "campaign_layer_2"));
+        expect(helper, layer2.equals(whole), "campaign_layer_2's wreck %s, expected %s's %s", layer2, CAMPAIGN, whole);
+        Optional<StructureSite> layer1 = LayerStructures.prospector(world(helper, "campaign_layer_1"));
+        expect(helper, layer1.isEmpty(), "campaign_layer_1 has layer 2's wreck %s", layer1);
+        helper.succeed();
+    }
+
     /** The windows and the reference put ore in a fresh column, so a band's rows are compared with a fill's (#743). */
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = MAX_TICKS)
     public void theCostWorldsRunTheZoneFill(GameTestHelper helper) {
         for (String world : FILLED_WORLDS) {
             ServerLevel level = world(helper, world);
@@ -190,20 +276,24 @@ public class CampaignCostTest {
 
     /**
      * Each window is the shipped campaign world, generator and type, with only the type's height cut to its band's rows (from the band
-     * table), and every band of content has one. A layer's window has no skylight, as the reference has none: in the campaign world a
-     * layer lies under the surface's ground, and a sky over the window would light rows the campaign world keeps dark. The floors are
-     * the campaign world and {@code tall_layer} cut to their bottom {@value #FLOOR_ROWS} rows.
+     * table), and every band of content has one; each floor is its window cut to its bottom {@value #FLOOR_ROWS} rows. A layer's window
+     * has no skylight, as the reference has none: in the campaign world a layer lies under the surface's ground, and a sky over the
+     * window would light rows the campaign world keeps dark. Only {@link #RATCHETED} bands have a ratchet.
      */
     @GameTest
     public void theWindowsAreTheCampaignWorldCutToTheirBands(GameTestHelper helper) throws IOException {
-        List<String> bands = CampaignBands.ALL.stream()
+        List<CampaignBands.Band> bands = CampaignBands.ALL.stream()
                 .filter(band -> band != CampaignBands.UNBUILT)
-                .map(CampaignBands.Band::name)
                 .toList();
-        List<String> windowed = WINDOWS.stream().map(Window::band).toList();
+        List<CampaignBands.Band> windowed = WINDOWS.stream().map(Window::band).toList();
         expect(helper, windowed.equals(bands), "windows for %s, expected one for each of %s", windowed, bands);
         for (Ratchet ratchet : RATCHETS) {
-            expect(helper, windowed.contains(ratchet.band()), "a ratchet for %s, which has no window", ratchet.band());
+            expect(
+                    helper,
+                    RATCHETED.contains(ratchet.band()),
+                    "a ratchet for %s: only %s may have one, and a new band is held to the bar",
+                    ratchet.band().name(),
+                    RATCHETED);
         }
         JsonObject dimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject()
@@ -214,23 +304,11 @@ public class CampaignCostTest {
         JsonObject campaignType =
                 read(helper, "/data/minecraft/dimension_type/overworld.json").getAsJsonObject();
         for (Window window : WINDOWS) {
-            CampaignBands.Band band = CampaignBands.ALL.stream()
-                    .filter(candidate -> candidate.name().equals(window.band()))
-                    .findFirst()
-                    .orElseThrow();
-            expectCut(
-                    helper,
-                    dimensions,
-                    window.world(),
-                    campaign,
-                    cut(campaignType, band.minY(), band.height(), band == CampaignBands.SURFACE));
+            CampaignBands.Band band = window.band();
+            boolean sky = band == CampaignBands.SURFACE;
+            expectCut(helper, dimensions, window.world(), campaign, cut(campaignType, band.minY(), band.height(), sky));
+            expectCut(helper, dimensions, window.floor(), campaign, cut(campaignType, band.minY(), FLOOR_ROWS, sky));
         }
-        expectCut(
-                helper,
-                dimensions,
-                FLOOR,
-                campaign,
-                cut(campaignType, CampaignBands.UNBUILT.minY(), FLOOR_ROWS, false));
         JsonObject referenceType = read(helper, "/data/deepcharter/dimension_type/tall_baseline.json")
                 .getAsJsonObject();
         expectCut(
@@ -280,11 +358,13 @@ public class CampaignCostTest {
     }
 
     private static void report(GameTestHelper helper, Map<String, List<Measurement>> results) {
+        String tree = tree();
         LOGGER.info(
-                "[campaign-cost] {} columns per world and round, run {}; gate (ADR 0086): each band's CPU per filled row at most"
-                        + " {}x {}'s",
+                "[campaign-cost] {} columns per world and round, run {} of tree {}; gate (ADR 0086): each band's CPU per filled"
+                        + " row at most {}x {}'s, or its ratchet",
                 ColumnCost.measuredColumns(),
                 RUN,
+                tree,
                 BandCost.BAR,
                 REFERENCE);
         List<Reading> readings = new ArrayList<>();
@@ -300,7 +380,8 @@ public class CampaignCostTest {
                             .toList(),
                     ColumnCost.format(ColumnCost.median(all).cpuMsPerColumn()),
                     Math.round(ColumnCost.median(all).heapMb()));
-            all.forEach(m -> readings.add(new Reading(RUN, world, m.height(), m.cpuMsPerColumn())));
+            all.forEach(m -> readings.add(
+                    new Reading(RUN, tree, ColumnCost.measuredColumns(), world, m.height(), m.cpuMsPerColumn())));
         });
         Pool pool = pool(helper, readings);
         for (String world : ALL_WORLDS) {
@@ -310,7 +391,7 @@ public class CampaignCostTest {
                         world,
                         ColumnCost.format(pool.median(world)),
                         pool.rounds(world),
-                        pool.runs(world),
+                        pool.runs(world).size(),
                         pool.height(world));
             }
         }
@@ -331,22 +412,25 @@ public class CampaignCostTest {
                 REFERENCE,
                 String.format("%.4f", pool.marginalPerRow(REFERENCE, REFERENCE_FLOOR)),
                 REFERENCE_FLOOR);
-        List<Ratio> ratios = BandCost.ratios(pool, WINDOWS, RATCHETS, FLOOR, REFERENCE, REFERENCE_FLOOR);
+        List<Ratio> ratios = BandCost.ratios(pool, WINDOWS, RATCHETS, REFERENCE, REFERENCE_FLOOR);
         for (Ratio ratio : ratios) {
             LOGGER.info(
                     "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s; at most {}x{} ({})",
-                    ratio.band(),
+                    ratio.window().band().name(),
                     String.format("%.4f", ratio.marginal()),
-                    FLOOR,
+                    ratio.window().floor(),
                     String.format("%.3f", ratio.ratio()),
                     REFERENCE,
                     String.format("%.3f", ratio.bar()),
-                    ratio.bar() == BandCost.BAR ? "" : ", a ratchet (#1132)",
+                    ratio.ratchet()
+                            .map(held -> ", a ratchet until #" + held.issue())
+                            .orElse(""),
                     ratio.over() ? "over" : "within");
         }
         if (!pool.judged(GATED)) {
             LOGGER.info(
-                    "[campaign-cost] not judged: the gate needs {} runs of {} rounds in all, pooled through {}",
+                    "[campaign-cost] not judged: the gate needs {} runs with as many rounds each and {} in all, of every world,"
+                            + " pooled through {}",
                     BandCost.RUNS,
                     BandCost.ROUNDS,
                     POOL_ENV);
@@ -357,17 +441,45 @@ public class CampaignCostTest {
         expect(helper, over.isEmpty(), "bands over their bar against %s: %s", REFERENCE, over);
     }
 
-    /** This run's readings, with every earlier run's in the pool file when there is one. */
+    /**
+     * This run's readings, with every earlier run's in the pool file when there is one. The pool is checked with this run's readings in
+     * it before they are written, so a run of another tree or round size never spoils the file.
+     */
     private static Pool pool(GameTestHelper helper, List<Reading> readings) {
         if (REQUESTED_POOL == null) {
             return new Pool(readings);
         }
         Path file = Path.of(REQUESTED_POOL);
         try {
+            List<Reading> all = new ArrayList<>(Pool.read(file).readings());
+            all.addAll(readings);
+            Pool pool = new Pool(all);
             Pool.append(file, readings);
-            return Pool.read(file);
+            return pool;
         } catch (IOException e) {
             throw failure(helper, "cannot pool the readings through %s: %s", file, e.getMessage());
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw failure(
+                    helper,
+                    "this run does not pool with %s: %s; delete it and start the pool again",
+                    file,
+                    e.getMessage());
+        }
+    }
+
+    /** The commit measured, {@code -dirty} when the tree has changes, so a pool never mixes trees; {@code unknown} without git. */
+    private static String tree() {
+        try {
+            Process git = new ProcessBuilder("git", "describe", "--always", "--dirty", "--abbrev=40")
+                    .redirectErrorStream(true)
+                    .start();
+            String out = new String(git.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            return git.waitFor() == 0 && !out.isEmpty() ? out : "unknown";
+        } catch (IOException e) {
+            return "unknown";
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return "unknown";
         }
     }
 

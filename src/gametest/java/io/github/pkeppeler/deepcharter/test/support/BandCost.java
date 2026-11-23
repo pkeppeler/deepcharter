@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -8,12 +9,17 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * The arithmetic of the campaign cost gate (ADR 0086): each band's marginal CPU per filled row, against
- * {@code tall_layer}'s, on medians pooled over every round of {@value #RUNS} runs. {@code CampaignCostTest} measures the worlds and
- * asserts; {@code BandCostTest} checks this on made-up readings.
+ * The arithmetic of the campaign cost gate (ADR 0086): each band's marginal CPU per filled row, against {@code tall_layer}'s, on
+ * medians pooled over every round of {@value #RUNS} runs. {@code CampaignCostTest} measures the worlds and asserts;
+ * {@code BandCostTest} checks this on made-up readings.
  */
 public final class BandCost {
     /** A band's rows may cost at most this many times the reference's. */
@@ -27,50 +33,93 @@ public final class BandCost {
 
     private BandCost() {}
 
-    /** One round's reading of one world: the run it came from, the world's blocks of height and its CPU ms per column. */
-    public record Reading(String run, String world, int height, double cpuMsPerColumn) {
+    /**
+     * One round's reading of one world: the run it came from, the tree it measured, the columns of a round, the world's blocks of
+     * height and its CPU ms per column.
+     */
+    public record Reading(String run, String tree, int columns, String world, int height, double cpuMsPerColumn) {
         String line() {
-            return String.join("\t", run, world, Integer.toString(height), Double.toString(cpuMsPerColumn));
+            return String.join(
+                    "\t",
+                    run,
+                    tree,
+                    Integer.toString(columns),
+                    world,
+                    Integer.toString(height),
+                    Double.toString(cpuMsPerColumn));
         }
 
         static Reading parse(String line) {
             String[] fields = line.split("\t", -1);
-            if (fields.length != 4) {
-                throw new IllegalArgumentException("a pool line is run, world, height and CPU, tab-separated: " + line);
+            if (fields.length != 6) {
+                throw new IllegalArgumentException(
+                        "a pool line is run, tree, columns, world, height and CPU, tab-separated: " + line);
             }
-            return new Reading(fields[0], fields[1], Integer.parseInt(fields[2]), Double.parseDouble(fields[3]));
+            return new Reading(
+                    fields[0],
+                    fields[1],
+                    Integer.parseInt(fields[2]),
+                    fields[3],
+                    Integer.parseInt(fields[4]),
+                    Double.parseDouble(fields[5]));
         }
     }
 
-    /** A band, and the world that is the campaign world cut to that band's rows. */
-    public record Window(String band, String world) {}
+    /** A band, the world that is the campaign world cut to its rows, and that world cut to its bottom rows. */
+    public record Window(CampaignBands.Band band, String world, String floor) {}
 
     /**
-     * A band that was over the bar when the gate was written, held to its own {@code measured} ratio plus the bar's 15%, so it cannot
-     * get worse. A band without one, every new band, is held to {@link #BAR}.
+     * A band that was over the bar when the gate was written, held to its own {@code measured} ratio plus the bar's 15% until
+     * {@code issue} brings it under and deletes this. A band without one, every new band, is held to {@link #BAR}.
      */
-    public record Ratchet(String band, double measured) {
+    public record Ratchet(CampaignBands.Band band, double measured, int issue) {
         public double ceiling() {
             return measured * BAR;
         }
     }
 
-    /** A band's marginal CPU ms per filled row, that over the reference's, and the most that ratio may be. */
-    public record Ratio(String band, double marginal, double ratio, double bar) {
+    /** A window's marginal CPU ms per filled row, that over the reference's, and the ratchet that holds it, if any. */
+    public record Ratio(Window window, double marginal, double ratio, Optional<Ratchet> ratchet) {
+        /** The most the ratio may be. */
+        public double bar() {
+            return ratchet.map(Ratchet::ceiling).orElse(BAR);
+        }
+
         public boolean over() {
-            return ratio > bar;
+            return ratio > bar();
         }
 
         @Override
         public String toString() {
-            return String.format(Locale.ROOT, "%s %.3fx of %.3fx", band, ratio, bar);
+            return String.format(Locale.ROOT, "%s %.3fx of %.3fx", window.band().name(), ratio, bar())
+                    + ratchet.map(held -> " (a ratchet, #" + held.issue() + ")").orElse("");
         }
     }
 
-    /** The readings of every pooled run; each statistic is over all of them, never over one run's. */
+    /**
+     * The readings of every pooled run; each statistic is over all of them, never over one run's. A pool holds one tree, one size of
+     * round and one height per world: readings of another are not the same measurement.
+     */
     public record Pool(List<Reading> readings) {
         public Pool {
-            readings = List.copyOf(readings);
+            List<Reading> all = List.copyOf(readings);
+            only(all.stream(), Reading::tree, "trees");
+            only(all.stream(), Reading::columns, "sizes of round");
+            all.stream()
+                    .map(Reading::world)
+                    .distinct()
+                    .forEach(world -> only(
+                            all.stream().filter(reading -> reading.world().equals(world)),
+                            Reading::height,
+                            "heights of " + world));
+            readings = all;
+        }
+
+        private static void only(Stream<Reading> readings, Function<Reading, Object> field, String what) {
+            Set<Object> values = readings.map(field).collect(Collectors.toSet());
+            if (values.size() > 1) {
+                throw new IllegalArgumentException("the pool mixes " + what + ": " + values);
+            }
         }
 
         /** The pool in {@code file}, one reading a line; empty when there is no file yet. */
@@ -78,10 +127,16 @@ public final class BandCost {
             if (!Files.exists(file)) {
                 return new Pool(List.of());
             }
-            return new Pool(Files.readAllLines(file, StandardCharsets.UTF_8).stream()
+            List<Reading> readings = Files.readAllLines(file, StandardCharsets.UTF_8).stream()
                     .filter(line -> !line.isBlank())
                     .map(Reading::parse)
-                    .toList());
+                    .toList();
+            try {
+                return new Pool(readings);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException(
+                        file + " is no one pool (" + e.getMessage() + "): delete it and start the pool again", e);
+            }
         }
 
         public static void append(Path file, List<Reading> readings) throws IOException {
@@ -114,22 +169,33 @@ public final class BandCost {
             return (int) of(world).count();
         }
 
-        public int runs(String world) {
-            return (int) of(world).map(Reading::run).distinct().count();
+        public Set<String> runs(String world) {
+            return of(world).map(Reading::run).collect(Collectors.toSet());
         }
 
         /**
          * CPU ms per column for each row {@code world} has over {@code floor}: the difference of their pooled medians over the
-         * difference of their heights. The floor is a thin world of the same generator, so what a column costs whatever its height
-         * (the chunk, the structure starts, the forcing) drops out.
+         * difference of their heights. The floor is the world cut to its bottom rows, so what a column costs whatever its height
+         * (the chunk, the structure starts, the forcing) drops out, and the floor's rows are the world's own.
          */
         public double marginalPerRow(String world, String floor) {
             return (median(world) - median(floor)) / (height(world) - height(floor));
         }
 
-        /** True when every one of {@code worlds} has {@value #ROUNDS} rounds from {@value #RUNS} runs. */
+        /**
+         * True when every one of {@code worlds} comes from the same {@value #RUNS} or more runs, with {@value #ROUNDS} or more rounds,
+         * and every run has as many rounds of each: a window is never judged against a floor or reference from other runs, and no run
+         * weighs more than another.
+         */
         public boolean judged(Collection<String> worlds) {
-            return worlds.stream().allMatch(world -> runs(world) >= RUNS && rounds(world) >= ROUNDS);
+            Set<String> runs = worlds.stream().findFirst().map(this::runs).orElse(Set.of());
+            Map<String, Long> perRun = readings.stream()
+                    .filter(reading -> worlds.contains(reading.world()))
+                    .collect(Collectors.groupingBy(
+                            reading -> reading.run() + "\t" + reading.world(), Collectors.counting()));
+            return runs.size() >= RUNS
+                    && worlds.stream().allMatch(world -> runs(world).equals(runs) && rounds(world) >= ROUNDS)
+                    && perRun.values().stream().distinct().count() == 1;
         }
 
         private Stream<Reading> of(String world) {
@@ -138,26 +204,19 @@ public final class BandCost {
     }
 
     /**
-     * Each window's marginal cost per row over {@code floor}, and its ratio to {@code reference}'s over {@code referenceFloor}, held to
-     * its band's ratchet or else {@link #BAR}. Every world named must be in the pool.
+     * Each window's marginal cost per row over its floor, and its ratio to {@code reference}'s over {@code referenceFloor}, held to its
+     * band's ratchet or else {@link #BAR}. Every world named must be in the pool.
      */
     public static List<Ratio> ratios(
-            Pool pool,
-            List<Window> windows,
-            List<Ratchet> ratchets,
-            String floor,
-            String reference,
-            String referenceFloor) {
+            Pool pool, List<Window> windows, List<Ratchet> ratchets, String reference, String referenceFloor) {
         double perRow = pool.marginalPerRow(reference, referenceFloor);
         return windows.stream()
                 .map(window -> {
-                    double marginal = pool.marginalPerRow(window.world(), floor);
-                    double bar = ratchets.stream()
-                            .filter(ratchet -> ratchet.band().equals(window.band()))
-                            .mapToDouble(Ratchet::ceiling)
-                            .findFirst()
-                            .orElse(BAR);
-                    return new Ratio(window.band(), marginal, marginal / perRow, bar);
+                    double marginal = pool.marginalPerRow(window.world(), window.floor());
+                    Optional<Ratchet> ratchet = ratchets.stream()
+                            .filter(held -> held.band().equals(window.band()))
+                            .findFirst();
+                    return new Ratio(window, marginal, marginal / perRow, ratchet);
                 })
                 .toList();
     }

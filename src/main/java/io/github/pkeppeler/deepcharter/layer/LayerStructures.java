@@ -138,17 +138,12 @@ public final class LayerStructures {
     }
 
     /**
-     * The layers a level holds: the one layer of a layer dimension, every layer of a campaign world (#743) that is inside its height, or
-     * none for the surface and any other level. A level of the campaign generator cut to one band's rows (the cost test's band windows,
-     * ADR 0086) holds only that band, and a site of another would be drawn outside the level.
+     * The layers a level holds: the one layer of a layer dimension, every layer of a campaign world (#743) inside its height
+     * ({@link LayerChain#campaignLayersIn}), or none for the surface and any other level.
      */
     private static List<Band> layerBands(ServerLevel level) {
-        List<Band> campaign = LayerChain.campaignLayers(level);
-        if (!campaign.isEmpty()) {
-            return campaign.stream()
-                    .filter(band ->
-                            !level.isOutsideBuildHeight(band.minY()) && !level.isOutsideBuildHeight(band.maxY()))
-                    .toList();
+        if (!LayerChain.campaignLayers(level).isEmpty()) {
+            return LayerChain.campaignLayersIn(level);
         }
         return LayerChain.layerAt(level, level.getMinY()).stream().toList();
     }

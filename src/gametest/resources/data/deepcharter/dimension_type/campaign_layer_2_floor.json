@@ -53,7 +53,7 @@
   "height": 16,
   "infiniburn": "#minecraft:infiniburn_overworld",
   "logical_height": 16,
-  "min_y": -2032,
+  "min_y": -512,
   "monster_spawn_block_light_limit": 0,
   "monster_spawn_light_level": {
     "type": "minecraft:uniform",

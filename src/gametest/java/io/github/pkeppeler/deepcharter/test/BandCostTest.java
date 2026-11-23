@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.test.support.BandCost;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Pool;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Ratchet;
@@ -13,20 +15,27 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 
 /** The arithmetic of ADR 0086's campaign cost gate ({@link BandCost}), on made-up readings: no world is generated. */
 public class BandCostTest {
     private static final double EPSILON = 1e-9;
+    private static final String TREE = "tree";
+    private static final int COLUMNS = 289;
     private static final String REFERENCE = "reference";
     private static final String REFERENCE_FLOOR = "reference_floor";
-    private static final String FLOOR = "floor";
     private static final int FLOOR_ROWS = 16;
     private static final int REFERENCE_ROWS = 2048;
     private static final int BAND_ROWS = 192;
+    private static final CampaignBands.Band BAND = new CampaignBands.Band("band", -256, BAND_ROWS);
+    private static final CampaignBands.Band OLDER_BAND = new CampaignBands.Band("older band", -64, 384);
+    private static final Window WINDOW = new Window(BAND, "band", "band_floor");
     /** The reference's CPU ms per column for each row over its floor. */
     private static final double REFERENCE_PER_ROW = 0.1;
+
+    private static final List<String> GATED = List.of(WINDOW.world(), WINDOW.floor(), REFERENCE, REFERENCE_FLOOR);
 
     /** Pooled, the median is taken over every round of every run, not over the runs' own medians. */
     @GameTest
@@ -39,16 +48,16 @@ public class BandCostTest {
         // The runs' medians are 2, 10 and 12, whose median is 10; the nine rounds' median is 9.
         expect(helper, near(pool.median("world"), 9), "pooled median %s, expected 9", pool.median("world"));
         expect(helper, pool.rounds("world") == 9, "rounds %s, expected 9", pool.rounds("world"));
-        expect(helper, pool.runs("world") == 3, "runs %s, expected 3", pool.runs("world"));
+        expect(helper, pool.runs("world").size() == 3, "runs %s, expected 3", pool.runs("world"));
         helper.succeed();
     }
 
-    /** A band's marginal cost per filled row is its window's cost over the floor's, per row of the difference in height. */
+    /** A band's marginal cost per filled row is its window's cost over its floor's, per row of the difference in height. */
     @GameTest
     public void theMarginalCostIsPerRowOverTheFloor(GameTestHelper helper) {
         Pool pool = new Pool(gatedPool(3, 6, 1.0));
         // 18 ms of floor, plus 176 rows at 0.1 ms over it.
-        double marginal = pool.marginalPerRow("band", FLOOR);
+        double marginal = pool.marginalPerRow(WINDOW.world(), WINDOW.floor());
         expect(helper, near(marginal, REFERENCE_PER_ROW), "marginal %s, expected %s", marginal, REFERENCE_PER_ROW);
         double reference = pool.marginalPerRow(REFERENCE, REFERENCE_FLOOR);
         expect(helper, near(reference, REFERENCE_PER_ROW), "reference %s, expected %s", reference, REFERENCE_PER_ROW);
@@ -63,6 +72,14 @@ public class BandCostTest {
         helper.succeed();
     }
 
+    /** At exactly the bar a band passes: the bar is the most a band may cost, not the least it may not. */
+    @GameTest
+    public void aBandExactlyAtTheBarPasses(GameTestHelper helper) {
+        Ratio ratio = new Ratio(WINDOW, REFERENCE_PER_ROW, BandCost.BAR, Optional.empty());
+        expect(helper, !ratio.over(), "%sx is over the %s bar", ratio.ratio(), ratio.bar());
+        helper.succeed();
+    }
+
     /** The gate goes red: a band whose rows cost more than the bar times the reference's is over. */
     @GameTest
     public void aBandOverTheBarFails(GameTestHelper helper) {
@@ -72,22 +89,23 @@ public class BandCostTest {
         helper.succeed();
     }
 
-    /** A band with a ratchet is held to its measured ratio times the bar: at its ceiling it passes. */
+    /** A band with a ratchet is held to its measured ratio times the bar: at its ceiling it passes, and it names its issue. */
     @GameTest
     public void aRatchetedBandAtItsCeilingPasses(GameTestHelper helper) {
-        Ratchet ratchet = new Ratchet("band", 1.5);
+        Ratchet ratchet = new Ratchet(BAND, 1.5, 1132);
         // 1.725, less a hair, so floating error in the medians cannot put an exact ceiling over it.
         double ceiling = ratchet.ceiling() - 1e-9;
         Ratio ratio = onlyRatio(new Pool(gatedPool(3, 6, ceiling)), List.of(ratchet));
         expect(helper, near(ratio.bar(), 1.725), "ceiling %s, expected 1.725", ratio.bar());
         expect(helper, !ratio.over(), "%sx is over the ratchet's %s ceiling", ratio.ratio(), ratio.bar());
+        expect(helper, ratio.toString().contains("#1132"), "%s does not name the ratchet's issue", ratio);
         helper.succeed();
     }
 
     /** The gate goes red on a ratchet too: just above its ceiling a band is over. */
     @GameTest
     public void aRatchetedBandAboveItsCeilingFails(GameTestHelper helper) {
-        Ratchet ratchet = new Ratchet("band", 1.5);
+        Ratchet ratchet = new Ratchet(BAND, 1.5, 1132);
         Ratio ratio = onlyRatio(new Pool(gatedPool(3, 6, ratchet.ceiling() + 0.001)), List.of(ratchet));
         expect(helper, ratio.over(), "%sx is not over the ratchet's %s ceiling", ratio.ratio(), ratio.bar());
         helper.succeed();
@@ -96,8 +114,9 @@ public class BandCostTest {
     /** A band with no ratchet of its own, a new band, is held to the bar, whatever the other bands' ratchets. */
     @GameTest
     public void aNewBandIsHeldToTheBar(GameTestHelper helper) {
-        List<Ratchet> others = List.of(new Ratchet("older band", 1.5));
+        List<Ratchet> others = List.of(new Ratchet(OLDER_BAND, 1.5, 1132));
         Ratio over = onlyRatio(new Pool(gatedPool(3, 6, 1.16)), others);
+        expect(helper, over.ratchet().isEmpty(), "a new band took %s", over.ratchet());
         expect(helper, near(over.bar(), BandCost.BAR), "bar %s, expected %s", over.bar(), BandCost.BAR);
         expect(helper, over.over(), "1.16x is not over the %s bar beside another band's ratchet", BandCost.BAR);
         Ratio under = onlyRatio(new Pool(gatedPool(3, 6, 1.14)), others);
@@ -108,17 +127,67 @@ public class BandCostTest {
     /** The gate judges only a pool of {@value BandCost#RUNS} runs and {@value BandCost#ROUNDS} rounds of every world it reads. */
     @GameTest
     public void aPoolIsJudgedOnlyWhenFull(GameTestHelper helper) {
-        List<String> worlds = List.of("band", FLOOR, REFERENCE, REFERENCE_FLOOR);
-        expect(helper, new Pool(gatedPool(3, 6, 1.0)).judged(worlds), "3 runs of 6 rounds are not judged");
-        expect(helper, !new Pool(gatedPool(2, 9, 1.0)).judged(worlds), "2 runs are judged");
-        expect(helper, !new Pool(gatedPool(3, 5, 1.0)).judged(worlds), "15 rounds are judged");
+        expect(helper, new Pool(gatedPool(3, 6, 1.0)).judged(GATED), "3 runs of 6 rounds are not judged");
+        expect(helper, !new Pool(gatedPool(2, 9, 1.0)).judged(GATED), "2 runs are judged");
+        expect(helper, !new Pool(gatedPool(3, 5, 1.0)).judged(GATED), "15 rounds are judged");
         List<Reading> missing = new ArrayList<>(gatedPool(3, 6, 1.0));
-        missing.removeIf(reading -> reading.world().equals(FLOOR));
-        expect(helper, !new Pool(missing).judged(worlds), "a pool with no floor is judged");
+        missing.removeIf(reading -> reading.world().equals(WINDOW.floor()));
+        expect(helper, !new Pool(missing).judged(GATED), "a pool with no floor is judged");
         helper.succeed();
     }
 
-    /** Runs pool through a file: each appends its rounds, and the pool read back holds every run's. */
+    /** Every world the gate reads must come from the same runs, so a window is never judged against a floor from other runs. */
+    @GameTest
+    public void aPoolWhoseWorldsComeFromOtherRunsIsNotJudged(GameTestHelper helper) {
+        List<Reading> readings = new ArrayList<>(gatedPool(3, 6, 1.0));
+        readings.replaceAll(reading -> reading.world().equals(WINDOW.world())
+                ? new Reading(
+                        "other " + reading.run(),
+                        reading.tree(),
+                        reading.columns(),
+                        reading.world(),
+                        reading.height(),
+                        reading.cpuMsPerColumn())
+                : reading);
+        expect(helper, !new Pool(readings).judged(GATED), "a window from other runs than its floor is judged");
+        helper.succeed();
+    }
+
+    /** Every run of the pool must have as many rounds of each world, so no run's regions weigh more than another's. */
+    @GameTest
+    public void aPoolWithUnequalRunsIsNotJudged(GameTestHelper helper) {
+        List<Reading> readings = new ArrayList<>(gatedPool(3, 6, 1.0));
+        for (String world : GATED) {
+            readings.add(new Reading("run0", TREE, COLUMNS, world, new Pool(readings).height(world), 1));
+        }
+        expect(helper, !new Pool(readings).judged(GATED), "runs of 7, 6 and 6 rounds are judged");
+        helper.succeed();
+    }
+
+    /** A pool holds one tree, one size of round and one height per world, or it is refused. */
+    @GameTest
+    public void aMixedPoolIsRefused(GameTestHelper helper) {
+        refuses(
+                helper,
+                "two trees",
+                () -> new Pool(List.of(
+                        new Reading("a", "one", COLUMNS, "world", 16, 1),
+                        new Reading("b", "two", COLUMNS, "world", 16, 1))));
+        refuses(
+                helper,
+                "two sizes of round",
+                () -> new Pool(List.of(
+                        new Reading("a", TREE, COLUMNS, "world", 16, 1), new Reading("b", TREE, 81, "world", 16, 1))));
+        refuses(
+                helper,
+                "a world of two heights",
+                () -> new Pool(List.of(
+                        new Reading("a", TREE, COLUMNS, "world", 16, 1),
+                        new Reading("b", TREE, COLUMNS, "world", 32, 1))));
+        helper.succeed();
+    }
+
+    /** Runs pool through a file: each appends its rounds, and the pool read back holds every run's; a mixed file names itself. */
     @GameTest
     public void aPoolFileHoldsEveryRunsRounds(GameTestHelper helper) throws IOException {
         Path file = Files.createTempFile("campaign-cost-pool", ".tsv");
@@ -134,10 +203,31 @@ public class BandCostTest {
             Pool read = Pool.read(file);
             expect(helper, read.readings().equals(all), "read back %s, expected %s", read.readings(), all);
             expect(helper, read.height("world") == 2352, "height %s, expected 2352", read.height("world"));
+            Pool.append(file, List.of(new Reading("c", "another tree", COLUMNS, "world", 2352, 1)));
+            try {
+                Pool.read(file);
+                throw failure(helper, "a pool file of two trees is read");
+            } catch (IllegalStateException e) {
+                String message = String.valueOf(e.getMessage());
+                expect(
+                        helper,
+                        message.contains(file.toString()) && message.contains("delete"),
+                        "the refusal does not name the file and say to delete it: %s",
+                        message);
+            }
         } finally {
             Files.deleteIfExists(file);
         }
         helper.succeed();
+    }
+
+    private static void refuses(GameTestHelper helper, String what, Runnable pool) {
+        try {
+            pool.run();
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        throw failure(helper, "a pool of %s is not refused", what);
     }
 
     private static Ratio onlyRatio(Pool pool) {
@@ -145,9 +235,8 @@ public class BandCostTest {
     }
 
     private static Ratio onlyRatio(Pool pool, List<Ratchet> ratchets) {
-        List<Ratio> ratios =
-                BandCost.ratios(pool, List.of(new Window("band", "band")), ratchets, FLOOR, REFERENCE, REFERENCE_FLOOR);
-        return ratios.getFirst();
+        return BandCost.ratios(pool, List.of(WINDOW), ratchets, REFERENCE, REFERENCE_FLOOR)
+                .getFirst();
     }
 
     /**
@@ -158,9 +247,9 @@ public class BandCostTest {
         List<Reading> readings = new ArrayList<>();
         for (int run = 0; run < runs; run++) {
             String id = "run" + run;
-            readings.addAll(spread(id, FLOOR, FLOOR_ROWS, 18, rounds));
-            readings.addAll(
-                    spread(id, "band", BAND_ROWS, 18 + (BAND_ROWS - FLOOR_ROWS) * REFERENCE_PER_ROW * times, rounds));
+            readings.addAll(spread(id, WINDOW.floor(), FLOOR_ROWS, 18, rounds));
+            readings.addAll(spread(
+                    id, WINDOW.world(), BAND_ROWS, 18 + (BAND_ROWS - FLOOR_ROWS) * REFERENCE_PER_ROW * times, rounds));
             readings.addAll(spread(id, REFERENCE_FLOOR, FLOOR_ROWS, 20, rounds));
             readings.addAll(spread(
                     id, REFERENCE, REFERENCE_ROWS, 20 + (REFERENCE_ROWS - FLOOR_ROWS) * REFERENCE_PER_ROW, rounds));
@@ -173,8 +262,13 @@ public class BandCostTest {
         List<Reading> readings = new ArrayList<>();
         for (int round = 0; round < rounds; round++) {
             double offset = round % 2 == 0 ? round / 2 + 1 : -(round / 2 + 1);
-            readings.add(
-                    new Reading(run, world, height, rounds % 2 == 1 && round == rounds - 1 ? value : value + offset));
+            readings.add(new Reading(
+                    run,
+                    TREE,
+                    COLUMNS,
+                    world,
+                    height,
+                    rounds % 2 == 1 && round == rounds - 1 ? value : value + offset));
         }
         return readings;
     }
@@ -182,7 +276,7 @@ public class BandCostTest {
     private static List<Reading> rounds(String run, String world, int height, double... cpu) {
         List<Reading> readings = new ArrayList<>();
         for (double value : cpu) {
-            readings.add(new Reading(run, world, height, value));
+            readings.add(new Reading(run, TREE, COLUMNS, world, height, value));
         }
         return readings;
     }
