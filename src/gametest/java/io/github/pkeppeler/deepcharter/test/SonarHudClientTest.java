@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.SonarEcho;
 import io.github.pkeppeler.deepcharter.pod.SonarKind;
 import io.github.pkeppeler.deepcharter.pod.SonarTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
@@ -163,8 +164,8 @@ public class SonarHudClientTest implements FabricClientGameTest {
             }
 
             // A pod entity the server's assignment has not reached yet (new after a crossing, or a boarding after the
-            // pod's tick) leaves no
-            // rider without a role: the visible riders take their places in the passenger list.
+            // pod's tick)
+            // leaves no rider without a role: the visible riders take their places in the passenger list.
             Versioned<PodSeats.State> assigned = context.computeOnClient(
                     client -> TestEntities.vehicle(ClientSession.player(client), PodEntity.class)
                             .getAttached(PodSeats.STATE));
@@ -179,9 +180,10 @@ public class SonarHudClientTest implements FabricClientGameTest {
             context.runOnClient(client -> TestEntities.vehicle(ClientSession.player(client), PodEntity.class)
                     .setAttached(PodSeats.STATE, assigned));
             // The pilot's chunk is queued for the navigator's client (#1088): the pilot is missing from the client's
-            // level, and the pod's
-            // passengers there are the navigator alone. The seat is the server's, so the navigator keeps the scope and
-            // can still ping.
+            // level, and the
+            // pod's passengers there are the navigator alone. The seat is the server's, so the navigator keeps the
+            // scope and can
+            // still ping.
             long pingedBefore = context.computeOnClient(
                     client -> PodSonar.reading(TestEntities.vehicle(ClientSession.player(client), PodEntity.class))
                             .orElseThrow()
@@ -195,9 +197,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
                     "the pilot missing from the client's pod",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && pod.getPassengers().size() == 1);
-            require(
-                    context.computeOnClient(client -> SonarHud.frame(client).isPresent()),
-                    "the navigator whose pilot is not on the client still sees the sonar scope");
+            requireNavigator(context);
             ClientWait.until(
                     context,
                     "the sonar cooling down for the next ping",
@@ -207,6 +207,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
                                 >= PodSonar.reading(pod).orElseThrow().readyAt();
                     }),
                     () -> "no cooldown end");
+            requireNavigator(context);
             context.getInput().pressKey(SonarKeys.PING);
             ClientWait.until(
                     context,
