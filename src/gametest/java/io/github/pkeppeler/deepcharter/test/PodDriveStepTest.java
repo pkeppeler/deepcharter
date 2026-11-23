@@ -24,8 +24,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * #1041: a drilling pod never moves further in one server tick than its speed, so the drawn pod never lurches. The drive's move
- * and the drill's centring slide share an axis when the pod meets a wall with a gap the move cannot close in one tick.
+ * Guard (#1041): a drilling pod never moves further in one server tick than its speed, at any gap between it and the wall it meets.
+ * The drive's move and the drill's centring slide could add up on one axis; they do not, because a clipped move leaves the pod flush
+ * on the bore's centre. Ten pods start at offsets along the drive that cover every final-approach gap from 0 to 0.2.
  */
 public class PodDriveStepTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 700;

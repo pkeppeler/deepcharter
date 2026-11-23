@@ -6,29 +6,48 @@ import net.minecraft.world.entity.AbstractInterpolationHandler;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InterpolationHandler;
 import net.minecraft.world.entity.PositionPath;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Draws a pod on the client (ADR 0082). Like vanilla's linear slide it glides the pod to each move the server sends, over
- * {@link PodGlideTuning#steps()} ticks, and adds two things for a server that runs late:
+ * {@link PodGlideTuning#steps()} ticks, and adds three things for a server that runs late:
  *
  * <ul>
  *   <li>With no move to follow, the pod coasts on at the speed the server last reported, for {@link PodGlideTuning#coastTicks()} ticks, so it
- *       does not freeze.
- *   <li>When the moves arrive in a burst, the pod catches up at {@link PodGlideTuning#catchUp()} times that speed, so it does not lunge.
+ *       does not freeze. The coast stops short of any block, so a pod that hit a wall or the ground is never drawn inside it.
+ *   <li>When the moves arrive in a burst, the pod catches up at {@link PodGlideTuning#catchUp()} times its speed (and at no less than a
+ *       share of its gap), so it does not lunge.
+ *   <li>A pod that coasted past where the server put it stays there for {@link PodGlideTuning#settleDelayTicks()} ticks, in case a late move
+ *       says it went on, then gives the excess back at {@link PodGlideTuning#settleShare()} of the gap a tick, and ends exactly on the
+ *       server's last position. A move that says it stopped there gets the same gentle return at once.
  * </ul>
  *
- * The server stays the authority: the next move always pulls the pod to where the server says it is.
+ * The server stays the authority: the target is only ever a position the server sent, and the coast is a drawn guess that ends.
  */
 final class PodGlide extends AbstractInterpolationHandler {
     /** Blocks within which the pod counts as having reached its target. */
     private static final double ARRIVED = 1e-4;
 
+    /** Halvings of a coast step tried before the coast gives up for the tick. */
+    private static final int COAST_CLIP_TRIES = 3;
+
+    /** The last position the server sent, and the rotation with it; only a move changes it. */
     private final PositionAndRotation.Mutable target = new PositionAndRotation.Mutable();
     /** Ticks of the glide to the latest move that are left. */
     private int remaining;
     /** Ticks the pod has coasted since the latest move. */
     private int coasted;
+    /** Ticks since the latest move. */
+    private int sinceMove;
+    /** Whether the pod is coasting now, so that it is not pulled back to its target between coasted ticks. */
+    private boolean coasting;
+    /** The way the pod last coasted: a target behind it means the pod went too far. Null until it coasts. */
+    private @Nullable Vec3 coastDirection;
+
+    /** Whether the glide in progress began further from its target than {@link PodGlideTuning#snapGap()}: it is not eased. */
+    private boolean snapping;
 
     private boolean active;
 
@@ -48,39 +67,87 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     @Override
     protected void startInterpolating(PositionPath path, float yRot, float xRot) {
+        snapping = entity.position().distanceTo(path.endPosition()) > PodGlideTuning.DEFAULT.snapGap();
         target.set(path.endPosition(), yRot, xRot);
         remaining = interpolationSteps;
         coasted = 0;
+        sinceMove = 0;
+        coasting = false;
         active = true;
     }
 
     @Override
     protected void doInterpolate() {
         PodGlideTuning tuning = PodGlideTuning.DEFAULT;
-        Vec3 pos = entity.position();
-        Vec3 gap = target.position().subtract(pos);
-        double distance = gap.length();
+        sinceMove++;
         Vec3 reported = entity.getDeltaMovement();
-        double speed = reported.length();
-        if (remaining > 0 || distance > ARRIVED) {
-            double share = 1.0 / Math.max(remaining, 1);
-            double step = distance * share;
-            if (speed > 0 && distance <= tuning.maxCatchUpGap()) {
-                step = Math.min(step, speed * tuning.catchUp());
+        boolean moving = reported.lengthSqr() > ARRIVED * ARRIVED;
+        if (coasting) {
+            if (moving && coasted < tuning.coastTicks() && coast(reported)) {
+                coasted++;
+                return;
             }
-            entity.setPos(distance <= step + ARRIVED ? target.position() : pos.add(gap.scale(step / distance)));
-            entity.setYRot((float) Mth.rotLerp(share, entity.getYRot(), target.yRot()));
-            entity.setXRot((float) Mth.lerp(share, entity.getXRot(), target.xRot()));
-            remaining = Math.max(0, remaining - 1);
-            active = true;
-        } else if (speed > ARRIVED && coasted < tuning.coastTicks()) {
-            Vec3 next = pos.add(reported);
-            entity.setPos(next);
-            target.set(next, target.yRot(), target.xRot());
+            coasting = false;
+        }
+        Vec3 gap = target.position().subtract(entity.position());
+        double distance = gap.length();
+        if (remaining > 0 || distance > ARRIVED) {
+            glide(tuning, gap, distance, reported.length(), moving);
+        } else if (moving && coasted < tuning.coastTicks() && coast(reported)) {
+            coasting = true;
             coasted++;
         } else {
+            coastDirection = null;
             active = false;
         }
+    }
+
+    /** Moves the pod toward the target, by a share of the gap that never lunges, and turns it with it. */
+    private void glide(PodGlideTuning tuning, Vec3 gap, double distance, double speed, boolean moving) {
+        double share = 1.0 / Math.max(remaining, 1);
+        double step;
+        if (coastDirection != null && gap.dot(coastDirection) < 0) {
+            // The pod coasted past where the server put it. While the server still reports it moving and no move has
+            // come, a late
+            // server may yet say it went on: wait. Once it reports the pod still, or a move arrives, give the excess
+            // back.
+            if (moving && remaining == 0 && sinceMove < tuning.settleDelayTicks()) {
+                active = true;
+                return;
+            }
+            step = distance * tuning.settleShare();
+        } else if (snapping) {
+            step = distance * share;
+        } else {
+            double pace = Math.max(speed, PodTuning.DEFAULT.movement().horizontalSpeed()) * tuning.catchUp();
+            step = Math.min(distance * share, Math.max(pace, distance / tuning.catchUpTicks()));
+        }
+        boolean arrives = distance <= step + ARRIVED;
+        entity.setPos(arrives ? target.position() : entity.position().add(gap.scale(step / distance)));
+        entity.setYRot((float) Mth.rotLerp(share, entity.getYRot(), target.yRot()));
+        entity.setXRot((float) Mth.lerp(share, entity.getXRot(), target.xRot()));
+        remaining = Math.max(0, remaining - 1);
+        if (arrives) {
+            coastDirection = null;
+            snapping = false;
+        }
+        active = true;
+    }
+
+    /** Draws the pod one more tick at its reported speed, short of any block; false when it cannot move at all. */
+    private boolean coast(Vec3 reported) {
+        AABB box = entity.getBoundingBox();
+        Vec3 step = reported;
+        for (int tries = 0; tries <= COAST_CLIP_TRIES; tries++) {
+            if (entity.level().noCollision(entity, box.move(step))) {
+                entity.setPos(entity.position().add(step));
+                coastDirection = reported;
+                active = true;
+                return true;
+            }
+            step = step.scale(0.5);
+        }
+        return false;
     }
 
     @Override
@@ -91,6 +158,9 @@ final class PodGlide extends AbstractInterpolationHandler {
     @Override
     public void cancel() {
         remaining = 0;
+        coasting = false;
+        coastDirection = null;
+        snapping = false;
         active = false;
     }
 }

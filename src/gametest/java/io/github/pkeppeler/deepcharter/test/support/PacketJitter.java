@@ -95,6 +95,16 @@ public final class PacketJitter {
         }
     }
 
+    /** Whether a stall holds a packet now, to be handled by {@code handle} when the stall ends. Only a stall holds it, never the jitter. */
+    public static boolean stalls(Runnable handle) {
+        Minecraft client = Minecraft.getInstance();
+        if (stallUntil < 0 || replaying || client.level == null || !client.isSameThread()) {
+            return false;
+        }
+        HELD.add(handle);
+        return true;
+    }
+
     /**
      * Whether the client is to skip a position packet now, and handle it later by running {@code handle}. A tick that is not skipped
      * replays the held packets first, in order, so entities see their moves and teleports in the order the server sent them: a
