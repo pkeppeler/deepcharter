@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -75,6 +76,19 @@ public final class ClientChecks {
         } finally {
             context.runOnClient(client -> client.options.particles().set(particlesWere));
         }
+    }
+
+    /**
+     * A screenshot of the surface sky once the client has caught up, with minimal particles and the HUD hidden: the sky's dark, random
+     * {@code dust_mote} would otherwise speckle the pixels a test reads (#1043).
+     */
+    public static Path skyShot(ClientGameTestContext context, String name) {
+        Path[] shot = new Path[1];
+        withHudHidden(context, ParticleStatus.MINIMAL, () -> {
+            context.waitTicks(40);
+            shot[0] = context.takeScreenshot(name);
+        });
+        return shot[0];
     }
 
     private static void withHud(ClientGameTestContext context, boolean hidden, Runnable body) {
