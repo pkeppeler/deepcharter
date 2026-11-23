@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
 import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
@@ -88,10 +87,6 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
                     + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
     private static final String CHARTER = "Toast Charter";
-    /** The steps that boarding the pod with a scanner map completes; the server syncs them a moment after the seat, each with its own popup. */
-    private static final List<Identifier> SEATING_STEPS = List.of(
-            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/meet_the_mole/board_mole"),
-            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/seeing_below/find_ore"));
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -153,12 +148,11 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         });
         ClientWait.until(
                 context,
-                "the pilot seated in the pod in layer 1 with a scanner map, and the steps that seating completes synced",
+                "the pilot seated in the pod in layer 1 with a scanner map",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
                         && TestLayers.clientIsIn(client, 1)
-                        && ScannerHud.hasMap()
-                        && ClientHandbook.completed().containsAll(SEATING_STEPS));
+                        && ScannerHud.hasMap());
         context.runOnClient(client -> {
             TransmissionOverlay.reset();
             client.gui.toastManager().clear();
@@ -186,9 +180,8 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                     if (placed.isEmpty()) {
                         return false;
                     }
-                    List<Drawn> drawn =
-                            DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics));
                     Box slip = box(placed.get());
+                    List<Drawn> drawn = probeText(client, slip);
                     return !drawn.isEmpty()
                             && drawn.stream()
                                     .allMatch(text -> text.box().x() >= slip.x()
@@ -207,6 +200,12 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             Box slip = box(toast[0].placement().orElseThrow());
             Map<String, Box> hud = critical(client, width, height);
             requireClear("the step popup " + when + " at " + width + " x " + height, slip, hud);
+            for (HudKeepClear.Rect kept : HudKeepClear.rects(client, width, height)) {
+                require(
+                        !ClientChecks.overlaps(slip, box(kept)),
+                        "the step popup " + when + " at " + slip + " covers the registered keep-clear '" + kept.what()
+                                + "' at " + box(kept));
+            }
             if (cockpit) {
                 require(hud.containsKey("hull and alert lamps"), "the cockpit HUD has lamps to keep clear of");
                 if (width <= COCKPIT_GUIS[1][0]) {
@@ -233,6 +232,16 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             }
         });
         context.runOnClient(client -> client.gui.toastManager().clear());
+    }
+
+    /**
+     * The text the toast manager draws for the probe alone. Other toasts (the campaign's step popups) draw too, and are not the probe's:
+     * the probe's text is its step's words, and its heading, which is whatever else lands on its box.
+     */
+    private static List<Drawn> probeText(Minecraft client, Box slip) {
+        return DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics)).stream()
+                .filter(text -> LONG_STEP.contains(text.text()) || ClientChecks.overlaps(slip, text.box()))
+                .toList();
     }
 
     private static void expectTheSlipIsClearOnEveryCockpitGui(ClientGameTestContext context) {
