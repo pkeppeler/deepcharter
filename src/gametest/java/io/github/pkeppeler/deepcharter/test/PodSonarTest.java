@@ -386,24 +386,20 @@ public class PodSonarTest {
         List<BlockPos> spots = IntStream.range(0, types.size())
                 .mapToObj(i -> new BlockPos(x + 9 + 4 * i, FLOOR + 1, Z + 1))
                 .toList();
-        FarChunks.Deadline deadline = FarChunks.deadline();
-        run(helper, x, level -> room(level, x + 8, FLOOR, Z, 2, 1, 4), scene -> {
-            ServerLevel level = (ServerLevel) scene.pod().level();
-            // An entity added to a chunk that is loaded but not yet entity ticking is not found by a query (#1125).
-            deadline.await(
-                    helper,
-                    level,
-                    spots.stream().allMatch(level::isPositionEntityTicking),
-                    () -> "the chunks of the echoing creatures never ticked entities");
-            if (!spots.stream().allMatch(level::isPositionEntityTicking)) {
-                return false;
-            }
+        // An entity added to a chunk that is loaded but not yet entity ticking is not found by a query (#1125).
+        ServerLevel level = TestLayers.level(helper, 1);
+        FarChunks.awaitAllEntityTicking(helper, level, spots, () -> {
             for (int i = 0; i < types.size(); i++) {
                 Entity body = TestEntities.create(types.get(i), level);
                 body.setNoGravity(true);
                 body.setPos(Vec3.atBottomCenterOf(spots.get(i)));
                 level.addFreshEntity(body);
                 bodies.add(body);
+            }
+        });
+        run(helper, x, build -> room(build, x + 8, FLOOR, Z, 2, 1, 4), scene -> {
+            if (bodies.isEmpty()) {
+                return false;
             }
             // The server's entity tick has not run since the velocity is set, so the ping reads it as set.
             bodies.get(1).setDeltaMovement(TUNING.movingSpeed() * 2, 0, 0);
