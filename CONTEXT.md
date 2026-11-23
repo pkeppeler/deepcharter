@@ -56,7 +56,7 @@ _Avoid_: level, biome, dimension (that is the implementation)
 The overworld, the first dimension of the stack: the surface as its top band, then as many layer bands as fit, down to y -2032. Crossing a breach inside it has no teleport.
 
 **Deep dimension**:
-A tall dimension below the campaign world, holding the next depth, up to the 4,064-block limit of one dimension. Not built yet.
+A tall dimension below the campaign world, holding the next depth, up to 4,064 blocks tall, the limit of one dimension. Not built yet.
 _Avoid_: layer dimension, chain world
 
 **Band**:
@@ -67,16 +67,16 @@ _Avoid_: level, floor
 The plain rock of the campaign world below the last built layer. Nothing is in it yet.
 _Avoid_: void, empty space
 
-**Dimension seam**:
-The join between two tall dimensions, such as the campaign world and the first deep dimension. It is a storage seam, not a layer boundary: crossing it should feel like going on down through the same layer. How seamless it must be is open.
-_Avoid_: portal, loading screen, seam (alone, it is ambiguous)
+**Seam**:
+The boundary between two stacked dimensions on the depth axis, such as the campaign world and the first deep dimension, or the join to the uncharted worlds. It is a storage boundary, not a layer boundary: crossing it should feel like going on down. A seam that coincides with a layer boundary carries that boundary's crust, the seam crust (grained). A seam can also fall mid-layer, with no crust. How seamless it must be is open.
+_Avoid_: portal, loading screen, dimension seam
 
 **Grained crust**:
-A crust with a vertical grain that flexes on a slow pulse. Its rules are in the SPEC. Working name.
-_Avoid_: seam crust, no-build zone
+A crust with a vertical grain that flexes on a slow pulse. On a seam at a layer boundary it is the seam crust. Its rules are in the SPEC. Working name.
+_Avoid_: no-build zone
 
 **Decoy**:
-A grained crust that is not a seam, chosen from the world seed.
+A grained crust that is not on a seam, chosen from the world seed.
 _Avoid_: fake seam
 
 **Story layer**:
@@ -92,7 +92,7 @@ A band within a layer where ore value, hazards and creatures step up.
 _Avoid_: sub-layer
 
 **Breach**:
-The soft crust at a layer boundary, also called the breach crust. Any drill can pass, at a heavy cost. Crossing is a story event. A dimension seam is not a breach.
+The soft crust at a layer boundary, also called the breach crust. Any drill can pass, at a heavy cost. Crossing is a story event. A seam is not a breach.
 _Avoid_: barrier, wall, gate
 
 **Ramp**:
