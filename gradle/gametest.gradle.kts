@@ -62,6 +62,9 @@ object GametestScan {
 	// any addTicket* of TicketType.FORCED, outside FarChunks.java is flagged, or marked with the comment below, with a reason, on its statement
 	// or the comment line above it.
 	private const val FORCE_MARKER = "// force-ok:"
+	// A dedicated server a client test starts goes through DedicatedServerRelease.createServer, which gives it no watchdog; a raw createServer
+	// leaves the stopped server on the heap for a minute and the next test pays for it (#914).
+	private val rawCreateServer = Regex("""\bworldBuilder\s*\(\s*\)\s*\.\s*createServer\b""")
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
 	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
@@ -332,6 +335,11 @@ object GametestScan {
 					if (!marked(markedNear, rawLines, line, FORCE_MARKER)) {
 						problems.add("$className:${line + 1} sets a chunk's force directly, which FarChunks cannot count or release when the test ends; use FarChunks.force(helper, level, x, z) and FarChunks.release(helper, level, x, z), or mark a deliberate use with '$FORCE_MARKER <reason>'")
 					}
+				}
+			}
+			if (source.name != "DedicatedServerRelease.java") {
+				for (raw in rawCreateServer.findAll(text)) {
+					problems.add("$className:${lineOf(text, raw.range.first) + 1} creates a dedicated server with worldBuilder().createServer, which keeps a watchdog thread holding the stopped server (#914); use DedicatedServerRelease.createServer(context, properties) (test/support)")
 				}
 			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))

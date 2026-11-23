@@ -15,18 +15,27 @@ import net.minecraft.server.MinecraftServer;
  */
 public class DedicatedServerReleaseClientTest implements FabricClientGameTest {
     private static final long RELEASE_MILLIS = 30_000;
+    /** A full collection pauses the game; ticks between them are enough for a reference to clear. */
+    private static final long GC_INTERVAL_MILLIS = 250;
 
     @Override
     public void runTest(ClientGameTestContext context) {
         WeakReference<MinecraftServer> left = joinAndLeave(context);
         long start = System.currentTimeMillis();
+        long lastGc = 0;
+        int collections = 0;
         while (left.get() != null && System.currentTimeMillis() - start < RELEASE_MILLIS) {
-            System.gc();
+            if (System.currentTimeMillis() - lastGc >= GC_INTERVAL_MILLIS) {
+                System.gc();
+                collections++;
+                lastGc = System.currentTimeMillis();
+            }
             context.waitTick();
         }
         if (left.get() != null) {
-            throw new AssertionError("The dedicated server is still on the heap " + RELEASE_MILLIS
-                    + " ms after the test left it (#914): something holds it");
+            throw new AssertionError(
+                    "The dedicated server is still on the heap " + RELEASE_MILLIS + " ms (deadline) and " + collections
+                            + " full collections after the test left it (#914): something holds it");
         }
     }
 

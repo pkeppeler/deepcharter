@@ -27,7 +27,11 @@ import net.minecraft.server.MinecraftServer;
  * {@code DedicatedServerReleaseClientTest} guards all of it.
  */
 public final class DedicatedServerRelease implements ModInitializer {
-    /** The shutdown hook of each running dedicated server; an entry goes when its server stops, so the map never holds one. */
+    /**
+     * The shutdown hook of each running dedicated server. An entry goes when its server stops: Fabric fires {@code SERVER_STOPPED} at
+     * the tail of {@code MinecraftServer.stopServer}, which {@code runServer} calls on every exit, a failed start included. (A weak key
+     * would not help: the hook, the value, references the server.)
+     */
     private static final Map<MinecraftServer, Thread> HOOKS = new HashMap<>();
 
     @Override
@@ -60,9 +64,8 @@ public final class DedicatedServerRelease implements ModInitializer {
         try {
             Runtime.getRuntime().removeShutdownHook(hook);
         } catch (IllegalStateException shuttingDown) {
-            // The JVM is already exiting (the hook itself stopped the server): the hook is running or about to, and
-            // holds nothing
-            // that outlives the process.
+            // The JVM is already exiting (the hook itself stopped the server); the hook holds nothing that outlives the
+            // process.
         }
     }
 }
