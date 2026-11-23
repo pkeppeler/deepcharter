@@ -74,6 +74,8 @@ public class DimensionCrossingTest {
     private static final int WATCH_TICKS = 20;
     /** Ticks a sealed pocket must stay air after an arrival. */
     private static final int SEAL_WATCH_TICKS = 100;
+    /** Server ticks a pin outlasts its test's {@link #CROSSING_TICKS}, so it never expires while the test still runs. */
+    private static final int PIN_MARGIN_TICKS = 20;
     /** Blocks above a level's floor where a faller starts, inside the shaft. */
     private static final int START_HEIGHT = 8;
     /** Blocks of the shaft cut up from a level's floor. */
@@ -82,8 +84,11 @@ public class DimensionCrossingTest {
     /** One {@link BreachEvents#CROSSED} between two levels, as plain values, so the listener holds no level or entity. */
     private record Crossing(ResourceKey<Level> from, ResourceKey<Level> to, int fromLayer, int toLayer) {}
 
-    /** A place a pod is held in, until it leaves that level. */
-    private record Pin(ResourceKey<Level> level, Vec3 at) {}
+    /**
+     * A place a pod is held in, until it leaves that level or the server tick passes {@code expiresAt}: a pin outlives no test, passed
+     * or failed.
+     */
+    private record Pin(ResourceKey<Level> level, Vec3 at, int expiresAt) {}
 
     /** Crossings between levels seen per entity UUID. A UUID survives a crossing, so this follows recreated entities. */
     private static final Map<UUID, List<Crossing>> CROSSINGS = new ConcurrentHashMap<>();
@@ -101,6 +106,12 @@ public class DimensionCrossingTest {
         // Registered after PodTowing's follow, in the same phase, so the pin has the last word.
         PodEvents.AFTER_TICK.register(pod -> {
             Pin pin = PINS.get(pod.getUUID());
+            if (pin != null
+                    && pod.level() instanceof ServerLevel level
+                    && level.getServer().getTickCount() > pin.expiresAt()) {
+                PINS.remove(pod.getUUID(), pin);
+                return;
+            }
             if (pin != null && pod.level().dimension().equals(pin.level())) {
                 pod.setPos(pin.at());
                 pod.setDeltaMovement(Vec3.ZERO);
@@ -548,7 +559,12 @@ public class DimensionCrossingTest {
                     pods[0] = spawnPod(one, start);
                     pods[1] = spawnPod(one, start.add(0, 2, 0));
                     PodTowing.attach(pods[0], pods[1]);
-                    PINS.put(pods[1].getUUID(), new Pin(one.dimension(), pods[1].position()));
+                    PINS.put(
+                            pods[1].getUUID(),
+                            new Pin(
+                                    one.dimension(),
+                                    pods[1].position(),
+                                    server.getTickCount() + CROSSING_TICKS + PIN_MARGIN_TICKS));
                     expect(
                             helper,
                             pilot.player().startRiding(pods[0], true, false)
