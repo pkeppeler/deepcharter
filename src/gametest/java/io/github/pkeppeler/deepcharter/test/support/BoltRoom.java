@@ -9,6 +9,8 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.core.BlockPos;
@@ -39,7 +41,7 @@ public final class BoltRoom {
 
     private BoltRoom() {}
 
-    /** A corridor starting at {@code x}; its chunk is forced, and ticks entities once {@code ready}. Roof is the row of stone over it. */
+    /** A corridor starting at {@code x}; its chunks tick entities once {@code ready}. Roof is the row of stone over it. */
     public record Corridor(ServerLevel level, int x, int length, Arrival<Boolean> ready) {
         public BlockPos floor(int along) {
             return new BlockPos(x + along, FLOOR, Z);
@@ -64,11 +66,13 @@ public final class BoltRoom {
      */
     public static Corridor corridor(GameTestHelper helper, int length, int k) {
         Corridor corridor = cut(TestLayers.level(helper, 1), length, k);
-        FarChunks.awaitEntityTicking(
-                helper,
-                corridor.level(),
-                corridor.floor(0),
-                () -> corridor.ready().set(true));
+        // Every chunk the carved bed covers, not the first alone: a test works along the whole corridor (#1083).
+        List<BlockPos> chunks = new ArrayList<>();
+        for (int chunkX = (corridor.x() - 3) >> 4; chunkX <= (corridor.x() + length + 2) >> 4; chunkX++) {
+            chunks.add(new BlockPos(chunkX << 4, FLOOR, Z));
+        }
+        FarChunks.awaitAllEntityTicking(
+                helper, corridor.level(), chunks, () -> corridor.ready().set(true));
         return corridor;
     }
 
