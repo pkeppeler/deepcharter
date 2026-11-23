@@ -133,7 +133,7 @@ public final class HandBreakChecks {
     }
 
     /** The client's own progress on the block it is mining, whose tenths are the stage of the crack. */
-    private static float destroyProgress(Minecraft client) {
+    public static float destroyProgress(Minecraft client) {
         try {
             Field field = MultiPlayerGameMode.class.getDeclaredField("destroyProgress");
             field.setAccessible(true);

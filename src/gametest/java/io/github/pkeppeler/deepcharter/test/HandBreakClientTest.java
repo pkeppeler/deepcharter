@@ -40,6 +40,9 @@ public class HandBreakClientTest implements FabricClientGameTest {
     /** The break time is 1200 ticks; the margin covers the tick the client starts on and the one it sends STOP on. */
     private static final int BITING_LIMIT_TICKS = 1500;
 
+    /** The ticks mine() waits, stepping nothing itself, to see whether the game mines on its own. */
+    private static final int PROBE_TICKS = 3;
+
     private static final int CLUMSY_TICKS = 160;
     private static final int MIDWAY_TICKS = 600;
     private static final int SETTLE_TICKS = 40;
@@ -145,11 +148,19 @@ public class HandBreakClientTest implements FabricClientGameTest {
      * Returns the ticks until the client saw the block gone, or {@code limit} when it never did; when {@code expectBreak} the block must go.
      */
     private static int mine(ClientGameTestContext context, BlockPos target, int limit, boolean expectBreak) {
+        float start = context.computeOnClient(HandBreakChecks::destroyProgress);
+        boolean gameMines = false;
         for (int tick = 0; tick < limit; tick++) {
-            // The game's own mining (the pin) does not always start in a client test, so each tick also steps the game
-            // mode as an attack would; with
-            // the pin on, nothing aborts the block between two steps.
-            context.runOnClient(client -> ClientSession.gameMode(client).continueDestroyBlock(target, Direction.SOUTH));
+            if (tick == PROBE_TICKS) {
+                // The game's own mining (the pin) steps once a tick when it runs, and a second step would mine twice as
+                // fast. It does not always start in a client test: if the progress has not moved without a step of
+                // ours, each tick steps the game mode as an attack would.
+                gameMines = context.computeOnClient(HandBreakChecks::destroyProgress) > start;
+            }
+            if (tick >= PROBE_TICKS && !gameMines) {
+                context.runOnClient(
+                        client -> ClientSession.gameMode(client).continueDestroyBlock(target, Direction.SOUTH));
+            }
             context.waitTicks(1); // tick-wait: the mining is one step a tick
             if (!clientHolds(context, target)) {
                 return tick;
