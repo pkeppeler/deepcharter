@@ -90,7 +90,8 @@ APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exi
 
 # Deep Charter (#1120): one daemon registry per checkout, so a daemon never builds two worktrees. A shared daemon keeps compiled
 # build scripts in its JVM, which made a worktree's configuration cache entry name another worktree's scripts.
-# tools/tests/gradle-worktree-isolation.test.sh guards this.
+# org.gradle.daemon.registry.base is an undocumented property; tools/tests/gradle-worktree-isolation.test.sh goes red if it stops
+# working or a "gradle wrapper" run drops this block.
 case "${GRADLE_OPTS-}" in
   *org.gradle.daemon.registry.base*) ;; # a caller that set its own registry keeps it
   *) GRADLE_OPTS="${GRADLE_OPTS:+$GRADLE_OPTS }\"-Dorg.gradle.daemon.registry.base=$APP_HOME/.gradle/daemon-registry\""

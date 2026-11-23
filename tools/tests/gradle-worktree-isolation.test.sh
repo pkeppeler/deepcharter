@@ -19,6 +19,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Worktree B has a space in its path, which the wrapper must quote.
+trees=(a "b b")
+A=a
+B="b b"
+unset GRADLE_OPTS
+
 failures=0
 check() { # check <description> <condition-result: 0 = ok>
   if [[ $2 -eq 0 ]]; then echo "ok   $1"; else echo "FAIL $1"; failures=$((failures + 1)); fi
@@ -31,7 +37,7 @@ if [[ -d $real_home/wrapper ]]; then ln -s "$real_home/wrapper" "$GRADLE_USER_HO
 printf '%s\n' "org.gradle.daemon.idletimeout=60000" "org.gradle.jvmargs=-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xshare:auto" \
   >"$GRADLE_USER_HOME/gradle.properties"
 
-for w in a b; do
+for w in "${trees[@]}"; do
   mkdir -p "$work/$w/gradle"
   cp "$root/gradlew" "$work/$w/gradlew"
   cp -R "$root/gradle/wrapper" "$work/$w/gradle/wrapper"
@@ -48,18 +54,23 @@ done
 # run <worktree>: runs the probe task there and prints its output.
 run() { (cd "$work/$1" && ./gradlew --offline --console=plain probe 2>&1); }
 
-out_a=$(run a)
-out_b=$(run b)
+out_a=$(run "$A")
+out_b=$(run "$B")
 [[ $out_a == *"RESULT probe"* && $out_b == *"RESULT probe"* ]]; check "the probe task runs in both worktrees" $?
 [[ $out_b == *"Configuration cache entry stored"* ]]; check "the second worktree stores its own entry" $?
 
 # Every file of an entry that mentions a worktree path; the entry's script scopes are the ones that leaked.
 mentions() { grep -rlaF -- "$2" "$work/$1/.gradle/configuration-cache" 2>/dev/null | grep -c .; }
-[[ $(mentions a "$work/a") -gt 0 ]]; check "the entry in A names A's script scopes" $?
-[[ $(mentions b "$work/a") -eq 0 ]]; check "the entry in B names nothing of A's" $?
+[[ $(mentions "$A" "$work/$A") -gt 0 ]]; check "the entry in A names A's script scopes" $?
+[[ $(mentions "$B" "$work/$A") -eq 0 ]]; check "the entry in B names nothing of A's" $?
 
-out_b2=$(run b)
+out_b2=$(run "$B")
 [[ $out_b2 == *"Reusing configuration cache"* ]]; check "B still reuses its own entry" $?
 
-if [[ $failures -ne 0 ]]; then echo "$failures check(s) failed"; exit 1; fi
+if [[ $failures -ne 0 ]]; then
+  echo "$failures check(s) failed. A daemon shared between checkouts leaks script scopes into the configuration cache."
+  echo "gradlew must set -Dorg.gradle.daemon.registry.base per checkout (the #1120 block); a 'gradle wrapper' run or a Gradle upgrade"
+  echo "that renames that undocumented property drops it."
+  exit 1
+fi
 echo "all checks passed"
