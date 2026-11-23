@@ -39,11 +39,13 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -92,8 +94,8 @@ public final class PodTowing {
     private static final Map<PodEntity, Line> LINES = Collections.synchronizedMap(new WeakHashMap<>());
 
     private static final double EPSILON = 1e-7;
-    /** Blocks along the line between the samples that test it for rock: less than any wall is thick. */
-    private static final double FIT_STEP = 0.5;
+    /** Squared blocks a pod may be past its rope and still count as on it: the clamp onto the rope sphere leaves rounding. */
+    private static final double ROPE_SLACK = 1e-4;
     /** Blocks the tower moves between two points of the path it leaves. */
     private static final double PATH_STEP = 0.25;
     /** Blocks the tower moves in one tick, at the least, for it to count as having been carried across a breach: the path starts over. */
@@ -350,8 +352,8 @@ public final class PodTowing {
     }
 
     /**
-     * Moves the towed pod as a weight on the line. Where the pod or the line to the tower is not in open space it goes along the
-     * tower's path, or failing that to the nearest open place on the line, so that the line never drags it into rock.
+     * Moves the towed pod as a weight on the line. Where the pod or the line to the tower is not in open space it stays where it
+     * was if the line to that place is clear (a pod over a ledge hangs from the lip), or else goes along the tower's path, or failing that to the nearest open place on the line, so that the line never drags it into rock.
      */
     private static void follow(PodEntity towed) {
         Optional<PodEntity> found = tower(towed);
@@ -386,10 +388,13 @@ public final class PodTowing {
             next = anchor.add(out.normalize().scale(rope));
         }
         Vec3 carried = null;
-        if (!fits(towed, anchor, next)) {
-            carried = line.pathPoints(anchor, rope).stream()
-                    .filter(point -> openAt(towed.level(), towed, point))
-                    .findFirst()
+        if (!fits(tower, towed, next)) {
+            carried = Optional.of(held)
+                    .filter(place ->
+                            place.distanceToSqr(anchor) <= rope * rope + ROPE_SLACK && fits(tower, towed, place))
+                    .or(() -> line.pathPoints(anchor, rope).stream()
+                            .filter(point -> openAt(towed.level(), towed, point))
+                            .findFirst())
                     .or(() -> held.distanceToSqr(anchor) > rope * rope
                             ? nearestOpenOnLine(towed, anchor, held, rope)
                             : Optional.empty())
@@ -463,20 +468,23 @@ public final class PodTowing {
     }
 
     /**
-     * True when the towed pod's box is in open space at {@code at} and all along the line from {@code anchor} to it, so the line does
-     * not cut through rock. Sampled every {@link #FIT_STEP} blocks, closer than the narrowest wall.
+     * True when the towed pod's box is in open space at {@code at} and the line from the tower's middle to the pod's middle there is
+     * clear of blocks, so the line does not cut through rock. The box is not swept along the line: a pod that hangs below its tower's
+     * floor would then be tested against the floor under the tower, and a towed pod falling over a ledge would be snapped onto it
+     * (#1122). The pod's own motion is box-collided by {@link #collide}, and it ends at {@code at}, where the box is tested.
      */
-    private static boolean fits(PodEntity towed, Vec3 anchor, Vec3 at) {
-        Vec3 line = at.subtract(anchor);
-        int samples = (int) Math.ceil(line.length() / FIT_STEP);
-        AABB box = towed.getBoundingBox().move(anchor.subtract(towed.position()));
-        for (int i = samples; i >= 0; i--) {
-            Vec3 sample = line.scale(samples == 0 ? 0 : (double) i / samples);
-            if (!inOpenSpace(towed.level(), towed, box.move(sample))) {
-                return false;
-            }
+    private static boolean fits(PodEntity tower, PodEntity towed, Vec3 at) {
+        AABB box = towed.getBoundingBox().move(at.subtract(towed.position()));
+        if (!inOpenSpace(towed.level(), towed, box)) {
+            return false;
         }
-        return true;
+        ClipContext line = new ClipContext(
+                tower.getBoundingBox().getCenter(),
+                box.getCenter(),
+                ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE,
+                towed);
+        return towed.level().clip(line).getType() == HitResult.Type.MISS;
     }
 
     /**

@@ -284,6 +284,40 @@ public class TowingTest {
                 });
     }
 
+    /**
+     * A tower stands on a small ledge and its towed pod starts a full line away in open air with no floor under it (where a crossing
+     * leaves it, #1122). The pod falls on its first tick; the cable must not read the tower's ledge as rock in the pod's way and
+     * snap the pod onto its tower.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void aTowedPodStartingOverADropKeepsItsLineAndIsNotSnappedOntoItsTower(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Vec3 start = skyRoom(level, SKY_X + 200);
+        BlockPos ledge = BlockPos.containing(start).below();
+        RoomCarver.carve(level, ledge.offset(-1, 0, -1), ledge.offset(1, 0, 1), Blocks.STONE.defaultBlockState());
+        double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
+        towScene(
+                helper,
+                level,
+                columns(SKY_X + 200, SKY_X + 240, TOW_Z),
+                start,
+                start.add(trail, 0, 0),
+                step -> start,
+                (tower, towed, age) -> {
+                    double gap = tower.position().distanceTo(towed.position());
+                    if (gap < 0.9 * trail) {
+                        throw failure(
+                                helper,
+                                "on tick %s the towed pod is %s from its tower, a line of %s: it was snapped onto it",
+                                age,
+                                gap,
+                                trail);
+                    }
+                    requireNoWalls(helper, towed);
+                    return age >= 60;
+                });
+    }
+
     /** A towed pod with no gravity stays where it hangs on a slack line; one with gravity sinks until the line is taut. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aTowedPodWithNoGravityDoesNotSinkOnASlackLine(GameTestHelper helper) {
