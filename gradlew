@@ -88,10 +88,7 @@ APP_BASE_NAME=${0##*/}
 # Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
 APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exit
 
-# Deep Charter (#1120): one daemon registry per checkout, so a daemon never builds two worktrees. A shared daemon keeps compiled
-# build scripts in its JVM, which made a worktree's configuration cache entry name another worktree's scripts.
-# org.gradle.daemon.registry.base is an undocumented property; tools/tests/gradle-worktree-isolation.test.sh goes red if it stops
-# working or a "gradle wrapper" run drops this block.
+# Deep Charter (#1120): one daemon registry per checkout. Why, and what breaks it: tools/tests/gradle-worktree-isolation.test.sh
 case "${GRADLE_OPTS-}" in
   *org.gradle.daemon.registry.base*) ;; # a caller that set its own registry keeps it
   *) GRADLE_OPTS="${GRADLE_OPTS:+$GRADLE_OPTS }\"-Dorg.gradle.daemon.registry.base=$APP_HOME/.gradle/daemon-registry\""

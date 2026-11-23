@@ -12,7 +12,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 work=$(cd "$(mktemp -d)" && pwd -P)
 cleanup() {
   local w
-  for w in a b; do
+  for w in "$A" "$B"; do
     if [[ -x $work/$w/gradlew ]]; then (cd "$work/$w" && ./gradlew --stop >/dev/null 2>&1) || true; fi
   done
   if [[ -n ${KEEP_WORK:-} ]]; then echo "kept $work"; else rm -rf "$work" 2>/dev/null || { sleep 2; rm -rf "$work"; }; fi
@@ -20,7 +20,6 @@ cleanup() {
 trap cleanup EXIT
 
 # Worktree B has a space in its path, which the wrapper must quote.
-trees=(a "b b")
 A=a
 B="b b"
 unset GRADLE_OPTS
@@ -37,7 +36,7 @@ if [[ -d $real_home/wrapper ]]; then ln -s "$real_home/wrapper" "$GRADLE_USER_HO
 printf '%s\n' "org.gradle.daemon.idletimeout=60000" "org.gradle.jvmargs=-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xshare:auto" \
   >"$GRADLE_USER_HOME/gradle.properties"
 
-for w in "${trees[@]}"; do
+for w in "$A" "$B"; do
   mkdir -p "$work/$w/gradle"
   cp "$root/gradlew" "$work/$w/gradlew"
   cp -R "$root/gradle/wrapper" "$work/$w/gradle/wrapper"
@@ -69,8 +68,8 @@ out_b2=$(run "$B")
 
 if [[ $failures -ne 0 ]]; then
   echo "$failures check(s) failed. A daemon shared between checkouts leaks script scopes into the configuration cache."
-  echo "gradlew must set -Dorg.gradle.daemon.registry.base per checkout (the #1120 block); a 'gradle wrapper' run or a Gradle upgrade"
-  echo "that renames that undocumented property drops it."
+  echo "gradlew must set -Dorg.gradle.daemon.registry.base per checkout (the #1120 block); a 'gradle wrapper' run or a Gradle"
+  echo "upgrade that renames that undocumented property drops it."
   exit 1
 fi
 echo "all checks passed"
