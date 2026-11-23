@@ -596,7 +596,7 @@ done
 # Stale base (#979): CI records the main sha it merged in a `merged-main` annotation on each job's check run; the gate
 # refuses unless the deciding run of every required job (and of client-gametest) recorded the current origin/main.
 # Default stubs: every run recorded $MAIN_SHA, which is origin/main.
-stale_hint="by closing and reopening the PR [stale-base]"
+stale_hint="by re-running the whole runs holding the head's newest non-skipped build, tool-tests and client-gametest jobs [stale-base]"
 run_script
 exited "runs that merged the current main pass" 0
 logged "main fetched before comparing" "git fetch origin main"
@@ -854,7 +854,7 @@ fi
 # mark runs the merge gate's closing-reference, demo and map checks (tools/lib/pr-body-checks.sh), and never waits for CI.
 SCRIPT=$mark run_script STUB_SHA=def456 STUB_REMOTE_SHA=abc123
 exited "mark refuses a head that lags the pushed branch" 1
-printed "mark names both shas and the fix" "head def456 on GitHub but origin/12-some-slug is at abc123 (wait, or close and reopen the PR)"
+printed "mark names both shas and the fix" "head def456 on GitHub but origin/12-some-slug is at abc123 (wait and retry)"
 not_logged "mark stale head refused before commenting" "^gh api -X POST"
 SCRIPT=$mark run_script STUB_REMOTE_SHA=
 exited "mark refuses a branch missing on origin" 1
