@@ -9,9 +9,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
-import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -19,6 +17,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.EntityTypes;
@@ -130,38 +129,49 @@ public class BreachCrustMoversTest {
     }
 
     /**
-     * Builds every layer's site once its chunk ticks, starts {@code hazard} in it on that same tick, and checks {@code verdict} (the problems it finds,
+     * Builds every layer's site once all their chunks tick, starts {@code hazard} in each on that same tick, and checks {@code verdict} (the problems it finds,
      * none when the crust held) {@code wait} ticks later. Every layer is checked before the test fails, so the failure names each layer that broke.
      */
     private static void run(
             GameTestHelper helper, int slot, int wait, Consumer<Site> hazard, Function<Site, List<String>> verdict) {
         List<Site> sites = sites(helper, slot);
-        long[] started = new long[sites.size()];
-        Arrays.fill(started, -1);
+        boolean[] ready = new boolean[sites.size()];
+        long[] started = {-1};
         List<BlockPos> chunks = sites.stream().map(Site::column).toList();
-        FarChunks.awaitEntityTicking(helper, sites.get(0).level(), chunks, index -> {
-            Site site = sites.get(index);
-            build(site);
-            hazard.accept(site);
-            started[index] = helper.getTick();
-        });
-        TestTicks.each(helper, () -> {
-            for (int i = 0; i < started.length; i++) {
-                if (started[i] < 0 || helper.getTick() < started[i] + wait) {
-                    return;
-                }
-            }
-            List<String> problems = new ArrayList<>();
-            for (Site site : sites) {
-                for (String problem : verdict.apply(site)) {
-                    problems.add(site.describe() + ": " + problem);
-                }
-            }
-            if (!problems.isEmpty()) {
-                throw failure(helper, "the crust did not hold:%n  %s", String.join("%n  ".formatted(), problems));
-            }
-            helper.succeed();
-        });
+        FarChunks.awaitEntityTicking(helper, sites.get(0).level(), chunks, index -> ready[index] = true);
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    for (boolean chunk : ready) {
+                        if (!chunk) {
+                            throw helper.assertionException(Component.literal("a site's chunk is not ticking yet"));
+                        }
+                    }
+                })
+                .thenExecute(() -> {
+                    for (Site site : sites) {
+                        build(site);
+                        hazard.accept(site);
+                    }
+                    started[0] = helper.getTick();
+                })
+                .thenWaitUntil(() -> {
+                    if (helper.getTick() < started[0] + wait) {
+                        throw helper.assertionException(Component.literal("the hazard has not settled yet"));
+                    }
+                })
+                .thenExecute(() -> {
+                    List<String> problems = new ArrayList<>();
+                    for (Site site : sites) {
+                        for (String problem : verdict.apply(site)) {
+                            problems.add(site.describe() + ": " + problem);
+                        }
+                    }
+                    if (!problems.isEmpty()) {
+                        throw failure(
+                                helper, "the crust did not hold:%n  %s", String.join("%n  ".formatted(), problems));
+                    }
+                })
+                .thenSucceed();
     }
 
     /** Verdict for a blast: no crust block of the slab is gone. */
