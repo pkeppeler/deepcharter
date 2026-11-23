@@ -27,9 +27,10 @@ import org.jspecify.annotations.Nullable;
  * on screen; nothing stays pinned.
  *
  * <p>It never covers the HUD (#1030). It sits in the left column, at the highest place where it is clear of every rectangle that
- * {@link HudKeepClear} lists and of the slips above it; it moves down when a part of the HUD grows under it. On a GUI with no
- * such place it draws nothing and its time does not run, until there is one or {@link QuestMapTuning#toastWaitMillis} are up. The
- * toast manager still queues it, times it and clears it.
+ * {@link HudKeepClear} lists and of the slips above it; it moves down when a part of the HUD grows under it. Where the left column has
+ * no such place (a long step beside the navigator's sonar scope) it takes the right column, where vanilla's toasts are, and slides in
+ * from the right edge there (#1075). On a GUI with no such place in either column it draws nothing and its time does not run, until
+ * there is one or {@link QuestMapTuning#toastWaitMillis} are up. The toast manager still queues it, times it and clears it.
  */
 public final class StepToast implements Toast {
     private static final List<StepToast> PLACED = new ArrayList<>();
@@ -86,8 +87,8 @@ public final class StepToast implements Toast {
 
     /**
      * The top left of a {@code width} x {@code height} slip on a GUI {@code guiWidth} x {@code guiHeight}: against the left margin, at
-     * the highest place that is clear of every rectangle of {@code avoid} by the tuned gap and inside the bottom margin; empty when
-     * there is none.
+     * the highest place that is clear of every rectangle of {@code avoid} by the tuned gap and inside the bottom margin; failing
+     * that, the same against the right margin; empty when neither column has one.
      */
     public static Optional<HudKeepClear.Rect> place(
             int guiWidth, int guiHeight, int width, int height, List<HudKeepClear.Rect> avoid) {
@@ -95,6 +96,13 @@ public final class StepToast implements Toast {
         if (width > guiWidth - 2 * q.toastMargin()) {
             return Optional.empty();
         }
+        return inColumn(q.toastMargin(), guiHeight, width, height, avoid)
+                .or(() -> inColumn(guiWidth - q.toastMargin() - width, guiHeight, width, height, avoid));
+    }
+
+    private static Optional<HudKeepClear.Rect> inColumn(
+            int left, int guiHeight, int width, int height, List<HudKeepClear.Rect> avoid) {
+        QuestMapTuning q = QuestMapTuning.current();
         TreeSet<Integer> tops = new TreeSet<>(List.of(q.toastMargin()));
         for (HudKeepClear.Rect rect : avoid) {
             tops.add(rect.bottom() + q.toastGap());
@@ -103,7 +111,7 @@ public final class StepToast implements Toast {
             if (top + height > guiHeight - q.toastMargin()) {
                 break;
             }
-            HudKeepClear.Rect slip = new HudKeepClear.Rect("step popup", q.toastMargin(), top, width, height);
+            HudKeepClear.Rect slip = new HudKeepClear.Rect("step popup", left, top, width, height);
             if (avoid.stream().noneMatch(rect -> rect.grow(q.toastGap()).overlaps(slip))) {
                 return Optional.of(slip);
             }
@@ -147,15 +155,30 @@ public final class StepToast implements Toast {
                 : Visibility.HIDE;
     }
 
-    /** Slides in from the left edge as the manager's animation does from the right. */
+    /**
+     * Slides in from the left edge in the left column, as the manager's animation does from the right; from the right edge in the right
+     * column. The slip is placed here too, because the manager asks for the x before the y and a slip that changed column would
+     * otherwise be drawn for a frame at the old column's x.
+     */
     @Override
     public float xPos(int guiWidth, float visiblePortion) {
-        return QuestMapTuning.current().toastMargin() - width() * (1 - visiblePortion);
+        int margin = QuestMapTuning.current().toastMargin();
+        HudKeepClear.Rect slip = settle();
+        if (slip != null && slip.x() > margin) {
+            return guiWidth - (width() + margin) * visiblePortion;
+        }
+        return margin - width() * (1 - visiblePortion);
     }
 
     /** Puts the slip where it is clear of the HUD and of the slips already put this frame, and says so in {@link #placement()}. */
     @Override
     public float yPos(int firstSlotIndex) {
+        HudKeepClear.Rect slip = settle();
+        return slip == null ? 0 : slip.y();
+    }
+
+    /** Works out {@link #placement} for this frame and records it; null when there is no place, in which case nothing is drawn. */
+    private HudKeepClear.@Nullable Rect settle() {
         Minecraft client = Minecraft.getInstance();
         int guiWidth = client.getWindow().getGuiScaledWidth();
         int guiHeight = client.getWindow().getGuiScaledHeight();
@@ -164,11 +187,10 @@ public final class StepToast implements Toast {
         PLACED.forEach(other -> other.placement().ifPresent(avoid::add));
         placement = place(guiWidth, guiHeight, width(), height(), avoid).orElse(null);
         placedAtMillis = Util.getMillis();
-        if (placement == null) {
-            return 0;
+        if (placement != null) {
+            PLACED.add(this);
         }
-        PLACED.add(this);
-        return placement.y();
+        return placement;
     }
 
     @Override

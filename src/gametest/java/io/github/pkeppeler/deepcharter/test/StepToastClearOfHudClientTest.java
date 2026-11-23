@@ -295,8 +295,8 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
 
     /**
      * The popup of {@code step} on {@code gui}: where {@link StepToast#place} puts it against the HUD's own rectangles, and that it is
-     * clear of {@code hud}, worked out here. Where it finds no place, that every place in the left column is under some part of the
-     * HUD. {@code placed} says it must find one.
+     * clear of {@code hud}, worked out here. Where it finds no place, that every place in the left and in the right column is under some
+     * part of the HUD. {@code placed} says it must find one.
      */
     static void requireClearOrNowhere(Minecraft client, int[] gui, String step, Map<String, Box> hud, boolean placed) {
         StepToast toast = StepToast.of(Component.literal(step));
@@ -310,11 +310,13 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         }
         require(!placed, "the step popup " + when + " finds a place");
         int margin = QuestMapTuning.current().toastMargin();
-        for (int y = margin; y + toast.height() <= gui[1] - margin; y++) {
-            Box candidate = new Box(margin, y, toast.width(), toast.height());
-            require(
-                    hud.values().stream().anyMatch(part -> ClientChecks.overlaps(candidate, part)),
-                    "the step popup " + when + " found no place, but " + candidate + " is clear of the HUD");
+        for (int x : new int[] {margin, gui[0] - margin - toast.width()}) {
+            for (int y = margin; y + toast.height() <= gui[1] - margin; y++) {
+                Box candidate = new Box(x, y, toast.width(), toast.height());
+                require(
+                        hud.values().stream().anyMatch(part -> ClientChecks.overlaps(candidate, part)),
+                        "the step popup " + when + " found no place, but " + candidate + " is clear of the HUD");
+            }
         }
     }
 
