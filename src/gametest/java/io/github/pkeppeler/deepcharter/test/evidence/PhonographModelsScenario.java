@@ -221,7 +221,9 @@ public class PhonographModelsScenario extends EvidenceScenario {
     /** The Company horn hangs over the middle of the punch clock hall: seen from the floor, close and from the hall's end. */
     private void punchClockHorn(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         StructureSite site = LayerStructuresScenario.prepare(singleplayer, StructureKind.PUNCH_CLOCK);
-        ResourceKey<Level> layer = TestLayers.dimension(StructureKind.PUNCH_CLOCK.layer());
+        ResourceKey<Level> layer = singleplayer
+                .getServer()
+                .computeOnServer(server -> TestLayers.dimension(server, StructureKind.PUNCH_CLOCK.layer()));
         BlockPos horn = BlockPos.containing(at(site, 0, 4.5, 0));
         Predicate<BlockState> isHorn = state -> state.is(AmbienceRegistry.COMPANY_HORN);
         // The close eyes hang at the horn block's own Y (half a block under its centre), 2.2 blocks off on a diagonal;
@@ -242,7 +244,9 @@ public class PhonographModelsScenario extends EvidenceScenario {
     /** The wreck's phonograph stands in the corner of PROSPECTOR-0002's bay, 5 along and 5 across the site's own axes. */
     private void wreckPhonograph(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         StructureSite site = LayerStructuresScenario.prepare(singleplayer, StructureKind.WRECK);
-        ResourceKey<Level> layer = TestLayers.dimension(StructureKind.WRECK.layer());
+        ResourceKey<Level> layer = singleplayer
+                .getServer()
+                .computeOnServer(server -> TestLayers.dimension(server, StructureKind.WRECK.layer()));
         BlockPos stand = BlockPos.containing(at(site, 5, 0.5, 5));
         Direction front = singleplayer
                 .getServer()
