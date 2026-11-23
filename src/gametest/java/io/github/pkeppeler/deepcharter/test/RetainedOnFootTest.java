@@ -82,9 +82,9 @@ public class RetainedOnFootTest {
     private static final int BLOW_SPACING_TICKS = 12;
     /** Ticks for the light of a block to spread to a cell, or to go from it: slow on a loaded runner. */
     private static final int LIGHT_BUDGET_TICKS = 200;
-    /** Ticks a test flare burns, and the reach it keeps the dark off within. */
+    /** Ticks a test flare burns. */
     private static final int FLARE_BURN_TICKS = 60;
-
+    /** The reach a test flare keeps the dark off within: a stand-in, smaller than the real flare's reach. */
     private static final double FLARE_REACH = 6.0;
     /** Ticks a dead figure has to be gone, and the person freed: the dissolve (20 ticks) and a margin. */
     private static final int FREED_BUDGET_TICKS = 60;
@@ -953,7 +953,6 @@ public class RetainedOnFootTest {
                 }
                 return;
             }
-            level.setBlock(flare[0], Blocks.AIR.defaultBlockState(), 3);
             if (room.figure.isClinging() || FootGrips.holder(player) != null) {
                 room.clear();
                 helper.succeed();
@@ -980,7 +979,7 @@ public class RetainedOnFootTest {
         });
     }
 
-    /** A flare that lands after the grip does not free a held person, as no light does: the figure goes on holding and the weight stays. */
+    /** Regression guard, not a changed behaviour: a flare landing after the grip leaves the figure holding and the weight on. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + WATCH_TICKS + 60)
     public void aFlareDoesNotFreeAPersonAlreadyHeld(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -1015,7 +1014,6 @@ public class RetainedOnFootTest {
                     throw failure(helper, "a flare took the weight off a held person");
                 }
                 level.setBlock(flare[0], Blocks.AIR.defaultBlockState(), 3);
-                DrawSources.clear();
                 room.clear();
                 helper.succeed();
             }
