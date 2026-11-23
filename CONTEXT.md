@@ -49,14 +49,14 @@ How far down a place is, on one axis that runs through every dimension of the ca
 _Avoid_: Y (that is one dimension's own height)
 
 **Layer**:
-One link in the underground chain, with its own light, fog and sky. Its floor leads into the top of the next. It can fill part of a dimension, several layers can share one, and one layer can span two.
+One link in the underground chain, with its own light, fog and sky. Its floor leads into the top of the next. A dimension can hold several layers, and one layer can span two dimensions.
 _Avoid_: level, biome, dimension (that is the implementation)
 
 **Campaign world**:
 The overworld, the first dimension of the stack: the surface as its top band, then as many layer bands as fit, down to y -2032. Crossing a breach inside it has no teleport.
 
 **Deep dimension**:
-A tall dimension below the campaign world, holding the next depth, up to 4,064 blocks tall, the limit of one dimension. Not built yet.
+A tall dimension below the campaign world, holding the next depth. Not built yet.
 _Avoid_: layer dimension, chain world
 
 **Band**:
@@ -68,11 +68,11 @@ The plain rock of the campaign world below the last built layer. Nothing is in i
 _Avoid_: void, empty space
 
 **Seam**:
-The boundary between two stacked dimensions on the depth axis, such as the campaign world and the first deep dimension, or the join to the uncharted worlds. It is a storage boundary, not a layer boundary: crossing it should feel like going on down. A seam that coincides with a layer boundary carries that boundary's crust, the seam crust (grained). A seam can also fall mid-layer, with no crust. How seamless it must be is open.
+The boundary between two stacked dimensions on the depth axis, such as the campaign world and the first deep dimension, or the join to the uncharted worlds. It is a storage boundary, not a layer boundary: it can fall mid-layer, or coincide with a layer boundary and carry its crust, the seam crust (grained). How seamless it must be is open.
 _Avoid_: portal, loading screen, dimension seam
 
 **Grained crust**:
-A crust with a vertical grain that flexes on a slow pulse. On a seam at a layer boundary it is the seam crust. Its rules are in the SPEC. Working name.
+A crust with a vertical grain that flexes on a slow pulse. Its rules are in the SPEC. Working name.
 _Avoid_: no-build zone
 
 **Decoy**:

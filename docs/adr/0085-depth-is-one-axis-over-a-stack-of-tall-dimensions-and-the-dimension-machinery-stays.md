@@ -16,14 +16,14 @@ Issue #1111. Supersedes the plan in #804 (closed as not planned) to delete the l
 
 ## Why
 
-- **The 4,064 cap.** One dimension holds at most 4,064 blocks of height. The overworld's budget, from the surface floor to y -2032, is a fixed part of that. A single dimension would cap the game's total depth.
+- **The 4,064 cap.** One dimension holds at most 4,064 blocks of height. The overworld's budget down to y -2032 is a fixed part of that, so a single dimension would cap the game's total depth.
 - **Sky room.** Raising the surface to make more room below would take the sky from sky biomes.
 
 The user's stated reasons are the cap and the sky room.
 
 ## Open
 
-- **How seamless the seam must be**, and whether the fade and the arrival pocket stay for it, is an open design item. The teleport crossing is not yet a seamless seam. It is the base to build one on.
+- **How seamless the seam must be**, and whether the fade and the arrival pocket stay for it, is an open design item. The teleport crossing is the base to build one on.
 
 ## Direction, not built
 
@@ -32,5 +32,5 @@ The user's stated reasons are the cap and the sky room.
 ## Consequences
 
 - Layers can be made thicker later: a layer that outgrows the room left in the overworld can continue in a deep dimension.
-- A comment or test that says the dimension path "will be deleted" is out of date. The amendments to ADR 0059 and ADR 0061 and the edits to the code comments that named #804 say so.
+- A comment or test that says the dimension path "will be deleted" is out of date. The amendments to ADR 0059 and ADR 0061 and the edited code comments say so.
 - The teleport crossing has no GameTest on `main` that crosses a dimension: every layer test resolves to the campaign level (`TestLayers`). #1114 tracks it. #1113 tracks the global-depth seam.
