@@ -83,7 +83,6 @@ Last updated: 2026-11-23 06:54 UTC
   - [Draw sources are the one place thrown things speak to creatures](adr/0078-draw-sources-are-the-one-place-thrown-things-speak-to-creatures.md)
   - [A blast shakes the roof over a person on foot, and roof bolts hold it](adr/0081-a-blast-shakes-the-roof-over-a-person-on-foot-and-roof-bolts-hold-it.md)
   - [The client coasts a pod through a late server and caps its catch-up](adr/0082-the-client-coasts-a-pod-through-a-late-server-and-caps-its-catch-up.md)
-  - [A step popup keeps clear of vanilla toasts through an accessor mixin](adr/0083-a-step-popup-keeps-clear-of-vanilla-toasts-through-an-accessor-mixin.md)
 
 ## In flight
 
