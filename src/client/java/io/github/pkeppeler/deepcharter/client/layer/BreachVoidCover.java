@@ -32,10 +32,14 @@ public final class BreachVoidCover {
         LevelRenderEvents.COLLECT_SUBMITS.register(BreachVoidCover::submit);
     }
 
-    /** A world of the surface or a layer; a dimension type that is not a registry entry (a direct holder) is not one. */
+    /**
+     * A world of the surface or a layer, or the campaign world, whose bottom is below its last layer; a dimension type that is not a
+     * registry entry (a direct holder) is not one.
+     */
     private static boolean inLayerChain(ClientLevel level) {
         return level.dimensionTypeRegistration().unwrapKey().isPresent()
-                && LayerChain.bandAt(level, level.getMinY()).isPresent();
+                && (LayerChain.isCampaign(level)
+                        || LayerChain.bandAt(level, level.getMinY()).isPresent());
     }
 
     private static void submit(LevelRenderContext context) {

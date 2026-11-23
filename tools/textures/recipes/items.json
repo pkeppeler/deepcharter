@@ -1018,6 +1018,8 @@
       "..bBBBBBBBBBb",
       "...dBBBBBBBd",
       "....ddddddd"]}},
+    "item/bolt": {"template": "sprite", "args": {"legend": {"h": "steel.5", "l": "steel.4", "m": "steel.3", "d": "steel.2", "b": "brass.4"}, "rows": ["", "..hhh..hhh..hhh", "..hlm..hlm..hlm", "..hlm..hlm..hlm", "...m....m....m", "...l....l....l", "...b....b....b", "...l....l....l", "...b....b....b", "...l....l....l", "...b....b....b", "...m....m....m", "...d....d....d"]}},
+    "item/bolt_driver": {"template": "sprite", "args": {"legend": {"h": "steel.5", "l": "steel.4", "m": "steel.3", "k": "steel.1", "y": "signal.4", "w": "signal.3", "x": "signal.2", "d": "signal.1", "g": "rubber.2", "b": "brass.4"}, "rows": ["..........hl", "..........hl", "..........ml", "..........hl", "..........ml", ".........kmmk", "......ywwxxxxd", "....yywwwxxxxd", "....ywwwxxxxxd", "..gg.dxxxxxxdd", ".gggg.ddddddd", ".gg..g", ".gg..g", ".gggggg"]}},
     "item/thrown_flare": {"template": "sprite", "args": {"legend": {
       "R": "signal.4", "r": "signal.3", "d": "signal.2", "e": "enamel.3", "k": "iron.1", "w": "warm.3", "y": "sodium.4", "o": "sodium.3"}, "rows": [
       "",

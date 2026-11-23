@@ -280,16 +280,16 @@ public class PodDrillTest {
         int[] shallowTicks = {-1};
         int[] deepTicks = {-1};
         TestTicks.each(helper, () -> {
-            if (!shallow.pod.isPresent() || !deep.pod.isPresent()) {
-                return;
-            }
+            // Each pod is timed on its own, not once both exist: the first would be read late (#1083).
             if (shallowTicks[0] < 0
+                    && shallow.pod.isPresent()
                     && level.getBlockState(new BlockPos(shallowX, shallowFloor - 1, Z))
                             .isAir()) {
                 shallowTicks[0] = shallow.pod.get().tickCount;
                 shallow.pilot.releaseInput();
             }
             if (deepTicks[0] < 0
+                    && deep.pod.isPresent()
                     && level.getBlockState(new BlockPos(deepX, deepFloor - 1, Z))
                             .isAir()) {
                 deepTicks[0] = deep.pod.get().tickCount;
