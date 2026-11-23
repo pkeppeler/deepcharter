@@ -44,24 +44,32 @@ _Avoid_: town, base, hub
 A repairable machine where you sell ore, buy fuel and upgrades, repair, or sign contracts.
 _Avoid_: shop, store, vendor
 
+**Depth**:
+How far down a place is, on one axis that runs through every dimension of the campaign. A layer is defined by depth, not by dimension.
+_Avoid_: Y (that is one dimension's own height)
+
 **Layer**:
-One link in the underground chain, with its own light, fog and sky. Its floor leads into the top of the next.
+One link in the underground chain, with its own light, fog and sky. Its floor leads into the top of the next. It can fill part of a dimension, several layers can share one, and one layer can span two.
 _Avoid_: level, biome, dimension (that is the implementation)
 
 **Campaign world**:
-The one tall world that holds the surface as its top band and the story layers, ending at the finale's floor. Crossing a breach in it has no teleport.
+The overworld, the first dimension of the stack: the surface as its top band, then as many layer bands as fit, down to y -2032. Crossing a breach inside it has no teleport.
+
+**Deep dimension**:
+A tall dimension below the campaign world, holding the next depth, up to the 4,064-block limit of one dimension. Not built yet.
+_Avoid_: layer dimension, chain world
 
 **Band**:
-A fixed range of Y in the campaign world: the surface, a layer, or unbuilt depth.
+A layer's slice inside one dimension: a fixed range of Y. The surface and unbuilt depth are bands too.
 _Avoid_: level, floor
 
 **Unbuilt depth**:
 The plain rock of the campaign world below the last built layer. Nothing is in it yet.
 _Avoid_: void, empty space
 
-**Seam**:
-The join between two tall worlds, including the campaign world and the first uncharted world, crossed by a fast background swap inside a grained crust.
-_Avoid_: portal, loading screen
+**Dimension seam**:
+The join between two tall dimensions, such as the campaign world and the first deep dimension. It is a storage seam, not a layer boundary: crossing it should feel like going on down through the same layer. How seamless it must be is open.
+_Avoid_: portal, loading screen, seam (alone, it is ambiguous)
 
 **Grained crust**:
 A crust with a vertical grain that flexes on a slow pulse. Its rules are in the SPEC. Working name.
@@ -84,7 +92,7 @@ A band within a layer where ore value, hazards and creatures step up.
 _Avoid_: sub-layer
 
 **Breach**:
-The soft crust at a layer boundary. Any drill can pass, at a heavy cost. Crossing is a story event.
+The soft crust at a layer boundary, also called the breach crust. Any drill can pass, at a heavy cost. Crossing is a story event. A dimension seam is not a breach.
 _Avoid_: barrier, wall, gate
 
 **Ramp**:

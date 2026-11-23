@@ -1,0 +1,34 @@
+---
+status: accepted
+---
+
+# Depth is one axis over a stack of tall dimensions, and the dimension machinery stays
+
+Issue #1111. Supersedes the plan in #804 (closed as not planned) to delete the layer dimensions, the crossing teleport and the per-dimension API of `LayerChain` and `LayerRegistry`. Amends [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md) (the bands are not final) and [ADR 0061](0061-a-crossing-in-the-campaign-world-is-an-event-in-place-found-by-the-root-vehicles-y-with-the-crust-rows-as-hysteresis.md) (the teleport crossing is kept). Restates the model of #215, which already said: inside the campaign world a layer is a Y band; past it, layers are links between worlds.
+
+## Decision
+
+- **Depth is one continuous axis.** The campaign is a vertical stack of tall dimensions. The overworld is first: the surface and as many bands as fit, down to y -2032. Deep dimensions follow below it, each up to the 4,064-block limit of one dimension (y -2032 to 2031).
+- **Layers are defined by depth, not by dimension.** A dimension can hold several layers. A dimension boundary can fall in the middle of a layer, so a layer can span two dimensions. A **band** is a layer's slice inside one dimension.
+- **A dimension seam is a storage seam, not a layer boundary.** Crossing it should feel like going on down through the same layer. The breach crust still marks layer boundaries.
+- **The surface stays at y -64 to 319.** The sky above it stays free for sky biomes. Layers never grow by raising the surface.
+- **The crossing machinery stays**, as the base for the dimension seam: the layer dimensions and their types, `BreachService`'s teleport with its arrival pocket, the fade, `PodTowing`'s carry across levels, `LayerChain`'s per-dimension API, `LayerRegistry`'s cross-world links, and the `TestLayers` fallback. Nothing is deleted or changed by this ADR.
+
+## Why
+
+- **The 4,064 cap.** One dimension holds at most 4,064 blocks of height. The overworld's budget, from the surface floor to y -2032, is a fixed part of that. A single dimension would cap the game's total depth.
+- **Thicker layers later.** A layer that outgrows the room left in the overworld must be able to continue in a deep dimension.
+- **Sky room.** Raising the surface to make more room below would take the sky from sky biomes.
+
+## Open
+
+- **How seamless the dimension seam must be**, and whether the fade and the arrival pocket stay for it, is an open design item. The teleport crossing is not yet a seamless seam. It is the base to build one on.
+
+## Direction, not built
+
+- Anything keyed on depth (`Depth`, the altimeter, bands, ratings, spawns) must eventually read a global depth: the dimension's offset plus Y, not raw Y. Today the campaign world is the only dimension a player digs in, so Y is enough. The seam for global depth is #1113.
+
+## Consequences
+
+- A comment or test that says the dimension path "will be deleted" is out of date. The amendments to ADR 0059 and ADR 0061 and the edits to the code comments that named #804 say so.
+- The teleport crossing has no GameTest on `main` that crosses a dimension: every layer test resolves to the campaign level (`TestLayers`). #1114 tracks it. #1113 tracks the global-depth seam.
