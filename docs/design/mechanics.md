@@ -1161,7 +1161,7 @@ A full rack of 24 buys about 10 s of lava at tier 1, 14 s at tier 2 and 19 s at 
 - **A hand (on foot, or aimed from the seat).** A blow from a player (a sword, an axe, a fist, an arrow from a player) hurts it for the damage the weapon does; a sword of iron kills it in two blows. A seated pilot can swing at one beside the hull the same way, but only the cutter needs no aim.
 - **Death.** It lets go, the pilot reads "It is gone. The hull is clear.", it makes a last sound, and it dissolves where it stands in smoke and ash over 20 ticks. No blood, no body. The level then waits 400 ticks before it makes the next one of that kind.
 - **Light.** A lights part makes the pod lit, and a lit pod is not drawn (a figure in the pod's light walks on, whole). A light **no longer frees a pod that a figure already holds**, and it does not fade a figure. A light that reaches the spot where a figure would appear keeps it from appearing there (block light 3 or more).
-- **People on foot.** A person near a figure does not make it fade. It does not flee and it does not attack.
+- **People on foot.** A person near a figure does not make it fade. It does not flee and it does not attack. A person on foot in the dark draws a figure too, since #916 ([below](#the-retained-on-foot-916-a)).
 
 **Counterplay, on the ladder.**
 1. **By hand: drill it off.** Sprint down or push into a wall for 2.5 seconds. The warning gives the time to start, and the drain runs while the pilot reads. This is the main verb of the game, so a pilot who is digging anyway kills it without changing what they do. A pod that cannot drill (the surface, Company rock) cannot use the cutter: the pilot gets out and swings, or lights the pod before the next one comes.
@@ -1273,6 +1273,54 @@ The modelled rows rest on three guesses, none measured: a 4-minute run, half of 
 **Does this make the default harder?** Yes, a little: 4 to 6 per cent of a run on average, where before nothing here touched the haul. A first run that loses a $30 ore is a quarter of its net.
 
 **Open.** Their act 3 job, calling the Recovery units, is [#930](https://github.com/pkeppeler/deepcharter/issues/930). The Tally has no call yet; it only needs a hook where a Tally sees an unauthorised pod.
+
+## The Retained on foot (#916, A)
+
+**Problem.** Every mob costs you in the pod and on foot ([CREATURES.md](../CREATURES.md#the-retained)). The Retained cost a dark pod its fuel, but a person who climbs out cost them nothing: the dark was only a problem inside the hull. The creatures session decided they come to a person in the dark the same way. They still never deal damage ([ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md), amended for #916).
+
+**The rule.**
+- **Who draws one.** A person on foot (not in a seat), alive, in survival or adventure, who stands where the block light is under 3 and holds no light in either hand. A light in hand is an item of the `deepcharter:hand_lights` tag: torches, lanterns, campfires, glowstone, sea lanterns, shroomlight, jack o'lanterns, end rods, froglights and the colony's lamps. A pack, and later the suit lamp and flares, add to the tag; the suit lamp replaces the hand check when it exists. On Peaceful nobody draws one. A creative or spectator player is never drawn.
+- **Coming.** A figure within 16 blocks of such a person walks to them, as it walks to a dark pod. When it sets off, the person reads "Something walks toward you in the dark. A light in your hand keeps it off." and hears the same low rumble. The first time, a person is also told the whole rule in chat. A person who lights up before it arrives is dropped: the figure walks on.
+- **One grip.** A figure holds one thing, a pod or a person, and a person has at most one figure on them.
+- **Cling.** A figure whose box is within 1.5 blocks of the person takes hold: it stands at their side, faces them, and follows them as they move. The person reads "Something has hold of you. It slows you and eats at your hunger. Strike it off."
+- **Weight.** The grip weighs on the person as 20 units of ore: the same modifier, cap and Overburdened status that carried ore gives ([OreEncumbrance](../../src/main/java/io/github/pkeppeler/deepcharter/ore/OreEncumbrance.java)), so they walk at 60 per cent of their speed, 4.3 blocks a second down to 2.6, and the status shows level 4. It adds to any ore they carry, up to the cap of 80 per cent.
+- **Drain.** The grip takes a point of hunger every 6 seconds, as the game's own exhaustion (so the saturation goes first), and takes nothing once the food bar is at 6, a bar of 3 drumsticks. It never starves anyone. At 6 a person cannot sprint, as in the vanilla game; they can still walk and eat. Natural regeneration stops below 18, so a held person stops healing after the first points.
+- **Ending.** Only the figure's death ends the grip. A light in hand, a lit cell and boarding a pod do not. A held person who climbs into a pod keeps draining in the seat while the figure trails (no physics, 8 blocks a second); only its death frees them. The figure has 12 health and takes any blow from a player, so the held person's own blow ends it as a crewmate's does. A person who dies, leaves, changes level or turns creative is let go of, and so is one on Peaceful: a figure neither draws nor holds a person there, and a grip ends when the difficulty turns Peaceful. A relog, or the figure's chunk unloading, frees the person, the same weakness as the pod grip; the weight is read from the live figure every tick, so a rejoin carries none. Nothing here is saved, as a figure is not.
+- **Seated.** A person in a pod's seat is the pod's business: the dark pod draws the figure, not them.
+
+**Counterplay, on the ladder.**
+1. **By hand: a light in hand, or a blow.** A torch keeps one off for free. A person it has reached strikes it: two blows of an iron sword, twelve of a fist. Both are in every first hour.
+2. **A part: lights, and a crewmate.** A pod with lights is not drawn, and a crewmate's blow ends a grip the held person cannot swing at. The suit lamp (not built) replaces the torch.
+3. **Mastery.** A person who keeps their hands lit never meets one; the grip is a cost for the careless, not a toll on every dig.
+
+**Measured** (`RetainedOnFootTest`, server, player units):
+
+| What | Measured |
+|---|---|
+| A person stands in the dark, a figure 10 blocks away: until it holds them | 82 ticks, 4.1 s (the figure walks about 2 blocks a second; a person walks 4.3, so one who hears it and walks off is not caught) |
+| Warning: from sensing at 16 blocks to a grip | about 7 s |
+| Walking speed, held | 0.06 against 0.10, 2.6 blocks a second against 4.3 |
+| Hunger drained, a full bar of 20 to the floor of 6 | 1,682 ticks, 84 s: 6.0 s a point |
+| A bare-handed person kills it | 12 blows, 133 ticks, 6.7 s from the grab: about 1 point of hunger |
+| A person with an iron sword kills it | 2 blows, 13 ticks from the first blow |
+| A grip nobody answers | 84 s to the floor, then it holds on at 6 and takes nothing more |
+
+The first tuning went in as measured. A grip is a real cost: a slow crawl and a food bar that empties in a minute and a half. It is not a death sentence: the bar stops at 3 drumsticks and never at zero, a fist is enough to end it, and a torch avoids it. A grip left to the floor costs 14 points, about three Company rations at 5 points each ([#838](#company-rations-838-a)): the three starting tins.
+
+**This makes the default harder than main** (early game, no light, no pod): a person who steps out of a dark pod now has a risk where they had none, and nothing is lost for one who keeps a torch in hand or a lit pod. The unpacked early game, stock pod, no lights part: a person is as likely to meet one as a pod is, since the same figures draw both ([how often](#the-retained-at-dark-pods-449-a); no new spawns), and a figure that has a pod and a person to choose takes the pod. The rate a person is met on foot is not measured: it depends on how long they stand in the dark away from the pod.
+
+**Knobs.** `CreatureTuning.Foot`: `senseBlocks` (16), `reachBlocks` (1.5), `loadMass` (20, the slowdown is this times `OreTuning.slowdownPerMass`), `secondsPerPoint` (6), `hungerFloor` (6). The lines `creature.deepcharter.foot_approach`, `foot_grab`, `foot_dead` and `foot_first`. The `EXTRA_MASS` event of `OreEncumbrance` is the hook.
+
+**Candidates not built.**
+
+| Candidate | Why not |
+|---|---|
+| Freeing the grip by swapping to a light | The rule decided in #485 and the creatures session: light prevents, only a blow frees |
+| A grip that also dims the screen | Needs a client change and a test; the status and the figure at your side already read |
+| The figure choosing a person over a pod | It takes whichever is nearer; with both in range it takes the pod, which the pilot can cut free |
+| A grip that follows through a breach | A figure is not saved and does not cross a level change; a person who crosses is let go of |
+
+**Open questions.** Should a suit lamp that is off count as dark, and drain battery? When it exists it replaces the hand check, as the issue says. Should a Continuity tag drop (CREATURES principle 7)?
 
 ## Early ore access: salvage (#245, A)
 
@@ -1806,6 +1854,49 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
 
+## The navigator's sonar (#988, A)
+
+**Problem.** The Prospector's second seat has been a passenger seat since #507. SPEC section 8 gives it a job: the navigator, who sees what the pilot cannot, and is loud for it. This is the first crew seat with its own tool, and the ground #924 (creature signatures) and the Sleeper's answer to noise build on.
+
+**The tool.** The navigator presses V (the ping key). The pod pays power, a ring goes out, and the scope on the navigator's screen (left edge, a round plan view, the pod at the middle and facing up) fills with echoes. The pilot's scanner and Ribbon are not touched; the scope is the one thing only the navigator sees past the headlights.
+- **Echoes are contacts of four kinds, drawn as four shapes** so they read without colour: ore (filled square), gas (hollow square), an empty cave (small dot), something that moved (cross). A tick over or under a shape says it is 2 or more blocks above or below the pod.
+- **Ambiguous on purpose.** A block echo is a 4-block cell of the world's grid, reported at its middle, so the navigator knows the neighbourhood and not the block. A cell with any ore in it is ore; else a cell with a gas pocket is gas; else a cell at least half air is a cave. Gas reads as gas only inside 12 blocks: farther off it reads as an empty cave, the SPEC's ambiguous echo, so the navigator has to get closer or listen for the hiss. A creature in the `deepcharter:sonar_echoes` entity tag returns an echo at its block: moved if it is faster than 1 block a second, else ore (a body standing still is a dense return). The tag ships empty: **until #924 fills it, nothing in the game returns a moved echo**, and the moved shape and its speed rule have no production source.
+- **Cells within 6 blocks of the pod are silent**: its own cab and bore are not a cave. Chunks that are not loaded return nothing, as the scanner shows them. A ping returns at most 32 echoes: what moves first, then ore, gas and open space, nearest first.
+- **Marks.** The navigator looks toward an echo (within 12 degrees of the look) and presses G: it goes on the HUD of everyone riding the pod as a diamond in its kind's colour with its kind and distance, at the screen's edge toward it when it is off screen or behind. A mark holds a minute and outlives the echo it came from, so the pilot flies by it after the next ping. A pod holds three; a fourth drops the oldest; G toward a marked echo (even after its echo faded) takes its mark off. A pod takes a mark at most every 5 ticks; a refused one changes nothing and syncs nothing. The server checks the seat and that the echo is on the pod's picture.
+- **Costs and refusals.** Power: a ping takes 0.4 L from the tank and never takes it under the pod's urgent-fuel reserve (6%): the navigator cannot ping the pod dry. A pod without power cannot ping. The sonar rings for 4 seconds before the next ping. Each refusal says why on the action bar.
+- **Loud.** The ping plays a sound at the pod and fires `SonarEvents.PINGED`, a noise 48 blocks wide: twice what the ping sees. **The 48-block radius is a placeholder: nothing consumes it yet**, #924 makes the Sleeper's creatures answer it and adds the distance test with its first caller.
+
+**Ladder.** By hand: ping and read, mark what the pilot should fly to or from. A part: passive listening (silent, short range; #924) and the sonar burst (#928). Mastery: the robot navigator (`robot-crew`) pings on a fixed timer and cannot stay quiet; it calls `PodSonar.ping(pod)`, which asks nothing of a seat.
+
+**What sonar reveals against the scanner.** Ore: the scanner shows ore at every tier, as a one-block slice in the pod's facing plane; sonar's ore echoes are 3D (a 24-block radius, coarse to a 4-block cell) and need no scanner part, so they reveal no ore the scanner hides, only more of it at less precision. Gas: the scanner shows gas pockets only from tier 3 (`ScannerTuning.gasTier`), and a pocket otherwise looks like stone. Sonar does reveal gas pockets, within 12 blocks, with no scanner tier. This is chosen, not matched: SPEC section 8 names gas among the navigator's echoes, it needs a Prospector with a navigator, it is ambiguous beyond 12 blocks, and it costs power and noise. It makes the Prospector's navigator a second gas counter beside the tier 3 scanner and the seep sounder; if playtests find gas trivial on a Prospector, lower `gasResolveBlocks` or make gas resolve only from the scanner's tier.
+
+**Who gets the state.** `pod_sonar` syncs to every client tracking the pod (`AttachmentSyncPredicate.all()`), not only its riders. Fabric offers `all`, `targetOnly` and `allButTarget`, and the interface is a plain `BiPredicate`, so a "riders only" predicate is one line, but it is evaluated only when tracking starts and when the value changes: a player who boards later gets nothing until the next ping or mark, and there is no public resend. A navigator who boards a pod with marks set would see none. Left as `all()`; the data is a few dozen bytes on ping and mark.
+
+**Trade-offs.** Power from the tank the pilot also needs; noise that calls the Sleeper's once #924 lands; the navigator's eyes on the scope and not the view; a mark list of three.
+
+**Hooks for #924.** `SonarEvents.COLLECT` (a listener adds echoes with a `SonarKind` to the sink: a Sleeper creature a real echo, the hollow ones none, a Company machine ore), `SonarEvents.PINGED` (the noise: the ping carries its origin and `noiseBlocks()`; the distance test comes with its first caller), the `sonar_echoes` entity tag for the plain case, and `PodSonar.State` on the pod (synced, versioned) for anything that reads what the pod holds. Passive listening is a ping that skips the sound and `PINGED` and uses a shorter range: `SonarTuning` is the record to extend.
+
+### Pacing, in player units
+
+Each row is asserted in `PodSonarTest`. *Measured*: read off the running game (the tank's own reading, the world clock, the event a listener receives). *Modelled*: worked out from the tuning tables, not run.
+
+| Row | Value | |
+|---|---|---|
+| Power per ping | 0.4 L, 4% of a stock 10 L tank | measured (the tank before and after a real ping) |
+| Pings from a full stock tank to the 6% reserve | 23 | measured (pinging until refused, the wait cleared between) |
+| What a ping costs in the pod's other burn | 6.3 s of idling, 2.1 s of driving, 1.3 s of drilling | modelled (0.4 L over 0.063, 0.19 and 0.32 L/s) |
+| Pings in one tank pinging as soon as the sonar clears, idling between | about 14, over about a minute | modelled (9.4 L usable over 0.1 L/s of pinging and 0.063 L/s of idling) |
+| Range | 24 blocks to the middle of a cell: the farthest echoing ore cell was 22.8 blocks off, the nearest silent one 26.6 | measured |
+| Noise radius | 48 blocks | measured (the event's radius, and a listener at 48 and at 48.01) |
+| An echo shows | 200 ticks, 10 s | measured on the world clock (the picture clears on tick 200 or 201) |
+| Sonar rings between pings | 80 ticks, 4 s | measured (refused on every tick before 80, accepted on it) |
+| A mark holds | 1200 ticks, 60 s, three at a time | measured (lapses on its tick; the fourth drops the oldest) |
+| Server cost of a ping | 2.8 ms for the first ping in a cold test JVM | measured (one reading, logged as `[sonar]`, not asserted) |
+
+A default build is not harder than on main: nothing changes for a pod with no navigator, and a navigator who never pings spends nothing.
+
+**Knobs.** `SonarTuning` (range, noise, power, wait, lifetime, cell, blind zone, gas distance, moving speed, echo cap, mark life, marks, aim) and `theme/sonar.json` (the scope's look). **Open questions.** Should the ping's cost grow with depth? Should a ping light the echoes' cells for the pilot's lamps? Should marks be shared between a towed pair? None is built.
+
 ## The first tank and the Company recovery (#963, A)
 
 **Problem.** The third playtest: the first pod "can only dig like 10 blocks before it runs out of fuel", then sits dark at the bottom of the shaft. The burn rates came from the original's per-second values (0.063, 0.19 and 0.32 L/s on a 10 L tank), but our drill takes 2.4 s a block in layer 1 (24 ticks of stone, slowed by depth, plus the pod's settling), so the same seconds bought far fewer blocks. Nobody had measured a tank in blocks. And a pilot who ran dry, broke and alone had no way out at all.
@@ -1844,6 +1935,47 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open questions.** Whether a hauled pod should also owe a "parking" fee at the pad; whether a second pod in reach should be able to answer the call before the crew (the tow line already does). Neither is built. The ownership rule: the crew moves a pod only for the pilot aboard it and charges only the pod's owner charter, so it never moves or charges anyone else's.
 
+## The bolt driver and the cave-in (#987, A)
+
+**Problem.** CREATURES section 8 gives on-foot play a bolt driver, a mining roof-bolter that fires bolts and sets roof bolts "against cave-ins". No cave-in existed: SPEC section 11 lists them as a hazard (blocking a stretch of shaft rather than erasing it) and nothing in the game dropped a roof. So the driver's second half had nothing to answer. Both halves are built here: the hazard, small and readable, and the counter.
+
+**The cave-in (`CaveIns`).** The natural rock over a person on foot comes down.
+- It starts when a blast goes off near them: dynamite, plastic explosives, the blasting and shaped charges and a thrown charge all shake the roof over each person on foot within 12 blocks, if the server allows PvP or the person is on the charter that set the blast off (the pod's owner, or its pilot's charter; the thrower's, for a thrown charge), so no crew is griefed by another's blast. `CaveIns.shake` is the call an earthquake or a creature would make later; nothing starts one on its own yet ([ADR 0081](../adr/0081-a-blast-shakes-the-roof-over-a-person-on-foot-and-roof-bolts-hold-it.md)).
+- The roof is the first block over their head within 5 blocks, within 3 blocks flat of where they stood, when it is natural rock with air under it. A person in a pod seat is not shaken (the pod is the cover). Rock a person built, Company rock and the grained crust are never a roof.
+- It warns for 60 ticks (3 s, the warning every hazard here gives): the roof creaks every 10 ticks, sheds dust, and the person is told. Then the loose roof falls as falling rock and lies where it lands, so a collapsed stretch is a heap in the tunnel to mine through, not a hole. Rock that would land on a person shatters on them instead (a falling block settles inside the cell of whatever stands there, which entombed them): it hurts by the blocks it fell, 1 health each up to 6, never takes their last health, and leaves no block. Rock that lands on a snow layer or a plant overwrites it.
+- The roof is read again at the fall: a roof bolt set while it creaks saves what it reaches.
+
+**The roof bolt (`roof_bolt` block).** The driver, used on the underside of a roof, hangs a bolt in the cell under it. Every roof block within 3 blocks of a bolt holds. A bolt is a block, not an attachment: it shows as a plate and rod against the ceiling, a creature or a hand can break it, it goes when its roof does, it drops nothing, and it persists with the chunk like any block. It has no item; only the driver sets one.
+
+**The bolt driver.** A tool (`Consumable.Kind.TOOL`) bought at the repair station ($175) and kept. Its bolts are consumed items sold in packs of 8 for $24 (`Consumable.perPurchase`); a pack that does not fit in the inventory whole is refused and nothing is charged. The driver draws on the pack and the offhand, never on what is worn:
+- A right click on a roof sets a roof bolt. Refused: in a pod seat, with no bolts, where the player may not build, on anything that is not natural rock, within 2 blocks of another bolt (it would hold nothing new). The bolt is spent before the roof bolt hangs.
+- A right click anywhere else fires a bolt along the look line, 24 blocks. It stops at the first block and changes nothing there; at the first creature it takes 5 health. A Retained has 12, so it takes three (a Tally's one blow breaks it). It hurts another player only where the server allows PvP.
+- Either costs one bolt (a creative player's pack is not touched). Firing rests 12 ticks, setting 20.
+
+**Ladder.** By hand: the cave-in is a creak to run from. The driver: you bolt the stretch before you blast, or in the three seconds the creak gives. Later rungs, not built: a pod part that bolts as it bores (the liner's cousin), and a rated roof that needs none.
+
+**Trade-offs.** Bolts cost money every shot, and a bolt set is a bolt not fired. Measured by `BoltDriverPacingTest` on the real driver and cave-in, with the dollars modelled from `EarlyRunModel`:
+
+| What | Number | Basis |
+|---|---|---|
+| Creak before the first rock falls | 60 ticks (3 s) | measured, `BoltDriverPacingTest` |
+| Roof cells that fall, and how far from the person | 29, as far as 3 cells | measured |
+| Bolts to end a Retained | 3 ($9) | measured |
+| Bolts to break a Tally | 1 | measured |
+| Roof bolt spacing in a 1-wide tunnel | 1 every 5 blocks | measured |
+| Bolting 100 blocks of tunnel | 20 bolts, $60, 13% of a layer 2 run | spacing measured, dollars modelled |
+| Three Retained fights in a layer 2 run | $27, 6% of the run's $455 | modelled |
+| The driver | $175, 38% of a layer 2 run | modelled |
+| A pack of 8 bolts | $24, 5% of a layer 2 run | modelled |
+
+**Harder or easier.** The cave-in is new and harder, but only a blast starts one, and nothing on foot is shaken by a pod's drilling or by the walk. The default pod build is unchanged (a pilot's roof is never shaken). Unpacked, on foot near a pod's blast, the risk is new: a person with no driver and no bolts has the 3 s creak to leave the stretch (3 blocks flat, a few steps) and otherwise takes 2 to 5 health from one rock. Early game, where a pilot dynamites with a crew mate on foot, the crew mate takes it; on a server with PvP off, only the crew of the charter that set the blast do.
+
+**Knobs.** `CaveInTuning` (`warnTicks`, `cueTicks`, `stretchRadius`, `ceilingReach`, `boltReach`, `shakeReach`, `fallDamage`, `fallDamageMax`) and `BoltDriverTuning` (`range`, `damage`, `fireCooldownTicks`, `setCooldownTicks`, `boltSpacing`); prices and the pack size in `Consumable`.
+
+**Pins.** `BoltDriverTest` (ids, firing and ammo, range, no grief, PvP, the pod seat, setting, the creak before the fall, the held and loose stretch, a bolt set during the creak, the blast hook from a pod's dynamite and whose charter it shakes, a person who ignores the creak, a stop that forgets a creak, persistence across a chunk save and load) and `BoltDriverPacingTest`.
+
+**Open questions.** An organic start for cave-ins in layers 2 and 3 (a loose-roof worldgen feature, or the deep tremors of SPEC section 11), once on-foot exploring has places worth collapsing. Whether the Sleeper's creatures should start one, as the immune response to drilling.
+
 ## The tether (#986, A)
 
 **Problem.** A person on foot (SPEC section 9) has nothing between them and a long fall, a grip they cannot walk out of, or a wreck to haul away. CREATURES section 8 lists "a line to the pod's winch: pulls you back, and tows in the Hush fight" as the on-foot kit's answer.
@@ -1870,6 +2002,47 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open questions.** The Retained's grip on foot (#925) is not built, so there is nothing to winch out of yet: the winch sets a velocity, which a slow from a grip does not touch. The suit timer is not built either. The winch makes the placeholder grindstone sound until the sound pass.
 
+## The thrown kit (#985, A)
+
+**Problem.** CREATURES section 8 gives the operator flares, decoys and charge rounds, and a crew on foot has nothing: the Hush's solo answer is "fused charges and thrown decoys on timers", the Great Listener's is "set a decoy, plant, retreat", and the Retained on foot are kept off by a light in hand, which is also the thing a person needs both hands for. The kit is the operator's rounds by hand, and every throw is bought (pillar 1).
+
+**The three.** Each is a consumable the repair station sells, used from the hand on foot. A throw from a seat is refused and kept. It flies like a snowball and lands on the top face of a block; a wall or a creature turns it back and it drops.
+
+| Item | Lands, then | Reads as | Costs |
+|---|---|---|---|
+| Flare | stands a burning light block for 90 s | real block light, so every rule that reads block light sees it (the natural spawn, the Retained on foot at block light under 3); and a pod within 10 blocks counts as lit while the block stands, so it draws no Retained. A flare that finds no footing (water, a solid cell) goes out and comes back to the thrower | $12 |
+| Decoy | rings a bell every second for 45 s | a noise source: `DrawSources.noiseTarget` hands a creature within 40 blocks the decoy instead of the drill. Not sold yet: its pull goes live, and it goes on sale, with the first creature drawn to the drill (Drifters, #918) | $25 |
+| Charge | burns a 3 second fuse, then blasts | the pod's blasting charge, through `PodCharge.detonate`: the 3 x 3 column under it, 2 rows deep, clears Company rock and natural rock only where the column holds Company rock, spares what is built, bedrock and fluids, hurts a pod in reach by distance | $55 |
+
+**Ladder.** By hand: the kit is the hand stage of the operator's flare rounds, decoy rounds and charge launcher (layer 4 and the Badger), which fire the same three from a seat at range. A crew with the operator throws less; a solo player on foot throws more.
+
+**Counterplay and its limits.** A flare keeps a Retained off a dark pod, and frees no one already held: the cutter or a blow still ends a grip (CREATURES section 3). A charge hurts a person at the blast, but never kills: it leaves half a heart at worst, so the cost of a bad throw is health and a lesson, not a run. Who is hurt is a rule (below). A decoy does nothing to Moloch's things: they are drawn to the dark.
+
+**Measured and modelled** (`ThrownKitPacingTest`, quoted by the PR). Measured from real runs: the throw ranges, the flare's burn, the decoy's lifetime and the charge's fuse, each from landing to its end; prices are read from `Consumable` and a run's net from `EarlyRunModel`, the economy test's own model ($124 in layer 1, $455 in layer 2). Modelled: how long each fight lasts, how fast a person walks (4.3 blocks a second) and the Listeners' patience (10 s).
+
+| What | Number | Band |
+|---|---|---|
+| Flat throw, level with the eyes (measured) | lands 11 blocks away after 11 ticks | 8 to 16 |
+| Lob, 15 degrees up (measured) | lands 24 blocks away after 25 ticks | 14 to 30 |
+| Holding a dark stretch for five minutes (modelled fight, measured burn) | 4 flares, $48, 11% of a layer 2 run | 2 to 6 throws, 5% to 25% |
+| The Hush, solo: a three minute tow under decoys, two charges | 6 throws, $210, 46% of a layer 2 run | 4 to 10 throws, 30% to 70% |
+| A Listener: a decoy, a charge | 2 throws, $80, 18% of a layer 2 run | 2 to 3 throws, 10% to 35% |
+| One flare against the Retained's cadence (measured burn) | 90 s against a 20 s wait after a kill: 4.5 gaps | 3 to 10 |
+| A decoy's lifetime (measured) | 45 s | 20 s to 90 s |
+| A charge's fuse against the walk out of its reach (measured fuse, modelled walk) | 61 ticks against 24 | at least twice, at most 6 s |
+
+**Knobs.** `ThrownKitTuning` (throw speed, flare light, reach and burn, decoy noise, pull and pulse, charge fuse, radius and damage to a person), the three prices in `Consumable`, and `RepairTuning`'s charge depth, damage and reach, which the thrown charge shares with the pod's.
+
+**Decisions (A).**
+- The flare is a block, not an entity with a virtual light: the light engine and every light rule see it with no special case, and a scheduled tick puts it out through an unload. Its reach for pods is the one part a block cannot carry (a pod's lights are not block light), so `DrawSources` holds it, and only counts it while the block still stands ([ADR 0078](../adr/0078-draw-sources-are-the-one-place-thrown-things-speak-to-creatures.md)).
+- The decoy's hook is `DrawSources.noiseTarget(level, from, drillAt)`: no creature on main is drawn to the drill, so the decoy is registered, hooked and tested but not sold (`Consumable.sold()`) until the first one lands. Whichever of this and the Drifters (#975) merges second flips the switch and adds the call in `Drifter.steer`.
+- A flare that finds no footing goes out and is given back, with a message: a throw into a flooded bore is a lesson, not a loss.
+- Friendly fire is deliberate. A thrown charge hurts the thrower and their own charter's crew (the fuse and the GET CLEAR bar warn them), and other players only where the server allows PvP. It never hurts a pod that another charter owns; an unowned pod and one of the thrower's charter are hurt as the pod's own charge hurts them.
+- A thrown charge clears rock only where its column holds Company rock, the pod's own rule, kept in one place in `PodCharge`: otherwise a $55 throw would be dynamite that outranges the seat.
+- Thrown things are not saved. A throw whose chunk unloads is spent, as the pod's fuse is; a flare's block is saved and burns out on its own, though after a restart it no longer keeps a pod from being drawn to the dark.
+
+**Open questions.** Whether a decoy should wake the Retained's cousins (Tallies click toward noise); whether a thrown charge should break a creature's grip on a pod when it lands on the hull; a suit lamp that makes the flare optional on foot.
+
 ## Pod hazard cues (#854, A)
 
 **Problem.** A gas blast and a hard landing cost hull, and an overloaded pod's jump did nothing, each with no cue of its own. A player could not tell what had happened, or that the cargo was the reason the rotor would not lift.
@@ -1887,3 +2060,37 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Rate.** A blast and a landing cue each event, and say nothing when the hull took under half a point (gas above sea level, a soft landing, a blast out of reach). A hit that empties the hull still reaches the riders it ejects. The overloaded line cues on each new press of jump, and repeats every `PodCuesTuning.overloadRepeatTicks` (40) while it stays held, a little under the 60 ticks the line stays on the bar.
 
 **Open.** A tiered sensor could name a hazard before it hurts (the ladder's second stage); this is only the by-hand stage, the cue after the fact.
+
+## Environment ratings (#989, A)
+
+**Problem.** SPEC section 11 gives every depth ratings for heat, pressure, flooding and quake bracing and says an outpost built below them is uninhabitable. Nothing in the game said what a block holds, what a depth asks, or whether the block in your hand would hold where you aim it, and [#926](https://github.com/pkeppeler/deepcharter/issues/926) (creatures break exposed unrated blocks) needs those answers first. The model is ADR 0076 (`docs/adr/0076-*.md`).
+
+**Where ratings start.** Layers 1 and 2 ask nothing (`RatingTuning.DEFAULT`): CREATURES section 9 states the first notice "below layer 2", and the note above says rated materials matter from layer 3 on. The tags still rate the blocks, because layer 3 and up will ask for them; layer 3's row comes with its worldgen ([#972](https://github.com/pkeppeler/deepcharter/issues/972)), and a test fails until it states one. So today the readout shows nothing on the surface or in layers 1 and 2, and the spec sheet is what a player sees.
+
+**What a block holds (measured: `OutpostRatingsTest` reads the tag data, the same the game reads).**
+
+| Block | Heat | Pressure | Flooding | Quake |
+|---|---|---|---|---|
+| Packed shale, breach crust (layer 1's own rock) | 1 | 1 | 1 | 1 |
+| Green shale (layer 2's own rock) | 2 | 2 | 2 | 2 |
+| Slag brick (fused from spoil) | 2 | 2 | 2 | 2 |
+| Company kit (plate, concrete, beam, terminals, lamps) | 2 | 2 | 2 | 2 |
+| Window glass | 2 | 0 | 2 | 0 |
+| Grating | 2 | 0 | 0 | 2 |
+| Vanilla blocks, regolith, stalks, ore, rubble | 0 | 0 | 0 | 0 |
+
+**The readout and the sheet.** Where a depth asks something, holding a block and aiming at a block puts a word two lines under the crosshair (`PlacementReadoutHud`, fading as the block readout does): HOLDS HERE or WILL NOT HOLD UNATTENDED, and for the last "Short on: heat, quake". A block's tooltip, its spec sheet, states "Rated: heat 2, pressure 2, flooding 2, quake 2"; a block rated nothing has no such line. Where a block holds comes with the first layer that asks.
+
+**Left to others.** SHELTERED and its shelter hook are #926's: they need the shell's exposure, so that issue adds them with its rule. Whether an outpost's shell holds its layer comes with its first caller, the suit timer and uninhabitable outposts ([#993](https://github.com/pkeppeler/deepcharter/issues/993)).
+
+**Cost of a rated shell (modelled, an example for a future layer that asks level 2; no layer does yet; `OutpostRatingsPacingTest`).** A small outpost is a room 3 by 3 inside and 2 high with a shell one block thick: 82 blocks. Below layer 1 a hand cannot break rock, so the shell is slag brick, 2 spoil each: 164 spoil. A Mole with tier 2 parts and a full spoil bay brings 32 bricks per layer 2 run, and the hopper does not change that run's net, $413. That is 3 runs of spoil and no money. From layer 1 spoil a stock Mole brings 21 bricks and nets $115 a run: 4 runs.
+
+**Decisions (A).**
+- Ratings start at layer 3; layers 1 and 2 ask nothing.
+- Slag brick is level 2: the one rated block below layer 1 that a player can make, and the reason the hopper and the processor matter from layer 3.
+- Glass and grating are rated unevenly on purpose, so the four axes mean different things and a window is a weakness in a shell.
+- A vanilla block is unrated: a pack may rate one by adding it to a tag.
+
+**Knobs.** `RatingTuning.DEFAULT` (the layer rows and the highest tag level), the tags in `data/deepcharter/tags/block/rating/`.
+
+**Open questions.** What layer 3 asks, which is its worldgen's to say.

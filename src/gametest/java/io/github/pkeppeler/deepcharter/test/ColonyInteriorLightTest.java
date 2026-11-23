@@ -50,6 +50,7 @@ public class ColonyInteriorLightTest {
                 .orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
         List<BlockPos> chunks = ColonyChunks.of(colony);
         int[] ticking = {0};
+        FarChunks.Deadline deadline = FarChunks.deadline();
         FarChunks.awaitEntityTicking(helper, level, chunks, index -> ticking[0]++);
         helper.succeedWhen(() -> {
             if (ticking[0] < chunks.size()) {
@@ -76,12 +77,11 @@ public class ColonyInteriorLightTest {
                 throw failure(helper, "no room of the layout holds a cell a block does not fill");
             }
             if (!problems.isEmpty()) {
-                throw failure(
-                        helper,
+                String message = String.format(
                         "%s problem(s) in %s interior cell(s):\n  %s",
-                        problems.size(),
-                        cells,
-                        String.join("\n  ", problems));
+                        problems.size(), cells, String.join("\n  ", problems));
+                deadline.await(helper, level, false, () -> message);
+                throw failure(helper, "%s", message);
             }
         });
     }

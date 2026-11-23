@@ -27,6 +27,9 @@ import org.jspecify.annotations.Nullable;
 
 /** Proves the {@link MockPlayers} harness: a mock player is a real player that stays connected. */
 public class MockPlayersTest {
+    /** The batch of the retention probes and their checker (test_environment/mock_retention.json). */
+    private static final String RETENTION = "deepcharter-test:mock_retention";
+
     private static final AtomicReference<WeakReference<ServerPlayer>> PROBE = new AtomicReference<>();
     private static final AtomicReference<WeakReference<ServerPlayer>> OUTSIDE_PROBE = new AtomicReference<>();
     private static final AtomicReference<List<WeakReference<ServerPlayer>>> RESPAWN_PROBE = new AtomicReference<>();
@@ -263,7 +266,7 @@ public class MockPlayersTest {
      * callback still scheduled. The runner keeps every finished test, so what its pending callbacks capture lives to the end of the run
      * unless the test's end drops them.
      */
-    @GameTest
+    @GameTest(environment = RETENTION)
     public void retentionProbeJoinsAMockAndEnds(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "retention-probe");
         PROBE.set(new WeakReference<>(mock.player()));
@@ -285,7 +288,7 @@ public class MockPlayersTest {
      * captures the mock (#656): the runner's tick returns early for a done test, so only a release that does not depend on
      * the finishing tick drops it.
      */
-    @GameTest
+    @GameTest(environment = RETENTION)
     public void retentionProbeEndsOutsideItsTick(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "retention-outside");
         OUTSIDE_PROBE.set(new WeakReference<>(mock.player()));
@@ -296,7 +299,7 @@ public class MockPlayersTest {
     }
 
     /** Respawns its mock as the Respawn button does, so the sweep must disconnect the listener (#698). */
-    @GameTest
+    @GameTest(environment = RETENTION)
     public void retentionProbeRespawnsItsMock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "retention-respawn");
         ServerPlayer dead = mock.player();
@@ -337,8 +340,12 @@ public class MockPlayersTest {
         });
     }
 
-    /** A finished test lets go of its mock player (#656). Runs with the two probes above: filter the class, not one test. */
-    @GameTest(maxTicks = 200)
+    /**
+     * A finished test lets go of its mock player (#656). It reads what the three retention probes stored, so they and it share {@link
+     * #RETENTION}, a batch of their own: the batches hold at most 20 tests and split a class wherever the count falls, and a checker in an
+     * earlier batch than its probes would never see them. It polls until the probes have joined.
+     */
+    @GameTest(environment = RETENTION, maxTicks = 200)
     public void finishedTestDoesNotRetainItsMock(GameTestHelper helper) {
         helper.succeedWhen(() -> {
             List<WeakReference<ServerPlayer>> respawned = RESPAWN_PROBE.get();
