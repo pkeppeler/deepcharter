@@ -823,6 +823,9 @@ public class TallyTest {
                 }
                 return;
             }
+            if (arena.tally.isRemoved()) {
+                throw failure(helper, "the Tally was removed when its person left, not let go");
+            }
             if (!arena.tally.isClamped()) {
                 if (!arena.tally.isAlive()) {
                     throw failure(helper, "the Tally died when its person left");
@@ -834,7 +837,16 @@ public class TallyTest {
                 throw failure(helper, "the Tally still clamped a person who left 10 ticks ago");
             }
         });
-        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Arena.build(helper, level, origin, false);
+            // Another test's player, as in a full run: far from the arena, where the Tally's person leaves to.
+            MockPlayers.join(helper, "far-bystander");
+            // A Tally with no player within 128 blocks is removed at once (vanilla despawn), clamped or not, so the
+            // arena
+            // keeps a creative bystander, who draws no Tally, to make the release the only way out (#1138).
+            MockPlayers.join(helper, "near-bystander")
+                    .teleportTo(level, Vec3.atBottomCenterOf(origin.north(HALF - 1)), 0f, 0f);
+        });
     }
 
     /**
