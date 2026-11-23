@@ -143,7 +143,7 @@ done
 git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
 main_sha=$(git rev-parse origin/main 2>/dev/null) || main_sha=
 [[ $main_sha =~ ^[0-9a-f]{40}$ ]] || refuse "could not read the sha of origin/main"
-stale_fix="re-run CI on the current main by re-running the head's CI and Client tests workflow runs [stale-base] (the head sha is unchanged, so the review pass stays valid)"
+stale_fix="record the current main by re-running the head's CI and Client tests workflow runs [stale-base] (the head sha is unchanged, so the review pass stays valid)"
 based_names=("${REQUIRED_CHECKS[@]}")
 grep -qxF "pass"$'\t'"client-gametest" <<<"$checks" && based_names+=(client-gametest) # pipe-grep-q: fail-closed
 for based in "${based_names[@]}"; do
