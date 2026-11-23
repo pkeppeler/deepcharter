@@ -2092,9 +2092,13 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **The hazard: spore gas.** The Spore Fields' fill holds the layer's most gas pockets (12% of non-ore rock against 5 and 6), and the pockets are the existing `gas_pocket`: the same blast, sounder, scanner tier and sideways share. No new counter is needed, so the gas ladder serves layer 3 as it is; drifting spores (ambient particles) mark the zone. Spore-gas clouds that drift in the open caverns belong to the Drifters (#918).
 
-**Light.** Glowcaps, a small fungus on cavern floors, give block light 6 (`LayerTuning.glowcapLight`): cold, small and scattered, so the caverns stay dark and a lamp still matters.
+**Light.** Glowcaps, a small fungus on cavern floors, give block light 6 (`LayerTuning.glowcapLight`): cold, small and scattered, so the caverns stay dark and a lamp still matters. A picked glowcap is a hand light (`hand_lights`): it keeps the Retained off a person on foot as a torch does.
+
+**Lava stays in the rock.** The lining lines lava that faces a cavern and turns lava one block further in to basalt, because a column does not fill its cell and passes light. Lava on the faces lit thousands of open cells and made the band cost 2.90x `tall_layer` per row (ADR 0086's measure); sealed, about 1.1x to 1.3x. Lava is still a drilling hazard inside the rock, at the table's chance per block of rock that is not near a cavern.
 
 **Ore and hazards.** The original's rows 134 to 203 in thirds, by the formula of ADR 0015: more Goldium and Platinium, Einsteinium in every zone, Cicatrium 0.08% to 0.12%. Company Rock 10% to 13% and lava 5% to 6% of non-ore rock, never less than Prospector's Run.
+
+**Steps.** Layer 3's fill, lining and growth stand in decoration steps no other biome uses (5, 7 and 8, not the fill's usual 6 and growth's 9): a feature's random is seeded by its index in its step across all the generator's biomes, and new features in steps 6 and 9 shifted the seeds of layers 1 and 2's fills and changed their ore and lava. `CampaignWorldHashTest` shows the world above layer 3 unchanged.
 
 **Tuning knobs.** The noise in `campaign.json` (column threshold 0.40, 0.62 in the Quiet; shelf thickness and holes), `line_hollows.json` (`depth`), the glowcap counts in `glowcaps_<zone>.json`, the fills in `fill_<zone>.json`, `LayerTuning.glowcapLight`.
 

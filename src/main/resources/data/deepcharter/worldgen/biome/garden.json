@@ -54,18 +54,18 @@
     [],
     [],
     [],
-    [],
     [
       "deepcharter:fill_garden"
     ],
+    [],
     [
       "deepcharter:line_hollows"
     ],
-    [],
     [
       "deepcharter:fungal_stalks_hollows",
       "deepcharter:glowcaps_garden"
     ],
+    [],
     []
   ],
   "has_precipitation": false,

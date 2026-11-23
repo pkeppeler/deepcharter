@@ -433,13 +433,14 @@ public class CampaignCrossingTest {
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void theBandTableReadsTheSameForEveryY(GameTestHelper helper) {
         List<String> seen = new ArrayList<>();
-        for (int y : new int[] {319, -64, -65, -256, -257, -512, -513}) {
+        for (int y : new int[] {319, -64, -65, -256, -257, -512, -513, -768, -769}) {
             seen.add(y + "="
                     + CampaignBands.bandAt(y)
                             .map(band -> String.valueOf(band.layer()))
                             .orElse("none"));
         }
-        List<String> expected = List.of("319=0", "-64=0", "-65=1", "-256=1", "-257=2", "-512=2", "-513=none");
+        List<String> expected =
+                List.of("319=0", "-64=0", "-65=1", "-256=1", "-257=2", "-512=2", "-513=3", "-768=3", "-769=none");
         if (!seen.equals(expected)) {
             throw failure(helper, "expected %s, got %s", expected, seen);
         }

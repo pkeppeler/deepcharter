@@ -32,17 +32,17 @@
     [],
     [],
     [],
-    [],
     [
       "deepcharter:fill_quiet"
     ],
+    [],
     [
       "deepcharter:line_hollows"
     ],
-    [],
     [
       "deepcharter:glowcaps_quiet"
     ],
+    [],
     []
   ],
   "has_precipitation": false,

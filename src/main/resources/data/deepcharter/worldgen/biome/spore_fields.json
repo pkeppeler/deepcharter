@@ -54,17 +54,17 @@
     [],
     [],
     [],
-    [],
     [
       "deepcharter:fill_spore_fields"
     ],
+    [],
     [
       "deepcharter:line_hollows"
     ],
-    [],
     [
       "deepcharter:glowcaps_spore_fields"
     ],
+    [],
     []
   ],
   "has_precipitation": false,
