@@ -4,8 +4,8 @@
 # Merges the given PRs one at a time, in order, through tools/merge-pr.sh (the gate).
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
-#   - refusal carrying the "[stale-base]" marker (stale base): re-run the head's build, tool-tests and
-#     client-gametest jobs (see rerun_ci; the PR's state and head are never touched), sleep, wait for CI again, retry
+#   - refusal carrying the "[stale-base]" marker (stale base): re-run the whole runs holding the head's
+#     newest non-skipped build, tool-tests and client-gametest jobs (see rerun_ci; the PR's state and head are never touched), sleep, wait for CI again, retry
 #     (up to MERGE_QUEUE_STALE_RETRIES, default 3). No such job for the sha, or a refused re-run, stops the queue
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
@@ -118,17 +118,17 @@ wait_ci() {
   done
 }
 
-# rerun_ci <pr> <sha>: re-run the jobs whose `merged-main` record the gate reads (build, tool-tests and, when it
-# ran, client-gametest; client-changes is not read, and each of those jobs merges the live main itself, so
-# re-running one needs no upstream job). Per job it takes the newest non-skipped one across the head sha's runs: a
-# run can be non-skipped while its client-gametest job was skipped (#1092), which re-running the run never fixes.
+# rerun_ci <pr> <sha>: re-run the workflow runs that hold the jobs whose `merged-main` record the gate reads (build,
+# tool-tests and, when it ran, client-gametest; client-changes is not read, and each of those jobs merges the live
+# main itself). Never a single job: a job re-run copies the run's other finished jobs into the new attempt without
+# their annotations, so the gate reads them as "no merged main recorded" and calls the base stale again (#1094).
+# Per job it takes the newest non-skipped one across the head sha's runs (a run can be non-skipped while its
+# client-gametest job was skipped, #1092) and re-runs that job's run whole, once per distinct run.
 # Returns 1 and sets $rerun_err when build or tool-tests has no such job, the runs or jobs cannot be listed or the
 # API refuses a re-run (for example a run older than 30 days). An unfinished run is skipped (the API refuses to
-# re-run into it); if it finishes stale, the next retry re-runs it, at the cost of one retry. A job re-run also
-# re-runs its dependents and is refused while its run is in progress, so jobs of one run are re-run together
-# by one run re-run, never by two job re-runs.
+# re-run into it); if it finishes stale, the next retry re-runs it, at the cost of one retry.
 rerun_ci() {
-  local sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit job_id count handled=","
+  local sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit handled=","
   rerun_err=
   rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" --paginate \
     --jq '.workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
@@ -142,9 +142,8 @@ rerun_ci() {
       jobs_rows=$(gh api "repos/$repo/actions/runs/$run_id/jobs?per_page=100" --paginate \
         --jq '.jobs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
         || { rerun_err="PR #$1: could not list the jobs of $workflow run $run_id"; return 1; }
-      job_id=$(awk -F'\t' -v j="$job" '$2 == j && $4 != "skipped" { print $1; exit }' <<<"$jobs_rows")
-      if [[ -n $job_id ]]; then
-        hit="$run_id"$'\t'"$job_id"$'\t'"$job"$'\t'"$workflow"$'\t'"$run_status"
+      if [[ -n $(awk -F'\t' -v j="$job" '$2 == j && $4 != "skipped" { print $1; exit }' <<<"$jobs_rows") ]]; then
+        hit="$run_id"$'\t'"$workflow"$'\t'"$run_status"
         break
       fi
     done < <(awk -F'\t' -v w="$workflow" '$2 == w && $4 != "skipped" { print $1 "\t" $3 }' <<<"$rows")
@@ -155,24 +154,16 @@ rerun_ci() {
       return 1
     fi
   done
-  while IFS=$'\t' read -r run_id job_id job workflow run_status; do
-    [[ -n $run_id ]] || continue
+  while IFS=$'\t' read -r run_id workflow run_status; do
+    [[ -n $run_id && $handled != *",$run_id,"* ]] || continue
+    handled+="$run_id,"
     if [[ $run_status != completed ]]; then
-      say "run $run_id ($workflow) is still in progress ($run_status): not re-running $job"
+      say "run $run_id ($workflow) is still in progress ($run_status): not re-running it"
       continue
     fi
-    [[ $handled != *",$run_id,"* ]] || continue
-    handled+="$run_id,"
-    count=$(awk -F'\t' -v r="$run_id" '$1 == r' <<<"$picks" | wc -l)
-    if ((count > 1)); then
-      say "re-running $workflow run $run_id"
-      gh api -X POST "repos/$repo/actions/runs/$run_id/rerun" >/dev/null 2>&1 \
-        || { rerun_err="PR #$1: GitHub refused to re-run $workflow run $run_id (older than 30 days? push a commit instead)"; return 1; }
-    else
-      say "re-running $job job $job_id of $workflow run $run_id"
-      gh api -X POST "repos/$repo/actions/jobs/$job_id/rerun" >/dev/null 2>&1 \
-        || { rerun_err="PR #$1: GitHub refused to re-run $job job $job_id of $workflow run $run_id (older than 30 days? push a commit instead)"; return 1; }
-    fi
+    say "re-running $workflow run $run_id"
+    gh api -X POST "repos/$repo/actions/runs/$run_id/rerun" >/dev/null 2>&1 \
+      || { rerun_err="PR #$1: GitHub refused to re-run $workflow run $run_id (older than 30 days? push a commit instead)"; return 1; }
   done <<<"$picks"
 }
 
