@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.sound;
 
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
+import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographReadout;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 
 /**
@@ -14,6 +15,7 @@ public final class SoundInit {
         SoundRegistry.register();
         PhonographRegistry.register();
         AmbienceRegistry.register();
+        PhonographReadout.init();
         TerminalSounds.init();
         HymnMoments.init();
     }
