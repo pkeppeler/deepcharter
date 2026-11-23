@@ -50,7 +50,7 @@ import net.minecraft.world.level.levelgen.RandomState;
  */
 public class SurfaceTerrainTest {
     private static final String SAMPLE = "deepcharter:surface_sample";
-    private static final int MAX_TICKS = 6000;
+    private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 6000;
     /** The ground of the colony pad: the first block above it is free. */
     private static final int PAD_GROUND = 64;
     /** The pad is flattened out to a radius of 56 blocks; the check keeps clear of the ramp at the edge. */

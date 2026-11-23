@@ -28,10 +28,12 @@ import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -42,11 +44,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -608,6 +612,11 @@ public class CompanyRecoveryTest {
             if (!restored[0]) {
                 throw helper.assertionException("waiting for the crew to find the landing blocked");
             }
+            if (waterLeft(scene.server, flooded)) {
+                // The water that ran from the layer while it was put back drains by itself; the colony tests after this
+                // one read the pad.
+                throw helper.assertionException("waiting for the water that ran from the flood to drain");
+            }
             PodEntity pod = scene.current();
             verify(
                     helper,
@@ -653,7 +662,44 @@ public class CompanyRecoveryTest {
         }
     }
 
+    /**
+     * The blocks the flood can have reached: a block round each block of its layer, which the water makes sources between. The two places
+     * it floods (the pad and the world spawn) can lie far apart, so this is not one box.
+     */
+    private static Set<BlockPos> floodedArea(Map<BlockPos, BlockState> flooded) {
+        Set<BlockPos> area = new HashSet<>();
+        for (BlockPos top : flooded.keySet()) {
+            for (BlockPos pos : BlockPos.betweenClosed(top.offset(-2, -1, -2), top.offset(2, 2, 2))) {
+                area.add(pos.immutable());
+            }
+        }
+        return area;
+    }
+
+    /** Whether any water stands in {@link #floodedArea}, flowing water included. */
+    private static boolean waterLeft(MinecraftServer server, Map<BlockPos, BlockState> flooded) {
+        ServerLevel overworld = server.overworld();
+        for (BlockPos pos : floodedArea(flooded)) {
+            if (overworld.getFluidState(pos).is(FluidTags.WATER)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Puts the flooded layer back, then clears the water that ran from it: water makes sources of its own between two sources, which the
+     * layer's saved blocks do not name, and nothing else would take them away from the pad that the colony tests read. The blocks are
+     * written for the clients only, so that no neighbour update starts the flow again.
+     */
     private static void restore(MinecraftServer server, Map<BlockPos, BlockState> flooded) {
-        flooded.forEach((pos, state) -> server.overworld().setBlock(pos, state, 3));
+        ServerLevel overworld = server.overworld();
+        flooded.forEach((pos, state) -> overworld.setBlock(pos, state, Block.UPDATE_CLIENTS));
+        for (BlockPos pos : floodedArea(flooded)) {
+            if (overworld.getFluidState(pos).is(FluidTags.WATER)) {
+                // room-carver: the water the flood left on the colony pad, not layer rock
+                overworld.setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+            }
+        }
     }
 }
