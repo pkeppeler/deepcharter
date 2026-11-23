@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.layer.PendingStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.IsolatedBatches;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
@@ -42,7 +43,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
  * simulated by the real events a start fires ({@code SERVER_STARTED}, {@code BEGUN}) after the chunks were saved and unloaded.
  *
  * <p>The test case is a swap of the colony's record: chunks loaded in it are held while the real colony has a pad, and no event follows.
- * The next chunk load draws them.
+ * The next chunk load draws them. Each test is a batch of its own ({@link IsolatedBatches}): the drain is world-global.
  */
 public class StructureRestartTest {
     private static final int TICKS = FarChunks.AWAIT_BUDGET_TICKS + 600;
@@ -85,13 +86,13 @@ public class StructureRestartTest {
         }
     }
 
-    @GameTest(maxTicks = TICKS)
+    @GameTest(environment = IsolatedBatches.STRUCTURE_DRAIN_STARTED, maxTicks = TICKS)
     public void aChunkHeldBeforeThePadIsChosenIsDrawnWhenTheServerStartsAgain(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         restart(helper, 70, () -> ServerLifecycleEvents.SERVER_STARTED.invoker().onServerStarted(server));
     }
 
-    @GameTest(maxTicks = TICKS)
+    @GameTest(environment = IsolatedBatches.STRUCTURE_DRAIN_BEGUN, maxTicks = TICKS)
     public void aChunkHeldBeforeThePadIsChosenIsDrawnWhenTheColonyBegins(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         restart(
@@ -132,7 +133,7 @@ public class StructureRestartTest {
     }
 
     /** The chunks stay loaded and no event follows the end of the swap: loading any other chunk is what draws them. */
-    @GameTest(maxTicks = TICKS)
+    @GameTest(environment = IsolatedBatches.STRUCTURE_DRAIN_SWAP, maxTicks = TICKS)
     public void chunksHeldDuringASwapOfTheColonyAreDrawnByTheNextChunkLoad(GameTestHelper helper) {
         Cell cell = Cell.of(helper, 71);
         cell.loadWithoutAPad(helper);
