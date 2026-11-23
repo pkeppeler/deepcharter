@@ -31,4 +31,4 @@ Issue #745, part of #215 and the campaign world plan (#214, [ADR 0059](0059-the-
 
 ## Amended, 2026-11-23 (#1111): the teleport crossing stays
 
-The plan to delete the teleport crossing, the layer dimensions and the per-dimension API is dropped (#804, closed as not planned). They stay as the base of the dimension seam between tall dimensions ([ADR 0085](0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). The in-place crossing here still holds for a layer boundary inside one dimension. Whether the dimension seam keeps the fade and the pocket is open.
+The plan to delete the teleport crossing, the layer dimensions and the per-dimension API is dropped (#804, closed as not planned). They stay as the base of the seam between tall dimensions ([ADR 0085](0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). The in-place crossing here still holds for a layer boundary inside one dimension. Whether the seam keeps the fade and the pocket is open.
