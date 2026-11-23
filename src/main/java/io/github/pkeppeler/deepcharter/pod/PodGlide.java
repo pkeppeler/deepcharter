@@ -117,11 +117,9 @@ final class PodGlide extends AbstractInterpolationHandler {
             step = distance * share;
         } else {
             double pace = Math.max(speed, PodTuning.DEFAULT.movement().horizontalSpeed()) * tuning.catchUp();
-            // A pod that coasted is nearly on its next target, and a share of that small gap would crawl for a tick:
-            // while the
-            // server reports the pod moving, a tick covers at least that speed (or the whole gap, if it is smaller). A
-            // pod
-            // that has not coasted trails its target by design, and keeps the share.
+            // A coasted pod sits almost on its target, and a share of that gap would crawl: while the server reports
+            // motion, a tick covers at least the reported speed. A pod that never coasted trails by design and keeps
+            // the share.
             double flow = moving && coastDirection != null ? speed : 0;
             step = Math.min(Math.max(distance * share, flow), Math.max(pace, distance / tuning.catchUpTicks()));
         }
@@ -132,8 +130,7 @@ final class PodGlide extends AbstractInterpolationHandler {
         remaining = Math.max(0, remaining - 1);
         if (arrives) {
             if (coastDirection != null) {
-                // The floor ran a coasted pod onto its target early: finish the turn and let it coast on, not stand out
-                // the glide.
+                // The floor ran a coasted pod onto its target early: finish the turn and coast on.
                 entity.setYRot(target.yRot());
                 entity.setXRot(target.xRot());
                 remaining = 0;
@@ -149,8 +146,7 @@ final class PodGlide extends AbstractInterpolationHandler {
         if (!moving || coasted >= tuning.coastTicks()) {
             return false;
         }
-        // The last tick of a coast eases off, so a server a tick later than the coast slows the pod instead of stopping
-        // it dead.
+        // The last coast tick eases off, so a late server slows the pod instead of stopping it dead.
         boolean tail = coasted == tuning.coastTicks() - 1;
         if (!coast(tail ? reported.scale(tuning.coastTailShare()) : reported)) {
             return false;
@@ -159,7 +155,7 @@ final class PodGlide extends AbstractInterpolationHandler {
         return true;
     }
 
-    /** Draws the pod one more tick by {@code drawn} (its reported speed, or the tail's share of it), short of any block; false when it cannot move at all. */
+    /** Draws the pod one more tick by {@code drawn}, short of any block; false when it cannot move at all. */
     private boolean coast(Vec3 drawn) {
         AABB box = entity.getBoundingBox();
         Vec3 step = drawn;
