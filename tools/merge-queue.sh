@@ -4,9 +4,9 @@
 # Merges the given PRs one at a time, in order, through tools/merge-pr.sh (the gate).
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
-#   - refusal carrying the "[stale-base]" marker (stale base): re-run the head's CI and Client tests runs
-#     (see rerun_ci; the PR's state and head are never touched), sleep, wait for CI again, retry
-#     (up to MERGE_QUEUE_STALE_RETRIES, default 3). No run for the sha, or a refused re-run, stops the queue
+#   - refusal carrying the "[stale-base]" marker (stale base): re-run the head's build, tool-tests and
+#     client-gametest jobs (see rerun_ci; the PR's state and head are never touched), sleep, wait for CI again, retry
+#     (up to MERGE_QUEUE_STALE_RETRIES, default 3). No such job for the sha, or a refused re-run, stops the queue
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
 # After a merge, cleanup never loses work. It removes the PR's worktree only when that
@@ -118,32 +118,63 @@ wait_ci() {
   done
 }
 
-# rerun_ci <pr> <sha>: re-run the newest non-skipped CI and Client tests runs of the head sha. Returns 1 and sets
-# $rerun_err when no such run exists, the runs cannot be listed or the API refuses a re-run (for example a
-# run older than 30 days). Every CI job merges the live main when it runs. An unfinished run is skipped (the API
-# refuses to re-run it); if it finishes stale, the next retry re-runs it, at the cost of one retry.
+# rerun_ci <pr> <sha>: re-run the jobs whose `merged-main` record the gate reads (build, tool-tests and, when it
+# ran, client-gametest; client-changes is not read, and each of those jobs merges the live main itself, so
+# re-running one needs no upstream job). Per job it takes the newest non-skipped one across the head sha's runs: a
+# run can be non-skipped while its client-gametest job was skipped (#1092), which re-running the run never fixes.
+# Returns 1 and sets $rerun_err when build or tool-tests has no such job, the runs or jobs cannot be listed or the
+# API refuses a re-run (for example a run older than 30 days). An unfinished run is skipped (the API refuses to
+# re-run into it); if it finishes stale, the next retry re-runs it, at the cost of one retry. A job re-run also
+# re-runs its dependents and is refused while its run is in progress, so jobs of one run are re-run together
+# by one run re-run, never by two job re-runs.
 rerun_ci() {
-  local sha=$2 rows latest id name status
+  local sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit n handled=","
   rerun_err=
   rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" --paginate \
     --jq '.workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
     || { rerun_err="PR #$1: could not list the workflow runs of ${sha:0:9}"; return 1; }
-  # The API lists newest first. Per workflow take the first run that is not skipped: a label event adds a
-  # skipped run of each labeled workflow, which would hide the real run. An unfinished run has no conclusion.
-  latest=$(awk -F'\t' '($2 == "CI" || $2 == "Client tests") && $4 != "skipped" && !seen[$2]++' <<<"$rows")
-  if [[ -z $latest ]]; then
-    rerun_err="PR #$1: no CI or Client tests run exists for $sha to re-run (push, or start the workflows by hand)"
-    return 1
-  fi
-  while IFS=$'\t' read -r id name status _; do
-    if [[ $status != completed ]]; then
-      say "$name run $id is still in progress ($status): not re-running it"
+  for target in "CI|build|0" "CI|tool-tests|0" "Client tests|client-gametest|1"; do
+    IFS='|' read -r workflow job optional <<<"$target"
+    hit=
+    # The API lists newest first. A skipped run (a label event adds one) has only skipped jobs. An unfinished
+    # job has no conclusion, so it counts as not skipped.
+    while IFS=$'\t' read -r run_id run_status; do
+      jobs_rows=$(gh api "repos/$repo/actions/runs/$run_id/jobs?per_page=100" --paginate \
+        --jq '.jobs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
+        || { rerun_err="PR #$1: could not list the jobs of $workflow run $run_id"; return 1; }
+      n=$(awk -F'\t' -v j="$job" '$2 == j && $4 != "skipped" { print $1; exit }' <<<"$jobs_rows")
+      if [[ -n $n ]]; then
+        hit="$run_id"$'\t'"$n"$'\t'"$job"$'\t'"$workflow"$'\t'"$run_status"
+        break
+      fi
+    done < <(awk -F'\t' -v w="$workflow" '$2 == w && $4 != "skipped" { print $1 "\t" $3 }' <<<"$rows")
+    if [[ -n $hit ]]; then
+      picks+="$hit"$'\n'
+    elif [[ $optional == 0 ]]; then
+      rerun_err="PR #$1: no non-skipped $job job of $workflow exists for $sha to re-run (push, or start the workflows by hand)"
+      return 1
+    fi
+  done
+  local job_id
+  while IFS=$'\t' read -r run_id job_id job workflow run_status; do
+    [[ -n $run_id ]] || continue
+    if [[ $run_status != completed ]]; then
+      say "run $run_id ($workflow) is still in progress ($run_status): not re-running $job"
       continue
     fi
-    say "re-running $name run $id"
-    gh api -X POST "repos/$repo/actions/runs/$id/rerun" >/dev/null 2>&1 \
-      || { rerun_err="PR #$1: GitHub refused to re-run $name run $id (older than 30 days? push a commit instead)"; return 1; }
-  done <<<"$latest"
+    [[ $handled != *",$run_id,"* ]] || continue
+    handled+="$run_id,"
+    n=$(awk -F'\t' -v r="$run_id" '$1 == r' <<<"$picks" | wc -l)
+    if ((n > 1)); then
+      say "re-running $workflow run $run_id"
+      gh api -X POST "repos/$repo/actions/runs/$run_id/rerun" >/dev/null 2>&1 \
+        || { rerun_err="PR #$1: GitHub refused to re-run $workflow run $run_id (older than 30 days? push a commit instead)"; return 1; }
+    else
+      say "re-running $job job $job_id of $workflow run $run_id"
+      gh api -X POST "repos/$repo/actions/jobs/$job_id/rerun" >/dev/null 2>&1 \
+        || { rerun_err="PR #$1: GitHub refused to re-run $job job $job_id of $workflow run $run_id (older than 30 days? push a commit instead)"; return 1; }
+    fi
+  done <<<"$picks"
 }
 
 # real <dir>: physical path of a directory, empty if it does not exist.

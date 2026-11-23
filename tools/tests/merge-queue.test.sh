@@ -27,7 +27,7 @@ source "$FIXTURE_LIB"
 
 # gh: REST only. state (OPEN, CLOSED or MERGED, answered as the REST merged flag plus open/closed),
 # branch and sha come from $ST/state.N (default OPEN), $ST/branch.N (default N-slug).
-# $ST/wfruns holds the head sha's workflow runs. $ST/fixture.N replaces those with a recorded response (tools/tests/fixtures/gh-rest). $ST/rest_fail makes every PR read fail. `run list` pops one line per call from $ST/runs ("-" or no line = nothing unfinished).
+# $ST/wfruns holds the head sha's workflow runs, $ST/jobs.<run id> the jobs of that run (same row shape; $ST/jobs_fail.<run id> makes the listing fail). $ST/fixture.N replaces those with a recorded response (tools/tests/fixtures/gh-rest). $ST/rest_fail makes every PR read fail. `run list` pops one line per call from $ST/runs ("-" or no line = nothing unfinished).
 cat >"$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "gh $*" >>"$LOG"
@@ -50,6 +50,14 @@ case "$1 $method" in
       cat "$ST/wfruns" 2>/dev/null || true
       exit 0
     fi
+    # actions/runs/<id>/jobs...: the rows of $ST/jobs.<id>, or the API failing.
+    if [[ $path == */actions/runs/*/jobs* ]]; then
+      id=${path%/jobs*}
+      id=${id##*/}
+      [[ ! -e $ST/jobs_fail.$id ]] || exit 1
+      cat "$ST/jobs.$id" 2>/dev/null || true
+      exit 0
+    fi
     n=${path##*/}
     if [[ -e $ST/fixture.$n ]]; then
       # shellcheck source=lib/gh-fixture.sh
@@ -68,8 +76,8 @@ case "$1 $method" in
       .head.sha) echo "sha$n" ;;
     esac ;;
   "api PATCH") exit 0 ;;
-  # a rerun POST fails (the API refuses) when $ST/rerun_fail.<run id> exists
-  "api POST") [[ ! $path == */actions/runs/*/rerun || ! -e "$ST/rerun_fail.$(basename "$(dirname "$path")")" ]] || exit 1 ;;
+  # a rerun POST (of a run or of a job) fails (the API refuses) when $ST/rerun_fail.<run or job id> exists
+  "api POST") [[ ! $path == */rerun || ! -e "$ST/rerun_fail.$(basename "$(dirname "$path")")" ]] || exit 1 ;;
   "run "*)
     if [[ -s $ST/runs ]]; then
       line=$(head -n 1 "$ST/runs")
@@ -332,65 +340,111 @@ count "ci wait: polled until nothing unfinished" "gh run list -R pkeppeler/deepc
 count "ci wait: slept between polls" "sleep 5" 2
 count "ci wait: gate ran once, after CI" "merge-pr 7" 1
 
-# --- stale base: re-run the head's CI and Client tests runs, wait, merge ---
-# Run rows as the API lists them (newest first): the newest CI and Client tests runs are re-run, an older CI run
-# and other workflows are not.
+# --- stale base: re-run the jobs the gate reads (build, tool-tests, client-gametest), wait, merge ---
+# Runs as the API lists them (newest first) in $ST/wfruns, the jobs of run N in $ST/jobs.N, both as
+# "id|name|status|conclusion". build and tool-tests of one run are re-run with one run re-run (a second job
+# re-run of a run in progress is refused); a lone job is re-run by its job id.
 wfruns() { printf '%s\n' "$@" | tr '|' '\t' >"$ST/wfruns"; }
-rerun_url() { echo "gh api -X POST repos/pkeppeler/deepcharter/actions/runs/$1/rerun"; }
+jobs() { local run=$1; shift; printf '%s\n' "$@" | tr '|' '\t' >"$ST/jobs.$run"; }
+run_url() { echo "gh api -X POST repos/pkeppeler/deepcharter/actions/runs/$1/rerun"; }
+job_url() { echo "gh api -X POST repos/pkeppeler/deepcharter/actions/jobs/$1/rerun"; }
 reset
 wfruns "301|CI|completed|success" "302|Client tests|completed|success" "303|audit|completed|success" "290|CI|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+jobs 302 "501|client-changes|completed|success" "502|client-gametest|completed|success"
+jobs 290 "301|build|completed|success" "302|tool-tests|completed|success"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
 exited "stale retry: exit 0" 0
 logged "stale retry: lists the runs of the head sha" "gh api repos/pkeppeler/deepcharter/actions/runs?head_sha=sha7&per_page=100 --paginate --jq .workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv"
-logged "stale retry: re-runs the CI run" "$(rerun_url 301)"
-logged "stale retry: re-runs the Client tests run" "$(rerun_url 302)"
-count "stale retry: two reruns only (no other workflow, no older run)" "/rerun" 2
+logged "stale retry: lists the jobs of the CI run" "gh api repos/pkeppeler/deepcharter/actions/runs/301/jobs?per_page=100 --paginate --jq .jobs[] | [.id, .name, .status, .conclusion] | @tsv"
+logged "stale retry: build and tool-tests share a run, so one run re-run" "$(run_url 301)"
+logged "stale retry: re-runs the client-gametest job alone" "$(job_url 502)"
+count "stale retry: two reruns only (no other workflow, no older run, no client-changes)" "/rerun" 2
+not_logged "stale retry: never re-runs the build job by id" "$(job_url 401)"
+not_logged "stale retry: never re-runs the client-changes job" "$(job_url 501)"
 not_logged "stale retry: never PATCHes a state" "PATCH"
 not_logged "stale retry: never closes or reopens" "state="
 logged "stale retry: sleeps for the rerun" "sleep 9"
 count "stale retry: gate ran twice" "merge-pr 7" 2
 printed "stale retry: merged" "merged:  #7"
 
-# --- a skipped label run on top is not the run to re-run: take the newest non-skipped one per workflow ---
+# --- #1092: the newest Client tests run is not skipped but its client-gametest job is: re-run the older real job ---
 reset
-wfruns "310|CI|completed|skipped" "311|Client tests|completed|skipped" "301|CI|completed|success" "302|Client tests|completed|failure" "290|Client tests|completed|success"
+wfruns "320|Client tests|completed|success" "301|CI|completed|success" "302|Client tests|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+jobs 320 "511|client-changes|completed|success" "512|client-gametest|completed|skipped"
+jobs 302 "501|client-changes|completed|success" "502|client-gametest|completed|success"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale 1092: exit 0" 0
+logged "stale 1092: re-runs the older run's real client-gametest job" "$(job_url 502)"
+not_logged "stale 1092: never re-runs the newer run" "$(run_url 320)"
+not_logged "stale 1092: never re-runs the skipped job" "$(job_url 512)"
+not_logged "stale 1092: never re-runs the older Client tests run as a whole" "$(run_url 302)"
+count "stale 1092: two reruns only" "/rerun" 2
+
+# --- build and tool-tests in different runs (a skipped job on top): each is re-run by its job id ---
+reset
+wfruns "310|CI|completed|success" "301|CI|completed|success"
+jobs 310 "411|build|completed|success" "412|tool-tests|completed|skipped"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|failure"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale split runs: exit 0" 0
+logged "stale split runs: re-runs the newest build job" "$(job_url 411)"
+logged "stale split runs: re-runs the newest non-skipped tool-tests job" "$(job_url 402)"
+count "stale split runs: two reruns only" "/rerun" 2
+not_logged "stale split runs: never re-runs a skipped job" "$(job_url 412)"
+
+# --- a skipped label run on top is not searched: take the newest non-skipped job ---
+reset
+wfruns "310|CI|completed|skipped" "311|Client tests|completed|skipped" "301|CI|completed|success" "302|Client tests|completed|failure"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+jobs 302 "501|client-changes|completed|success" "502|client-gametest|completed|failure"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
 exited "stale skipped on top: exit 0" 0
-logged "stale skipped on top: re-runs the real CI run" "$(rerun_url 301)"
-logged "stale skipped on top: re-runs the real Client tests run" "$(rerun_url 302)"
-not_logged "stale skipped on top: never re-runs a skipped CI run" "$(rerun_url 310)"
-not_logged "stale skipped on top: never re-runs a skipped Client tests run" "$(rerun_url 311)"
+logged "stale skipped on top: re-runs the real CI run" "$(run_url 301)"
+logged "stale skipped on top: re-runs the failed client-gametest job" "$(job_url 502)"
 count "stale skipped on top: two reruns only" "/rerun" 2
+not_logged "stale skipped on top: never lists a skipped run's jobs" "runs/310/jobs"
 
-# --- every Client tests run skipped: only CI is re-run ---
+# --- no client-gametest job ever ran (a PR with no client changes): only CI is re-run ---
 reset
-wfruns "311|Client tests|completed|skipped" "301|CI|completed|success" "290|Client tests|completed|skipped"
+wfruns "311|Client tests|completed|success" "301|CI|completed|success"
+jobs 311 "511|client-changes|completed|success" "512|client-gametest|completed|skipped"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
-exited "stale all skipped: exit 0" 0
-logged "stale all skipped: re-runs CI" "$(rerun_url 301)"
-count "stale all skipped: no Client tests rerun" "/rerun" 1
+exited "stale no gametest: exit 0" 0
+logged "stale no gametest: re-runs CI" "$(run_url 301)"
+count "stale no gametest: nothing else re-run" "/rerun" 1
 
 # --- a run still in progress is skipped, not cancelled; if it finishes stale the next retry re-runs it ---
 reset
 wfruns "301|CI|in_progress" "302|Client tests|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|in_progress"
+jobs 302 "501|client-changes|completed|success" "502|client-gametest|completed|success"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
 exited "stale in progress: exit 0" 0
-count "stale in progress: only the completed run is re-run" "/rerun" 1
-logged "stale in progress: re-runs the completed Client tests run" "$(rerun_url 302)"
+count "stale in progress: only the completed run's job is re-run" "/rerun" 1
+logged "stale in progress: re-runs the client-gametest job" "$(job_url 502)"
 not_logged "stale in progress: never cancels" "cancel"
-printed "stale in progress: says it skipped" "CI run 301 is still in progress"
+printed "stale in progress: says it skipped" "run 301 (CI) is still in progress"
 
 # --- every run still in progress: nothing to re-run, wait and retry ---
 reset
 wfruns "301|CI|queued" "302|Client tests|in_progress"
+jobs 301 "401|build|queued" "402|tool-tests|queued"
+jobs 302 "501|client-changes|in_progress"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
@@ -398,9 +452,10 @@ exited "stale all in progress: exit 0" 0
 count "stale all in progress: no rerun" "/rerun" 0
 count "stale all in progress: gate ran twice" "merge-pr 7" 2
 
-# --- only one of the two workflows has a run: re-run it ---
+# --- only CI has a run: re-run it ---
 reset
 wfruns "301|CI|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
@@ -415,8 +470,18 @@ run_q 7
 exited "stale no run: exit 1" 1
 count "stale no run: no rerun" "/rerun" 0
 count "stale no run: gate ran once" "merge-pr 7" 1
-printed "stale no run: summary says why" "no CI or Client tests run exists for sha7"
+printed "stale no run: summary says why" "no non-skipped build job of CI exists for sha7"
 not_logged "stale no run: never PATCHes" "PATCH"
+
+# --- the runs exist but have no real tool-tests job: stop ---
+reset
+wfruns "301|CI|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|skipped"
+gate 7 1 "1" "$(stale_msg 7)"
+run_q 7
+exited "stale job not found: exit 1" 1
+count "stale job not found: no rerun" "/rerun" 0
+printed "stale job not found: summary names the job" "no non-skipped tool-tests job of CI exists for sha7"
 
 # --- the runs cannot be listed: stop ---
 reset
@@ -426,24 +491,48 @@ run_q 7
 exited "stale list fails: exit 1" 1
 printed "stale list fails: summary says why" "could not list the workflow runs"
 
-# --- the API refuses a rerun (a run older than 30 days): stop, no close and reopen fallback ---
+# --- the jobs of a run cannot be listed: stop ---
+reset
+wfruns "301|CI|completed|success"
+: >"$ST/jobs_fail.301"
+gate 7 1 "1" "$(stale_msg 7)"
+run_q 7
+exited "stale jobs list fails: exit 1" 1
+count "stale jobs list fails: no rerun" "/rerun" 0
+printed "stale jobs list fails: summary says why" "could not list the jobs of CI run 301"
+
+# --- the API refuses a job rerun (a run older than 30 days): stop, no close and reopen fallback ---
 reset
 wfruns "301|CI|completed|success" "302|Client tests|completed|success"
-: >"$ST/rerun_fail.301"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+jobs 302 "501|client-changes|completed|success" "502|client-gametest|completed|success"
+: >"$ST/rerun_fail.502"
 gate 7 1 "1" "$(stale_msg 7)"
 run_q 7
 exited "stale refused: exit 1" 1
-printed "stale refused: summary names the run" "GitHub refused to re-run CI run 301"
+printed "stale refused: summary names the job" "GitHub refused to re-run client-gametest job 502"
 count "stale refused: gate ran once" "merge-pr 7" 1
 not_logged "stale refused: never PATCHes" "PATCH"
+
+# --- the API refuses a run re-run (build and tool-tests of one run): stop ---
+reset
+wfruns "301|CI|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+: >"$ST/rerun_fail.301"
+gate 7 1 "1" "$(stale_msg 7)"
+run_q 7
+exited "stale run refused: exit 1" 1
+printed "stale run refused: summary names the run" "GitHub refused to re-run CI run 301"
 
 # --- stale base that never clears stops after 3 reruns ---
 reset
 wfruns "301|CI|completed|success" "302|Client tests|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+jobs 302 "501|client-changes|completed|success" "502|client-gametest|completed|success"
 for k in 1 2 3 4; do gate 7 "$k" "1" "$(stale_msg 7)"; done
 run_q 7
 exited "stale exhausted: exit 1" 1
-count "stale exhausted: three rerun cycles" "$(rerun_url 301)" 3
+count "stale exhausted: three rerun cycles" "$(run_url 301)" 3
 count "stale exhausted: gate ran four times" "merge-pr 7" 4
 printed "stale exhausted: summary says why" "still stale after 3 reruns"
 

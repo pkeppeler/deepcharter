@@ -596,7 +596,7 @@ done
 # Stale base (#979): CI records the main sha it merged in a `merged-main` annotation on each job's check run; the gate
 # refuses unless the deciding run of every required job (and of client-gametest) recorded the current origin/main.
 # Default stubs: every run recorded $MAIN_SHA, which is origin/main.
-stale_hint="by re-running the head's CI and Client tests workflow runs [stale-base]"
+stale_hint="by re-running the head's build, tool-tests and client-gametest jobs [stale-base]"
 run_script
 exited "runs that merged the current main pass" 0
 logged "main fetched before comparing" "git fetch origin main"
