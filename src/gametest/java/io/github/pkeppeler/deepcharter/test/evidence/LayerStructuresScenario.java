@@ -145,7 +145,9 @@ public class LayerStructuresScenario extends EvidenceScenario {
     }
 
     private void tour(ClientGameTestContext context, TestSingleplayerContext singleplayer, StructureSite site) {
-        ResourceKey<Level> layer = TestLayers.dimension(site.kind().layer());
+        ResourceKey<Level> layer = singleplayer
+                .getServer()
+                .computeOnServer(s -> TestLayers.dimension(s, site.kind().layer()));
         String shot = site.kind().name().toLowerCase(Locale.ROOT).replace('_', '-');
         switch (site.kind()) {
             case TOPSOIL_SHAFT, BENCHES_SHAFT, DEEP_SHAFT -> {

@@ -8,7 +8,7 @@ Builds on [ADR 0005](0005-build-our-own-handbook.md), [ADR 0013](0013-handbook-c
 
 ## Decision
 
-- **Quest map**: the Directives are shown as chapter tabs, each a flowchart sheet. The rules are in [SPEC §5](../SPEC.md#directives-and-progress).
+- **Quest map**: the Directives are shown as chapter tabs, each a fixed flowchart sheet (no pan, no zoom, as playtest 3 wanted: #962), with the tabs, and one for the intro, on every page. The rules are in [SPEC §5](../SPEC.md#directives-and-progress).
 - **Built on our directive system**: charter-shared progress, personal read marks, the CLASSIFIED rule and Notes stay as they are. BetterQuesting and Heracles are design references only.
 - **Pencil paths**: Company directives still end at layer 2. Past it, each Note draws a path that is not a Directive, so "no Directives after layer 2" holds ([SPEC](../SPEC.md#after-layer-2)). "Pencil path" is a working name the lore session may rename.
 - **Progress before a charter** (#843): founding and joining carry personal progress into the charter ([SPEC](../SPEC.md#directives-and-progress)). This amends [ADR 0013](0013-handbook-chapters-are-data-and-directives-are-advancements.md) (advancements mirror the charter) and [ADR 0020](0020-notes-are-found-by-the-charter-and-read-by-the-player.md) (a Note found before a charter was not remembered).
