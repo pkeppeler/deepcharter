@@ -46,7 +46,7 @@ import net.minecraft.world.phys.Vec3;
 public class SonarHudClientTest implements FabricClientGameTest {
     static final int X = 1600;
     static final int Z = 1600;
-    static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     private static final int ORE_AHEAD = 8;
     static final int SITE_RADIUS = 12;
     private static final int CELL = 4;
