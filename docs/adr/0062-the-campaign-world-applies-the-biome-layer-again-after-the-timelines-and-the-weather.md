@@ -6,6 +6,8 @@ status: accepted
 
 Issue #797, slice 1 of the cutover (#214). Amends [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md) (its cutover list, items 1, 2, 3 and 5).
 
+Amended 2026-11-22 (#915): the guard on surface biomes covers visual and audio attributes only. The mixin adds its layer for those, and the biomes set `gameplay/can_pillager_patrol_spawn` false, which its timeline `and`s.
+
 ## Decision
 
 - **A mixin adds a positional layer after the dynamic ones, in a campaign level only.** Target: `EnvironmentAttributeSystem.Builder.addDefaultLayers(Level)` in 26.3, at its return, after the static layers (type, then biome) and the dynamic ones (timelines, then weather). The layer is vanilla's own biome layer, built by vanilla's private static `addBiomeLayerForAttribute(Builder, EnvironmentAttribute, BiomeManager)` through a static `@Invoker` (`layer/mixin/EnvironmentAttributeSystemInvoker`): it uses the camera's blend for a spatially interpolated attribute and the biome at the position for the rest. It is added for each `visual/*` and `audio/*` attribute that a biome sets and that a timeline or the weather also drives. The mixin is `layer/mixin/EnvironmentAttributeSystemBuilderMixin`, in `deepcharter.layer.mixins.json`. A campaign level is one whose dimension type is `deepcharter:campaign_sample` (`LayerChain.isCampaign`).
