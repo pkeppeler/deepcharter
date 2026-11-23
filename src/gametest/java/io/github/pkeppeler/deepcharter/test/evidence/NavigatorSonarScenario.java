@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.SonarKind;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
@@ -57,12 +56,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             two.server().runOnServer(server -> buildSite(server.overworld(), two));
-            ClientWait.until(
-                    context,
-                    "the stone round the pod on the client",
-                    client -> ClientLight.clientLevel(client)
-                            .getBlockState(new BlockPos(X + 20, FLOOR_Y, Z))
-                            .is(Blocks.STONE));
+            ClientWait.chunksAround(context, X, Z, REACH);
             two.server().runOnServer(server -> board(server.overworld(), two));
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ClientWait.until(

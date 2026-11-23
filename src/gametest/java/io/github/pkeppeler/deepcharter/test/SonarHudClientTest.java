@@ -13,7 +13,6 @@ import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.SonarEcho;
 import io.github.pkeppeler.deepcharter.pod.SonarKind;
 import io.github.pkeppeler.deepcharter.pod.SonarTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
@@ -62,15 +61,8 @@ public class SonarHudClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             two.server().runOnServer(server -> buildSite(server.overworld(), two));
-            // The client must have the stone before the players board, or the boarding reaches it before the pod does
-            // (the players
-            // stand in a chunk the client has not been sent, and the pod is never seen).
-            ClientWait.until(
-                    context,
-                    "the stone round the pod on the client",
-                    client -> ClientLight.clientLevel(client)
-                            .getBlockState(new BlockPos(X + SITE_RADIUS, FLOOR_Y, Z))
-                            .is(Blocks.STONE));
+            // Every chunk of the site must be on the client before anyone boards (#1082).
+            ClientWait.chunksAround(context, X, Z, SITE_RADIUS);
             int podId = two.server().computeOnServer(server -> board(server.overworld(), two));
             ClientWait.until(
                     context,
