@@ -96,6 +96,15 @@ object GametestScan {
 	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
 	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
+	// FarChunks.Deadline.await does not block: while its condition is unsettled it sleeps about 2 ms and returns, so an `expect(` or `throw failure(` that is
+	// the next statement after one fails on the first unsettled tick and the deadline does nothing (#1071, #1085). A statement starting with `expect(` or `throw failure(`
+	// (`Failures.` prefix or not) directly after `.await(...);` on a Deadline (a name declared with a `Deadline` type in the file, a `[n]` index of one included, or
+	// `FarChunks.deadline(...)` inline) is flagged. Return while unsettled, then expect once settled: `if (!settled) { ...; return; }`, or put the expect in the branch that tests
+	// the condition. Any statement between the await and the expect (an `if` guard included) passes. A legitimate case carries the comment below, with a reason, on its statement
+	// or the comment line above it. Heuristic: only the direct next statement is seen, and an await used as an expression is not.
+	private const val AWAIT_MARKER = "// await-ok:"
+	private val expectAfterAwait = Regex("""^(?:(?:Failures\s*\.\s*)?expect\s*\(|throw\s+(?:Failures\s*\.\s*)?failure\s*\()""")
+
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
 	// seen, so the gate refuses the literal (#1026).
@@ -187,6 +196,32 @@ object GametestScan {
 			if ((inPoll || noDeadline) && !marked(markedNear, rawLines, line, LIGHT_WAIT_MARKER)) {
 				val where = if (inPoll) "inside thenWaitUntil or succeedWhen, which count ticks" else "in a test method that awaits no FarChunks.Deadline"
 				problems.add("$className:${line + 1} reads block light $where, and the light engine runs on Util.backgroundExecutor(), which other tests' chunk work can starve; wait for it under FarChunks.Deadline (poll from TestTicks.each, see #1042 and #1048), or mark a read that is not a wait with '$LIGHT_WAIT_MARKER <reason>'")
+			}
+		}
+		return problems
+	}
+
+	private fun awaitThenExpectProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val names = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
+		val namedAwait = names.takeIf { it.isNotEmpty() }
+			?.let { Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
+		val awaits = (namedAwait?.findAll(text)?.toList() ?: emptyList()) + inlineDeadlineAwait.findAll(text).toList()
+		val problems = mutableListOf<String>()
+		for (await in awaits.sortedBy { it.range.first }) {
+			val close = closing(text, await.range.last)
+			if (close < 0) continue
+			val afterCall = text.substring(close + 1).trimStart()
+			if (!afterCall.startsWith(";")) continue
+			val next = afterCall.substring(1).trimStart()
+			if (!expectAfterAwait.containsMatchIn(next)) continue
+			val line = lineOf(text, text.length - next.length)
+			if (!marked(markedNear, rawLines, line, AWAIT_MARKER)) {
+				problems.add("$className:${line + 1} follows Deadline.await directly with an expect or a throw failure, but await does not block: while unsettled it sleeps about 2 ms and returns, so this fails on the first unsettled tick; return while unsettled, then expect once settled: `if (!settled) { ...; return; }` (#1071, #1085), or mark a legitimate case with '$AWAIT_MARKER <reason>'")
 			}
 		}
 		return problems
@@ -335,6 +370,7 @@ object GametestScan {
 				}
 			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
+			problems.addAll(awaitThenExpectProblems(className, text, rawLines, markedNear))
 			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
 				problems.addAll(lightWaitProblems(className, text, rawLines, markedNear))
 			}
