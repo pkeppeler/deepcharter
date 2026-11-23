@@ -205,7 +205,7 @@ object GametestScan {
 	const val DEFAULT_CLIENT_WEIGHT = 10
 
 	/**
-	 * Shard `i/n` (1-based) of [classes]: longest-processing-time-first onto the lightest shard, by [weights] (simple class name to seconds).
+	 * Shard `i/n` (1-based) of [classes]: longest-processing-time-first onto the lightest shard, by [weights] (fully qualified or simple class name to seconds; the full name wins).
 	 * Every shard computes the same partition from the same list, and each class lands in exactly one, so the union of the n shards is the whole list.
 	 */
 	fun shardOf(classes: List<String>, shard: String, weights: Map<String, Int>): List<String> {
@@ -215,7 +215,7 @@ object GametestScan {
 		if (index < 1 || index > count) {
 			throw GradleException("-PclientShard is '$shard', expected i/n with 1 <= i <= n, like 2/3")
 		}
-		fun weight(name: String) = weights[name.substring(name.lastIndexOf(".") + 1)] ?: DEFAULT_CLIENT_WEIGHT
+		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)] ?: DEFAULT_CLIENT_WEIGHT
 		val loads = IntArray(count)
 		val mine = mutableListOf<String>()
 		for (name in classes.sortedWith(compareBy({ -weight(it) }, { it }))) {

@@ -1,6 +1,6 @@
 # Client GameTest weights for -PclientShard=i/n (gradle/gametest.gradle.kts): `<simple class name> <seconds>`.
 # Seconds from CI run 45102149991's client job (the gap between a class's START line and the next one), rounded.
-# A class not listed counts as 10 s, so a new class needs no entry here and the shards still cover every
+# A name is simple, or fully qualified when two classes share a simple name (the full name wins). A class not listed counts as 10 s, so a new class needs no entry here and the shards still cover every
 # class; an entry for a class that no longer exists is ignored. Stale numbers only unbalance the shards, never
 # drop a test. Refresh from a green client job log when the shard wall times drift apart.
 BeamsClientTest 9
