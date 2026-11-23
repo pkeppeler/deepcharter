@@ -1,7 +1,5 @@
-"""Tests the orphan-comment gate in gradle/orphan-comment-gate.gradle.kts: a `//` line holding one word that continues the `//` line directly
-above (same indent, the line above 100+ columns long and ending without . ! ? : ;) fails the build, names the file and line, and says to
-reflow to 120 columns. A lone TODO-style word, a marker word ending in a colon, a list item, a non-word token, a sentence end above, a
-short line above, another indent and a non-comment line above are left alone.
+"""Tests the orphan-comment gate in gradle/orphan-comment-gate.gradle.kts (the rule is in its header): CLEAN trees pass, BAD trees fail
+naming file and line and saying to reflow to 120 columns.
 
 Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
 on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
