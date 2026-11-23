@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -22,8 +23,8 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>A layer is a Y band of the campaign level (ADR 0059): the overworld when its type is the campaign type, otherwise
  * {@code deepcharter:campaign_sample}, the test data pack's copy of it. A layer never resolves to a layer dimension; {@link #level}
- * fails if it would. The tests of the dimension machinery reach the layer dimensions through {@link #layerDimension} and
- * {@link #dimensionBand} alone.
+ * fails if it would. The tests of the dimension machinery reach the layer dimensions through {@link #layerDimension},
+ * {@link #dimensionBand} and {@link #isInDimensionOf} alone.
  */
 public final class TestLayers {
     /** The surface, the overworld of the chain. */
@@ -105,7 +106,7 @@ public final class TestLayers {
 
     /**
      * The layer dimension of {@code layer}, {@code deepcharter:layer_<n>}: the dimension chain the crossing teleport runs on (ADR 0085
-     * keeps it as the base of the dimension seam), for {@code DimensionCrossingTest}. Every other layer test uses {@link #level}.
+     * keeps it as the base of the dimension seam). Every other layer test uses {@link #level}.
      */
     public static ServerLevel layerDimension(MinecraftServer server, int layer) {
         if (layer == SURFACE) {
@@ -123,17 +124,20 @@ public final class TestLayers {
             throw new IllegalArgumentException(
                     "level " + level.dimension() + " is a campaign level: ask band(level, layer) for one of its bands");
         }
-        return LayerChain.bandAt(level, level.getMinY())
+        return wholeLevelBand(level)
                 .orElseThrow(() -> new IllegalArgumentException("level " + level.dimension() + " is not in the chain"));
     }
 
     /** True when {@code entity} is in a level of the dimension chain whose one band is {@code layer}. */
     public static boolean isInDimensionOf(Entity entity, int layer) {
-        Level level = entity.level();
-        return !LayerChain.isCampaign(level)
-                && LayerChain.bandAt(level, level.getMinY())
-                        .filter(band -> band.layer() == layer)
-                        .isPresent();
+        return wholeLevelBand(entity.level())
+                .filter(band -> band.layer() == layer)
+                .isPresent();
+    }
+
+    /** The band of a level of the dimension chain that is one band; empty for a campaign level or a level outside the chain. */
+    private static Optional<LayerChain.Band> wholeLevelBand(Level level) {
+        return LayerChain.isCampaign(level) ? Optional.empty() : LayerChain.bandAt(level, level.getMinY());
     }
 
     /** The world Y of {@code localY} in {@code layer}: the band's lowest block plus {@code localY}; the surface keeps its own Ys. */

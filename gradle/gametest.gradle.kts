@@ -285,7 +285,8 @@ object GametestScan {
 					}
 				}
 			}
-			if (text.contains("LayerChain.dimension(")) {
+			// A layer dimension is reached through LayerChain.dimension or, in tests, TestLayers.layerDimension.
+			if (text.contains("LayerChain.dimension(") || text.contains("layerDimension(")) {
 				for (carve in carveWrite.findAll(text)) {
 					val line = lineOf(text, carve.range.first)
 					if (!marked(markedNear, rawLines, line, CARVE_MARKER)) {
