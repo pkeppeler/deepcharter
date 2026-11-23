@@ -119,15 +119,12 @@ wait_ci() {
   done
 }
 
-# rerun_ci <pr> <sha>: re-run the workflow runs that hold the jobs whose `merged-main` record the gate reads (build,
-# tool-tests and, when it ran, client-gametest; client-changes is not read, and each of those jobs merges the live
-# main itself). Never a single job: a job re-run copies the run's other finished jobs into the new attempt without
-# their annotations, so the gate reads them as "no merged main recorded" and calls the base stale again (#1094).
-# Per job it takes the newest non-skipped one across the head sha's runs (a run can be non-skipped while its
-# client-gametest job was skipped, #1092) and re-runs that job's run whole, once per distinct run.
-# Returns 1 and sets $rerun_err when build or tool-tests has no such job, the runs or jobs cannot be listed or the
-# API refuses a re-run (for example a run older than 30 days). An unfinished run is skipped (the API refuses to
-# re-run into it); if it finishes stale, the next retry re-runs it, at the cost of one retry.
+# rerun_ci <pr> <sha>: re-run the workflow runs holding the jobs whose `merged-main` record the gate reads (build,
+# tool-tests and, when it ran, client-gametest; each merges the live main itself). Never a single job: a job re-run
+# copies the run's other finished jobs without their annotations, so the gate calls the base stale again (#1094).
+# Per job it takes the newest non-skipped one across the head sha's runs (#1092), then re-runs each distinct run whole.
+# Returns 1 and sets $rerun_err when build or tool-tests has no such job, a listing fails or the API refuses a re-run.
+# An unfinished run is skipped (the API refuses to re-run into it); if it finishes stale, the next retry re-runs it.
 rerun_ci() {
   local sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit handled=","
   rerun_err=
@@ -137,9 +134,7 @@ rerun_ci() {
   for target in "CI|build|0" "CI|tool-tests|0" "Client tests|client-gametest|1"; do
     IFS='|' read -r workflow job optional <<<"$target"
     hit=
-    # A whole rerun re-decides client-changes against live main: if the PR no longer trips ci-client-needed.sh,
-    # client-gametest is skipped on the rerun and the gate keeps reading the older stale run (stops at the cap).
-    # The API lists newest first. A skipped run (a label event adds one) has only skipped jobs. An unfinished
+    # The API lists newest first. A skipped run (a label event adds one) has only skipped jobs; an unfinished
     # job has no conclusion, so it counts as not skipped.
     while IFS=$'\t' read -r run_id run_status; do
       jobs_rows=$(gh api "repos/$repo/actions/runs/$run_id/jobs?per_page=100" --paginate \
@@ -153,7 +148,8 @@ rerun_ci() {
     if [[ -n $hit ]]; then
       picks+="$hit"$'\n'
     elif [[ $optional == 0 ]]; then
-      rerun_err="PR #$1: no non-skipped $job job of $workflow exists for $sha to re-run (push, or start the workflows by hand)"
+      rerun_err="PR #$1: no non-skipped $job job of $workflow exists for $sha to re-run"
+      rerun_err+=" (push, or start the workflows by hand)"
       return 1
     fi
   done
@@ -166,7 +162,10 @@ rerun_ci() {
     fi
     say "re-running $workflow run $run_id"
     gh api -X POST "repos/$repo/actions/runs/$run_id/rerun" >/dev/null 2>&1 \
-      || { rerun_err="PR #$1: GitHub refused to re-run $workflow run $run_id (older than 30 days? push a commit instead)"; return 1; }
+      || {
+        rerun_err="PR #$1: GitHub refused to re-run $workflow run $run_id (older than 30 days? push a commit instead)"
+        return 1
+      }
   done <<<"$picks"
 }
 
