@@ -78,9 +78,11 @@ public final class ColumnCost {
         TestTicks.each(helper, () -> {
             if (cooldown[0] > 0) {
                 cooldown[0]--;
+                idle(smoke);
                 return;
             }
             if (current[0] == null && !smoke && !everyWorldIsUnloaded(helper, allWorlds)) {
+                idle(smoke);
                 return;
             }
             if (current[0] == null) {
@@ -91,6 +93,7 @@ public final class ColumnCost {
                 current[0].begin(helper);
             }
             if (!current[0].isGenerated()) {
+                idle(smoke);
                 return;
             }
             Measurement measurement = current[0].finish(helper);
@@ -125,6 +128,22 @@ public final class ColumnCost {
     /** The columns of a measured run. */
     public static int measuredColumns() {
         return columnsOf(MEASURED_RADIUS);
+    }
+
+    /**
+     * A measured run sleeps through each tick it only waits on. The GameTest server ticks unthrottled, so a waiting tick costs the
+     * server thread's CPU, which the readings count, and a run of thousands of them a second runs out a tick budget in seconds.
+     */
+    private static void idle(boolean smoke) {
+        if (smoke) {
+            return;
+        }
+        try {
+            Thread.sleep(FarChunks.POLL_MILLIS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while waiting for columns", e);
+        }
     }
 
     private static boolean everyWorldIsUnloaded(GameTestHelper helper, List<String> allWorlds) {

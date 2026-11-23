@@ -1,0 +1,71 @@
+---
+status: accepted
+---
+
+# Each campaign band is held to one layer's cost per row, and the whole world's ratio is only tracked
+
+Issue [#1127](https://github.com/pkeppeler/deepcharter/issues/1127). Amends [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md)'s 1.15x bar. That bar held the whole campaign world's median CPU per block of height to 1.15x `tall_baseline`'s, a 2048-block world of vanilla stone with no content. It read 1.11x pooled in ADR 0029's last follow-up, inside run-to-run noise of about 15%, and by that ADR's own figures each new layer band adds about +0.075 to +0.15. It would fail for good as layers 3 to 8 land, however well each layer is built.
+
+## Decision
+
+- **The gate.** Each band of content (the surface, layer 1, layer 2, and every band added later) costs at most 1.15x `tall_layer` in marginal CPU per filled row. Unbuilt depth is no band of content and is not gated.
+- **A band's window.** The band is measured alone in a test world that is the shipped campaign world, generator and dimension type, with only the type's `min_y` and `height` cut to the band's rows (`campaign_surface`, `campaign_layer_1`, `campaign_layer_2`). The generator clamps its noise to the level's height, so a window makes the same blocks as the whole world in those rows: `CampaignCostTest.eachWindowHoldsTheCampaignWorldsRows` compares a fresh column of each window with the campaign world's, block for block, and finds no difference. A layer's window has no skylight, as `tall_layer` has none: in the campaign world a layer lies under the surface's ground, and a sky over the window would light rows the campaign world keeps dark. The surface's window keeps the sky.
+- **Marginal cost per filled row.** For a world `w` and a floor `f` of the same generator, `(median(w) - median(f)) / (height(w) - height(f))`, in CPU ms per column per row. A band's floor is `campaign_floor`, the campaign world cut to its bottom 16 rows (unbuilt depth). The reference is `tall_layer` (one layer's rock, noise and zone fill in all 2048 rows) over `tall_layer_floor`, `tall_layer` cut to its bottom 16 rows. A band's ratio is its marginal over the reference's.
+- **The statistic.** Each world's median CPU ms per column is taken over every round of every pooled run together, never as a median of the runs' medians. The gate judges a pool of at least 3 runs (JVMs) with at least 18 rounds of each world it reads: 3 runs of 6 rounds. Each run still needs at least 4 rounds. `DEEPCHARTER_CAMPAIGN_COST_POOL=<file>` pools runs: each run appends its readings to the file and judges all of them. A pool short of 3 runs and 18 rounds prints its ratios and asserts nothing. `test/support/BandCost` holds the arithmetic, and `BandCostTest` checks it on made-up readings.
+- **The whole world is tracked.** `campaign_sample` over `tall_baseline`, per column and per block of height, on the same pooled medians, is printed on every measured run. It is no longer a gate.
+- **A new band needs a window.** `CampaignCostTest.theWindowsAreTheCampaignWorldCutToTheirBands` fails until every band of `CampaignBands` but unbuilt depth has one, and checks each window and floor against the shipped files and the band table.
+
+## Why
+
+- **A band is judged on its own rows.** A whole-world ratio charges every band to the newest one and grows with each, so it cannot tell a well-built layer from a badly built one. Per row, a band costs the same whether it is the second band or the eighth.
+- **Against `tall_layer`, not `tall_baseline`.** `tall_baseline` has no content, so a ratio against it charges a band for being a layer at all. `tall_layer` is a layer with content in every row: what a band is held to is costing no more per row than a layer does.
+- **Windows, not a world without the band.** The cost of a band as a whole-world difference, the campaign world with and without the band, is 12 to 19 ms between two readings of about 86 ms (measured below) that each carry up to 15% noise, so the noise is as large as the difference. A window reads only the band's rows.
+- **A floor, because a column costs something whatever its height.** Part of a column's cost does not grow with its height: the chunk, the structure starts, the forcing and the heap readings. A 16-row column costs 3.3 ms below, a fifth of layer 1's window. Over the floor, per row, it drops out of both the band and the reference. The floor is the same generator, so a cost that the campaign generator pays per column (its structure starts) is not charged to any band.
+- **Pooled over runs.** ADR 0029's follow-up read 1.20x, 1.01x and 1.18x per block in three runs of one tree, and the test's per-run assertion failed two of them while the pooled medians passed. One run is not judged. Pooling every round, rather than the runs' medians, keeps a run that drifts within itself from counting as one vote.
+
+## Consequences
+
+- A new band (#972) adds its window and its dimension type to the test pack, and is judged by the same gate.
+- `LayerStructures` draws only the bands inside a level's height. In the campaign world that is every band, so nothing changes there; in a window, a site of another band would have been drawn outside the level.
+- A window does not see what crosses a band edge from outside it: the sky over a layer, or a feature of the band above that reaches down. The block comparison shows none today.
+- A judged pool is 3 runs of 6 rounds of eight worlds, 19 minutes on the VM below. `CampaignCostTest`'s smoke case, which CI runs, only generates a few columns of each.
+- `ColumnCost` (shared with `SurfaceCostTest`) sleeps 2 ms through each tick a measured run only waits on. The GameTest server ticks unthrottled: the waiting ticks ran thousands a second, spent the server thread's CPU, which every reading counts, and ran out the 200,000-tick budget in under a minute on the 4-core Linux VM this was measured on. The measured test's budget is now four hours of such ticks.
+- `tools/cost-run.sh` still runs only `SurfaceCostTest`; a campaign mode (#781) passes the pool file to the test instead of recomputing the gate.
+
+## Measured
+
+2026-11-23, a cloud Linux VM with 4 vCPU, load average 2.7 to 3.6 (the run's own JVMs among it). Three runs of 6 rounds, 289 columns per world and round, pooled through one file:
+
+```
+for run in 1 2 3; do
+  DEEPCHARTER_CAMPAIGN_COST=6 DEEPCHARTER_CAMPAIGN_COST_POOL=/abs/pool.tsv \
+    JAVA_TOOL_OPTIONS="-Dfabric-api.gametest.filter=deepcharter-test:campaign_cost_test_each_band*" \
+    ./gradlew runGameTest --no-configuration-cache
+done
+```
+
+Pooled medians over 18 rounds, CPU ms per column:
+
+| World | Rows | Median |
+|---|---|---|
+| `tall_baseline` | 2048 | 75.61 |
+| `campaign_sample` | 2352 | 86.40 |
+| `tall_layer` | 2048 | 92.34 |
+| `tall_layer_floor` | 16 | 3.62 |
+| `campaign_floor` | 16 | 3.34 |
+| `campaign_surface` | 384 | 16.26 |
+| `campaign_layer_1` | 192 | 15.50 |
+| `campaign_layer_2` | 256 | 22.56 |
+
+Marginal CPU ms per column per row, and the ratio to `tall_layer`'s 0.0437, as the pool grew:
+
+| Band | After run 1 (6 rounds) | After run 2 (12) | After run 3 (18, judged) |
+|---|---|---|---|
+| Surface | 0.768x | 0.808x | 0.0351, **0.804x** |
+| Layer 1 | 1.526x | 1.583x | 0.0691, **1.583x** |
+| Layer 2 | 1.738x | 1.742x | 0.0801, **1.834x** |
+| Whole world, per block (tracked) | 0.98x | 1.01x | 1.00x (1.14x per column) |
+
+Verdict: the surface passes; layers 1 and 2 are over the bar, and the judged run failed on them. The bar is not loosened here.
+
+The reference is not what makes the layers read high. The layer dimensions, which hold one layer's own generator at its own height, cost 10.00 ms per column for `layer_1` (192 rows) and 17.99 for `layer_2` (256), against 15.66 and 21.44 for the windows of the same rows, in one diagnostic run of 4 rounds. Over a floor like the campaign world's, `layer_1` costs about 0.04 ms per row, close to `tall_layer`'s 0.0437. A layer's rows cost more in the campaign generator than in its own dimension: 1.57x for layer 1 and 1.19x for layer 2 per column. ADR 0029's feature split puts most of the campaign world's extra cost in the layer rock written by the material rule.

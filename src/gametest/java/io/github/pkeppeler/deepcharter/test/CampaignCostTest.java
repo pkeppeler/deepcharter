@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.BandCost.Window;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColumnCost;
 import io.github.pkeppeler.deepcharter.test.support.ColumnCost.Measurement;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -103,8 +104,10 @@ public class CampaignCostTest {
 
     private static final int MIN_ROUNDS = 4;
     private static final int MAX_TICKS = 200_000;
+    /** Four hours: each tick a measured run waits on sleeps {@link FarChunks#POLL_MILLIS}, and a judged run takes about one. */
+    private static final int MEASURED_MAX_TICKS = 4 * 3600 * 1000 / FarChunks.POLL_MILLIS;
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(maxTicks = MEASURED_MAX_TICKS)
     public void eachBandCostsWhatALayerDoesPerRow(GameTestHelper helper) {
         int rounds = REQUESTED_ROUNDS == null ? 0 : Integer.parseInt(REQUESTED_ROUNDS);
         expect(
