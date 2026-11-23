@@ -96,13 +96,9 @@ object GametestScan {
 	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
 	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
-	// FarChunks.Deadline.await does not block: while its condition is unsettled it sleeps about 2 ms and returns, so an assertion that is the next statement
-	// after one fails on the first unsettled tick and the deadline does nothing (#1071, #1085). A statement starting with `expect(` (`Failures.` prefix or not),
-	// `helper.fail(`, `helper.assert...(` or `throw` directly after `.await(...);` on a Deadline (a name declared with a `Deadline` type in the file, a field or
-	// `this.` one included, a `[n]` index of one, or `FarChunks.deadline(...)` inline) is flagged; comments between them do not count. Return while unsettled,
-	// then assert once settled: `if (!settled) { ...; return; }`, or put the assertion in the branch that tests the condition. A legitimate case carries the
-	// comment below, with a reason, on its statement or the comment line above it. Heuristic: only the direct next statement is seen, so any statement in
-	// between (a log line included) defeats it, and an assertion reached through a helper method is not seen.
+	// FarChunks.Deadline.await does not block (#1071, #1085), so a statement starting with `expect(` (`Failures.` prefix or not), `helper.fail(`,
+	// `helper.assert...(` or `throw` directly after `.await(...);` on a Deadline is flagged; comments between them do not count.
+	// Heuristic: only the direct next statement is seen, so any statement in between defeats it, and an assertion inside a helper method is not seen.
 	private const val AWAIT_MARKER = "// await-ok:"
 	private val expectAfterAwait = Regex("""^(?:(?:Failures\s*\.\s*)?expect\s*\(|helper\s*\.\s*(?:fail|assert\w*)\s*\(|throw\b)""")
 
@@ -166,6 +162,11 @@ object GametestScan {
 		return problems
 	}
 
+	// `.await(` on a name the file declares with a `Deadline` type, or on a `[n]` index of one; null when it declares none.
+	private fun namedDeadlineAwait(text: String): Regex? = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
+		.takeIf { it.isNotEmpty() }
+		?.let { names -> Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
+
 	private fun lightWaitProblems(
 		className: String,
 		text: String,
@@ -182,9 +183,7 @@ object GametestScan {
 			val bodyClose = if (bodyOpen < 0) -1 else closing(text, bodyOpen)
 			if (bodyClose < 0) null else bodyOpen..bodyClose
 		}.toList()
-		val deadlineAwait = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
-			.takeIf { it.isNotEmpty() }
-			?.let { names -> Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
+		val deadlineAwait = namedDeadlineAwait(text)
 		val problems = mutableListOf<String>()
 		for (read in lightRead.findAll(text)) {
 			val at = read.range.first
@@ -208,10 +207,7 @@ object GametestScan {
 		rawLines: List<String>,
 		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
 	): List<String> {
-		val names = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
-		val namedAwait = names.takeIf { it.isNotEmpty() }
-			?.let { Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
-		val awaits = (namedAwait?.findAll(text)?.toList() ?: emptyList()) + inlineDeadlineAwait.findAll(text).toList()
+		val awaits = (namedDeadlineAwait(text)?.findAll(text)?.toList() ?: emptyList()) + inlineDeadlineAwait.findAll(text).toList()
 		val problems = mutableListOf<String>()
 		for (await in awaits.sortedBy { it.range.first }) {
 			val close = closing(text, await.range.last)
