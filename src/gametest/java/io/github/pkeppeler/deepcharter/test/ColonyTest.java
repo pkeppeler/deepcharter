@@ -25,6 +25,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
@@ -200,7 +201,7 @@ public class ColonyTest {
         helper.succeed();
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void dataOfAnotherVersionIsKeptAndTheCallbackPathsSkipIt(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ColonySite unreadable = ColonySite.CODEC

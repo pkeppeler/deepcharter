@@ -85,6 +85,7 @@ public class MockPlayersTest {
                             "the mock is at %s, not at its spawn %s",
                             mock.player().position(), spawn);
                 }
+                mock.leave();
                 helper.succeed();
             }
         });

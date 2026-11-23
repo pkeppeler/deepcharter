@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -917,7 +918,7 @@ public class RepairStationTest {
         });
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void aTeleportToAnUnloadedChunkLoadsItAndArrives(GameTestHelper helper) {
         withStation(helper, station -> {
             ServerLevel overworld = helper.getLevel().getServer().overworld();
@@ -995,6 +996,11 @@ public class RepairStationTest {
         Vec3 before = pod.position();
         ServerLevel level = (ServerLevel) pod.level();
         int cargo = pod.cargo().entries().size();
+        // Items that lie beside the pod already (a test next to this one in a shared batch spills some) are not this
+        // teleport's.
+        int itemsBefore = level.getEntitiesOfClass(
+                        ItemEntity.class, pod.getBoundingBox().inflate(8))
+                .size();
         board(helper, station);
         if (useFromHotbar(station, teleporter).consumesAction()) {
             throw helper.assertionException(
@@ -1012,8 +1018,9 @@ public class RepairStationTest {
                     "%s: the bay held %d ore and now holds %d",
                     why, cargo, pod.cargo().entries().size());
         }
-        if (!level.getEntitiesOfClass(ItemEntity.class, pod.getBoundingBox().inflate(8))
-                .isEmpty()) {
+        if (level.getEntitiesOfClass(ItemEntity.class, pod.getBoundingBox().inflate(8))
+                        .size()
+                > itemsBefore) {
             throw helper.assertionException("%s: cargo was spilled by a refused teleport", why);
         }
         if (station.pilot().player().getVehicle() != pod) {
@@ -1022,7 +1029,7 @@ public class RepairStationTest {
         expectSpent(helper, station.pilot().player(), teleporter, 1, why + ": the item is kept");
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void aTeleportOntoLavaIsRefusedAndNothingChanges(GameTestHelper helper) {
         withStation(helper, station -> {
             station.pod().cargo().tryAdd(station.pod(), OreRegistry.stack(OreType.IRONIUM));
@@ -1039,7 +1046,7 @@ public class RepairStationTest {
         });
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void aTeleportIntoAWallIsRefusedAndNothingChanges(GameTestHelper helper) {
         withStation(helper, station -> {
             station.pod().cargo().tryAdd(station.pod(), OreRegistry.stack(OreType.IRONIUM));
@@ -1067,7 +1074,7 @@ public class RepairStationTest {
         });
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void theQuantumTeleporterTriesOtherSpotsBeforeRefusing(GameTestHelper helper) {
         withStation(helper, station -> {
             // The exact column is lava, but the quantum scatter has other spots to try.

@@ -10,7 +10,7 @@ public final class CampaignEnvironments {
     public static final String C = "deepcharter-test:campaign_c";
     public static final String D = "deepcharter-test:campaign_d";
 
-    /** A batch of its own for a case that loads its chunks on the server thread (a same-tick {@code WorldData.with}), which would starve a test beside it (#1016). */
+    /** A batch of its own for a case that loads its chunks on the server thread (a same-tick {@code WorldData.with}, whose swap would also reach the loads of tests beside it), which would starve a test beside it (#1016). */
     public static final String SYNC_CHUNK_LOAD = "deepcharter-test:campaign_sync_chunk_load";
 
     private CampaignEnvironments() {}
