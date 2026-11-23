@@ -389,6 +389,21 @@ not_logged "stale 1092: never re-runs the newer run" "$(run_url 320)"
 no_job_rerun "stale 1092"
 count "stale 1092: two reruns only" "/rerun" 2
 
+# --- #1079: a sharded Client tests run (shards plus the aggregate): the run is re-run whole, once ---
+reset
+wfruns "320|Client tests|completed|skipped" "301|CI|completed|success" "302|Client tests|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+jobs 320 "511|client-changes|completed|success" "512|client-gametest-shard \${{ matrix.shard }}|completed|skipped" "513|client-gametest|completed|skipped"
+jobs 302 "501|client-changes|completed|success" "502|client-gametest-shard 1|completed|success" "503|client-gametest-shard 2|completed|success" "504|client-gametest|completed|success"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale sharded: exit 0" 0
+logged "stale sharded: re-runs the run holding the shards and the aggregate" "$(run_url 302)"
+not_logged "stale sharded: never re-runs the skipped run" "$(run_url 320)"
+no_job_rerun "stale sharded"
+count "stale sharded: two reruns only (the shards share the aggregate's run)" "/rerun" 2
+
 # --- build and tool-tests in different runs (a skipped job on top): each run is re-run whole ---
 reset
 wfruns "310|CI|completed|success" "301|CI|completed|success"
