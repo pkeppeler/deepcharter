@@ -88,19 +88,14 @@ public final class PodSeats {
         if (!pod.level().isClientSide()) {
             return Optional.ofNullable(pod.getControllingPassenger()).map(Entity::getUUID);
         }
-        List<UUID> order = order(pod);
-        if (order.isEmpty()) {
-            return Optional.empty();
-        }
-        UUID first = order.getFirst();
         State synced = synced(pod);
-        boolean listed =
-                !synced.riders().isEmpty() && synced.riders().getFirst().equals(first);
-        boolean player = listed
-                ? synced.pilotIsPlayer()
-                : pod.getPassengers().stream()
-                        .anyMatch(rider -> rider.getUUID().equals(first) && rider instanceof Player);
-        return player ? Optional.of(first) : Optional.empty();
+        if (!synced.riders().isEmpty()) {
+            return synced.pilotIsPlayer() ? Optional.of(synced.riders().getFirst()) : Optional.empty();
+        }
+        // Nothing synced yet: the first visible rider pilots if it is a player.
+        return Optional.ofNullable(pod.getFirstPassenger())
+                .filter(Player.class::isInstance)
+                .map(Entity::getUUID);
     }
 
     private static State synced(PodEntity pod) {
