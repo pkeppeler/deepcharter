@@ -215,6 +215,7 @@ public class BoltDriverPacingTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aTunnelNeedsARoofBoltEveryFewBlocks(GameTestHelper helper) {
+        // Slot 22 stays unused: this tunnel's bed reaches into it, and BoltRoom.cut refuses it.
         Corridor corridor = corridor(helper, TUNNEL, 21);
         TestTicks.each(helper, () -> {
             if (!corridor.ready().isPresent()) {

@@ -290,7 +290,8 @@ public class BoltDriverTest {
 
     /**
      * A test that cuts its corridor after its neighbour must not fill the neighbour's first cell, where its shooter stands: the shooter's
-     * eye would sit in rock and no bolt would fly (#1065). Two spare slots, cut in the order that clobbers.
+     * eye would sit in rock and no bolt would fly (#1065). Two spare slots, cut in the order that clobbers. This guards the stride, not the
+     * general rule; the bed-holds-air gate of #1090 supersedes it, and then this test and {@code SPARE_SLOT} are deleted.
      */
     @GameTest
     public void aCorridorCutAfterItsNeighbourLeavesTheNeighboursFirstCellOpen(GameTestHelper helper) {
@@ -380,7 +381,10 @@ public class BoltDriverTest {
         HitResult block =
                 level.clip(new ClipContext(eye, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, from));
         List<Component> said = shooter.actionBarMessages();
-        return "driver returned %s, said %s, rest on the driver %s, eye %s pitch %s, ray hit %s at %s (%s), target box %s, target health %s, target pose %s, game modes shooter %s target %s, target abilities invulnerable %s, target hurt by a player's attack: invulnerable %s, may be hit by a projectile %s, shooter may harm it %s, invulnerable time %s"
+        return ("driver returned %s, said %s, rest on the driver %s, eye %s pitch %s, ray hit %s at %s (%s), "
+                        + "target box %s, target health %s, target pose %s, game modes shooter %s target %s, "
+                        + "target abilities invulnerable %s, target hurt by a player's attack: invulnerable %s, "
+                        + "may be hit by a projectile %s, shooter may harm it %s, invulnerable time %s")
                 .formatted(
                         result,
                         said.isEmpty() ? "nothing" : said.getLast().getString(),
