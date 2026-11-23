@@ -19,6 +19,18 @@ addVmArgToRuns(exitOnOom)
 val gameTestHeap = "-Xmx3072m"
 addVmArgToRun("gameTest", gameTestHeap)
 
+// Client GameTest heap, 4G (the default is a quarter of RAM). The suite's live set after a full collection (CI 4 vCPU) was 1.35 GB at the last
+// of 69 classes by the per-class histogram (HeapHistogram; run 45062159956, passing), and 1985 MB after a full collection over 90 full
+// collections of the GC log, with a peak before a collection of 3070 MB at a 3G heap (client job 137471282960, head 9ba994a4): the live set
+// was two thirds of 3G and the peak at its ceiling. It grows by about 20 MB a class, from the dedicated servers a test starts (TwoPlayerServer,
+// CampaignWorldClientTest), which stay on the heap with their 6 levels (#914); fixing #914 is the real cure, and the heap is the margin until
+// then. Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac (11 GB), so the
+// default two client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest action prints the peak and
+// the live set from it.
+val clientGameTestHeap = "-Xmx4G"
+addVmArgToRun("clientGameTest", clientGameTestHeap)
+addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")
+
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
 // 0 without it. The second half fails if the JVM ever stops honouring the flag; the first, if a run drops it.
 val probeDir = layout.buildDirectory.dir("oom-probe")
@@ -55,10 +67,14 @@ tasks.register("checkRunJvmOom") {
 	val bare = probeDir.map { it.file("bare.exit") }
 	val flag = exitOnOom
 	val heap = gameTestHeap
+	val clientHeap = clientGameTestHeap
 	doLast {
 		val missing = runArgs.get().filterValues { flag !in it }.keys
 		if (missing.isNotEmpty()) {
 			throw GradleException("run(s) $missing lack $flag: an OutOfMemoryError there would not end the JVM, so the build could pass after one (#541)")
+		}
+		if (clientHeap !in runArgs.get().getValue("clientGameTest")) {
+			throw GradleException("the clientGameTest run lacks $clientHeap: its heap would be a quarter of RAM, which the tall campaign world outgrows (#803)")
 		}
 		if (heap !in runArgs.get().getValue("gameTest")) {
 			throw GradleException("the gameTest run lacks $heap: its heap would be the JVM default (a quarter of RAM), which the suite outgrows (#541)")

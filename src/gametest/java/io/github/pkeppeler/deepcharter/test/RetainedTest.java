@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.creature.LamplessFigures;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -947,7 +948,7 @@ public class RetainedTest {
      * and in the overworld (where the colony and the hangar stand), the Nether and the End it may not appear at all. The light takes a few
      * ticks to spread, so the test waits for it, in three phases: dark, lit, dark again.
      */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aFigureMayAppearInTheDarkOfLayersOneAndTwoAndNowhereElse(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         // The two layers are bands of one level: each has its own room, at the same height over its floor.
