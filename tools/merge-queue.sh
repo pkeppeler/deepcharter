@@ -4,11 +4,11 @@
 # Merges the given PRs one at a time, in order, through tools/merge-pr.sh (the gate).
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
-#   - refusal carrying the "[stale-base]" marker (stale base): re-run the head sha's newest "CI" and
-#     "Client tests" workflow runs (every CI job merges the live main when it runs; the PR's state and head
+#   - refusal carrying the "[stale-base]" marker (stale base): re-run the head sha's newest non-skipped
+#     "CI" and "Client tests" workflow runs (every CI job merges the live main when it runs; the PR's state and head
 #     are never touched), sleep, wait for CI again, retry (up to MERGE_QUEUE_STALE_RETRIES, default 3).
-#     A run still in progress is skipped (it merged the live main when it started, and the API refuses
-#     to re-run it); no run for the sha, or a refused re-run, stops the queue
+#     A run still in progress is skipped (the API refuses to re-run it); if it finishes stale, the next
+#     retry re-runs it, at the cost of one retry. No run for the sha, or a refused re-run, stops the queue
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
 # After a merge, cleanup never loses work. It removes the PR's worktree only when that
@@ -120,22 +120,23 @@ wait_ci() {
   done
 }
 
-# rerun_ci <pr> <sha>: re-run the newest CI and Client tests runs of the head sha. Returns 1 and sets
+# rerun_ci <pr> <sha>: re-run the newest non-skipped CI and Client tests runs of the head sha. Returns 1 and sets
 # $rerun_err when no such run exists, the runs cannot be listed or the API refuses a re-run (for example a
 # run older than 30 days). An unfinished run is skipped: wait_ci waits for it.
 rerun_ci() {
   local sha=$2 rows latest id name status
   rerun_err=
-  rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" \
-    --jq '.workflow_runs[] | [.id, .name, .status] | @tsv' 2>/dev/null) \
+  rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" --paginate \
+    --jq '.workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
     || { rerun_err="PR #$1: could not list the workflow runs of ${sha:0:9}"; return 1; }
-  # The API lists newest first: the first row of each workflow is its latest run.
-  latest=$(awk -F'\t' '($2 == "CI" || $2 == "Client tests") && !seen[$2]++' <<<"$rows")
+  # The API lists newest first. Per workflow take the first run that is not skipped: a label event adds a
+  # skipped run of each labeled workflow, which would hide the real run. An unfinished run has no conclusion.
+  latest=$(awk -F'\t' '($2 == "CI" || $2 == "Client tests") && $4 != "skipped" && !seen[$2]++' <<<"$rows")
   if [[ -z $latest ]]; then
     rerun_err="PR #$1: no CI or Client tests run exists for $sha to re-run (push, or start the workflows by hand)"
     return 1
   fi
-  while IFS=$'\t' read -r id name status; do
+  while IFS=$'\t' read -r id name status _; do
     if [[ $status != completed ]]; then
       say "$name run $id is still in progress ($status): not re-running it"
       continue

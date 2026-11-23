@@ -44,7 +44,7 @@ done
 case "$1 $method" in
   "api GET")
     [[ ! -e $ST/rest_fail ]] || exit 1
-    # actions/runs?head_sha=...: every run row ("id<TAB>name<TAB>status", newest first) of $ST/wfruns, or the API failing.
+    # actions/runs?head_sha=...: every run row ("id<TAB>name<TAB>status<TAB>conclusion", newest first) of $ST/wfruns, or the API failing.
     if [[ $path == */actions/runs\?head_sha=* ]]; then
       [[ ! -e $ST/wfruns_fail ]] || exit 1
       cat "$ST/wfruns" 2>/dev/null || true
@@ -338,12 +338,12 @@ count "ci wait: gate ran once, after CI" "merge-pr 7" 1
 wfruns() { printf '%s\n' "$@" | tr '|' '\t' >"$ST/wfruns"; }
 rerun_url() { echo "gh api -X POST repos/pkeppeler/deepcharter/actions/runs/$1/rerun"; }
 reset
-wfruns "301|CI|completed" "302|Client tests|completed" "303|audit|completed" "290|CI|completed"
+wfruns "301|CI|completed|success" "302|Client tests|completed|success" "303|audit|completed|success" "290|CI|completed|success"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
 exited "stale retry: exit 0" 0
-logged "stale retry: lists the runs of the head sha" "gh api repos/pkeppeler/deepcharter/actions/runs?head_sha=sha7&per_page=100 --jq .workflow_runs[] | [.id, .name, .status] | @tsv"
+logged "stale retry: lists the runs of the head sha" "gh api repos/pkeppeler/deepcharter/actions/runs?head_sha=sha7&per_page=100 --paginate --jq .workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv"
 logged "stale retry: re-runs the CI run" "$(rerun_url 301)"
 logged "stale retry: re-runs the Client tests run" "$(rerun_url 302)"
 count "stale retry: two reruns only (no other workflow, no older run)" "/rerun" 2
@@ -353,9 +353,32 @@ logged "stale retry: sleeps for the rerun" "sleep 9"
 count "stale retry: gate ran twice" "merge-pr 7" 2
 printed "stale retry: merged" "merged:  #7"
 
-# --- a run still in progress is skipped, not cancelled: it merges the live main when it started ---
+# --- a skipped label run on top is not the run to re-run: take the newest non-skipped one per workflow ---
 reset
-wfruns "301|CI|in_progress" "302|Client tests|completed"
+wfruns "310|CI|completed|skipped" "311|Client tests|completed|skipped" "301|CI|completed|success" "302|Client tests|completed|failure" "290|Client tests|completed|success"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale skipped on top: exit 0" 0
+logged "stale skipped on top: re-runs the real CI run" "$(rerun_url 301)"
+logged "stale skipped on top: re-runs the real Client tests run" "$(rerun_url 302)"
+not_logged "stale skipped on top: never re-runs a skipped CI run" "$(rerun_url 310)"
+not_logged "stale skipped on top: never re-runs a skipped Client tests run" "$(rerun_url 311)"
+count "stale skipped on top: two reruns only" "/rerun" 2
+
+# --- every Client tests run skipped: only CI is re-run ---
+reset
+wfruns "311|Client tests|completed|skipped" "301|CI|completed|success" "290|Client tests|completed|skipped"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale all skipped: exit 0" 0
+logged "stale all skipped: re-runs CI" "$(rerun_url 301)"
+count "stale all skipped: no Client tests rerun" "/rerun" 1
+
+# --- a run still in progress is skipped, not cancelled; if it finishes stale the next retry re-runs it ---
+reset
+wfruns "301|CI|in_progress" "302|Client tests|completed|success"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
@@ -377,7 +400,7 @@ count "stale all in progress: gate ran twice" "merge-pr 7" 2
 
 # --- only one of the two workflows has a run: re-run it ---
 reset
-wfruns "301|CI|completed"
+wfruns "301|CI|completed|success"
 gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
@@ -386,7 +409,7 @@ count "stale one workflow: one rerun" "/rerun" 1
 
 # --- no run for the sha: stop, say what to do ---
 reset
-wfruns "303|audit|completed"
+wfruns "303|audit|completed|success"
 gate 7 1 "1" "$(stale_msg 7)"
 run_q 7
 exited "stale no run: exit 1" 1
@@ -405,7 +428,7 @@ printed "stale list fails: summary says why" "could not list the workflow runs"
 
 # --- the API refuses a rerun (a run older than 30 days): stop, no close and reopen fallback ---
 reset
-wfruns "301|CI|completed" "302|Client tests|completed"
+wfruns "301|CI|completed|success" "302|Client tests|completed|success"
 : >"$ST/rerun_fail.301"
 gate 7 1 "1" "$(stale_msg 7)"
 run_q 7
@@ -416,7 +439,7 @@ not_logged "stale refused: never PATCHes" "PATCH"
 
 # --- stale base that never clears stops after 3 reruns ---
 reset
-wfruns "301|CI|completed" "302|Client tests|completed"
+wfruns "301|CI|completed|success" "302|Client tests|completed|success"
 for k in 1 2 3 4; do gate 7 "$k" "1" "$(stale_msg 7)"; done
 run_q 7
 exited "stale exhausted: exit 1" 1
@@ -426,7 +449,7 @@ printed "stale exhausted: summary says why" "still stale after 3 reruns"
 
 # --- MERGE_QUEUE_STALE_RETRIES=0: never re-runs, stops at the first stale refusal ---
 reset
-wfruns "301|CI|completed"
+wfruns "301|CI|completed|success"
 gate 7 1 "1" "$(stale_msg 7)"
 QENV="MERGE_QUEUE_STALE_RETRIES=0" run_q 7
 exited "stale retries 0: exit 1" 1
