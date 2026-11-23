@@ -26,15 +26,14 @@ public final class LayerBlocks {
     private static final Identifier BREACH_CRUST_ID =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "breach_crust");
 
-    /** Bedrock's blast resistance: no vanilla explosion breaks a crust, which only the pod's drill and a creative hand open (#1110). */
-    private static final float BREACH_CRUST_BLAST_RESISTANCE = 3_600_000.0F;
-
+    // Bedrock's blast resistance: no vanilla explosion breaks a crust, which only the pod's drill and a creative hand
+    // open (#1110).
     // The layer material rule (worldgen/material_rule/layer.json) puts 3 of these at each floor, as LayerTuning says.
     public static final Block BREACH_CRUST = registerBlock(
             BREACH_CRUST_ID,
             key -> new Block(BlockBehaviour.Properties.of()
                     .setId(key)
-                    .strength(5.0F, BREACH_CRUST_BLAST_RESISTANCE)
+                    .strength(5.0F, Blocks.BEDROCK.getExplosionResistance())
                     .pushReaction(PushReaction.IMMOVEABLE)
                     .sound(SoundType.STONE)
                     .noLootTable()));

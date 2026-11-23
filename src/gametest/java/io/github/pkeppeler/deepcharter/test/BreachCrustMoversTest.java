@@ -400,7 +400,7 @@ public class BreachCrustMoversTest {
     @GameTest
     public void theCrustHasTheResistanceOfBedrockAndNoPushReaction(GameTestHelper helper) {
         BlockState crust = LayerBlocks.BREACH_CRUST.defaultBlockState();
-        if (LayerBlocks.BREACH_CRUST.getExplosionResistance() < 3_600_000F) {
+        if (LayerBlocks.BREACH_CRUST.getExplosionResistance() < Blocks.BEDROCK.getExplosionResistance()) {
             throw failure(
                     helper,
                     "the crust must shrug off any explosion, its resistance is %s",
