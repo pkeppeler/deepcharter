@@ -372,6 +372,49 @@ public class TowingTest {
                 });
     }
 
+    /**
+     * The pod hangs from the lip of the tower's ledge, then the tower drives away, far past a line's length. The line draped over the
+     * lip runs out: the pod is hauled up and follows its tower, never thrown to the far side of the lip or beyond the line.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    public void aTowerDrivingAwayFromAPodHangingOverItsLedgeHaulsThePodAfterIt(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Vec3 start = ledgeRoom(level, SKY_X + 400);
+        double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
+        int driveFrom = 150;
+        towScene(
+                helper,
+                level,
+                columns(SKY_X + 400, SKY_X + 440, TOW_Z),
+                start,
+                start.add(-3.0, 0, 0),
+                step -> start.add(0.2 * Math.max(0, Math.min(step - driveFrom, 150)), 0, 0),
+                (tower, towed, age) -> {
+                    requireNoWalls(helper, towed);
+                    double gap = tower.position().distanceTo(towed.position());
+                    if (gap > trail + 0.25) {
+                        throw failure(
+                                helper,
+                                "on tick %s the towed pod is %s from its tower, more than the line %s, at %s",
+                                age,
+                                gap,
+                                trail,
+                                towed.position());
+                    }
+                    if (age < driveFrom + 250) {
+                        return false;
+                    }
+                    if (towed.getX() < start.x + 20) {
+                        throw failure(
+                                helper,
+                                "the towed pod should follow its tower at %s, it is at %s",
+                                tower.position(),
+                                towed.position());
+                    }
+                    return true;
+                });
+    }
+
     /** The tower leaves up a shaft, turns into a gallery and stops within the line's reach: the pod is carried up the shaft after it, not left at the bottom. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void aTowerThatTurnsACornerAndStopsWithinTheLineStillBringsThePodUp(GameTestHelper helper) {

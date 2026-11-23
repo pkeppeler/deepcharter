@@ -384,8 +384,9 @@ public final class PodTowing {
         line.remember(anchor, rope);
         Vec3 eye = tower.getBoundingBox().getCenter();
         Vec3 middle = towed.getBoundingBox().getCenter().subtract(towed.position());
-        // The line stays draped while the tower still does not see the pod where it was.
-        Optional<Vec3> bend = line.bend.filter(lip -> clear(towed, eye, lip)
+        // The line stays draped while the tower still does not see the pod where it was and the line reaches the lip.
+        Optional<Vec3> bend = line.bend.filter(lip -> eye.distanceTo(lip) < rope
+                && clear(towed, eye, lip)
                 && !sees(towed, eye, towed.getBoundingBox().move(held.subtract(towed.position()))));
 
         double slowing = line.resting ? tuning.groundFriction() : tuning.drag();
@@ -450,7 +451,9 @@ public final class PodTowing {
         if (pivot.distanceTo(down) <= left + LINE_SLACK && fits(towed, lip, down, false)) {
             return Optional.of(down);
         }
-        return fits(towed, lip, held, false) ? Optional.of(held) : Optional.empty();
+        return pivot.distanceTo(held) <= left + LINE_SLACK && fits(towed, lip, held, false)
+                ? Optional.of(held)
+                : Optional.empty();
     }
 
     /** {@code at} brought back onto the sphere of radius {@code rope} about {@code centre} if it lies outside it. */
