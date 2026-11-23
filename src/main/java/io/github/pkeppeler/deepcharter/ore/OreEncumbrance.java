@@ -3,6 +3,8 @@ package io.github.pkeppeler.deepcharter.ore;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import java.util.Objects;
+import net.fabricmc.fabric.api.event.Event;
+import net.fabricmc.fabric.api.event.EventFactory;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -28,7 +30,27 @@ public final class OreEncumbrance {
     public static final Identifier FIRST_PICKUP_MARK =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_ore");
 
+    /**
+     * Mass that weighs on a player that is not ore: a Retained's grip (#916). Summed with the carried ore on the same tick, so the
+     * slowdown, its cap and the Overburdened status stay one thing. A listener returns 0 for a player it does not weigh on, and never
+     * throws: it runs for every player on every tick. It does not count toward the first-ore line.
+     */
+    public static final Event<ExtraMass> EXTRA_MASS =
+            EventFactory.createArrayBacked(ExtraMass.class, listeners -> player -> {
+                float total = 0f;
+                for (ExtraMass listener : listeners) {
+                    total += listener.of(player);
+                }
+                return total;
+            });
+
     private OreEncumbrance() {}
+
+    /** One source of extra weight. */
+    @FunctionalInterface
+    public interface ExtraMass {
+        float of(ServerPlayer player);
+    }
 
     public static void init() {
         ServerTickEvents.END_SERVER_TICK.register(
@@ -65,7 +87,8 @@ public final class OreEncumbrance {
     private static void apply(ServerPlayer player) {
         OreTuning tuning = OreTuning.DEFAULT;
         float mass = carriedMass(player);
-        double slowdown = Math.min(tuning.maxSlowdown(), mass * tuning.slowdownPerMass());
+        double slowdown =
+                Math.min(tuning.maxSlowdown(), (mass + EXTRA_MASS.invoker().of(player)) * tuning.slowdownPerMass());
         AttributeInstance speed = Objects.requireNonNull(
                 player.getAttribute(Attributes.MOVEMENT_SPEED), "a player has no movement speed attribute");
         // Setting a modifier marks the attribute dirty, which sends a packet, even when the value is the same.

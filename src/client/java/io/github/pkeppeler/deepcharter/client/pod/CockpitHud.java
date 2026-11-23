@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook.Layout;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
@@ -90,6 +91,7 @@ public final class CockpitHud {
 
     public static void init() {
         for (Identifier element : HIDDEN_WHILE_SEATED) {
+            // keep-clear-ok: this takes vanilla's own bars away while seated; it draws nothing of its own
             HudElementRegistry.replaceElement(element, original -> (graphics, deltaTracker) -> {
                 if (seated(Minecraft.getInstance()).isEmpty()) {
                     original.extractRenderState(graphics, deltaTracker);
@@ -102,28 +104,72 @@ public final class CockpitHud {
         // over the Ribbon.
         HudElementRegistry.attachElementAfter(VanillaHudElements.MISC_OVERLAYS, ID, CockpitHud::extract);
         ClientTickEvents.END_CLIENT_TICK.register(CockpitHud::tick);
+        HudKeepClear.register(CockpitHud::keepClear);
     }
 
     /** The layout in force when the local player sits in a pod and the Ribbon fits the GUI; empty on foot, with the cockpit off, or on a GUI too small for it. */
     public static Optional<Layout> seated(Minecraft client) {
+        return seated(
+                client,
+                client.getWindow().getGuiScaledWidth(),
+                client.getWindow().getGuiScaledHeight());
+    }
+
+    /** {@link #seated(Minecraft)} on a GUI {@code guiWidth} x {@code guiHeight}, which the client's window need not have. */
+    public static Optional<Layout> seated(Minecraft client, int guiWidth, int guiHeight) {
         if (client.player == null || !(client.player.getVehicle() instanceof PodEntity)) {
             return Optional.empty();
         }
         CockpitLook look = CockpitLook.current();
-        return look.fits(
-                        client.getWindow().getGuiScaledWidth(),
-                        client.getWindow().getGuiScaledHeight())
-                ? Optional.of(look.ribbon())
-                : Optional.empty();
+        return look.fits(guiWidth, guiHeight) ? Optional.of(look.ribbon()) : Optional.empty();
     }
 
     /** Whether the cockpit's plate shows the text readout: the local player is the pilot of a pod and the Ribbon fits. The plain HUD's readout and account line stay quiet then. */
     public static boolean showsReadout(Minecraft client) {
+        return showsReadout(
+                client,
+                client.getWindow().getGuiScaledWidth(),
+                client.getWindow().getGuiScaledHeight());
+    }
+
+    /** {@link #showsReadout(Minecraft)} on a GUI {@code guiWidth} x {@code guiHeight}. */
+    public static boolean showsReadout(Minecraft client, int guiWidth, int guiHeight) {
         LocalPlayer player = client.player;
         return player != null
-                && seated(client).isPresent()
+                && seated(client, guiWidth, guiHeight).isPresent()
                 && player.getVehicle() instanceof PodEntity pod
                 && PodSeat.showsPodStatus(pod, player);
+    }
+
+    /**
+     * What a popup keeps clear of while the cockpit is up: the ribbon, which holds the gauges, the lamps and the altimeter's recess,
+     * the scanner's bezel when the pod has a map, and the readout plate where it hangs.
+     */
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        Optional<Layout> seated = seated(client, guiWidth, guiHeight);
+        PodEntity pod = seatedPod(client);
+        if (seated.isEmpty() || pod == null || client.player == null) {
+            return;
+        }
+        Layout layout = seated.get();
+        into.add(rect("cockpit ribbon", layout.band(), guiWidth, guiHeight));
+        if (ScannerHud.hasMap()) {
+            into.add(rect("cockpit scanner window", layout.scanner(), guiWidth, guiHeight));
+            into.add(rect("cockpit scanner bezel", layout.cap(), guiWidth, guiHeight));
+        }
+        if (showsReadout(client, guiWidth, guiHeight)) {
+            CockpitLook look = CockpitLook.current();
+            List<Row> rows = fitting(
+                    rows(pod, CockpitReading.of(pod, heat), look, PodStatusHud.readout(client.player, pod)),
+                    roomForRows(client.font, layout, look, guiHeight));
+            Box plate = plateBox(client.font, layout, look, rows, guiWidth, guiHeight);
+            into.add(new HudKeepClear.Rect(
+                    "cockpit readout plate", plate.left(), plate.top(), plate.width(), plate.height()));
+        }
+    }
+
+    private static HudKeepClear.Rect rect(String what, Decal decal, int guiWidth, int guiHeight) {
+        return new HudKeepClear.Rect(what, decal.left(guiWidth), decal.top(guiHeight), decal.width(), decal.height());
     }
 
     /** The heat gauge's reading, 0 to 1: the burning of the hull, eased. */
@@ -142,7 +188,7 @@ public final class CockpitHud {
                 : Math.max(0.0, heat - look.heatFallPerTick());
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
         PodEntity pod = seatedPod(client);
@@ -268,9 +314,9 @@ public final class CockpitHud {
     }
 
     /** The altimeter's reading as the decay lets it read: gone when the depth gauge is dark, its digits jumping when it jumps. Not seated in a pod, the reading as given; empty only on a drop-out of the depth gauge. */
-    public static Optional<Component> altimeter(Minecraft client, Component reading) {
+    public static Optional<Component> altimeter(Minecraft client, int guiWidth, int guiHeight, Component reading) {
         PodEntity pod = seatedPod(client);
-        if (pod == null || seated(client).isEmpty()) {
+        if (pod == null || seated(client, guiWidth, guiHeight).isEmpty()) {
             return Optional.of(reading);
         }
         CockpitDecay decay = CockpitDecay.of(client, pod, CockpitLook.current());

@@ -58,6 +58,20 @@ public final class LayerBlocks {
                     .sound(SoundType.MOSS)
                     .noLootTable()));
 
+    /**
+     * The roof bolt (#987): set in a roof by the bolt driver, it holds the roof round it against a cave-in ({@link CaveIns}). The id is
+     * permanent, since a bolt set in the roof stays in a saved world. It has no item: only the driver sets one.
+     */
+    public static final Block ROOF_BOLT = registerBlockOnly(
+            id("roof_bolt"),
+            key -> new RoofBoltBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(0.5F, 6.0F)
+                    .sound(SoundType.CHAIN)
+                    .noCollision()
+                    .noOcclusion()
+                    .noLootTable()));
+
     /** The rust-brown rock of layer 1, which the layer's noise settings fill the ground with. */
     public static final Block PACKED_SHALE = registerBlock(id("packed_shale"), LayerBlocks::rock);
     /** The grey-green rock of layer 2, which the layer's noise settings fill the ground with. */
@@ -119,6 +133,11 @@ public final class LayerBlocks {
 
     /** Loads the class, which registers the blocks. */
     public static void register() {}
+
+    private static Block registerBlockOnly(Identifier id, Function<ResourceKey<Block>, Block> factory) {
+        ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
+        return Registry.register(BuiltInRegistries.BLOCK, blockKey, factory.apply(blockKey));
+    }
 
     private static Block registerBlock(Identifier id, Function<ResourceKey<Block>, Block> factory) {
         ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);

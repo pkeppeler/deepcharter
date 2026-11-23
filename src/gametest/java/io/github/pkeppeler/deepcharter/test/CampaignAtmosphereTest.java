@@ -185,6 +185,10 @@ public class CampaignAtmosphereTest {
         expect(helper, surface.size() >= 4, "the surface has %s biomes, wanted at least 4", surface.size());
         for (Holder<Biome> biome : surface) {
             for (EnvironmentAttribute<?> attribute : driven) {
+                // Gameplay attributes are not in the mixin's layer: a biome's false patrol flag is `and`ed in (#915).
+                if (!LayerAtmosphere.isVisualOrAudio(attribute)) {
+                    continue;
+                }
                 expect(
                         helper,
                         !biome.value().getAttributes().contains(attribute),

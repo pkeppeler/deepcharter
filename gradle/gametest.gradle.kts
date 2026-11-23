@@ -84,11 +84,24 @@ object GametestScan {
 	private val flagSet = Regex("""\]\s*=\s*true\s*;|\bthis\s*\.\s*\w+\s*=\s*true\s*;|\.\s*set\s*\(\s*true\s*\)""")
 	private val oneShotCheck = Regex("""\bthrow\b|\bfail\s*\(|\bassert\w*\s*\(|\bexpect\w*\s*\(\s*helper\b""")
 
+	// Block light is made on Util.backgroundExecutor(), which other tests' chunk work can fill, so a server GameTest that counts ticks for light flakes
+	// (#1042, #1048). A light read (getBrightness(LightLayer..., getLightEngine) in a server GameTest class is flagged when it sits inside a
+	// thenWaitUntil or succeedWhen call, which counts ticks, or in an @GameTest method that never awaits a Deadline (`.await(` on a name declared with a `Deadline` type in the file, a
+	// `[n]` index of one included, or on `FarChunks.deadline()` inline). Wait under a Deadline, polled from TestTicks.each. A read that is not a wait (an assertion after a deadline-based wait,
+	// a call from a helper the method's deadline covers) carries the comment below, with a reason, on its statement or the comment line above it.
+	// Heuristic: a read in a helper method outside every @GameTest method is only flagged inside a poll call of its own; an await on a Deadline anywhere in the method counts,
+	// even one that guards another wait.
+	private const val LIGHT_WAIT_MARKER = "// light-wait-ok:"
+	private val lightRead = Regex("""\bgetBrightness\s*\(\s*LightLayer\b|\bgetLightEngine\b""")
+	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
+	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
+
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
-	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal is not seen.
+	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
+	// seen, so the gate refuses the literal (#1026).
 	private val campaignConstant = Regex("""\bString\s+(\w+)\s*=\s*"deepcharter:campaign_sample"\s*;""")
 	private val gameTestCall = Regex("""@GameTest\s*\(""")
-	private val dimensionArg = Regex("""\bdimension\s*=\s*(\w+)""")
+	private val dimensionArg = Regex("""\bdimension\s*=\s*(\w+|"")""")
 	private val campaignEnvironmentName = Regex("""\bString\s+(\w+)\s*=\s*"deepcharter-test:campaign_""")
 
 	// The index of the bracket that closes the one at [open], in text whose comments and literals are blanked; -1 when it never closes.
@@ -117,20 +130,63 @@ object GametestScan {
 
 	private fun campaignEnvironmentProblems(className: String, text: String, sourceText: String, environments: List<String>): List<String> {
 		val campaign = campaignConstant.findAll(sourceText).map { it.groupValues[1] }.toSet()
+		val problems = mutableListOf<String>()
+		val calls = gameTestCall.findAll(text).map { call ->
+			val open = call.range.last
+			call to text.substring(open, closing(text, open) + 1)
+		}.toList()
+		for ((call, args) in calls) {
+			if (dimensionArg.find(args)?.groupValues?.get(1) == "\"\"") {
+				problems.add("$className:${lineOf(text, call.range.first) + 1} names its dimension as a string literal, which the scan cannot read, and a literal could be the campaign world; name any dimension with a private static final String constant")
+			}
+		}
 		if (campaign.isEmpty()) {
-			return emptyList()
+			return problems
 		}
 		if (environments.isEmpty()) {
-			return listOf("$className names the campaign world but test/support/CampaignEnvironments.java is missing or defines no String constant of \"deepcharter-test:campaign_...\"; the gate cannot tell which environments exist")
+			return problems + listOf("$className names the campaign world but test/support/CampaignEnvironments.java is missing or defines no String constant of \"deepcharter-test:campaign_...\"; the gate cannot tell which environments exist")
 		}
 		val named = Regex("""\benvironment\s*=\s*CampaignEnvironments\.(?:${environments.joinToString("|")})\b""")
-		val problems = mutableListOf<String>()
-		for (call in gameTestCall.findAll(text)) {
-			val open = call.range.last
-			val args = text.substring(open, closing(text, open) + 1)
+		for ((call, args) in calls) {
 			val dimension = dimensionArg.find(args)?.groupValues?.get(1)
 			if (dimension in campaign && !named.containsMatchIn(args)) {
 				problems.add("$className:${lineOf(text, call.range.first) + 1} runs in the campaign world ($dimension) without an environment; add environment = CampaignEnvironments.<one of ${environments.joinToString(", ")}> (the fewest tests or forced chunks)")
+			}
+		}
+		return problems
+	}
+
+	private fun lightWaitProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val polls = pollCall.findAll(text).map { it.range.last to closing(text, it.range.last) }.filter { it.second > 0 }.toList()
+		val methods = gameTestAnnotation.findAll(text).mapNotNull { annotation ->
+			var from = annotation.range.last + 1
+			if (text.substring(from).trimStart().startsWith("(")) {
+				from = closing(text, text.indexOf('(', from)) + 1
+			}
+			val bodyOpen = text.indexOf('{', from)
+			val bodyClose = if (bodyOpen < 0) -1 else closing(text, bodyOpen)
+			if (bodyClose < 0) null else bodyOpen..bodyClose
+		}.toList()
+		val deadlineAwait = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
+			.takeIf { it.isNotEmpty() }
+			?.let { names -> Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
+		val problems = mutableListOf<String>()
+		for (read in lightRead.findAll(text)) {
+			val at = read.range.first
+			val inPoll = polls.any { at > it.first && at < it.second }
+			val method = methods.firstOrNull { at in it }
+			val noDeadline = method != null && text.substring(method.first, method.last).let {
+				!inlineDeadlineAwait.containsMatchIn(it) && deadlineAwait?.containsMatchIn(it) != true
+			}
+			val line = lineOf(text, at)
+			if ((inPoll || noDeadline) && !marked(markedNear, rawLines, line, LIGHT_WAIT_MARKER)) {
+				val where = if (inPoll) "inside thenWaitUntil or succeedWhen, which count ticks" else "in a test method that awaits no FarChunks.Deadline"
+				problems.add("$className:${line + 1} reads block light $where, and the light engine runs on Util.backgroundExecutor(), which other tests' chunk work can starve; wait for it under FarChunks.Deadline (poll from TestTicks.each, see #1042 and #1048), or mark a read that is not a wait with '$LIGHT_WAIT_MARKER <reason>'")
 			}
 		}
 		return problems
@@ -279,6 +335,9 @@ object GametestScan {
 				}
 			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
+			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
+				problems.addAll(lightWaitProblems(className, text, rawLines, markedNear))
+			}
 			problems.addAll(campaignEnvironmentProblems(className, text, sourceText, campaignEnvironments))
 			if (abstractClass.containsMatchIn(text)) {
 				continue
@@ -379,7 +438,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -398,6 +457,10 @@ tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
 	val recordHolderProblems = project.extra["recordHolderProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
 	val recordHolderAdvice = project.extra["recordHolderAdvice"] as String
+	// The keep-clear gate's scan (keep-clear-gate.gradle.kts), run the same way.
+	@Suppress("UNCHECKED_CAST")
+	val keepClearProblems = project.extra["keepClearProblems"] as (File, File, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
+	val keepClearAdvice = project.extra["keepClearAdvice"] as String
 	// The null-marked gate's scan (null-marked-gate.gradle.kts), run the same way.
 	@Suppress("UNCHECKED_CAST")
 	val nullMarkedProblems = project.extra["nullMarkedProblems"] as (File, File) -> List<String>
@@ -441,6 +504,15 @@ tasks.register("checkGametestFixtures") {
 					val problems = recordHolderProblems(root, root, blankLiterals, markedNear)
 					if (problems.isNotEmpty()) {
 						throw GradleException("Value-holder classes that are not records. $recordHolderAdvice\n  " + problems.joinToString("\n  "))
+					}
+					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
+					continue
+				}
+				if (c["gate"] == "keep_clear") {
+					val root = File(c["root"] as String)
+					val problems = keepClearProblems(root, root, markedNear)
+					if (problems.isNotEmpty()) {
+						throw GradleException("HUD elements that no popup knows to keep clear of. $keepClearAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue

@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.joml.Vector3fc;
  * test running beside this one is not affected. The expected colours are written out here, not read from the timeline.
  */
 public class SkyTimelineTest {
+    private static final String CAMPAIGN = "deepcharter:campaign_sample";
     private static final Identifier SKY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sky");
     private static final long DUSK = 0;
     private static final long NIGHT = 144_000;
@@ -102,7 +104,7 @@ public class SkyTimelineTest {
      * A layer has no sky: in the campaign level, which runs the sky timeline for its surface band, a position in a layer band reads a sky
      * light factor of 0 from its zone biome (#744, ADR 0062), so the sky does not light it.
      */
-    @GameTest(dimension = "deepcharter:campaign_sample")
+    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN)
     public void aLayerBandIsNotTouchedByTheSky(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Timeline timeline = timeline(helper);

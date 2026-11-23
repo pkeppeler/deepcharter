@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.test.support.PacketJitter;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
 import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,6 +20,14 @@ public abstract class ClientPacketListenerMixin {
     @Inject(method = "handleMoveEntity", at = @At("HEAD"), cancellable = true)
     private void deepcharter$jitterMove(ClientboundMoveEntityPacket packet, CallbackInfo ci) {
         if (PacketJitter.skips(() -> ((ClientPacketListener) (Object) this).handleMoveEntity(packet))) {
+            ci.cancel();
+        }
+    }
+
+    /** A stall holds the speed the server reports with the moves, as a late server's packets arrive together; the jitter leaves it alone. */
+    @Inject(method = "handleSetEntityMotion", at = @At("HEAD"), cancellable = true)
+    private void deepcharter$stallMotion(ClientboundSetEntityMotionPacket packet, CallbackInfo ci) {
+        if (PacketJitter.stalls(() -> ((ClientPacketListener) (Object) this).handleSetEntityMotion(packet))) {
             ci.cancel();
         }
     }

@@ -11,7 +11,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.InterpolationHandler;
-import net.minecraft.world.entity.LinearInterpolationHandler;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -26,8 +25,6 @@ public class PodEntity extends Entity {
     private static final String HULL_KEY = "hull";
     private static final String FUEL_KEY = "fuel";
     private static final String STRANDED_KEY = "stranded";
-    /** Ticks the client slides its copy over to each server move; 2 absorbs a missed or doubled update (ADR 0074). */
-    private static final int INTERPOLATION_STEPS = 2;
 
     // Not synced: the entity type says which chassis a pod is, and its hitbox comes from the type too (ADR 0027).
     private final Chassis chassis;
@@ -265,10 +262,10 @@ public class PodEntity extends Entity {
         return false;
     }
 
-    /** The client's copy glides to each move the server sends, over {@link #INTERPOLATION_STEPS} ticks, as a vanilla boat's does. Runs from the entity's constructor: it reads no field. */
+    /** The client's copy glides to each move the server sends, and rides out a late server (ADR 0074, ADR 0082). Runs from the entity's constructor: it reads no field. */
     @Override
     protected InterpolationHandler createInterpolationHandler() {
-        return LinearInterpolationHandler.create(this, INTERPOLATION_STEPS);
+        return PodGlide.create(this);
     }
 
     /** The server moves the pod from the pilot's input (PodMovement); the default would trust a player pilot's client. */
