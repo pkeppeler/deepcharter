@@ -70,12 +70,16 @@ public class PodLinerTest {
      */
     private static void shaft(ServerLevel level, int x, int depth, boolean column) {
         shaftWithoutLava(level, x, depth, column);
-        // A liner lines only what lava can reach (#432): a source in the wall beside the east column floods it. A ring
-        // test lays its ring on the
-        // first tick, before the lava has flowed a block. A drilling pod has a source in view for each ring: the first
-        // ring bricks the lava
-        // that is in its view, so the next stretch has a source of its own, 4 slabs further down than the ring before
-        // it can see.
+    }
+
+    /**
+     * Puts the shaft's lava in its wall. A liner lines only what lava can reach (#432): a source in the wall beside the east column floods
+     * it. A ring test lays its ring on the first tick, before the lava has flowed a block, so this runs where the pod is spawned, once the
+     * chunk ticks: lava poured earlier has its flow overdue by the time the chunk ticks and floods the ring on the first tick (#1083). A
+     * drilling pod has a source in view for each ring: the first ring bricks the lava that is in its view, so the next stretch has a source
+     * of its own, 4 slabs further down than the ring before it can see.
+     */
+    private static void pourLava(ServerLevel level, int x, boolean column) {
         for (BlockPos pocket : lavaPockets(x, column)) {
             level.setBlock(pocket, Blocks.LAVA.defaultBlockState(), 3);
         }
@@ -165,9 +169,10 @@ public class PodLinerTest {
             Consumer<PodLining.State> check) {
         ServerLevel level = TestLayers.level(helper, 1);
         shaft(level, x, 8, false);
-        setup.accept(level);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            pourLava(level, x, false);
+            setup.accept(level);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), tier, rack);
             armed.pod.setAttached(
                     PodLiner.STATE,
@@ -432,6 +437,7 @@ public class PodLinerTest {
         shaft(level, x, 8, false);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            pourLava(level, x, false);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), 1, 10);
             armed.pod.setAttached(
                     PodLiner.STATE,
@@ -458,6 +464,7 @@ public class PodLinerTest {
         shaft(level, x, 8, false);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            pourLava(level, x, false);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), 1, 10);
             // The anchor is at the pod's own height in the column beside: a sidestep puts the pod in a new column, and
             // the ring is due with no slab sunk.
@@ -500,6 +507,7 @@ public class PodLinerTest {
         pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            pourLava(level, x, false);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);
@@ -568,6 +576,7 @@ public class PodLinerTest {
         pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            pourLava(level, x, false);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);
@@ -771,11 +780,13 @@ public class PodLinerTest {
             return seated.get().watch();
         }
 
-        static Rig await(GameTestHelper helper, ServerLevel level, Vec3 at, int tier, boolean sprint) {
+        static Rig await(
+                GameTestHelper helper, ServerLevel level, Vec3 at, int tier, boolean sprint, Runnable pourLava) {
             MockPlayer pilot = owner(helper);
             pilot.teleportTo(level, at, 0f, 0f);
             Rig rig = new Rig(pilot);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+                pourLava.run();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);
@@ -796,7 +807,7 @@ public class PodLinerTest {
     private void drillTenSlabs(GameTestHelper helper, int tier, int x, List<Ring> expected) {
         ServerLevel level = TestLayers.level(helper, 1);
         shaft(level, x, 14, true);
-        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true);
+        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true, () -> pourLava(level, x, true));
         TestTicks.each(helper, () -> {
             if (!rig.seated.isPresent()) {
                 return;
@@ -845,10 +856,16 @@ public class PodLinerTest {
         ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR - 8, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
         RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.AIR);
-        // Lava high on the east wall: in the liner's view at the landing and in the fall, and a stream that has not
-        // reached the pod when it lands.
-        level.setBlock(new BlockPos(x + 4, FLOOR + 6, Z), Blocks.LAVA.defaultBlockState(), 3);
-        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR + 8, Z), tier, false);
+        // Lava high on the east wall, poured once the chunk ticks: in the liner's view at the landing and in the fall,
+        // and a stream that has
+        // not reached the pod when it lands.
+        Rig rig = Rig.await(
+                helper,
+                level,
+                new Vec3(x, FLOOR + 8, Z),
+                tier,
+                false,
+                () -> level.setBlock(new BlockPos(x + 4, FLOOR + 6, Z), Blocks.LAVA.defaultBlockState(), 3));
         boolean[] airborne = {false};
         int[] settled = {0};
         TestTicks.each(helper, () -> {
