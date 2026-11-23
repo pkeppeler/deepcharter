@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -328,7 +329,7 @@ public class WorkOrdersTest {
     }
 
     /** A world whose colony has no Host (one built before the rebuild) refuses the completing delivery before it takes any ore. */
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void theFoundersHandsRefuseWithNoHostInTheSquare(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         CompoundTag saved = ((CompoundTag) ColonySite.CODEC
