@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
@@ -21,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -33,66 +35,92 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 
 /**
- * #913, the production case: a chunk that generates before the colony's pad is chosen is held, undrawn. The server stops before the
- * pad is chosen; the chunk was saved undrawn and reloads with {@code newlyGenerated} false, so unless what is held survives the stop,
- * its structure is never drawn and the shell keeps the zone fill's gas and lava.
+ * #913: a chunk that generates before the colony's pad is chosen is held, undrawn, and must be drawn once the pad is chosen.
  *
- * <p>The restart is simulated by what a start does: the chunks were saved and unloaded, and {@code LayerStructures.drawPending} runs
- * with the pad chosen, as {@code SERVER_STARTED} runs it.
+ * <p>The production case is a server stop in between: the chunk was saved undrawn and reloads with {@code newlyGenerated} false, so
+ * unless what is held survives, its structure is never drawn and the shell keeps the zone fill's gas and lava. The restart is
+ * simulated by the real events a start fires ({@code SERVER_STARTED}, {@code BEGUN}) after the chunks were saved and unloaded.
+ *
+ * <p>The test case is a swap of the colony's record: chunks loaded in it are held while the real colony has a pad, and no event follows.
+ * The next chunk load draws them.
  */
 public class StructureRestartTest {
-    private static final int CELL = 70;
+    private static final int TICKS = FarChunks.AWAIT_BUDGET_TICKS + 600;
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
-    public void aChunkParkedBeforeThePadIsChosenIsDrawnAfterARestart(GameTestHelper helper) {
-        MinecraftServer server = helper.getLevel().getServer();
-        BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT)
-                .orElseThrow(() -> failure(helper, "the colony was not built"));
-        ServerLevel level = TestLayers.level(helper, 1);
-        List<StructureSite> sites = new ArrayList<>();
-        Set<ChunkPos> chunks = new LinkedHashSet<>();
-        for (int layer = 1; layer <= 2; layer++) {
-            LayerChain.Band band = TestLayers.band(level, layer);
-            for (StructureKind kind : StructureKind.inLayer(layer)) {
-                StructureSite site =
-                        StructureSite.in(level.getSeed(), kind, band.minY(), band.height(), CELL, CELL, conduit);
-                sites.add(site);
-                chunks.addAll(LayerStructuresTest.chunksOf(site));
+    /** The sites of both layers in one cell, and the chunks they touch. */
+    private record Cell(ServerLevel level, List<StructureSite> sites, Set<ChunkPos> chunks) {
+        static Cell of(GameTestHelper helper, int cell) {
+            BlockPos conduit = Colony.anchor(helper.getLevel().getServer(), ColonyAnchor.CONDUIT)
+                    .orElseThrow(() -> failure(helper, "the colony was not built"));
+            ServerLevel level = TestLayers.level(helper, 1);
+            List<StructureSite> sites = new ArrayList<>();
+            Set<ChunkPos> chunks = new LinkedHashSet<>();
+            for (int layer = 1; layer <= 2; layer++) {
+                LayerChain.Band band = TestLayers.band(level, layer);
+                for (StructureKind kind : StructureKind.inLayer(layer)) {
+                    StructureSite site =
+                            StructureSite.in(level.getSeed(), kind, band.minY(), band.height(), cell, cell, conduit);
+                    sites.add(site);
+                    chunks.addAll(LayerStructuresTest.chunksOf(site));
+                }
             }
-        }
-        for (ChunkPos chunk : chunks) {
-            if (level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null) {
-                throw failure(helper, "chunk %s was loaded already, so the test proves nothing", chunk);
-            }
-        }
-        // The server thread loads the chunks while no pad is chosen: each is parked, undrawn.
-        WorldData.with(server, ColonySite.TYPE, new ColonySite(), () -> {
             for (ChunkPos chunk : chunks) {
-                level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                if (level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null) {
+                    throw failure(helper, "chunk %s was loaded already, so the test proves nothing", chunk);
+                }
             }
-            List<String> unmet = unmet(level, sites);
-            if (unmet.isEmpty()) {
-                throw failure(helper, "the chunks were drawn before the colony had a pad");
-            }
-        });
+            return new Cell(level, sites, chunks);
+        }
+
+        /** The server thread loads the chunks while no pad is chosen: each is held, undrawn. */
+        void loadWithoutAPad(GameTestHelper helper) {
+            WorldData.with(helper.getLevel().getServer(), ColonySite.TYPE, new ColonySite(), () -> {
+                for (ChunkPos chunk : chunks) {
+                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                }
+                if (unmet(level, sites).isEmpty()) {
+                    throw failure(helper, "the chunks were drawn before the colony had a pad");
+                }
+            });
+        }
+    }
+
+    @GameTest(maxTicks = TICKS)
+    public void aChunkHeldBeforeThePadIsChosenIsDrawnWhenTheServerStartsAgain(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        restart(helper, 70, () -> ServerLifecycleEvents.SERVER_STARTED.invoker().onServerStarted(server));
+    }
+
+    @GameTest(maxTicks = TICKS)
+    public void aChunkHeldBeforeThePadIsChosenIsDrawnWhenTheColonyBegins(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        restart(
+                helper,
+                72,
+                () -> ColonyEvents.BEGUN
+                        .invoker()
+                        .onBegun(server, ColonySite.get(server).started().orElseThrow()));
+    }
+
+    /** Saves the held chunks undrawn, waits for them to unload, then runs the event of a start that finds the pad chosen. */
+    private static void restart(GameTestHelper helper, int cellNumber, Runnable start) {
+        Cell cell = Cell.of(helper, cellNumber);
+        cell.loadWithoutAPad(helper);
+        ServerLevel level = cell.level();
         FarChunks.Deadline deadline = FarChunks.deadline();
         boolean[] reloaded = {false};
         TestTicks.each(helper, () -> {
             if (!reloaded[0]) {
-                boolean allUnloaded = chunks.stream()
+                boolean allUnloaded = cell.chunks().stream()
                         .allMatch(chunk -> level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) == null);
                 deadline.await(helper, level, allUnloaded, () -> "the chunks did not unload");
                 if (!allUnloaded) {
                     return;
                 }
-                // The server starts with the pad chosen (the colony's own record is back); the chunks load from disk.
-                LayerStructures.drawPending(server);
-                for (ChunkPos chunk : chunks) {
-                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
-                }
+                start.run();
                 reloaded[0] = true;
             }
-            List<String> unmet = unmet(level, sites);
+            List<String> unmet = unmet(level, cell.sites());
             if (!unmet.isEmpty()) {
                 throw failure(
                         helper,
@@ -100,6 +128,23 @@ public class StructureRestartTest {
                         unmet);
             }
             helper.succeed();
+        });
+    }
+
+    /** The chunks stay loaded and no event follows the end of the swap: loading any other chunk is what draws them. */
+    @GameTest(maxTicks = TICKS)
+    public void chunksHeldDuringASwapOfTheColonyAreDrawnByTheNextChunkLoad(GameTestHelper helper) {
+        Cell cell = Cell.of(helper, 71);
+        cell.loadWithoutAPad(helper);
+        ServerLevel level = cell.level();
+        // The pad is back. Any chunk load now finds chunks held and a pad chosen.
+        level.getChunk(3000, 3000, ChunkStatus.FULL);
+        TestTicks.each(helper, () -> {
+            // The drain runs at the end of a tick, so the first tick sees them undrawn; the timeout fails a test that
+            // never draws.
+            if (unmet(level, cell.sites()).isEmpty()) {
+                helper.succeed();
+            }
         });
     }
 

@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -31,7 +32,13 @@ public final class LayerStructures {
     private static final int NEAREST_CELLS = 2;
 
     private static final AtomicBoolean LOGGED_FAILURE = new AtomicBoolean();
+    private static final AtomicBoolean LOGGED_PENDING_FAILURE = new AtomicBoolean();
     private static final AtomicBoolean LOGGED_UNREADABLE_COLONY = new AtomicBoolean();
+
+    /** Set by a chunk load that finds drawable chunks held; drained at the end of the tick, not inside the load. Server thread only. */
+    private static boolean drainQueued;
+
+    private static boolean draining;
 
     private LayerStructures() {}
 
@@ -40,10 +47,18 @@ public final class LayerStructures {
             if (newlyGenerated) {
                 draw(level, chunk);
             }
+            queueDrainIfDue(level.getServer());
+        });
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if (drainQueued) {
+                drainQueued = false;
+                drawPending(server);
+            }
         });
         ColonyEvents.BEGUN.register((server, colony) -> drawPending(server));
         // A chunk saved undrawn before the pad was chosen: the pad may be chosen already, in an earlier run.
         ServerLifecycleEvents.SERVER_STARTED.register(LayerStructures::drawPending);
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> drainQueued = false);
     }
 
     private static void draw(ServerLevel level, LevelChunk chunk) {
@@ -60,6 +75,10 @@ public final class LayerStructures {
         // campaign world those chunks hold both layers.
         Optional<BlockPos> conduit = Colony.plannedAnchor(level.getServer(), ColonyAnchor.CONDUIT);
         if (conduit.isPresent()) {
+            // Drawn now, so a chunk that was held and generated again (its first save never happened) is not drawn
+            // twice.
+            PendingStructures.readable(level.getServer())
+                    .ifPresent(pending -> pending.remove(level.dimension(), chunk.getPos()));
             drawSites(level, chunk, bands, conduit.get());
         } else if (Colony.readable(level.getServer()).isPresent()) {
             PendingStructures.readable(level.getServer())
@@ -72,31 +91,71 @@ public final class LayerStructures {
     }
 
     /**
-     * Draws the chunks that generated before the pad was chosen ({@link PendingStructures}), each once, when the pad is chosen: on
-     * {@code BEGUN} and on server start. A chunk is released before it is drawn, so one that fails is not tried at every start.
+     * A chunk may be held while the pad is chosen: a test that swaps the colony's record parks chunks the real colony would have drawn,
+     * and no event follows. Any chunk load finding some held asks for a drain at the end of the tick.
      */
-    public static void drawPending(MinecraftServer server) {
-        if (Colony.plannedAnchor(server, ColonyAnchor.CONDUIT).isEmpty()) {
+    private static void queueDrainIfDue(MinecraftServer server) {
+        if (drainQueued || draining) {
             return;
         }
-        PendingStructures.readable(server).ifPresent(pending -> {
-            pending.snapshot().forEach((dimension, chunks) -> {
-                ServerLevel level = server.getLevel(dimension);
-                if (level == null) {
-                    return;
-                }
-                for (ChunkPos pos : chunks) {
-                    pending.remove(dimension, pos);
-                    try {
-                        // A chunk that unloaded since was saved undrawn: it loads from disk, which is no draw of its
-                        // own.
-                        draw(level, level.getChunk(pos.x(), pos.z()));
-                    } catch (RuntimeException e) {
+        boolean held = PendingStructures.readable(server)
+                .filter(pending -> !pending.isEmpty())
+                .isPresent();
+        if (held && Colony.plannedAnchor(server, ColonyAnchor.CONDUIT).isPresent()) {
+            drainQueued = true;
+        }
+    }
+
+    /**
+     * Draws the chunks held before the pad was chosen ({@link PendingStructures}), each once, now that it is: on {@code BEGUN}, on
+     * server start and after a chunk load that finds some held.
+     *
+     * <p>A chunk's load can itself draw it (it generated again): it is then no longer held, and is not drawn a second time. A chunk that
+     * cannot be loaded stays held, as nothing was drawn; one that fails to draw is dropped, as a half-drawn chunk would draw twice.
+     */
+    public static void drawPending(MinecraftServer server) {
+        if (draining || Colony.plannedAnchor(server, ColonyAnchor.CONDUIT).isEmpty()) {
+            return;
+        }
+        draining = true;
+        try {
+            PendingStructures.readable(server).ifPresent(pending -> drawHeld(server, pending));
+        } finally {
+            draining = false;
+        }
+    }
+
+    private static void drawHeld(MinecraftServer server, PendingStructures pending) {
+        pending.snapshot().forEach((dimension, chunks) -> {
+            ServerLevel level = server.getLevel(dimension);
+            if (level == null) {
+                return;
+            }
+            for (ChunkPos pos : chunks) {
+                LevelChunk chunk;
+                try {
+                    // A chunk that unloaded since was saved undrawn: it loads from disk, which is no draw of its own.
+                    chunk = level.getChunk(pos.x(), pos.z());
+                } catch (RuntimeException e) {
+                    if (LOGGED_PENDING_FAILURE.compareAndSet(false, true)) {
                         DeepCharter.LOGGER.error(
-                                "A pending chunk {} of {} could not be drawn", pos, dimension.identifier(), e);
+                                "A pending chunk {} of {} could not be loaded; it stays held",
+                                pos,
+                                dimension.identifier(),
+                                e);
                     }
+                    continue;
                 }
-            });
+                if (!pending.remove(dimension, pos)) {
+                    continue;
+                }
+                try {
+                    draw(level, chunk);
+                } catch (RuntimeException e) {
+                    DeepCharter.LOGGER.error(
+                            "A pending chunk {} of {} could not be drawn", pos, dimension.identifier(), e);
+                }
+            }
         });
     }
 

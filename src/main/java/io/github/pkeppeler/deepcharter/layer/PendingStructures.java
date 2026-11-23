@@ -23,14 +23,9 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 /**
- * The fresh chunks of a level that holds layers that generated before the colony's pad was chosen, so were not drawn: held here until
- * {@link LayerStructures} draws each one, once, and removes it (ADR 0025, #913). It is saved, because a chunk saved undrawn reloads with
- * {@code newlyGenerated} false and would never be drawn if a server stop lost the list.
- *
- * <p>It is its own record, not a part of {@code ColonySite}: a test that swaps the colony's record would hide chunks added meanwhile.
- *
- * <p>The saved form has a {@link #VERSION}. Data of another version loads as unreadable and is written back unchanged; nothing is then
- * held or drawn, and callbacks never throw ({@link #readable}).
+ * Chunks generated before the colony's pad was chosen, held until drawn (ADR 0025, #913). Saved, because a chunk saved undrawn reloads
+ * with {@code newlyGenerated} false. Its own record, not in {@code ColonySite}: a test's swap of that record would hide them. Data of
+ * another version is unreadable and kept ({@link #readable}).
  */
 public final class PendingStructures extends SavedData {
     public static final int VERSION = 1;
@@ -110,8 +105,8 @@ public final class PendingStructures extends SavedData {
         }
     }
 
-    /** Releases a chunk that was drawn, or is given up. */
-    void remove(ResourceKey<Level> level, ChunkPos chunk) {
+    /** Releases a chunk that was drawn, or is given up; false if it was not held. */
+    boolean remove(ResourceKey<Level> level, ChunkPos chunk) {
         Map<Identifier, Set<ChunkPos>> held = state.orThrow();
         Set<ChunkPos> chunks = held.get(level.identifier());
         if (chunks != null && chunks.remove(chunk)) {
@@ -119,7 +114,13 @@ public final class PendingStructures extends SavedData {
                 held.remove(level.identifier());
             }
             setDirty();
+            return true;
         }
+        return false;
+    }
+
+    boolean isEmpty() {
+        return state.orThrow().isEmpty();
     }
 
     /** The held chunks by level, as a copy that later changes do not touch. */
