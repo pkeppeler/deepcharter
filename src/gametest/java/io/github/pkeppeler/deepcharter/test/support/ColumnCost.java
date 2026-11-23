@@ -140,7 +140,7 @@ public final class ColumnCost {
         return true;
     }
 
-    private static double medianOf(double[] values) {
+    static double medianOf(double[] values) {
         double[] sorted = values.clone();
         Arrays.sort(sorted);
         int middle = sorted.length / 2;
