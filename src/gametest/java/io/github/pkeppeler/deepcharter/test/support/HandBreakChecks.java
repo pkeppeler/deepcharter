@@ -49,6 +49,22 @@ public final class HandBreakChecks {
                         + expected);
     }
 
+    /** The client's destroy progress now, for {@link #requireProgressedFrom}. */
+    public static float clientProgress(ClientGameTestContext context) {
+        return context.computeOnClient(HandBreakChecks::destroyProgress);
+    }
+
+    /**
+     * Fails unless the client's destroy progress has moved on from {@code start} after {@code ticks} ticks of mining with a pick that bites:
+     * the pin is the only miner, so no progress means it is not mining the block.
+     */
+    public static void requireProgressedFrom(ClientGameTestContext context, float start, int ticks) {
+        require(
+                clientProgress(context) > start,
+                "the client's destroy progress has not moved from " + start + " after " + ticks
+                        + " ticks of mining with a pick that bites; the client says: " + clientFacts(context));
+    }
+
     /**
      * What the server holds of the mining of {@code target} by its first player, for a failure message: the game mode, the held pick, the
      * game mode's own mining state, and what the rule makes of the block and the pick. Run on the server.
@@ -133,7 +149,7 @@ public final class HandBreakChecks {
     }
 
     /** The client's own progress on the block it is mining, whose tenths are the stage of the crack. */
-    public static float destroyProgress(Minecraft client) {
+    private static float destroyProgress(Minecraft client) {
         try {
             Field field = MultiPlayerGameMode.class.getDeclaredField("destroyProgress");
             field.setAccessible(true);

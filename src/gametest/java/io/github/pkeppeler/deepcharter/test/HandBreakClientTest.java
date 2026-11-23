@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.HandBreakChecks;
@@ -16,7 +15,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -40,8 +38,8 @@ public class HandBreakClientTest implements FabricClientGameTest {
     /** The break time is 1200 ticks; the margin covers the tick the client starts on and the one it sends STOP on. */
     private static final int BITING_LIMIT_TICKS = 1500;
 
-    /** The ticks mine() waits, stepping nothing itself, to see whether the game mines on its own. */
-    private static final int PROBE_TICKS = 3;
+    /** The ticks after which a pick that bites must have moved the client's progress: the pin is the only miner. */
+    private static final int PROGRESS_TICKS = 40;
 
     private static final int CLUMSY_TICKS = 160;
     private static final int MIDWAY_TICKS = 600;
@@ -68,7 +66,7 @@ public class HandBreakClientTest implements FabricClientGameTest {
         // A tool that cannot bite: the swing refuses on the client, and the block stays on both sides.
         hold(two, new ItemStack(Items.IRON_PICKAXE));
         EvidencePins.attackHeld = true;
-        mine(context, target, CLUMSY_TICKS, false);
+        mine(context, target, CLUMSY_TICKS, false, false);
         EvidencePins.attackHeld = false;
         require(
                 clientHolds(context, target),
@@ -78,7 +76,7 @@ public class HandBreakClientTest implements FabricClientGameTest {
         // A pick that bites: the client's prediction and the server's check agree.
         hold(two, new ItemStack(Items.DIAMOND_PICKAXE));
         EvidencePins.attackHeld = true;
-        mine(context, target, MIDWAY_TICKS, false);
+        mine(context, target, MIDWAY_TICKS, true, false);
         // Half way, the player must be able to SEE the work: the pick worn on the client, and the crack well along.
         HandBreakChecks.requireWorkShows(
                 context,
@@ -87,7 +85,7 @@ public class HandBreakClientTest implements FabricClientGameTest {
                         .computeOnServer(
                                 server -> realPlayer(server).getMainHandItem().getDamageValue()),
                 () -> two.server().computeOnServer(server -> HandBreakChecks.serverFacts(server, target)));
-        int ticks = MIDWAY_TICKS + mine(context, target, BITING_LIMIT_TICKS - MIDWAY_TICKS, true);
+        int ticks = MIDWAY_TICKS + mine(context, target, BITING_LIMIT_TICKS - MIDWAY_TICKS, true, true);
         EvidencePins.attackHeld = false;
         require(ticks >= 1000, "the crust broke after only " + ticks + " ticks, not about 1200");
         for (int tick = 0; tick < SETTLE_TICKS; tick++) {
@@ -104,7 +102,7 @@ public class HandBreakClientTest implements FabricClientGameTest {
         awaitCrust(context, deep);
         hold(two, damaged(Items.NETHERITE_PICKAXE, 100));
         EvidencePins.attackHeld = true;
-        mine(context, deep, SHATTER_TICKS, false);
+        mine(context, deep, SHATTER_TICKS, false, false);
         EvidencePins.attackHeld = false;
         require(clientHolds(context, deep), "a pick that could not pay broke the crust on the client");
         require(serverHolds(two, 2, deep), "a pick that could not pay broke the crust on the server");
@@ -145,21 +143,15 @@ public class HandBreakClientTest implements FabricClientGameTest {
 
     /**
      * Mines for up to {@code limit} ticks with the attack button held (the pin is on, see {@link EvidencePins#attackHeld}).
+     * With {@code bites}, the client's progress must have moved by then (the pin is the only miner, nothing steps the game mode here).
      * Returns the ticks until the client saw the block gone, or {@code limit} when it never did; when {@code expectBreak} the block must go.
      */
-    private static int mine(ClientGameTestContext context, BlockPos target, int limit, boolean expectBreak) {
-        float start = context.computeOnClient(HandBreakChecks::destroyProgress);
-        boolean gameMines = false;
+    private static int mine(
+            ClientGameTestContext context, BlockPos target, int limit, boolean bites, boolean expectBreak) {
+        float start = HandBreakChecks.clientProgress(context);
         for (int tick = 0; tick < limit; tick++) {
-            if (tick == PROBE_TICKS) {
-                // The game's own mining (the pin) steps once a tick when it runs, and a second step would mine twice as
-                // fast. It does not always start in a client test: if the progress has not moved without a step of
-                // ours, each tick steps the game mode as an attack would.
-                gameMines = context.computeOnClient(HandBreakChecks::destroyProgress) > start;
-            }
-            if (tick >= PROBE_TICKS && !gameMines) {
-                context.runOnClient(
-                        client -> ClientSession.gameMode(client).continueDestroyBlock(target, Direction.SOUTH));
+            if (bites && tick == PROGRESS_TICKS) {
+                HandBreakChecks.requireProgressedFrom(context, start, tick);
             }
             context.waitTicks(1); // tick-wait: the mining is one step a tick
             if (!clientHolds(context, target)) {
