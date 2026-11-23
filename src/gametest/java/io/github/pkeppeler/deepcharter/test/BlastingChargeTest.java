@@ -63,14 +63,15 @@ public class BlastingChargeTest {
         ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
-        level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
-        build.accept(level);
         MockPlayer pilot = MockPlayers.join(helper, "charge-" + x);
         pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
         pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Built once the chunk ticks, so its lava is poured into a ticking chunk (#1089).
+            level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
+            build.accept(level);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
