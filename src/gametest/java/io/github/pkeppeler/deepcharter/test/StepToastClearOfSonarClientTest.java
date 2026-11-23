@@ -14,7 +14,6 @@ import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
 import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
@@ -24,8 +23,6 @@ import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.block.Blocks;
 
 /** The popup's keep-clear check for the navigator's sonar scope: a sibling of {@link StepToastClearOfHudClientTest}, which has one player. */
 public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
@@ -34,15 +31,8 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             two.server().runOnServer(server -> SonarHudClientTest.buildSite(server.overworld(), two));
-            ClientWait.until(
-                    context,
-                    "the stone round the pod on the client",
-                    client -> ClientLight.clientLevel(client)
-                            .getBlockState(new BlockPos(
-                                    SonarHudClientTest.X + SonarHudClientTest.SITE_RADIUS,
-                                    SonarHudClientTest.FLOOR_Y,
-                                    SonarHudClientTest.Z))
-                            .is(Blocks.STONE));
+            ClientWait.chunksAround(
+                    context, SonarHudClientTest.X, SonarHudClientTest.Z, SonarHudClientTest.SITE_RADIUS);
             int podId = two.server().computeOnServer(server -> SonarHudClientTest.board(server.overworld(), two));
             context.runOnClient(client -> client.options.guiScale().set(GUI_SCALE));
             EvidencePins.lightFlickerOff = true;
