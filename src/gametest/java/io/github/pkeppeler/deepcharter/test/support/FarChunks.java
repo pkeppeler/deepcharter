@@ -293,6 +293,17 @@ public final class FarChunks {
                 .thenExecute(body);
     }
 
+    /** As the list form, for a test that needs every column ticking: runs {@code then} once on the tick when the last one is. */
+    public static void awaitAllEntityTicking(
+            GameTestHelper helper, ServerLevel level, List<BlockPos> positions, Runnable then) {
+        int[] waiting = {positions.size()};
+        awaitEntityTicking(helper, level, positions, index -> {
+            if (--waiting[0] == 0) {
+                then.run();
+            }
+        });
+    }
+
     /**
      * As the single-position form, for several columns at once with one tick callback. A test that waits for many chunks calls
      * this and not the single form in a loop. {@code then} runs with the index in {@code positions} of a
