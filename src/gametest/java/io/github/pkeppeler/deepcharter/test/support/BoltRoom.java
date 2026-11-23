@@ -36,6 +36,13 @@ public final class BoltRoom {
     private static final int Z = 7400;
     private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int FIRST_X = 3200;
+    /** Blocks of stone bed before a corridor's first cell, and after its last. */
+    private static final int BED_MARGIN = 3;
+    /**
+     * How far apart the corridors of two tests lie. A bed is wider than a corridor: at one chunk apart a neighbour's bed filled the first
+     * cell of the next corridor with stone, and a shooter there fired from inside rock (#1065).
+     */
+    private static final int STRIDE = 32;
 
     private BoltRoom() {}
 
@@ -59,7 +66,7 @@ public final class BoltRoom {
     }
 
     /**
-     * Cuts the corridor of chunk column {@code k} of the tests, and waits for its chunk to tick entities ({@code ready}). Its x is one past a
+     * Cuts the corridor of slot {@code k} of the tests, and waits for its chunk to tick entities ({@code ready}). Its x is one past a
      * chunk edge, so a corridor up to 14 long lies in one chunk. Call it from the test method.
      */
     public static Corridor corridor(GameTestHelper helper, int length, int k) {
@@ -74,8 +81,9 @@ public final class BoltRoom {
 
     /** As {@link #corridor}, for a test that manages its own chunk loading: {@code ready} never arrives. */
     public static Corridor cut(ServerLevel level, int length, int k) {
-        int x = FIRST_X + 16 * k + 1;
-        RoomCarver.carve(level, x - 3, x + length + 2, FLOOR - 3, FLOOR + 6, Z - 3, Z + 3, Blocks.STONE);
+        int x = FIRST_X + STRIDE * k + 1;
+        RoomCarver.carve(
+                level, x - BED_MARGIN, x + length - 1 + BED_MARGIN, FLOOR - 3, FLOOR + 6, Z - 3, Z + 3, Blocks.STONE);
         RoomCarver.carve(level, x, x + length - 1, FLOOR, FLOOR + 1, Z, Z, Blocks.AIR);
         return new Corridor(level, x, length, new Arrival<>("the corridor", "the far chunk ticks"));
     }
