@@ -826,6 +826,13 @@ public class OutpostTest {
                                 }
                             }
                         }
+                        RoomCarver.carvePocketBelow(
+                                stage.level(),
+                                1,
+                                stage.floor().getX() - 1,
+                                stage.floor().getX() + 2,
+                                stage.floor().getZ() - 1,
+                                stage.floor().getZ() + 2);
                         ready[0] = true;
                     });
         });

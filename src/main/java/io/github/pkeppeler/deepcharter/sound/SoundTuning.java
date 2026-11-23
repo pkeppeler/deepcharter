@@ -10,6 +10,8 @@ import java.util.List;
  * @param movingSpeed               blocks per tick a pod must cover before its engine sounds as driving instead of idling
  * @param movingHoldTicks           ticks a pod keeps sounding as driving after its last move, so a pod near the speed does not
  *                                  swap its engine loop every tick
+ * @param engineFadeTicks           ticks a pod loop takes to rise from silence to full, and to fall back: a loop never starts or
+ *                                  stops at full volume, so a change of engine state is a crossfade, not a cut
  * @param hymnTicks                 how long each version of the Lamp Hymn plays, in ticks, the colony first (the length of its file, rounded up);
  *                                  a player is not given a hymn while their last one is still playing
  * @param phonographRange           a phonograph's playback starts for the players within this many blocks of it (the sound's own
@@ -27,6 +29,7 @@ public record SoundTuning(
         int typewriterLettersPerClick,
         double movingSpeed,
         int movingHoldTicks,
+        int engineFadeTicks,
         List<Integer> hymnTicks,
         int phonographRange,
         int phonographListenTicks,
@@ -35,5 +38,5 @@ public record SoundTuning(
         int wreckSongTicks,
         int wreckSongRearmTicks) {
     public static final SoundTuning DEFAULT =
-            new SoundTuning(2, 0.02, 10, List.of(218, 322, 468), 24, 20, 16, 14, 435, 6_000);
+            new SoundTuning(2, 0.02, 10, 10, List.of(218, 322, 468), 24, 20, 16, 14, 435, 6_000);
 }

@@ -83,7 +83,7 @@ Moloch's, drawn to the dark. Built ([ADR 0046](adr/0046-the-retained-are-a-monst
 
 - **Sensed:** a tiny dim lamp in the helmet, seen from far off in the dark. No echo on sonar. A low rumble as one sets off toward you.
 - **Pod:** clings to a dark pod and drains fuel down to 5 per cent until it is killed.
-- **On foot** (new): comes to a person in the dark (no light in either hand and block light under 3 where they stand; later, a suit lamp that is off). It clings, slows them to a crawl as if they carried ore, and drains hunger down to a floor until struck off. It never deals damage.
+- **On foot** (built, [#916](https://github.com/pkeppeler/deepcharter/issues/916), [mechanics.md](design/mechanics.md#the-retained-on-foot-916-a)): comes to a person in the dark (no light in either hand and block light under 3 where they stand; later, a suit lamp that is off). It clings, slows them to a crawl as if they carried ore, and drains hunger down to a floor until struck off. It never deals damage.
 - **Counters:** lights (pod) and a light in hand (on foot) keep one away, but never free a pod or person already held. The cutter or any blow ends a grip.
 
 #### Tallies

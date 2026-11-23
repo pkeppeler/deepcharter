@@ -312,7 +312,7 @@ Built from the user's pick, C, the Reacher, of [figure-concepts.md](figure-conce
 
 ### Other entities
 
-The mod registers exactly three entity types: `pod`, `prospector`, `lampless_figure`. The Notes are blocks, not entities. The tow cable is drawn as a chain
+The mod registers exactly four entity types: `pod`, `prospector`, `lampless_figure`, `tally`. The Notes are blocks, not entities. The tow cable is drawn as a chain
 of links ([Other](#7-other)).
 
 ---

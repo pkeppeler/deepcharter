@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.layer.LightSync;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -25,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class RoomCarverSendTest {
     private static final int SECONDS = 30;
-    private static final int FLOOR = 60;
+    private static final int LOCAL_FLOOR = 60; // fixed-pos: a layer-local Y, turned into a world Y by TestLayers.worldY
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 200;
 
     /** Carves the box once its chunks tick, brings the player in the same tick, and fails naming the chunks that are never sent. */
@@ -36,7 +37,7 @@ public class RoomCarverSendTest {
                         ChunkPos.containing(min.offset(-1, -1, -1)), ChunkPos.containing(max.offset(1, 1, 1)))
                 .toList();
         List<BlockPos> columns = chunks.stream()
-                .map(chunk -> new BlockPos(chunk.getMinBlockX(), FLOOR, chunk.getMinBlockZ()))
+                .map(chunk -> new BlockPos(chunk.getMinBlockX(), min.getY(), chunk.getMinBlockZ()))
                 .toList();
         int[] ticking = {0};
         FarChunks.awaitEntityTicking(helper, level, columns, index -> {
@@ -73,24 +74,30 @@ public class RoomCarverSendTest {
         });
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aPlayerWhoArrivesDuringTheHoldIsSentTheRoomOfLayerOne(GameTestHelper helper) {
         carveThenArrive(
-                helper, 1, new BlockPos(6400 + 4, FLOOR, 6400 + 4), new BlockPos(6400 + 10, FLOOR + 4, 6400 + 10));
+                helper,
+                1,
+                new BlockPos(6400 + 4, TestLayers.worldY(1, LOCAL_FLOOR), 6400 + 4),
+                new BlockPos(6400 + 10, TestLayers.worldY(1, LOCAL_FLOOR) + 4, 6400 + 10));
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aPlayerWhoArrivesDuringTheHoldIsSentARoomAcrossFourChunksOfLayerTwo(GameTestHelper helper) {
         carveThenArrive(
-                helper, 2, new BlockPos(6600 - 6, FLOOR, 6600 - 6), new BlockPos(6600 + 6, FLOOR + 4, 6600 + 6));
+                helper,
+                2,
+                new BlockPos(6600 - 6, TestLayers.worldY(2, LOCAL_FLOOR), 6600 - 6),
+                new BlockPos(6600 + 6, TestLayers.worldY(2, LOCAL_FLOOR) + 4, 6600 + 6));
     }
 
     /** A player who has the chunk before the carve gets block updates, not the chunk again: a resend to everyone would pass the tests above. */
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aPlayerWhoHadTheChunkBeforeTheCarveIsNotSentItAgain(GameTestHelper helper) {
         int layer = 1;
-        BlockPos min = new BlockPos(6800 + 4, FLOOR, 6800 + 4);
-        BlockPos max = new BlockPos(6800 + 10, FLOOR + 4, 6800 + 10);
+        BlockPos min = new BlockPos(6800 + 4, TestLayers.worldY(1, LOCAL_FLOOR), 6800 + 4);
+        BlockPos max = new BlockPos(6800 + 10, TestLayers.worldY(1, LOCAL_FLOOR) + 4, 6800 + 10);
         ServerLevel level = TestLayers.level(helper.getLevel().getServer(), layer);
         MockPlayer player = MockPlayers.join(helper, "had-" + min.getX());
         ChunkPos room = ChunkPos.containing(min);

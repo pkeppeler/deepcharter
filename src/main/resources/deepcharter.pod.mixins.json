@@ -3,7 +3,8 @@
   "package": "io.github.pkeppeler.deepcharter.pod.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "EntityTypeMixin"
+    "EntityTypeMixin",
+    "ServerGamePacketListenerImplMixin"
   ],
   "injectors": {
     "defaultRequire": 1

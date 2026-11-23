@@ -44,10 +44,11 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Client GameTest on a real dedicated server: the harness works (the real client sees itself and the mock player), and
  * the M1 integration scenario (#33), where the real client and the mock player each pilot a Mole down through layer 1 and
- * across the breach into layer 2. The evidence scenario "m1-two-pods" replays the same flow with a recording.
+ * across the breach into layer 2, in place in the campaign level. The evidence scenario "m1-two-pods" replays the same flow with a recording.
  */
 public class TwoPlayerClientTest implements FabricClientGameTest {
-    // Layer 1 is crust at y 0-2, then stone; the pods stand a row above the crust, so the stone row is their first
+    // Layer 1 is crust at local y 0-2, then stone; the pods stand a row above the crust, so the stone row is their
+    // first
     // bore.
     private static final int X = 4000;
     private static final int Z = 4000;
@@ -107,7 +108,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     /**
      * Seats the real client and the mock player in one Mole each in layer 1, drills both through the stone and the crust,
      * and asserts that each ends in layer 2 still riding, with the real client having seen the mock's pod, its bore, and
-     * its own breach fade and scanner. Calls {@code frame} at a steady pace, and faster during a fade.
+     * its own breach rumble (no fade, nothing was hidden) and scanner. Calls {@code frame} at a steady pace, and faster during a fade.
      */
     public static void crossTogether(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
         CameraType previousCamera = context.computeOnClient(client -> client.options.getCameraType());
@@ -124,7 +125,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         Rig rig = two.server().computeOnServer(server -> setUp(server, two));
         ClientWait.until(
                 context,
-                "the real client riding a pod in layer_1 with the mock's pod in view",
+                "the real client riding a pod in layer 1 with the mock's pod in view",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
                         && TestLayers.clientIsIn(client, 1)
@@ -174,12 +175,15 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         boolean realReleased = false;
         boolean mockReleased = false;
         boolean fadeStarted = false;
+        boolean rumbled = false;
         boolean clientSawMockBore = false;
         int sinceFrame = 0;
         for (int tick = 1; tick <= CLIENT_TICK_FUSE; tick++) {
             context.waitTick();
             float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
             fadeStarted |= alpha > 0;
+            rumbled |=
+                    !context.computeOnClient(client -> BreachEffects.jitter().equals(new BreachEffects.Offset(0, 0)));
             if (++sinceFrame >= (alpha > 0 ? TICKS_PER_FADE_FRAME : TICKS_PER_FRAME)) {
                 frame.run();
                 sinceFrame = 0;
@@ -210,16 +214,19 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         two.server().runOnServer(server -> two.mock().releaseInput());
         require(
                 realReleased && mockReleased,
-                "Not both pods crossed into layer_2 (real: " + realReleased + ", mock: " + mockReleased + ")");
+                "Not both pods crossed into layer 2 (real: " + realReleased + ", mock: " + mockReleased + ")");
 
         for (int i = 0; i < ARRIVAL_FRAMES; i++) {
             context.waitTicks(ARRIVAL_TICKS_PER_FRAME);
             fadeStarted |= context.computeOnClient(client -> BreachEffects.fadeAlpha(0f)) > 0;
+            rumbled |=
+                    !context.computeOnClient(client -> BreachEffects.jitter().equals(new BreachEffects.Offset(0, 0)));
             frame.run();
         }
 
-        require(fadeStarted, "The client never received the breach effect: the fade did not start");
-        require(clientSawMockBore, "While in layer_1 the client never saw the mock pod's bore at " + mockStone);
+        require(rumbled, "The client never received the breach effect: the HUD did not shake");
+        require(!fadeStarted, "A crossing in place never fades, but the fade started");
+        require(clientSawMockBore, "While in layer 1 the client never saw the mock pod's bore at " + mockStone);
         expectEndState(context, two, rig, mockId);
         expectScannerShowsPod(context, "m1-two-pods-layer-2");
     }
@@ -227,7 +234,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     /** Builds a room in layer 1, then seats the real player and the mock each in a Mole, a few rows above the crust. */
     private static Rig setUp(MinecraftServer server, TwoPlayerServer two) {
         ServerLevel one = TestLayers.level(server, 1);
-        box(one, 0, 2, LayerBlocks.BREACH_CRUST);
+        box(one, TestLayers.worldY(1, 0), TestLayers.worldY(1, 2), LayerBlocks.BREACH_CRUST);
+        RoomCarver.carvePocketBelow(one, 1, X - ROOM_WEST, X + ROOM_EAST, Z - ROOM_RADIUS_Z, Z + ROOM_RADIUS_Z);
         box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
         shell(one);
         RoomCarver.carve(
@@ -245,7 +253,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         ScannerPods.fit(server, real, realPod, 1);
         require(
                 mockPod.getId() == mockPodId && realPod != mockPod && realPod.level() == one && mockPod.level() == one,
-                "Each player should ride their own pod in layer_1");
+                "Each player should ride their own pod in layer 1");
         return new Rig(realPod, mockPod, columns(realPod), columns(mockPod));
     }
 
@@ -329,26 +337,27 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 () -> "the least ticked pod at " + least.getAsInt());
     }
 
-    /** Server and client agree: both pilots ride a pod in layer_2, the crust under both pods is gone, and the client has the mock's pod. */
+    /** Server and client agree: both pilots ride a pod in layer 2, the crust under both pods is gone, and the client has the mock's pod. */
     private static void expectEndState(ClientGameTestContext context, TwoPlayerServer two, Rig rig, UUID mockId) {
         Crossing end = two.server().computeOnServer(server -> crossing(server, two, rig));
         require(
                 end.realInLayer2() && end.mockInLayer2() && end.bothRiding(),
-                "Each pod should end in layer_2 with its pilot riding: " + end);
+                "Each pod should end in layer 2 with its pilot riding: " + end);
         two.server().runOnServer(server -> {
             ServerLevel one = TestLayers.level(server, 1);
             for (BlockPos column : Stream.concat(rig.realColumns().stream(), rig.mockColumns().stream())
                     .toList()) {
                 for (int y = 0; y <= 2; y++) {
+                    BlockPos crust = column.atY(TestLayers.worldY(1, y));
                     require(
-                            !one.getBlockState(column.atY(y)).is(LayerBlocks.BREACH_CRUST),
-                            "The crust at " + column.atY(y) + " was not bored");
+                            !one.getBlockState(crust).is(LayerBlocks.BREACH_CRUST),
+                            "The crust at " + crust + " was not bored");
                 }
             }
         });
         ClientWait.until(
                 context,
-                "both players riding pods in layer_2",
+                "both players riding pods in layer 2",
                 client -> TestLayers.clientIsIn(client, 2)
                         && ClientSession.player(client).getVehicle() instanceof PodEntity
                         && ClientLight.clientLevel(client).getPlayerByUUID(mockId) instanceof AbstractClientPlayer mock
