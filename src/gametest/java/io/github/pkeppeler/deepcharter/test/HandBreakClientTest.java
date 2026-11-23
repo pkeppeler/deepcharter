@@ -123,7 +123,9 @@ public class HandBreakClientTest implements FabricClientGameTest {
             level.setBlock(target, LayerBlocks.BREACH_CRUST.defaultBlockState(), Block.UPDATE_ALL);
             ServerPlayer player = realPlayer(server);
             player.setGameMode(GameType.SURVIVAL);
-            player.teleportTo(level, x + 0.5, floor.getY() + 1, Z + 0.5, Set.of(), 0, 0, true);
+            // Facing north, at the crust: a teleport that reaches the client after the test aims must not turn the
+            // player away.
+            player.teleportTo(level, x + 0.5, floor.getY() + 1, Z + 0.5, Set.of(), 180, 0, true);
             return target;
         });
     }
