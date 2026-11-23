@@ -944,19 +944,14 @@ public class RetainedTest {
 
     /** A sealed dark room in {@code layer}'s band, with its column. */
     private record DarkRoom(int layer, ServerLevel level, BlockPos column) {
-        /** The cells of the room's air, which {@link RetainedTest#buildDarkRoom} cuts round the column. */
-        BoundingBox air() {
-            return BoundingBox.fromCorners(column.offset(-2, 0, -2), column.offset(2, 4, 2));
-        }
-
-        /** The cells of the air whose stored block light is not the light the blocks give: the light work still pending there. */
-        List<BlockLightOracle.Mismatch> unsettled() {
-            return BlockLightOracle.mismatches(level, BlockLightOracle.expected(level, air()));
+        /** The block light the room's blocks give its air. */
+        BlockLightOracle.Field expectedLight() {
+            return BlockLightOracle.expected(level, airOf(column));
         }
     }
 
     /**
-     * In a dark room of layer 1 and of layer 2 a figure may appear; beside a light, over air, and in a level that holds the cap it may not;
+     * In a dark room of layer 1 and of layer 2 a figure may appear; beside a light and over air it may not;
      * and in the overworld (where the colony and the hangar stand), the Nether and the End it may not appear at all. The light engine works
      * off the server thread, so the test waits on a wall clock for the light of each phase: dark (the cut's own light work done), lit, dark
      * again. Each room is shut in stone, so no light from outside it, a neighbour's or the rock's own lava, reaches the column (#1104).
@@ -973,9 +968,11 @@ public class RetainedTest {
         BlockPos overworldPos = slot(5).above(2);
         int[] ready = {0};
         int[] phase = {0};
-        FarChunks.Deadline[] lightDeadline = {FarChunks.deadline()};
+        FarChunks.Deadline[] lightDeadline = {null};
+        List<BlockLightOracle.Field> darkness = new ArrayList<>();
         Runnable built = () -> {
             if (++ready[0] == 3) {
+                rooms.forEach(room -> darkness.add(room.expectedLight()));
                 lightDeadline[0] = FarChunks.deadline();
             }
         };
@@ -986,8 +983,10 @@ public class RetainedTest {
             switch (phase[0]) {
                 case 0 -> {
                     List<String> unsettled = new ArrayList<>();
-                    for (DarkRoom room : rooms) {
-                        List<BlockLightOracle.Mismatch> cells = room.unsettled();
+                    for (int i = 0; i < rooms.size(); i++) {
+                        DarkRoom room = rooms.get(i);
+                        List<BlockLightOracle.Mismatch> cells =
+                                BlockLightOracle.mismatches(room.level(), darkness.get(i));
                         if (!cells.isEmpty()) {
                             unsettled.add(String.format(
                                     "layer %s: %s cells, first %s", room.layer(), cells.size(), cells.getFirst()));
@@ -1278,27 +1277,31 @@ public class RetainedTest {
         }
     }
 
-    /** A sealed room of air, 4 high with a stone floor, whose floor-level cell at {@code feet} is where a figure would stand. */
+    /** The air of a dark room: 5 by 5 and 5 high, whose floor-level cell at {@code feet} is where a figure would stand. */
+    private static BoundingBox airOf(BlockPos feet) {
+        return BoundingBox.fromCorners(feet.offset(-2, 0, -2), feet.offset(2, 4, 2));
+    }
+
+    /** A room of {@link #airOf} air shut in a one-block shell of stone. */
     private static void buildDarkRoom(ServerLevel level, BlockPos feet) {
+        BoundingBox air = airOf(feet);
+        BoundingBox shell = air.inflatedBy(1);
+        BlockPos low = new BlockPos(shell.minX(), shell.minY(), shell.minZ());
+        BlockPos high = new BlockPos(shell.maxX(), shell.maxY(), shell.maxZ());
         if (level.dimension().equals(Level.OVERWORLD)) {
-            for (int u = -3; u <= 3; u++) {
-                for (int v = -3; v <= 3; v++) {
-                    for (int y = -1; y <= 5; y++) {
-                        boolean shell = y == -1 || y == 5 || Math.abs(u) == 3 || Math.abs(v) == 3;
-                        // room-carver: a closed room of its own stone shell in the overworld test structure, not layer
-                        // rock
-                        level.setBlock(
-                                feet.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
-                    }
-                }
+            for (BlockPos pos : BlockPos.betweenClosed(low, high)) {
+                // room-carver: a closed room of its own stone shell in the overworld test structure, not layer rock
+                level.setBlock(pos, (air.isInside(pos) ? Blocks.AIR : Blocks.STONE).defaultBlockState(), 3);
             }
             return;
         }
-        // A whole box of stone first, so that the walls are stone and not whatever the rock was: a cave or lava beside
-        // the room would
-        // light it.
-        RoomCarver.carve(level, feet.offset(-3, -1, -3), feet.offset(3, 5, 3), Blocks.STONE.defaultBlockState());
-        RoomCarver.carve(level, feet.offset(-2, 0, -2), feet.offset(2, 4, 2), Blocks.AIR.defaultBlockState());
+        // Stone first, so the walls are not whatever the rock was.
+        RoomCarver.carve(level, low, high, Blocks.STONE.defaultBlockState());
+        RoomCarver.carve(
+                level,
+                new BlockPos(air.minX(), air.minY(), air.minZ()),
+                new BlockPos(air.maxX(), air.maxY(), air.maxZ()),
+                Blocks.AIR.defaultBlockState());
     }
 
     private static BlockPos slot(int index) {
