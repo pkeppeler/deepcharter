@@ -96,14 +96,15 @@ object GametestScan {
 	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
 	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
-	// FarChunks.Deadline.await does not block: while its condition is unsettled it sleeps about 2 ms and returns, so an `expect(` or `throw failure(` that is
-	// the next statement after one fails on the first unsettled tick and the deadline does nothing (#1071, #1085). A statement starting with `expect(` or `throw failure(`
-	// (`Failures.` prefix or not) directly after `.await(...);` on a Deadline (a name declared with a `Deadline` type in the file, a `[n]` index of one included, or
-	// `FarChunks.deadline(...)` inline) is flagged. Return while unsettled, then expect once settled: `if (!settled) { ...; return; }`, or put the expect in the branch that tests
-	// the condition. Any statement between the await and the expect (an `if` guard included) passes. A legitimate case carries the comment below, with a reason, on its statement
-	// or the comment line above it. Heuristic: only the direct next statement is seen, and an await used as an expression is not.
+	// FarChunks.Deadline.await does not block: while its condition is unsettled it sleeps about 2 ms and returns, so an assertion that is the next statement
+	// after one fails on the first unsettled tick and the deadline does nothing (#1071, #1085). A statement starting with `expect(` (`Failures.` prefix or not),
+	// `helper.fail(`, `helper.assert...(` or `throw` directly after `.await(...);` on a Deadline (a name declared with a `Deadline` type in the file, a field or
+	// `this.` one included, a `[n]` index of one, or `FarChunks.deadline(...)` inline) is flagged; comments between them do not count. Return while unsettled,
+	// then assert once settled: `if (!settled) { ...; return; }`, or put the assertion in the branch that tests the condition. A legitimate case carries the
+	// comment below, with a reason, on its statement or the comment line above it. Heuristic: only the direct next statement is seen, so any statement in
+	// between (a log line included) defeats it, and an assertion reached through a helper method is not seen.
 	private const val AWAIT_MARKER = "// await-ok:"
-	private val expectAfterAwait = Regex("""^(?:(?:Failures\s*\.\s*)?expect\s*\(|throw\s+(?:Failures\s*\.\s*)?failure\s*\()""")
+	private val expectAfterAwait = Regex("""^(?:(?:Failures\s*\.\s*)?expect\s*\(|helper\s*\.\s*(?:fail|assert\w*)\s*\(|throw\b)""")
 
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
@@ -221,7 +222,7 @@ object GametestScan {
 			if (!expectAfterAwait.containsMatchIn(next)) continue
 			val line = lineOf(text, text.length - next.length)
 			if (!marked(markedNear, rawLines, line, AWAIT_MARKER)) {
-				problems.add("$className:${line + 1} follows Deadline.await directly with an expect or a throw failure, but await does not block: while unsettled it sleeps about 2 ms and returns, so this fails on the first unsettled tick; return while unsettled, then expect once settled: `if (!settled) { ...; return; }` (#1071, #1085), or mark a legitimate case with '$AWAIT_MARKER <reason>'")
+				problems.add("$className:${line + 1} follows Deadline.await directly with an assertion (expect, helper.fail or assert, or a throw), but await does not block: while unsettled it sleeps about 2 ms and returns, so this fails on the first unsettled tick; return while unsettled, then assert once settled: `if (!settled) { ...; return; }` (#1071, #1085), or mark a legitimate case with '$AWAIT_MARKER <reason>'")
 			}
 		}
 		return problems

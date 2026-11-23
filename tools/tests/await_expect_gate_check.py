@@ -1,5 +1,5 @@
-"""Tests the await-then-expect gate in gradle/gametest.gradle.kts: an `expect(` or `throw failure(` that is the direct next statement after a
-FarChunks.Deadline `.await(...)` call fails the build, because await does not block (#1071, #1085).
+"""Tests the await-then-expect gate in gradle/gametest.gradle.kts: an assertion (`expect(`, `helper.fail(`, `helper.assert...(` or a `throw`)
+that is the direct next statement after a FarChunks.Deadline `.await(...)` call fails the build, because await does not block (#1071, #1085).
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
@@ -102,6 +102,13 @@ VIOLATIONS = {
     "wrapped await": ('deadline\n            .await(helper, level, settled, () -> "no light");\n        expect(helper, lit(level), "lit");', 9),
     "inline deadline": ('FarChunks.deadline().await(helper, level, settled, () -> "no light");\n        expect(helper, lit(level), "lit");', 8),
     "array deadline": ('lit[0].await(helper, level, settled, () -> "no light");\n        expect(helper, lit(level), "lit");', 8),
+    "helper.fail after await": ('deadline.await(helper, level, settled, () -> "no light");\n        helper.fail("lit");', 8),
+    "helper.assert after await": ('deadline.await(helper, level, settled, () -> "no light");\n        helper.assertTrue(lit(level), "lit");', 8),
+    "throw new after await": ('deadline.await(helper, level, settled, () -> "no light");\n        throw new IllegalStateException("lit");', 8),
+    "throw assertionException after await": ('deadline.await(helper, level, settled, () -> "no light");\n        throw helper.assertionException("lit");', 8),
+    "field deadline": ('held.await(helper, level, settled, () -> "no light");\n        expect(helper, lit(level), "lit");', 8),
+    "this.field deadline": ('this.held.await(helper, level, settled, () -> "no light");\n        expect(helper, lit(level), "lit");', 8),
+    "a comment between": ('deadline.await(helper, level, settled, () -> "no light");\n        // the light settles here\n        expect(helper, lit(level), "lit");', 9),
     "a bare marker": ('deadline.await(helper, level, settled, () -> "no light");\n        // await-ok:\n        expect(helper, lit(level), "lit");', 9),
     "a marker above a blank line": ('deadline.await(helper, level, settled, () -> "no light");\n        // await-ok: blank line between\n\n        expect(helper, lit(level), "lit");', 10),
 }
@@ -116,6 +123,8 @@ public class AwaitsTest {{
         FarChunks.Deadline[] lit = {{null}};
         {statements}
     }}
+
+    private final FarChunks.Deadline held = FarChunks.deadline();
 }}
 """
 
