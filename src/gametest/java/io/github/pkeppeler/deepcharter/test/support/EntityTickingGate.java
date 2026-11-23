@@ -24,16 +24,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Fails the running test whose pod or player drives into a chunk that is not entity-ticking (#1089). The game stops such an entity dead
- * at the border, so the test sees a pod that "covered 0.0 blocks", and which neighbour tests keep the next chunk ticking decides
- * whether it passes. {@code GameTestTickerMixin} calls {@link #scan} once per server tick with the running tests.
+ * Fails the running test whose pod, or the player riding it, drives into a chunk that is not entity-ticking (#1089): the game stops
+ * such an entity dead at the border. {@code GameTestTickerMixin} calls {@link #scan} once per server tick.
  *
- * <p>It watches pods and the players riding them: a mock player on foot is never driven (the server takes a player's position from
- * client packets, and a mock sends none), so nothing on foot can stall. An entity is the test's own when its chunk lies in the test's structure bounds or in a chunk the test holds
- * ({@link FarChunks}); one that belongs to no test or to two is nobody's, and is not blamed. A move is a drive when its length is
- * what the entity's {@code getDeltaMovement()} explains; a {@code setPos} or a teleport is not, and the gate leaves it alone (a
- * teleported entity is not stalled by the chunk it left). A test about a chunk that must not tick calls
- * {@link FarChunks#allowUnticked}.
+ * <p>An entity is the test's own when its chunk lies in the test's structure bounds or in a chunk the test holds ({@link FarChunks});
+ * one that belongs to no test or to two is nobody's. A move is a drive when {@code getDeltaMovement()} explains its length; a
+ * {@code setPos} or a teleport is not. A test about a chunk that must not tick calls {@link FarChunks#allowUnticked}.
  */
 public final class EntityTickingGate {
     /** Blocks of slack on top of the velocity: a move is the velocity before friction, gravity and a clip against a wall. */
@@ -94,13 +90,10 @@ public final class EntityTickingGate {
      * What is wrong with a move of {@code who} from {@code from} to {@code to}, if anything: a drive into a chunk that is not
      * entity-ticking. A move longer than {@code speed} explains is a reposition, and is not a drive.
      */
-    static Optional<String> problem(ServerLevel level, Entity who, Vec3 from, Vec3 to, double speed) {
+    private static Optional<String> problem(ServerLevel level, Entity who, Vec3 from, Vec3 to, double speed) {
         BlockPos entered = BlockPos.containing(to);
         ChunkPos chunk = ChunkPos.containing(entered);
-        if (chunk.equals(ChunkPos.containing(BlockPos.containing(from))) || level.isPositionEntityTicking(entered)) {
-            return Optional.empty();
-        }
-        if (to.distanceTo(from) > speed * VELOCITY_FACTOR + SLACK) {
+        if (level.isPositionEntityTicking(entered) || to.distanceTo(from) > speed * VELOCITY_FACTOR + SLACK) {
             return Optional.empty();
         }
         return Optional.of(String.format(

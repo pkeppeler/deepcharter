@@ -25,12 +25,9 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server GameTests for {@link EntityTickingGate} (#1089), end to end: a pod driven east out of a chunk the test awaits into the
- * next one, which the game loads (it neighbours a forced chunk) but does not entity-tick. Each case has a chunk column of its own that no
- * other test forces. The cases that must fail are {@code required = false} tests the gate fails, and a {@code ...Fails...} test beside
- * them reads the outcome. The environment keeps all of them in one batch, so a reader is never in a batch before its subject; a
- * batch holds at most 20 tests ({@code TestBatches}) and this class has 13, so cases past 20 would split them. The gate watches pods and
- * the players riding them: a mock player on foot is never moved by its input, so a crossing on foot cannot happen.
+ * Server GameTests for {@link EntityTickingGate} (#1089): a pod driven east out of an awaited chunk into the next, which is loaded but
+ * not entity-ticking. Each case has a chunk column no other test forces. A case that must fail is a {@code required = false} subject
+ * the gate fails, and a {@code ...Fails...} test beside it reads the outcome; the environment keeps them in one batch.
  */
 public class EntityTickingGateTest {
     private static final String ENVIRONMENT = "deepcharter-test:entity_ticking_gate";
