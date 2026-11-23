@@ -72,7 +72,7 @@ public class SuitTimerTest {
     private static int mask(RatingAxis... axes) {
         int mask = 0;
         for (RatingAxis axis : axes) {
-            mask |= 1 << axis.ordinal();
+            mask |= SuitState.bit(axis);
         }
         return mask;
     }

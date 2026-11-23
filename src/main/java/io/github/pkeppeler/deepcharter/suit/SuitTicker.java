@@ -266,6 +266,6 @@ public final class SuitTicker {
                 .ifPresent(state -> player.setAttached(
                         SuitRegistry.SUIT,
                         Versioned.of(
-                                state.withReserve(SuitTuning.DEFAULT.capacity()).doing(Mode.INERT, 0, 0f))));
+                                new SuitState(SuitTuning.DEFAULT.capacity(), state.explained(), Mode.INERT, 0, 0f))));
     }
 }

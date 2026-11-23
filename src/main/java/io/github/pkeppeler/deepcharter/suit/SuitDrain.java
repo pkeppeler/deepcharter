@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.suit;
 
+import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability;
 import io.github.pkeppeler.deepcharter.outpost.RatingAxis;
 import io.github.pkeppeler.deepcharter.outpost.Ratings;
 
@@ -11,9 +12,9 @@ import io.github.pkeppeler.deepcharter.outpost.Ratings;
 public final class SuitDrain {
     private SuitDrain() {}
 
-    /** Whether the depth asks something of a suit: heat, pressure or flooding. Where it does not, the suit is inert. */
+    /** Whether the depth asks something of a suit on {@link OutpostHabitability#AXES}. Where it does not, the suit is inert. */
     public static boolean asks(Ratings depth) {
-        return depth.heat() > 0 || depth.pressure() > 0 || depth.flooding() > 0;
+        return OutpostHabitability.AXES.stream().anyMatch(axis -> depth.of(axis) > 0);
     }
 
     /**
@@ -33,7 +34,7 @@ public final class SuitDrain {
     /** The axes that cost something, a bit for each {@link RatingAxis} ordinal: the bits {@link SuitState#axes} carries. */
     public static int axes(Ratings depth, Ratings suit, boolean wet) {
         int mask = 0;
-        for (RatingAxis axis : new RatingAxis[] {RatingAxis.HEAT, RatingAxis.PRESSURE, RatingAxis.FLOODING}) {
+        for (RatingAxis axis : OutpostHabitability.AXES) {
             if (shortBy(depth, suit, axis) > 0 && (wet || axis != RatingAxis.FLOODING)) {
                 mask |= SuitState.bit(axis);
             }

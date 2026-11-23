@@ -10,5 +10,6 @@ public final class SuitInit {
     public static void init() {
         SuitRegistry.register();
         SuitTicker.init();
+        OutpostRisks.init();
     }
 }

@@ -11,6 +11,5 @@ public final class OutpostInit {
         OutpostRegistry.register();
         OutpostSettling.init();
         IncidentReports.init();
-        OutpostRisks.init();
     }
 }

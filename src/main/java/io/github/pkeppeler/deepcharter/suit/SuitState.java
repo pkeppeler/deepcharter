@@ -113,16 +113,6 @@ public record SuitState(float reserve, boolean explained, Mode mode, int axes, f
         return new SuitState(SuitTuning.DEFAULT.capacity(), false, Mode.INERT, 0, 0f);
     }
 
-    /** This state with {@code reserve} clamped to the suit's capacity. */
-    SuitState withReserve(float reserve) {
-        return new SuitState(sane(reserve), explained, mode, axes, rate);
-    }
-
-    /** This state doing {@code mode} at {@code rate} on {@code axes}. */
-    SuitState doing(Mode mode, int axes, float rate) {
-        return new SuitState(reserve, explained, mode, axes, rate);
-    }
-
     /** This state with the first drain's line marked shown. */
     SuitState told() {
         return new SuitState(reserve, true, mode, axes, rate);
