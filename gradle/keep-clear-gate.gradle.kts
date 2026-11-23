@@ -4,7 +4,7 @@
 // call, and has a call line without `// keep-clear-ok: <reason>` on it or the contiguous `//` lines above it.
 //
 // The scan is source text, as the other gates are. It is per file, not per element: a file that registers a rectangle is taken to
-// register every element it draws; a reviewer reads the rectangle against the draw code, and the client test (StepToastClearOfHudClientTest)
+// register every element it draws; a reviewer reads the rectangle against the draw code, and the client test (StepToastClearOfHudClientTest, and StepToastClearOfSonarClientTest for the navigator's scope)
 // draws the real HUD and checks that the popup covers none of its text. Comments are blanked before the match, so a mention in prose
 // neither makes a call nor registers one.
 //

@@ -99,7 +99,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             EvidencePins.handsHidden = true;
             try {
                 seatThePilot(context, singleplayer);
-                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, "in the cockpit", true);
+                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, LONG_STEP, "in the cockpit", true);
                 expectTheSlipIsClearOnEveryCockpitGui(context);
                 expectTheSlipIsClearOnAGuiTooSmallForTheCockpit(context);
                 expectTheSlipIsClearOfATransmission(context);
@@ -111,7 +111,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                         context,
                         "the pilot out of the pod",
                         client -> client.player != null && client.player.getVehicle() == null);
-                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, "on foot", false);
+                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, LONG_STEP, "on foot", false);
                 expectTheSlipIsClearOnFoot(context);
             } finally {
                 EvidencePins.reset();
@@ -164,13 +164,13 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
      * The popup the toast manager really draws, at the window's own GUI. It is drawn where {@link StepToast#placement} says (the text
      * the manager draws is inside that box, read through a recorder, not taken from the toast's own figures); that box is where
      * {@link StepToast#place} puts it; none of the HUD, as worked out here from the theme, is under it; and none of the text the real
-     * HUD layers draw is. {@code cockpit} says whether the cockpit is up.
+     * HUD layers draw is. {@code step} is its text and {@code cockpit} says whether the cockpit is up.
      */
     static void expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(
-            ClientGameTestContext context, String when, boolean cockpit) {
+            ClientGameTestContext context, String step, String when, boolean cockpit) {
         StepToast[] toast = {null};
         context.runOnClient(client -> {
-            toast[0] = StepToast.of(Component.literal(LONG_STEP));
+            toast[0] = StepToast.of(Component.literal(step));
             client.gui.toastManager().addToast(toast[0]);
         });
         ClientWait.until(

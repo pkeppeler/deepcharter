@@ -37,8 +37,8 @@ import net.minecraft.resources.Identifier;
 public final class SonarHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sonar");
     private static final int TITLE_GAP = 10;
-    private static final int BAR_HEIGHT = 2;
-    private static final int LINE_GAP = 2;
+    public static final int BAR_HEIGHT = 2;
+    public static final int LINE_GAP = 2;
 
     private SonarHud() {}
 

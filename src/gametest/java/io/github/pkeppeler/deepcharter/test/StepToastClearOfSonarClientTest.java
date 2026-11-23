@@ -26,14 +26,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 
-/**
- * Client GameTest for #1056: a handbook step popup keeps clear of the navigator's sonar scope. As in {@link SonarHudClientTest}, a mock
- * player pilots a Prospector and the real client rides it as the navigator, so the scope is up. The scope's keep-clear rectangle covers
- * everything the scope draws (its frame and the text it draws, read through a recorder); the popup the toast manager draws is
- * where it was placed, clear of that rectangle and of the rest of the HUD, and of every piece of HUD text including the scope's, with
- * the checks of {@link StepToastClearOfHudClientTest}; and on the GUI sizes the cockpit has, a popup is clear of the scope or
- * there is no place clear of it.
- */
+/** Client GameTest for #1056, a sibling of {@link StepToastClearOfHudClientTest} because the navigator needs a two-player server. */
 public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
     private static final int GUI_SCALE = 2;
 
@@ -70,7 +63,7 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
                         client -> SonarHud.frame(client).isPresent());
                 context.runOnClient(client -> client.gui.toastManager().clear());
                 expectTheScopeRectangleCoversWhatTheScopeDraws(context);
-                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, "as the navigator", true);
+                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, SHORT_STEP, "as the navigator", true);
                 expectTheSlipIsClearOfTheScopeOnEveryCockpitGui(context);
             } finally {
                 EvidencePins.reset();
@@ -80,8 +73,8 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The rectangle the popup keeps clear of is the scope: it holds the frame, worked out here from the theme, and every string the
-     * sonar HUD draws, and the critical rectangles the popup is checked against include it.
+     * The rectangle the popup keeps clear of is the scope: it holds the frame and the charge bar, worked out here from the theme, and
+     * every string the sonar HUD draws, and the critical rectangles the popup is checked against include it.
      */
     private static void expectTheScopeRectangleCoversWhatTheScopeDraws(ClientGameTestContext context) {
         context.runOnClient(client -> {
@@ -92,6 +85,9 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
             int top = (height - look.scopePixels()) / 2;
             Box frame = new Box(look.margin() - 1, top - 1, look.scopePixels() + 2, look.scopePixels() + 2);
             requireInside("the scope's frame", frame, rect);
+            require(
+                    rect.bottom() >= top + look.scopePixels() + SonarHud.LINE_GAP + SonarHud.BAR_HEIGHT,
+                    "the scope's keep-clear rectangle " + rect + " ends above its charge bar");
             List<Drawn> text = DrawnText.of(graphics -> SonarHud.extract(graphics, client.getDeltaTracker()));
             require(!text.isEmpty(), "the sonar HUD draws some text for the navigator");
             for (Drawn drawn : text) {
@@ -108,7 +104,7 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
             for (int[] gui : COCKPIT_GUIS) {
                 Map<String, Box> hud = critical(client, gui[0], gui[1]);
                 require(hud.containsKey("sonar scope"), "the scope is up on a GUI " + gui[0] + " x " + gui[1]);
-                requireClearOrNowhere(client, gui, SHORT_STEP, hud, false);
+                requireClearOrNowhere(client, gui, SHORT_STEP, hud, true);
                 requireClearOrNowhere(client, gui, LONG_STEP, hud, false);
             }
         });
