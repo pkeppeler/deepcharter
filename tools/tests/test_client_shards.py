@@ -63,6 +63,28 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIn("name: client-gametest-screenshots${{ inputs.artifact-suffix }}", ACTION)
         self.assertIn("artifact-suffix: -${{ matrix.shard }}", self.shard_job())
 
+    def deadline_for(self, branch: str) -> int:
+        """The max_seconds the action sets when CLIENT_SHARD is set ("sharded") or empty ("whole")."""
+        match = re.search(
+            r'if \[ -n "\$CLIENT_SHARD" \]; then\n\s+max_seconds=(\d+)\n\s+else\n\s+max_seconds=(\d+)\n\s+fi', ACTION
+        )
+        self.assertIsNotNone(match, "the action does not pick max_seconds by whether CLIENT_SHARD is set")
+        return int(match[1 if branch == "sharded" else 2])
+
+    def test_a_shard_keeps_20_minutes_inside_its_30_minute_job(self):
+        limit = int(re.search(r"timeout-minutes: (\d+)", self.shard_job())[1])
+        self.assertEqual(30, limit)
+        self.assertEqual(1200, self.deadline_for("sharded"))
+        self.assertLess(self.deadline_for("sharded"), limit * 60)
+
+    def test_a_whole_suite_run_gets_3000_seconds_inside_a_60_minute_job(self):
+        # Pre-shard workflows (still on queued PRs) run the whole suite in one 60-minute job, as does record-evidence.yml (#1135).
+        self.assertEqual(3000, self.deadline_for("whole"))
+        evidence = (REPO / ".github/workflows/record-evidence.yml").read_text()
+        self.assertNotIn("client-shard:", evidence)
+        self.assertIn("timeout-minutes: 60", evidence)
+        self.assertLess(self.deadline_for("whole"), 60 * 60)
+
 
 if __name__ == "__main__":
     unittest.main()
