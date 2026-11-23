@@ -206,18 +206,19 @@ public class BoltDriverPacingTest {
         }
         placed[0] = 0;
         for (int along = first; along < corridor.length(); along += spacing) {
-            Optional<String> refusal = CaveIns.boltRefusal(level, corridor.roof(along), DRIVER.boltSpacing());
+            BlockPos roof = corridor.roof(along);
+            Optional<String> refusal = CaveIns.boltRefusal(level, roof, DRIVER.boltSpacing());
             if (refusal.isPresent()) {
                 throw failure(
                         helper,
                         "a bolt at %d (spacing %d, roof %s, cell %s) was refused: %s",
                         along,
                         spacing,
-                        level.getBlockState(corridor.roof(along)),
-                        level.getBlockState(corridor.roof(along).below()),
+                        level.getBlockState(roof),
+                        level.getBlockState(roof.below()),
                         refusal.get());
             }
-            CaveIns.hangBolt(level, corridor.roof(along));
+            CaveIns.hangBolt(level, roof);
             placed[0]++;
         }
         int loose = 0;
