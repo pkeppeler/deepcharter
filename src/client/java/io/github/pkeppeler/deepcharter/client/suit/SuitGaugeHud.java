@@ -66,7 +66,7 @@ public final class SuitGaugeHud {
     /** What the gauge shows for the local player, or empty when it shows nothing. Public so tests can check it without reading pixels. */
     public static Optional<Gauge> gauge(Minecraft client) {
         LocalPlayer player = client.player;
-        if (player == null || player.isSpectator() || player.isCreative()) {
+        if (player == null || player.isSpectator() || player.isCreative() || player.getVehicle() instanceof PodEntity) {
             return Optional.empty();
         }
         Versioned<SuitState> held = player.getAttached(SuitRegistry.SUIT);
@@ -74,8 +74,7 @@ public final class SuitGaugeHud {
             return Optional.of(new Gauge(
                     Component.translatable("hud.deepcharter.suit.unreadable"), Component.empty(), 0f, Tone.RED, false));
         }
-        if (!(held instanceof Versioned.Readable<SuitState>(SuitState state))
-                || player.getVehicle() instanceof PodEntity) {
+        if (!(held instanceof Versioned.Readable<SuitState>(SuitState state))) {
             return Optional.empty();
         }
         return gauge(state);

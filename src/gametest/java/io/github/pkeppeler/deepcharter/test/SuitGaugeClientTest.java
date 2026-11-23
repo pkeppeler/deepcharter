@@ -38,7 +38,9 @@ import net.minecraft.world.level.GameType;
  * Client GameTest for the suit gauge (#993): how it reads for each state of the suit (words, colour, blinking), that it shows nothing where
  * the suit is inert, in a pod's seat and for a creative player, that a suit log this build cannot read says so in red, that the one
  * rectangle {@link HudKeepClear} gives for it is the box its text is drawn in, and that on the smallest GUI and the default window's it
- * fits and is clear of vanilla's rows ({@link VanillaHudRows}) and of the mod's other HUD parts. The live part runs in
+ * fits and is clear of vanilla's rows ({@link VanillaHudRows}). Live, the gauge draws only on foot, with a draining suit or an
+ * unreadable log, and in both it is checked clear of every other box {@link HudKeepClear} lists; seated in a pod, with either, it
+ * draws and keeps nothing, so it cannot cover the pod's readout at the top left or the cockpit art. The live part runs in
  * the unbuilt depth, where the real suit drains, so it reads what the client holds and not fixed numbers.
  */
 public class SuitGaugeClientTest implements FabricClientGameTest {
@@ -233,6 +235,12 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
 
     /** Seated in a pod the gauge is gone, whatever the suit does, and the pod's own readouts have the room. */
     private static void expectSeatedShowsNothing(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        mountPod(context, singleplayer);
+        expectNothingDrawnOrKept(context, "a seated person has no suit gauge");
+        dismount(context, singleplayer);
+    }
+
+    private static void mountPod(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
@@ -246,9 +254,9 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
                 context,
                 "the player seated in a pod",
                 client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
-        require(
-                context.computeOnClient(client -> SuitGaugeHud.gauge(client).isEmpty() && noGaugeBox(client)),
-                "a seated person has no suit gauge");
+    }
+
+    private static void dismount(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.stopRiding();
@@ -257,6 +265,21 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
                 context,
                 "the player on foot again",
                 client -> client.player != null && !(client.player.getVehicle() instanceof PodEntity));
+    }
+
+    /**
+     * The gauge shows nothing, keeps nothing clear and draws nothing, so it cannot cover the pod's readout at the top left or the
+     * cockpit art.
+     */
+    private static void expectNothingDrawnOrKept(ClientGameTestContext context, String why) {
+        context.runOnClient(client -> {
+            Optional<Gauge> gauge = SuitGaugeHud.gauge(client);
+            require(gauge.isEmpty() && noGaugeBox(client), why + ", read " + gauge.map(SuitGaugeClientTest::describe));
+            List<Drawn> drawn = DrawnText.of(graphics -> SuitGaugeHud.extract(graphics, client.getDeltaTracker()));
+            require(
+                    drawn.isEmpty(),
+                    why + ", drew " + drawn.stream().map(Drawn::shortText).toList());
+        });
     }
 
     /** A suit log that this build cannot read shows one red line, so the person knows the timer is off. */
@@ -276,6 +299,10 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
         require(
                 gauge.label().getString().equals("SUIT LOG UNREADABLE") && gauge.tone() == Tone.RED,
                 "an unreadable log says so in red, read " + describe(gauge));
+        expectTheGaugeKeepsItsBoxClear(context);
+        mountPod(context, singleplayer);
+        expectNothingDrawnOrKept(context, "a seated person with an unreadable suit log has no suit gauge");
+        dismount(context, singleplayer);
         singleplayer
                 .getServer()
                 .runOnServer(server -> server.getPlayerList()
