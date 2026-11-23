@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.Findings;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -46,33 +47,33 @@ public class PodNearLethalLandingTest {
     }
 
     /** The hull is the landing's cost, to a hair short so that float rounding cannot leave a sliver of hull. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodWithExactlyTheHullTheLandingCostsIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22004, Hit.LANDING, -HULL_EPSILON / 2, true);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodOneHullShortOfTheLandingIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22068, Hit.LANDING, -1f, true);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodLeftWithOneHullByTheLandingStaysWorkingOnTheFloor(GameTestHelper helper) {
         drop(helper, 22132, Hit.LANDING, 1f, true);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void anEmptyPodWithExactlyTheHullTheLandingCostsIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22196, Hit.LANDING, -HULL_EPSILON / 2, false);
     }
 
     /** Every other way into 0 hull ends in the same wreck, so a pod emptied in the air is no different once it lands. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodEmptiedByAGasBlastInTheAirIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22260, Hit.GAS, 0f, true);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodWhoseHullIsSetToZeroInTheAirIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22324, Hit.ZERO, 0f, true);
     }

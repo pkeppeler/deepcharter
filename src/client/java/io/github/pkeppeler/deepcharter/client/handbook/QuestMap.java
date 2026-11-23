@@ -21,7 +21,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * The quest map of one chapter: its directives as a flowchart of ink-outlined boxes on the paper, the next chapter's in faint ink,
  * anything further as black redaction bars, and the index card of the step the player picked. This class lays out and draws; the
- * screen owns the state. Layout is in map pixels from the flowchart's top left corner, before the pan and zoom of the {@link MapView}.
+ * screen owns the state. Layout is in map pixels from the flowchart's top left corner.
  * Every colour and length is in {@link HandbookScreenTuning} and {@link QuestMapTuning}.
  */
 final class QuestMap {
@@ -101,9 +101,8 @@ final class QuestMap {
     }
 
     /** The step whose card shows: the one the player picked, else the current step, else the first. */
-    static HandbookChapter.Entry shown(HandbookPage.Chapter chapter, MapView view) {
+    static HandbookChapter.Entry shown(HandbookPage.Chapter chapter, @Nullable Identifier picked) {
         List<HandbookChapter.Entry> steps = chapter.chapter().directives();
-        Identifier picked = view.selected;
         if (picked != null) {
             for (HandbookChapter.Entry entry : steps) {
                 if (entry.id().equals(picked)) {
@@ -223,15 +222,13 @@ final class QuestMap {
     }
 
     /**
-     * Draws the flowchart with its origin at ({@code originX}, {@code originY}) moved by the pan and scaled by the zoom of
-     * {@code view}, clipped to {@code clip}, in screen pixels.
+     * Draws the flowchart with its origin at ({@code originX}, {@code originY}), clipped to {@code clip}, in screen pixels.
      */
     static void drawChart(
             GuiGraphicsExtractor graphics,
             Font font,
             Model model,
             Layout layout,
-            MapView view,
             int originX,
             int originY,
             Rect clip,
@@ -242,8 +239,7 @@ final class QuestMap {
         QuestMapTuning q = QuestMapTuning.current();
         graphics.enableScissor(clip.x(), clip.y(), clip.right(), clip.bottom());
         graphics.pose().pushMatrix();
-        graphics.pose().translate((float) (originX + view.panX), (float) (originY + view.panY));
-        graphics.pose().scale((float) view.zoom, (float) view.zoom);
+        graphics.pose().translate(originX, originY);
         boolean full = model.main().visibility() == HandbookVisibility.FULL;
         int ink = full ? t.inkColor() : t.faintInkColor();
         List<HandbookChapter.Entry> steps = model.main().chapter().directives();
