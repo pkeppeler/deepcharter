@@ -4,6 +4,8 @@ status: accepted
 
 # Pods stay server-authoritative, and the client slides them over two ticks
 
+Extended by [ADR 0082](0082-the-client-coasts-a-pod-through-a-late-server-and-caps-its-catch-up.md): the slide now coasts through a late server and caps its catch-up.
+
 Issue [#961](https://github.com/pkeppeler/deepcharter/issues/961). A pod's pilot saw it stutter: the server sends one move a tick, but the client's tick and the packets drift, so some client ticks got none and some two. Changes `PodEntity`, which the M2 rules freeze.
 
 ## Decision
