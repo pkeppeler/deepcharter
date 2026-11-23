@@ -48,11 +48,7 @@ public class PodSyncTest {
     /** How far a hacked client claims the vehicle went in one tick: five blocks, where the pod's own top speed is a fifth of one. */
     private static final double CLAIMED_STEP = 5;
 
-    /**
-     * Lays the floor and awaits entity ticking in every chunk under it, which are far from every player (#1083). A pod or boat drives
-     * only over the floor, so those are the chunks it can enter: one that is forced but not yet ticking stops the vehicle dead at the
-     * chunk border. Returns whether they all tick yet; a vehicle moves only once they do.
-     */
+    /** Lays the floor and awaits entity ticking in every chunk under it; the result is true once they all tick (#1083). */
     private static boolean[] floor(GameTestHelper helper) {
         BlockPos low = helper.absolutePos(BlockPos.ZERO);
         BlockPos high = helper.absolutePos(new BlockPos(2 * FLOOR_RADIUS, 0, 2 * FLOOR_RADIUS));
@@ -204,7 +200,7 @@ public class PodSyncTest {
     }
 
     /**
-     * Seats a mock pilot in {@code vehicle}, waits until the floor's chunks tick and it has ticked, sends the packet a vanilla client sends for a vehicle it
+     * Seats a mock pilot in {@code vehicle}, waits until it has ticked, sends the packet a vanilla client sends for a vehicle it
      * simulates with the vehicle {@link #CLAIMED_STEP} blocks east, and hands {@code check} how far the vehicle moved on the spot.
      */
     private static void claimAfterRiding(

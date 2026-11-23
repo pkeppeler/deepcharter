@@ -99,20 +99,8 @@ public final class FarChunks {
         }
     }
 
-    /**
-     * Lets {@code helper}'s test drive a pod or player into a chunk that is not entity-ticking, for a test that is about such a chunk
-     * (#1083). The reason is required and names why the chunk must not tick; read it, the gate does not judge it.
-     */
-    public static void allowUnticked(GameTestHelper helper, String reason) {
-        if (reason.isBlank()) {
-            throw new IllegalArgumentException("FarChunks.allowUnticked needs the reason the chunk must not tick");
-        }
-        EntityTickingGate.allow(helper.getBounds());
-    }
-
     /** Lets go of the chunks that the test with these bounds forced, those no other test holds. Called when a test finishes. */
     public static void release(AABB testBounds) {
-        EntityTickingGate.forget(testBounds);
         List<Chunk> mine = HELD_BY_TEST.remove(testBounds);
         if (mine == null) {
             return;

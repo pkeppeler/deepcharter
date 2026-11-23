@@ -56,8 +56,7 @@ public class PodDriveStepTest {
             spots.add(BlockPos.containing(at));
         }
         FarChunks.awaitEntityTicking(helper, level, spots, i -> {
-            // Cut once the row's chunk is held and ticking: a room cut before it can unload unsaved and come back as
-            // natural rock (#1083).
+            // Cut once the row's chunk ticks: an earlier cut can unload unsaved (#1083).
             room(level, i);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(start(i));
@@ -108,7 +107,7 @@ public class PodDriveStepTest {
         });
     }
 
-    /** Row {@code i}: a room with a stone bed, and {@link #SLABS} slabs of stone across its east end for the pod to drill. */
+    /** Row {@code i}: a room with a stone bed and {@link #SLABS} slabs of stone for the pod to drill. */
     private static void room(ServerLevel level, int i) {
         int z = Z + i * ROW;
         RoomCarver.carve(level, X - 4, X + 5, FLOOR - 8, FLOOR - 1, z - 4, z + 4, Blocks.STONE);

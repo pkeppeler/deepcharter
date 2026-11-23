@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.test.mixin;
 
-import io.github.pkeppeler.deepcharter.test.support.EntityTickingGate;
 import io.github.pkeppeler.deepcharter.test.support.PendingWork;
 import java.util.Collection;
 import net.minecraft.gametest.framework.GameTestInfo;
@@ -28,8 +27,6 @@ public abstract class GameTestTickerMixin {
         for (GameTestInfo info : testInfos) {
             if (info.isDone()) {
                 ((PendingWork) info).deepcharter$dropPendingWork();
-            } else {
-                EntityTickingGate.scan(info);
             }
         }
     }

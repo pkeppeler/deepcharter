@@ -280,8 +280,7 @@ public class PodDrillTest {
         int[] shallowTicks = {-1};
         int[] deepTicks = {-1};
         TestTicks.each(helper, () -> {
-            // Each pod is timed from its own first observation: one that waits for the other's chunk to tick would be
-            // read late (#1083).
+            // Each pod is timed on its own, not once both exist: the first would be read late (#1083).
             if (shallowTicks[0] < 0
                     && shallow.pod.isPresent()
                     && level.getBlockState(new BlockPos(shallowX, shallowFloor - 1, Z))

@@ -41,7 +41,7 @@ public final class BoltRoom {
 
     private BoltRoom() {}
 
-    /** A corridor starting at {@code x}; its chunks are forced, and tick entities once {@code ready}. Roof is the row of stone over it. */
+    /** A corridor starting at {@code x}; its chunks tick entities once {@code ready}. Roof is the row of stone over it. */
     public record Corridor(ServerLevel level, int x, int length, Arrival<Boolean> ready) {
         public BlockPos floor(int along) {
             return new BlockPos(x + along, FLOOR, Z);
