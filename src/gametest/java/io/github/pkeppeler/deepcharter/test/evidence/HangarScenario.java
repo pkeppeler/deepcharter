@@ -15,7 +15,6 @@ import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
-import java.util.Set;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -194,15 +193,7 @@ public class HangarScenario extends EvidenceScenario {
     /** Stands the player two blocks in front of the console (west of it), looking at {@code target}. */
     private static void lookAt(TestSingleplayerContext singleplayer, BlockPos console, Vec3 target) {
         Vec3 at = Vec3.atBottomCenterOf(console.west(2));
-        Vec3 d = target.subtract(at.add(0, 1.62, 0));
-        float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
-        float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
-        singleplayer
-                .getServer()
-                .runOnServer(server -> server.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .teleportTo(server.overworld(), at.x, at.y, at.z, Set.of(), yaw, pitch, true));
+        teleportLooking(singleplayer, at, at.add(0, 1.62, 0), target);
     }
 
     private void hold(ClientGameTestContext context) {

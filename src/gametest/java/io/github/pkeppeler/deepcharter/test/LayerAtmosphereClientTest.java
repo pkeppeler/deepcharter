@@ -7,6 +7,7 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_NIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SPACING;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TEST_PRESET;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TODAY;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
@@ -19,11 +20,11 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requ
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.standWithoutSettle;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
+import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.Holds;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
-import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -113,9 +114,15 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
             server.runCommand("time set noon");
             server.runOnServer(s -> player(s).setGameMode(GameType.SPECTATOR));
 
-            theShaftReadsAsTheSealedRoomWhileTheSkyTimelineRuns(context, server);
-            theBlendAtABiomeEdge(context, server);
-            whatTheCampaignWorldLoses(context, server);
+            try (Holds holds = Holds.of(server)) {
+                theShaftReadsAsTheSealedRoomWhileTheSkyTimelineRuns(context, server, holds);
+            }
+            try (Holds holds = Holds.of(server)) {
+                theBlendAtABiomeEdge(context, server, holds);
+            }
+            try (Holds holds = Holds.of(server)) {
+                whatTheCampaignWorldLoses(context, server, holds);
+            }
         } finally {
             EvidencePins.lightFlickerOff = flickerWas;
         }
@@ -132,11 +139,13 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
      * surface-to-layer transition, which {@link #theBlendAtABiomeEdge} covers.
      */
     private void theShaftReadsAsTheSealedRoomWhileTheSkyTimelineRuns(
-            ClientGameTestContext context, TestServerContext server) {
+            ClientGameTestContext context, TestServerContext server, Holds holds) {
         int x = SITE;
-        BlockPos shaftFloor = build(server, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
-        BlockPos roomFloor = build(server, CAMPAIGN, layer1Floor(x + SPACING), Optional.of(ZONE), false);
-        BlockPos controlFloor = build(server, CAMPAIGN, ground(server, x + 2 * SPACING), Optional.empty(), true);
+        BlockPos shaftFloor = build(server, holds, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
+        BlockPos roomFloor = build(server, holds, CAMPAIGN, layer1Floor(x + SPACING), Optional.of(ZONE), false);
+        BlockPos controlFloor = build(server, holds, CAMPAIGN, ground(server, x + 2 * SPACING), Optional.empty(), true);
+        requireZone(server, CAMPAIGN, shaftFloor);
+        requireZone(server, CAMPAIGN, roomFloor);
         int shaftSky = serverSky(server, shaftFloor);
         int roomSky = serverSky(server, roomFloor);
         ClientChecks.require(roomSky == 0, "the sealed room has no sky light on the server, read " + roomSky);
@@ -190,10 +199,10 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
      * biome that sets none: the surface floor of ADR 0011 is open to layer 1, so a player in the top of layer 1 sees the blend. The layer
      * biome fills everything at or below an edge; the probe is read at distances from the edge, up to the edge and above it.
      */
-    private void theBlendAtABiomeEdge(ClientGameTestContext context, TestServerContext server) {
+    private void theBlendAtABiomeEdge(ClientGameTestContext context, TestServerContext server, Holds holds) {
         BlockPos floor = ground(server, SITE + 5 * SPACING);
         int edge = floor.getY() - 40;
-        fillBiome(server, CAMPAIGN, floor, ZONE, edge - BLEND_BELOW - MARGIN, edge);
+        fillBiome(server, holds, CAMPAIGN, floor, ZONE, edge - BLEND_BELOW - MARGIN, edge);
         StringBuilder row = new StringBuilder(
                 "blend at an edge (layer biome at and below it), sky light factor by blocks below the edge:");
         for (int below : new int[] {-8, -4, 0, 2, 4, 6, 8, 12, 16, 24}) {
@@ -263,13 +272,13 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     // ---------------------------------------------------------------------------------------------- loss
 
     /** The same lit room as the campaign world will render a layer (a biome in the campaign type) and as today's layer dimension does. */
-    private void whatTheCampaignWorldLoses(ClientGameTestContext context, TestServerContext server) {
+    private void whatTheCampaignWorldLoses(ClientGameTestContext context, TestServerContext server, Holds holds) {
         int x = SITE;
-        BlockPos campaign = buildRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE), true);
-        BlockPos today =
-                buildRoom(server, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty(), true);
-        requireZone(server, TestLayers.dimension(1), today);
-        List<Reading> now = lookAround(context, server, TestLayers.dimension(1), today, "lit-room-today-");
+        BlockPos campaign = buildRoom(server, holds, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE), true);
+        BlockPos today = buildRoom(server, holds, TODAY, todayFloor(x + 4 * SPACING), Optional.empty(), true);
+        requireZone(server, CAMPAIGN, campaign);
+        requireZone(server, TODAY, today);
+        List<Reading> now = lookAround(context, server, TODAY, today, "lit-room-today-");
         List<Reading> campaignWorld = lookAround(context, server, CAMPAIGN, campaign, "lit-room-campaign-");
         for (int i = 0; i < VIEWS.size(); i++) {
             table.add("lit room, %s: today %s; campaign %s; campaign/today %.3f"
@@ -281,8 +290,8 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         }
         // An unlit room shows the ambient floor alone.
         putOutTheLight(server, CAMPAIGN, campaign);
-        putOutTheLight(server, TestLayers.dimension(1), today);
-        Reading dark = look(context, server, TestLayers.dimension(1), today, 180, 0, "dark-room-today-wall");
+        putOutTheLight(server, TODAY, today);
+        Reading dark = look(context, server, TODAY, today, 180, 0, "dark-room-today-wall");
         float entityToday = entityBrightnessAtLightZero(context);
         Reading darkCampaign = look(context, server, CAMPAIGN, campaign, 180, 0, "dark-room-campaign-wall");
         float entityCampaign = entityBrightnessAtLightZero(context);

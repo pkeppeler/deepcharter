@@ -27,15 +27,7 @@ public final class CrtDraw {
 
     /** One dark line every {@link CrtTuning#scanlineSpacing()} pixels, drawn over everything. */
     public static void scanlines(GuiGraphicsExtractor graphics, int width, int height) {
-        scanlines(graphics, 0, 0, width, height);
-    }
-
-    /** The scanlines in a rectangle: the CRT glass of a panel. */
-    public static void scanlines(GuiGraphicsExtractor graphics, int left, int top, int right, int bottom) {
-        CrtTuning tuning = CrtTuning.current();
-        for (int y = top; y < bottom; y += tuning.scanlineSpacing()) {
-            graphics.fill(left, y, right, y + 1, tuning.scanlineColor());
-        }
+        roundedScanlines(graphics, 0, 0, width, height, 0);
     }
 
     /**
@@ -60,7 +52,17 @@ public final class CrtDraw {
         int right = width - glass.right();
         int bottom = height - glass.bottom();
         sprite(graphics, PanelLook.GLASS, glass.left(), glass.top(), right - glass.left(), bottom - glass.top());
-        scanlines(graphics, glass.left(), glass.top(), right, bottom);
+        roundedScanlines(graphics, glass.left(), glass.top(), right, bottom, panel.glassRadius());
+    }
+
+    /** The scanlines in a rectangle with rounded corners: each line stops where the glass does ({@link PanelLook#scanlineInset}). */
+    public static void roundedScanlines(
+            GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int radius) {
+        CrtTuning tuning = CrtTuning.current();
+        for (int y = top; y < bottom; y += tuning.scanlineSpacing()) {
+            int inset = PanelLook.scanlineInset(radius, y - top, right - left, bottom - top);
+            graphics.fill(left + inset, y, right - inset, y + 1, tuning.scanlineColor());
+        }
     }
 
     /**
@@ -128,8 +130,12 @@ public final class CrtDraw {
 
     /** Text with a halo: a dim copy one pixel out in each direction, then the bright text on top. */
     public static void glowText(GuiGraphicsExtractor graphics, Font font, String text, int x, int y, int color) {
+        glowText(graphics, font, CrtText.of(text), x, y, color);
+    }
+
+    /** {@link #glowText(GuiGraphicsExtractor, Font, String, int, int, int)} for text already styled, such as {@link CrtText#terminal}. */
+    public static void glowText(GuiGraphicsExtractor graphics, Font font, Component styled, int x, int y, int color) {
         int halo = CrtTuning.current().glowColor();
-        Component styled = CrtText.of(text);
         graphics.text(font, styled, x - 1, y, halo, false);
         graphics.text(font, styled, x + 1, y, halo, false);
         graphics.text(font, styled, x, y - 1, halo, false);
@@ -150,6 +156,11 @@ public final class CrtDraw {
      * which runs from {@code margin} to {@code right}.
      */
     public static void header(GuiGraphicsExtractor graphics, Font font, String title, int left, int top, int right) {
+        header(graphics, font, CrtText.of(title), left, top, right);
+    }
+
+    /** {@link #header(GuiGraphicsExtractor, Font, String, int, int, int)} for a title already styled, such as {@link CrtText#terminal}. */
+    public static void header(GuiGraphicsExtractor graphics, Font font, Component title, int left, int top, int right) {
         CrtTuning tuning = CrtTuning.current();
         glowText(graphics, font, title, left, top, tuning.phosphorColor());
         int ruleTop = top + font.lineHeight + tuning.headerRuleGap();

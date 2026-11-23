@@ -7,6 +7,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -41,11 +42,30 @@ public final class DrawnText {
         }
     }
 
+    /** The characters of {@code text}, without its styles. */
+    public static String plain(FormattedCharSequence text) {
+        StringBuilder out = new StringBuilder();
+        text.accept((index, style, codePoint) -> {
+            out.appendCodePoint(codePoint);
+            return true;
+        });
+        return out.toString();
+    }
+
     /** Renders {@code screen} into a recorder and returns the strings it drew outside any widget. Client thread. */
     public static List<Drawn> of(Screen screen) {
-        Minecraft client = Minecraft.getInstance();
-        Recorder recorder = new Recorder(client);
-        screen.extractRenderStateWithTooltipAndSubtitles(recorder, -1, -1, 0f);
+        return of(screen, -1, -1);
+    }
+
+    /** Like {@link #of(Screen)} with the mouse at ({@code mouseX}, {@code mouseY}), for what only a hovered thing draws. */
+    public static List<Drawn> of(Screen screen, int mouseX, int mouseY) {
+        return of(recorder -> screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f));
+    }
+
+    /** Runs {@code draw} on a recorder and returns the strings it drew, for something that is not a screen, such as a toast. Client thread. */
+    public static List<Drawn> of(Consumer<GuiGraphicsExtractor> draw) {
+        Recorder recorder = new Recorder(Minecraft.getInstance());
+        draw.accept(recorder);
         return List.copyOf(recorder.drawn);
     }
 
@@ -115,12 +135,12 @@ public final class DrawnText {
 
         @Override
         public void text(Font font, FormattedCharSequence text, int x, int y, int color) {
-            record(string(text), font.width(text), font, x, y);
+            record(plain(text), font.width(text), font, x, y);
         }
 
         @Override
         public void text(Font font, FormattedCharSequence text, int x, int y, int color, boolean shadow) {
-            record(string(text), font.width(text), font, x, y);
+            record(plain(text), font.width(text), font, x, y);
         }
 
         @Override
@@ -145,16 +165,7 @@ public final class DrawnText {
 
         @Override
         public void centeredText(Font font, FormattedCharSequence text, int x, int y, int color) {
-            record(string(text), font.width(text), font, x - font.width(text) / 2, y);
-        }
-
-        private static String string(FormattedCharSequence text) {
-            StringBuilder out = new StringBuilder();
-            text.accept((index, style, codePoint) -> {
-                out.appendCodePoint(codePoint);
-                return true;
-            });
-            return out.toString();
+            record(plain(text), font.width(text), font, x - font.width(text) / 2, y);
         }
 
         private void record(String text, int width, Font font, int x, int y) {

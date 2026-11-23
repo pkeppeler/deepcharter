@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -30,7 +30,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -47,10 +46,8 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #83, the placeholder lampless figure. Most tests build a short rail corridor in a far chunk of the
@@ -374,12 +371,15 @@ public class LamplessFigureTest {
                 if (!level.getBlockState(feet).is(BlockTags.RAILS)) {
                     throw failure(helper, "the second figure stands at %s, which is not a rail", feet.toShortString());
                 }
-                if (level.getBrightness(LightLayer.BLOCK, feet) >= TUNING.litBlockLight()) {
+                // light-wait-ok: waits on the game-time respawn delay, not on light; the check fails only on light that
+                // is already there, so a lagging engine reads dark and passes
+                int light = level.getBrightness(LightLayer.BLOCK, feet);
+                if (light >= TUNING.litBlockLight()) {
                     throw failure(
                             helper,
                             "the second figure appeared at %s, where the light is %d",
                             feet.toShortString(),
-                            level.getBrightness(LightLayer.BLOCK, feet));
+                            light);
                 }
                 killedAt[0] = level.getGameTime();
                 figure[0].kill(level);
@@ -455,20 +455,24 @@ public class LamplessFigureTest {
     }
 
     @GameTest
-    public void onlyTheRailLevelLooksForSitesAndOnlyOnTheInterval(GameTestHelper helper) {
+    public void onlyTheCampaignLevelLooksForSitesAndOnlyOnTheInterval(GameTestHelper helper) {
         int interval = TUNING.spawnIntervalTicks();
         for (long time : new long[] {0, interval, 7L * interval}) {
-            expectSpawnTick(helper, TestLayers.dimension(StructureKind.RAILS.layer()), time, true);
+            expectSpawnTick(
+                    helper,
+                    TestLayers.level(helper, StructureKind.RAILS.layer()).dimension(),
+                    time,
+                    true);
         }
         for (long time : new long[] {1, interval - 1, interval + 1, 7L * interval + 3}) {
-            expectSpawnTick(helper, TestLayers.dimension(StructureKind.RAILS.layer()), time, false);
+            expectSpawnTick(
+                    helper,
+                    TestLayers.level(helper, StructureKind.RAILS.layer()).dimension(),
+                    time,
+                    false);
         }
-        for (ResourceKey<Level> other : List.of(
-                Level.OVERWORLD,
-                Level.NETHER,
-                Level.END,
-                TestLayers.dimension(1),
-                TestLayers.dimension(StructureKind.RAILS.layer() + 1))) {
+        // The campaign level holds every layer, so it is the one level that looks; the others never do.
+        for (ResourceKey<Level> other : List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
             expectSpawnTick(helper, other, 0, false);
             expectSpawnTick(helper, other, interval, false);
         }
@@ -513,7 +517,6 @@ public class LamplessFigureTest {
             for (int chunkX = bounds.minX() >> 4; chunkX <= bounds.maxX() >> 4; chunkX++) {
                 for (int chunkZ = bounds.minZ() >> 4; chunkZ <= bounds.maxZ() >> 4; chunkZ++) {
                     FarChunks.force(helper, level, chunkX, chunkZ);
-                    level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
                 }
             }
             MockPlayer mock = MockPlayers.join(helper, "figure-watcher");
@@ -654,11 +657,5 @@ public class LamplessFigureTest {
 
     private static BlockState light(int level) {
         return Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, level);
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

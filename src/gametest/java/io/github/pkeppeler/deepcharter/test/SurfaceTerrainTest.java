@@ -1,13 +1,16 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -18,13 +21,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -35,21 +38,22 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the surface (#240): the generator makes regolith plains, craters, terraced mesas and basalt outcrops, with
  * no flora, fauna or water, and the colony pad is flat. The GameTest server bakes its overworld from a flat preset, so these run in
- * {@code deepcharter:surface_sample}, a copy of the shipped overworld in the test mod's preset.
+ * the surface band of {@code deepcharter:campaign_sample}, the test pack's copy of the shipped overworld (#803).
  */
 public class SurfaceTerrainTest {
-    private static final String SAMPLE = "deepcharter:surface_sample";
+    private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final int MAX_TICKS = 6000;
     /** The ground of the colony pad: the first block above it is free. */
     private static final int PAD_GROUND = 64;
@@ -88,15 +92,21 @@ public class SurfaceTerrainTest {
     private static final int SURVEY_SPAN = 2048;
     private static final int SURVEY_STEP = 8;
 
-    private static final Set<String> GROUND_BLOCKS = Set.of(
-            "minecraft:stone", "deepcharter:regolith", "deepcharter:regolith_packed", "deepcharter:regolith_rock");
+    /** The base height of each column asked for, by {@code x << 32 | z}: see {@link #height}. */
+    private static final Map<Long, Integer> HEIGHTS = new ConcurrentHashMap<>();
+
+    /** The surface band has no vanilla stone: its rock is the regolith's own, down to the band's floor. */
+    private static final Set<String> GROUND_BLOCKS =
+            Set.of("deepcharter:regolith", "deepcharter:regolith_packed", "deepcharter:regolith_rock");
+
     private static final Set<String> RARE_BLOCKS = Set.of("deepcharter:ochre_regolith", "deepcharter:basalt_outcrop");
     /** Placed on the ground by the surface features (#245), not by the material rule. */
     private static final Set<String> FEATURE_BLOCKS = Set.of("deepcharter:salvage_crate", "deepcharter:fungal_stalk");
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theGroundHoldsOnlyRegolithRockAndBasalt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
+        LayerChain.Band surface = TestLayers.band(level, TestLayers.SURFACE);
         Set<String> found = new TreeSet<>();
         for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
                 chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
@@ -104,12 +114,25 @@ public class SurfaceTerrainTest {
             for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
                     chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
                     chunkZ++) {
-                for (LevelChunkSection section : level.getChunk(chunkX, chunkZ).getSections()) {
-                    section.maybeHas(state -> {
-                        found.add(
-                                BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
-                        return false;
-                    });
+                // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a 13 x
+                // 13
+                // square of them held the server tick (and the deadlines of the tests beside this one) for a minute.
+                ChunkAccess chunk = level.getChunk(chunkX, chunkZ, ChunkStatus.FEATURES);
+                LevelChunkSection[] sections = chunk.getSections();
+                for (int index = 0; index < sections.length; index++) {
+                    int sectionMinY = chunk.getSectionYFromSectionIndex(index) << 4;
+                    // The campaign level holds the layers' rock under the surface band; only the band's sections are
+                    // the surface's.
+                    if (sectionMinY < surface.minY() || sectionMinY + 15 > surface.maxY()) {
+                        continue;
+                    }
+                    // Counted from the blocks, not from the palette: a palette keeps the states a section once held,
+                    // such as the campaign's default rock that the surface rule then replaced.
+                    sections[index]
+                            .getStates()
+                            .count((state, count) -> found.add(BuiltInRegistries.BLOCK
+                                    .getKey(state.getBlock())
+                                    .toString()));
                 }
             }
         }
@@ -120,19 +143,51 @@ public class SurfaceTerrainTest {
         Set<String> unexpected = new TreeSet<>(found);
         unexpected.removeAll(allowed);
         if (!unexpected.isEmpty()) {
-            throw fail(helper, "the surface holds blocks it should not: %s", unexpected);
+            throw failure(
+                    helper,
+                    "the surface holds blocks it should not: %s, e.g. at %s",
+                    unexpected,
+                    firstOf(level, surface, unexpected));
         }
         Set<String> missing = new TreeSet<>(GROUND_BLOCKS);
         missing.removeAll(found);
         if (!missing.isEmpty()) {
-            throw fail(helper, "the surface lacks %s; it holds %s", missing, found);
+            throw failure(helper, "the surface lacks %s; it holds %s", missing, found);
         }
         helper.succeed();
     }
 
+    /** Where the first of each block of {@code wanted} stands in the sample's chunks, within the surface band. */
+    private static Map<String, String> firstOf(ServerLevel level, LayerChain.Band surface, Set<String> wanted) {
+        Map<String, String> first = new LinkedHashMap<>();
+        for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
+                chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
+                chunkX++) {
+            for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
+                    chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
+                    chunkZ++) {
+                LevelChunk chunk = level.getChunk(chunkX, chunkZ);
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        for (int y = surface.minY(); y <= surface.maxY(); y++) {
+                            BlockPos pos = new BlockPos((chunkX << 4) + x, y, (chunkZ << 4) + z);
+                            String id = BuiltInRegistries.BLOCK
+                                    .getKey(chunk.getBlockState(pos).getBlock())
+                                    .toString();
+                            if (wanted.contains(id)) {
+                                first.putIfAbsent(id, pos.toShortString());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return first;
+    }
+
     // The motion-blocking heightmaps read the vanilla block tag minecraft:blocks_motion_no_leaves, not a block's
     // collision (#350).
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theMotionBlockingHeightmapsAgreeWithTheWorldSurface(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
@@ -152,7 +207,7 @@ public class SurfaceTerrainTest {
             int blocking = level.getHeight(Heightmap.Types.MOTION_BLOCKING, at.getX(), at.getZ());
             int blockingNoLeaves = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, at.getX(), at.getZ());
             if (blocking != surface || blockingNoLeaves != surface) {
-                throw fail(
+                throw failure(
                         helper,
                         "%s at %d %d: WORLD_SURFACE %d, MOTION_BLOCKING %d, MOTION_BLOCKING_NO_LEAVES %d, expected all equal",
                         column.getKey(),
@@ -182,7 +237,7 @@ public class SurfaceTerrainTest {
             }
         }
         if (!missing.isEmpty()) {
-            throw fail(
+            throw failure(
                     helper,
                     "these blocks have collision but the heightmaps skip them; add them to src/main/resources/data/minecraft/tags/block/blocks_motion_no_leaves.json: %s",
                     missing);
@@ -190,7 +245,7 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void everyBiomeHasItsOwnTopBlock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         expectTopBlock(helper, level, "deepcharter:regolith_plains", 0, "deepcharter:regolith");
@@ -199,26 +254,31 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void noCreatureSpawnsInTheSurfaceBiomesButMonstersStay(GameTestHelper helper) {
+    /** The surface stays empty (#915, ADR 0036): no category of any surface biome lists a creature, monsters included. */
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void noCreatureSpawnsInTheSurfaceBiomes(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
-        for (String biome :
-                Arrays.asList("deepcharter:regolith_plains", "deepcharter:mesa_country", "deepcharter:basalt_field")) {
+        for (String biome : Arrays.asList(
+                "deepcharter:regolith_plains",
+                "deepcharter:mesa_country",
+                "deepcharter:basalt_field",
+                "deepcharter:salvage_yard")) {
             BlockPos column = surveyColumn(helper, level, biome, 0);
             level.getChunkAt(column);
             for (MobCategory category : MobCategory.values()) {
-                boolean empty = generator
+                int listed = generator
                         .getMobsAt(level, level.structureManager(), category, column)
-                        .isEmpty();
-                if (empty == (category == MobCategory.MONSTER)) {
-                    throw fail(
+                        .unwrap()
+                        .size();
+                if (listed != 0) {
+                    throw failure(
                             helper,
-                            "%s at %s: category %s is %s",
+                            "%s at %s: category %s lists %d creatures",
                             biome,
                             column.toShortString(),
                             category,
-                            empty ? "empty, and a night should bring monsters" : "not empty");
+                            listed);
                 }
             }
         }
@@ -229,9 +289,24 @@ public class SurfaceTerrainTest {
     public void aFreshWorldHasNoWanderingTraders(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         if (server.getGameRules().get(GameRules.SPAWN_WANDERING_TRADERS)) {
-            throw fail(
+            throw failure(
                     helper,
                     "the wandering trader spawns in a fresh world: its spawner ignores the biomes, so the rule must be off");
+        }
+        helper.succeed();
+    }
+
+    /** The spawners that ignore a biome's list are off in a fresh world; {@code spawn_monsters} stays on, or the Retained would stop too. */
+    @GameTest
+    public void aFreshWorldHasNoPatrolsPhantomsOrWardensButKeepsMonsterSpawning(GameTestHelper helper) {
+        GameRules rules = helper.getLevel().getServer().getGameRules();
+        if (rules.get(GameRules.SPAWN_PATROLS)
+                || rules.get(GameRules.SPAWN_PHANTOMS)
+                || rules.get(GameRules.SPAWN_WARDENS)) {
+            throw failure(helper, "a fresh world spawns patrols, phantoms or wardens: no biome list reaches them");
+        }
+        if (!rules.get(GameRules.SPAWN_MONSTERS)) {
+            throw failure(helper, "spawn_monsters is off in a fresh world, and the Retained would not spawn either");
         }
         helper.succeed();
     }
@@ -242,7 +317,7 @@ public class SurfaceTerrainTest {
         server.getGameRules().set(GameRules.SPAWN_WANDERING_TRADERS, true, server);
         try {
             if (ColonyBuilder.buildIfNeeded(server) || !server.getGameRules().get(GameRules.SPAWN_WANDERING_TRADERS)) {
-                throw fail(
+                throw failure(
                         helper,
                         "a start of a world that has its colony changed the wandering trader rule the player set");
             }
@@ -252,7 +327,7 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void cratersMesasAndTheGreatPitAreOnTheLand(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int[] heights = survey(level);
@@ -270,7 +345,7 @@ public class SurfaceTerrainTest {
         double craterShare = (double) craters / heights.length;
         double mesaShare = (double) mesas / heights.length;
         if (craterShare < CRATER_SHARE * 0.5 || craterShare > CRATER_SHARE * 1.5) {
-            throw fail(
+            throw failure(
                     helper,
                     "craters are %.1f%% of the columns, expected %.1f%% to %.1f%%",
                     craterShare * 100,
@@ -278,7 +353,7 @@ public class SurfaceTerrainTest {
                     CRATER_SHARE * 150);
         }
         if (mesaShare < MESA_SHARE * 0.5 || mesaShare > MESA_SHARE * 1.5) {
-            throw fail(
+            throw failure(
                     helper,
                     "mesas are %.1f%% of the columns, expected %.1f%% to %.1f%%",
                     mesaShare * 100,
@@ -286,7 +361,7 @@ public class SurfaceTerrainTest {
                     MESA_SHARE * 150);
         }
         if (lowest > -5 || highest < 9) {
-            throw fail(
+            throw failure(
                     helper,
                     "the land runs from %d to %d blocks about the pad: expected a crater at least 5 deep and a mesa at least 9 high",
                     lowest,
@@ -308,7 +383,7 @@ public class SurfaceTerrainTest {
                             PIT_Z + (int) Math.round(PIT_RIM_RADIUS * Math.sin(angle))));
         }
         if (rim - floor < PIT_DEPTH) {
-            throw fail(
+            throw failure(
                     helper,
                     "the great pit at %d %d has its floor at %d and its rim at %d, expected the rim %d higher",
                     PIT_X,
@@ -320,16 +395,25 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theColonyPadIsFlatAndTheLandAroundItHasNoSheerCliffs(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
         RandomState random = level.getChunkSource().randomState();
+        // Each column is asked once (a column is the neighbour of two others): a height query in the tall world costs
+        // a quarter of a millisecond, and this test holds the server tick while it runs.
+        int side = 2 * CLIFF_CHECK_RADIUS + 2;
+        int[][] heights = new int[side][side];
+        for (int i = 0; i < side; i++) {
+            for (int j = 0; j < side; j++) {
+                heights[i][j] = height(generator, level, random, i - CLIFF_CHECK_RADIUS, j - CLIFF_CHECK_RADIUS);
+            }
+        }
         for (int x = -CLIFF_CHECK_RADIUS; x <= CLIFF_CHECK_RADIUS; x++) {
             for (int z = -CLIFF_CHECK_RADIUS; z <= CLIFF_CHECK_RADIUS; z++) {
-                int height = height(generator, level, random, x, z);
+                int height = heights[x + CLIFF_CHECK_RADIUS][z + CLIFF_CHECK_RADIUS];
                 if (Math.hypot(x, z) <= PAD_CHECK_RADIUS && height != PAD_GROUND) {
-                    throw fail(
+                    throw failure(
                             helper,
                             "the pad is not flat: ground at %d %d is %d, expected %d",
                             x,
@@ -340,11 +424,11 @@ public class SurfaceTerrainTest {
                 double distance = Math.hypot(x, z);
                 if (distance <= CLIFF_CHECK_RADIUS - 1) {
                     int step = Math.max(
-                            Math.abs(height - height(generator, level, random, x + 1, z)),
-                            Math.abs(height - height(generator, level, random, x, z + 1)));
+                            Math.abs(height - heights[x + 1 + CLIFF_CHECK_RADIUS][z + CLIFF_CHECK_RADIUS]),
+                            Math.abs(height - heights[x + CLIFF_CHECK_RADIUS][z + 1 + CLIFF_CHECK_RADIUS]));
                     int allowed = distance <= GENTLE_RADIUS ? GENTLE_STEP : BIGGEST_STEP;
                     if (step > allowed) {
-                        throw fail(
+                        throw failure(
                                 helper,
                                 "a cliff of %d blocks at %d %d, %d out from the pad's middle, the biggest step allowed there is %d",
                                 step,
@@ -371,11 +455,11 @@ public class SurfaceTerrainTest {
             for (JsonElement variant : variants) {
                 models.add(variant.getAsJsonObject().get("model").getAsString());
                 if (variant.getAsJsonObject().get("weight").getAsInt() < 1) {
-                    throw fail(helper, "%s has a variant with no weight", id);
+                    throw failure(helper, "%s has a variant with no weight", id);
                 }
             }
             if (variants.size() < 2 || variants.size() > 4 || models.size() != variants.size()) {
-                throw fail(
+                throw failure(
                         helper,
                         "%s has %d variants over %d models, expected 2 to 4 distinct ones",
                         id,
@@ -386,15 +470,18 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    // The GameTest server bakes its overworld from the flat preset, so the surface is tried in a copy of the shipped
-    // overworld.
+    // The GameTest server bakes its overworld from the flat preset, so the surface is tried in the test pack's copy of
+    // the shipped overworld: this keeps the copy, in the pack and in the preset, equal to it.
     @GameTest
     public void theSampleDimensionMatchesTheShippedOverworld(GameTestHelper helper) throws IOException {
         JsonElement shipped = read(helper, "/data/minecraft/dimension/overworld.json");
         JsonObject preset = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject();
         if (!shipped.equals(preset.getAsJsonObject("dimensions").get(SAMPLE))) {
-            throw fail(helper, "flat_all_dimensions preset entry %s differs from the shipped overworld", SAMPLE);
+            throw failure(helper, "flat_all_dimensions preset entry %s differs from the shipped overworld", SAMPLE);
+        }
+        if (!shipped.equals(read(helper, "/data/deepcharter/dimension/campaign_sample.json"))) {
+            throw failure(helper, "the test pack's campaign_sample differs from the shipped overworld");
         }
         helper.succeed();
     }
@@ -403,7 +490,7 @@ public class SurfaceTerrainTest {
             GameTestHelper helper, ServerLevel level, String biome, int minimumRise, String expected) {
         BlockPos column = surveyColumn(helper, level, biome, minimumRise);
         LevelChunk chunk = level.getChunkAt(column);
-        // level-height: surface_sample is a copy of the overworld for the generator, not a layer of the chain
+        // level-height: the level's top is the surface band's top, and the scan stops at the first ground
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(column.getX(), level.getMaxY(), column.getZ());
         while (chunk.getBlockState(pos).isAir()) {
             pos.move(Direction.DOWN);
@@ -411,7 +498,7 @@ public class SurfaceTerrainTest {
         BlockState state = chunk.getBlockState(pos);
         String actual = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
         if (!actual.equals(expected)) {
-            throw fail(
+            throw failure(
                     helper,
                     "the top block at %d %d in %s is %s, expected %s",
                     column.getX(),
@@ -446,7 +533,7 @@ public class SurfaceTerrainTest {
                 }
             }
         }
-        throw fail(helper, "no stretch of %s in the %d blocks around the origin", biome, SURVEY_SPAN);
+        throw failure(helper, "no stretch of %s in the %d blocks around the origin", biome, SURVEY_SPAN);
     }
 
     /** A column in a crater: its ground is at least 2 blocks below the pad. */
@@ -459,7 +546,7 @@ public class SurfaceTerrainTest {
                 }
             }
         }
-        throw fail(helper, "no crater in the %d blocks around the origin", SURVEY_SPAN);
+        throw failure(helper, "no crater in the %d blocks around the origin", SURVEY_SPAN);
     }
 
     private static String biomeAt(BiomeResolver resolver, int x, int z) {
@@ -488,18 +575,17 @@ public class SurfaceTerrainTest {
     }
 
     private static int height(ChunkGenerator generator, ServerLevel level, RandomState random, int x, int z) {
-        return generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
-    }
-
-    @FormatMethod
-    private static RuntimeException fail(GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
+        // One world, one seed: a column's height is the same in every test of this class, and the tests ask for the
+        // same columns (the survey grid, the crater search, the pad), at a quarter of a millisecond each.
+        return HEIGHTS.computeIfAbsent(
+                (long) x << 32 | (z & 0xffffffffL),
+                column -> generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random));
     }
 
     private static JsonElement read(GameTestHelper helper, String resource) throws IOException {
         var stream = SurfaceTerrainTest.class.getResourceAsStream(resource);
         if (stream == null) {
-            throw fail(helper, "missing resource %s", resource);
+            throw failure(helper, "missing resource %s", resource);
         }
         try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);

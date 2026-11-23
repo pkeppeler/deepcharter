@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.test.support.BlockLightOracle;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LightSyncSends;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -29,7 +30,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -40,7 +40,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The block light round a lamp of a layer structure that stands at a chunk border (#824). A player who tracks the lamp's chunk and its
@@ -236,12 +235,6 @@ public class StructureLightBorderTest {
         throw failure(helper, "no cell of %d from %d has a %s at a chunk border", CELL_SEARCH, BASE_CELL, lamp);
     }
 
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
     /** The colony as the test world has it, with its Conduit moved to {@code conduit}, so a wreck site beside it is the famous one. */
     private static ColonySite withConduit(MinecraftServer server, BlockPos conduit) {
         CompoundTag moved = ((CompoundTag) ColonySite.CODEC
@@ -271,6 +264,7 @@ public class StructureLightBorderTest {
         UUID id = player.player().getUUID();
         LightSyncSends.watch(id);
         FarChunks.Deadline deadline = FarChunks.deadline(60);
+        FarChunks.Deadline loadDeadline = FarChunks.deadline();
         int[] phase = {0};
         int[] waited = {0};
         int[][][] before = {null};
@@ -282,17 +276,27 @@ public class StructureLightBorderTest {
             try {
                 switch (phase[0]) {
                     case 0 -> {
-                        // Loading the chunks draws the structure, with the test's own Conduit where the case needs it.
-                        inContext(
-                                placement,
-                                server,
-                                () -> placement.withRing().forEach(chunk -> {
-                                    FarChunks.force(helper, level, chunk.x(), chunk.z());
-                                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
-                                }));
+                        // Only the conduit case loads here: its site swap lasts one tick.
+                        if (placement.fakeConduit().isPresent()) {
+                            inContext(
+                                    placement,
+                                    server,
+                                    () -> placement.withRing().forEach(chunk -> {
+                                        FarChunks.force(helper, level, chunk.x(), chunk.z());
+                                        level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                                    }));
+                        } else {
+                            placement.withRing().forEach(chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
+                        }
                         phase[0] = 1;
                     }
                     case 1 -> {
+                        boolean loaded = placement.withRing().stream()
+                                .allMatch(chunk -> level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null);
+                        loadDeadline.await(helper, level, loaded, () -> "the chunks round " + pair + " did not load");
+                        if (!loaded) {
+                            return;
+                        }
                         // Chunks are sent once they tick: a player who comes into view of them now is sent both.
                         BlockPos at = new BlockPos(
                                 placement.lampChunk().getMiddleBlockX(),
@@ -471,22 +475,22 @@ public class StructureLightBorderTest {
         }
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aSeaLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.SEA_LANTERN);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aKellsLavaAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.KELLS_LAVA);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aShaftCandleAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.CANDLE);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theFamousWrecksLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.FAMOUS_LANTERN);
     }

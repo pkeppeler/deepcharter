@@ -1,12 +1,10 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.client.beam.BeamCast;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for how long a fake light beam is (#248): the full length in open air, shortened by a wall (the beam stops where it
@@ -83,11 +81,5 @@ public class BeamCastTest {
         expect(helper, "full lamp", MAX, BeamCast.reach(true, 15, MAX));
         expect(helper, "half lamp", MAX * 6 / 15, BeamCast.reach(true, 6, MAX));
         helper.succeed();
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

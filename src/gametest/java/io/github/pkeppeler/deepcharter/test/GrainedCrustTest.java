@@ -1,10 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.GrainedCrust;
@@ -15,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -589,32 +589,52 @@ public class GrainedCrustTest {
         });
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aWarningCreakComesBeforeEachPulseToWhatWouldBeSqueezed(GameTestHelper helper) {
-        int x = 5080;
+        warningsComeBeforeEachPulse(helper, 5080, 0);
+    }
+
+    /** Judged by the tick played, not the tick looked: a late first look (#958) must not shift a creak into the window. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aWarningCreakHeardBeforeTheTestLooksStillCameOnItsTick(GameTestHelper helper) {
+        warningsComeBeforeEachPulse(helper, 5200, 3);
+    }
+
+    private static void warningsComeBeforeEachPulse(GameTestHelper helper, int x, int lookAfterPulses) {
         ServerLevel level = room(helper, x);
         pad(level, x);
         MockPlayer walker = MockPlayers.join(helper, "grain-warned");
         walker.player().setGameMode(GameType.SURVIVAL);
-        walker.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 0.5), 0f, 0f);
         MockPlayer bystander = MockPlayers.join(helper, "grain-bystander");
         bystander.player().setGameMode(GameType.SURVIVAL);
-        // Far out of earshot of the walker's creak, in no crust at all.
-        bystander.teleportTo(level, new Vec3(x + 200, FLOOR, Z + 0.5), 0f, 0f);
-        Arrival<Boolean> ready = ready(helper, level, x);
+        // The walker goes in once the far chunk ticks, not at the start: the grain squeezes a player in a loaded chunk,
+        // and in the tall world the chunk takes longer than a pulse to tick, so a walker put in at the start was dead
+        // before the test watched.
+        Arrival<Boolean> ready = new Arrival<>("the room", "the far chunk ticks");
+        FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            walker.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 0.5), 0f, 0f);
+            // Far out of earshot of the walker's creak, in no crust at all.
+            bystander.teleportTo(level, new Vec3(x + 200, FLOOR, Z + 0.5), 0f, 0f);
+            ready.set(true);
+        });
         int period = TUNING.grainPulseTicks();
         int warnAt = period - WARN_TICKS;
-        int[] cues = {0};
-        int[] seen = {0};
+        // Mid-pulse, so a late look's own phase is never in the warning window.
+        long lookFrom = (level.getGameTime() / period + lookAfterPulses) * period + period / 2;
         TestTicks.each(helper, () -> {
-            if (!ready.isPresent()) {
+            if (!ready.isPresent() || level.getGameTime() < lookFrom) {
                 return;
             }
-            int heard =
-                    (int) walker.soundsHeard().stream().filter(WARNING::equals).count();
-            if (heard > seen[0]) {
-                // A mock reads its sounds on its own tick, so a cue is seen a tick or two late.
-                long phase = level.getGameTime() % period;
+            List<Identifier> heard = walker.soundsHeard();
+            List<Long> playedAt = walker.soundTicks();
+            int cues = 0;
+            for (int i = 0; i < heard.size(); i++) {
+                if (!WARNING.equals(heard.get(i))) {
+                    continue;
+                }
+                cues++;
+                // A mock reads its sounds on its own tick, so a cue is read a tick or two after it was played.
+                long phase = playedAt.get(i) % period;
                 if (phase < warnAt || phase > warnAt + 3) {
                     throw failure(
                             helper,
@@ -623,10 +643,8 @@ public class GrainedCrustTest {
                             period,
                             WARN_TICKS);
                 }
-                cues[0] += heard - seen[0];
-                seen[0] = heard;
             }
-            if (cues[0] >= 2) {
+            if (cues >= 2) {
                 if (bystander.soundsHeard().contains(WARNING)) {
                     throw failure(helper, "a player who would not be squeezed was warned");
                 }
@@ -641,7 +659,6 @@ public class GrainedCrustTest {
         ServerLevel level = room(helper, x);
         box(level, x + 3, x + 3, FLOOR, FLOOR + 3, Z, Z, LayerBlocks.GRAINED_CRUST);
         BlockPos chest = new BlockPos(x + 2, FLOOR, Z);
-        level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
         MockPlayer player = MockPlayers.join(helper, "grain-chest");
         player.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 2.5), 0f, 0f);
         Arrival<Boolean> ready = ready(helper, level, x);
@@ -653,6 +670,8 @@ public class GrainedCrustTest {
             }
             int tick = (int) helper.getTick();
             if (step[0] == 0) {
+                // The grain sheds the chest at its next pulse, so set it on the tick of the click.
+                level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
                 ItemStack stack = new ItemStack(Items.COBBLESTONE);
                 player.player().setItemInHand(InteractionHand.MAIN_HAND, stack);
                 BlockHitResult hit =
@@ -791,12 +810,5 @@ public class GrainedCrustTest {
                 }
             }
         }
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

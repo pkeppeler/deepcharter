@@ -7,6 +7,15 @@ import net.minecraft.resources.Identifier;
 
 /** One page of the handbook, in the order it is bound. The Notes tab is not a page: the screen draws it apart. */
 public sealed interface HandbookPage {
+    /** The number of the chapter {@code page} belongs to, its text or its map, or 0 for any other page. */
+    static int chapterNumber(HandbookPage page) {
+        return switch (page) {
+            case ChapterText text -> text.number();
+            case Chapter chapter -> chapter.number();
+            default -> 0;
+        };
+    }
+
     /** The cover. */
     record Cover() implements HandbookPage {}
 

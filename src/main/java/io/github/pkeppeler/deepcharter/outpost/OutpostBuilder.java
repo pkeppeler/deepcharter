@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -147,14 +148,22 @@ public final class OutpostBuilder {
             }
         }
         BlockPos north = floor.offset(0, 0, -RADIUS_BLOCKS);
-        place(level, TerminalTypes.FUEL_PUMP.block(), north.offset(-2, 1, 0), Direction.SOUTH);
-        place(level, TerminalTypes.ORE_PROCESSOR.block(), north.offset(2, 1, 0), Direction.SOUTH);
+        placeTerminal(level, TerminalTypes.FUEL_PUMP.block(), north.offset(-2, 1, 0));
+        placeTerminal(level, TerminalTypes.ORE_PROCESSOR.block(), north.offset(2, 1, 0));
         place(level, ColonyKit.WALL_LAMP, north.offset(-2, 3, 0), Direction.SOUTH);
         place(level, ColonyKit.WALL_LAMP, north.offset(2, 3, 0), Direction.SOUTH);
         place(level, ColonyKit.WALL_LAMP, north.offset(0, 4, 0), Direction.SOUTH);
         place(level, ColonyKit.WALL_LAMP, floor.offset(0, 4, RADIUS_BLOCKS), Direction.NORTH);
         place(level, ColonyKit.WALL_LAMP, floor.offset(-RADIUS_BLOCKS, 4, 0), Direction.EAST);
         place(level, ColonyKit.WALL_LAMP, floor.offset(RADIUS_BLOCKS, 4, 0), Direction.WEST);
+    }
+
+    private static void placeTerminal(ServerLevel level, Block block, BlockPos pos) {
+        TerminalBlock.place(
+                level,
+                pos,
+                block.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH),
+                FLAGS);
     }
 
     private static void place(ServerLevel level, Block block, BlockPos pos, Direction facing) {

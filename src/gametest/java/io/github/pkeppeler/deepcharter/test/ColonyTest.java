@@ -1,9 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -17,7 +16,6 @@ import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
@@ -65,7 +63,6 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -542,58 +539,6 @@ public class ColonyTest {
                 });
     }
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
-    public void aBreachCrossingAtTheConduitLeavesItWholeAndArrivesBesideIt(GameTestHelper helper) {
-        MinecraftServer server = server(helper);
-        BlockPos centre = TestColony.anchor(placed(helper), ColonyAnchor.CONDUIT);
-        int radius = ColonyTuning.DEFAULT.conduitRadius();
-        // The arrival pocket reaches pocketRadius blocks out, so from here it touches the casing.
-        double x = centre.getX() + radius + LayerTuning.DEFAULT.pocketRadius() + 0.5;
-        double z = centre.getZ() + 0.5;
-        ServerLevel surface = server.overworld();
-        LayerChain.Band surfaceBand = TestLayers.band(surface, TestLayers.SURFACE);
-        ServerLevel one = TestLayers.level(helper, 1);
-        LayerChain.Band oneBand = TestLayers.band(one, 1);
-        for (int y = surfaceBand.minY(); y <= surfaceBand.minY() + 10; y++) {
-            // room-carver: the overworld surface, which opens onto layer 1 but is not layer rock
-            surface.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
-        }
-        MockPlayer mock = MockPlayers.join(helper, "conduit-breach");
-        mock.teleportTo(surface, new Vec3(x, surfaceBand.minY() + 6, z), 0, 0);
-        int[] ticking = {0};
-        FarChunks.awaitEntityTicking(helper, surface, mock.player().blockPosition(), () -> ticking[0]++);
-        for (BlockPos corner : corners(centre)) {
-            FarChunks.awaitEntityTicking(helper, one, corner.atY(oneBand.minY() + 8), () -> ticking[0]++);
-        }
-        TestTicks.each(helper, () -> {
-            ServerPlayer player = mock.player();
-            if (ticking[0] == 5 && player.level().dimension().equals(surface.dimension())) {
-                player.setPos(player.getX(), player.getY() - 1, player.getZ());
-            }
-        });
-        helper.succeedWhen(() -> {
-            ServerPlayer player = mock.player();
-            if (!player.level().dimension().equals(one.dimension())) {
-                throw failure(helper, "waiting for the crossing into layer 1");
-            }
-            if (Math.abs(player.getX() - x) < 0.01 && Math.abs(player.getZ() - z) < 0.01) {
-                throw failure(
-                        helper,
-                        "the player arrived at the requested column %s, which touches the casing",
-                        player.blockPosition().toShortString());
-            }
-            for (int cx = centre.getX() - radius; cx <= centre.getX() + radius; cx++) {
-                for (int cz = centre.getZ() - radius; cz <= centre.getZ() + radius; cz++) {
-                    for (int y = oneBand.maxY() - LayerTuning.DEFAULT.pocketHeight() - 1; y <= oneBand.maxY(); y++) {
-                        if (!one.getBlockState(new BlockPos(cx, y, cz)).is(ColonyBlocks.CONDUIT)) {
-                            throw failure(helper, "the crossing carved the casing at (%s, %s, %s)", cx, y, cz);
-                        }
-                    }
-                }
-            }
-        });
-    }
-
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void theConduitFillsEveryLayerWhenItsChunkLoads(GameTestHelper helper) {
         MinecraftServer server = server(helper);
@@ -727,7 +672,7 @@ public class ColonyTest {
         ServerLevel level = TestLayers.level(helper, layer);
         BlockPos centre = TestColony.anchor(placed(helper), ColonyAnchor.CONDUIT);
         int radius = ColonyTuning.DEFAULT.conduitRadius();
-        int floor = 60;
+        int floor = TestLayers.worldY(layer, 60);
         int roomFrom = centre.getX() - radius - 8;
         int roomTo = centre.getX() - radius - 1;
         // Stone under the room, air over it, and the casing east of it, which the chunk load has set.
@@ -1009,13 +954,6 @@ public class ColonyTest {
     private static ColonySite.Placed placed(GameTestHelper helper) {
         return Colony.placed(server(helper))
                 .orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     /** Writes the world's colony record to a file of its own under {@code dir}. */

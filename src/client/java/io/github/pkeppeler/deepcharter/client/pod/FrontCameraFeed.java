@@ -3,8 +3,10 @@ package io.github.pkeppeler.deepcharter.client.pod;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook.CameraLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import java.util.List;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
@@ -68,8 +70,11 @@ public final class FrontCameraFeed {
 
     /** Called after {@link CockpitHud#init}, so that the feed's static is under the cockpit. */
     public static void init() {
+        // keep-clear-ok: the haze and the static are the whole picture; the badge, the one part of it with something to
+        // read, is registered below
         HudElementRegistry.addFirst(ID, FrontCameraFeed::extract);
         ClientTickEvents.END_CLIENT_TICK.register(FrontCameraFeed::tick);
+        HudKeepClear.register(FrontCameraFeed::keepClear);
     }
 
     /** The next state of the feed, one tick on. */
@@ -209,6 +214,33 @@ public final class FrontCameraFeed {
         }
     }
 
+    /** The words in the badge: {@code live} says whether the feed is. */
+    private static Component badgeText(boolean live) {
+        return Component.translatable(live ? "hud.deepcharter.pod.camera" : "hud.deepcharter.pod.camera_dead");
+    }
+
+    /** The badge's plate for {@code text} on a GUI {@code width} x {@code height}, its padding included: one box for what is drawn and what is kept clear. */
+    private static HudKeepClear.Rect badgeBox(Font font, CameraLook camera, Component text, int width, int height) {
+        int boxWidth = camera.badgeDot() + camera.badgeGap() + font.width(text);
+        int pad = camera.badgePad();
+        return new HudKeepClear.Rect(
+                "camera badge",
+                camera.badge().left(width, boxWidth) - pad,
+                camera.badge().top(height, font.lineHeight) - pad,
+                boxWidth + 2 * pad,
+                font.lineHeight + 2 * pad);
+    }
+
+    /** The badge, while a pod with a camera is ridden: either of its two words, since which one shows changes with the feed. */
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        CameraLook camera = CockpitLook.current().camera();
+        if (camera.installed() && client.player != null && client.player.getVehicle() instanceof PodEntity) {
+            for (boolean live : new boolean[] {true, false}) {
+                into.add(badgeBox(client.font, camera, badgeText(live), guiWidth, guiHeight));
+            }
+        }
+    }
+
     /** The feed's badge: a lamp and its word. Green and CAM when clear, amber when static or haze is on the picture, red and NO FEED when the feed is out. */
     private static void badge(
             GuiGraphicsExtractor graphics,
@@ -219,18 +251,17 @@ public final class FrontCameraFeed {
             int width,
             int height) {
         Font font = client.font;
-        Component text =
-                Component.translatable(live ? "hud.deepcharter.pod.camera" : "hud.deepcharter.pod.camera_dead");
+        Component text = badgeText(live);
         int color = !live
                 ? look.lowColor()
                 : state().staticLevel() > camera.badgeStatic() || CockpitHud.heat() > look.heatWarning()
                         ? look.fuelColor()
                         : camera.liveColor();
-        int boxWidth = camera.badgeDot() + camera.badgeGap() + font.width(text);
-        int left = camera.badge().left(width, boxWidth);
-        int top = camera.badge().top(height, font.lineHeight);
+        HudKeepClear.Rect plate = badgeBox(font, camera, text, width, height);
         int pad = camera.badgePad();
-        graphics.fill(left - pad, top - pad, left + boxWidth + pad, top + font.lineHeight + pad, camera.badgeBack());
+        int left = plate.x() + pad;
+        int top = plate.y() + pad;
+        graphics.fill(plate.x(), plate.y(), plate.right(), plate.bottom(), camera.badgeBack());
         int dotTop = top + (font.lineHeight - camera.badgeDot()) / 2;
         graphics.fill(left, dotTop, left + camera.badgeDot(), dotTop + camera.badgeDot(), color);
         graphics.text(font, text, left + camera.badgeDot() + camera.badgeGap(), top, color);

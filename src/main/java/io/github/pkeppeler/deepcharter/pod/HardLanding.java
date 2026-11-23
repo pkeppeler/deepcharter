@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
@@ -38,7 +40,7 @@ public final class HardLanding {
         }
         float damage = hullDamage(PodStats.of(pod), sinkSpeed(pod.getDeltaMovement().y), damageMultiplier);
         if (damage > 0f) {
-            pod.damageHull(damage);
+            PodCues.hurtHull(pod, damage, "deepcharter.pod.hard_landing", DeepSound.POD_CRASH, ParticleTypes.POOF, 16);
         }
     }
 

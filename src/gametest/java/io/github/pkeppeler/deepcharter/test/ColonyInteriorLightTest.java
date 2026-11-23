@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -19,12 +19,10 @@ import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jspecify.annotations.Nullable;
 
 /**
  * No vanilla monster spawns inside a colony building, because every cell of every colony interior has block light of at least
@@ -36,10 +34,12 @@ import org.jspecify.annotations.Nullable;
  */
 public class ColonyInteriorLightTest {
     /**
-     * The brightest block a dark room (the Lamp and Pick) may hold: its dim glow is invisible light blocks of level 5
+     * The brightest block a dark room may hold: its dim glow is invisible light blocks of level 5
      * (tools/colony/parts.py GLOW_LEVEL), so a lamp inside, which gives 14, fails the test. Light that leaks in through the door
      * from the lamp outside is not a block of the room and is not counted.
      */
+    // fixed-pos: a block-light level (tools/colony/parts.py GLOW_LEVEL, not in layout.json), not a world Y; the gate
+    // matches "CEILING" by name
     private static final int DIM_CEILING = 5;
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
@@ -50,6 +50,7 @@ public class ColonyInteriorLightTest {
                 .orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
         List<BlockPos> chunks = ColonyChunks.of(colony);
         int[] ticking = {0};
+        FarChunks.Deadline deadline = FarChunks.deadline();
         FarChunks.awaitEntityTicking(helper, level, chunks, index -> ticking[0]++);
         helper.succeedWhen(() -> {
             if (ticking[0] < chunks.size()) {
@@ -76,12 +77,11 @@ public class ColonyInteriorLightTest {
                 throw failure(helper, "no room of the layout holds a cell a block does not fill");
             }
             if (!problems.isEmpty()) {
-                throw failure(
-                        helper,
+                String message = String.format(
                         "%s problem(s) in %s interior cell(s):\n  %s",
-                        problems.size(),
-                        cells,
-                        String.join("\n  ", problems));
+                        problems.size(), cells, String.join("\n  ", problems));
+                deadline.await(helper, level, false, () -> message);
+                throw failure(helper, "%s", message);
             }
         });
     }
@@ -147,11 +147,5 @@ public class ColonyInteriorLightTest {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

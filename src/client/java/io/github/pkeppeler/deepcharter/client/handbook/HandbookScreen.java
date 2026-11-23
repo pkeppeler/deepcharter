@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
@@ -31,6 +32,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.Item;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -45,6 +47,8 @@ import org.jspecify.annotations.Nullable;
 public final class HandbookScreen extends Screen {
     /** The sheet is wide enough for a margin column from this width on. */
     private static final int MARGIN_MIN_PAPER_WIDTH = 220;
+    /** The label of the intro's tab: the chapters' tabs carry their numbers. */
+    private static final String INTRO_TAB = "i";
 
     /** The look in force: read at each use, never kept, so a resource reload restyles an open screen. */
     private static HandbookScreenTuning tuning() {
@@ -75,6 +79,11 @@ public final class HandbookScreen extends Screen {
     private final Consumer<Identifier> onViewed;
     private final List<HandbookNote> notes;
     private final Set<Identifier> reported = new HashSet<>();
+    private final HandbookMemory memory;
+    /** The page index of each chapter's quest map, by chapter number. */
+    private final Map<Integer, Integer> mapPages;
+    /** The index of the first page of any chapter: the pages before it are the intro. */
+    private final int firstChapterPage;
 
     private int page;
     private int previousPage;
@@ -100,7 +109,8 @@ public final class HandbookScreen extends Screen {
             PaperButton next,
             PaperButton handbookTab,
             PaperButton notesButton,
-            PaperButton noteBack) {}
+            PaperButton noteBack,
+            List<PaperButton> chapterTabs) {}
 
     /** Absent until {@link #init} has built the widgets. */
     private @Nullable Buttons buttons;
@@ -114,11 +124,22 @@ public final class HandbookScreen extends Screen {
      * @param onViewed told the id of a chapter or Note the player has just opened, once, if it is not read yet
      * @param notes    what the Notes tab lists; empty shows its empty state
      */
+    // test-seam: a test builds the book with no memory, so it opens at the cover whatever an earlier test left
     public HandbookScreen(
             List<HandbookPage> pages,
             Predicate<Identifier> isRead,
             Consumer<Identifier> onViewed,
             List<HandbookNote> notes) {
+        this(pages, isRead, onViewed, notes, new HandbookMemory());
+    }
+
+    /** As above, opening on the page {@code memory} holds, with the flowcharts as it holds them; the screen keeps it up to date. */
+    public HandbookScreen(
+            List<HandbookPage> pages,
+            Predicate<Identifier> isRead,
+            Consumer<Identifier> onViewed,
+            List<HandbookNote> notes,
+            HandbookMemory memory) {
         super(Component.translatable("deepcharter.handbook.screen.title"));
         if (pages.isEmpty()) {
             throw new IllegalArgumentException("the handbook needs at least one page");
@@ -126,18 +147,26 @@ public final class HandbookScreen extends Screen {
         this.pages = List.copyOf(pages);
         Map<Integer, Integer> firstPages = new HashMap<>();
         Map<Integer, HandbookPage.Chapter> byNumber = new HashMap<>();
+        Map<Integer, Integer> maps = new HashMap<>();
         for (int index = 0; index < this.pages.size(); index++) {
             switch (this.pages.get(index)) {
                 case HandbookPage.ChapterText text -> firstPages.putIfAbsent(text.number(), index);
                 case HandbookPage.Chapter chapter -> {
                     firstPages.putIfAbsent(chapter.number(), index);
                     byNumber.put(chapter.number(), chapter);
+                    maps.put(chapter.number(), index);
                 }
                 default -> {}
             }
         }
         this.chapterPages = Map.copyOf(firstPages);
         this.chapters = Map.copyOf(byNumber);
+        this.mapPages = Map.copyOf(maps);
+        this.firstChapterPage =
+                firstPages.values().stream().min(Integer::compare).orElse(this.pages.size());
+        this.memory = memory;
+        this.page = memory.pageIn(this.pages);
+        this.previousPage = page;
         this.isRead = isRead;
         this.onViewed = onViewed;
         this.notes = List.copyOf(notes);
@@ -157,7 +186,8 @@ public final class HandbookScreen extends Screen {
                 currentPages(client),
                 ClientReadMarks::isRead,
                 entry -> ClientPlayNetworking.send(new HandbookReadPayload(entry)),
-                ClientNotes.entries());
+                ClientNotes.entries(),
+                HandbookMemory.SESSION);
         screen.parent = parent;
         client.gui.setScreen(screen);
     }
@@ -242,6 +272,7 @@ public final class HandbookScreen extends Screen {
         }
         previousPage = page;
         page = target;
+        memory.remember(pages.get(page));
         flipTicks = tuning().flipTicks();
         Identifier viewed = switch (pages.get(page)) {
             case HandbookPage.Chapter chapter when chapter.visibility() == HandbookVisibility.FULL -> chapter.id();
@@ -323,9 +354,23 @@ public final class HandbookScreen extends Screen {
 
     @Override
     protected void init() {
-        paperWidth = Math.min(tuning().paperWidth(), width - 12);
-        paperHeight = Mth.clamp(height - tuning().tabHeight() - 16, 100, tuning().paperMaxHeight());
-        paperLeft = (width - paperWidth) / 2;
+        paperWidth = Math.min(
+                tuning().paperWidth(),
+                width
+                        - QuestMapTuning.current().windowMargin()
+                        - QuestMapTuning.current().chapterTabWidth());
+        // The sheet and the tab above it always fit the window, so in the smallest one the sheet gives up its 100 px
+        // floor.
+        paperHeight = Mth.clamp(
+                height - tuning().tabHeight() - 16,
+                Math.min(100, height - tuning().tabHeight()),
+                tuning().paperMaxHeight());
+        paperLeft = Math.min(
+                (width - paperWidth) / 2,
+                width
+                        - paperWidth
+                        - QuestMapTuning.current().chapterTabWidth()
+                        - QuestMapTuning.current().tabEdgeGap());
         paperTop = (height - paperHeight + tuning().tabHeight()) / 2;
         textLeft = paperLeft + tuning().bindingWidth() + tuning().padding();
         boolean hasMargin = paperWidth >= MARGIN_MIN_PAPER_WIDTH;
@@ -373,12 +418,52 @@ public final class HandbookScreen extends Screen {
                 tuning().buttonHeight(),
                 Component.translatable("deepcharter.handbook.screen.next"),
                 button -> pressNext()));
-        buttons = new Buttons(back, next, handbookTab, notesButton, noteBack);
+        buttons = new Buttons(back, next, handbookTab, notesButton, noteBack, chapterTabs());
         // A resize can change how many sheets a Note takes, so the sheet that was on screen may be gone.
         if (openNote != null) {
             notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
         }
         updateButtons();
+    }
+
+    /**
+     * The tabs down the right edge of the sheet, stepped as far as the sheet is tall: the intro's first, then one for each chapter. The
+     * intro's opens the cover, a chapter's opens its map. A tab is at index {@link #section} of the list.
+     */
+    private List<PaperButton> chapterTabs() {
+        QuestMapTuning q = QuestMapTuning.current();
+        int count = mapPages.size() + 1;
+        int pitch = Math.min(tuning().tabHeight() + q.chapterTabGap(), (paperHeight - q.chapterTabTop()) / count);
+        int tabHeight = pitch - q.chapterTabGap();
+        List<PaperButton> tabs = new ArrayList<>();
+        for (int section = 0; section < count; section++) {
+            int target = section;
+            PaperButton tab = addRenderableWidget(new PaperButton(
+                    paperLeft + paperWidth - 1,
+                    paperTop + q.chapterTabTop() + section * pitch,
+                    q.chapterTabWidth(),
+                    tabHeight,
+                    Component.literal(section == 0 ? INTRO_TAB : Integer.toString(section)),
+                    button -> goTo(target == 0 ? 0 : Objects.requireNonNull(mapPages.get(target)))));
+            tab.setJoinsLeft();
+            tabs.add(tab);
+        }
+        return tabs;
+    }
+
+    /**
+     * The section of the book the open page belongs to, whose tab reads as selected: 0 for the intro (cover, slip, letter and
+     * contents), a chapter's number for its text and map, or -1 for the end pages and the Notes tab, which have no tab.
+     */
+    public int section() {
+        if (notesTab) {
+            return -1;
+        }
+        int chapter = HandbookPage.chapterNumber(pages.get(page));
+        if (chapter > 0) {
+            return chapter;
+        }
+        return page < firstChapterPage ? 0 : -1;
     }
 
     /** The next button turns a page of the handbook, or a sheet of an open Note, and from the last sheet of a Note goes back to its first. */
@@ -416,6 +501,14 @@ public final class HandbookScreen extends Screen {
         built.back().active = !notesTab && page > 0;
         built.next().active = notesTab || page < pages.size() - 1;
         built.noteBack().visible = notesTab && openNote != null;
+        int section = section();
+        for (int i = 0; i < built.chapterTabs().size(); i++) {
+            PaperButton tab = built.chapterTabs().get(i);
+            HandbookPage.Chapter entry = chapters.get(i);
+            tab.visible = !notesTab;
+            tab.setSelected(i == section);
+            tab.setFaded(entry != null && entry.visibility() == HandbookVisibility.CLASSIFIED);
+        }
         built.handbookTab().setSelected(!notesTab);
         built.notesButton().setSelected(notesTab);
     }
@@ -471,6 +564,13 @@ public final class HandbookScreen extends Screen {
                 }
             }
         }
+        if (flipTicks == 0
+                && !notesTab
+                && pages.get(page) instanceof HandbookPage.Chapter chapter
+                && chapter.visibility() != HandbookVisibility.CLASSIFIED
+                && clickMap(chapter, event)) {
+            return true;
+        }
         if (flipTicks == 0 && !notesTab) {
             if (pages.get(page) instanceof HandbookPage.Contents contents) {
                 for (ContentsEntry entry : contentsEntries(contents)) {
@@ -482,6 +582,38 @@ public final class HandbookScreen extends Screen {
             }
         }
         return false;
+    }
+
+    /** A click on a chapter's map: the index card first (its link, its items), then a step. */
+    private boolean clickMap(HandbookPage.Chapter chapter, MouseButtonEvent event) {
+        MapFrame frame = mapFrame(chapter);
+        if (chapter.visibility() == HandbookVisibility.FULL) {
+            QuestMap.Card card = indexCard(chapter);
+            if (card.link().contains(event.x(), event.y())) {
+                goTo(firstPageOf(chapter));
+                return true;
+            }
+            QuestMap.CardItem item = card.itemAt(event.x(), event.y());
+            if (item != null) {
+                CatalogueScreens.open(item.item());
+                return true;
+            }
+            if (card.box().contains(event.x(), event.y())) {
+                return true;
+            }
+        }
+        if (!frame.clip().contains(event.x(), event.y())) {
+            return false;
+        }
+        if (chapter.visibility() == HandbookVisibility.FULL) {
+            int step = mapLayout(chapter).stepAt(event.x() - frame.originX(), event.y() - frame.originY());
+            if (step >= 0) {
+                memory.pick(
+                        chapter.number(),
+                        chapter.chapter().directives().get(step).id());
+            }
+        }
+        return true;
     }
 
     @Override
@@ -511,14 +643,14 @@ public final class HandbookScreen extends Screen {
         } else {
             drawPage(graphics, pages.get(shown));
             Buttons built = widgets();
-            graphics.centeredText(
+            PaperDraw.centered(
+                    graphics,
                     font,
-                    PaperDraw.ink(
-                            Component.translatable("deepcharter.handbook.screen.page", shown + 1, pages.size()),
-                            tuning().faintInkColor()),
+                    Component.translatable("deepcharter.handbook.screen.page", shown + 1, pages.size()),
                     (built.next().getX() + built.back().getRight()) / 2,
                     built.back().getY() + 3,
-                    Colors.opaque(tuning().faintInkColor()));
+                    1,
+                    tuning().faintInkColor());
         }
         graphics.pose().popMatrix();
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
@@ -726,6 +858,10 @@ public final class HandbookScreen extends Screen {
     }
 
     private void drawChapter(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter) {
+        if (chapter.visibility() != HandbookVisibility.CLASSIFIED) {
+            drawMap(graphics, chapter);
+            return;
+        }
         int y = PaperDraw.wrapped(
                 graphics,
                 font,
@@ -734,49 +870,181 @@ public final class HandbookScreen extends Screen {
                 paperTop + tuning().topMargin(),
                 textWidth,
                 tuning().faintInkColor());
-        if (chapter.visibility() == HandbookVisibility.CLASSIFIED) {
-            for (int bar = 0; bar < 3; bar++) {
-                PaperDraw.redaction(
-                        graphics,
-                        textLeft,
-                        y + 4 + bar * (font.lineHeight + 4),
-                        textWidth * (9 - (chapter.number() + bar) % 3) / 10,
-                        font.lineHeight);
-            }
-            y += 3 * (font.lineHeight + 4) + 10;
-            PaperDraw.wrapped(graphics, font, tr("chapter.classified"), textLeft, y, textWidth, tuning().inkColor());
-            PaperDraw.stamp(
+        int noteLines = font.split(tr("chapter.classified"), textWidth).size();
+        int noteHeight = noteLines * (font.lineHeight + 1);
+        // A short sheet gives up redaction bars before the note runs under Back and Next.
+        int bars = Mth.clamp((bottom() - y - 10 - noteHeight) / (font.lineHeight + 4), 0, 3);
+        for (int bar = 0; bar < bars; bar++) {
+            PaperDraw.redaction(
                     graphics,
-                    font,
-                    tr("chapter.stamp.classified"),
-                    centerX(),
-                    bottom() - 28,
-                    -12,
-                    tuning().stampColor());
-            return;
+                    textLeft,
+                    y + 4 + bar * (font.lineHeight + 4),
+                    textWidth * (9 - (chapter.number() + bar) % 3) / 10,
+                    font.lineHeight);
         }
-        y = PaperDraw.wrapped(
-                graphics, font, chapter.chapter().title(), textLeft, y + 3, textWidth, tuning().inkColor());
-        y = titleRule(graphics, y);
-        y = PaperDraw.wrapped(
-                        graphics, font, tr("chapter.directives"), textLeft, y, textWidth, tuning().faintInkColor())
-                + 2;
-        for (HandbookChapter.Entry directive : chapter.chapter().directives()) {
-            String key =
-                    chapter.completed().contains(directive.id()) ? "chapter.directive.done" : "chapter.directive.open";
-            y = PaperDraw.wrapped(
-                            graphics, font, tr(key, directive.text()), textLeft, y, textWidth, tuning().inkColor())
-                    + 3;
+        y += 3 * (font.lineHeight + 4) + 10;
+        if (bars < 3) {
+            y -= (3 - bars) * (font.lineHeight + 4);
         }
-        if (chapter.visibility() == HandbookVisibility.FULL) {
-            margin(graphics, marginKey(chapter.id()), paperTop + tuning().contentTop() * 2);
+        int noteEnd = PaperDraw.wrapped(
+                graphics, font, tr("chapter.classified"), textLeft, y, textWidth, tuning().inkColor());
+        int stampY = bottom() - 28;
+        // The stamp's frame stands 3 px above its lettering; with no room under the note it is left out.
+        if (stampY - 3 >= noteEnd) {
+            PaperDraw.stamp(
+                    graphics, font, tr("chapter.stamp.classified"), centerX(), stampY, -12, tuning().stampColor());
         }
+    }
+
+    /** The map's mouse-facing geometry: the heading it hangs under, the view the flowchart is clipped to, and the corner it grows from. */
+    private record MapFrame(int headingBottom, QuestMap.Rect clip, int originX, int originY) {}
+
+    private int mapWidth() {
+        return paperLeft + paperWidth - tuning().padding() - textLeft;
+    }
+
+    /** The width a chapter's label and title wrap to: short of the index card when the card is up. */
+    private int headingWidth(HandbookPage.Chapter chapter) {
+        if (chapter.visibility() != HandbookVisibility.FULL) {
+            return mapWidth();
+        }
+        QuestMapTuning q = QuestMapTuning.current();
+        return Math.max(q.headingMinWidth(), indexCard(chapter).box().x() - q.headingCardGap() - textLeft);
+    }
+
+    private MapFrame mapFrame(HandbookPage.Chapter chapter) {
+        int labelEnd = paperTop
+                + tuning().topMargin()
+                + font.split(PaperDraw.ink(tr("chapter.label", chapter.number()), 0), headingWidth(chapter))
+                                .size()
+                        * (font.lineHeight + 1);
+        int titleEnd = labelEnd
+                + QuestMapTuning.current().headingGap()
+                + font.split(PaperDraw.ink(chapter.chapter().title(), 0), headingWidth(chapter))
+                                .size()
+                        * (font.lineHeight + 1);
+        int top = titleEnd + QuestMapTuning.current().ruleGap();
+        QuestMap.Rect clip = new QuestMap.Rect(
+                paperLeft + tuning().bindingWidth(), top, paperWidth - tuning().bindingWidth() - 1, bottom() - top);
+        return new MapFrame(
+                titleEnd, clip, textLeft, top + QuestMapTuning.current().mapPad());
+    }
+
+    private @Nullable Component mapNote(HandbookPage.Chapter chapter) {
+        return chapter.visibility() == HandbookVisibility.FULL
+                        && Language.getInstance().has(marginKey(chapter.id()))
+                ? Component.translatable(marginKey(chapter.id()))
+                : null;
+    }
+
+    private QuestMap.Layout mapLayout(HandbookPage.Chapter chapter) {
+        Component note = mapNote(chapter);
+        int noteLines = note == null
+                ? 0
+                : font.split(PaperDraw.ink(note, 0), QuestMapTuning.current().noteWidth())
+                        .size();
+        return QuestMap.layout(
+                mapWidth(),
+                mapFrame(chapter).clip().h() - QuestMapTuning.current().mapPad(),
+                QuestMap.model(chapters, chapter.number()),
+                font.lineHeight,
+                noteLines);
+    }
+
+    private int heldItems(Item item) {
+        return minecraft != null && minecraft.player != null
+                ? minecraft.player.getInventory().countItem(item)
+                : 0;
+    }
+
+    private String seePageLink(HandbookPage.Chapter chapter) {
+        return I18n.get("deepcharter.handbook.quest.see_page", firstPageOf(chapter) + 1);
+    }
+
+    private QuestMap.Card indexCard(HandbookPage.Chapter chapter) {
+        HandbookChapter.Entry step = QuestMap.shown(chapter, memory.picked(chapter.number()));
+        return QuestMap.card(
+                font,
+                step,
+                chapter.chapter().directives().indexOf(step) + 1,
+                paperLeft + paperWidth,
+                paperTop,
+                seePageLink(chapter),
+                chapter.completed().contains(step.id()),
+                this::heldItems);
+    }
+
+    // test-seam: the number the first impression rests on, which no drawn text shows: how many pixels of the sheet a
+    // chapter's map leaves unused (negative when it would overflow). The fits test holds it at 0 or more for every
+    // shipped chapter
+    public int mapSpareHeight(int chapterNumber) {
+        HandbookPage.Chapter chapter = Objects.requireNonNull(
+                chapters.get(chapterNumber), () -> "chapter " + chapterNumber + " has no chapter page");
+        return mapFrame(chapter).clip().h()
+                - QuestMapTuning.current().mapPad()
+                - mapLayout(chapter).height();
+    }
+
+    /** The first page of a chapter in the book: its text if it has any, else its map. */
+    private int firstPageOf(HandbookPage.Chapter chapter) {
+        return Objects.requireNonNull(
+                chapterPages.get(chapter.number()),
+                () -> "chapter " + chapter.number() + " has no page in the handbook");
+    }
+
+    /** A chapter's heading, then its quest map, then the index card of the step the player has picked. */
+    private void drawMap(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter) {
+        boolean full = chapter.visibility() == HandbookVisibility.FULL;
+        MapFrame frame = mapFrame(chapter);
+        int y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("chapter.label", chapter.number()),
+                textLeft,
+                paperTop + tuning().topMargin(),
+                headingWidth(chapter),
+                tuning().faintInkColor());
+        PaperDraw.wrapped(
+                graphics,
+                font,
+                chapter.chapter().title(),
+                textLeft,
+                y + QuestMapTuning.current().headingGap(),
+                headingWidth(chapter),
+                tuning().inkColor());
+        graphics.fill(
+                textLeft,
+                frame.headingBottom() + 1,
+                textLeft + mapWidth(),
+                frame.headingBottom() + 2,
+                Colors.opaque(tuning().inkColor()));
+        QuestMap.Model model = QuestMap.model(chapters, chapter.number());
+        QuestMap.Layout layout = mapLayout(chapter);
+        HandbookPage.Chapter ahead = model.ahead();
+        QuestMap.drawChart(
+                graphics,
+                font,
+                model,
+                layout,
+                frame.originX(),
+                frame.originY(),
+                frame.clip(),
+                mapNote(chapter),
+                tr("chapter.stamp.classified"),
+                ahead == null
+                        ? Component.empty()
+                        : tr("quest.ahead", ahead.number(), ahead.chapter().title()));
+        int stampX = textLeft + QuestMapTuning.current().stampLeft();
+        int stampY = paperTop + tuning().topMargin() + QuestMapTuning.current().stampTop();
         if (chapter.visibility() == HandbookVisibility.PREVIEW) {
-            PaperDraw.stamp(
-                    graphics, font, tr("chapter.stamp.coming"), centerX(), bottom() - 28, 8, tuning().stampColor());
+            PaperDraw.stamp(graphics, font, tr("chapter.stamp.coming"), stampX, stampY, 8, tuning().stampColor());
         } else if (chapter.isComplete()) {
-            PaperDraw.stamp(
-                    graphics, font, tr("chapter.stamp.complete"), centerX(), bottom() - 28, -10, tuning().stampColor());
+            PaperDraw.stamp(graphics, font, tr("chapter.stamp.complete"), stampX, stampY, -10, tuning().stampColor());
+        }
+        if (full) {
+            HandbookChapter.Entry step = QuestMap.shown(chapter, memory.picked(chapter.number()));
+            QuestMap.Card card = indexCard(chapter);
+            QuestMap.drawCard(graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter));
         }
     }
 
@@ -899,14 +1167,14 @@ public final class HandbookScreen extends Screen {
         int sheets = notePages(note);
         if (sheets > 1) {
             Buttons built = widgets();
-            graphics.centeredText(
+            PaperDraw.centered(
+                    graphics,
                     font,
-                    PaperDraw.ink(
-                            Component.translatable("deepcharter.handbook.screen.page", notePage + 1, sheets),
-                            tuning().faintInkColor()),
+                    Component.translatable("deepcharter.handbook.screen.page", notePage + 1, sheets),
                     (built.next().getX() + built.noteBack().getRight()) / 2,
                     built.noteBack().getY() + 3,
-                    Colors.opaque(tuning().faintInkColor()));
+                    1,
+                    tuning().faintInkColor());
         }
     }
 

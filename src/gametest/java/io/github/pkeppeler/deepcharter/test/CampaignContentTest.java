@@ -1,7 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -22,6 +23,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -41,7 +43,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -51,7 +52,6 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for what the campaign world holds besides terrain (#743, ADR 0059): the structure sites of each layer (ADR 0025), the
@@ -90,8 +90,8 @@ public class CampaignContentTest {
             "minecraft:block_predicate_filter");
 
     private static final String FIGURE = "deepcharter:lampless_figure";
-    /** The test preset, which holds the campaign sample dimension. */
-    private static final String PRESET = "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json";
+    /** The test data pack's campaign sample dimension. */
+    private static final String DIMENSION = "/data/deepcharter/dimension/campaign_sample.json";
 
     private static final String UNBUILT_BIOME = "deepcharter:unbuilt_depth";
 
@@ -99,7 +99,7 @@ public class CampaignContentTest {
      * The layers the world generates from (the biome source's data, which {@code LayerChain.campaignLayers} reads) are the band table
      * {@code bandAt} reads, so the two sources of the campaign layout cannot drift.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theGeneratedLayersAreTheBandTable(GameTestHelper helper) {
         List<LayerChain.Band> generated = LayerChain.campaignLayers(helper.getLevel());
         expect(
@@ -123,7 +123,7 @@ public class CampaignContentTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void structureSitesStayInsideTheirBandsMargins(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos conduit = conduit(helper);
@@ -180,7 +180,7 @@ public class CampaignContentTest {
      * A real chunk of the campaign world draws each structure of both layers, in the band of its layer: the blocks of
      * {@code LayerStructuresTest.unmet} stand in the site, judged by the band's own zones.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void eachStructureStandsInItsBandOfTheCampaignWorld(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos conduit = conduit(helper);
@@ -225,7 +225,7 @@ public class CampaignContentTest {
      * The wreck site nearest the Conduit in layer 2 is PROSPECTOR-0002's: an unowned Prospector at hull 0 stands in its bay, with one lamp
      * burning, and an ordinary wreck site holds an unnamed wreck and no lamp.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theProspectorWreckLiesAtTheWreckSiteNearestTheConduit(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos conduit = conduit(helper);
@@ -299,7 +299,7 @@ public class CampaignContentTest {
      * The Conduit's casing fills its column without a gap from layer 2's floor up to the top of the colony's stack, and none lies in the
      * unbuilt depth below: the casing is set when a chunk loads (ADR 0016), as it is in the layers today.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theConduitIsContinuousFromLayer2sFloorUpToTheColony(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ColonySite.Placed colony =
@@ -345,14 +345,12 @@ public class CampaignContentTest {
      * names the layer and zone of its own biome. A range anchored to the dimension's bottom or top (rather than absolute) resolves against
      * the whole world, so it is read that way.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void everyPlacedFeaturesHeightRangeIsInsideItsBand(GameTestHelper helper) throws IOException {
         Map<String, Band> bandOfBiome = new TreeMap<>();
         Map<String, int[]> zoneOfBiome = new TreeMap<>();
-        JsonObject source = read(helper, PRESET)
+        JsonObject source = read(helper, DIMENSION)
                 .getAsJsonObject()
-                .getAsJsonObject("dimensions")
-                .getAsJsonObject(SAMPLE)
                 .getAsJsonObject("generator")
                 .getAsJsonObject("biome_source");
         source.getAsJsonObject("surface")
@@ -490,32 +488,34 @@ public class CampaignContentTest {
      * The cave stalks of Topsoil Claims, layer 1's first zone, grow there and nowhere else under the surface: the range of the
      * biome's feature is the layer's own rows, so the zone's own rows are where they stand (to a block, for the offset a stalk takes).
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void caveStalksGrowInLayer1sFirstZoneOnly(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        Band layer = CampaignBands.LAYER_1;
-        Zones.Span zone = Zones.span(layer.minY(), layer.height(), 0);
-        TreeSet<Integer> rows = new TreeSet<>();
-        for (BlockPos stalk : BlockSurvey.find(level, STALK_CHUNKS, ours("fungal_stalk"))) {
-            // The surface has stalks of its own (the surface band's features).
-            if (stalk.getY() < CampaignBands.SURFACE.minY()) {
-                rows.add(stalk.getY());
+        FarChunks.whenLoaded(helper, BlockSurvey.area(level, STALK_CHUNKS), () -> {
+            Band layer = CampaignBands.LAYER_1;
+            Zones.Span zone = Zones.span(layer.minY(), layer.height(), 0);
+            TreeSet<Integer> rows = new TreeSet<>();
+            for (BlockPos stalk : BlockSurvey.find(level, STALK_CHUNKS, ours("fungal_stalk"))) {
+                // The surface has stalks of its own (the surface band's features).
+                if (stalk.getY() < CampaignBands.SURFACE.minY()) {
+                    rows.add(stalk.getY());
+                }
             }
-        }
-        expect(
-                helper,
-                !rows.isEmpty(),
-                "no cave stalk grew in %d chunks of layer 1",
-                (2 * STALK_CHUNKS + 1) * (2 * STALK_CHUNKS + 1));
-        expect(
-                helper,
-                rows.first() >= zone.low() - 1 && rows.last() <= zone.high() + 1,
-                "cave stalks stand at %d..%d, outside Topsoil Claims %d..%d",
-                rows.first(),
-                rows.last(),
-                zone.low(),
-                zone.high());
-        helper.succeed();
+            expect(
+                    helper,
+                    !rows.isEmpty(),
+                    "no cave stalk grew in %d chunks of layer 1",
+                    (2 * STALK_CHUNKS + 1) * (2 * STALK_CHUNKS + 1));
+            expect(
+                    helper,
+                    rows.first() >= zone.low() - 1 && rows.last() <= zone.high() + 1,
+                    "cave stalks stand at %d..%d, outside Topsoil Claims %d..%d",
+                    rows.first(),
+                    rows.last(),
+                    zone.low(),
+                    zone.high());
+            helper.succeed();
+        });
     }
 
     private static Block ours(String path) {
@@ -526,7 +526,7 @@ public class CampaignContentTest {
      * The lampless figure's natural spawn is part of the biome data of both layers' zones (the rail-line spawns are the creature
      * feature's own), so it follows the bands: every zone biome of the layers carries it, and the surface and the unbuilt depth do not.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theLamplessFigureSpawnsInTheZonesOfBothLayersAndNowhereElse(GameTestHelper helper) throws IOException {
         for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
             for (int zone = 0; zone < Zones.COUNT; zone++) {
@@ -588,19 +588,5 @@ public class CampaignContentTest {
         try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);
         }
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw failure(helper, format, args);
-        }
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

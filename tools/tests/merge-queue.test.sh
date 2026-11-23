@@ -132,7 +132,7 @@ STUB
 chmod +x "$work/bin/"* "$work/gate"
 
 # The refusal as merge-pr.sh prints it: the queue keys on the "[stale-base]" marker, not on a command hint.
-stale_msg() { echo "REFUSED: PR #$1 main changed since its CI run: x; re-run CI on a fresh merge ref by closing and reopening the PR [stale-base] (the head sha is unchanged)"; }
+stale_msg() { echo "REFUSED: PR #$1 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run CI on the current main by closing and reopening the PR [stale-base] (the head sha is unchanged)"; }
 
 # gate N K "<rc> [flag]" [output]
 gate() { { echo "$3"; [[ -z ${4-} ]] || echo "$4"; } >"$ST/gate.$1.$2"; }

@@ -1,13 +1,14 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigures;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands.Band;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -20,7 +21,6 @@ import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -30,7 +30,6 @@ import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the lampless figure's natural spawn in the campaign world (#799), in {@code deepcharter:campaign_sample}. A figure
@@ -46,20 +45,6 @@ public class BandFiguresTest {
     private static final Band TWO = CampaignBands.LAYER_2;
     /** Tries at a place: a layer's roll passes one in a hundred at the least, so 4,000 tries miss with a chance below 1e-17. */
     private static final int TRIES = 4000;
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw failure(helper, format, args);
-        }
-    }
 
     private static BlockState light(int level) {
         return Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, level);
@@ -100,7 +85,7 @@ public class BandFiguresTest {
      * band: in the dark room of layer 2 when the only player is in layer 1, in the surface band's room at all, and under a player on the
      * surface.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aFigureAppearsOnlyInTheBandOfAPlayerWhoIsInIt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 24000;
@@ -170,7 +155,7 @@ public class BandFiguresTest {
     }
 
     /** Each band holds its own cap of natural figures, and the rail's figure of Prospector's Run is held back by neither. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void eachBandHasItsOwnCapOfFigures(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 24128;
@@ -211,7 +196,7 @@ public class BandFiguresTest {
      * The server keeps sky light 15 down an open shaft from the surface, and a figure at its bottom, in layer 1's dark, still appears: it reads
      * block light only. A light of 15 at the bottom stops it.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aFigureAppearsAtTheBottomOfAnOpenShaftByBlockLight(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 24256;

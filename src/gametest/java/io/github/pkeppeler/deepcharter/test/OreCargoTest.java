@@ -1,11 +1,10 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
@@ -32,7 +31,6 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
@@ -53,7 +51,6 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for ore items and the pod's item cargo. Timing follows PodDrillTest: wait on conditions with a
@@ -145,7 +142,7 @@ public class OreCargoTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drilledOreReachesTheCargoAndVanillaOreDoesNot(GameTestHelper helper) {
         int x = 3200;
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         level.setBlock(
@@ -185,7 +182,7 @@ public class OreCargoTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drilledOreMassCutsLift(GameTestHelper helper) {
         int x = 3264;
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         for (int i = 0; i < 4; i++) {
@@ -438,7 +435,7 @@ public class OreCargoTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drillingOreIntoUnreadableCargoLosesTheOreLogsOnceAndKeepsTheData(GameTestHelper helper) {
         int x = 3328;
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         level.setBlock(
@@ -714,12 +711,5 @@ public class OreCargoTest {
             }
         }
         return found;
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

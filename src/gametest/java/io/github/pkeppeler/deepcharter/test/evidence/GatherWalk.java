@@ -89,7 +89,7 @@ final class GatherWalk {
     static BlockPos nearest(MinecraftServer server, String path, boolean foot, int distance, int height) {
         Block wanted = BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
         ServerLevel level = server.overworld();
-        return BlockSurvey.find(level, SURVEY_CHUNKS, wanted).stream()
+        return BlockSurvey.generateAndFind(level, SURVEY_CHUNKS, wanted).stream()
                 .filter(at -> reachable(level, at, foot, distance, height))
                 .min(Comparator.comparingDouble(GatherWalk::distanceFromOrigin))
                 .orElseThrow(() -> new AssertionError("no " + path + " within " + SURVEY_CHUNKS

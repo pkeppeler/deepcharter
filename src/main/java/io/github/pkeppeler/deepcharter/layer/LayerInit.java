@@ -13,10 +13,12 @@ public final class LayerInit {
         BreachService.init();
         BreachPayload.init();
         LayerRock.init();
+        LayerReadouts.init();
         Zones.init();
         LayerStructures.init();
         LavaHazard.init();
         GrainedCrust.init();
+        CaveIns.init();
         LightSync.init();
     }
 }

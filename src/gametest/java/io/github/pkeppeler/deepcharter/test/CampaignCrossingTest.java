@@ -1,8 +1,13 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.BreachPayload;
@@ -12,10 +17,12 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -34,7 +41,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -43,7 +49,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for breach crossing inside the campaign world (#745, ADR 0061), in {@code deepcharter:campaign_sample}: the layers
@@ -76,13 +81,6 @@ public class CampaignCrossingTest {
         }
     }
 
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
     private static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath("deepcharter", path);
     }
@@ -99,7 +97,7 @@ public class CampaignCrossingTest {
         return mock;
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = 1000)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = 1000)
     public void eachDescentAndAscentRaisesOneEventAndJitterInTheCrustNone(GameTestHelper helper) {
         int layer1Floor = CampaignBands.LAYER_1.minY();
         int crust = CampaignBands.crustRows();
@@ -147,7 +145,7 @@ public class CampaignCrossingTest {
         });
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = 1000)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = 1000)
     public void aDescentSendsTheTransmissionOpensChapterEightPlaysTheHymnAndRaisesTheDeepestPoint(
             GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
@@ -195,7 +193,7 @@ public class CampaignCrossingTest {
         });
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aTowedPodFollowsAcrossTheBoundaryAndIsNotCarried(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         double x = 21400.5;
@@ -254,7 +252,7 @@ public class CampaignCrossingTest {
         });
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = 400)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = 400)
     public void aPlayerWhoLeavesTheLevelAndComesBackLowerIsSettledNotCrossed(GameTestHelper helper) {
         ServerLevel campaign = helper.getLevel();
         ServerLevel overworld = campaign.getServer().overworld();
@@ -287,7 +285,7 @@ public class CampaignCrossingTest {
      * A respawn that stays in the level cannot be driven here (the dead player respawns at the overworld spawn), so
      * the test moves the player to the surface as the respawn would and raises the same Fabric event.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = 400)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = 400)
     public void aPlayerWhoRespawnsAtTheSurfaceOfTheSameLevelRaisesNoAscents(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MockPlayer mock = floater(helper, "cross-respawn", 21800.5, 21800.5, CampaignBands.LAYER_2.minY() + 100);
@@ -312,7 +310,7 @@ public class CampaignCrossingTest {
         });
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void aCrossingInOneLevelSendsTheRumbleWithNoFade(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel campaign = helper.getLevel();
@@ -330,7 +328,109 @@ public class CampaignCrossingTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE)
+    /**
+     * A crossing moves nobody (ADR 0061), so the old pocket (a carved room that skipped the Conduit's casing) is gone, and a pod that
+     * crosses a band boundary in the Conduit's own column leaves the casing whole. Cycle-2 review of #818 found this untested.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1000)
+    public void aPodCrossingInPlaceAtTheConduitsColumnLeavesTheConduitWhole(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ColonySite.Placed colony = Colony.placed(level.getServer())
+                .orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
+        BlockPos centre = TestColony.anchor(colony, ColonyAnchor.CONDUIT);
+        int radius = ColonyTuning.DEFAULT.conduitRadius();
+        int top = colony.groundY() + ColonyTuning.DEFAULT.conduitStack();
+        int layer1Floor = CampaignBands.LAYER_1.minY();
+        int surfaceFloor = CampaignBands.SURFACE.minY();
+        // The corners of the casing name every chunk that holds a part of it.
+        List<BlockPos> corners = List.of(
+                centre.offset(-radius, 0, -radius).atY(layer1Floor + 8),
+                centre.offset(-radius, 0, radius).atY(layer1Floor + 8),
+                centre.offset(radius, 0, -radius).atY(layer1Floor + 8),
+                centre.offset(radius, 0, radius).atY(layer1Floor + 8));
+        MockPlayer mock = MockPlayers.join(helper, "cross-conduit");
+        mock.player().setPermanentlyInvulnerable(true);
+        PodEntity[] pods = {null};
+        long[] startTick = {-1};
+        int[] loaded = {0};
+        FarChunks.awaitEntityTicking(helper, level, corners, index -> loaded[0]++);
+        double x = centre.getX() + 0.5;
+        double z = centre.getZ() + 0.5;
+        // One crossing at each boundary between bands, down and up, with the pod in the Conduit's own column.
+        List<Step> steps = List.of(
+                new Step(layer1Floor + 100),
+                new Step(layer1Floor - 0.5, "1>2"),
+                new Step(layer1Floor + CampaignBands.crustRows() + 0.5, "1>2", "2>1"),
+                new Step(surfaceFloor + CampaignBands.crustRows() + 0.5, "1>2", "2>1", "1>0"),
+                new Step(surfaceFloor - 0.5, "1>2", "2>1", "1>0", "0>1"));
+        TestTicks.each(helper, () -> {
+            if (loaded[0] < corners.size()) {
+                return;
+            }
+            if (pods[0] == null) {
+                expectConduitWhole(helper, level, centre, radius, top, "before the crossings");
+                pods[0] = TestEntities.create(PodRegistry.POD, level);
+                pods[0].setNoGravity(true);
+                pods[0].setPos(x, steps.get(0).y(), z);
+                level.addFreshEntity(pods[0]);
+                mock.teleportTo(level, new Vec3(x, steps.get(0).y(), z), 0, 0);
+                if (!mock.player().startRiding(pods[0], true, false)) {
+                    throw failure(helper, "the mock could not board the pod");
+                }
+                startTick[0] = helper.getTick();
+                return;
+            }
+            long since = helper.getTick() - startTick[0];
+            if (since == 1) {
+                // The first tick after the pilot is placed sees the band the pilot joined in and the band it was put in
+                // as one crossing.
+                CROSSED.remove(mock.player().getUUID());
+                return;
+            }
+            if (since % STEP_TICKS != STEP_TICKS - 1 || since / STEP_TICKS >= steps.size()) {
+                return;
+            }
+            int index = (int) (since / STEP_TICKS);
+            if (!crossings(mock.player()).equals(steps.get(index).crossings())) {
+                throw failure(
+                        helper,
+                        "with the pod at y=%s (step %d) the crossings should be %s, were %s",
+                        steps.get(index).y(),
+                        index,
+                        steps.get(index).crossings(),
+                        crossings(mock.player()));
+            }
+            if (pods[0].level() != level || pods[0].getX() != x || pods[0].getZ() != z) {
+                throw failure(
+                        helper,
+                        "the crossing moved the pod to %s in %s",
+                        pods[0].position(),
+                        pods[0].level().dimension().identifier());
+            }
+            if (index == steps.size() - 1) {
+                expectConduitWhole(helper, level, centre, radius, top, "after the crossings");
+                helper.succeed();
+                return;
+            }
+            pods[0].setPos(x, steps.get(index + 1).y(), z);
+        });
+    }
+
+    /** The casing runs unbroken from the floor of the deepest layer to the top of its stack, in the whole column of the square. */
+    private static void expectConduitWhole(
+            GameTestHelper helper, ServerLevel level, BlockPos centre, int radius, int top, String when) {
+        for (int cx = centre.getX() - radius; cx <= centre.getX() + radius; cx++) {
+            for (int cz = centre.getZ() - radius; cz <= centre.getZ() + radius; cz++) {
+                for (int y = CampaignBands.LAYER_2.minY(); y <= top; y++) {
+                    if (!level.getBlockState(new BlockPos(cx, y, cz)).is(ColonyBlocks.CONDUIT)) {
+                        throw failure(helper, "%s: the Conduit has a gap at %s %s %s", when, cx, y, cz);
+                    }
+                }
+            }
+        }
+    }
+
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void theBandTableReadsTheSameForEveryY(GameTestHelper helper) {
         List<String> seen = new ArrayList<>();
         for (int y : new int[] {319, -64, -65, -256, -257, -512, -513}) {
