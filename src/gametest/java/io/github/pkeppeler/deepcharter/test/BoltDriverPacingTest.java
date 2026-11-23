@@ -52,14 +52,16 @@ public class BoltDriverPacingTest {
     private static final float EAST = -90f;
     private static final int SPAWN_PROTECTION_TICKS = 100;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
+    /** The chunk column of {@code BoltRoom} the tunnel starts at; it spans this and the next two. */
+    private static final int TUNNEL_COLUMN = 21;
     /**
-     * Blocks of tunnel, from chunk column 21 of {@code BoltRoom}: it spans columns 21 to 23, and the roof it reads reaches 3 blocks past each end. No
-     * other corridor may have air within that, or the test reads that roof as loose when the neighbour carves second (#1084).
+     * Blocks of tunnel. No other corridor may have air within a cave-in's stretch radius ({@link CaveInTuning#stretchRadius()}) of either
+     * end, or the test reads that roof as loose when the neighbour carves second (#1084).
      */
     private static final int TUNNEL = 40;
     /** The rock of a cave-in has fallen, and the last of it is down, this many ticks after the warning. */
     private static final int ROCK_FELL_TICKS = 30;
-    /** The longest spacing tried, in blocks: far more than a bolt reaches. The shortest is the driver's own, since it refuses a bolt nearer another. */
+    /** The longest spacing tried, in blocks: far more than a bolt reaches. */
     private static final int WIDEST_SPACING = 12;
 
     /** A Retained takes this many bolts, at least and at most: more than one, so a fight is a choice, and few enough to be a fight and not a siege. */
@@ -227,7 +229,7 @@ public class BoltDriverPacingTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aTunnelNeedsARoofBoltEveryFewBlocks(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, TUNNEL, 21);
+        Corridor corridor = corridor(helper, TUNNEL, TUNNEL_COLUMN);
         TestTicks.each(helper, () -> {
             if (!corridor.ready().isPresent()) {
                 return;
