@@ -763,25 +763,29 @@ public class OutpostTest {
         });
     }
 
+    /** An orb of 3 in the hall that a save and a load make hold {@code count}: the private count has no setter. */
+    private static ExperienceOrb orbHolding(Stage stage, int count) {
+        ExperienceOrb orb = new ExperienceOrb(
+                stage.level(),
+                stage.floor().getX() + 2.5,
+                stage.floor().getY() + 2,
+                stage.floor().getZ() + 2.5,
+                3);
+        TagValueOutput output = TagValueOutput.createWithContext(
+                ProblemReporter.DISCARDING, stage.level().registryAccess());
+        orb.saveWithoutId(output);
+        CompoundTag saved = output.buildResult();
+        saved.putInt("Count", count);
+        orb.load(TagValueInput.create(ProblemReporter.DISCARDING, stage.level().registryAccess(), saved));
+        stage.level().addFreshEntity(orb);
+        return orb;
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
     public void aMergedOrbPaysAllTheExperienceItHolds(GameTestHelper helper) {
         Stage stage = stage(helper, 10100, true);
         whenReady(helper, stage, () -> {
-            // The private count has no setter: a save and a load with Count 5 makes the orb a merge of five orbs of 3.
-            ExperienceOrb orb = new ExperienceOrb(
-                    stage.level(),
-                    stage.floor().getX() + 2.5,
-                    stage.floor().getY() + 2,
-                    stage.floor().getZ() + 2.5,
-                    3);
-            TagValueOutput output = TagValueOutput.createWithContext(
-                    ProblemReporter.DISCARDING, stage.level().registryAccess());
-            orb.saveWithoutId(output);
-            CompoundTag saved = output.buildResult();
-            saved.putInt("Count", 5);
-            orb.load(TagValueInput.create(
-                    ProblemReporter.DISCARDING, stage.level().registryAccess(), saved));
-            stage.level().addFreshEntity(orb);
+            ExperienceOrb orb = orbHolding(stage, 5);
             int before = stage.player().totalExperience;
             expectBuilt(helper, stage, "an orb");
             int gained = stage.player().totalExperience - before;
@@ -791,24 +795,84 @@ public class OutpostTest {
         });
     }
 
+    /** Fills the line of cells from {@code from} to {@code to} blocks east of the floor's middle, at the builder's height, with stone. */
+    private static void stoneEast(Stage stage, int from, int to) {
+        BlockPos floor = stage.floor();
+        RoomCarver.carve(
+                stage.level(),
+                floor.getX() + from,
+                floor.getX() + to,
+                floor.getY() + 1,
+                floor.getY() + 1,
+                floor.getZ(),
+                floor.getZ(),
+                Blocks.STONE);
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
-    public void aSweptStackThatDoesNotFitLiesOutsideTheShellWhenTheBuilderStandsInTheHall(GameTestHelper helper) {
+    public void aBlockAtTheOverflowSpotSurvivesAndTheStackLiesInTheNearestAirBeyondIt(GameTestHelper helper) {
         Stage stage = stage(helper, 10200, true);
         whenReady(helper, stage, () -> {
+            stoneEast(stage, 6, 10);
+            BlockPos wall = stage.floor().offset(6, 1, 0);
+            BlockPos pocket = stage.floor().offset(8, 1, 0);
+            stage.level().setBlock(wall, Blocks.OBSIDIAN.defaultBlockState(), Block.UPDATE_ALL);
+            stage.level().setBlock(pocket, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
             fillInventory(stage);
             dropItem(stage, 0.5, 3.5, new ItemStack(Items.DIAMOND, 5));
             expectBuilt(helper, stage, "a loose stack");
+            if (!stage.level().getBlockState(wall).is(Blocks.OBSIDIAN)) {
+                throw failure(
+                        helper,
+                        "the block at the overflow spot must survive, it is %s",
+                        stage.level().getBlockState(wall));
+            }
+            if (!stage.level().getBlockState(stage.floor().offset(7, 1, 0)).is(Blocks.STONE)) {
+                throw failure(helper, "the stone between the spot and the pocket must survive");
+            }
             List<ItemEntity> lying =
-                    itemsIn(stage.level(), shellOf(stage.floor()).inflate(4));
+                    itemsIn(stage.level(), shellOf(stage.floor()).inflate(6));
             if (lying.size() != 1 || lying.getFirst().getItem().getCount() != 5) {
                 throw failure(helper, "the 5 diamonds should lie once near the hall, found %s", lying);
             }
-            ItemEntity overflow = lying.getFirst();
-            if (shellOf(stage.floor()).intersects(overflow.getBoundingBox())) {
-                throw failure(helper, "the overflow lies inside the hall's shell at %s", overflow.position());
+            if (!lying.getFirst().blockPosition().equals(pocket)) {
+                throw failure(
+                        helper,
+                        "the overflow should lie in the air pocket %s, it lies at %s",
+                        pocket,
+                        lying.getFirst().blockPosition());
             }
-            if (!stage.level().getBlockState(overflow.blockPosition()).isAir()) {
-                throw failure(helper, "the overflow lies inside a block at %s", overflow.blockPosition());
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSweptStackWithNoAirOutsideLiesInTheHallsAirAfterTheCut(GameTestHelper helper) {
+        Stage stage = stage(helper, 10700, true);
+        whenReady(helper, stage, () -> {
+            stoneEast(stage, 6, 10);
+            fillInventory(stage);
+            dropItem(stage, 0.5, 3.5, new ItemStack(Items.DIAMOND, 5));
+            expectBuilt(helper, stage, "a loose stack");
+            for (int dx = 6; dx <= 10; dx++) {
+                if (!stage.level().getBlockState(stage.floor().offset(dx, 1, 0)).is(Blocks.STONE)) {
+                    throw failure(helper, "the stone %s blocks east of the middle must survive", dx);
+                }
+            }
+            List<ItemEntity> lying =
+                    itemsIn(stage.level(), shellOf(stage.floor()).inflate(6));
+            if (lying.size() != 1 || lying.getFirst().getItem().getCount() != 5) {
+                throw failure(helper, "the 5 diamonds should lie once near the hall, found %s", lying);
+            }
+            BlockPos at = lying.getFirst().blockPosition();
+            BlockPos from = stage.floor().subtract(at);
+            boolean inHall =
+                    Math.abs(from.getX()) <= 4 && Math.abs(from.getZ()) <= 4 && from.getY() <= -1 && from.getY() >= -5;
+            if (!inHall || !stage.level().getBlockState(at).isAir()) {
+                throw failure(
+                        helper,
+                        "the overflow should lie in the hall's air, it lies at %s in %s",
+                        at,
+                        stage.level().getBlockState(at));
             }
         });
     }

@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -20,6 +21,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -28,6 +30,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -58,6 +61,8 @@ public final class OutpostBuilder {
     private static final int HATCH = 2;
     /** The layer where the kit works: the floor of the first layer is the start of the second. */
     private static final int LAYER = 1;
+    /** How many cells further out than the wall the overflow looks for a place to lie. */
+    private static final int SEARCH = 4;
     /** Blocks set tell the clients and wake nothing, as a layer carve does. */
     private static final int FLAGS = Block.UPDATE_CLIENTS;
 
@@ -112,8 +117,9 @@ public final class OutpostBuilder {
                 return refusal("blocked");
             }
         }
-        sweep(player, level, clicked, inShell);
+        List<ItemStack> overflow = sweep(player, level, inShell);
         cut(level, clicked);
+        placeOverflow(player, level, data, clicked, overflow);
         data.add(new OutpostData.Outpost(charter.get().id(), LAYER, clicked.immutable()));
         return Optional.empty();
     }
@@ -139,35 +145,60 @@ public final class OutpostBuilder {
     }
 
     /**
-     * Moves the hall's loose items and orbs to the builder before the cut, so the cut never entombs them. An orb is touched until it is
-     * gone, because a merged orb holds several orbs' experience and only the touch pays all of it.
+     * Moves the hall's loose items and orbs to the builder before the cut, so the cut never entombs them, and returns what the inventory
+     * did not take. An orb is touched once for each orb it merged, because only the touch pays and each pays its own experience. The
+     * touches are bounded by that count, so an orb that holds none (26.3 loads a {@code Count} of 0 or less as 1, so this is a guard) is
+     * discarded unpaid, never touched forever.
      */
-    private static void sweep(ServerPlayer player, ServerLevel level, BlockPos floor, List<Entity> inShell) {
+    private static List<ItemStack> sweep(ServerPlayer player, ServerLevel level, List<Entity> inShell) {
+        List<ItemStack> overflow = new ArrayList<>();
         for (Entity entity : inShell) {
             if (entity instanceof ItemEntity item) {
                 ItemStack stack = item.getItem().copy();
                 item.discard();
                 player.getInventory().add(stack);
                 if (!stack.isEmpty()) {
-                    ItemEntity overflow = new ItemEntity(level, 0, 0, 0, stack);
-                    overflow.setPos(overflowSpot(player, level, floor));
-                    overflow.setDeltaMovement(Vec3.ZERO);
-                    level.addFreshEntity(overflow);
+                    overflow.add(stack);
                 }
             } else if (entity instanceof ExperienceOrb orb) {
-                while (!orb.isRemoved()) {
+                for (int touches = mergedCount(level, orb); touches > 0 && !orb.isRemoved(); touches--) {
                     player.takeXpDelay = 0;
                     orb.playerTouch(player);
                 }
+                orb.discard();
             }
+        }
+        return overflow;
+    }
+
+    /** How many orbs {@code orb} holds: its {@code Count}, which has no getter. */
+    private static int mergedCount(ServerLevel level, ExperienceOrb orb) {
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+        orb.saveWithoutId(output);
+        return output.buildResult().getIntOr("Count", 0);
+    }
+
+    /** Drops the overflow after the cut, each stack where {@link #overflowSpot} says. */
+    private static void placeOverflow(
+            ServerPlayer player, ServerLevel level, OutpostData data, BlockPos floor, List<ItemStack> overflow) {
+        if (overflow.isEmpty()) {
+            return;
+        }
+        Vec3 spot = overflowSpot(player, level, data, floor);
+        for (ItemStack stack : overflow) {
+            ItemEntity entity = new ItemEntity(level, spot.x, spot.y, spot.z, stack);
+            entity.setDeltaMovement(Vec3.ZERO);
+            level.addFreshEntity(entity);
         }
     }
 
     /**
-     * Where what does not fit lies: at the builder if the builder stands outside the shell, else on the cell just outside the wall on the builder's
-     * side, which is cut to air if it is rock (the cut leaves the shell's outside as it was, so the overflow is never in the hall or a wall).
+     * Where what does not fit lies, after the cut, and never by setting a block: at the builder if the builder stands outside the shell. Else the
+     * first of: the cell just outside the wall on the builder's side if it is air; an air cell with a sturdy top under it, up to
+     * {@value #SEARCH} cells further out on that line and in no other outpost's hall; a cell inside the new hall that the cut leaves as air
+     * (not entombed, and the sealed hall is not lootable by others).
      */
-    private static Vec3 overflowSpot(ServerPlayer player, ServerLevel level, BlockPos floor) {
+    private static Vec3 overflowSpot(ServerPlayer player, ServerLevel level, OutpostData data, BlockPos floor) {
         if (!shellOf(floor).intersects(player.getBoundingBox())) {
             return player.position();
         }
@@ -176,17 +207,29 @@ public final class OutpostBuilder {
         int out = EDGE + 1;
         int x = Mth.clamp(dx, -EDGE, EDGE);
         int z = Mth.clamp(dz, -EDGE, EDGE);
+        Direction away;
         if (Math.abs(dx) >= Math.abs(dz)) {
             x = dx >= 0 ? out : -out;
+            away = dx >= 0 ? Direction.EAST : Direction.WEST;
         } else {
             z = dz >= 0 ? out : -out;
+            away = dz >= 0 ? Direction.SOUTH : Direction.NORTH;
         }
         int y = Mth.clamp(player.getBlockY(), floor.getY() + 1, floor.getY() + HEIGHT);
         BlockPos spot = floor.offset(x, y - floor.getY(), z);
-        if (!level.getBlockState(spot).isAir() && level.getBlockEntity(spot) == null) {
-            level.setBlock(spot, Blocks.AIR.defaultBlockState(), FLAGS);
+        if (level.getBlockState(spot).isAir()) {
+            return Vec3.atBottomCenterOf(spot);
         }
-        return Vec3.atBottomCenterOf(spot);
+        for (int step = 1; step <= SEARCH; step++) {
+            BlockPos cell = spot.relative(away, step);
+            BlockPos below = cell.below();
+            if (level.getBlockState(cell).isAir()
+                    && level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)
+                    && data.containing(LAYER, cell).isEmpty()) {
+                return Vec3.atBottomCenterOf(cell);
+            }
+        }
+        return Vec3.atBottomCenterOf(floor.offset(HATCH, 1, HATCH));
     }
 
     private static AABB shellOf(BlockPos floor) {
