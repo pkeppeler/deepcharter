@@ -471,6 +471,10 @@ client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:succe
 refusal "game path, one shard cancelled, no aggregate" "client-gametest-shard 2 (newest non-skipped run: cancelled)" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:in_progress")" "$game"
 refusal "game path, one shard still running" "client-gametest-shard 2 (newest non-skipped run: in_progress)" "${client_vars[@]}"
+# A cancelled matrix job that never started keeps its template name; it must not refuse a passing suite.
+client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" 'client-gametest-shard ${{ matrix.shard }}:7:cancelled')" "$game"
+run_script "${client_vars[@]}"
+exited "game path, passing shards beside a never-started cancelled matrix job merges" 0
 client_args "$(runs "${required_pass_specs[@]}" client-gametest:3:success)" "$game"
 refusal "aggregate passed but no shard did" "client-gametest passed but no client-gametest-shard run did" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:success")" "$game"

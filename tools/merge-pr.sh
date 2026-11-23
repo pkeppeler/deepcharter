@@ -107,7 +107,10 @@ fi
 # Per name, the deciding run is the newest one that is not skipped: only a
 # `success` passes, anything else (running, failed, cancelled, ...) refuses. A name
 # whose runs were all skipped is "skipping". Output lines are "verdict<TAB>name<TAB>id" (the id of the deciding run).
-checks_full=$(grep $'\t' <<<"$run_lines" | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n | awk -F'\t' '
+# A matrix job that never started (skipped, or cancelled by a newer run's concurrency group) is reported under its
+# unexpanded template name, `client-gametest-shard ${{ matrix.shard }}`: no real shard run ever supersedes it, so it is
+# dropped, not read as a failed check. The aggregate `client-gametest` still has to pass.
+checks_full=$(grep $'\t' <<<"$run_lines" | grep -vF '${{' | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n | awk -F'\t' '
   function flush() {
     if (name == "") return
     print (state == "" ? "skipping" : state == "success" ? "pass" : state) "\t" name "\t" id
