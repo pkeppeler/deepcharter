@@ -131,8 +131,12 @@ public final class ColumnCost {
     }
 
     /**
-     * A measured run sleeps through each tick it only waits on. The GameTest server ticks unthrottled, so a waiting tick costs the
-     * server thread's CPU, which the readings count, and a run of thousands of them a second runs out a tick budget in seconds.
+     * A measured run sleeps through each tick it only waits on. The CPU reading is the whole process's
+     * ({@link #processCpuNanos}: every thread, the generation workers, the server thread, GC and JIT), taken in {@code begin()} and
+     * {@code finish()}, so the sleeps while a run's columns generate fall inside it, and the cool-down and unload waits fall between
+     * runs. A sleeping thread accrues no CPU time, so a sleep adds nothing to the reading; it only lengthens the wall reading, by at most
+     * {@link FarChunks#POLL_MILLIS} a poll. Without it the unthrottled GameTest server spun thousands of empty ticks a second, which
+     * the reading counted as the world's cost and which ran out a 200,000-tick budget in under a minute.
      */
     private static void idle(boolean smoke) {
         if (smoke) {
@@ -170,6 +174,7 @@ public final class ColumnCost {
         return (2 * radius + 1) * (2 * radius + 1);
     }
 
+    /** CPU time of every thread of this JVM, not of the generation workers alone. */
     private static long processCpuNanos() {
         return ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean())
                 .getProcessCpuTime();

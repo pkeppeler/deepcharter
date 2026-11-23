@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
 import io.github.pkeppeler.deepcharter.test.support.BandCost;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Pool;
+import io.github.pkeppeler.deepcharter.test.support.BandCost.Ratchet;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Ratio;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Reading;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Window;
@@ -71,6 +72,39 @@ public class BandCostTest {
         helper.succeed();
     }
 
+    /** A band with a ratchet is held to its measured ratio times the bar: at its ceiling it passes. */
+    @GameTest
+    public void aRatchetedBandAtItsCeilingPasses(GameTestHelper helper) {
+        Ratchet ratchet = new Ratchet("band", 1.5);
+        // 1.725, less a hair, so floating error in the medians cannot put an exact ceiling over it.
+        double ceiling = ratchet.ceiling() - 1e-9;
+        Ratio ratio = onlyRatio(new Pool(gatedPool(3, 6, ceiling)), List.of(ratchet));
+        expect(helper, near(ratio.bar(), 1.725), "ceiling %s, expected 1.725", ratio.bar());
+        expect(helper, !ratio.over(), "%sx is over the ratchet's %s ceiling", ratio.ratio(), ratio.bar());
+        helper.succeed();
+    }
+
+    /** The gate goes red on a ratchet too: just above its ceiling a band is over. */
+    @GameTest
+    public void aRatchetedBandAboveItsCeilingFails(GameTestHelper helper) {
+        Ratchet ratchet = new Ratchet("band", 1.5);
+        Ratio ratio = onlyRatio(new Pool(gatedPool(3, 6, ratchet.ceiling() + 0.001)), List.of(ratchet));
+        expect(helper, ratio.over(), "%sx is not over the ratchet's %s ceiling", ratio.ratio(), ratio.bar());
+        helper.succeed();
+    }
+
+    /** A band with no ratchet of its own, a new band, is held to the bar, whatever the other bands' ratchets. */
+    @GameTest
+    public void aNewBandIsHeldToTheBar(GameTestHelper helper) {
+        List<Ratchet> others = List.of(new Ratchet("older band", 1.5));
+        Ratio over = onlyRatio(new Pool(gatedPool(3, 6, 1.16)), others);
+        expect(helper, near(over.bar(), BandCost.BAR), "bar %s, expected %s", over.bar(), BandCost.BAR);
+        expect(helper, over.over(), "1.16x is not over the %s bar beside another band's ratchet", BandCost.BAR);
+        Ratio under = onlyRatio(new Pool(gatedPool(3, 6, 1.14)), others);
+        expect(helper, !under.over(), "1.14x is over the %s bar beside another band's ratchet", BandCost.BAR);
+        helper.succeed();
+    }
+
     /** The gate judges only a pool of {@value BandCost#RUNS} runs and {@value BandCost#ROUNDS} rounds of every world it reads. */
     @GameTest
     public void aPoolIsJudgedOnlyWhenFull(GameTestHelper helper) {
@@ -107,8 +141,12 @@ public class BandCostTest {
     }
 
     private static Ratio onlyRatio(Pool pool) {
+        return onlyRatio(pool, List.of());
+    }
+
+    private static Ratio onlyRatio(Pool pool, List<Ratchet> ratchets) {
         List<Ratio> ratios =
-                BandCost.ratios(pool, List.of(new Window("band", "band")), FLOOR, REFERENCE, REFERENCE_FLOOR);
+                BandCost.ratios(pool, List.of(new Window("band", "band")), ratchets, FLOOR, REFERENCE, REFERENCE_FLOOR);
         return ratios.getFirst();
     }
 

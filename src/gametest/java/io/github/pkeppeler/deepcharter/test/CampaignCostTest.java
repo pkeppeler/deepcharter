@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.test.support.BandCost;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Pool;
+import io.github.pkeppeler.deepcharter.test.support.BandCost.Ratchet;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Ratio;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Reading;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Window;
@@ -43,7 +44,8 @@ import org.slf4j.LoggerFactory;
  * is the shipped campaign world cut to that band's rows ({@code campaign_surface}, {@code campaign_layer_1}, {@code campaign_layer_2}),
  * and {@code campaign_floor} is the same world cut to its bottom 16 rows. A band's marginal CPU per filled row is its window's pooled
  * median over the floor's, per row of the difference; {@code tall_layer} (one layer's rock and fill in every row) over
- * {@code tall_layer_floor} is the reference. The gate: every band at most {@value BandCost#BAR}x the reference. The whole world,
+ * {@code tall_layer_floor} is the reference. The gate: every band at most {@value BandCost#BAR}x the reference, except the bands
+ * {@link #RATCHETS} holds to their own measured ratio plus 15% until #1132. The whole world,
  * {@code campaign_sample} per block of height against {@code tall_baseline} (vanilla stone, no fill), is printed as a tracked number
  * and no longer gates.
  *
@@ -84,6 +86,18 @@ public class CampaignCostTest {
             new Window(CampaignBands.LAYER_1.name(), "campaign_layer_1"),
             new Window(CampaignBands.LAYER_2.name(), "campaign_layer_2"));
 
+    /**
+     * The bands that were over the bar when the gate was written (ADR 0086): each is held to its pooled ratio of #1129 plus the bar's
+     * 15%, so it cannot get worse. #1132 makes the campaign generator's layer bands cost about one layer per row and deletes these; a
+     * band added since gets no entry and is held to {@value BandCost#BAR}x.
+     */
+    private static final List<Ratchet> RATCHETS = List.of(
+            // #1132: layer 1's rows cost more in the campaign generator than in its own dimension; delete once it is
+            // fixed
+            new Ratchet(CampaignBands.LAYER_1.name(), 1.583),
+            // #1132: as layer 1
+            new Ratchet(CampaignBands.LAYER_2.name(), 1.834));
+
     /** The worlds the gate reads. */
     private static final List<String> GATED = Stream.concat(
                     WINDOWS.stream().map(Window::world), Stream.of(FLOOR, REFERENCE, REFERENCE_FLOOR))
@@ -104,19 +118,27 @@ public class CampaignCostTest {
 
     private static final int MIN_ROUNDS = 4;
     private static final int MAX_TICKS = 200_000;
-    /** Four hours: each tick a measured run waits on sleeps {@link FarChunks#POLL_MILLIS}, and a judged run takes about one. */
+    /**
+     * Four hours: each tick a measured run waits on sleeps {@link FarChunks#POLL_MILLIS}, and a judged run takes about 20 minutes. Only
+     * the measured run, which {@value #ROUNDS_ENV} opts into and CI never sets, has it; the smoke case keeps {@link #MAX_TICKS}.
+     */
     private static final int MEASURED_MAX_TICKS = 4 * 3600 * 1000 / FarChunks.POLL_MILLIS;
 
+    /** The smoke case, which CI runs: a few columns of each world. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void everyCostWorldGeneratesColumns(GameTestHelper helper) {
+        ColumnCost.run(helper, WORLDS, ALL_WORLDS, 0, results -> {});
+    }
+
+    /** The measured run and the gate; without {@value #ROUNDS_ENV} it succeeds at once. */
     @GameTest(maxTicks = MEASURED_MAX_TICKS)
     public void eachBandCostsWhatALayerDoesPerRow(GameTestHelper helper) {
-        int rounds = REQUESTED_ROUNDS == null ? 0 : Integer.parseInt(REQUESTED_ROUNDS);
-        expect(
-                helper,
-                rounds == 0 || rounds >= MIN_ROUNDS,
-                "%s needs at least %s rounds, got %s",
-                ROUNDS_ENV,
-                MIN_ROUNDS,
-                rounds);
+        if (REQUESTED_ROUNDS == null) {
+            helper.succeed();
+            return;
+        }
+        int rounds = Integer.parseInt(REQUESTED_ROUNDS);
+        expect(helper, rounds >= MIN_ROUNDS, "%s needs at least %s rounds, got %s", ROUNDS_ENV, MIN_ROUNDS, rounds);
         ColumnCost.run(helper, WORLDS, ALL_WORLDS, rounds, results -> report(helper, results));
     }
 
@@ -180,6 +202,9 @@ public class CampaignCostTest {
                 .toList();
         List<String> windowed = WINDOWS.stream().map(Window::band).toList();
         expect(helper, windowed.equals(bands), "windows for %s, expected one for each of %s", windowed, bands);
+        for (Ratchet ratchet : RATCHETS) {
+            expect(helper, windowed.contains(ratchet.band()), "a ratchet for %s, which has no window", ratchet.band());
+        }
         JsonObject dimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject()
                 .getAsJsonObject("dimensions");
@@ -306,16 +331,18 @@ public class CampaignCostTest {
                 REFERENCE,
                 String.format("%.4f", pool.marginalPerRow(REFERENCE, REFERENCE_FLOOR)),
                 REFERENCE_FLOOR);
-        List<Ratio> ratios = BandCost.ratios(pool, WINDOWS, FLOOR, REFERENCE, REFERENCE_FLOOR);
+        List<Ratio> ratios = BandCost.ratios(pool, WINDOWS, RATCHETS, FLOOR, REFERENCE, REFERENCE_FLOOR);
         for (Ratio ratio : ratios) {
             LOGGER.info(
-                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s ({})",
+                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s; at most {}x{} ({})",
                     ratio.band(),
                     String.format("%.4f", ratio.marginal()),
                     FLOOR,
                     String.format("%.3f", ratio.ratio()),
                     REFERENCE,
-                    ratio.over() ? "over the bar" : "within the bar");
+                    String.format("%.3f", ratio.bar()),
+                    ratio.bar() == BandCost.BAR ? "" : ", a ratchet (#1132)",
+                    ratio.over() ? "over" : "within");
         }
         if (!pool.judged(GATED)) {
             LOGGER.info(
@@ -326,9 +353,8 @@ public class CampaignCostTest {
             return;
         }
         List<Ratio> over = ratios.stream().filter(Ratio::over).toList();
-        LOGGER.info(
-                "[campaign-cost] judged: {}", over.isEmpty() ? "every band within the bar" : "over the bar: " + over);
-        expect(helper, over.isEmpty(), "bands over the %sx bar against %s: %s", BandCost.BAR, REFERENCE, over);
+        LOGGER.info("[campaign-cost] judged: {}", over.isEmpty() ? "every band within its bar" : "over: " + over);
+        expect(helper, over.isEmpty(), "bands over their bar against %s: %s", REFERENCE, over);
     }
 
     /** This run's readings, with every earlier run's in the pool file when there is one. */

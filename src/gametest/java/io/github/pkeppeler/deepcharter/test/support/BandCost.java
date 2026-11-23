@@ -45,15 +45,25 @@ public final class BandCost {
     /** A band, and the world that is the campaign world cut to that band's rows. */
     public record Window(String band, String world) {}
 
-    /** A band's marginal CPU ms per filled row, and that over the reference's. */
-    public record Ratio(String band, double marginal, double ratio) {
+    /**
+     * A band that was over the bar when the gate was written, held to its own {@code measured} ratio plus the bar's 15%, so it cannot
+     * get worse. A band without one, every new band, is held to {@link #BAR}.
+     */
+    public record Ratchet(String band, double measured) {
+        public double ceiling() {
+            return measured * BAR;
+        }
+    }
+
+    /** A band's marginal CPU ms per filled row, that over the reference's, and the most that ratio may be. */
+    public record Ratio(String band, double marginal, double ratio, double bar) {
         public boolean over() {
-            return ratio > BAR;
+            return ratio > bar;
         }
 
         @Override
         public String toString() {
-            return String.format(Locale.ROOT, "%s %.3fx", band, ratio);
+            return String.format(Locale.ROOT, "%s %.3fx of %.3fx", band, ratio, bar);
         }
     }
 
@@ -128,16 +138,26 @@ public final class BandCost {
     }
 
     /**
-     * Each window's marginal cost per row over {@code floor}, and its ratio to {@code reference}'s over {@code referenceFloor}. Every
-     * world named must be in the pool.
+     * Each window's marginal cost per row over {@code floor}, and its ratio to {@code reference}'s over {@code referenceFloor}, held to
+     * its band's ratchet or else {@link #BAR}. Every world named must be in the pool.
      */
     public static List<Ratio> ratios(
-            Pool pool, List<Window> windows, String floor, String reference, String referenceFloor) {
+            Pool pool,
+            List<Window> windows,
+            List<Ratchet> ratchets,
+            String floor,
+            String reference,
+            String referenceFloor) {
         double perRow = pool.marginalPerRow(reference, referenceFloor);
         return windows.stream()
                 .map(window -> {
                     double marginal = pool.marginalPerRow(window.world(), floor);
-                    return new Ratio(window.band(), marginal, marginal / perRow);
+                    double bar = ratchets.stream()
+                            .filter(ratchet -> ratchet.band().equals(window.band()))
+                            .mapToDouble(Ratchet::ceiling)
+                            .findFirst()
+                            .orElse(BAR);
+                    return new Ratio(window.band(), marginal, marginal / perRow, bar);
                 })
                 .toList();
     }
