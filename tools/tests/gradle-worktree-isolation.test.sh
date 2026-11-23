@@ -50,21 +50,24 @@ tasks.register("probe") { doLast { println("RESULT " + Probe().hi()) } }
 S
 done
 
+has() { [[ $1 == *"$2"* ]]; }
+none() { [[ $1 -eq 0 ]]; }
+
 # run <worktree>: runs the probe task there and prints its output.
 run() { (cd "$work/$1" && ./gradlew --offline --console=plain probe 2>&1); }
 
 out_a=$(run "$A")
 out_b=$(run "$B")
-[[ $out_a == *"RESULT probe"* && $out_b == *"RESULT probe"* ]]; check "the probe task runs in both worktrees" $?
-[[ $out_b == *"Configuration cache entry stored"* ]]; check "the second worktree stores its own entry" $?
+has "$out_a" "RESULT probe" && has "$out_b" "RESULT probe"; check "the probe task runs in both worktrees" $?
+has "$out_b" "Configuration cache entry stored"; check "the second worktree stores its own entry" $?
 
 # Every file of an entry that mentions a worktree path; the entry's script scopes are the ones that leaked.
 mentions() { grep -rlaF -- "$2" "$work/$1/.gradle/configuration-cache" 2>/dev/null | grep -c .; }
-[[ $(mentions "$A" "$work/$A") -gt 0 ]]; check "the entry in A names A's script scopes" $?
-[[ $(mentions "$B" "$work/$A") -eq 0 ]]; check "the entry in B names nothing of A's" $?
+! none "$(mentions "$A" "$work/$A")"; check "the entry in A names A's script scopes" $?
+none "$(mentions "$B" "$work/$A")"; check "the entry in B names nothing of A's" $?
 
 out_b2=$(run "$B")
-[[ $out_b2 == *"Reusing configuration cache"* ]]; check "B still reuses its own entry" $?
+has "$out_b2" "Reusing configuration cache"; check "B still reuses its own entry" $?
 
 if [[ $failures -ne 0 ]]; then
   echo "$failures check(s) failed. A daemon shared between checkouts leaks script scopes into the configuration cache."
