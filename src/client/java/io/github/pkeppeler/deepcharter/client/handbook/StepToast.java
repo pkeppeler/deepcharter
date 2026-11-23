@@ -162,11 +162,7 @@ public final class StepToast implements Toast {
                 : Visibility.HIDE;
     }
 
-    /**
-     * Slides in from the left edge in the left column, as the manager's animation does from the right; from the right edge in the right
-     * column. The slip is placed here too, because the manager asks for the x before the y and a slip that changed column would
-     * otherwise be drawn for a frame at the old column's x.
-     */
+    /** Slides in from the left edge in the left column, from the right edge in the right. Settles first: the manager asks for x before y. */
     @Override
     public float xPos(int guiWidth, float visiblePortion) {
         int margin = QuestMapTuning.current().toastMargin();

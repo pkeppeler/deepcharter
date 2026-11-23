@@ -500,7 +500,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         return new Box(decal.left(width), decal.top(height), decal.width(), decal.height());
     }
 
-    private static Box box(HudKeepClear.Rect rect) {
+    static Box box(HudKeepClear.Rect rect) {
         return new Box(rect.x(), rect.y(), rect.width(), rect.height());
     }
 }

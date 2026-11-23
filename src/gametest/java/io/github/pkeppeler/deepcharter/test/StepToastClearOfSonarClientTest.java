@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.GUI_SCALE;
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.LONG_STEP;
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.SHORT_STEP;
+import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.box;
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.critical;
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud;
 import static io.github.pkeppeler.deepcharter.test.StepToastClearOfHudClientTest.requireClearOrNowhere;
@@ -245,10 +246,6 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
         for (Rect rect : rects) {
             require(!ClientChecks.overlaps(slip, box(rect)), "the popup at " + slip + " covers the " + rect);
         }
-    }
-
-    private static Box box(Rect rect) {
-        return new Box(rect.x(), rect.y(), rect.width(), rect.height());
     }
 
     private static void expectTheSlipIsClearOfTheScopeOnEveryCockpitGui(ClientGameTestContext context) {
