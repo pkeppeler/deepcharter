@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -216,24 +217,21 @@ public class PodSonarTest {
                 if (helper.getTick() == laterChunksTick) {
                     later.forEach(chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
                 }
-                // A body in a chunk that is not entity ticking does not move: the settle ticks count from when all of
-                // them do, and the wait fails naming the chunk.
-                boolean bodiesTick =
-                        bodies.stream().allMatch(body -> level.isPositionEntityTicking(body.blockPosition()));
-                if (scene[0] != null) {
-                    bodiesDeadline.await(
-                            helper,
-                            level,
-                            bodiesTick,
-                            () -> bodies.stream()
-                                    .filter(body -> !level.isPositionEntityTicking(body.blockPosition()))
-                                    .findFirst()
-                                    .map(body -> body + " in chunk "
-                                            + new ChunkPos(body.getBlockX() >> 4, body.getBlockZ() >> 4)
-                                            + " was not entity-ticking")
-                                    .orElse("a body was not entity-ticking"));
+                if (scene[0] == null) {
+                    return;
                 }
-                if (scene[0] != null && bodiesTick && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
+                // A body in a chunk that is not entity ticking does not move: the settle ticks count from when all of
+                // them do.
+                Optional<Entity> idle = bodies.stream()
+                        .filter(body -> !level.isPositionEntityTicking(body.blockPosition()))
+                        .findFirst();
+                bodiesDeadline.await(
+                        helper,
+                        level,
+                        idle.isEmpty(),
+                        () -> idle.get() + " in chunk "
+                                + new ChunkPos(idle.get().blockPosition()) + " was not entity-ticking");
+                if (idle.isEmpty() && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
                     scene[0].pod().discard();
                     bodies.forEach(Entity::discard);
                     helper.succeed();
