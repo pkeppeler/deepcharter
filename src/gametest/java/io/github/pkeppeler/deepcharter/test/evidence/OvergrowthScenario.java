@@ -15,10 +15,12 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -27,12 +29,14 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Evidence scenario "overgrowth" (#974): two bores side by side in a stone block of layer 1, in the test biome that stands for the Fungal
  * Hollows, both cut the way a drill cuts them. The left one is bare; the right one is lined, with a slag brick in the wall every four cells.
  * Nobody visits them: the clock is moved on a pass at a time (the production growth pass, called with a later game time), so the
- * time-lapse shows the left bore growing over from its walls inward while the lined one stays open. Then a pod drills into the growth.
+ * time-lapse shows the left bore growing over from its walls inward while the lined one stays open. Close-up stills show the grown
+ * mouth face on, where the moss meets the rock, and the growth on the ceiling seen from inside the bore. Then a pod drills into the growth.
  * The place comes from where the world puts the player and from {@link #LIVE_GAUGES_FLOOR_Y}, never a fixed position.
  */
 public class OvergrowthScenario extends EvidenceScenario {
@@ -51,6 +55,7 @@ public class OvergrowthScenario extends EvidenceScenario {
     private static final int DRILLED_SLABS = 3;
     private static final float LOOK_DOWN = 14f;
     private static final float LOOK_AHEAD = 4f;
+    private static final double EYE_HEIGHT = 1.62;
     private static final OvergrowthTuning TUNING = OvergrowthTuning.DEFAULT;
 
     @Override
@@ -62,7 +67,7 @@ public class OvergrowthScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
-            BlockPos site = singleplayer.getServer().computeOnServer(server -> {
+            Scene scene = singleplayer.getServer().computeOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 BlockPos middle = new BlockPos(player.getBlockX(), FLOOR_Y, player.getBlockZ());
                 ServerLevel one = TestLayers.level(server, 1);
@@ -77,8 +82,9 @@ public class OvergrowthScenario extends EvidenceScenario {
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(middle.getX() - 6.5, FLOOR_Y, middle.getZ() - 6.5);
                 one.addFreshEntity(pod);
-                return middle;
+                return new Scene(middle, pod.getUUID());
             });
+            BlockPos site = scene.site();
             // The scene is built while the client is elsewhere, and the player arrives once the server has lit it: a
             // client that is
             // sent a room while the light engine still works on it keeps the stale light (issue 427) and the stills
@@ -115,9 +121,13 @@ public class OvergrowthScenario extends EvidenceScenario {
             screenshot(context, "overgrowth-open");
 
             timeLapse(context, singleplayer, site);
-            drillThrough(context, singleplayer, site);
+            closeUps(context, singleplayer, site);
+            drillThrough(context, singleplayer, scene);
         }
     }
+
+    /** Where the bores are, and which pod is ours: layer 1 holds others (the wreck sites' Prospectors), so "the first pod" is not it. */
+    private record Scene(BlockPos site, UUID pod) {}
 
     /** Nobody comes: the growth pass runs at a game time later than any visit, a few passes a frame, until the bare bore is closed. */
     private void timeLapse(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos site) {
@@ -130,6 +140,7 @@ public class OvergrowthScenario extends EvidenceScenario {
                     + 2L * TUNING.visitStampTicks()
         };
         boolean shotGrowing = false;
+        boolean shotUnderside = false;
         for (int frame = 0; frame < GROW_FRAMES; frame++) {
             singleplayer.getServer().runOnServer(server -> {
                 for (int pass = 0; pass < PASSES_PER_FRAME; pass++) {
@@ -143,6 +154,10 @@ public class OvergrowthScenario extends EvidenceScenario {
             if (!shotGrowing && grown > BORE_WIDTH * BORE_HEIGHT * TUNNEL / 3) {
                 screenshot(context, "overgrowth-growing");
                 shotGrowing = true;
+            }
+            if (!shotUnderside && grown > BORE_WIDTH * BORE_HEIGHT * TUNNEL / 6 && undersideReady(singleplayer, site)) {
+                underside(context, singleplayer, site);
+                shotUnderside = true;
             }
             if (grown == BORE_WIDTH * BORE_HEIGHT * TUNNEL) {
                 break;
@@ -159,10 +174,78 @@ public class OvergrowthScenario extends EvidenceScenario {
         }
     }
 
+    /** True when the bare bore's middle cell is still open and its ceiling three cells in has grown: the eye can sit inside and look up at it. */
+    private static boolean undersideReady(TestSingleplayerContext singleplayer, BlockPos site) {
+        return singleplayer.getServer().computeOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            BlockPos middle = new BlockPos(site.getX() - OFFSET, FLOOR_Y + 1, site.getZ());
+            BlockPos ceiling = new BlockPos(site.getX() - OFFSET, FLOOR_Y + BORE_HEIGHT - 1, site.getZ() + 3);
+            return one.getBlockState(middle).isAir()
+                    && one.getBlockState(ceiling).is(LayerBlocks.OVERGROWTH);
+        });
+    }
+
+    /** The eye sits inside the half-grown bare bore and looks up at the growth on its ceiling, then goes back to the chamber. */
+    private void underside(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos site) {
+        double x = site.getX() - OFFSET + 0.5;
+        lookFrom(
+                singleplayer,
+                new Vec3(x, FLOOR_Y + 1.0, site.getZ() + 0.5),
+                new Vec3(x, FLOOR_Y + BORE_HEIGHT - 0.5, site.getZ() + 3.5));
+        context.waitTicks(40);
+        frames(context, 2);
+        screenshot(context, "overgrowth-underside");
+        lookFrom(
+                singleplayer,
+                new Vec3(site.getX() + 0.5, FLOOR_Y + 2, site.getZ() - 6.5),
+                new Vec3(site.getX() + 0.5, FLOOR_Y + 2.5, site.getZ()));
+        context.waitTicks(40);
+    }
+
+    /** The grown-over mouth of the bare bore, face on, and then its top corner where the moss meets the rock. */
+    private void closeUps(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos site) {
+        double x = site.getX() - OFFSET + 0.5;
+        double z = site.getZ();
+        lookFrom(singleplayer, new Vec3(x, FLOOR_Y + 1.5, z - 2.5), new Vec3(x, FLOOR_Y + 1.5, z));
+        context.waitTicks(40);
+        frames(context, 2);
+        screenshot(context, "overgrowth-face");
+        lookFrom(
+                singleplayer,
+                new Vec3(x + 0.5, FLOOR_Y + BORE_HEIGHT + 0.6, z - 1.6),
+                new Vec3(x - 1.0, FLOOR_Y + BORE_HEIGHT - 0.5, z));
+        context.waitTicks(40);
+        frames(context, 2);
+        screenshot(context, "overgrowth-edge");
+    }
+
+    /** The spectator's eye at {@code eye} in layer 1, turned to look at {@code target}. */
+    private static void lookFrom(TestSingleplayerContext singleplayer, Vec3 eye, Vec3 target) {
+        Vec3 d = target.subtract(eye);
+        float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+        float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
+        singleplayer
+                .getServer()
+                .runOnServer(server -> server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .teleportTo(
+                                TestLayers.level(server, 1),
+                                eye.x,
+                                eye.y - EYE_HEIGHT,
+                                eye.z,
+                                Set.of(),
+                                yaw,
+                                pitch,
+                                true));
+    }
+
     /** The pod is set at the mouth of the bare bore and drilled into the growth: the slabs go at extra fuel and the bore opens. */
-    private void drillThrough(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos site) {
+    private void drillThrough(ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
+        BlockPos site = scene.site();
+        UUID podId = scene.pod();
         float fuel = singleplayer.getServer().computeOnServer(server -> {
-            PodEntity pod = pod(server);
+            PodEntity pod = pod(server, podId);
             pod.setPos(site.getX() - OFFSET + 0.5, FLOOR_Y, site.getZ() - 3.5);
             pod.setYRot(0f);
             pod.setFuel(100f);
@@ -187,11 +270,11 @@ public class OvergrowthScenario extends EvidenceScenario {
         context.getInput().holdKey(options -> options.keyUp);
         int ticks = 0;
         boolean shot = false;
-        while (podZ(singleplayer) < site.getZ() + DRILLED_SLABS && ticks < DRILL_TICKS) {
+        while (podZ(singleplayer, podId) < site.getZ() + DRILLED_SLABS && ticks < DRILL_TICKS) {
             context.waitTicks(TICKS_PER_FRAME);
             ticks += TICKS_PER_FRAME;
             frame(context);
-            if (!shot && podZ(singleplayer) > site.getZ() - 1) {
+            if (!shot && podZ(singleplayer, podId) > site.getZ() - 1) {
                 screenshot(context, "overgrowth-drilling");
                 shot = true;
             }
@@ -200,8 +283,10 @@ public class OvergrowthScenario extends EvidenceScenario {
         frames(context, 4);
         screenshot(context, "overgrowth-drilled");
         float burned = fuel
-                - singleplayer.getServer().computeOnServer(server -> pod(server).fuel());
-        if (podZ(singleplayer) < site.getZ() + DRILLED_SLABS) {
+                - singleplayer
+                        .getServer()
+                        .computeOnServer(server -> pod(server, podId).fuel());
+        if (podZ(singleplayer, podId) < site.getZ() + DRILLED_SLABS) {
             throw new AssertionError(
                     "the pod did not drill " + DRILLED_SLABS + " slabs of growth in " + DRILL_TICKS + " ticks");
         }
@@ -302,13 +387,13 @@ public class OvergrowthScenario extends EvidenceScenario {
         }
     }
 
-    private static PodEntity pod(net.minecraft.server.MinecraftServer server) {
-        return TestLayers.level(server, 1)
-                .getEntities(PodRegistry.POD, pod -> true)
-                .getFirst();
+    private static PodEntity pod(MinecraftServer server, UUID id) {
+        return TestEntities.require(TestLayers.level(server, 1), id, PodEntity.class);
     }
 
-    private static double podZ(TestSingleplayerContext singleplayer) {
-        return singleplayer.getServer().computeOnServer(server -> pod(server).getZ());
+    private static double podZ(TestSingleplayerContext singleplayer, UUID id) {
+        return singleplayer
+                .getServer()
+                .computeOnServer(server -> pod(server, id).getZ());
     }
 }
