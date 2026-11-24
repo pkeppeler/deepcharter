@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.minecraft.core.BlockPos;
@@ -11,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * A breach through the floor of the last layer into the unbuilt depth below it (#1192), and the views of it: from layer 2 down through
@@ -74,6 +77,9 @@ public final class UnbuiltDepthViews {
     /** The camera's feet stand this far under the water's surface for the view from under it. */
     private static final int UNDER_THE_WATER = 6;
 
+    /** A standing spectator's eye above its feet. */
+    private static final double EYE = 1.62;
+
     private static final long DUSK = 0;
     private static final float EAST = -90f;
     private static final float DOWN = 90f;
@@ -90,7 +96,7 @@ public final class UnbuiltDepthViews {
     public record Look(String name, Place place, CavernSky.View view, boolean nightVision) {}
 
     /** The views in the order they are taken: every dry one first, then the one from under the water of the shaft once it is flooded. */
-    public static final List<Look> LOOKS = List.of(
+    private static final List<Look> LOOKS = List.of(
             look("breach-down", Place.BREACH, DOWN, false),
             look("unbuilt-down", Place.UNBUILT, DOWN, false),
             look("unbuilt-level", Place.UNBUILT, LEVEL, false),
@@ -111,17 +117,24 @@ public final class UnbuiltDepthViews {
     }
 
     /**
-     * Carves the breach, cuts the render distance, and stands the camera at each of {@link #LOOKS} in turn, flooding the shaft before the
-     * first from under the water. {@code beforeFlood} runs once the dry looks are done, without night vision (a fall down the dry shaft, for
-     * the scenario), and the camera is left without night vision.
+     * Carves the breach, cuts the render distance, and stands the camera in turn at each of {@link #LOOKS} that stands at one of
+     * {@code places}, flooding the shaft before the first from under the water. {@code beforeFlood} runs once the dry looks are done,
+     * without night vision (a fall down the dry shaft, for the scenario), and the camera is left without night vision.
      */
     public static void tour(
-            ClientGameTestContext context, TestServerContext server, AtLook atLook, Runnable beforeFlood) {
+            ClientGameTestContext context,
+            TestServerContext server,
+            Set<Place> places,
+            AtLook atLook,
+            Runnable beforeFlood) {
         server.runOnServer(UnbuiltDepthViews::carve);
         CavernSky.withShortRenderDistance(context, () -> {
             boolean flooded = false;
             try {
                 for (Look look : LOOKS) {
+                    if (!places.contains(look.place())) {
+                        continue;
+                    }
                     if (look.place() == Place.UNDERWATER && !flooded) {
                         nightVision(server, false);
                         beforeFlood.run();
@@ -160,6 +173,22 @@ public final class UnbuiltDepthViews {
         };
     }
 
+    /** Where the camera's eye is for a view at {@code place}: a standing spectator's, over the middle of the block. */
+    public static Vec3 eye(ServerLevel level, Place place) {
+        return Vec3.atBottomCenterOf(feet(level, place)).add(0, EYE, 0);
+    }
+
+    /** The middles of the lamps in the shaft, which every view in the unbuilt depth must show where the camera maths puts them. */
+    public static List<Vec3> lamps(ServerLevel level) {
+        BlockPos camera = feet(level, Place.UNBUILT);
+        List<Vec3> lamps = new ArrayList<>();
+        for (int side : new int[] {-LAMP_OFFSET, LAMP_OFFSET}) {
+            lamps.add(Vec3.atCenterOf(camera.offset(0, -LAMP_OFFSET, side)));
+            lamps.add(Vec3.atCenterOf(camera.offset(LAMP_OFFSET, 1, side)));
+        }
+        return lamps;
+    }
+
     /** The highest row of the unbuilt depth, right under the crust of the last layer. */
     private static int top(ServerLevel level) {
         return TestLayers.band(level, CampaignBands.lastLayer()).minY() - 1;
@@ -191,9 +220,8 @@ public final class UnbuiltDepthViews {
                 new BlockPos(X + SHAFT_RADIUS + 1, camera.getY(), Z - HALL_HALF_WIDTH),
                 new BlockPos(X + SHAFT_RADIUS + HALL_LENGTH, camera.getY() + HALL_HEIGHT - 1, Z + HALL_HALF_WIDTH),
                 Blocks.AIR.defaultBlockState());
-        for (int side : new int[] {-LAMP_OFFSET, LAMP_OFFSET}) {
-            level.setBlock(camera.offset(0, -LAMP_OFFSET, side), Blocks.GLOWSTONE.defaultBlockState(), 3);
-            level.setBlock(camera.offset(LAMP_OFFSET, 1, side), Blocks.GLOWSTONE.defaultBlockState(), 3);
+        for (Vec3 lamp : lamps(level)) {
+            level.setBlock(BlockPos.containing(lamp), Blocks.GLOWSTONE.defaultBlockState(), 3);
         }
     }
 

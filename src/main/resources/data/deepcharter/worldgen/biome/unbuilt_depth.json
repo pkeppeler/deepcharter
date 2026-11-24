@@ -6,7 +6,7 @@
     "minecraft:visual/ambient_particles": [],
     "minecraft:visual/fog_color": "#000000",
     "minecraft:visual/fog_end_distance": 24.0,
-    "minecraft:visual/fog_start_distance": 0.0,
+    "minecraft:visual/fog_start_distance": 2.0,
     "minecraft:visual/moon_angle": 180.0,
     "minecraft:visual/sky_color": "#000000",
     "minecraft:visual/sky_fog_end_distance": 0.0,

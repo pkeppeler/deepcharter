@@ -2,13 +2,17 @@ package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.ScreenProjection;
 import io.github.pkeppeler.deepcharter.test.support.UnbuiltDepthViews;
+import io.github.pkeppeler.deepcharter.test.support.UnbuiltDepthViews.Look;
+import io.github.pkeppeler.deepcharter.test.support.UnbuiltDepthViews.Place;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import javax.imageio.ImageIO;
@@ -16,6 +20,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +28,7 @@ import org.slf4j.LoggerFactory;
  * Client GameTest for #1192: under the floor of the last layer, in the unbuilt depth, a view straight down a shaft past the render
  * distance and a view level along a hall past the fog read as darkness, with and without night vision. Before #1192 the unbuilt depth
  * had no fog of its own and took the surface's sky timeline, orange at dusk, so both views faded into an orange haze. Each frame must
- * also show a lamp near the camera, so a black frame (a camera in rock, a frame not drawn) cannot pass. From under the water of the
+ * also show a lamp near the camera where the camera maths puts it, so a black frame (a camera in rock, a frame not drawn) cannot pass. From under the water of the
  * flooded shaft, where the client draws no dark disc over the sun and the moon, the view straight down must show neither
  * ({@code LayerSky}).
  */
@@ -38,6 +43,9 @@ public class UnbuiltDepthClientTest implements FabricClientGameTest {
 
     /** A lamp near the camera shows a pixel brighter than this in some channel. */
     private static final int LIT = 0x40;
+
+    /** How far from its predicted pixel a lamp may show: the maths is a pinhole's, and a block face has size. */
+    private static final int WINDOW = 30;
 
     /** Half the width of the box read in the middle of a view: about 16 degrees across. */
     private static final int HALF_BOX_WIDTH = 100;
@@ -68,14 +76,13 @@ public class UnbuiltDepthClientTest implements FabricClientGameTest {
             UnbuiltDepthViews.tour(
                     context,
                     server,
+                    EnumSet.of(Place.UNBUILT, Place.UNDERWATER),
                     look -> {
                         BufferedImage image = read(ClientChecks.skyShot(context, "unbuilt-depth-" + look.name()));
-                        switch (look.place()) {
-                            case UNBUILT -> darkness(image, look.name()).ifPresent(failures::add);
-                            case UNDERWATER -> noSunOrMoon(image, look.name()).ifPresent(failures::add);
-                            case BREACH -> {
-                                // Layer 2's own fog, which #1192 leaves alone: a still for the scenario only.
-                            }
+                        if (look.place() == Place.UNBUILT) {
+                            darkness(context, server, image, look).ifPresent(failures::add);
+                        } else {
+                            noSunOrMoon(image, look.name()).ifPresent(failures::add);
                         }
                     },
                     () -> {});
@@ -83,24 +90,43 @@ public class UnbuiltDepthClientTest implements FabricClientGameTest {
         ClientChecks.require(failures.isEmpty(), String.join("\n", failures));
     }
 
-    /** Why the frame does not read as darkness with a lamp in it, or empty. */
-    private static Optional<String> darkness(BufferedImage image, String name) {
+    /**
+     * Why the frame does not read as darkness with a lamp in it, or empty. The lamp must show within {@link #WINDOW} pixels of where the
+     * camera maths puts one, so a wall lifted by night vision elsewhere in the frame cannot stand in for it.
+     */
+    private static Optional<String> darkness(
+            ClientGameTestContext context, TestServerContext server, BufferedImage image, Look look) {
+        String name = look.name();
         int[] box = box(image);
         int median = median(box);
+        Vec3 eye = server.computeOnServer(s -> UnbuiltDepthViews.eye(UnbuiltDepthViews.level(s), look.place()));
+        List<Vec3> lamps = server.computeOnServer(s -> UnbuiltDepthViews.lamps(UnbuiltDepthViews.level(s)));
+        double fov =
+                context.computeOnClient(client -> (double) client.options.fov().get());
         int lit = 0;
-        for (int y = 0; y < image.getHeight(); y++) {
-            for (int x = 0; x < image.getWidth(); x++) {
-                lit = Math.max(lit, brightest(image.getRGB(x, y)));
+        int onScreen = 0;
+        for (Vec3 lamp : lamps) {
+            Optional<int[]> pixel = ScreenProjection.project(
+                    image, eye, look.view().yaw(), look.view().pitch(), fov, lamp);
+            if (pixel.isPresent()) {
+                onScreen++;
+                lit = Math.max(lit, brightestNear(image, pixel.get()[0], pixel.get()[1]));
             }
         }
         LOGGER.info(
-                "[unbuilt-depth] {}: the box's median brightest channel is {}; the frame's brightest {}",
+                "[unbuilt-depth] {}: the box's median brightest channel is {}; {} lamps on the screen, the brightest near one {}",
                 name,
                 median,
+                onScreen,
                 lit);
+        if (onScreen == 0) {
+            return Optional.of(
+                    "%s: no lamp is on the screen by the camera maths, so nothing proves the frame is a picture of the shaft"
+                            .formatted(name));
+        }
         if (lit <= LIT) {
             return Optional.of(
-                    "%s: no pixel is brighter than %d, so no lamp shows: a black or blank frame, or a camera in rock"
+                    "%s: no pixel near a lamp is brighter than %d: a black or blank frame, or a camera in rock"
                             .formatted(name, LIT));
         }
         if (median > DARK) {
@@ -146,6 +172,17 @@ public class UnbuiltDepthClientTest implements FabricClientGameTest {
             }
         }
         return box;
+    }
+
+    /** The brightest channel of any pixel within {@link #WINDOW} of ({@code px}, {@code py}). */
+    private static int brightestNear(BufferedImage image, int px, int py) {
+        int brightest = 0;
+        for (int y = Math.max(0, py - WINDOW); y <= Math.min(image.getHeight() - 1, py + WINDOW); y++) {
+            for (int x = Math.max(0, px - WINDOW); x <= Math.min(image.getWidth() - 1, px + WINDOW); x++) {
+                brightest = Math.max(brightest, brightest(image.getRGB(x, y)));
+            }
+        }
+        return brightest;
     }
 
     private static int median(int[] values) {

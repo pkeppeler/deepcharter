@@ -21,6 +21,7 @@ import java.util.TreeSet;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -49,6 +50,8 @@ import org.joml.Vector3fc;
 public class CampaignAtmosphereTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final Identifier SKY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sky");
+    private static final ResourceKey<Biome> UNBUILT_DEPTH =
+            ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "unbuilt_depth"));
     private static final long SKY_DUSK = 0;
     private static final long SKY_NIGHT = 144_000;
     private static final long GAMEPLAY_NOON = 6_000;
@@ -307,8 +310,8 @@ public class CampaignAtmosphereTest {
     }
 
     /**
-     * The unbuilt depth is where nothing is built yet (#1192): its fog is darker than every layer's and closes in nearer, and night vision
-     * cannot lift it. The client brightens a fog colour under night vision by scaling its brightest channel to full, but leaves a colour
+     * The unbuilt depth is where nothing is built yet (#1192): its fog is darker than every layer's, starts no farther out and ends nearer,
+     * so at every distance it is at least as thick as any layer's, and night vision cannot lift it. The client brightens a fog colour under night vision by scaling its brightest channel to full, but leaves a colour
      * with a channel of 0 alone ({@code FogRenderer.computeFogColor} in 26.3), so the abyss stays dark under the potion where a layer's
      * fog turns to a pale haze.
      */
@@ -316,8 +319,10 @@ public class CampaignAtmosphereTest {
     public void theUnbuiltDepthsFogIsTheDarkestAndNearestAndNightVisionCannotLiftIt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Biome unbuilt = unbuiltBiome(helper, level).value();
-        for (EnvironmentAttribute<?> attribute :
-                List.of(EnvironmentAttributes.FOG_COLOR, EnvironmentAttributes.FOG_END_DISTANCE)) {
+        for (EnvironmentAttribute<?> attribute : List.of(
+                EnvironmentAttributes.FOG_COLOR,
+                EnvironmentAttributes.FOG_START_DISTANCE,
+                EnvironmentAttributes.FOG_END_DISTANCE)) {
             expect(
                     helper,
                     unbuilt.getAttributes().contains(attribute),
@@ -330,6 +335,7 @@ public class CampaignAtmosphereTest {
                 fog.x() == 0f || fog.y() == 0f || fog.z() == 0f,
                 "the unbuilt depth's fog colour %s has no channel of 0, so night vision lifts it to full brightness",
                 hex(fog));
+        float start = wanted(unbuilt, EnvironmentAttributes.FOG_START_DISTANCE);
         float end = wanted(unbuilt, EnvironmentAttributes.FOG_END_DISTANCE);
         for (Holder<Biome> zone : layerBiomes(level)) {
             Vector3fc zoneFog = wanted(zone.value(), EnvironmentAttributes.FOG_COLOR);
@@ -340,6 +346,14 @@ public class CampaignAtmosphereTest {
                     hex(fog),
                     id(zone),
                     hex(zoneFog));
+            float zoneStart = wanted(zone.value(), EnvironmentAttributes.FOG_START_DISTANCE);
+            expect(
+                    helper,
+                    start <= zoneStart,
+                    "the unbuilt depth's fog starts at %s blocks, farther out than layer biome %s's %s",
+                    start,
+                    id(zone),
+                    zoneStart);
             float zoneEnd = wanted(zone.value(), EnvironmentAttributes.FOG_END_DISTANCE);
             expect(
                     helper,
@@ -491,14 +505,20 @@ public class CampaignAtmosphereTest {
         return new BlockPos(0, CampaignBands.UNBUILT.minY() + CampaignBands.UNBUILT.height() / 2, 0);
     }
 
-    /** The biome the level places in the unbuilt depth, which the band biome source names apart from the layers'. */
+    /** The biome the level places in the middle of the unbuilt depth, read from the chunk's stored cell: {@code deepcharter:unbuilt_depth}. */
     private static Holder<Biome> unbuiltBiome(GameTestHelper helper, ServerLevel level) {
-        Holder<Biome> biome = level.getBiome(unbuiltMiddle());
+        BlockPos middle = unbuiltMiddle();
+        Holder<Biome> biome = level.getChunk(middle)
+                .getNoiseBiome(
+                        QuartPos.fromBlock(middle.getX()),
+                        QuartPos.fromBlock(middle.getY()),
+                        QuartPos.fromBlock(middle.getZ()));
         expect(
                 helper,
-                !layerBiomes(level).contains(biome),
-                "the middle of the unbuilt depth reads layer biome %s",
-                id(biome));
+                biome.is(UNBUILT_DEPTH),
+                "the middle of the unbuilt depth reads biome %s, not %s",
+                id(biome),
+                UNBUILT_DEPTH.identifier());
         return biome;
     }
 

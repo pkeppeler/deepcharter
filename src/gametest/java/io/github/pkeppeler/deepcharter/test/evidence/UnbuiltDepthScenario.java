@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.UnbuiltDepthViews;
+import java.util.EnumSet;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -42,7 +43,12 @@ public class UnbuiltDepthScenario extends EvidenceScenario {
             TestServerContext server = singleplayer.getServer();
             server.runCommand("gamerule advance_time false");
             server.runCommand("weather clear");
-            UnbuiltDepthViews.tour(context, server, look -> still(context, look.name()), () -> fall(context, server));
+            UnbuiltDepthViews.tour(
+                    context,
+                    server,
+                    EnumSet.allOf(UnbuiltDepthViews.Place.class),
+                    look -> still(context, look.name()),
+                    () -> fall(context, server));
         }
     }
 
