@@ -57,7 +57,10 @@ public class LootTableDropsTest {
             Map.entry("packed_shale", "packed_shale"),
             Map.entry("packed_shale_rubble", "packed_shale_rubble"),
             Map.entry("green_shale", "green_shale"),
-            Map.entry("green_shale_rubble", "green_shale_rubble"));
+            Map.entry("green_shale_rubble", "green_shale_rubble"),
+            Map.entry("basalt_core", "basalt_core"),
+            Map.entry("columnar_basalt", "columnar_basalt"),
+            Map.entry("glowcap", "glowcap"));
 
     /** The salvage crate's pools: item to its fewest and most per roll. */
     private record Range(String item, int min, int max) {}
