@@ -17,8 +17,8 @@ addVmArgToRuns(exitOnOom)
 // ChunkMapSaveMixin, FarChunks.force, CampaignEnvironments, TestBatches.
 // Measured 2026-11-22 (1479 tests, 4 vCPU, 3 runs at 3G with the caps): peaks of 1250, 1352 and 1365 MB. Batches of 50 peaked at 1.5 to 1.7 GB.
 // Measured 2026-11-24 (1650 tests, 4 vCPU, forced GC every 1.5 s, 1 run each): peaks of 1781 MB at 20 tests a batch, 1759 at 30 and 1907 at 40 (#823),
-// so 3G is 1.6x the peak, under the 2x above. Raise it before the next cap raise or tall test world.
-val gameTestHeap = "-Xmx3072m"
+// so 4G meets the 2x above (1907 MB x 2 <= 4096). CI's standard runners have 16 GB. Raise it again before the next cap raise or tall test world.
+val gameTestHeap = "-Xmx4096m"
 addVmArgToRun("gameTest", gameTestHeap)
 
 // Client GameTest heap, 4G (the default is a quarter of RAM). The suite's live set after a full collection (CI 4 vCPU) was 1.35 GB at the last

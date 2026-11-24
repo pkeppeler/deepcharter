@@ -59,7 +59,10 @@ import net.minecraft.world.level.levelgen.RandomState;
 public class SurfaceTerrainTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final String FULL = "deepcharter:campaign_full";
-    /** The top of the depth that campaign_sample leaves as air: two sections of the shipped rock stay under layer 2's floor. */
+    /**
+     * The top of the depth that campaign_sample leaves as air: two sections (32 rows) of the shipped rock stay under the last layer's
+     * floor. A literal, because it is data in campaign_sample.json; a test pins it to the layers.
+     */
     private static final int EMPTY_BELOW = -544;
 
     private static final int MAX_TICKS = 6000;
@@ -116,16 +119,15 @@ public class SurfaceTerrainTest {
         ServerLevel level = helper.getLevel();
         LayerChain.Band surface = TestLayers.band(level, TestLayers.SURFACE);
         Set<String> found = new TreeSet<>();
-        requestSample(level, ChunkStatus.FEATURES);
         for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
                 chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
                 chunkX++) {
             for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
                     chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
                     chunkZ++) {
-                // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a 13 x
-                // 13
-                // square of them held the server tick (and the deadlines of the tests beside this one) for a minute.
+                // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a
+                // 13 x 13 square of them held the server tick (and the deadlines of the tests beside this one) for
+                // a minute.
                 ChunkAccess chunk = level.getChunk(chunkX, chunkZ, ChunkStatus.FEATURES);
                 LevelChunkSection[] sections = chunk.getSections();
                 for (int index = 0; index < sections.length; index++) {
@@ -166,26 +168,9 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    /**
-     * Asks for every chunk of the sample square at once, so the worker threads generate them side by side. The reads that follow wait for
-     * each in turn, and a square asked for one chunk at a time keeps most of the workers idle while the server thread holds the batch.
-     */
-    private static void requestSample(ServerLevel level, ChunkStatus status) {
-        for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
-                chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
-                chunkX++) {
-            for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
-                    chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
-                    chunkZ++) {
-                var _ = level.getChunkSource().getChunkFuture(chunkX, chunkZ, status, true);
-            }
-        }
-    }
-
     /** Where the first of each block of {@code wanted} stands in the sample's chunks, within the surface band. */
     private static Map<String, String> firstOf(ServerLevel level, LayerChain.Band surface, Set<String> wanted) {
         Map<String, String> first = new LinkedHashMap<>();
-        requestSample(level, ChunkStatus.FULL);
         for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
                 chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
                 chunkX++) {
@@ -499,9 +484,9 @@ public class SurfaceTerrainTest {
     }
 
     // The GameTest server bakes its overworld from the flat preset, so the surface is tried in the test pack's copies
-    // of
-    // the shipped overworld: campaign_full is an exact copy, and campaign_sample, where most tests run, differs from it
-    // in one place (below). This keeps both copies, in the pack and in the preset, equal to the shipped overworld.
+    // of the shipped overworld: campaign_full is an exact copy, and campaign_sample, where most tests run, differs
+    // from it in one place (below). This keeps both copies, in the pack and in the preset, equal to the shipped
+    // overworld.
     @GameTest
     public void theSampleDimensionsMatchTheShippedOverworld(GameTestHelper helper) throws IOException {
         JsonElement shipped = read(helper, "/data/minecraft/dimension/overworld.json");
@@ -543,12 +528,18 @@ public class SurfaceTerrainTest {
                 .getAsJsonObject();
         // final_density: add(squeeze(interpolated(max(range_choice over the layers and unbuilt depth, surface))),
         // beardifier)
-        JsonObject choice = sample.getAsJsonObject("noise_router")
-                .getAsJsonObject("final_density")
-                .getAsJsonObject("left")
-                .getAsJsonObject("input")
-                .getAsJsonObject("input")
-                .getAsJsonObject("left");
+        JsonObject choice = sample;
+        for (String step : List.of("noise_router", "final_density", "left", "input", "input", "left")) {
+            JsonElement next = choice.get(step);
+            if (next == null || !next.isJsonObject()) {
+                throw failure(
+                        helper,
+                        "campaign_sample.json has no object at noise_router.final_density.left.input.input.left (missing \"%s\"); "
+                                + "the density was restructured, so update this test",
+                        step);
+            }
+            choice = next.getAsJsonObject();
+        }
         JsonObject empty = choice.getAsJsonObject("when_in_range");
         expect(
                 helper,
@@ -562,11 +553,15 @@ public class SurfaceTerrainTest {
                 EMPTY_BELOW);
         choice.add("when_in_range", empty.get("when_out_of_range"));
         expect(helper, shipped.equals(sample), "campaign_sample's noise settings differ from the shipped ones");
-        // The rock kept under layer 2's floor is what the unbuilt band keeps of the shipped rock.
+        // The rock kept under the last layer's floor is what the unbuilt band keeps of the shipped rock.
+        int lastLayerFloor = CampaignBands.layer(CampaignBands.lastLayer()).minY();
         expect(
                 helper,
-                EMPTY_BELOW < CampaignBands.LAYER_2.minY() && EMPTY_BELOW >= CampaignBands.UNBUILT.minY(),
-                "the empty depth must lie below layer 2");
+                EMPTY_BELOW == lastLayerFloor - 32,
+                "EMPTY_BELOW is %d but must be 32 rows under the last layer's floor (%d): a layer was added, so move EMPTY_BELOW "
+                        + "and campaign_sample.json's max_exclusive down to match",
+                EMPTY_BELOW,
+                lastLayerFloor - 32);
         helper.succeed();
     }
 
