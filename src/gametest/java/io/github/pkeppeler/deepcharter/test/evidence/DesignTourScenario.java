@@ -33,6 +33,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -143,7 +144,9 @@ import org.jspecify.annotations.Nullable;
  * id so that the pods are painted the same colour. See .claude/skills/deepcharter-conventions/evidence.md for what still differs.
  *
  * <p>The order: handbook and item gallery, the surface by day, dusk and night, the colony, the terminal screens, the pods by day,
- * a dark room (pods lit and unlit, the lampless figure), the HUDs, layer 1, the breach into layer 2, layer 2 and its structures.
+ * a dark room (pods lit and unlit, the lampless figure), the HUDs, layer 1, the breach into layer 2, layer 2 and its structures, the
+ * last transmissions, then layer 3: a cavern of each zone. Layer 3 comes last, so its chunks generate after every other still is
+ * taken and no earlier still changes for it. {@link HollowsTourScenario} shoots the layer 3 stops alone.
  */
 public class DesignTourScenario extends EvidenceScenario {
     private static final double EYE = 1.62;
@@ -161,6 +164,14 @@ public class DesignTourScenario extends EvidenceScenario {
     private static final int ROOM_HEIGHT = 7;
     private static final int LAYER_X = 2000;
     private static final int LAYER_Z = 2000;
+    /** Layer 3's views are searched in the chunks this far round the layer's start column, for a floor with this long a view. */
+    private static final int HOLLOWS_CHUNKS = 3;
+
+    private static final int HOLLOWS_RUN = 32;
+    /** A layer 3 view looks this many blocks ahead, and this much down for each block ahead. */
+    private static final int HOLLOWS_LOOK = 16;
+
+    private static final double HOLLOWS_DROP = 0.15;
     private static final int ITEMS_PER_PAGE = 36;
     private static final long FUNDS = 5_000;
     private static final int TERMINAL_TYPING_TICKS = 140;
@@ -180,6 +191,9 @@ public class DesignTourScenario extends EvidenceScenario {
     /** A room carved by the tour, in its dimension. */
     private record LitRoom(ResourceKey<Level> dimension, Box box) {}
 
+    /** A view of a zone of layer 3: the zone's name, and where the camera stands and looks. */
+    private record HollowsView(String zone, Vec3 eye, Vec3 target) {}
+
     private final Arrival<CharterId> charter = new Arrival<>("charter", "setUpCamera() founds it");
     /** The rooms the tour carved whose light settle waits on: it waits until the client reads the light the server holds in each room it is in. */
     private final List<LitRoom> litRooms = new CopyOnWriteArrayList<>();
@@ -191,12 +205,24 @@ public class DesignTourScenario extends EvidenceScenario {
         return "design-tour";
     }
 
-    @Override
-    protected void run(ClientGameTestContext context) {
-        ClientChecks.withHudHidden(context, () -> runHidden(context));
+    /** The stops a run of the tour shoots. */
+    enum Stops {
+        ALL,
+        /** Only layer 3's caverns, after the world, the colony and the camera are set up as for the whole tour. */
+        LAYER_THREE
     }
 
-    private void runHidden(ClientGameTestContext context) {
+    @Override
+    protected void run(ClientGameTestContext context) {
+        tour(context, this, Stops.ALL);
+    }
+
+    /** Shoots {@code stops} of the tour, filing the stills and frames under {@code owner}'s name. */
+    void tour(ClientGameTestContext context, EvidenceScenario owner, Stops stops) {
+        ClientChecks.withHudHidden(context, () -> runHidden(context, owner, stops));
+    }
+
+    private void runHidden(ClientGameTestContext context, EvidenceScenario owner, Stops stops) {
         // A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the other
         // scenarios.
         try (TestSingleplayerContext singleplayer = context.worldBuilder()
@@ -209,7 +235,7 @@ public class DesignTourScenario extends EvidenceScenario {
                     .getServer()
                     .computeOnServer(
                             server -> Colony.placed(server).orElseThrow(() -> new AssertionError("no colony")));
-            new Run(context, singleplayer, colony).play();
+            new Run(context, singleplayer, colony, owner, stops).play();
         } finally {
             EvidencePins.reset();
         }
@@ -246,15 +272,30 @@ public class DesignTourScenario extends EvidenceScenario {
         private final ClientGameTestContext ctx;
         private final TestSingleplayerContext sp;
         private final ColonySite.Placed colony;
+        private final EvidenceScenario owner;
+        private final Stops stops;
 
-        Run(ClientGameTestContext ctx, TestSingleplayerContext sp, ColonySite.Placed colony) {
+        Run(
+                ClientGameTestContext ctx,
+                TestSingleplayerContext sp,
+                ColonySite.Placed colony,
+                EvidenceScenario owner,
+                Stops stops) {
             this.ctx = ctx;
             this.sp = sp;
             this.colony = colony;
+            this.owner = owner;
+            this.stops = stops;
         }
 
         private void play() {
             EvidenceWorld.pin(ctx, sp);
+            if (stops == Stops.LAYER_THREE) {
+                pinTheClient();
+                setUpCamera();
+                layerThree();
+                return;
+            }
             // The handbook and item stills have the HUD under their screen; it is hidden from setUpCamera on.
             ClientChecks.withHudShown(ctx, () -> {
                 pinTheClient();
@@ -273,6 +314,7 @@ public class DesignTourScenario extends EvidenceScenario {
             breachToLayerTwo();
             layerTwo();
             remainingTransmissions();
+            layerThree();
         }
 
         /**
@@ -641,7 +683,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 if (i == 0) {
                     verify("colony-orbit", 0, eye, middle, town);
                 }
-                frame(ctx);
+                owner.frame(ctx);
             }
 
             // Close-ups, each from the open side of the building (the square for the plinths, the street for the
@@ -1264,7 +1306,7 @@ public class DesignTourScenario extends EvidenceScenario {
                         TransmissionOverlay.transmission().map(Transmission::id).orElse(null));
                 boolean typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
                 if (typed && current != null && shot.add(current)) {
-                    screenshot(ctx, "hud-transmission-" + current.getPath());
+                    owner.screenshot(ctx, "hud-transmission-" + current.getPath());
                 }
                 tail = typed && current != null && current.equals(last) ? tail + 1 : 0;
                 last = current;
@@ -1492,6 +1534,89 @@ public class DesignTourScenario extends EvidenceScenario {
             still("layer-" + layer + "-cave-down");
         }
 
+        // ------------------------------------------------------------------------------------------------ layer 3
+
+        /**
+         * A cavern of each zone of layer 3, the Fungal Hollows (#972): from a floor in the zone, across the longest open run, as it is
+         * played and with night vision. In {@link Stops#LAYER_THREE} each still is a frame too, since nothing else frames that run.
+         */
+        private void layerThree() {
+            hud(false);
+            serverDo(server -> loadChunks(TestLayers.level(server, 3), LAYER_X, LAYER_Z, HOLLOWS_CHUNKS));
+            for (int zone = 0; zone < Zones.COUNT; zone++) {
+                int index = zone;
+                HollowsView spot = serverGet(server -> hollowsView(TestLayers.level(server, 3), index));
+                String prefix = "layer-3-" + spot.zone().replace('_', '-');
+                serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
+                view(3, spot.eye(), spot.target(), 120);
+                hollowsStill(prefix + "-as-played-no-light");
+                nightVision();
+                view(3, spot.eye(), spot.target(), 20);
+                hollowsStill(prefix);
+            }
+        }
+
+        private void hollowsStill(String stillName) {
+            still(stillName);
+            if (stops == Stops.LAYER_THREE) {
+                owner.frame(ctx);
+            }
+        }
+
+        /**
+         * The view of zone {@code zone} of layer 3: from the floor cell near the layer's start column with the longest run of open cells
+         * along an axis at eye height, looking along it and a little down. Throws, naming the zone, when the zone has no floor in reach.
+         */
+        private static HollowsView hollowsView(ServerLevel level, int zone) {
+            LayerChain.Band band = TestLayers.band(level, 3);
+            Zones.Span span = Zones.span(band.minY(), band.height(), zone);
+            String name = Zones.of(3, band.minY(), band.height(), span.low())
+                    .orElseThrow()
+                    .id()
+                    .getPath();
+            BlockPos best = null;
+            Direction bestDirection = Direction.SOUTH;
+            int bestRun = 0;
+            int reach = HOLLOWS_CHUNKS * 16 - HOLLOWS_RUN;
+            for (int x = LAYER_X - reach; x <= LAYER_X + reach; x += 4) {
+                for (int z = LAYER_Z - reach; z <= LAYER_Z + reach; z += 4) {
+                    // The floor rows leave room for the eye and the head over it inside the zone.
+                    for (int y = span.low() + 1; y <= span.high() - 3; y++) {
+                        BlockPos feet = new BlockPos(x, y, z);
+                        if (!passable(level, feet)
+                                || !passable(level, feet.above())
+                                || !level.getBlockState(feet.below()).isFaceSturdy(level, feet.below(), Direction.UP)) {
+                            continue;
+                        }
+                        for (Direction direction : Direction.Plane.HORIZONTAL) {
+                            int run = 0;
+                            while (run < HOLLOWS_RUN
+                                    && passable(level, feet.above().relative(direction, run + 1))) {
+                                run++;
+                            }
+                            if (run > bestRun) {
+                                best = feet;
+                                bestDirection = direction;
+                                bestRun = run;
+                            }
+                        }
+                    }
+                }
+            }
+            if (best == null) {
+                throw new AssertionError("layer 3 has no floor in zone " + name + " within " + reach + " blocks of "
+                        + LAYER_X + ", " + LAYER_Z);
+            }
+            Vec3 eye = Vec3.atBottomCenterOf(best).add(0, EYE, 0);
+            Vec3 ahead = Vec3.atLowerCornerOf(bestDirection.getUnitVec3i()).scale(HOLLOWS_LOOK);
+            return new HollowsView(name, eye, eye.add(ahead).add(0, -HOLLOWS_LOOK * HOLLOWS_DROP, 0));
+        }
+
+        /** Nothing to collide with: air, a glowcap, a stalk's cap the camera passes through. */
+        private static boolean passable(ServerLevel level, BlockPos pos) {
+            return level.getBlockState(pos).getCollisionShape(level, pos).isEmpty();
+        }
+
         // ------------------------------------------------------------------------------------------------ structures
 
         private StructureSite siteOf(StructureKind kind, @Nullable BlockPos near) {
@@ -1538,7 +1663,7 @@ public class DesignTourScenario extends EvidenceScenario {
                     ctx.waitTick();
                 }
                 ctx.waitTicks(10);
-                screenshot(ctx, "hud-transmission-" + id);
+                owner.screenshot(ctx, "hud-transmission-" + id);
                 clearTransmissions();
             }
         }
@@ -1616,7 +1741,7 @@ public class DesignTourScenario extends EvidenceScenario {
             });
             clearTransmissions();
             settle(stillName);
-            screenshot(ctx, stillName);
+            owner.screenshot(ctx, stillName);
         }
 
         private void nightVision() {
