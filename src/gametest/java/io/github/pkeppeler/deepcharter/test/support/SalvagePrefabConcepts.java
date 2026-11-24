@@ -36,7 +36,7 @@ public final class SalvagePrefabConcepts {
 
     /**
      * One wreck. Its piece's Y 0 is the ground's top block: {@link #offset()} is where the piece's own origin lies from that block. The
-     * {@code level} box (piece X and Z) is the ground the wreck needs flat and clear. {@code focus} is the point the cameras look at,
+     * {@code bounds} (piece X and Z) hold the wreck, and the {@code level} box round them is the ground it reshapes: flat under the wreck, blended into the plain over the margin. {@code focus} is the point the cameras look at,
      * {@code sideX} and {@code sideZ} the way from it to the camera and {@code reach} how far along that way the pod and the player stand, at the
      * piece's {@code pod} and {@code player} columns.
      */
@@ -47,6 +47,8 @@ public final class SalvagePrefabConcepts {
             BlockPos offset,
             int blocks,
             int displays,
+            ColumnPos boundsFrom,
+            ColumnPos boundsTo,
             ColumnPos levelFrom,
             ColumnPos levelTo,
             Vec3 focus,
@@ -72,6 +74,7 @@ public final class SalvagePrefabConcepts {
 
     private static Option option(JsonObject json) {
         JsonArray offset = json.getAsJsonArray("offset");
+        JsonArray bounds = json.getAsJsonArray("bounds");
         JsonArray level = json.getAsJsonArray("level");
         JsonArray focus = json.getAsJsonArray("focus");
         JsonArray side = json.getAsJsonArray("side");
@@ -87,6 +90,8 @@ public final class SalvagePrefabConcepts {
                         offset.get(2).getAsInt()),
                 json.get("blocks").getAsInt(),
                 json.get("displays").getAsInt(),
+                new ColumnPos(bounds.get(0).getAsInt(), bounds.get(1).getAsInt()),
+                new ColumnPos(bounds.get(2).getAsInt(), bounds.get(3).getAsInt()),
                 new ColumnPos(level.get(0).getAsInt(), level.get(1).getAsInt()),
                 new ColumnPos(level.get(2).getAsInt(), level.get(3).getAsInt()),
                 new Vec3(

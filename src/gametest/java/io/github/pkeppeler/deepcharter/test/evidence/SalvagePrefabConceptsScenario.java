@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -49,11 +48,19 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
     private static final int[] RADII = {115, 128, 141, 152};
 
     private static final int BEARINGS = 20;
-    /** The most the ground may rise and fall over the box a wreck needs, and how far apart two wrecks stand. */
-    private static final int MAX_RELIEF = 5;
+    /** The most the ground may rise and fall over the box a wreck needs (between its tenth and ninetieth percentile), and how far apart two wrecks stand. */
+    private static final int MAX_RELIEF = 6;
 
     private static final int SPACING = 90;
     private static final int SAMPLE_STEP = 4;
+    /** The wreck's ground is flat this far past its bounds and blends into the plain's over the next stretch, to {@code BLEND}. */
+    private static final double FLAT = 2;
+
+    private static final double BLEND = 12;
+    /** The relief that counts is the ground under the wreck and this far round it. */
+    private static final double RELIEF_MARGIN = 4;
+    /** The share of a site's samples that must be in the yard's biome. */
+    private static final double YARD_SHARE = 0.85;
     /** How far above the ground a wreck's clearing reaches. */
     private static final int CLEARING_HEIGHT = 34;
     /** The pod, the player and the cameras: how far past the figures the near and mid stills stand, and the aerial's and range's reach. */
@@ -110,6 +117,7 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
      */
     private static Site find(ServerLevel level, BlockPos colony, Option option, List<BlockPos> used) {
         @Nullable Site best = null;
+        List<String> seen = new ArrayList<>();
         for (int radius : RADII) {
             for (int step = 0; step < BEARINGS; step++) {
                 double bearing = 2 * Math.PI * (step + (radius % 3) / 3.0) / BEARINGS;
@@ -119,39 +127,54 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
                         .anyMatch(other -> Math.hypot(other.getX() - at.getX(), other.getZ() - at.getZ()) < SPACING)) {
                     continue;
                 }
-                Site site = assess(level, at, option);
+                Site site = assess(level, at, option, seen);
                 if (site != null && (best == null || site.relief() < best.relief())) {
                     best = site;
                 }
             }
         }
         if (best == null || best.relief() > MAX_RELIEF) {
-            throw new AssertionError(
-                    "no open ground in the salvage yard for wreck " + option.name() + "; the best was " + best);
+            throw new AssertionError("no open ground in the salvage yard for wreck " + option.name() + "; the best was "
+                    + best + ", saw " + seen);
         }
         return best;
     }
 
-    /** The site at {@code at}, or null when a sample of its box is not the yard's open ground. */
-    private static @Nullable Site assess(ServerLevel level, BlockPos at, Option option) {
+    /**
+     * The site at {@code at}, or null when the box holds water, a ground that will not carry a wreck, or too little of the yard's biome
+     * ({@link #YARD_SHARE} of its samples). Every site seen is added to {@code seen}, for the failure message.
+     */
+    private static @Nullable Site assess(ServerLevel level, BlockPos at, Option option, List<String> seen) {
         List<Integer> heights = new ArrayList<>();
+        int yard = 0;
+        int samples = 0;
         for (int x = option.levelFrom().x(); x <= option.levelTo().x(); x += SAMPLE_STEP) {
             for (int z = option.levelFrom().z(); z <= option.levelTo().z(); z += SAMPLE_STEP) {
                 BlockPos column = at.offset(x, 0, z);
                 TextureTestWorld.loadChunks(level, column, 0);
                 BlockPos top = level.getHeightmapPos(Heightmap.Types.WORLD_SURFACE, column);
                 BlockPos ground = top.below();
-                if (!level.getBiome(top).is(YARD)
-                        || !level.getBlockState(ground).getFluidState().isEmpty()
-                        || !level.getBlockState(ground).isFaceSturdy(level, ground, Direction.UP)) {
+                samples++;
+                if (!level.getBlockState(ground).getFluidState().isEmpty()) {
+                    seen.add(at.toShortString() + " has fluid");
                     return null;
                 }
-                heights.add(ground.getY());
+                if (level.getBiome(top).is(YARD)) {
+                    yard++;
+                }
+                if (outside(option, x, z) <= RELIEF_MARGIN) {
+                    heights.add(ground.getY());
+                }
             }
         }
         heights.sort(null);
         int median = heights.get(heights.size() / 2);
-        return new Site(new BlockPos(at.getX(), median, at.getZ()), heights.getLast() - heights.getFirst());
+        int relief = heights.get(heights.size() * 9 / 10) - heights.get(heights.size() / 10);
+        seen.add(at.toShortString() + " yard " + yard + "/" + samples + " relief " + relief);
+        if (yard < samples * YARD_SHARE) {
+            return null;
+        }
+        return new Site(new BlockPos(at.getX(), median, at.getZ()), relief);
     }
 
     // ------------------------------------------------------------------------------------------------ building
@@ -164,25 +187,31 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
         BlockState subsoil = SurfaceBlocks.REGOLITH_PACKED.defaultBlockState();
         ColumnPos from = option.levelFrom();
         ColumnPos to = option.levelTo();
-        TextureTestWorld.loadChunks(level, ground, 4);
+        TextureTestWorld.loadChunks(level, ground, 5);
         for (int x = from.x(); x <= to.x(); x++) {
             for (int z = from.z(); z <= to.z(); z++) {
                 BlockPos column = ground.offset(x, 0, z);
-                BlockPos top = level.getHeightmapPos(Heightmap.Types.WORLD_SURFACE, column)
-                        .below();
-                for (int y = top.getY() + 8; y > ground.getY(); y--) {
+                double outside = outside(option, x, z);
+                if (outside > BLEND) {
+                    continue;
+                }
+                double weight = outside <= FLAT ? 1 : 1 - (outside - FLAT) / (BLEND - FLAT);
+                int natural = naturalGround(level, column);
+                int target = (int) Math.round(natural + (ground.getY() - natural) * weight);
+                for (int y = natural + 6; y > target; y--) {
                     clear(level, new BlockPos(column.getX(), y, column.getZ()));
                 }
-                for (int y = top.getY(); y < ground.getY(); y++) {
-                    level.setBlock(new BlockPos(column.getX(), y + 1, column.getZ()), subsoil, Block.UPDATE_CLIENTS);
-                }
-                level.setBlock(
-                        new BlockPos(column.getX(), ground.getY(), column.getZ()), topsoil, Block.UPDATE_CLIENTS);
-                for (int y = ground.getY() - 1; y > ground.getY() - 3; y--) {
+                for (int y = natural + 1; y <= target; y++) {
                     level.setBlock(new BlockPos(column.getX(), y, column.getZ()), subsoil, Block.UPDATE_CLIENTS);
                 }
-                for (int y = ground.getY() + 1; y <= ground.getY() + CLEARING_HEIGHT; y++) {
-                    clear(level, new BlockPos(column.getX(), y, column.getZ()));
+                level.setBlock(new BlockPos(column.getX(), target, column.getZ()), topsoil, Block.UPDATE_CLIENTS);
+                if (outside <= FLAT) {
+                    for (int y = target - 1; y > target - 3; y--) {
+                        level.setBlock(new BlockPos(column.getX(), y, column.getZ()), subsoil, Block.UPDATE_CLIENTS);
+                    }
+                    for (int y = target + 1; y <= target + CLEARING_HEIGHT; y++) {
+                        clear(level, new BlockPos(column.getX(), y, column.getZ()));
+                    }
                 }
             }
         }
@@ -193,6 +222,25 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
         template.placeInWorld(
                 level, origin, origin, new StructurePlaceSettings(), level.getRandom(), Block.UPDATE_CLIENTS);
         stand(server, option, ground);
+    }
+
+    /** How far a column is outside the wreck's bounds, in blocks: 0 under it. */
+    private static double outside(Option option, int x, int z) {
+        double dx = Math.max(
+                Math.max(option.boundsFrom().x() - x, x - option.boundsTo().x()), 0);
+        double dz = Math.max(
+                Math.max(option.boundsFrom().z() - z, z - option.boundsTo().z()), 0);
+        return Math.hypot(dx, dz);
+    }
+
+    /** The ground of a column as the world made it: its top block that is not a crate or a stalk standing on it. */
+    private static int naturalGround(ServerLevel level, BlockPos column) {
+        BlockPos top =
+                level.getHeightmapPos(Heightmap.Types.WORLD_SURFACE, column).below();
+        while (!level.getBlockState(top).isSolidRender()) {
+            top = top.below();
+        }
+        return top.getY();
     }
 
     private static void clear(ServerLevel level, BlockPos at) {
