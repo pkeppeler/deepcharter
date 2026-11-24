@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.mixin;
 
+import io.github.pkeppeler.deepcharter.test.support.BlockingLoads;
+import io.github.pkeppeler.deepcharter.test.support.ColumnCost;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.ItemSpawns;
 import io.github.pkeppeler.deepcharter.test.support.PendingWork;
@@ -62,7 +64,9 @@ public abstract class GameTestInfoMixin implements PendingWork {
             return;
         }
         FarChunks.release(bounds);
+        BlockingLoads.release(bounds);
         ItemSpawns.release(bounds);
+        ColumnCost.release(bounds);
     }
 
     @Override

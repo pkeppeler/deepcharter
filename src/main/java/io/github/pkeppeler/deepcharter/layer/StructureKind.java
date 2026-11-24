@@ -128,8 +128,8 @@ public enum StructureKind {
         }
     },
     /**
-     * The Kells' shaft: a 2 x 2 hollow, 20 to 80 blocks deep, from a drift at the end of the rail line to the first block above
-     * the crust. Where it was cut through lava the Kells walled it in slag brick, two to four rings of three rows, and in the
+     * The Kells' shaft: a 2 x 2 hollow, 20 to 80 blocks deep, from a drift at the end of the rail line down through the crust,
+     * which the Kells broke into the Hollows (LORE, CY 19; #972), so the hollow opens into the roof of layer 3. Where it was cut through lava the Kells walled it in slag brick, two to four rings of three rows, and in the
      * middle row of each ring the lining has failed: one block of the wall is lava, with one more behind it, and across the hollow
      * at that row a bulkhead of brick, which a pod lands on, with a hole beside the gap and lava under the hole. A pod can
      * go down, and its hand lining closes the gaps. Timber sets, some fallen, line the rest. At the head, in the walls of the
@@ -309,6 +309,8 @@ public enum StructureKind {
         int[] rows = kellsGapRows(p.site());
         int gaps = rows.length;
         p.air(-1, 0, -1, 0, height - 1, 0);
+        // The layer 3 end (#972): the Kells broke through the crust under the hollow, into the Hollows.
+        p.air(-1, -LayerTuning.DEFAULT.crustThickness(), -1, 0, -1, 0);
         BlockState lava = Blocks.LAVA.defaultBlockState();
         // Timber sets, a quarter of their blocks fallen.
         for (int y = 1; y < height - DRIFT_HEIGHT - 1; y += KELLS_SET_SPACING) {

@@ -266,7 +266,7 @@ public final class FarChunks {
      *
      * @throws IllegalStateException if called after the test's first tick
      */
-    public static void awaitLoaded(GameTestHelper helper, List<At> chunks, Runnable then) {
+    private static void awaitLoaded(GameTestHelper helper, List<At> chunks, Runnable then) {
         if (helper.getTick() != 0) {
             throw new IllegalStateException(
                     "FarChunks.awaitLoaded must be called from the test method, not from a tick callback");
@@ -302,9 +302,11 @@ public final class FarChunks {
 
     /**
      * As {@link #awaitLoaded}, then runs {@code body} as a step of the test, where it may read the chunks, fail and
-     * {@code helper.succeed()}. Call it from the test method, last or with the test's other sequences started after it.
+     * {@code helper.succeed()}. Call it from the test method, last or with the test's other sequences started after it. Loaded is not
+     * entity ticking: an entity that spawns or arrives in these chunks is invisible to {@code getEntity} until it ticks, so for
+     * entities use {@code awaitAllEntityTicking} (#1151).
      */
-    public static void whenLoaded(GameTestHelper helper, List<At> chunks, Runnable body) {
+    public static void whenBlocksLoaded(GameTestHelper helper, List<At> chunks, Runnable body) {
         boolean[] loaded = {false};
         awaitLoaded(helper, chunks, () -> loaded[0] = true);
         helper.startSequence()

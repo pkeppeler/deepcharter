@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.DrawSources;
+import io.github.pkeppeler.deepcharter.creature.FootGrips;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.layer.CaveInTuning;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -407,6 +408,9 @@ public class ThrownKitTest {
                 helper,
                 KEEP_OFF_X,
                 room -> {
+                    // The thrower on foot in the dark can draw the figure while its cell's light lags, and isClinging()
+                    // cannot tell that from a pod grip (#1074).
+                    room.thrower().player().setGameMode(GameType.CREATIVE);
                     dark[0] = darkPodWithFigure(room, pilot, -9);
                     expect(helper, LamplessFigure.draws(dark[0].pod()), "a dark pod with a pilot draws a figure");
                 },
@@ -423,8 +427,9 @@ public class ThrownKitTest {
                         expect(
                                 helper,
                                 !figure.isClinging(),
-                                "the figure clung %d ticks after a flare, in its light",
-                                since);
+                                "the figure clung %d ticks after a flare, in its light, to %s",
+                                since,
+                                FootGrips.holder(room.thrower().player()) == figure ? "the thrower" : "the pod");
                         if (since > LAND_BUDGET_TICKS) {
                             expect(helper, !LamplessFigure.draws(pod), "a pod in a flare's light still draws a figure");
                         }
