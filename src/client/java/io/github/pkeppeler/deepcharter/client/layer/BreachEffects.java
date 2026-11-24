@@ -30,9 +30,6 @@ public final class BreachEffects {
     /** Whether the hold is on this tick, so {@link #fadeAlpha} stays black however far the fade had come. */
     private static boolean holdingBlack;
 
-    /** The most ticks the fade is held black. */
-    public static final int MAX_HOLD_TICKS = FadeHold.MAX_HOLD_TICKS;
-
     private BreachEffects() {}
 
     /** The whole fade, in client ticks: 20 ticks is one second. */

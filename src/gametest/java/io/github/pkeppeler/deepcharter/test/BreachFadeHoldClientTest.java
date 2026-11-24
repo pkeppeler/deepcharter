@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
+import io.github.pkeppeler.deepcharter.client.layer.FadeHold;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -12,7 +13,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 /**
  * Client GameTest of the breach fade's hold (#1185, ADR 0089): the fade stays black from the end of its black stretch while the client
  * has not both seen the respawn into the new level and reported itself loaded, and lets go at once when it has, or after
- * {@link BreachEffects#MAX_HOLD_TICKS} ticks if that never comes. The fade's own ticks are driven here with a chosen "loaded" answer
+ * {@link FadeHold#MAX_HOLD_TICKS} ticks if that never comes. The fade's own ticks are driven here with a chosen "loaded" answer
  * ({@link BreachEffects#advance}), each scenario inside one client-thread call so the client's own ticks cannot step it, since a slow
  * load cannot be staged for real.
  */
@@ -79,7 +80,7 @@ public class BreachFadeHoldClientTest implements FabricClientGameTest {
         int lifted = untilOver(BreachLook.current().fadeTicks() + 2, true, "the client reported itself loaded");
         require(lifted > 0, "The fade should lift over some ticks, not vanish");
         require(
-                BreachEffects.heldTicks() < BreachEffects.MAX_HOLD_TICKS,
+                BreachEffects.heldTicks() < FadeHold.MAX_HOLD_TICKS,
                 "A load that finished should not run into the cap");
     }
 
@@ -87,12 +88,12 @@ public class BreachFadeHoldClientTest implements FabricClientGameTest {
     private static void heldAtTheCapWhenNoRespawnComes() {
         BreachEffects.reset();
         BreachEffects.begin(true);
-        advance(blackEnd() + BreachEffects.MAX_HOLD_TICKS / 2, true);
+        advance(blackEnd() + FadeHold.MAX_HOLD_TICKS / 2, true);
         holdsWholeBlack("with no respawn seen, however loaded the client says it is");
-        untilOver(BreachEffects.MAX_HOLD_TICKS + BreachLook.current().fadeTicks() + 2, true, "the cap");
+        untilOver(FadeHold.MAX_HOLD_TICKS + BreachLook.current().fadeTicks() + 2, true, "the cap");
         require(
-                BreachEffects.heldTicks() == BreachEffects.MAX_HOLD_TICKS,
-                "The hold should end at the cap of " + BreachEffects.MAX_HOLD_TICKS + ", it held "
+                BreachEffects.heldTicks() == FadeHold.MAX_HOLD_TICKS,
+                "The hold should end at the cap of " + FadeHold.MAX_HOLD_TICKS + ", it held "
                         + BreachEffects.heldTicks());
     }
 
