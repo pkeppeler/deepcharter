@@ -19,8 +19,8 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.PushReaction;
 
 /**
- * Blocks of the layer feature: the breach crust, the rock of layers 1 and 2 with its rubble, and the basalt of layer 3. Their looks (ten textures of
- * the rock, two of the rubble, six columns of the basalt) are blockstate variants in the resource pack, written by
+ * Blocks of the layer feature: the breach crust, the rock of layers 1 and 2 with its rubble, and the basalt of layer 3. Their looks (the
+ * textures of the rock, the rubble and the basalt's columns) are blockstate variants in the resource pack, written by
  * {@code tools/layer_concepts/make.py}.
  */
 public final class LayerBlocks {

@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreBlock.Host;
@@ -51,14 +52,16 @@ public class OreHostTest {
     /** The ore blocks the zone fill places across {@link #SIDE} x {@link #SIDE} chunks must be at least this many in each layer, or the check proves nothing. */
     private static final int AT_LEAST = 50;
 
-    /** The layers with ore, layer 3 (#972) among them. */
-    private static final int LAYERS = 3;
+    /** Every layer of the campaign world has ore. */
+    private static final int LAYERS = CampaignBands.lastLayer();
 
+    /** The rock of {@code layer}: a layer with no case here fails, so a new layer must name its host. */
     private static Host expectedHost(int layer) {
         return switch (layer) {
             case 1 -> Host.PACKED_SHALE;
             case 2 -> Host.GREEN_SHALE;
-            default -> Host.BASALT_CORE;
+            case 3 -> Host.BASALT_CORE;
+            default -> throw new IllegalArgumentException("layer " + layer + " has no host rock in OreHostTest");
         };
     }
 

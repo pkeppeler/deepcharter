@@ -80,11 +80,6 @@ final class StructurePlan {
             return;
         }
         BlockPos pos = new BlockPos(x, site.origin().getY() + y, z);
-        // The Kells' shaft breaks through the crust at the floor of its layer, which in a layer dimension is the floor
-        // of the level.
-        if (level.isOutsideBuildHeight(pos)) {
-            return;
-        }
         BlockState old = chunk.getBlockState(pos);
         if (old.is(ColonyBlocks.CONDUIT) || old.equals(state)) {
             return;

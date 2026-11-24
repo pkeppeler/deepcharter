@@ -33,6 +33,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
@@ -42,6 +43,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
@@ -65,6 +67,14 @@ public class FungalHollowsTest {
     private static final int SAMPLE_CHUNK = 24;
 
     private static final int SAMPLE_CHUNKS = 2;
+    /**
+     * The glowcaps are counted over this many chunks a side from {@link #SAMPLE_CHUNK}: a patch holds up to 12, so over the sample's 2 the
+     * Garden led the Spore Fields by one glowcap.
+     */
+    private static final int GLOWCAP_CHUNKS = 10;
+    /** How many times each other zone's glowcaps the Garden grows at least. */
+    private static final double GARDEN_LEAD = 1.5;
+
     private static final TagKey<Biome> FUNGAL_HOLLOWS =
             TagKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "fungal_hollows"));
     /** The share of the band's cells that must be open: huge caverns, mostly air (SPEC section 3). */
@@ -165,7 +175,8 @@ public class FungalHollowsTest {
                     }
                 });
         BlockPos origin = new BlockPos((SAMPLE_CHUNK + 1) << 4, 0, (SAMPLE_CHUNK + 1) << 4);
-        feature.place(counting, level.getChunkSource().getGenerator(), level.getRandom(), origin);
+        boolean changed = feature.place(counting, level.getChunkSource().getGenerator(), level.getRandom(), origin);
+        expect(helper, !changed, "lining a chunk that is lined already changed it");
         expect(
                 helper,
                 blockReads[0] == 0,
@@ -197,30 +208,66 @@ public class FungalHollowsTest {
         helper.succeed();
     }
 
-    /** Glowcaps grow in the sample, each standing on a solid block, and the Garden grows the most of them. */
+    /**
+     * The lining is read once before it writes (see {@link AirFaceLiningFeature}), which is right only while nothing it writes or keeps is
+     * open: the lining, the rock and every seal of each lining feature stay out of {@link AirFaceLiningFeature#OPEN}.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void theLiningNeverWritesAnOpenBlock(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        int linings = 0;
+        for (var feature : level.registryAccess().lookupOrThrow(Registries.FEATURE)) {
+            if (!(feature instanceof AirFaceLiningFeature lining)) {
+                continue;
+            }
+            linings++;
+            List<Block> written = new ArrayList<>(lining.seals());
+            written.add(lining.rock());
+            written.add(lining.lining());
+            for (Block block : written) {
+                expect(
+                        helper,
+                        !AirFaceLiningFeature.isOpen(block.defaultBlockState()),
+                        "%s is open to the lining (air, or in %s), so lining reads stale cells",
+                        BuiltInRegistries.BLOCK.getKey(block),
+                        AirFaceLiningFeature.OPEN.location());
+            }
+        }
+        expect(helper, linings > 0, "no air_face_lining feature is registered");
+        helper.succeed();
+    }
+
+    /**
+     * Glowcaps grow in the sample, each where it can stand (a floor, or a fungal stalk's top), and the Garden grows the most of them, by a
+     * margin: at least
+     * {@link #GARDEN_LEAD} times as many as each other zone, over {@link #GLOWCAP_CHUNKS} chunks a side. Over 576 chunks the zones grow
+     * about 2.0 and 3.0 times fewer than the Garden.
+     */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void glowcapsGrowOnTheFloorsMostOfAllInTheGarden(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, LAYER);
         LayerChain.Band band = TestLayers.band(level, LAYER);
         int[] found = new int[Zones.COUNT];
-        for (BlockPos column : allColumns()) {
+        for (BlockPos column : grid(GLOWCAP_CHUNKS, 1)) {
             for (int y = band.minY(); y < band.minY() + band.height(); y++) {
                 BlockPos pos = column.atY(y);
                 if (state(level, pos).is(LayerBlocks.GLOWCAP)) {
                     found[Zones.index(band.minY(), band.height(), y)]++;
                     expect(
                             helper,
-                            state(level, pos.below()).isFaceSturdy(level, pos.below(), Direction.UP),
-                            "the glowcap at %s stands on nothing",
-                            pos.toShortString());
+                            state(level, pos).canSurvive(level, pos),
+                            "the glowcap at %s cannot stand on %s",
+                            pos.toShortString(),
+                            state(level, pos.below()));
                 }
             }
         }
         LOGGER.info("[fungal-hollows] glowcaps by zone, top first: {} {} {}", found[0], found[1], found[2]);
         expect(
                 helper,
-                found[0] > found[1] && found[0] > found[2],
-                "the Garden grows %s glowcaps, the Spore Fields %s and the Quiet %s",
+                found[0] >= GARDEN_LEAD * found[1] && found[0] >= GARDEN_LEAD * found[2],
+                "the Garden grows %s glowcaps, the Spore Fields %s and the Quiet %s: not " + GARDEN_LEAD
+                        + " times each other zone's",
                 found[0],
                 found[1],
                 found[2]);
@@ -364,16 +411,17 @@ public class FungalHollowsTest {
 
     /** One column in three each way of the sample: enough cells for the shape, few enough reads for one tick. */
     private static Iterable<BlockPos> columns() {
-        return grid(3);
+        return grid(SAMPLE_CHUNKS, 3);
     }
 
     private static Iterable<BlockPos> allColumns() {
-        return grid(1);
+        return grid(SAMPLE_CHUNKS, 1);
     }
 
-    private static Iterable<BlockPos> grid(int step) {
+    /** Every {@code step}th column each way of the square of {@code chunks} chunks a side from {@link #SAMPLE_CHUNK}. */
+    private static Iterable<BlockPos> grid(int chunks, int step) {
         List<BlockPos> out = new ArrayList<>();
-        int span = SAMPLE_CHUNKS * 16;
+        int span = chunks * 16;
         for (int x = 0; x < span; x += step) {
             for (int z = 0; z < span; z += step) {
                 out.add(new BlockPos((SAMPLE_CHUNK << 4) + x, 0, (SAMPLE_CHUNK << 4) + z));

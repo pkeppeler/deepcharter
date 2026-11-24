@@ -6,6 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
+import java.util.BitSet;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
@@ -47,7 +48,8 @@ import org.jspecify.annotations.Nullable;
  * @param rock   the rock it lines
  * @param lining the block a lined rock becomes
  * @param depth  how many blocks deep the lining goes from an open face, from 1
- * @param seals  blocks besides the rock that the lining replaces where they face a cavern, and that become rock one block further in
+ * @param seals  blocks besides the rock that the lining replaces where they face a cavern, and that become rock up to
+ *               {@link #SEAL_MARGIN} blocks further in
  */
 public record AirFaceLiningFeature(int layer, Block rock, Block lining, int depth, List<Block> seals)
         implements Feature {
@@ -108,6 +110,9 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         // holds whole bands, so this changes nothing there.
         int low = Math.max(band.minY(), chunk.getMinY());
         int high = Math.min(band.minY() + band.height() - 1, chunk.getMinY() + chunk.getHeight() - 1);
+        if (low > high) {
+            return false;
+        }
         BlockState lined = lining.defaultBlockState();
         int sealReach = depth + SEAL_MARGIN;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
@@ -164,7 +169,7 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         private final int low;
         private final int width;
         private final int rows;
-        private final boolean[] open;
+        private final BitSet open;
         private @Nullable BlockState lastState;
         private boolean lastOpen;
 
@@ -173,7 +178,7 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
             this.low = low;
             this.width = 16 + 2 * reach;
             this.rows = rows;
-            this.open = new boolean[width * width * rows];
+            this.open = new BitSet(width * width * rows);
         }
 
         static OpenCells read(WorldGenLevel level, ChunkAccess chunk, int low, int high, int reach) {
@@ -203,7 +208,7 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
             while (y <= top) {
                 int sectionTop = Math.min(top, ((y >> 4) << 4) + 15);
                 int index = source.getSectionIndex(y);
-                // Outside the level a cell is closed, so it stays false.
+                // Outside the level a cell is closed, so its bit stays clear.
                 LevelChunkSection section =
                         index < 0 || index >= source.getSectionsCount() ? null : source.getSection(index);
                 if (section != null && section.hasOnlyAir()) {
@@ -213,7 +218,7 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
                         for (int x = fromX; x <= toX; x++) {
                             for (int z = fromZ; z <= toZ; z++) {
                                 if (isOpenCached(section.getBlockState(x - offsetX, row & 15, z - offsetZ))) {
-                                    open[index(x, row, z)] = true;
+                                    open.set(index(x, row, z));
                                 }
                             }
                         }
@@ -226,9 +231,8 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         private void fill(int fromX, int toX, int fromZ, int toZ, int fromY, int toY) {
             for (int row = fromY; row <= toY; row++) {
                 for (int x = fromX; x <= toX; x++) {
-                    for (int z = fromZ; z <= toZ; z++) {
-                        open[index(x, row, z)] = true;
-                    }
+                    // z is the innermost index, so a row of z is one run of bits.
+                    open.set(index(x, row, fromZ), index(x, row, toZ) + 1);
                 }
             }
         }
@@ -248,12 +252,12 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         /** Whether an open cell lies within {@code distance} blocks of chunk cell {@code x}, {@code y}, {@code z} along an axis. */
         boolean near(int x, int y, int z, int distance) {
             for (int step = 1; step <= distance; step++) {
-                if (open[index(x + step, y, z)]
-                        || open[index(x - step, y, z)]
-                        || open[index(x, y + step, z)]
-                        || open[index(x, y - step, z)]
-                        || open[index(x, y, z + step)]
-                        || open[index(x, y, z - step)]) {
+                if (open.get(index(x + step, y, z))
+                        || open.get(index(x - step, y, z))
+                        || open.get(index(x, y + step, z))
+                        || open.get(index(x, y - step, z))
+                        || open.get(index(x, y, z + step))
+                        || open.get(index(x, y, z - step))) {
                     return true;
                 }
             }
