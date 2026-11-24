@@ -112,8 +112,8 @@ public final class UnbuiltDepthViews {
 
     /**
      * Carves the breach, cuts the render distance, and stands the camera at each of {@link #LOOKS} in turn, flooding the shaft before the
-     * first from under the water. {@code beforeFlood} runs once the dry looks are done (a fall down the dry shaft, for the scenario), and
-     * the camera is left without night vision.
+     * first from under the water. {@code beforeFlood} runs once the dry looks are done, without night vision (a fall down the dry shaft, for
+     * the scenario), and the camera is left without night vision.
      */
     public static void tour(
             ClientGameTestContext context, TestServerContext server, AtLook atLook, Runnable beforeFlood) {
@@ -123,6 +123,7 @@ public final class UnbuiltDepthViews {
             try {
                 for (Look look : LOOKS) {
                     if (look.place() == Place.UNDERWATER && !flooded) {
+                        nightVision(server, false);
                         beforeFlood.run();
                         server.runOnServer(UnbuiltDepthViews::flood);
                         flooded = true;
