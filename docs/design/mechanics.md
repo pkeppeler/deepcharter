@@ -2109,7 +2109,7 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Light.** Glowcaps, a small fungus on cavern floors, give block light 6 (`LayerTuning.glowcapLight`): cold, small and scattered, so the caverns stay dark and a lamp still matters. A picked glowcap is a hand light (`hand_lights`): it keeps the Retained off a person on foot as a torch does.
 
-**Lava stays in the rock.** The lining lines lava that faces a cavern and turns lava up to two blocks further in to basalt (`AirFaceLiningFeature.SEAL_MARGIN`), because a column does not fill its cell and passes light; one block let lava light the caverns round it. Lava on the faces lit thousands of open cells and made the band cost 2.90x `tall_layer` per row; sealed, 0.976x (ADR 0086's judged pool, #1133). Lava is still a drilling hazard inside the rock, at the table's chance per block of rock that is not near a cavern.
+**Lava stays in the rock.** The lining lines lava that faces a cavern and turns lava up to two blocks further in to basalt (`AirFaceLiningFeature.SEAL_MARGIN`), because a column does not fill its cell and passes light; one block let lava light the caverns round it. Lava on the faces lit thousands of open cells and made the band cost 2.90x `tall_layer` per row; sealed, it is within ADR 0086's per-band bar (the judged pool is on #1133). Lava is still a drilling hazard inside the rock, at the table's chance per block of rock that is not near a cavern.
 
 **Ore and hazards.** The original's rows 134 to 203 in thirds, by the formula of ADR 0015: more Goldium and Platinium, Einsteinium in every zone, Cicatrium 0.08% to 0.12%. Company Rock 10% to 13% and lava 5% to 6% of non-ore rock, never less than Prospector's Run.
 
