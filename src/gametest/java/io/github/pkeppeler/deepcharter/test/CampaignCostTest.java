@@ -58,7 +58,8 @@ import org.slf4j.LoggerFactory;
  * and its floor is the window cut to its bottom 16 rows ({@code campaign_surface_floor} and so on). A band's marginal CPU per filled
  * row is its window's pooled median over its floor's, per row of the difference; {@code tall_layer} (one layer's rock and fill in every
  * row) over {@code tall_layer_floor} is the reference. The gate: every band at most {@value BandCost#BAR}x the reference, except the
- * bands {@link #RATCHETS} holds to their own measured ratio plus 15% until their issue. The whole world, {@code campaign_full} per
+ * bands {@link #RATCHETS} holds to their own measured ratio plus 15% until their issue. A band is over when the lower bound of its
+ * runs' own ratios is over its bar ({@link BandCost#lowerBound}), not when the pooled ratio is. The whole world, {@code campaign_full} per
  * block of height against {@code tall_baseline} (vanilla stone, no fill), is printed as a tracked number and no longer gates.
  *
  * <p>{@code everyCostWorldGeneratesColumns} generates a few columns of each world and checks they exist. With the number of rounds in
@@ -95,12 +96,14 @@ public class CampaignCostTest {
             new Window(CampaignBands.LAYER_1, "campaign_layer_1", "campaign_layer_1_floor"),
             new Window(CampaignBands.LAYER_2, "campaign_layer_2", "campaign_layer_2_floor"));
 
-    /** The bands that were over the bar when the gate was written (ADR 0086). No other band may have one ({@link #RATCHETED}). */
-    private static final List<Ratchet> RATCHETS =
-            List.of(new Ratchet(CampaignBands.LAYER_1, 1.218, 1132), new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
+    /**
+     * The bands still over the bar (ADR 0086), each at its measured ratio. Layer 1 had one until #1160 (ADR 0090) took it under.
+     * No other band may have one ({@link #RATCHETED}).
+     */
+    private static final List<Ratchet> RATCHETS = List.of(new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
 
     /** The only bands a ratchet may hold. */
-    private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_1, CampaignBands.LAYER_2);
+    private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_2);
 
     /** The worlds the gate reads. */
     private static final List<String> GATED = Stream.concat(
@@ -318,14 +321,16 @@ public class CampaignCostTest {
         JsonObject dimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject()
                 .getAsJsonObject("dimensions");
-        JsonElement campaign = read(helper, "/data/minecraft/dimension/overworld.json")
-                .getAsJsonObject()
-                .get("generator");
+        JsonObject shipped =
+                read(helper, "/data/minecraft/dimension/overworld.json").getAsJsonObject();
+        JsonElement campaign = shipped.get("generator");
         JsonObject campaignType =
                 read(helper, "/data/minecraft/dimension_type/overworld.json").getAsJsonObject();
         for (Window window : WINDOWS) {
             CampaignBands.Band band = window.band();
             boolean sky = band == CampaignBands.SURFACE;
+            expectFromShipped(helper, dimensions, window.world(), shipped);
+            expectFromShipped(helper, dimensions, window.floor(), shipped);
             expectCut(helper, dimensions, window.world(), campaign, cut(campaignType, band.minY(), band.height(), sky));
             expectCut(helper, dimensions, window.floor(), campaign, cut(campaignType, band.minY(), FLOOR_ROWS, sky));
         }
@@ -338,6 +343,19 @@ public class CampaignCostTest {
                 dimensions.getAsJsonObject("deepcharter:" + REFERENCE).get("generator"),
                 cut(referenceType, referenceType.get("min_y").getAsInt(), FLOOR_ROWS, false));
         helper.succeed();
+    }
+
+    // A stray key or a stale hand copy must not pass.
+    private static void expectFromShipped(
+            GameTestHelper helper, JsonObject dimensions, String world, JsonObject shipped) {
+        JsonObject expected = shipped.deepCopy();
+        expected.addProperty("type", "deepcharter:" + world);
+        expect(
+                helper,
+                expected.equals(dimensions.get("deepcharter:" + world)),
+                "%s is not the shipped overworld with its own type: %s",
+                world,
+                dimensions.get("deepcharter:" + world));
     }
 
     private static void expectCut(
@@ -435,12 +453,14 @@ public class CampaignCostTest {
         List<Ratio> ratios = BandCost.ratios(pool, WINDOWS, RATCHETS, REFERENCE, REFERENCE_FLOOR);
         for (Ratio ratio : ratios) {
             LOGGER.info(
-                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s; at most {}x{} ({})",
+                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s pooled,"
+                            + " the runs' own ratios at least {}x; at most {}x{} ({})",
                     ratio.window().band().name(),
                     String.format("%.4f", ratio.marginal()),
                     ratio.window().floor(),
                     String.format("%.3f", ratio.ratio()),
                     REFERENCE,
+                    String.format("%.3f", ratio.bound()),
                     String.format("%.3f", ratio.bar()),
                     ratio.ratchet()
                             .map(held -> ", a ratchet until #" + held.issue())
