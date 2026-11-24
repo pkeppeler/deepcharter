@@ -39,6 +39,11 @@ final class HollowsMockups {
     /** The seeds tried, in order, for the great stalk: one grows only where its whole trunk has room. */
     private static final int STALK_SEEDS = 12;
 
+    /** The Overgrowth's bore: how deep, and how far its growth spills round it. */
+    private static final int BORE_DEPTH = 8;
+
+    private static final int SPILL = 5;
+
     private static final Quaternionf NONE = new Quaternionf();
     private static final Quaternionf TURN_Y = new Quaternionf().rotateY((float) Math.toRadians(45));
     private static final Quaternionf TURN_X = new Quaternionf().rotateX((float) Math.toRadians(45));
@@ -160,7 +165,7 @@ final class HollowsMockups {
         for (double[] s : spires) {
             BlockPos column = spot.tall().offset((int) s[0], 0, (int) s[1]);
             Optional<BlockPos> cell = HollowsSpots.floorAt(
-                    level, column.getX(), column.getZ(), spot.tall().getY(), 3);
+                    level, column.getX(), column.getZ(), spot.tall().getY(), 6);
             if (cell.isEmpty()) {
                 continue;
             }
@@ -194,33 +199,37 @@ final class HollowsMockups {
     }
 
     /**
-     * A bore drilled into the floor at the focus, 3 x 3 and 8 deep, left unvisited and grown over (CREATURES.md, Overgrowth): its walls
-     * lined with the growth and the growth swelling out over its rim, with only the middle still open.
+     * A bore drilled into the floor at the focus, 5 x 5 and {@value #BORE_DEPTH} deep, left unvisited and grown over (CREATURES.md,
+     * Overgrowth): its walls lined with the growth, the growth swelling out of it and spilling {@value #SPILL} blocks over the floor
+     * round it, with only the middle of the bore still open.
      */
     static void overgrowth(ServerLevel level, Spot spot, Growth growth) {
         BlockPos top = spot.focus();
         BlockState wall = block(growth == Growth.MOSS ? "minecraft:pale_moss_block" : "minecraft:mushroom_stem");
         BlockState lump = block(growth == Growth.MOSS ? "minecraft:pale_moss_block" : "minecraft:white_wool");
         BlockState strand = block(growth == Growth.MOSS ? "minecraft:pale_moss_carpet" : "minecraft:cobweb");
-        for (int depth = 1; depth <= 8; depth++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    level.setBlock(top.offset(dx, -depth, dz), dx == 0 && dz == 0 ? air() : wall, SET);
+        for (int depth = 1; depth <= BORE_DEPTH; depth++) {
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    int ring = Math.max(Math.abs(dx), Math.abs(dz));
+                    boolean grown = ring == 2 || (ring == 1 && depth <= 2);
+                    level.setBlock(top.offset(dx, -depth, dz), grown ? wall : air(), SET);
                 }
             }
         }
-        for (int dx = -3; dx <= 3; dx++) {
-            for (int dz = -3; dz <= 3; dz++) {
+        for (int dx = -SPILL; dx <= SPILL; dx++) {
+            for (int dz = -SPILL; dz <= SPILL; dz++) {
                 int ring = Math.max(Math.abs(dx), Math.abs(dz));
                 BlockPos cell = top.offset(dx, 0, dz);
-                if (ring == 1) {
-                    put(level, cell, (dx == 0 || dz == 0) ? lump : wall);
-                    if (dx == 0 || dz == 0) {
+                boolean scatter = Math.floorMod(dx * 7 + dz * 3, 3) != 0;
+                if (ring == 1 || ring == 2) {
+                    put(level, cell, lump);
+                    if (ring == 1 && (dx == 0 || dz == 0)) {
                         put(level, cell.above(), lump);
                     }
-                } else if (ring >= 2
-                        && (dx * 7 + dz * 3 + 21) % 3 != 0
-                        && !HollowsSpots.open(level.getBlockState(cell.below()))) {
+                } else if (ring == 3 && scatter) {
+                    put(level, cell, lump);
+                } else if (ring > 3 && scatter && !HollowsSpots.open(level.getBlockState(cell.below()))) {
                     put(level, cell, strand);
                 }
             }
@@ -230,7 +239,7 @@ final class HollowsMockups {
         }
         label(
                 level,
-                Vec3.atBottomCenterOf(top.above(3)),
+                Vec3.atBottomCenterOf(top.above(4)),
                 "mock-up: Overgrowth (" + growth.name().toLowerCase(Locale.ROOT) + ")");
     }
 
@@ -365,7 +374,7 @@ final class HollowsMockups {
     static int quiet(ServerLevel level, Spot spot) {
         BlockState rib = LayerBlocks.COLUMNAR_BASALT.defaultBlockState();
         BlockPos centre = spot.tall();
-        int height = Mth.clamp(spot.clear() - 2, 8, 18);
+        int height = ribHeight(spot);
         int half = 7;
         for (int ahead : new int[] {-6, -1, 4, 9}) {
             for (int side : new int[] {-1, 1}) {
@@ -391,6 +400,11 @@ final class HollowsMockups {
         shrine(level, spot, centre);
         label(level, Vec3.atBottomCenterOf(spot.at(centre, 0, 0, 5)), "mock-up: cathedral, shrine, membrane");
         return height;
+    }
+
+    /** How tall the Quiet's ribs stand at the spot: as tall as the cavern allows, 8 to 18. */
+    static int ribHeight(Spot spot) {
+        return Mth.clamp(spot.clear() - 2, 8, 18);
     }
 
     /** The Badger's wreck grown into a shrine: a 3 x 4 x 3 hull of old copper with a dark canopy, capped with fungus, ringed by glowcaps and kneeling shapes. */
@@ -459,7 +473,7 @@ final class HollowsMockups {
                 at,
                 ("{text:\"%s\",billboard:\"center\",brightness:{sky:0,block:15},Tags:[\"%s\"],"
                                 + "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
-                                + "translation:[0f,0f,0f],scale:[0.7f,0.7f,0.7f]}}")
+                                + "translation:[0f,0f,0f],scale:[1.2f,1.2f,1.2f]}}")
                         .formatted(text, TAG));
     }
 

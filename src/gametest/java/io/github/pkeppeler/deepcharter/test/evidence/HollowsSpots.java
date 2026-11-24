@@ -26,8 +26,15 @@ final class HollowsSpots {
     private static final Logger LOGGER = LoggerFactory.getLogger(HollowsSpots.class);
     /** Candidates stand within this many blocks of the region's middle, every {@link #GRID} blocks. */
     static final int SEARCH_RADIUS = 24;
-    /** The rays of the fan reach this far, so the forced region must reach {@code SEARCH_RADIUS + RAY_REACH} round the middle. */
-    static final int RAY_REACH = 40;
+    /**
+     * The rays of the fan reach this far, so the forced region must reach {@code SEARCH_RADIUS + RAY_REACH} round the middle. A ray
+     * counts up to {@link #RAY_COUNTED} blocks, and one that meets no rock within its reach costs {@link #ESCAPE_COST}: past the render
+     * distance the client draws the sky, so a view that runs out of the cavern shows the sky and the moon, not rock.
+     */
+    static final int RAY_REACH = 64;
+
+    private static final int RAY_COUNTED = 48;
+    private static final int ESCAPE_COST = 40;
 
     private static final int GRID = 3;
     /** Candidates stay this far inside their zone, so the camera's biome blend never reaches the next one. */
@@ -70,6 +77,15 @@ final class HollowsSpots {
             String zone, BlockPos feet, float yaw, int floorY, BlockPos focus, BlockPos tall, int clear, int score) {
         Vec3 eye() {
             return new Vec3(feet.getX() + 0.5, feet.getY() + EYE, feet.getZ() + 0.5);
+        }
+
+        /** The yaw and pitch, in that order, at which the eye looks at {@code target}. */
+        float[] look(Vec3 target) {
+            Vec3 d = target.subtract(eye());
+            return new float[] {
+                (float) Math.toDegrees(Math.atan2(-d.x, d.z)),
+                (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)))
+            };
         }
 
         /** The unit vector of the heading, flat. */
@@ -193,7 +209,7 @@ final class HollowsSpots {
                 while (t <= RAY_REACH && open(level.getBlockState(BlockPos.containing(eye.add(d.scale(t)))))) {
                     t++;
                 }
-                sum += t - 1;
+                sum += t > RAY_REACH ? -ESCAPE_COST : Math.min(t - 1, RAY_COUNTED);
             }
         }
         return sum;
@@ -275,7 +291,7 @@ final class HollowsSpots {
         return Optional.ofNullable(best);
     }
 
-    /** The free cell over a floor {@link #TALL_NEAR} to {@link #TALL_FAR} blocks ahead with the most free height over its 3 x 3, at least {@link #TALL_CLEAR_LEAST}. */
+    /** The free cell over a flat floor {@link #TALL_NEAR} to {@link #TALL_FAR} blocks ahead with the most free height over its 3 x 3, at least {@link #TALL_CLEAR_LEAST}. */
     private static Optional<BlockPos> tallFocus(ServerLevel level, Spot spot) {
         BlockPos best = null;
         int bestClear = TALL_CLEAR_LEAST - 1;
@@ -287,7 +303,7 @@ final class HollowsSpots {
                     continue;
                 }
                 Optional<BlockPos> cell = floorAt(level, column.getX(), column.getZ(), spot.floorY(), FOCUS_RISE);
-                if (cell.isEmpty() || !inSight(level, spot.eye(), cell.get())) {
+                if (cell.isEmpty() || !inSight(level, spot.eye(), cell.get()) || !flat(level, cell.get())) {
                     continue;
                 }
                 int clear = clearHeight(level, cell.get());
@@ -298,6 +314,18 @@ final class HollowsSpots {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /** True when the 3 x 3 round {@code cell} is free and stands on solid floor in every column: a great stalk grows only there. */
+    private static boolean flat(ServerLevel level, BlockPos cell) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (!isFloor(level, cell.offset(dx, -1, dz), 1)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /** The free height over the 3 x 3 round {@code cell}, up to {@link #TALL_CLEAR_CAP}. */
