@@ -95,12 +95,14 @@ public class CampaignCostTest {
             new Window(CampaignBands.LAYER_1, "campaign_layer_1", "campaign_layer_1_floor"),
             new Window(CampaignBands.LAYER_2, "campaign_layer_2", "campaign_layer_2_floor"));
 
-    /** The bands that were over the bar when the gate was written (ADR 0086). No other band may have one ({@link #RATCHETED}). */
-    private static final List<Ratchet> RATCHETS =
-            List.of(new Ratchet(CampaignBands.LAYER_1, 1.218, 1132), new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
+    /**
+     * The bands still over the bar (ADR 0086), each at its measured ratio. Layer 1 had one until #1160 (ADR 0090) took it under.
+     * No other band may have one ({@link #RATCHETED}).
+     */
+    private static final List<Ratchet> RATCHETS = List.of(new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
 
     /** The only bands a ratchet may hold. */
-    private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_1, CampaignBands.LAYER_2);
+    private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_2);
 
     /** The worlds the gate reads. */
     private static final List<String> GATED = Stream.concat(
