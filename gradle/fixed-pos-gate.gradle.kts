@@ -9,11 +9,14 @@
 //   - a constant named Y or *_Y set to a numeric literal (FLOOR_Y = 4); one derived from it (FLOOR_Y - 4) is not;
 //   - a literal Y, of any size, in new BlockPos(x, y, z), BlockPos.containing, new Vec3 or new Vec3i when X and Z are literals of 100 or more in
 //     magnitude too: an absolute place (new BlockPos(3616, 40, 3616));
-//   - a literal Y in teleportTo, setPos, setPosRaw, moveTo, snapTo, absMoveTo or atY.
+//   - a literal Y in teleportTo, setPos, setPosRaw, moveTo, snapTo, absMoveTo or atY;
+//   - an int or long local or field whose name ends in floor, ceiling or roomY (floor, shallowFloor, LOCAL_FLOOR, ROOM_Y) set to a numeric literal: in a
+//     layer test a bare `int floor = 60` stages in the surface band and passes, so the Y comes from TestLayers.worldY or a band read. A name that is an
+//     offset or a size (GALLERY_FLOOR, a pad's FLOOR) takes the marker.
 // What it leaves alone, on purpose: a vector with a small or non-literal X or Z (new Vec3(0, 1.62, -4), new BlockPos(-6, 0, -7), new BlockPos(X, 100, Z)).
 // The scenarios hold about a hundred of the small ones and every one is an offset from a place the scenario derived, which no scan of the text can
 // tell from a position. A literal X or Z alone is not flagged either: a scenario stages in its own carved room, far out in a layer's dimension,
-// where no world change reaches it. Known blind spots, so a reviewer must still look: a Y held in a lowercase name or a local (`int floor = 4`), a Y
+// where no world change reaches it. Known blind spots, so a reviewer must still look: a Y held in a name that does not end in floor, ceiling or roomY (`int base = 4`), a Y
 // assigned after its declaration, a Y reached by `.above(n)` or `.offset(...)` from a position that is only known at run time, a Y with a variable X
 // or Z (`new BlockPos(X, 100, Z)`), and a call split from its own parenthesis by a line break.
 //
@@ -30,6 +33,7 @@ object FixedPosGate {
 	private val NUMBER = Regex("""[-+]?\d[\d_]*(?:\.\d+)?[dDfFlL]?""")
 	private val MARKER = Regex("""//\s*fixed-pos:\s*\S""")
 	private val CONSTANT = Regex("""\b(?:int|long|float|double)\s+(?:[A-Z0-9]+_)*Y\s*=\s*${NUMBER.pattern}\s*;""")
+	private val BAND_Y = Regex("""\b(?:int|long)\s+\w*(?:[Ff]loor|FLOOR|[Cc]eiling|CEILING|[Rr]oomY|ROOM_Y)\s*=\s*${NUMBER.pattern}\s*;""")
 	private val POSITION = Regex("""\b(?:new\s+(?:BlockPos|Vec3i|Vec3)|BlockPos\s*\.\s*containing)\s*\(""")
 	private val MOVE = Regex("""\.\s*(teleportTo|setPosRaw|setPos|moveTo|snapTo|absMoveTo|atY)\s*\(""")
 	private val LAYER_DIMENSION = Regex("""\bLayerChain\s*\.\s*dimension\s*\(""")
@@ -74,6 +78,7 @@ object FixedPosGate {
 		val lines = text.reader().readLines()
 		val starts = mutableListOf<Int>()
 		CONSTANT.findAll(code).forEach { starts.add(it.range.first) }
+		BAND_Y.findAll(code).forEach { starts.add(it.range.first) }
 		POSITION.findAll(code).forEach { match ->
 			val args = arguments(code, match.range.last + 1)
 			if (args.size == 3 && args.all { isNumber(it) } && magnitude(args[0]) >= MIN_LITERAL_XZ && magnitude(args[2]) >= MIN_LITERAL_XZ) starts.add(match.range.first)
@@ -109,7 +114,7 @@ object FixedPosGate {
 
 val fixedPosAdvice = "Derive the place: TestLayers (test/support: TestLayers.level, TestLayers.worldY, TestLayers.pos), the colony's anchors (Colony.anchor, ColonySite), a RoomCarver room, the layer's own geometry, or " +
 	"EvidenceScenario.LIVE_GAUGES_FLOOR_Y and the decay tuning. A place that cannot be derived ends with '// fixed-pos: <reason>'. Not flagged, so check by eye: " +
-	"a lowercase or local Y, a Y set after its declaration, .above(n) from a run-time position, a Y beside a variable X or Z, and small all-literal offsets. See evidence.md."
+	"a Y in a name that does not end in floor, ceiling or roomY, a Y set after its declaration, .above(n) from a run-time position, a Y beside a variable X or Z, and small all-literal offsets. See evidence.md."
 
 /** The problems (file:line message) in the tests, scenarios and test support under {@code root}, relative to {@code base}. */
 val fixedPosProblems: (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String> = { root, base, blankLiterals, markedNear ->

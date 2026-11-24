@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
@@ -26,7 +27,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.language.I18n;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -47,6 +47,8 @@ import org.jspecify.annotations.Nullable;
 public final class HandbookScreen extends Screen {
     /** The sheet is wide enough for a margin column from this width on. */
     private static final int MARGIN_MIN_PAPER_WIDTH = 220;
+    /** The label of the intro's tab: the chapters' tabs carry their numbers. */
+    private static final String INTRO_TAB = "i";
 
     /** The look in force: read at each use, never kept, so a resource reload restyles an open screen. */
     private static HandbookScreenTuning tuning() {
@@ -80,8 +82,10 @@ public final class HandbookScreen extends Screen {
     private final HandbookMemory memory;
     /** The page index of each chapter's quest map, by chapter number. */
     private final Map<Integer, Integer> mapPages;
-    /** Whether a drag that began on a flowchart is still going. */
-    private boolean draggingMap;
+    /** The index of the first page of any chapter: the pages before it are the intro. */
+    private final int firstChapterPage;
+    /** The index of the first pencil sheet, or -1 when no Note has drawn a path. */
+    private final int pencilPage;
 
     private int page;
     private int previousPage;
@@ -146,8 +150,10 @@ public final class HandbookScreen extends Screen {
         Map<Integer, Integer> firstPages = new HashMap<>();
         Map<Integer, HandbookPage.Chapter> byNumber = new HashMap<>();
         Map<Integer, Integer> maps = new HashMap<>();
+        int firstPencil = -1;
         for (int index = 0; index < this.pages.size(); index++) {
             switch (this.pages.get(index)) {
+                case HandbookPage.Pencil pencil -> firstPencil = firstPencil < 0 ? index : firstPencil;
                 case HandbookPage.ChapterText text -> firstPages.putIfAbsent(text.number(), index);
                 case HandbookPage.Chapter chapter -> {
                     firstPages.putIfAbsent(chapter.number(), index);
@@ -160,6 +166,9 @@ public final class HandbookScreen extends Screen {
         this.chapterPages = Map.copyOf(firstPages);
         this.chapters = Map.copyOf(byNumber);
         this.mapPages = Map.copyOf(maps);
+        this.pencilPage = firstPencil;
+        this.firstChapterPage =
+                firstPages.values().stream().min(Integer::compare).orElse(this.pages.size());
         this.memory = memory;
         this.page = memory.pageIn(this.pages);
         this.previousPage = page;
@@ -215,7 +224,7 @@ public final class HandbookScreen extends Screen {
         screen.openNote(note);
     }
 
-    /** The pages of the Handbook tab, from the chapters and progress the server synced. */
+    /** The pages of the Handbook tab, from the chapters, progress and pencil paths the server synced. */
     public static List<HandbookPage> currentPages(Minecraft client) {
         Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
         HandbookChapters.all(Objects.requireNonNull(
@@ -223,7 +232,7 @@ public final class HandbookScreen extends Screen {
                                 "the handbook pages need a connection to the server for its chapters")
                         .registryAccess())
                 .forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
-        return HandbookPages.of(chapters, ClientHandbook.completed());
+        return HandbookPages.withPencil(HandbookPages.of(chapters, ClientHandbook.completed()), ClientPencil.entries());
     }
 
     /**
@@ -422,27 +431,66 @@ public final class HandbookScreen extends Screen {
         updateButtons();
     }
 
-    /** One tab for each chapter down the right edge of the sheet, stepped as far as the sheet is tall; a tab opens its chapter's map. */
+    /**
+     * The tabs down the right edge of the sheet, stepped as far as the sheet is tall: the intro's first, then one for each chapter, then
+     * the pencil sheet's once a Note has drawn a path. The intro's opens the cover, a chapter's opens its map, the last opens the
+     * pencil sheet. A tab is at index {@link #section} of the list.
+     */
     private List<PaperButton> chapterTabs() {
         QuestMapTuning q = QuestMapTuning.current();
-        int count = mapPages.size();
-        int pitch = Math.min(
-                tuning().tabHeight() + q.chapterTabGap(), (paperHeight - q.chapterTabTop()) / Math.max(1, count));
+        int count = mapPages.size() + 1 + (pencilPage >= 0 ? 1 : 0);
+        int pitch = Math.min(tuning().tabHeight() + q.chapterTabGap(), (paperHeight - q.chapterTabTop()) / count);
+        int tabsTop = paperTop + q.chapterTabTop();
+        int minPitch = font.lineHeight + q.chapterTabGap();
         int tabHeight = pitch - q.chapterTabGap();
+        if (pitch < minPitch) {
+            // a window too short for the tabs to be a line of text each: they stand a line tall, the gap between them
+            // goes first when even that is too long for the window, and the column starts higher
+            pitch = Math.max(font.lineHeight, Math.min(minPitch, height / count));
+            tabHeight = Math.max(font.lineHeight, pitch - q.chapterTabGap());
+            tabsTop = Math.max(0, paperTop + paperHeight - count * pitch);
+        }
         List<PaperButton> tabs = new ArrayList<>();
-        for (int number = 1; number <= count; number++) {
-            int chapter = number;
+        for (int section = 0; section < count; section++) {
+            int target = section;
             PaperButton tab = addRenderableWidget(new PaperButton(
                     paperLeft + paperWidth - 1,
-                    paperTop + q.chapterTabTop() + (number - 1) * pitch,
+                    tabsTop + section * pitch,
                     q.chapterTabWidth(),
                     tabHeight,
-                    Component.literal(Integer.toString(number)),
-                    button -> goTo(Objects.requireNonNull(mapPages.get(chapter)))));
+                    section == 0
+                            ? Component.literal(INTRO_TAB)
+                            : section > mapPages.size()
+                                    ? Component.translatable("deepcharter.handbook.pencil.tab")
+                                    : Component.literal(Integer.toString(section)),
+                    button -> goTo(
+                            target == 0
+                                    ? 0
+                                    : target > mapPages.size()
+                                            ? pencilPage
+                                            : Objects.requireNonNull(mapPages.get(target)))));
             tab.setJoinsLeft();
             tabs.add(tab);
         }
         return tabs;
+    }
+
+    /**
+     * The section of the book the open page belongs to, whose tab reads as selected: 0 for the intro (cover, slip, letter and
+     * contents), a chapter's number for its text and map, the pencil sheet's own tab after the chapters, or -1 for the end pages and the Notes tab, which have no tab.
+     */
+    public int section() {
+        if (notesTab) {
+            return -1;
+        }
+        if (pages.get(page) instanceof HandbookPage.Pencil) {
+            return mapPages.size() + 1;
+        }
+        int chapter = HandbookPage.chapterNumber(pages.get(page));
+        if (chapter > 0) {
+            return chapter;
+        }
+        return page < firstChapterPage ? 0 : -1;
     }
 
     /** The next button turns a page of the handbook, or a sheet of an open Note, and from the last sheet of a Note goes back to its first. */
@@ -480,12 +528,12 @@ public final class HandbookScreen extends Screen {
         built.back().active = !notesTab && page > 0;
         built.next().active = notesTab || page < pages.size() - 1;
         built.noteBack().visible = notesTab && openNote != null;
-        int chapter = notesTab ? 0 : HandbookPage.chapterNumber(pages.get(page));
+        int section = section();
         for (int i = 0; i < built.chapterTabs().size(); i++) {
             PaperButton tab = built.chapterTabs().get(i);
-            HandbookPage.Chapter entry = chapters.get(i + 1);
-            tab.visible = chapter > 0;
-            tab.setSelected(i + 1 == chapter);
+            HandbookPage.Chapter entry = chapters.get(i);
+            tab.visible = !notesTab;
+            tab.setSelected(i == section);
             tab.setFaded(entry != null && entry.visibility() == HandbookVisibility.CLASSIFIED);
         }
         built.handbookTab().setSelected(!notesTab);
@@ -563,10 +611,9 @@ public final class HandbookScreen extends Screen {
         return false;
     }
 
-    /** A click on a chapter's map: the index card first (its link, its items), then a step, else the start of a drag of the sheet. */
+    /** A click on a chapter's map: the index card first (its link, its items), then a step. */
     private boolean clickMap(HandbookPage.Chapter chapter, MouseButtonEvent event) {
         MapFrame frame = mapFrame(chapter);
-        MapView view = memory.view(chapter.number());
         if (chapter.visibility() == HandbookVisibility.FULL) {
             QuestMap.Card card = indexCard(chapter);
             if (card.link().contains(event.x(), event.y())) {
@@ -575,7 +622,7 @@ public final class HandbookScreen extends Screen {
             }
             QuestMap.CardItem item = card.itemAt(event.x(), event.y());
             if (item != null) {
-                ItemRecipeLink.open(BuiltInRegistries.ITEM.getKey(item.item()));
+                CatalogueScreens.open(item.item());
                 return true;
             }
             if (card.box().contains(event.x(), event.y())) {
@@ -585,65 +632,19 @@ public final class HandbookScreen extends Screen {
         if (!frame.clip().contains(event.x(), event.y())) {
             return false;
         }
-        draggingMap = true;
         if (chapter.visibility() == HandbookVisibility.FULL) {
-            double zoom = view.zoom;
-            int step = mapLayout(chapter)
-                    .stepAt(
-                            (event.x() - frame.originX() - view.panX) / zoom,
-                            (event.y() - frame.originY() - view.panY) / zoom);
+            int step = mapLayout(chapter).stepAt(event.x() - frame.originX(), event.y() - frame.originY());
             if (step >= 0) {
-                view.selected = chapter.chapter().directives().get(step).id();
+                memory.pick(
+                        chapter.number(),
+                        chapter.chapter().directives().get(step).id());
             }
         }
         return true;
     }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
-        if (draggingMap && pages.get(page) instanceof HandbookPage.Chapter chapter) {
-            MapFrame frame = mapFrame(chapter);
-            QuestMap.Layout layout = mapLayout(chapter);
-            memory.view(chapter.number())
-                    .pan(
-                            dragX,
-                            dragY,
-                            frame.clip().w(),
-                            frame.clip().h(),
-                            layout.width(),
-                            layout.height(),
-                            QuestMapTuning.current().panMargin());
-            return true;
-        }
-        return super.mouseDragged(event, dragX, dragY);
-    }
-
-    @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
-        draggingMap = false;
-        return super.mouseReleased(event);
-    }
-
-    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (!notesTab
-                && scrollY != 0
-                && flipTicks == 0
-                && pages.get(page) instanceof HandbookPage.Chapter chapter
-                && chapter.visibility() != HandbookVisibility.CLASSIFIED) {
-            MapFrame frame = mapFrame(chapter);
-            if (frame.clip().contains(mouseX, mouseY)) {
-                QuestMapTuning q = QuestMapTuning.current();
-                memory.view(chapter.number())
-                        .zoom(
-                                scrollY > 0 ? q.zoomStep() : 1 / q.zoomStep(),
-                                mouseX - frame.originX(),
-                                mouseY - frame.originY(),
-                                q.zoomMin(),
-                                q.zoomMax());
-                return true;
-            }
-        }
         if (notesTab && openNote == null && scrollY != 0) {
             return noteScroll.mouseScrolled(scrollY);
         }
@@ -690,6 +691,7 @@ public final class HandbookScreen extends Screen {
             case HandbookPage.Contents contents -> drawContents(graphics, contents);
             case HandbookPage.ChapterText text -> drawChapterText(graphics, text);
             case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
+            case HandbookPage.Pencil pencil -> drawPencil(graphics, pencil);
             case HandbookPage.Appendix appendix -> drawAppendix(graphics);
             case HandbookPage.Contract contract -> drawContract(graphics, contract);
         }
@@ -988,7 +990,7 @@ public final class HandbookScreen extends Screen {
     }
 
     private QuestMap.Card indexCard(HandbookPage.Chapter chapter) {
-        HandbookChapter.Entry step = QuestMap.shown(chapter, memory.view(chapter.number()));
+        HandbookChapter.Entry step = QuestMap.shown(chapter, memory.picked(chapter.number()));
         return QuestMap.card(
                 font,
                 step,
@@ -1044,22 +1046,14 @@ public final class HandbookScreen extends Screen {
                 textLeft + mapWidth(),
                 frame.headingBottom() + 2,
                 Colors.opaque(tuning().inkColor()));
-        MapView view = memory.view(chapter.number());
         QuestMap.Model model = QuestMap.model(chapters, chapter.number());
         QuestMap.Layout layout = mapLayout(chapter);
-        view.clamp(
-                frame.clip().w(),
-                frame.clip().h(),
-                layout.width(),
-                layout.height(),
-                QuestMapTuning.current().panMargin());
         HandbookPage.Chapter ahead = model.ahead();
         QuestMap.drawChart(
                 graphics,
                 font,
                 model,
                 layout,
-                view,
                 frame.originX(),
                 frame.originY(),
                 frame.clip(),
@@ -1076,10 +1070,37 @@ public final class HandbookScreen extends Screen {
             PaperDraw.stamp(graphics, font, tr("chapter.stamp.complete"), stampX, stampY, -10, tuning().stampColor());
         }
         if (full) {
-            HandbookChapter.Entry step = QuestMap.shown(chapter, view);
+            HandbookChapter.Entry step = QuestMap.shown(chapter, memory.picked(chapter.number()));
             QuestMap.Card card = indexCard(chapter);
             QuestMap.drawCard(graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter));
         }
+    }
+
+    /** The pencil sheet: its heading and rule, then a row for each path on it. The page is fixed: nothing on it drags or zooms. */
+    private void drawPencil(GuiGraphicsExtractor graphics, HandbookPage.Pencil pencil) {
+        int y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("pencil.label"),
+                textLeft,
+                paperTop + tuning().topMargin(),
+                mapWidth(),
+                tuning().faintInkColor());
+        y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("pencil.title"),
+                textLeft,
+                y + QuestMapTuning.current().headingGap(),
+                mapWidth(),
+                tuning().inkColor());
+        // as drawMap's rule: across the whole sheet the rows are drawn on
+        graphics.fill(textLeft, y + 1, textLeft + mapWidth(), y + 2, Colors.opaque(tuning().inkColor()));
+        PencilSheet.draw(graphics, font, pencilLayout(pencil, y + tuning().paragraphGap() + 2));
+    }
+
+    private PencilSheet.Layout pencilLayout(HandbookPage.Pencil pencil, int top) {
+        return PencilSheet.layout(pencil.entries(), textLeft, top, mapWidth(), bottom(), font.lineHeight);
     }
 
     private void drawAppendix(GuiGraphicsExtractor graphics) {

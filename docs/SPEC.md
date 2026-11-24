@@ -91,7 +91,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Darkness
 
-- Each layer sets its own ambient light, darker with depth.
+- The darkness comes from each zone biome's ambient colour, darker with depth; the dimension's own ambient light is 0.
 - Pod lights are a component track. On foot, the suit lamp runs on a battery.
 - The original was fully lit; Minecraft's real darkness adds to the dread.
 
@@ -150,13 +150,14 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - From then on the back section fills only with **Notes** found in the world: wreck logs, torn pages, miners' scribbles.
 - A Note picked up by anyone in a charter goes into every member's handbook, unread for each person.
 - Using a Note in the world opens it to read, charter or not. A player on no charter is told to found one at the contract terminal to file it.
-- Each Note also draws a **pencil path** on the quest map, from earlier miners. It completes when the charter reaches the place the Note points to: a cache, a wreck or another Note. The place is the payoff; there is no claim button. A pencil path is not a Directive.
-- The first version ships 1–2 paths from existing Notes. More come with lore sessions.
+- Each Note also draws a **pencil path** on the pencil sheet (below), from earlier miners. It completes when the charter reaches the place the Note points to: a cache, a wreck or another Note. The place is the payoff; there is no claim button. A pencil path is not a Directive.
+- The paths sit on one fixed **pencil sheet** after the last chapter (nothing drags or zooms), in Roz's green pencil: a box for the Note, a dashed line, an x at the place. The sheet exists once a Note has drawn a path.
+- The first version ships two paths from existing Notes: N07, the prayer card, to the Prospector's wreck, and N10, Ines's log, to the Kells' shaft. More come with lore sessions. A wax cylinder found where a path ends ([#864](https://github.com/pkeppeler/deepcharter/issues/864)) is a payoff of the same kind, added with the cylinder.
 - Revisions may also add stamped pages: a disciplinary notice, the Chairmen's Book or the Ledger. They carry no rules ([lore/handbook.md](lore/handbook.md#revisions)).
 
 ### Directives and progress
 
-- **Directives** are the handbook's objectives, shown as a **quest map**: chapter tabs down the side, and each chapter a flowchart sheet you can drag and zoom. They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
+- **Directives** are the handbook's objectives, shown as a **quest map**: a tab down the side for the intro and one for each chapter on every page, and each chapter a fixed flowchart sheet: nothing on it drags, pans or zooms (playtest 3, #962). They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
 - A step shows its instruction, the items it needs with counts and progress, a link to its chapter page and each item's recipe one click away. The chapter text pages stay as the manual.
 - A completed step shows a themed popup. Nothing is pinned on screen. The book opens where the player left it, and L opens it as well as H.
 - Directives give no rewards. The employer's transmission bonuses still exist separately.

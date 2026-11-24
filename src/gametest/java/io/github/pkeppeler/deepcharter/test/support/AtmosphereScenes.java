@@ -64,6 +64,13 @@ public final class AtmosphereScenes {
     public static final ResourceKey<Level> CAMPAIGN =
             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "campaign_sample"));
 
+    /**
+     * Today's layer 1 dimension, which the scenes compare the campaign type with. {@code TestLayers} never resolves to a layer
+     * dimension, so this names it. The layer dimensions stay as the base of the dimension seam (ADR 0085).
+     */
+    public static final ResourceKey<Level> TODAY =
+            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "layer_1"));
+
     /** The client's default world has the shipped dimensions only; this preset adds {@code campaign_sample}. */
     public static final ResourceKey<WorldPreset> TEST_PRESET =
             ResourceKey.create(Registries.WORLD_PRESET, Identifier.withDefaultNamespace("flat_all_dimensions"));
@@ -116,7 +123,8 @@ public final class AtmosphereScenes {
 
     /** The floor of a scene in today's layer 1 dimension at {@code x}, as high above its floor as {@link #layer1Floor}'s. */
     public static BlockPos todayFloor(int x) {
-        return TestLayers.pos(1, x, LAYER_1_SCENE_HEIGHT, SITE);
+        // The layer dimension's own Ys start at 0, so the height over its floor is the Y.
+        return new BlockPos(x, LAYER_1_SCENE_HEIGHT, SITE);
     }
 
     /**

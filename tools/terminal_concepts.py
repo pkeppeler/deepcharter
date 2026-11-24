@@ -159,6 +159,9 @@ def nameplate(height, text, ink):
 
 
 VIGNETTE_REACH = 10
+# Shading falls off as exp(-t / decay): dark on the rim, gone by the 6 px the content sits inside the glass edge, so a corner title keeps its brightness (#1012).
+VIGNETTE_DECAY = 0.35
+SHADOW_DECAY = 0.3
 
 
 def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0)):
@@ -178,11 +181,11 @@ def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0)):
             if signed >= 0:
                 continue
             t = -signed - 0.5  # 0 on the outermost row of pixels, along a straight edge as along an arc
-            alpha = vignette * (1 - t / VIGNETTE_REACH) ** 1.6 if t < VIGNETTE_REACH else 0
+            alpha = max(1.0, vignette * math.exp(-t / VIGNETTE_DECAY)) if t < VIGNETTE_REACH else 0
             if depth[0] and t < depth[0]:
-                alpha += shadow[0] * max(0.0, -ny) * (1 - t / depth[0]) ** 1.4
+                alpha += shadow[0] * max(0.0, -ny) * math.exp(-t / SHADOW_DECAY)
             if depth[1] and t < depth[1]:
-                alpha += shadow[1] * max(0.0, -nx) * (1 - t / depth[1]) ** 1.4
+                alpha += shadow[1] * max(0.0, -nx) * math.exp(-t / SHADOW_DECAY)
             if alpha:
                 img.set(x, y, (4, 8, 6, min(235, round(alpha))))
             if 0.5 <= t < 1.5:  # the glass's own edge, catching light along the bottom and the right
@@ -473,7 +476,7 @@ def hatch() -> Option:
         "buttonAlign": 1, "buttonPad": 4, "pipSize": 12, "pipX": 3, "pipY": 0,
     }, {
         "frame": Sprite(frame, (gl + radius, gt + radius, gr + radius, gb + radius)),
-        "glass": Sprite(glass_sprite(radius, 170, (110, 80), (6, 5)), (radius,) * 4),
+        "glass": Sprite(glass_sprite(radius, 235, (110, 80), (6, 5)), (radius,) * 4),
         "nameplate": Sprite(plate), "dress_a": Sprite(hatch_gauge()), "dress_b": Sprite(hatch_wheel()),
         "dress_c": Sprite(hatch_stencil("H-04  DECK 3", 72)), "dress_d": Sprite(hatch_warning()),
         "button": Sprite(hatch_button(H[3], H[6], H[0]), (3, 3, 3, 3)),

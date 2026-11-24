@@ -34,6 +34,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -54,9 +55,11 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -90,7 +93,7 @@ public class BandReadersTest {
             RoomCarver.carve(level, x - 2, x + 2, floor, floor + crustRows - 1, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
             RoomCarver.carve(level, x - 2, x + 2, floor + crustRows, floor + crustRows + 7, Z - 2, Z + 2, Blocks.AIR);
             Vec3 at = new Vec3(x, floor + feetAbove, Z);
-            pilot = MockPlayers.join(helper, "band-bore-" + x);
+            pilot = MockPlayers.join(helper, "band-bore-" + Math.abs(floor));
             pilot.teleportTo(level, at, 0f, 0f);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
                 PodEntity made = TestEntities.create(PodRegistry.POD, level);
@@ -117,7 +120,7 @@ public class BandReadersTest {
     }
 
     /** Layer 1's floor crust leads on to layer 2: the drill bores its last row, and it costs the hull a row of crust. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theCrustAtLayer1sFloorIsBored(GameTestHelper helper) {
         int x = 23000;
         int floor = ONE.minY();
@@ -146,9 +149,10 @@ public class BandReadersTest {
     }
 
     /** Layer 2's floor crust leads nowhere (unbuilt depth lies below it), so the pod stands on it and does not drill. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theCrustAtLayer2sFloorIsRefused(GameTestHelper helper) {
-        int x = 23064;
+        // Layer 1's bore is in this column too: the layers share a level, so one set of chunks serves both.
+        int x = 23000;
         int floor = TWO.minY();
         ServerLevel level = helper.getLevel();
         Bore bore = new Bore(helper, x, floor, 3, 3);
@@ -189,7 +193,7 @@ public class BandReadersTest {
      * Above layer 1's floor the crust warning counts from that band's floor: 7 slabs above its 3 crust rows, in the crust, and out of reach
      * higher up. Layer 2's floor has no warning (nothing is bored there), nor has the surface.
      */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theBraceWarnsAboveEachBandFloorThatLeadsOn(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int crust = LayerTuning.DEFAULT.crustThickness();
@@ -228,38 +232,72 @@ public class BandReadersTest {
 
     // ---- OutpostRates and OutpostBuilder ----
 
+    /** Carves the hall above {@code floor} and joins a survival player who has founded a charter. */
+    private static MockPlayer foundedBuilderBesideHall(
+            GameTestHelper helper, ServerLevel level, BlockPos floor, String name) {
+        RoomCarver.carve(
+                level,
+                floor.getX() - 8,
+                floor.getX() + 8,
+                floor.getY() + 1,
+                floor.getY() + 16,
+                Z - 8,
+                Z + 8,
+                Blocks.STONE);
+        MockPlayer mock = MockPlayers.join(helper, name);
+        mock.player().setGameMode(GameType.SURVIVAL);
+        if (Charters.found(
+                        level.getServer(),
+                        mock.player().getUUID(),
+                        name + " " + UUID.randomUUID().toString().substring(0, 8))
+                .isPresent()) {
+            throw failure(helper, "founding the charter should succeed");
+        }
+        return mock;
+    }
+
     /** An outpost is built at the crust top of layer 1's band, and its rates apply by the band of the terminal's Y. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void anOutpostIsBuiltInLayer1sBandAndPricesByBand(GameTestHelper helper) {
         int x = 23192;
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         BlockPos floor = new BlockPos(x, ONE.minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
-        RoomCarver.carve(level, x - 8, x + 8, floor.getY() + 1, floor.getY() + 16, Z - 8, Z + 8, Blocks.STONE);
-        MockPlayer mock = MockPlayers.join(helper, "band-outposter");
-        mock.player().setGameMode(GameType.SURVIVAL);
-        if (Charters.found(
-                        server,
-                        mock.player().getUUID(),
-                        "Band Outpost " + UUID.randomUUID().toString().substring(0, 8))
-                .isPresent()) {
-            throw failure(helper, "founding the charter should succeed");
-        }
+        MockPlayer mock = foundedBuilderBesideHall(helper, level, floor, "band-outposter");
         CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID())
                 .orElseThrow()
                 .id();
-        mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
         FarChunks.awaitEntityTicking(
                 helper,
                 level,
                 floor,
                 () -> WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
-                    Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
                     expect(
                             helper,
-                            refusal.isEmpty(),
-                            "the outpost in layer 1's band was refused: %s",
-                            refusal.map(Component::getString).orElse(""));
+                            mock.player().isAlive(),
+                            "the builder died while it waited at %s for the chunk",
+                            helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN));
+                    // On the build tick, so the far-chunk wait cannot suffocate the builder in the carved rock.
+                    mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
+                    Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
+                    if (refusal.isPresent()) {
+                        // entity-query: names what refused the kit, in the chunk this test forced and waited on
+                        List<String> inShell = level.getEntities(mock.player(), new AABB(floor).inflate(8)).stream()
+                                .map(entity -> entity.getType().toShortString() + " " + entity.getUUID() + " tick "
+                                        + entity.tickCount + " at " + entity.blockPosition()
+                                        + (entity instanceof ItemEntity item ? " holding " + item.getItem() : ""))
+                                .toList();
+                        throw failure(
+                                helper,
+                                "the outpost in layer 1's band was refused: %s; entities near the hall: %s; the builder is %s (removed %s, health %s) at %s; game time %s",
+                                refusal.get().getString(),
+                                inShell,
+                                mock.player().isAlive() ? "alive" : "dead",
+                                mock.player().isRemoved(),
+                                mock.player().getHealth(),
+                                mock.player().blockPosition(),
+                                level.getGameTime());
+                    }
                     expect(
                             helper,
                             OutpostData.get(server).of(charter, 1).isPresent(),
@@ -285,7 +323,40 @@ public class BandReadersTest {
                 }));
     }
 
-    @GameTest(dimension = SAMPLE)
+    /** A builder that dies in the rock of the hall drops its starting rations there, and the kit sweeps them rather than refusing: the rations end up in the builder's inventory and none lie in the hall. */
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void aBuilderWhoDiesInTheHallHasItsRationsSweptNotRefused(GameTestHelper helper) {
+        int x = 23704;
+        ServerLevel level = helper.getLevel();
+        MinecraftServer server = level.getServer();
+        BlockPos floor = new BlockPos(x, ONE.minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
+        MockPlayer mock = foundedBuilderBesideHall(helper, level, floor, "band-dying-outposter");
+        FarChunks.awaitEntityTicking(
+                helper,
+                level,
+                floor,
+                () -> WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
+                    mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
+                    mock.player().kill(level);
+                    // entity-query: counts what lies in the hall, in the chunk this test forced and waited on
+                    AABB hall = new AABB(floor).inflate(6, 6, 6);
+                    int lying = level.getEntitiesOfClass(ItemEntity.class, hall).size();
+                    expect(helper, lying > 0, "the dead builder should have dropped its rations in the hall");
+                    Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
+                    expect(
+                            helper,
+                            refusal.isEmpty(),
+                            "the rations should be swept, not refused, it said %s",
+                            refusal.map(Component::getString).orElse(""));
+                    expect(
+                            helper,
+                            level.getEntitiesOfClass(ItemEntity.class, hall).isEmpty(),
+                            "no ration should lie in the hall after the sweep");
+                    helper.succeed();
+                }));
+    }
+
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theKitIsRefusedOnTheSurfaceBandAndInLayer2(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MockPlayer mock = MockPlayers.join(helper, "band-refused");
@@ -310,7 +381,7 @@ public class BandReadersTest {
     // ---- LayerBlocks.groundOf, through RoomSeal ----
 
     /** The shell of a room is sealed with the rock of the band it is cut in, and with plain stone in the surface band. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aSealFillsWithTheRockOfTheBandItIsIn(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 23320;
@@ -345,7 +416,7 @@ public class BandReadersTest {
     // ---- HandbookTriggers.deepEnough ----
 
     /** A bore below the pad's ground by the tuned depth counts in the surface band; any Y in a layer band counts, and a bore near the ground does not. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aPodInALayerBandCountsAsDeepEnough(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
@@ -398,7 +469,7 @@ public class BandReadersTest {
     // ---- WorkOrders.offered and CockpitReading.deepestBlocks, from the band table ----
 
     /** The depths the work orders open at and the cockpit's depth gauge ends at are the ones the layer dimensions gave. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theBandTableGivesTheDepthsTheLayerDimensionsGave(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         expect(
@@ -434,7 +505,7 @@ public class BandReadersTest {
      * The Morale Initiative opens at the top of layer 3, depth 575, as the band table gives it for the level the player is in: a charter at
      * 574 is not offered it and one at 575 is. The cockpit's depth gauge is the pod's depth out of the deepest block, 575.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void workOrdersOpenAndTheGaugeEndsAtTheDepthsOfTheBandTable(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
@@ -485,7 +556,7 @@ public class BandReadersTest {
 
     // ---- Zones ----
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void zonesFollowTheBandAtAY(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         expect(
@@ -506,7 +577,7 @@ public class BandReadersTest {
     // ---- LayerChain ----
 
     /** The overworld, whatever its dimension type, is one surface band the height of its level, and no layer. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void anOverworldThatIsNotTheCampaignIsOneSurfaceBand(GameTestHelper helper) {
         ServerLevel overworld = helper.getLevel().getServer().overworld();
         expect(helper, !LayerChain.isCampaign(overworld), "the test overworld is a campaign level");
@@ -531,7 +602,7 @@ public class BandReadersTest {
     }
 
     /** A gas pocket is solid, so goto never puts the player inside one: it passes over the pocket in the only room of the column and ends in the pocket it cuts. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void gotoNeverStandsAPlayerInGas(GameTestHelper helper) throws CommandSyntaxException {
         int x = 23512;
         ServerLevel level = helper.getLevel();
@@ -570,7 +641,7 @@ public class BandReadersTest {
     }
 
     /** In the campaign world goto stays in the level and lands in the layer's band, on a floor, with room to stand. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void gotoLandsInTheBandOfTheLayer(GameTestHelper helper) throws CommandSyntaxException {
         MockPlayer mock = MockPlayers.join(helper, "band-goto");
         ServerLevel level = helper.getLevel();

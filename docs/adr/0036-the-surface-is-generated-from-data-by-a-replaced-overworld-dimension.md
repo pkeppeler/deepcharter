@@ -6,6 +6,8 @@ status: accepted
 
 Builds on [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md) (our own dry surface) and [ADR 0030](0030-art-direction-decisions.md) (the art direction). Amends [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md): the open floor now comes from our own material rule. Issue #240.
 
+Amended 2026-11-22 (#915): the surface stays empty for good (`docs/CREATURES.md`, Surface), so no biome lists a vanilla monster and no vanilla monster spawns on the surface or in any band; the Retained keep their own spawns in layers 1 and 2. Data closes the siege (every biome is in `without_zombie_sieges`) and the pillager patrol (`can_pillager_patrol_spawn` is false in every biome), and `spawn_patrols` is off as a second layer. Phantoms, wardens and the trader have no data switch: `SurfaceWorldRules` turns their rules off once per world, so they share the old-world gap below (the warden rule only hardens, since there is no sculk). `spawn_monsters` stays on, or the Retained would stop too.
+
 Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md): the campaign world overrides the overworld dimension type; an old world with a colony now refuses to start.
 
 ## Decision
@@ -21,7 +23,7 @@ Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-mi
   | Great pit | 24, 150, south of the square | 56 blocks in radius, 22 deep, rim 12 high |
   | Base ground | y 64 | the plateau's ground block is y 63 |
 - **Block ids are fixed:** `deepcharter:regolith` (plains top), `regolith_packed` (the layer under it), `ochre_regolith` (mesa top), `regolith_rock` (rust-red rock under that) and `basalt_outcrop`. Each is one block with 2 to 4 weighted model variants in its blockstate, so more or fewer textures is a pack change. The material rule (`deepcharter:surface`) is gated by one `stone_depth` condition (about the top 15 blocks of a column), so a block in deep rock pays one condition, and inside it picks the block from the two noises that also shape the relief. Basalt paints only from y 66 up, so the knobs are black and the flat plateau is not.
-- **Biomes carry life and, later, atmosphere.** `regolith_plains`, `mesa_country` and `basalt_field` have no creatures, no ambient mobs, no features and no carvers. Vanilla's monster list stays (night monsters belong to the creatures work). The biomes follow the same two noises as the terrain, through the noise router's `continents` and `erosion` slots.
+- **Biomes carry life and, later, atmosphere.** `regolith_plains`, `mesa_country` and `basalt_field` have no creatures, no ambient mobs, no features and no carvers. The biomes follow the same two noises as the terrain, through the noise router's `continents` and `erosion` slots.
 - **The wandering trader is turned off once.** Its spawner ignores a biome's spawn list, so the biomes cannot stop the trader and its llamas. `SurfaceWorldRules` sets the `spawn_wandering_traders` game rule to false on `ColonyEvents.BUILT`, which fires once per world, at its first start. A player who turns the rule back on keeps that choice, and a world that already has its colony is not changed. No new saved data, no mixin.
 - **Dry and open:** `sea_level` is `min_y`, `default_fluid` is air, there are no aquifers, and the rule has no bedrock step. The floor is plain stone down to the breach (ADR 0011).
 
@@ -92,3 +94,10 @@ CPU ms per column, `tall_baseline_biomes` (layers only) against `tall_surface_bi
 Ratio, surface over layers only: 1.075x on the pooled medians (131.52 over 122.31), 1.049x on the pooled minimums. By run, the medians give 1.04x, 1.10x and 1.08x, and the minimums 1.06x, 1.03x and 1.08x. The same world differs by up to 4.7% in its median between runs (`tall_surface_biomes`; 1.5% for `tall_baseline_biomes`), so one pair cannot settle a ratio this close, and the pooled figures can.
 
 Not settled: the heap. The fifth round of every run reads a negative heap (the garbage collector ran between the two readings), and the other four vary by about 2x within one world, as before, so no heap ratio is claimed.
+
+## Note, 2026-11-21 (#803)
+
+The overworld is the campaign world: `data/minecraft/dimension/overworld.json` now has the generator of `campaign_sample` (`deepcharter:campaign` noise settings, the `deepcharter:bands` biome source) and a new `data/minecraft/dimension_type/overworld.json` has the campaign type. The surface above is its surface band, from y -64 to 319. The generator's height query for the surface band is identical to the one this ADR describes over 262,144 columns of the old `surface_sample`; the biomes are identical too. Two differences remain, and both are in the made chunk: the top block differs in about 14% of sampled columns, and the features are not all at the same place (see `SurfaceBandParityTest` in the first commit of #803). The layers' density terms ran above their bands and raised columns of ground to the top of the band in 0.5% of the columns; the campaign density now ends them at the band's floor.
+
+`surface_sample` is deleted. The GameTest server still bakes a flat overworld, now of a short test type (`deepcharter:test_overworld`, vanilla's 384-tall type), and `SurfaceTerrainTest` runs in the surface band of `campaign_sample`, the test pack's copy of the new overworld. The user approved the look on 2026-11-21 (#214).
+

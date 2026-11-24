@@ -10,6 +10,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.InterpolationHandler;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -259,6 +260,12 @@ public class PodEntity extends Entity {
     public boolean causeFallDamage(double fallDistance, float damageMultiplier, DamageSource source) {
         HardLanding.onLanding(this, damageMultiplier);
         return false;
+    }
+
+    /** The client's copy glides to each move the server sends, and rides out a late server (ADR 0074, ADR 0082). Runs from the entity's constructor: it reads no field. */
+    @Override
+    protected InterpolationHandler createInterpolationHandler() {
+        return PodGlide.create(this);
     }
 
     /** The server moves the pod from the pilot's input (PodMovement); the default would trust a player pilot's client. */

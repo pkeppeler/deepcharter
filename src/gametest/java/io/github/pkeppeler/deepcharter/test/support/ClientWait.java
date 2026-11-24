@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.layer.LightSync;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -8,6 +10,8 @@ import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.SectionPos;
+import net.minecraft.world.level.ChunkPos;
 
 /**
  * Waits in a client GameTest for a value the server syncs, or for any other state the test awaits. The wait is on the wall clock, not on ticks: the client and
@@ -55,7 +59,7 @@ public final class ClientWait {
         while (!condition.getAsBoolean()) {
             if (deadline.expired()) {
                 throw new AssertionError("Timed out after " + FarChunks.WAIT_SECONDS + " s waiting for " + what
-                        + "; it had " + actual.get() + "; held chunks: " + LightSync.heldChunks());
+                        + "; it had " + actual.get() + "; LightSync holds: " + LightSync.heldChunks());
             }
             try {
                 Thread.sleep(FarChunks.POLL_MILLIS);
@@ -65,6 +69,35 @@ public final class ClientWait {
             }
             context.waitTicks(1);
         }
+    }
+
+    /**
+     * Waits until the client holds every chunk the square of {@code radius} blocks round {@code (x, z)} touches. Call it before seating players at a
+     * spot just built: the server tracks an entity for a player only after sending that entity's chunk, so a chunk still queued makes the other
+     * rider vanish from the client for a tick.
+     */
+    public static void chunksAround(ClientGameTestContext context, int x, int z, int radius) {
+        int minX = SectionPos.blockToSectionCoord(x - radius);
+        int maxX = SectionPos.blockToSectionCoord(x + radius);
+        int minZ = SectionPos.blockToSectionCoord(z - radius);
+        int maxZ = SectionPos.blockToSectionCoord(z + radius);
+        until(
+                context,
+                "the chunks " + minX + "," + minZ + " to " + maxX + "," + maxZ + " on the client",
+                client -> missingChunks(client, minX, maxX, minZ, maxZ).isEmpty(),
+                client -> "chunks missing: " + missingChunks(client, minX, maxX, minZ, maxZ) + ", " + describe(client));
+    }
+
+    private static List<ChunkPos> missingChunks(Minecraft client, int minX, int maxX, int minZ, int maxZ) {
+        List<ChunkPos> missing = new ArrayList<>();
+        for (int chunkX = minX; chunkX <= maxX; chunkX++) {
+            for (int chunkZ = minZ; chunkZ <= maxZ; chunkZ++) {
+                if (client.level == null || !client.level.getChunkSource().hasChunk(chunkX, chunkZ)) {
+                    missing.add(new ChunkPos(chunkX, chunkZ));
+                }
+            }
+        }
+        return missing;
     }
 
     /** What the client is showing, for a failure message: the level, whether it has a player, what the player rides, and the open screen. */
