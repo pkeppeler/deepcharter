@@ -417,24 +417,30 @@ public class DrifterSpawnTest {
                     if (spawned.isPresent()) {
                         Drifter drifter = spawned.get();
                         found++;
-                        expect(
-                                helper,
+                        // Read and discard before any check: a failed check must not leave a drifter in a zone another
+                        // test counts (#1180: one stray made theTickPlacesDriftersByPodsUpToTheZoneCap fail too).
+                        boolean inZone =
                                 DrifterAlarm.Zone.at(level, drifter.getBlockY()).equals(zone)
                                         && DrifterAlarm.Zone.at(level, drifter.getBlockY() + 1)
                                                 .equals(zone)
-                                        && level.isInWorldBounds(drifter.blockPosition()),
-                                "a drifter was placed at y %s, out of the source's zone %s (source y %d)",
-                                drifter.getY(),
-                                zone,
-                                y);
+                                        && level.isInWorldBounds(drifter.blockPosition());
+                        double placedY = drifter.getY();
+                        double away = drifter.position().distanceTo(source.pos());
+                        drifter.discard();
                         expect(
                                 helper,
-                                drifter.position().distanceTo(source.pos())
-                                        >= TUNING.spawn().minBlocks(),
+                                inZone,
+                                "a drifter was placed at y %s, out of the source's zone %s (source y %d)",
+                                placedY,
+                                zone,
+                                y);
+                        // The spawner measures from the centre of the source's block, half a block above source.pos().
+                        expect(
+                                helper,
+                                away >= TUNING.spawn().minBlocks() - 0.5,
                                 "a drifter was placed %s blocks from its source, under %s",
-                                drifter.position().distanceTo(source.pos()),
-                                TUNING.spawn().minBlocks());
-                        drifter.discard();
+                                away,
+                                TUNING.spawn().minBlocks() - 0.5);
                     }
                 }
                 expect(
