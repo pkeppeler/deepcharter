@@ -7,10 +7,10 @@ import net.minecraft.world.level.ChunkPos;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Chunk positions whose {@code ThreadedLevelLightEngine.waitForPendingTasks} future a test holds back, so that "the light tasks queued
- * at this chunk have not run yet" is a state the test sets and releases, not one it waits for. Fed to
- * {@code LightEngineGateMixin}, which delays the future of a gated position until its gate is {@link #release}d; the engine's own
- * queues are untouched. Empty unless a test {@link #close}s a position, and it must {@link #release} it.
+ * Chunk positions whose {@code ThreadedLevelLightEngine.waitForPendingTasks} future a test holds back, so that "the
+ * light tasks queued at this chunk have not run yet" is a state the test sets and releases, not one it waits for. Fed
+ * to {@code LightEngineGateMixin}, which delays the future of a gated position until its gate is {@link #release}d; the
+ * engine's own queues are untouched. Empty unless a test {@link #close}s a position, and it must {@link #release} it.
  */
 public final class LightEngineGate {
     private static final Map<Long, CompletableFuture<Void>> GATES = new ConcurrentHashMap<>();

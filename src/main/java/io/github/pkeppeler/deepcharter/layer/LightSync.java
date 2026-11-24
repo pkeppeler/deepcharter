@@ -39,8 +39,9 @@ import org.jspecify.annotations.Nullable;
  * neighbour's draw changes the light of that chunk, and vanilla drops a light change for a chunk that does not tick (issue 427), so
  * the player's client keeps the old light.
  *
- * <p>Each neighbour in the hold also waits for the light tasks queued at the drawn chunk itself (#494): vanilla's wait covers only the
- * tasks queued at the neighbour's own position, and the engine runs different positions' queues in no fixed order.
+ * <p>Each neighbour in the hold also waits for the light tasks queued at the drawn chunk itself (#494): vanilla's wait
+ * covers only the tasks queued at the neighbour's own position, and the engine runs different positions' queues in no
+ * fixed order.
  *
  * <p>The safety net (#863, ADR 0068): {@code LightSync} records the light each player was sent of a chunk in a hold's 3x3, and for
  * a window that starts when the chunk can be sent sends a player whose chunk's published light differs from it.
@@ -185,11 +186,12 @@ public final class LightSync {
     }
 
     /**
-     * Vanilla's hold makes each chunk of the 3x3 wait for the light tasks queued at <em>its own</em> position. The tasks of the
-     * blocks just placed are queued at {@code chunk}, and the light engine runs the queues of different positions in no fixed
-     * order, so a neighbour's wait can end before they have run: the neighbour is then sent the light it had before the draw
-     * (#494). Each neighbour also waits for the tasks queued at {@code chunk}, after the draw's. A neighbour that has no holder yet,
-     * or loads later, waits for them when it loads ({@link #holdLoadedNeighbour}).
+     * Vanilla's hold makes each chunk of the 3x3 wait for the light tasks queued at <em>its own</em> position. The
+     * tasks of the blocks just placed are queued at {@code chunk}, and the light engine runs the queues of different
+     * positions in no fixed order, so a neighbour's wait can end before they have run: the neighbour is then sent the
+     * light it had before the draw (#494). Each neighbour also waits for the tasks queued at {@code chunk}, after the
+     * draw's. A neighbour that has no holder yet, or loads later, waits for them when it loads ({@link
+     * #holdLoadedNeighbour}).
      */
     private static void holdRingUntilTasksRun(ServerLevel level, ChunkPos chunk, List<ChunkPos> sendable) {
         CompletableFuture<?> drawn = level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x(), chunk.z());
@@ -213,11 +215,11 @@ public final class LightSync {
     }
 
     /**
-     * Offers a chunk that could not be sent when its send was extended to the players who track it once it can be. Vanilla offers a
-     * chunk to its trackers once, when the send future it read at the chunk's tick promotion completes, and marks nothing for a
-     * player who starts tracking while {@code getChunkToSend} is null: a player who came into view after that future completed and
-     * before the extension did would never be sent the chunk. Players sent the chunk meanwhile, and those already queued for it,
-     * are left out.
+     * Offers a chunk that could not be sent when its send was extended to the players who track it once it can be.
+     * Vanilla offers a chunk to its trackers once, when the send future it read at the chunk's tick promotion
+     * completes, and marks nothing for a player who starts tracking while {@code getChunkToSend} is null: a player who
+     * came into view after that future completed and before the extension did would never be sent the chunk. Players
+     * sent the chunk meanwhile, and those already queued for it, are left out.
      */
     private static void offerWhenSendable(ServerLevel level, ChunkPos chunk, ChunkHolder holder) {
         Key key = new Key(level, chunk);

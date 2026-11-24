@@ -27,16 +27,17 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A hold on a chunk keeps its neighbours unsent until the light tasks of the blocks just placed have run (#494). Vanilla's hold makes
- * each neighbour wait only for the light tasks queued at its own position, and the light engine runs the queues of different
- * positions in no fixed order, so a neighbour could be sent the light it had before a draw. The order is not the test's to set: it
- * draws into many chunks as each becomes sendable, while the rest of the area is still being generated, and checks every tick that no
- * neighbour of a drawn chunk is sendable while the light tasks queued by the draw are waiting. That sampled case is statistical: it
- * can pass on a run where the engine happens to run the drawn chunk's queue first. The two cases with a gate
- * ({@link LightEngineGate}) are not: the drawn chunk's wait for its light tasks is held back by the test, so the state "the draw's
- * tasks have not run, the neighbours' own have" is set, not waited for, and a neighbour that is sendable in it fails. A third case
- * adds a player who comes into view of a neighbour while its send is extended: vanilla marks nothing for a player who tracks a
- * chunk that cannot be sent, so the chunk has to be offered to them when it can be.
+ * A hold on a chunk keeps its neighbours unsent until the light tasks of the blocks just placed have run (#494).
+ * Vanilla's hold makes each neighbour wait only for the light tasks queued at its own position, and the light engine
+ * runs the queues of different positions in no fixed order, so a neighbour could be sent the light it had before a
+ * draw. The order is not the test's to set: it draws into many chunks as each becomes sendable, while the rest of the
+ * area is still being generated, and checks every tick that no neighbour of a drawn chunk is sendable while the light
+ * tasks queued by the draw are waiting. That sampled case is statistical: it can pass on a run where the engine happens
+ * to run the drawn chunk's queue first. The two cases with a gate ({@link LightEngineGate}) are not: the drawn chunk's
+ * wait for its light tasks is held back by the test, so the state "the draw's tasks have not run, the neighbours' own
+ * have" is set, not waited for, and a neighbour that is sendable in it fails. A third case adds a player who comes into
+ * view of a neighbour while its send is extended: vanilla marks nothing for a player who tracks a chunk that cannot be
+ * sent, so the chunk has to be offered to them when it can be.
  */
 public class LightSyncRingHoldTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -168,8 +169,8 @@ public class LightSyncRingHoldTest {
     private static final int GATED_SEND_TICKS = 400;
 
     /**
-     * The drawn chunk's light tasks are held back by {@link LightEngineGate}. The neighbours' own waits (all vanilla adds) are done,
-     * and none of them can be sent until the gate opens; then all can.
+     * The drawn chunk's light tasks are held back by {@link LightEngineGate}. The neighbours' own waits (all vanilla
+     * adds) are done, and none of them can be sent until the gate opens; then all can.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aNeighbourCannotBeSentWhileTheDrawnChunksLightTasksAreHeldBack(GameTestHelper helper) {
@@ -236,9 +237,10 @@ public class LightSyncRingHoldTest {
     }
 
     /**
-     * A neighbour whose send is already held by something else when a draw's hold is requested is not in the hold's own list, and a
-     * player who comes into view of it afterwards is marked for nothing, because it cannot be sent. When the extended send
-     * completes, the chunk must be offered to that player: they are sent it, once the other hold and the draw's tasks are done.
+     * A neighbour whose send is already held by something else when a draw's hold is requested is not in the hold's own
+     * list, and a player who comes into view of it afterwards is marked for nothing, because it cannot be sent. When
+     * the extended send completes, the chunk must be offered to that player: they are sent it, once the other hold and
+     * the draw's tasks are done.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aPlayerWhoComesIntoViewWhileTheSendIsExtendedIsSentTheChunk(GameTestHelper helper) {
