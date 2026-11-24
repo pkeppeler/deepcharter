@@ -1,17 +1,14 @@
 """Comment-length gate (#1222): a comment line a branch adds to src/**/*.java stays within 120 columns.
 
-palantir-java-format wraps code at 120 columns but never reflows a comment, so long comment lines keep landing. The gate reads
-`git diff -U0 <merge-base of --base and --head> --head -- 'src/**/*.java'` and fails on an added line that holds a comment
-(Javadoc, block, `//`, standalone or trailing) and is longer than 120 columns. A column is a character: a tab counts 1.
-Untouched long lines are never read, and code lines (a long string literal) are out of scope. A line is exempt when the comment
-has no way to break: its text, after the comment marker, is one token, or `@see`/`{@link` and one token (a URL, a `{@link a.B#c}` target).
-It fails loudly, never passes silently, when the base ref or the merge base is missing.
+palantir-java-format wraps code but never reflows comments. The gate reads `git diff -U0` from the merge base of
+--base and --head, and fails on an added line that holds a comment (Javadoc, block, `//`, trailing too) over 120
+columns (a character; a tab counts 1). Untouched lines and code lines are never read. A comment that is one token,
+or `@see`/`{@link` and one token, is exempt. A missing base ref or merge base fails loudly. CI runs it after
+merge-main, which has just fetched origin/main; the pre-push hook passes --fetch, since a stale origin/main would
+flag lines main added.
 
-Temporary: the existing hits are rewrapped by #1223. After that the rule is whole-tree (a Checkstyle LineLength) and the diff
-logic here goes.
-
-CI runs it after the merge-main action, which has just fetched origin/main. The pre-push hook passes --fetch, since its origin/main
-may be stale and a stale base would flag lines main itself added.
+Temporary: the existing hits are rewrapped by #1223. After that the rule is whole-tree (a Checkstyle LineLength)
+and the diff logic here goes. Known limit: a line like ` */ longCode(...)` counts as a comment.
 
 Usage: tools/py tools/comment_length_gate.py [--base origin/main] [--head HEAD] [--fetch]
 """
@@ -94,7 +91,12 @@ def added_lines(diff: str) -> dict[str, list[int]]:
     path = None
     for line in diff.split("\n"):
         if line.startswith("+++ "):
-            path = line[6:] if line.startswith("+++ b/") else None
+            if line.startswith("+++ b/"):
+                path = line[6:]
+            elif line == "+++ /dev/null":
+                path = None
+            else:
+                raise SystemExit(f"comment_length_gate: cannot read the diff path in {line!r}")
         elif path and (m := HUNK.match(line)):
             first, count = int(m.group(1)), int(m.group(2) if m.group(2) is not None else 1)
             added.setdefault(path, []).extend(range(first, first + count))
@@ -102,19 +104,29 @@ def added_lines(diff: str) -> dict[str, list[int]]:
 
 
 def git(*args: str) -> str:
-    done = subprocess.run(["git", *args], capture_output=True, text=True, check=False)
+    done = subprocess.run(["git", "-c", "core.quotepath=false", *args], capture_output=True, text=True, check=False)
     if done.returncode != 0:
         raise SystemExit(f"comment_length_gate: git {' '.join(args)} failed: {done.stderr.strip()}")
     return done.stdout
 
 
 def violations(base: str, head: str) -> list[str]:
-    git("rev-parse", "--verify", "--quiet", f"{base}^{{commit}}")  # fails loudly when the base ref is missing
-    git("rev-parse", "--verify", "--quiet", f"{head}^{{commit}}")
-    merge_base = git("merge-base", base, head).strip()
+    for role, ref in (("base", base), ("head", head)):
+        probe = ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"]
+        if subprocess.run(probe, capture_output=True, check=False).returncode:
+            raise SystemExit(
+                f"comment_length_gate: {role} ref {ref} is missing: "
+                "run `git fetch origin main` (CI: merge-main fetches it)"
+            )
+    found_base = subprocess.run(["git", "merge-base", base, head], capture_output=True, text=True, check=False)
+    merge_base = found_base.stdout.strip()
     if not merge_base:
-        raise SystemExit(f"comment_length_gate: no merge base of {base} and {head}")
-    diff = git("diff", "-U0", "--no-color", "--no-ext-diff", merge_base, head, "--", "src/**/*.java")
+        reason = found_base.stderr.strip() or "unrelated histories"
+        raise SystemExit(f"comment_length_gate: no merge base of {base} and {head}: {reason}")
+    diff = git(
+        "diff", "-U0", "-M", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
+        merge_base, head, "--", "src/**/*.java",
+    )
     found = []
     for path, numbers in added_lines(diff).items():
         text = git("show", f"{head}:{path}")
@@ -135,7 +147,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--base", default="origin/main")
     parser.add_argument("--head", default="HEAD")
-    parser.add_argument("--fetch", action="store_true", help="git fetch origin main first (not for CI: merge-main already did)")
+    parser.add_argument("--fetch", action="store_true", help="fetch origin main first (CI's merge-main did)")
     args = parser.parse_args(argv)
     if args.fetch:
         git("fetch", "--no-tags", "-q", "origin", "main")
@@ -143,7 +155,7 @@ def main(argv: list[str]) -> int:
     for message in found:
         print(message, file=sys.stderr)
     if found:
-        print(f"comment_length_gate: {len(found)} added comment line(s) over {LIMIT} columns. Rewrap them (no word changes).", file=sys.stderr)
+        print(f"comment_length_gate: {len(found)} added comment line(s) over {LIMIT}. Rewrap them.", file=sys.stderr)
         return 1
     return 0
 

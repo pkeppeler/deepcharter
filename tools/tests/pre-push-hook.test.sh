@@ -26,6 +26,7 @@ echo "uv $*" >>"$STUB_LOG"
 [[ -z ${STUB_GIT_INIT:-} ]] || { git init -q "$STUB_GIT_INIT" && git -C "$STUB_GIT_INIT" config deepcharter.leak 1; }
 case "$*" in
   *conflict_markers*) [[ ${STUB_FAIL:-} != conflict ]] ;;
+  *comment_length_gate*) [[ ${STUB_FAIL:-} != comment ]] ;;
   *unittest*) [[ ${STUB_FAIL:-} != unittest ]] ;;
   *) true ;;
 esac
@@ -63,6 +64,13 @@ check "empty push is skipped" "0:0" "$(run_hook "")"
 check "delete plus normal push still runs checks" "0:6" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
 check "conflict-marker failure blocks, gradle not reached" "1:1" "$(STUB_FAIL=conflict run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "conflict-marker failure message names the reason" "yes" "$(grep -q 'conflict markers failed' "$work/out" && echo yes || echo no)"
+check "comment-length gate failure blocks, gradle not reached" "1:2" "$(STUB_FAIL=comment run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "comment-length gate failure message names the reason" "yes" "$(grep -q 'comment-length gate failed' "$work/out" && echo yes || echo no)"
+run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
+check "one ref: the gate gets --fetch --head <sha> once" "1" "$(grep -c "comment_length_gate.py --fetch --head $sha\$" "$work/calls" || true)"
+sha2=2222222222222222222222222222222222222222
+run_hook "refs/heads/a $sha refs/heads/a $zero${nl}refs/heads/b $sha2 refs/heads/b $zero$nl" >/dev/null
+check "two refs: the gate runs once per pushed sha" "1:1" "$(grep -c "comment_length_gate.py --fetch --head $sha\$" "$work/calls" || true):$(grep -c "comment_length_gate.py --fetch --head $sha2\$" "$work/calls" || true)"
 check "gradle failure blocks, tool unit tests not reached" "1:3" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "failure message names the reason" "yes" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
 check "tool unit test failure blocks" "1:4" "$(STUB_FAIL=unittest run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
