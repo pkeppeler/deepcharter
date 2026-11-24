@@ -10,14 +10,19 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
+import net.minecraft.client.Camera;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.material.FogType;
 import org.joml.Vector3fc;
 
 /**
@@ -26,13 +31,19 @@ import org.joml.Vector3fc;
  * {@code cavern-sky} scenario shows it, so the two cannot drift.
  *
  * <p>The hall runs west to east, the axis the sun and the moon cross. The client's render distance is cut to {@link #RENDER_DISTANCE}
- * chunks, so the hall reaches past the last drawn chunk at both ends and the sky is what shows there.
+ * chunks, so the hall reaches past the last drawn chunk at both ends and the sky is what shows there. Under its east end a pit drops past
+ * the render distance too, so a view pitched down sees the sky below the horizon: the dark disc the client draws over the sun and the
+ * moon at 180 degrees, which {@code sky_fog_end_distance} 0 turns into fog. The pit is then flooded and the camera looks straight down
+ * from under the water, past the drawn sections, where the client draws no dark disc and only {@code LayerSky} hides the sun and the
+ * moon.
  */
 public final class CavernSky {
     /** Far from the colony, in the middle of a chunk, so the drawn chunks reach as far both ways. */
     private static final int HALL_X = 5_000;
 
+    /** As {@link #HALL_X}. */
     private static final int HALL_Z = 5_000;
+
     /** The render distance, in chunks, while the camera is in the hall: the hall must reach past it. */
     public static final int RENDER_DISTANCE = 2;
 
@@ -42,14 +53,34 @@ public final class CavernSky {
     private static final int HALF_WIDTH = 18;
     /** The hall's air above its floor: clear of every ray of the sampled box within the drawn chunks. */
     private static final int HEIGHT = 28;
-    /** The middle zone of layer 1, whose biome the camera stands in; the floor is this far above the zone's bottom. */
+    /** The middle zone of layer 1, whose biome the camera stands in. */
     private static final int ZONE = 1;
 
-    private static final int FLOOR_ABOVE_ZONE_BOTTOM = 8;
+    /** How far the hall's floor is above the bottom of {@link #ZONE}: the pit stays in the zone. */
+    private static final int FLOOR_ABOVE_ZONE_BOTTOM = 30;
 
-    /** The box of the screen that must show the fog alone, either side of the middle: about 16 degrees across and 10 up and down. */
+    /**
+     * How far east of the camera's block the floor drops into the pit, which runs to the hall's east end: the edge is half a block from
+     * the camera's eye, so every ray of a box pitched down passes over it.
+     */
+    private static final int PIT_START = 1;
+
+    /**
+     * How far the pit's floor is below the hall's. The client draws the sections up to {@link #RENDER_DISTANCE} above and below the
+     * camera's, so from under the flooded pit's water a view straight down looks past the last drawn section, with a section to spare.
+     */
+    private static final int PIT_DEPTH = 64;
+
+    /** How far into the flooded pit, east of its start, the camera stands for the underwater views: the box is over the pit's floor. */
+    private static final int UNDERWATER_EAST = 16;
+
+    /** How far under the hall's floor the camera's feet are for the underwater views: its eye is under the water. */
+    private static final int UNDERWATER_BELOW = 4;
+
+    /** Half the width of the box of the screen that must show the fog alone: about 16 degrees across. */
     private static final int HALF_BOX_WIDTH = 100;
 
+    /** Half the height of the box of the screen that must show the fog alone: about 10 degrees up and down. */
     private static final int HALF_BOX_HEIGHT = 60;
     /** A pixel that differs from the box's median by more than this on a channel is a sky pixel that is not fog. */
     private static final int UNIFORM_TOLERANCE = 8;
@@ -59,22 +90,69 @@ public final class CavernSky {
     /**
      * A view of the hall at a sky time. The sky timeline ({@code deepcharter:sky}) stands the dusk sun 10 degrees above the west horizon at
      * sky time 0, and puts the moon 50 degrees up in the east at 144000 with every star out; at 68000 the moon is about 12 degrees above the
-     * east horizon and the stars are at more than half their brightness.
+     * east horizon and the stars are at more than half their brightness. A positive pitch looks down.
      */
     public record View(String name, long skyTicks, float yaw, float pitch) {}
 
-    public static final List<View> VIEWS = List.of(
+    /** The views from the hall's floor: up past either end, and down into the pit past its east end. */
+    private static final List<View> VIEWS = List.of(
             new View("dusk-west", 0, 90, -10),
             new View("moonrise-east", 68_000, -90, -12),
             new View("night-west", 144_000, 90, -10),
-            new View("night-east", 144_000, -90, -10));
+            new View("night-east", 144_000, -90, -10),
+            new View("dusk-pit-east", 0, -90, 45),
+            new View("night-pit-east", 144_000, -90, 45));
+
+    /** The views from under the water of the flooded pit, straight down, where the sun and the moon stand at 180 degrees. */
+    private static final List<View> UNDERWATER_VIEWS =
+            List.of(new View("underwater-dusk-down", 0, -90, 90), new View("underwater-night-down", 144_000, -90, 90));
+
+    /** What a tour does at each view, once the camera stands there. */
+    @FunctionalInterface
+    public interface AtView {
+        /** {@code underwater} is whether the camera is in the flooded pit. */
+        void at(View view, boolean underwater);
+    }
 
     private CavernSky() {}
 
-    /** Carves the hall in layer 1 and returns its floor under the camera. */
-    public static BlockPos carve(TestServerContext server) {
+    /**
+     * Carves the hall and its pit, cuts the render distance, and stands the camera at each view in turn: first every view from the hall's
+     * floor, then, with the pit flooded, every view from under its water. {@code atView} runs at each.
+     */
+    public static void tour(ClientGameTestContext context, TestServerContext server, AtView atView) {
+        BlockPos floor = carve(server);
+        withShortRenderDistance(context, () -> {
+            for (View view : VIEWS) {
+                stand(context, server, CavernSky::layer, floor, view);
+                atView.at(view, false);
+            }
+            flood(server, floor);
+            BlockPos inWater = floor.offset(PIT_START + UNDERWATER_EAST, -UNDERWATER_BELOW, 0);
+            for (View view : UNDERWATER_VIEWS) {
+                stand(context, server, CavernSky::layer, inWater, view);
+                awaitUnderWater(context);
+                atView.at(view, true);
+            }
+        });
+    }
+
+    /** Waits until the client's player is under water, where the client draws no dark disc. */
+    private static void awaitUnderWater(ClientGameTestContext context) {
+        ClientWait.until(
+                context,
+                "the camera under the water of the flooded pit",
+                client -> client.player != null && client.player.isUnderWater());
+    }
+
+    private static ServerLevel layer(MinecraftServer server) {
+        return TestLayers.level(server, 1);
+    }
+
+    /** Carves the hall in layer 1 and the pit under its east end, and returns the hall's floor under the camera. */
+    private static BlockPos carve(TestServerContext server) {
         return server.computeOnServer(s -> {
-            ServerLevel level = TestLayers.level(s, 1);
+            ServerLevel level = layer(s);
             LayerChain.Band band = TestLayers.band(level, 1);
             Zones.Span zone = Zones.span(band.minY(), band.height(), ZONE);
             BlockPos floor = new BlockPos(HALL_X, zone.low() + FLOOR_ABOVE_ZONE_BOTTOM, HALL_Z);
@@ -83,15 +161,29 @@ public final class CavernSky {
                     floor.offset(-HALF_LENGTH, 0, -HALF_WIDTH),
                     floor.offset(HALF_LENGTH, HEIGHT - 1, HALF_WIDTH),
                     Blocks.AIR.defaultBlockState());
+            fillPit(level, floor, Blocks.AIR);
             return floor;
         });
+    }
+
+    /** Fills the pit under the hall's east end with water. */
+    private static void flood(TestServerContext server, BlockPos floor) {
+        server.runOnServer(s -> fillPit(layer(s), floor, Blocks.WATER));
+    }
+
+    private static void fillPit(ServerLevel level, BlockPos floor, Block fill) {
+        RoomCarver.carve(
+                level,
+                floor.offset(PIT_START, -PIT_DEPTH, -HALF_WIDTH),
+                floor.offset(HALF_LENGTH, -1, HALF_WIDTH),
+                fill.defaultBlockState());
     }
 
     /**
      * Runs {@code body} with the client's render distance at {@link #RENDER_DISTANCE}, and puts it back in a finally: every client test
      * shares one client.
      */
-    public static void withShortRenderDistance(ClientGameTestContext context, Runnable body) {
+    private static void withShortRenderDistance(ClientGameTestContext context, Runnable body) {
         int was = context.computeOnClient(
                 client -> client.options.renderDistance().get());
         try {
@@ -103,30 +195,35 @@ public final class CavernSky {
     }
 
     /**
-     * Sets the sky clock to the view's time, and stands the first player, a spectator, on {@code floor} facing the view, until the client
-     * holds and has drawn the chunks round it.
+     * Sets the sky clock to the view's time, and stands the first player, a spectator, at {@code feet} in {@code level} facing the view,
+     * until the client holds and has drawn the chunks round it.
      */
-    public static void stand(ClientGameTestContext context, TestServerContext server, BlockPos floor, View view) {
+    public static void stand(
+            ClientGameTestContext context,
+            TestServerContext server,
+            Function<MinecraftServer, ServerLevel> level,
+            BlockPos feet,
+            View view) {
         server.runCommand("time of deepcharter:sky set " + view.skyTicks());
         server.runOnServer(s -> {
             var player = s.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SPECTATOR);
             player.teleportTo(
-                    TestLayers.level(s, 1),
-                    floor.getX() + 0.5,
-                    floor.getY(),
-                    floor.getZ() + 0.5,
+                    level.apply(s),
+                    feet.getX() + 0.5,
+                    feet.getY(),
+                    feet.getZ() + 0.5,
                     Set.of(),
                     view.yaw(),
                     view.pitch(),
                     true);
         });
-        Box around = Box.around(floor, RENDER_DISTANCE * 16, 1, HEIGHT);
+        Box around = Box.around(feet, RENDER_DISTANCE * 16, 1, HEIGHT);
         ClientWait.until(
                 context,
-                "the client on the hall's floor at " + floor.toShortString() + " with the chunks round it drawn",
+                "the client at " + feet.toShortString() + " facing " + view.name() + " with the chunks round it drawn",
                 client -> client.player != null
-                        && client.player.blockPosition().equals(floor)
+                        && client.player.blockPosition().equals(feet)
                         && Math.abs(client.player.getYRot() - view.yaw()) < 0.5f
                         && ClientLight.chunksPresent(ClientLight.clientLevel(client), around)
                         && client.levelRenderer.hasRenderedAllSections(),
@@ -136,20 +233,32 @@ public final class CavernSky {
                                 : client.player.blockPosition().toShortString()));
     }
 
-    /** The fog colour the client's camera reads: what every pixel of the sampled box must be. */
+    /**
+     * The fog colour the client's camera reads, the water's under water: what every pixel of the sampled box must be. Under water the
+     * client brightens it as the eyes adjust, so there it is for the log only.
+     */
     public static Vector3fc fogAtCamera(ClientGameTestContext context) {
-        return context.computeOnClient(client ->
-                client.gameRenderer.mainCamera().attributeProbe().getValue(EnvironmentAttributes.FOG_COLOR, 1f));
+        return context.computeOnClient(client -> {
+            Camera camera = client.gameRenderer.mainCamera();
+            return camera.attributeProbe()
+                    .getValue(
+                            camera.getFluidInCamera() == FogType.WATER
+                                    ? EnvironmentAttributes.WATER_FOG_COLOR
+                                    : EnvironmentAttributes.FOG_COLOR,
+                            1f);
+        });
     }
 
     /**
      * What the box in the middle of a still shows.
      *
      * @param fogOnly whether it is the fog colour throughout: a sun, moon, star or dusk glow is a pixel off the box's median, and a sky of
-     *     its own colour is a median off the fog
+     *     its own colour (or a dark disc not turned to fog) is a median off the fog
+     * @param noneBrighter whether no pixel is brighter than the median: a sun or a moon is drawn brighter than the sky behind it, while
+     *     the black square {@code BreachVoidCover} draws under the bottom of the world is darker
      * @param describe the median, the fog and the pixels off the median, for the failure and the log
      */
-    public record Reading(boolean fogOnly, String describe) {}
+    public record Reading(boolean fogOnly, boolean noneBrighter, String describe) {}
 
     /** Reads the box in the middle of {@code shot} against the fog colour {@code fog}. */
     public static Reading read(Path shot, Vector3fc fog) {
@@ -174,14 +283,18 @@ public final class CavernSky {
             median[c] = sorted[sorted.length / 2];
         }
         int off = 0;
+        int brighter = 0;
         int worst = 0;
         for (int i = 0; i < n; i++) {
             int delta = 0;
+            int above = 0;
             for (int c = 0; c < 3; c++) {
                 delta = Math.max(delta, Math.abs(channels[c][i] - median[c]));
+                above = Math.max(above, channels[c][i] - median[c]);
             }
             worst = Math.max(worst, delta);
             off += delta > UNIFORM_TOLERANCE ? 1 : 0;
+            brighter += above > UNIFORM_TOLERANCE ? 1 : 0;
         }
         int[] wanted = {channel(fog.x()), channel(fog.y()), channel(fog.z())};
         int fogDelta = 0;
@@ -189,9 +302,10 @@ public final class CavernSky {
             fogDelta = Math.max(fogDelta, Math.abs(median[c] - wanted[c]));
         }
         String read =
-                "the box's median is %s and the fog %s; %d of %d pixels differ from the median by more than %d (worst %d)"
-                        .formatted(hex(median), hex(wanted), off, n, UNIFORM_TOLERANCE, worst);
-        return new Reading(off == 0 && fogDelta <= FOG_TOLERANCE, read);
+                ("the box's median is %s and the fog %s; %d of %d pixels differ from the median by more than %d (worst %d), %d of"
+                                + " them brighter")
+                        .formatted(hex(median), hex(wanted), off, n, UNIFORM_TOLERANCE, worst, brighter);
+        return new Reading(off == 0 && fogDelta <= FOG_TOLERANCE, brighter == 0, read);
     }
 
     private static int channel(float value) {
