@@ -1,0 +1,447 @@
+package io.github.pkeppeler.deepcharter.test.evidence;
+
+import io.github.pkeppeler.deepcharter.layer.LightSync;
+import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.surface.GiantLayout;
+import io.github.pkeppeler.deepcharter.surface.ParasolShape;
+import io.github.pkeppeler.deepcharter.surface.SpireShape;
+import io.github.pkeppeler.deepcharter.test.evidence.GiantFungiSpots.Spot;
+import io.github.pkeppeler.deepcharter.test.evidence.GiantMockups.Snapshot;
+import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.gui.components.debug.DebugScreenEntries;
+import net.minecraft.client.gui.components.debug.DebugScreenEntryStatus;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Evidence scenario "giant-fungi" (#1202): the parasol and the spires, and the mix of them with the great stalk, in generated caverns of
+ * layer 3 in the campaign world (the design tour's seed), with the sky hidden ({@link EvidencePins#skyHidden}, #1161). Each view is taken
+ * as played and, named {@code -nv}, with night vision.
+ *
+ * <ol>
+ *   <li>The mix the world grew: a Garden view chosen for the most giants in it, and one each of the Spore Fields and the Quiet.
+ *   <li>Before and after: the #1149 mock-ups ({@link GiantMockups}) and the new forms, grown at the same place in a Garden cavern and seen
+ *       from the same camera.
+ *   <li>Each form close (12 blocks off) and far (30 blocks off).
+ *   <li>Six seeds of each form, one still each, from the same camera.
+ *   <li>Top down, with chunk borders: a parasol fitted against the east side of its chunk and a spire cluster against the west side of the
+ *       next, each whole in its own chunk.
+ * </ol>
+ *
+ * Every build is put back as the world grew it before the next. The scenario ends on the title screen.
+ */
+public class GiantFungiScenario extends EvidenceScenario {
+    private static final Logger LOGGER = LoggerFactory.getLogger(GiantFungiScenario.class);
+    private static final String SEED = "deepcharter-design-tour";
+    private static final int LAYER = 3;
+    /** The region searched for the cameras, far from the colony, and the next ones east of it. */
+    private static final int REGION_X = 3_000;
+
+    private static final int REGION_Z = 3_000;
+    private static final int REGION_STEP = 160;
+    private static final int REGIONS = 8;
+    /** The two distances the forms are seen from. */
+    private static final int CLOSE = 12;
+
+    private static final int FAR = 30;
+    /** How high up a form the camera aims, as a share of its height. */
+    private static final double AIM_SHARE = 0.55;
+    /** The box round a build that is put back after it. */
+    private static final int BUILD_RADIUS = 18;
+
+    private static final int BUILD_BELOW = 4;
+    private static final int BUILD_ABOVE = 36;
+    /** The top-down camera stands this high over the floor. */
+    private static final int TOP_DOWN_RISE = 40;
+
+    /** The parasol and spires seeds shown close, far and in the before and after: an open parasol with a curve, a forked cluster. */
+    private static final long PARASOL_SEED = 21;
+
+    private static final long SPIRES_SEED = 34;
+    /**
+     * The six seeds of each form's sheet, picked to show their range: an open cap, a wide tipped bell, an old torn cap on a curving stem, a
+     * twin, a small cap on a double curve and a bell with a twin; and six, seven, three, six, four and seven spires, straight, leaning and
+     * forking.
+     */
+    private static final long[] PARASOL_SEEDS = {21, 2, 13, 3, 4, 26};
+
+    private static final long[] SPIRES_SEEDS = {34, 7, 3, 1, 9, 29};
+    /** Night vision outlasts the scenario's longest run of stills, so it never fades in one. */
+    private static final int NIGHT_VISION_TICKS = 1_000_000;
+
+    private ResourceKey<Level> dimension = Level.OVERWORLD;
+    private final Set<Integer> forced = new HashSet<>();
+
+    @Override
+    protected String name() {
+        return "giant-fungi";
+    }
+
+    @Override
+    protected void run(ClientGameTestContext context) {
+        try {
+            pinTheClient();
+            fungi(context);
+        } finally {
+            EvidencePins.reset();
+        }
+        ClientWait.screen(context, TitleScreen.class);
+    }
+
+    /** Holds still what moves on client ticks and frames ({@code evidence.md}), and hides the sky. */
+    private static void pinTheClient() {
+        EvidencePins.spritesFrozen = true;
+        EvidencePins.vignetteHidden = true;
+        EvidencePins.itemNameHidden = true;
+        EvidencePins.lightFlickerOff = true;
+        EvidencePins.handsHidden = true;
+        EvidencePins.entitiesPosed = true;
+        EvidencePins.figureSpawningOff = true;
+        EvidencePins.figureAnimationAge = 0f;
+        EvidencePins.skyHidden = true;
+    }
+
+    private void fungi(ClientGameTestContext context) {
+        try (TestSingleplayerContext singleplayer = context.worldBuilder()
+                .setUseConsistentSettings(false)
+                .adjustSettings(state -> state.setSeed(SEED))
+                .create()) {
+            awaitWorld(context);
+            EvidenceWorld.pin(context, singleplayer);
+            EvidenceWorld.skyPhase(context, singleplayer, EvidenceWorld.SKY_DARKEST);
+            TestServerContext server = singleplayer.getServer();
+            server.runOnServer(s -> s.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SPECTATOR));
+            dimension = server.computeOnServer(s -> TestLayers.dimension(s, LAYER));
+            ClientChecks.withHudHidden(context, () -> {
+                List<Spot> mix = new ArrayList<>();
+                for (int zone = 0; zone < Zones.COUNT; zone++) {
+                    mix.add(findSpot(context, server, zone, true));
+                }
+                for (Spot spot : mix) {
+                    shootBoth(context, server, spot.feet(), spot.yaw(), 10f, "mix-" + spot.zone());
+                }
+                Spot stage = findSpot(context, server, 0, false);
+                LOGGER.info(
+                        "[giant-fungi] staging at {} toward {}, {} clear", stage.feet(), stage.tall(), stage.clear());
+                beforeAndAfter(context, server, stage);
+                closeAndFar(context, server, stage);
+                variety(context, server, stage);
+                topDown(context, server, stage);
+            });
+        }
+    }
+
+    private Spot findSpot(ClientGameTestContext context, TestServerContext server, int zone, boolean giants) {
+        for (int region = 0; region < REGIONS; region++) {
+            int x = REGION_X + region * REGION_STEP;
+            if (forced.add(x)) {
+                forceRegion(server, x);
+                awaitLight(context, server);
+            }
+            Optional<Spot> spot = server.computeOnServer(s -> {
+                ServerLevel level = TestLayers.level(s, LAYER);
+                return GiantFungiSpots.find(level, TestLayers.band(level, LAYER), zone, x, REGION_Z, giants);
+            });
+            if (spot.isPresent()) {
+                LOGGER.info(
+                        "[giant-fungi] zone {} ({}): feet {} yaw {} tall {} clear {} score {}",
+                        zone,
+                        giants ? "the mix" : "a stage",
+                        spot.get().feet().toShortString(),
+                        spot.get().yaw(),
+                        spot.get().tall().toShortString(),
+                        spot.get().clear(),
+                        spot.get().score());
+                return spot.get();
+            }
+        }
+        throw new AssertionError("no camera spot in zone " + zone + " of layer 3 in " + REGIONS + " regions");
+    }
+
+    private static void forceRegion(TestServerContext server, int x) {
+        int reach = GiantFungiSpots.SEARCH_RADIUS + GiantFungiSpots.RAY_REACH;
+        server.runOnServer(s -> {
+            ServerLevel level = TestLayers.level(s, LAYER);
+            for (int cx = (x - reach) >> 4; cx <= (x + reach) >> 4; cx++) {
+                for (int cz = (REGION_Z - reach) >> 4; cz <= (REGION_Z + reach) >> 4; cz++) {
+                    // force-ok: an evidence scenario has no GameTestHelper to release through; the world is discarded
+                    // when the scenario ends
+                    level.setChunkForced(cx, cz, true);
+                    level.getChunk(cx, cz);
+                }
+            }
+        });
+    }
+
+    // ---------------------------------------------------------------------------------------------- the forms
+
+    /** A form grown at the stage's tall focus, rolled from {@code seed} for the room there. */
+    private static GiantLayout parasol(Spot stage, long seed) {
+        ParasolShape.Params params = ParasolShape.roll(
+                        RandomSource.create(seed)::nextInt,
+                        stage.clear() - ParasolShape.CAP_ROWS,
+                        ParasolShape.Style.DEFAULT)
+                .orElseThrow(() -> new AssertionError("no room for a parasol: " + stage.clear()));
+        return ParasolShape.layout(params, RandomSource.create(seed + 1)::nextInt);
+    }
+
+    private static GiantLayout spires(Spot stage, long seed) {
+        SpireShape.Params params = SpireShape.roll(RandomSource.create(seed)::nextInt, stage.clear())
+                .orElseThrow(() -> new AssertionError("no room for spires: " + stage.clear()));
+        return SpireShape.layout(params, RandomSource.create(seed + 1)::nextInt);
+    }
+
+    private void beforeAndAfter(ClientGameTestContext context, TestServerContext server, Spot stage) {
+        Vec3 aim = Vec3.atBottomCenterOf(stage.tall()).add(0, 9, 0);
+        float[] look = stage.look(aim);
+        built(
+                context,
+                server,
+                stage,
+                level -> GiantMockups.parasol(level, stage),
+                () -> shootOne(context, server, stage.feet(), look, "before-parasol"));
+        built(
+                context,
+                server,
+                stage,
+                level -> GiantMockups.grow(level, parasol(stage, PARASOL_SEED), stage.tall()),
+                () -> shootOne(context, server, stage.feet(), look, "after-parasol"));
+        built(
+                context,
+                server,
+                stage,
+                level -> GiantMockups.spires(level, stage),
+                () -> shootOne(context, server, stage.feet(), look, "before-spires"));
+        built(
+                context,
+                server,
+                stage,
+                level -> GiantMockups.grow(level, spires(stage, SPIRES_SEED), stage.tall()),
+                () -> shootOne(context, server, stage.feet(), look, "after-spires"));
+    }
+
+    private void closeAndFar(ClientGameTestContext context, TestServerContext server, Spot stage) {
+        for (String form : List.of("parasol", "spires")) {
+            GiantLayout layout = form.equals("parasol") ? parasol(stage, PARASOL_SEED) : spires(stage, SPIRES_SEED);
+            Vec3 aim = Vec3.atBottomCenterOf(stage.tall()).add(0, (layout.maxY() + 1) * AIM_SHARE, 0);
+            built(context, server, stage, level -> GiantMockups.grow(level, layout, stage.tall()), () -> {
+                for (int distance : new int[] {CLOSE, FAR}) {
+                    BlockPos feet = server.computeOnServer(s -> back(TestLayers.level(s, LAYER), stage, distance));
+                    float[] look = lookFrom(feet, aim);
+                    shootBoth(
+                            context,
+                            server,
+                            feet,
+                            look[0],
+                            look[1],
+                            form + "-" + (distance == CLOSE ? "close" : "far"));
+                }
+            });
+        }
+    }
+
+    private void variety(ClientGameTestContext context, TestServerContext server, Spot stage) {
+        for (String form : List.of("parasol", "spires")) {
+            long[] seeds = form.equals("parasol") ? PARASOL_SEEDS : SPIRES_SEEDS;
+            for (int i = 0; i < seeds.length; i++) {
+                long seed = seeds[i];
+                GiantLayout layout = form.equals("parasol") ? parasol(stage, seed) : spires(stage, seed);
+                BlockPos feet = server.computeOnServer(s -> back(TestLayers.level(s, LAYER), stage, 22));
+                float[] look =
+                        lookFrom(feet, Vec3.atBottomCenterOf(stage.tall()).add(0, (layout.maxY() + 1) * 0.45, 0));
+                String name = "variety-" + form + "-" + i;
+                built(context, server, stage, level -> GiantMockups.grow(level, layout, stage.tall()), () -> {
+                    nightVision(server, true);
+                    try {
+                        shootOne(context, server, feet, look, name);
+                    } finally {
+                        nightVision(server, false);
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * A parasol fitted against the east side of the stage's chunk and a spire cluster against the west side of the chunk east of it, seen
+     * from straight above with the chunk borders drawn: each whole, in its own chunk.
+     */
+    private void topDown(ClientGameTestContext context, TestServerContext server, Spot stage) {
+        ChunkPos chunk = ChunkPos.containing(stage.tall());
+        GiantLayout.Fit parasol = parasol(stage, PARASOL_SEED).fitInChunk(15, 8).orElseThrow();
+        GiantLayout.Fit spires = spires(stage, SPIRES_SEED).fitInChunk(0, 8).orElseThrow();
+        BlockPos parasolBase = new BlockPos(
+                chunk.getMinBlockX() + parasol.baseX(), stage.tall().getY(), chunk.getMinBlockZ() + parasol.baseZ());
+        BlockPos spiresBase = new BlockPos(
+                chunk.getMinBlockX() + 16 + spires.baseX(), stage.tall().getY(), chunk.getMinBlockZ() + spires.baseZ());
+        BlockPos eye =
+                new BlockPos(chunk.getMinBlockX() + 16, stage.tall().getY() + TOP_DOWN_RISE, chunk.getMinBlockZ() + 8);
+        Snapshot under = server.computeOnServer(s -> Snapshot.around(
+                TestLayers.level(s, LAYER), eye.atY(stage.tall().getY()), 26, BUILD_BELOW, BUILD_ABOVE));
+        try {
+            server.runOnServer(s -> {
+                ServerLevel level = TestLayers.level(s, LAYER);
+                LOGGER.info(
+                        "[giant-fungi] top down: parasol {} cells, spires {} cells",
+                        GiantMockups.grow(level, parasol.layout(), parasolBase),
+                        GiantMockups.grow(level, spires.layout(), spiresBase));
+                LightSync.holdSendUntilLit(level, parasolBase.offset(-24, 0, -24), spiresBase.offset(24, 0, 24));
+            });
+            awaitLight(context, server);
+            context.runOnClient(client ->
+                    client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.ALWAYS_ON));
+            nightVision(server, true);
+            shootOne(context, server, eye, new float[] {0f, 90f}, "top-down-chunks");
+        } finally {
+            nightVision(server, false);
+            context.runOnClient(client ->
+                    client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.NEVER));
+            server.runOnServer(s -> {
+                ServerLevel level = TestLayers.level(s, LAYER);
+                under.restore(level);
+                LightSync.holdSendUntilLit(level, parasolBase.offset(-24, 0, -24), spiresBase.offset(24, 0, 24));
+            });
+            awaitLight(context, server);
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------- the camera
+
+    /**
+     * Where the camera stands {@code distance} blocks back from the stage's tall focus toward its own feet: the floor there, or, if there is
+     * none in sight, the nearest place on that line that has one; the stage's own camera if none does.
+     */
+    private static BlockPos back(ServerLevel level, Spot stage, int distance) {
+        Vec3 from = Vec3.atBottomCenterOf(stage.tall());
+        Vec3 toward = Vec3.atBottomCenterOf(stage.feet())
+                .subtract(from)
+                .multiply(1, 0, 1)
+                .normalize();
+        for (int d = distance; d >= CLOSE - 4; d--) {
+            Vec3 at = from.add(toward.scale(d));
+            Optional<BlockPos> floor = GiantFungiSpots.floorAt(
+                    level,
+                    (int) Math.floor(at.x),
+                    (int) Math.floor(at.z),
+                    stage.tall().getY(),
+                    8);
+            if (floor.isPresent()) {
+                return floor.get().above(GiantFungiSpots.FEET_RISE - 1);
+            }
+        }
+        return stage.feet();
+    }
+
+    /** The yaw and pitch at which an eye at {@code feet} looks at {@code target}. */
+    private static float[] lookFrom(BlockPos feet, Vec3 target) {
+        Vec3 d = target.subtract(new Vec3(feet.getX() + 0.5, feet.getY() + 1.62, feet.getZ() + 0.5));
+        return new float[] {
+            (float) Math.toDegrees(Math.atan2(-d.x, d.z)),
+            (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)))
+        };
+    }
+
+    private static void nightVision(TestServerContext server, boolean on) {
+        server.runOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            if (on) {
+                player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, NIGHT_VISION_TICKS, 0, false, false));
+            } else {
+                player.removeEffect(MobEffects.NIGHT_VISION);
+            }
+        });
+    }
+
+    private void shootBoth(
+            ClientGameTestContext context,
+            TestServerContext server,
+            BlockPos feet,
+            float yaw,
+            float pitch,
+            String name) {
+        shootOne(context, server, feet, new float[] {yaw, pitch}, name);
+        nightVision(server, true);
+        try {
+            shootOne(context, server, feet, new float[] {yaw, pitch}, name + "-nv");
+        } finally {
+            nightVision(server, false);
+        }
+    }
+
+    private void shootOne(
+            ClientGameTestContext context, TestServerContext server, BlockPos feet, float[] look, String name) {
+        AtmosphereScenes.stand(context, server, dimension, feet, look[0], look[1], name);
+        screenshot(context, name);
+        ClientLight.logStillLight(context, server, dimension, name, feet);
+        frame(context);
+    }
+
+    /** Builds round the stage, runs {@code shots}, then puts the cavern back as the world grew it. */
+    private void built(
+            ClientGameTestContext context,
+            TestServerContext server,
+            Spot stage,
+            Function<ServerLevel, Object> build,
+            Runnable shots) {
+        Snapshot snapshot = server.computeOnServer(
+                s -> Snapshot.around(TestLayers.level(s, LAYER), stage.tall(), BUILD_RADIUS, BUILD_BELOW, BUILD_ABOVE));
+        try {
+            Object made = server.computeOnServer(s -> {
+                ServerLevel level = TestLayers.level(s, LAYER);
+                Object result = build.apply(level);
+                resendLight(level, stage.tall());
+                return result;
+            });
+            LOGGER.info("[giant-fungi] built {}", made);
+            awaitLight(context, server);
+            shots.run();
+        } finally {
+            server.runOnServer(s -> {
+                ServerLevel level = TestLayers.level(s, LAYER);
+                snapshot.restore(level);
+                resendLight(level, stage.tall());
+            });
+            awaitLight(context, server);
+        }
+    }
+
+    private static void resendLight(ServerLevel level, BlockPos around) {
+        LightSync.holdSendUntilLit(
+                level, around.offset(-BUILD_RADIUS, 0, -BUILD_RADIUS), around.offset(BUILD_RADIUS, 0, BUILD_RADIUS));
+    }
+
+    private static void awaitLight(ClientGameTestContext context, TestServerContext server) {
+        ClientWait.until(
+                context,
+                "the server's light engine to be idle",
+                () -> ClientLight.serverLightIdle(context, server),
+                () -> "light work pending");
+    }
+}
