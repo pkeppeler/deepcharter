@@ -11,6 +11,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.portal.TeleportTransition;
@@ -28,6 +29,9 @@ import net.minecraft.world.phys.Vec3;
  * crossing, and neither has the top of the overworld.
  *
  * <p>In the campaign world the layers are bands of one level, so nobody moves: {@link BandCrossing} fires the same event in place.
+ *
+ * <p>{@link SeamStreaming} loads the arrival area of the level below ahead of a descent (#1159, ADR 0089), so the crossing finds the chunks
+ * it carves in loaded; one that does not logs how many were missing.
  *
  * <p>Survival and adventure players cannot break {@code breach_crust} by hand; creative players can.
  * Drills do it through {@link #breakCrust}.
@@ -100,6 +104,7 @@ public final class BreachService {
         boolean descending = toLayer > fromLayer;
         int arrivalY = descending ? to.getMaxY() - tuning.pocketHeight() : to.getMinY() + tuning.crustThickness();
         BlockPos requested = BlockPos.containing(entity.getX(), arrivalY, entity.getZ());
+        SeamStreaming.reportCrossing(entity, to, ChunkPos.containing(requested));
         BlockPos pocket = preparePocket(to, requested, tuning);
 
         Vec3 position = pocket.equals(requested)
