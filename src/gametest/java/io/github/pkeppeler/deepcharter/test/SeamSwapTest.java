@@ -21,22 +21,19 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.SeamSite.Run;
-import io.github.pkeppeler.deepcharter.test.support.SecondSeat;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.test.support.TwoSeatPods;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -161,7 +158,7 @@ public class SeamSwapTest {
         BreachPayload swapped = BreachPayload.of(overworld, nether, 1, 2, true);
         expect(helper, roundTrip(helper, BreachPayload.CODEC, swapped).equals(swapped), "breach");
         expect(helper, swapped.swapped() && !swapped.fades(), "a swap rumbles and does not fade: %s", swapped);
-        BreachPayload moved = BreachPayload.of(overworld, nether, 1, 2);
+        BreachPayload moved = BreachPayload.of(overworld, nether, 1, 2, false);
         expect(helper, !moved.swapped() && moved.fades(), "a teleport keeps fading: %s", moved);
         helper.succeed();
     }
@@ -185,17 +182,6 @@ public class SeamSwapTest {
                         && SeamRefuseReason.SWAP_FAILED.ordinal() == 2,
                 "the wire ids moved");
         helper.succeed();
-    }
-
-    /** Pods that get a second seat each time they load: the teleport recreates a pod from its data, which has no second seat. */
-    private static final Set<UUID> TWO_SEATS = ConcurrentHashMap.newKeySet();
-
-    static {
-        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
-            if (entity instanceof PodEntity pod && TWO_SEATS.contains(pod.getUUID())) {
-                SecondSeat.add(pod);
-            }
-        });
     }
 
     /** The first site index of this class: {@link SeamStreamingTest} and {@link SeamDataAheadTest} use the ones below it. */
@@ -237,17 +223,20 @@ public class SeamSwapTest {
                 sent.add(ChunkPos.pack(10 + dx, 10 + dz));
             }
         }
-        expect(helper, SeamSender.holdsSwapArea(sent, centre, centre, radius), "a full area is not held");
+        expect(helper, SeamSender.holdsSwapArea(sent::contains, centre, centre, radius), "a full area is not held");
         expect(
                 helper,
-                SeamSender.holdsSwapArea(sent, centre, new ChunkPos(11, 9), radius),
+                SeamSender.holdsSwapArea(sent::contains, centre, new ChunkPos(11, 9), radius),
                 "an arrival a chunk off the centre is not held");
         expect(
                 helper,
-                !SeamSender.holdsSwapArea(sent, centre, new ChunkPos(10 + radius + 1, 10), radius),
+                !SeamSender.holdsSwapArea(sent::contains, centre, new ChunkPos(10 + radius + 1, 10), radius),
                 "an arrival chunk outside the radius is held");
         sent.remove(ChunkPos.pack(10 + radius, 10 - radius));
-        expect(helper, !SeamSender.holdsSwapArea(sent, centre, centre, radius), "an area missing a corner is held");
+        expect(
+                helper,
+                !SeamSender.holdsSwapArea(sent::contains, centre, centre, radius),
+                "an area missing a corner is held");
         helper.succeed();
     }
 
@@ -477,8 +466,7 @@ public class SeamSwapTest {
                     run.site().carveShaft(run.site().x(), HOLD_HEIGHT + 4);
                     PodEntity pod =
                             TestEntities.create(PodRegistry.POD, run.site().one());
-                    SecondSeat.add(pod);
-                    TWO_SEATS.add(pod.getUUID());
+                    TwoSeatPods.add(pod);
                     hold(run.site(), pod, HOLD_HEIGHT);
                     run.site().one().addFreshEntity(pod);
                     pods[0] = pod;
@@ -531,7 +519,7 @@ public class SeamSwapTest {
                     if (!verify.test(new Crossed(run, pod, pod.getId(), pod.getUUID(), riders, respawnsBefore))) {
                         return;
                     }
-                    TWO_SEATS.remove(pod.getUUID());
+                    TwoSeatPods.forget(pod);
                     Entity vehicle = riders.get(0).player().getVehicle();
                     riders.forEach(mock -> mock.player().stopRiding());
                     if (vehicle != null) {
@@ -704,7 +692,7 @@ public class SeamSwapTest {
                 List.of(Client.ACCEPTS),
                 run -> {
                     ServerLevel two = run.site().two();
-                    int top = two.getMaxY();
+                    int top = TestLayers.dimensionBand(two).maxY();
                     BlockPos bottom = BlockPos.containing(
                             run.site().x(),
                             top - tuning.pocketHeight() - 1,

@@ -29,6 +29,7 @@
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
+    "SoundManagerStopProbeMixin",
     "SpriteAnimationStateMixin"
   ],
   "injectors": {

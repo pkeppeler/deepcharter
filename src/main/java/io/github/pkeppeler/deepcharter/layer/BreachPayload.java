@@ -43,11 +43,6 @@ public record BreachPayload(int fromLayer, int toLayer, boolean fades, boolean s
         });
     }
 
-    /** The payload for a crossing from {@code from} to {@code to}: it fades only when the player was moved between levels. */
-    public static BreachPayload of(ServerLevel from, ServerLevel to, int fromLayer, int toLayer) {
-        return of(from, to, fromLayer, toLayer, false);
-    }
-
     /** The payload for a crossing that moved the player between levels with ({@code swapped}) or without a respawn: a swap never fades. */
     public static BreachPayload of(ServerLevel from, ServerLevel to, int fromLayer, int toLayer, boolean swapped) {
         return new BreachPayload(fromLayer, toLayer, from != to && !swapped, swapped);

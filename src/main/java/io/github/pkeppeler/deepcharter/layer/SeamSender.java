@@ -15,6 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.LongPredicate;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -404,20 +405,20 @@ public final class SeamSender {
                 && seam.accepted
                 && seam.lower.equals(to.dimension())
                 && ServerPlayNetworking.canSend(rider, SeamSwapPayload.TYPE)
-                && holdsSwapArea(seam.sent, seam.centre, arrivalChunk, LayerTuning.DEFAULT.seamSwapRadius());
+                && holdsSwapArea(seam.sent::contains, seam.centre, arrivalChunk, LayerTuning.DEFAULT.seamSwapRadius());
     }
 
     /**
      * Whether {@code arrival} lies within {@code radius} chunks (Chebyshev) of {@code centre}, and every chunk within {@code radius} of
-     * {@code centre} is in {@code sent}: the area the rider's held level has, with the arrival inside it.
+     * {@code centre} satisfies {@code sent}: the area the rider's held level has, with the arrival inside it.
      */
-    public static boolean holdsSwapArea(LongSet sent, ChunkPos centre, ChunkPos arrival, int radius) {
+    public static boolean holdsSwapArea(LongPredicate sent, ChunkPos centre, ChunkPos arrival, int radius) {
         if (Math.max(Math.abs(arrival.x() - centre.x()), Math.abs(arrival.z() - centre.z())) > radius) {
             return false;
         }
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                if (!sent.contains(ChunkPos.pack(centre.x() + dx, centre.z() + dz))) {
+                if (!sent.test(ChunkPos.pack(centre.x() + dx, centre.z() + dz))) {
                     return false;
                 }
             }
