@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -56,7 +58,7 @@ public class ProgressBeforeCharterTest {
 
     private static void expectDone(GameTestHelper helper, Optional<CharterRefusal> refusal, String what) {
         if (refusal.isPresent()) {
-            throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
+            throw failure(helper, "%s should succeed, was refused: %s", what, refusal.get());
         }
     }
 
@@ -85,9 +87,12 @@ public class ProgressBeforeCharterTest {
             Identifier directive,
             boolean expected) {
         if (HandbookProgress.completedFor(server, player.getUUID()).contains(directive) != expected) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s should %sbe complete for %s",
-                    directive, expected ? "" : "not ", player.getGameProfile().name());
+                    directive,
+                    expected ? "" : "not ",
+                    player.getGameProfile().name());
         }
     }
 
@@ -99,12 +104,15 @@ public class ProgressBeforeCharterTest {
             boolean expected) {
         AdvancementHolder advancement = server.getAdvancements().get(directive);
         if (advancement == null) {
-            throw helper.assertionException("directive %s has no advancement", directive);
+            throw failure(helper, "directive %s has no advancement", directive);
         }
         if (player.getAdvancements().getOrStartProgress(advancement).isDone() != expected) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "the advancement %s should %sbe done for %s",
-                    directive, expected ? "" : "not ", player.getGameProfile().name());
+                    directive,
+                    expected ? "" : "not ",
+                    player.getGameProfile().name());
         }
     }
 
@@ -112,9 +120,12 @@ public class ProgressBeforeCharterTest {
             GameTestHelper helper, MinecraftServer server, ServerPlayer player, List<Identifier> expected) {
         List<Identifier> actual = Notes.foundFor(server, player.getUUID());
         if (!actual.equals(expected)) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s should have the notes %s, has %s",
-                    player.getGameProfile().name(), expected, actual);
+                    player.getGameProfile().name(),
+                    expected,
+                    actual);
         }
     }
 
@@ -140,7 +151,7 @@ public class ProgressBeforeCharterTest {
         FindResult result = Notes.find(loner, FIRST);
 
         if (result != FindResult.NO_CHARTER) {
-            throw helper.assertionException("a Note found on no charter reports NO_CHARTER, was %s", result);
+            throw failure(helper, "a Note found on no charter reports NO_CHARTER, was %s", result);
         }
         expectNotes(helper, server, loner, List.of(FIRST));
         helper.succeed();
@@ -158,10 +169,10 @@ public class ProgressBeforeCharterTest {
         CharterId id = found(helper, server, founder);
 
         if (!HandbookProgressData.get(server).completed(id).containsAll(Set.of(CUSTOM_DIRECTIVE, VANILLA_DIRECTIVE))) {
-            throw helper.assertionException("the charter should hold the founder's directives");
+            throw failure(helper, "the charter should hold the founder's directives");
         }
         if (!NotesData.get(server).found(id).equals(Set.of(FIRST))) {
-            throw helper.assertionException("the charter should hold the founder's Notes");
+            throw failure(helper, "the charter should hold the founder's Notes");
         }
         expectComplete(helper, server, founder, CUSTOM_DIRECTIVE, true);
         expectAdvancement(helper, server, founder, CUSTOM_DIRECTIVE, true);
@@ -184,7 +195,7 @@ public class ProgressBeforeCharterTest {
 
         // The joiner's own progress completes none of the charter's steps, and the charter's advancements follow.
         if (HandbookProgressData.get(server).completed(id).contains(CUSTOM_DIRECTIVE)) {
-            throw helper.assertionException("a joiner's own progress must not complete the charter's step");
+            throw failure(helper, "a joiner's own progress must not complete the charter's step");
         }
         expectComplete(helper, server, joiner, CUSTOM_DIRECTIVE, false);
         expectComplete(helper, server, director, CUSTOM_DIRECTIVE, false);
@@ -193,7 +204,7 @@ public class ProgressBeforeCharterTest {
         expectNotes(helper, server, director, List.of(FIRST, SECOND));
         expectNotes(helper, server, joiner, List.of(FIRST, SECOND));
         if (ReadMarks.isRead(director, FIRST)) {
-            throw helper.assertionException("a Note the joiner brought is unread for the director");
+            throw failure(helper, "a Note the joiner brought is unread for the director");
         }
         helper.succeed();
     }
@@ -245,14 +256,13 @@ public class ProgressBeforeCharterTest {
                 PersonalHandbookData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
         if (!(saved instanceof CompoundTag compound)
                 || compound.getIntOr("version", -1) != PersonalHandbookData.VERSION) {
-            throw helper.assertionException(
-                    "the saved form carries version %s, got %s", PersonalHandbookData.VERSION, saved);
+            throw failure(helper, "the saved form carries version %s, got %s", PersonalHandbookData.VERSION, saved);
         }
         PersonalHandbookData loaded =
                 PersonalHandbookData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
         if (!loaded.directives(player).equals(Set.of(CUSTOM_DIRECTIVE))
                 || !loaded.notes(player).equals(Set.of(FIRST))) {
-            throw helper.assertionException("the saved progress should load as it was saved");
+            throw failure(helper, "the saved progress should load as it was saved");
         }
         helper.succeed();
     }
@@ -274,8 +284,10 @@ public class ProgressBeforeCharterTest {
 
         Set<Identifier> charterDirectives = HandbookProgressData.get(server).completed(id);
         if (!charterDirectives.equals(Set.of(CUSTOM_DIRECTIVE))) {
-            throw helper.assertionException(
-                    "the charter keeps its own directives and takes none of the reviver's, has %s", charterDirectives);
+            throw failure(
+                    helper,
+                    "the charter keeps its own directives and takes none of the reviver's, has %s",
+                    charterDirectives);
         }
         expectComplete(helper, server, director, CUSTOM_DIRECTIVE, true);
         expectComplete(helper, server, director, VANILLA_DIRECTIVE, false);
@@ -303,7 +315,7 @@ public class ProgressBeforeCharterTest {
                     .anyMatch(line -> line.getContents() instanceof TranslatableContents contents
                             && contents.getKey().equals("deepcharter.handbook.note.use.no_charter"));
             if (!said) {
-                throw helper.assertionException("the no-charter line should show, got %s", loner.actionBarMessages());
+                throw failure(helper, "the no-charter line should show, got %s", loner.actionBarMessages());
             }
         });
     }

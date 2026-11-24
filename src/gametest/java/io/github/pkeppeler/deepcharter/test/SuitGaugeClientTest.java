@@ -9,12 +9,12 @@ import io.github.pkeppeler.deepcharter.client.suit.SuitGaugeHud.Tone;
 import io.github.pkeppeler.deepcharter.client.theme.SuitLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
-import io.github.pkeppeler.deepcharter.outpost.RatingAxis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
 import io.github.pkeppeler.deepcharter.suit.SuitState;
 import io.github.pkeppeler.deepcharter.suit.SuitState.Mode;
+import io.github.pkeppeler.deepcharter.suit.SuitTracks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
@@ -109,34 +109,36 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
 
     /** The words, the colour and the blinking for each mode and reserve, and the box that holds the longest of them in the narrowest GUI. */
     private static void expectEachStateReadsAsItShould(ClientGameTestContext context) {
-        int heatAndPressure = SuitState.bit(RatingAxis.HEAT) | SuitState.bit(RatingAxis.PRESSURE);
-        int all = heatAndPressure | SuitState.bit(RatingAxis.FLOODING);
-        Optional<Gauge> inert = SuitGaugeHud.gauge(new SuitState(100f, false, Mode.INERT, 0, 0f));
+        // Short by a level on each axis, four bits an axis: heat in the low bits.
+        int shortFive = 0x055;
+        int shortTwo = 0x222;
+        SuitTracks stock = SuitTracks.STOCK;
+        Optional<Gauge> inert = SuitGaugeHud.gauge(new SuitState(100f, false, Mode.INERT, 0f, 0), stock);
         require(inert.isEmpty(), "an inert suit shows nothing");
 
-        Gauge fine = SuitGaugeHud.gauge(new SuitState(170f, true, Mode.EXPOSED, heatAndPressure, 5f))
+        Gauge fine = SuitGaugeHud.gauge(new SuitState(170f, true, Mode.EXPOSED, 5f, shortFive), stock)
                 .orElseThrow();
         require(
                 fine.label().getString().equals("SUIT 0:34")
-                        && fine.axes().getString().equals("HEAT PRESSURE")
+                        && fine.axes().getString().equals("HEAT -5 PRESSURE -5")
                         && fine.tone() == Tone.OK
                         && !fine.blinks()
                         && Math.abs(fine.fraction() - 170f / 180f) < 0.001f,
                 "170 suit-seconds at 5 a second read 0:34 in the OK tone, read " + describe(fine));
-        Gauge amber = SuitGaugeHud.gauge(new SuitState(100f, true, Mode.EXPOSED, heatAndPressure, 5.5f))
+        Gauge amber = SuitGaugeHud.gauge(new SuitState(100f, true, Mode.EXPOSED, 5.5f, shortFive), stock)
                 .orElseThrow();
         require(
                 amber.label().getString().equals("SUIT 0:19") && amber.tone() == Tone.AMBER && !amber.blinks(),
                 "under half a minute reads amber, read " + describe(amber));
-        Gauge red = SuitGaugeHud.gauge(new SuitState(40f, true, Mode.LEAKING, all, 5.5f))
+        Gauge red = SuitGaugeHud.gauge(new SuitState(40f, true, Mode.LEAKING, 5.5f, shortTwo), stock)
                 .orElseThrow();
         require(
                 red.label().getString().equals("SUIT 0:08")
-                        && red.axes().getString().equals("HEAT PRESSURE FLOODING")
+                        && red.axes().getString().equals("HEAT -2 PRESSURE -2 FLOODING -2")
                         && red.tone() == Tone.RED
                         && red.blinks(),
                 "under ten seconds reads red and blinks, read " + describe(red));
-        Gauge breached = SuitGaugeHud.gauge(new SuitState(0f, true, Mode.BREACHED, heatAndPressure, 5.5f))
+        Gauge breached = SuitGaugeHud.gauge(new SuitState(0f, true, Mode.BREACHED, 5.5f, shortFive), stock)
                 .orElseThrow();
         require(
                 breached.label().getString().equals("SUIT BREACHED")
@@ -145,8 +147,8 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
                         && breached.fraction() == 0f,
                 "a breached suit says so, in red, blinking, read " + describe(breached));
         for (Mode mode : List.of(Mode.SHELTERED, Mode.POD_REFILL)) {
-            Gauge refilling =
-                    SuitGaugeHud.gauge(new SuitState(50f, true, mode, 0, 0f)).orElseThrow();
+            Gauge refilling = SuitGaugeHud.gauge(new SuitState(50f, true, mode, 0f, 0), stock)
+                    .orElseThrow();
             require(
                     refilling.label().getString().equals("SUIT REFILLING")
                             && refilling.tone() == Tone.OK
@@ -156,12 +158,33 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
         for (Mode mode : List.of(Mode.SHELTERED, Mode.POD_REFILL)) {
             // A sound hall in layer 1 is SHELTERED all the time: a full suit there has nothing to say.
             require(
-                    SuitGaugeHud.gauge(new SuitState(180f, true, mode, 0, 0f)).isEmpty(),
+                    SuitGaugeHud.gauge(new SuitState(180f, true, mode, 0f, 0), stock)
+                            .isEmpty(),
                     mode + " with a full reserve shows nothing");
         }
-        Gauge held = SuitGaugeHud.gauge(new SuitState(50f, true, Mode.POD_HOLD, 0, 0f))
+        Gauge held = SuitGaugeHud.gauge(new SuitState(50f, true, Mode.POD_HOLD, 0f, 0), stock)
                 .orElseThrow();
         require(held.tone() == Tone.DIM, "a held suit is dim, read " + describe(held));
+
+        // The bar is the reserve over the suit's own capacity, and a full suit that refills hides at its own.
+        SuitTracks airThree = new SuitTracks(0, 0, 3);
+        Gauge half = SuitGaugeHud.gauge(new SuitState(180f, true, Mode.EXPOSED, 5f, shortFive), airThree)
+                .orElseThrow();
+        require(
+                Math.abs(half.fraction() - 0.5f) < 0.001f
+                        && half.label().getString().equals("SUIT 0:36"),
+                "180 of an air tier 3 suit's 360 is half a bar, read " + describe(half));
+        Gauge stockFull = SuitGaugeHud.gauge(new SuitState(180f, true, Mode.EXPOSED, 5f, shortFive), stock)
+                .orElseThrow();
+        require(stockFull.fraction() == 1f, "180 of a stock suit's 180 is a whole bar, read " + describe(stockFull));
+        require(
+                SuitGaugeHud.gauge(new SuitState(180f, true, Mode.SHELTERED, 0f, 0), airThree)
+                        .isPresent(),
+                "a refilling air tier 3 suit at 180 is half full and still shows");
+        require(
+                SuitGaugeHud.gauge(new SuitState(360f, true, Mode.SHELTERED, 0f, 0), airThree)
+                        .isEmpty(),
+                "a refilling air tier 3 suit at 360 is full and shows nothing");
 
         // The widest and tallest the gauge gets, on the smallest GUI and the default window's: inside it and clear of
         // vanilla's rows.
@@ -309,5 +332,26 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
                         .getPlayers()
                         .getFirst()
                         .setAttached(SuitRegistry.SUIT, Versioned.of(SuitState.full())));
+        // Unreadable tracks cannot rate the suit, so the gauge says that its log is unreadable too.
+        singleplayer
+                .getServer()
+                .runOnServer(server -> UnreadableChecks.makeUnreadable(
+                        server.getPlayerList().getPlayers().getFirst(), SuitRegistry.TRACKS));
+        ClientWait.until(
+                context,
+                "the unreadable suit tracks on the client",
+                client -> client.player != null
+                        && client.player.getAttached(SuitRegistry.TRACKS) instanceof Versioned.Unreadable<SuitTracks>);
+        Gauge noTracks =
+                context.computeOnClient(client -> SuitGaugeHud.gauge(client).orElseThrow());
+        require(
+                noTracks.label().getString().equals("SUIT LOG UNREADABLE") && noTracks.tone() == Tone.RED,
+                "unreadable tracks say the log is unreadable, read " + describe(noTracks));
+        singleplayer
+                .getServer()
+                .runOnServer(server -> server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .setAttached(SuitRegistry.TRACKS, Versioned.of(SuitTracks.STOCK)));
     }
 }
