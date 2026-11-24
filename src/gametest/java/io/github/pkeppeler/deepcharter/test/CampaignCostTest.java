@@ -318,14 +318,16 @@ public class CampaignCostTest {
         JsonObject dimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject()
                 .getAsJsonObject("dimensions");
-        JsonElement campaign = read(helper, "/data/minecraft/dimension/overworld.json")
-                .getAsJsonObject()
-                .get("generator");
+        JsonObject shipped =
+                read(helper, "/data/minecraft/dimension/overworld.json").getAsJsonObject();
+        JsonElement campaign = shipped.get("generator");
         JsonObject campaignType =
                 read(helper, "/data/minecraft/dimension_type/overworld.json").getAsJsonObject();
         for (Window window : WINDOWS) {
             CampaignBands.Band band = window.band();
             boolean sky = band == CampaignBands.SURFACE;
+            expectFromShipped(helper, dimensions, window.world(), shipped);
+            expectFromShipped(helper, dimensions, window.floor(), shipped);
             expectCut(helper, dimensions, window.world(), campaign, cut(campaignType, band.minY(), band.height(), sky));
             expectCut(helper, dimensions, window.floor(), campaign, cut(campaignType, band.minY(), FLOOR_ROWS, sky));
         }
@@ -338,6 +340,22 @@ public class CampaignCostTest {
                 dimensions.getAsJsonObject("deepcharter:" + REFERENCE).get("generator"),
                 cut(referenceType, referenceType.get("min_y").getAsInt(), FLOOR_ROWS, false));
         helper.succeed();
+    }
+
+    /**
+     * A window's preset entry is the shipped overworld with its own type and nothing else (the build derives it from
+     * {@code overworld.json}; this keeps a stray key, or a hand-written copy that went stale, from passing).
+     */
+    private static void expectFromShipped(
+            GameTestHelper helper, JsonObject dimensions, String world, JsonObject shipped) {
+        JsonObject expected = shipped.deepCopy();
+        expected.addProperty("type", "deepcharter:" + world);
+        expect(
+                helper,
+                expected.equals(dimensions.get("deepcharter:" + world)),
+                "%s is not the shipped overworld with its own type: %s",
+                world,
+                dimensions.get("deepcharter:" + world));
     }
 
     private static void expectCut(
