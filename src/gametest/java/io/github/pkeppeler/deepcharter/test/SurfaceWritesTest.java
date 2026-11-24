@@ -2,22 +2,31 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.surface.SurfaceWrites;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ImposterProtoChunk;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.lighting.LightEngine;
 
 /**
  * The surface rule's fast column write (#1160, ADR 0090) changes nothing the slow one would: the guard says no to every pair
@@ -65,6 +74,12 @@ public class SurfaceWritesTest {
                 helper,
                 !SurfaceWrites.neutral(stone, Blocks.GLASS.defaultBlockState()),
                 "glass differs in light and heightmap");
+        // Equal light properties, so only the heightmap branch can refuse this pair: grass is no motion block, glass
+        // is.
+        BlockState grass = Blocks.SHORT_GRASS.defaultBlockState();
+        BlockState glass = Blocks.GLASS.defaultBlockState();
+        expect(helper, !LightEngine.hasDifferentLightProperties(grass, glass), "grass and glass light alike");
+        expect(helper, !SurfaceWrites.neutral(grass, glass), "grass to glass differs only in a heightmap");
         helper.succeed();
     }
 
@@ -72,11 +87,131 @@ public class SurfaceWritesTest {
     @GameTest
     public void theFastWriteLeavesTheChunkAsTheSlowOneDoes(GameTestHelper helper) {
         // The surface step runs on a chunk whose status is the one before TERRAIN (BIOMES), which keeps no heightmap;
-        // TERRAIN is
-        // the first status that keeps them, so a heightmap that is kept is compared too.
-        compare(helper, ChunkStatus.BIOMES, 1_000_002);
-        compare(helper, ChunkStatus.TERRAIN, 1_000_006);
+        // TERRAIN is the first status that keeps them, so a heightmap that is kept is compared too.
+        boolean was = SurfaceWrites.setEnabled(true);
+        try {
+            compare(helper, ChunkStatus.BIOMES, 1_000_002);
+            compare(helper, ChunkStatus.TERRAIN, 1_000_006);
+        } finally {
+            SurfaceWrites.setEnabled(was);
+        }
         helper.succeed();
+    }
+
+    /** A chunk that is not a plain proto chunk, or has reached the light status, keeps vanilla's write. */
+    @GameTest
+    public void aLiveOrLitChunkIsWrittenTheVanillaWay(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockState sandstone = Blocks.SANDSTONE.defaultBlockState();
+        expect(helper, SurfaceWrites.neutral(sandstone, GREEN), "the pair is one the fast path would take");
+        boolean was = SurfaceWrites.setEnabled(true);
+        try {
+            // A chunk far from every test, wrapped as the generator wraps a finished one.
+            LevelChunk live = level.getChunk(1_000_100, 1_000_100);
+            ImposterProtoChunk imposter = new ImposterProtoChunk(live, true);
+            BlockPos at = new BlockPos(
+                    live.getPos().getBlockX(3),
+                    level.getMinY() + 10,
+                    live.getPos().getBlockZ(3)); // level-height: a far chunk of the test level
+            long before = SurfaceWrites.fastWrites();
+            expect(helper, live.getBlockState(at) == sandstone, "the far chunk holds sandstone at %s", at);
+            SurfaceWrites.set(imposter, at, GREEN);
+            expect(helper, SurfaceWrites.fastWrites() == before, "an imposter chunk took the fast path");
+            expect(helper, live.getBlockState(at) == GREEN, "the vanilla write did not reach the live chunk");
+            live.setBlockState(at, sandstone, 3);
+
+            ProtoChunk lit = chunk(level, 1_000_110, ChunkStatus.BIOMES);
+            BlockPos inLit = new BlockPos(
+                    lit.getPos().getBlockX(3),
+                    level.getMinY() + 10,
+                    lit.getPos().getBlockZ(3)); // level-height: a hand-built chunk
+            lit.setBlockState(inLit, GREEN, 3);
+            lit.setPersistedStatus(ChunkStatus.INITIALIZE_LIGHT);
+            SurfaceWrites.set(lit, inLit, PACKED);
+            expect(helper, SurfaceWrites.fastWrites() == before, "a chunk at the light status took the fast path");
+            expect(helper, lit.getBlockState(inLit) == PACKED, "the vanilla write was lost");
+
+            lit.setPersistedStatus(ChunkStatus.BIOMES);
+            SurfaceWrites.set(lit, inLit, GREEN);
+            expect(helper, SurfaceWrites.fastWrites() == before + 1, "a proto chunk before the light status did not");
+        } finally {
+            SurfaceWrites.setEnabled(was);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Generates one chunk of layer 1's window through the normal worldgen with the fast path on, and the same chunk of the campaign
+     * world (the window's rows are its, ADR 0086) with it off: the mixin must take the path (a count of writes), and the band's blocks
+     * must be those the vanilla path writes. The window chunk's four finished heightmaps must also equal what its blocks say.
+     */
+    @GameTest(maxTicks = 2400)
+    public void aGeneratedLayerOneChunkTakesTheFastPathAndMatchesVanilla(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerLevel window = layer(server, "campaign_layer_1");
+        ServerLevel campaign = layer(server, "campaign_sample");
+        boolean was = SurfaceWrites.setEnabled(true);
+        LevelChunk on;
+        LevelChunk off;
+        long taken;
+        try {
+            long before = SurfaceWrites.fastWrites();
+            on = window.getChunk(1_000_200, 1_000_200);
+            taken = SurfaceWrites.fastWrites() - before;
+            SurfaceWrites.setEnabled(false);
+            before = SurfaceWrites.fastWrites();
+            off = campaign.getChunk(1_000_200, 1_000_200);
+            expect(helper, SurfaceWrites.fastWrites() == before, "the path ran with the toggle off");
+        } finally {
+            SurfaceWrites.setEnabled(was);
+        }
+        expect(
+                helper,
+                taken > 20_000,
+                "layer 1's chunk took the fast path %s times: the mixin is not on its writes",
+                taken);
+        CampaignBands.Band band = CampaignBands.LAYER_1;
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                for (int y = band.minY(); y < band.topExclusive(); y++) {
+                    BlockPos at = new BlockPos(
+                            on.getPos().getBlockX(x), y, on.getPos().getBlockZ(z));
+                    expect(
+                            helper,
+                            on.getBlockState(at) == off.getBlockState(at),
+                            "%s: %s with the path, %s without",
+                            at,
+                            on.getBlockState(at),
+                            off.getBlockState(at));
+                }
+                for (Heightmap.Types type : ChunkStatus.FINAL_HEIGHTMAPS) {
+                    int top = on.getMinY() - 1; // level-height: reads the window's own rows to recompute a heightmap
+                    for (int y = on.getMaxY(); y >= on.getMinY(); y--) { // level-height: as above
+                        if (type.isOpaque()
+                                .test(on.getBlockState(new BlockPos(
+                                        on.getPos().getBlockX(x), y, on.getPos().getBlockZ(z))))) {
+                            top = y;
+                            break;
+                        }
+                    }
+                    expect(
+                            helper,
+                            on.getHeight(type, x, z) == top,
+                            "%s at %s %s: stored %s, blocks say %s",
+                            type,
+                            x,
+                            z,
+                            on.getHeight(type, x, z),
+                            top);
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    private static ServerLevel layer(MinecraftServer server, String path) {
+        return ClientLight.serverLevel(
+                server, ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", path)));
     }
 
     private static void compare(GameTestHelper helper, ChunkStatus status, int chunkX) {

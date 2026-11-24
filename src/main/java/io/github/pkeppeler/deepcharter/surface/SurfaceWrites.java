@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.surface;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 import net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -13,19 +15,8 @@ import net.minecraft.world.level.lighting.LightEngine;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Writes one block of a surface rule's column straight into the chunk's section when the write is bookkeeping-neutral
- * ([ADR 0090](../../../../../../../../../docs/adr/0090-the-surface-rule-writes-a-block-for-a-block-of-the-same-bookkeeping-straight-into-the-section.md)).
- * {@code -Ddeepcharter.fastSurfaceWrites=false} turns it off.
- *
- * <p>{@code ProtoChunk.setBlockState} (26.3) does four things after it writes the section: it tells the light engine when the
- * section's only-air flag flips and when {@link LightEngine#hasDifferentLightProperties} (both only from {@code INITIALIZE_LIGHT}
- * on), and it offers the new state to every {@link Heightmap} the status keeps. {@link #neutral} is true only when all four are
- * no-ops: neither state is air (so the only-air flag cannot flip and {@code WORLD_SURFACE}'s predicate agrees), no light property
- * differs, and every heightmap type's predicate gives the same answer for both states. {@code Heightmap.update} reads only the
- * new state's predicate and, on a rescan, the chunk's blocks, so with equal predicates on a consistent heightmap it changes
- * nothing. The caller {@code MaterialSystem$1.setBlock} then marks a fluid for post-processing, so a state with a fluid is out
- * too. Neither state may have a block entity (this write never touches one, and a block entity would be a case the check was not
- * written for). The section keeps its own counts through the same {@code setBlockState} the slow path calls.
+ * Writes a surface rule's block straight into the chunk section when {@code ProtoChunk.setBlockState}'s bookkeeping would change
+ * nothing; {@code -Ddeepcharter.fastSurfaceWrites=false} turns it off. Why that is safe: [ADR 0090](../../../../../../../../../docs/adr/0090-the-surface-rule-writes-a-block-for-a-block-of-the-same-bookkeeping-straight-into-the-section.md).
  */
 public final class SurfaceWrites {
     private static final boolean ENABLED_BY_DEFAULT =
@@ -34,24 +25,35 @@ public final class SurfaceWrites {
 
     private static volatile boolean enabled = ENABLED_BY_DEFAULT;
 
+    /** Bumped when tags reload, so a verdict judged before the reload is a miss after it, whenever it is stored. */
+    private static final AtomicInteger TAGS_GENERATION = new AtomicInteger();
+
+    private static final LongAdder FAST_WRITES = new LongAdder();
+
     /**
-     * The last pair {@link #neutral} judged. A column writes the same two states row after row, and the heightmap predicates
-     * test tags, a hash lookup each, which cost more than the lock this path skips. A pair is two immutable states, so a race
-     * between workers only loses a hit. A tag reload empties it ({@link #init}), since a predicate reads tags.
+     * The last pair {@link #judge} ruled on, and the tag generation it read. A column writes one pair row after row, and the
+     * heightmap predicates test tags (a hash lookup each), which cost more than the lock this path skips.
      */
-    private record Verdict(BlockState was, BlockState now, boolean neutral) {}
+    private record Verdict(int generation, BlockState was, BlockState now, boolean neutral) {}
 
     private static volatile @Nullable Verdict last;
 
     private SurfaceWrites() {}
 
     public static void init() {
-        CommonLifecycleEvents.TAGS_LOADED.register((registries, client) -> last = null);
+        CommonLifecycleEvents.TAGS_LOADED.register((registries, client) -> TAGS_GENERATION.incrementAndGet());
     }
 
-    // test-seam: SurfaceWritesTest generates and writes with the fast path both on and off, and compares the chunks.
-    public static void setEnabled(boolean on) {
+    // test-seam: SurfaceWritesTest generates with the fast path off to compare, and restores the value this returns.
+    public static boolean setEnabled(boolean on) {
+        boolean was = enabled;
         enabled = on;
+        return was;
+    }
+
+    // test-seam: SurfaceWritesTest asserts the mixin routes a real chunk's writes through the fast path.
+    public static long fastWrites() {
+        return FAST_WRITES.sum();
     }
 
     /** What {@code chunk.setBlockState(pos, state)} returns and does, by the cheaper way when that is provably the same. */
@@ -66,8 +68,8 @@ public final class SurfaceWrites {
                 int sectionY = SectionPos.sectionRelative(y);
                 int z = SectionPos.sectionRelative(pos.getZ());
                 if (neutral(section.getBlockState(x, sectionY, z), state)) {
-                    // false: no ThreadingDetector lock, which only detects a second thread and never excludes one; one
-                    // worker owns the chunk's sections in this step (ADR 0090).
+                    // false: no ThreadingDetector lock (ADR 0090).
+                    FAST_WRITES.increment();
                     return section.setBlockState(x, sectionY, z, state, false);
                 }
             }
@@ -77,12 +79,14 @@ public final class SurfaceWrites {
 
     /** Whether writing {@code now} over {@code was} leaves every side effect of {@code ProtoChunk.setBlockState} a no-op. */
     public static boolean neutral(BlockState was, BlockState now) {
+        int generation = TAGS_GENERATION.get();
         Verdict seen = last;
-        if (seen != null && seen.was == was && seen.now == now) {
+        if (seen != null && seen.generation == generation && seen.was == was && seen.now == now) {
             return seen.neutral;
         }
         boolean neutral = judge(was, now);
-        last = new Verdict(was, now, neutral);
+        // The generation read before judging: a reload in between makes this a miss on its next read.
+        last = new Verdict(generation, was, now, neutral);
         return neutral;
     }
 

@@ -10,9 +10,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
- * The surface rule's column writes go through {@link SurfaceWrites} (ADR 0090). The target is the anonymous {@code BlockColumn}
- * {@code MaterialSystem.buildSurface} hands the rule, {@code MaterialSystem$1}, and its {@code setBlock(int, BlockState)}. No
- * Fabric event reaches it: a rule writes a block per row, and the per-write bookkeeping of vanilla's path is a large part of layer 1's excess over a layer (#1160).
+ * Routes the surface rule's block writes through {@link SurfaceWrites}; no Fabric event reaches them. Target and reasoning:
+ * [ADR 0090](../../../../../../../../../../docs/adr/0090-the-surface-rule-writes-a-block-for-a-block-of-the-same-bookkeeping-straight-into-the-section.md).
  */
 @Mixin(targets = "net.minecraft.world.level.levelgen.material.MaterialSystem$1")
 public abstract class MaterialSystemBlockColumnMixin {

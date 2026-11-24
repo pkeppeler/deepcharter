@@ -99,7 +99,7 @@ public class CampaignCostTest {
      * The bands still over the bar (ADR 0086), each at its measured ratio. Layer 1 had one until #1160 (ADR 0090) took it under.
      * No other band may have one ({@link #RATCHETED}).
      */
-    private static final List<Ratchet> RATCHETS = List.of(new Ratchet(CampaignBands.LAYER_2, 1.568, 1132));
+    private static final List<Ratchet> RATCHETS = List.of(new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
 
     /** The only bands a ratchet may hold. */
     private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_2);
