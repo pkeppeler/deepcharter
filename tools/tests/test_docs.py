@@ -127,7 +127,7 @@ TOML = "gradle/libs.versions.toml"
 FRIENDS = "tools/package-friends-build.sh"
 QUOTED_VERSIONS = (
     ("Fabric Loader", re.compile(rf"Fabric Loader {NUMBER}"), "fabricLoader", TOML),
-    ("Fabric API", re.compile(rf"Fabric API {NUMBER}(?:\+[\w.]+)?"), "fabricApi", TOML),
+    ("Fabric API", re.compile(r"Fabric API (\d+(?:\.\d+)+(?:\+[\w.]+)?)"), "fabricApi", TOML),
     ("Minecraft", re.compile(rf"Minecraft {NUMBER}"), "minecraft", TOML),
     ("Java", re.compile(r"\b(?:Java|JDK) (\d+)\b"), "javaRelease", "build.gradle.kts"),
     ("Sodium", re.compile(rf"Sodium {NUMBER}"), "sodium", FRIENDS),
