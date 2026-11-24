@@ -21,7 +21,9 @@ import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -83,8 +85,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
     /** The shaft's air goes on this far above the eye. */
     private static final int DEEP_HEADROOM = 4;
     /**
-     * A landmark block in each side wall of a deep shaft stands this far under the eye, on the screen's left and right edges: glowstone,
-     * which stands out from a dark fog, and a block of coal, which stands out from a pale one or one night vision lifts.
+     * A glowstone lamp in each side wall of a deep shaft stands this far under the eye, on the screen's left and right edges. It stands out
+     * from a dark fog, and the rock round it from a pale one or one that night vision lifts.
      */
     private static final int DEEP_LAMP_BELOW_EYE = 12;
     /** Half the side of the box at the middle of a deep view that must be fog: its rays all pass the walls' drawn ends. */
@@ -169,7 +171,9 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                                     ClientLight.Box.around(
                                             BlockPos.containing(eye),
                                             DEEP_SHAFT_RADIUS + 1,
-                                            DEEP_EYE_ABOVE_FLOOR,
+                                            // The sections the client draws under the camera's: none past them is ever
+                                            // built.
+                                            DEEP_RENDER_DISTANCE * SectionPos.SECTION_SIZE,
                                             DEEP_HEADROOM),
                                     deepLandmarks(shaft),
                                     true,
@@ -215,8 +219,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 
     /**
      * Carves the deep shafts, each far from the others and from the hole: one down to the floor of layer 1 (the top of its crust), one to
-     * the floor of layer 2, and one through the bottom of the world (the breach, where the cover lies). Each has a landmark in its west
-     * and east walls, under the eye.
+     * the floor of layer 2, and one through the bottom of the world (the breach, where the cover lies). Each has a lamp in its west and
+     * east walls, under the eye.
      */
     private static List<Shaft> openDeepShafts(ServerLevel level) {
         int bottom = level.getMinY(); // level-height: the breach shaft opens through the bottom of the whole world
@@ -233,25 +237,25 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                             shaft.floorY() + DEEP_EYE_ABOVE_FLOOR + DEEP_HEADROOM,
                             shaft.z() + DEEP_SHAFT_RADIUS),
                     Blocks.AIR.defaultBlockState());
-            List<BlockPos> marks = deepMarks(shaft);
-            level.setBlock(marks.get(0), Blocks.GLOWSTONE.defaultBlockState(), 3);
-            level.setBlock(marks.get(1), Blocks.COAL_BLOCK.defaultBlockState(), 3);
+            for (BlockPos lamp : deepLamps(shaft)) {
+                level.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);
+            }
         }
         return shafts;
     }
 
-    private static List<BlockPos> deepMarks(Shaft shaft) {
+    private static List<BlockPos> deepLamps(Shaft shaft) {
         int y = shaft.floorY() + DEEP_EYE_ABOVE_FLOOR - DEEP_LAMP_BELOW_EYE;
         return List.of(
                 new BlockPos(shaft.x() - DEEP_SHAFT_RADIUS - 1, y, shaft.z()),
                 new BlockPos(shaft.x() + DEEP_SHAFT_RADIUS + 1, y, shaft.z()));
     }
 
-    /** The faces of a deep shaft's two landmarks that look into it. */
+    /** The faces of a deep shaft's two lamps that look into it. */
     private static List<Vec3> deepLandmarks(Shaft shaft) {
-        List<BlockPos> marks = deepMarks(shaft);
-        BlockPos west = marks.get(0);
-        BlockPos east = marks.get(1);
+        List<BlockPos> lamps = deepLamps(shaft);
+        BlockPos west = lamps.get(0);
+        BlockPos east = lamps.get(1);
         return List.of(
                 new Vec3(west.getX() + 1, west.getY() + 0.5, west.getZ() + 0.5),
                 new Vec3(east.getX(), east.getY() + 0.5, east.getZ() + 0.5));
@@ -355,8 +359,9 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the view " + name + " rendered and lit",
-                () -> context.computeOnClient(
-                                client -> client.gui.screen() == null && client.levelRenderer.hasRenderedAllSections())
+                () -> context.computeOnClient(client -> client.gui.screen() == null
+                                && client.levelRenderer.hasRenderedAllSections()
+                                && sectionsCompiled(client, held))
                         && singleplayer
                                 .getServer()
                                 .computeOnServer(server -> !TestLayers.level(server, layer)
@@ -367,6 +372,31 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         // built
         context.waitTicks(10);
         return context.takeScreenshot(name);
+    }
+
+    /**
+     * Whether the client has a compiled mesh for every section of {@code held}. Its compile queue can be empty while the sections round a
+     * camera that has just moved are not yet queued, and a frame then lacks walls (it showed the cover where rock should be).
+     */
+    private static boolean sectionsCompiled(Minecraft client, ClientLight.Box held) {
+        for (int x = SectionPos.blockToSectionCoord(held.min().getX());
+                x <= SectionPos.blockToSectionCoord(held.max().getX());
+                x++) {
+            for (int y = SectionPos.blockToSectionCoord(held.min().getY());
+                    y <= SectionPos.blockToSectionCoord(held.max().getY());
+                    y++) {
+                for (int z = SectionPos.blockToSectionCoord(held.min().getZ());
+                        z <= SectionPos.blockToSectionCoord(held.max().getZ());
+                        z++) {
+                    // A fade of 1 ms: chunkSectionFadeInTime is 0 in the test client, so only the compiled mesh counts.
+                    if (!client.levelRenderer.isSectionCompiledAndVisible(
+                            SectionPos.of(x, y, z).origin(), 1L)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     /** Yaw and pitch, in degrees, of a camera at {@code eye} that looks at {@code target}. */
