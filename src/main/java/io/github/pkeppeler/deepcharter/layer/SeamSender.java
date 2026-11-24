@@ -57,6 +57,9 @@ public final class SeamSender {
     private static final class RiderSeam {
         final ResourceKey<Level> lower;
         ChunkPos centre;
+        /** Prepares sent to this rider: the generation of the current one (#1229). */
+        int generation;
+
         final LongSet sent = new LongOpenHashSet();
         /** Positions in the area that were sent and have since changed or may have: the crossing sends them again. */
         final LongSet stale = new LongOpenHashSet();
@@ -109,6 +112,9 @@ public final class SeamSender {
         SeamChunkPayload.init();
         SeamDiscardPayload.init();
         SeamMissedPayload.init();
+        SeamSwapPayload.init();
+        SeamAcceptPayload.init();
+        SeamRefusePayload.init();
         ServerTickEvents.END_SERVER_TICK.register(SeamSender::tick);
         ServerPlayNetworking.registerGlobalReceiver(
                 SeamMissedPayload.TYPE, (payload, context) -> missed(context.player(), payload.dimension()));
@@ -342,6 +348,7 @@ public final class SeamSender {
     }
 
     private static void prepare(ServerPlayer player, ServerLevel below, RiderSeam seam) {
+        seam.generation++;
         CommonPlayerSpawnInfo info = player.createCommonSpawnInfo(below);
         ServerPlayNetworking.send(
                 player,
@@ -352,7 +359,8 @@ public final class SeamSender {
                         info.seaLevel(),
                         info.isFlat(),
                         info.isDebug(),
-                        seam.centre));
+                        seam.centre,
+                        seam.generation));
     }
 
     private static void discard(ServerPlayer player, ResourceKey<Level> lower) {
