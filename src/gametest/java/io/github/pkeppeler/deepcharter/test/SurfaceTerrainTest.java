@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.IntStream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -115,6 +116,7 @@ public class SurfaceTerrainTest {
         ServerLevel level = helper.getLevel();
         LayerChain.Band surface = TestLayers.band(level, TestLayers.SURFACE);
         Set<String> found = new TreeSet<>();
+        requestSample(level, ChunkStatus.FEATURES);
         for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
                 chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
                 chunkX++) {
@@ -164,9 +166,26 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
+    /**
+     * Asks for every chunk of the sample square at once, so the worker threads generate them side by side. The reads that follow wait for
+     * each in turn, and a square asked for one chunk at a time keeps most of the workers idle while the server thread holds the batch.
+     */
+    private static void requestSample(ServerLevel level, ChunkStatus status) {
+        for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
+                chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
+                chunkX++) {
+            for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
+                    chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
+                    chunkZ++) {
+                var _ = level.getChunkSource().getChunkFuture(chunkX, chunkZ, status, true);
+            }
+        }
+    }
+
     /** Where the first of each block of {@code wanted} stands in the sample's chunks, within the surface band. */
     private static Map<String, String> firstOf(ServerLevel level, LayerChain.Band surface, Set<String> wanted) {
         Map<String, String> first = new LinkedHashMap<>();
+        requestSample(level, ChunkStatus.FULL);
         for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
                 chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
                 chunkX++) {
@@ -411,11 +430,13 @@ public class SurfaceTerrainTest {
         // a quarter of a millisecond, and this test holds the server tick while it runs.
         int side = 2 * CLIFF_CHECK_RADIUS + 2;
         int[][] heights = new int[side][side];
-        for (int i = 0; i < side; i++) {
+        // A row at a time on the common pool: a height query reads no level state, and the server thread holds the
+        // batch while it waits.
+        IntStream.range(0, side).parallel().forEach(i -> {
             for (int j = 0; j < side; j++) {
                 heights[i][j] = height(generator, level, random, i - CLIFF_CHECK_RADIUS, j - CLIFF_CHECK_RADIUS);
             }
-        }
+        });
         for (int x = -CLIFF_CHECK_RADIUS; x <= CLIFF_CHECK_RADIUS; x++) {
             for (int z = -CLIFF_CHECK_RADIUS; z <= CLIFF_CHECK_RADIUS; z++) {
                 int height = heights[x + CLIFF_CHECK_RADIUS][z + CLIFF_CHECK_RADIUS];
@@ -624,7 +645,7 @@ public class SurfaceTerrainTest {
         RandomState random = level.getChunkSource().randomState();
         int side = SURVEY_SPAN / SURVEY_STEP;
         int[] heights = new int[side * side];
-        for (int i = 0; i < side; i++) {
+        IntStream.range(0, side).parallel().forEach(i -> {
             for (int j = 0; j < side; j++) {
                 heights[i * side + j] = height(
                         generator,
@@ -633,7 +654,7 @@ public class SurfaceTerrainTest {
                         -SURVEY_SPAN / 2 + i * SURVEY_STEP,
                         -SURVEY_SPAN / 2 + j * SURVEY_STEP);
             }
-        }
+        });
         return heights;
     }
 
