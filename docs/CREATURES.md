@@ -117,7 +117,7 @@ The Sleeper's: pod-sized glowing spore bladders that drift toward drill noise an
 
 #### Overgrowth
 
-A hazard of the Sleeper's growth, not a mob. A bore left unvisited grows over with pale soft growth: drillable at extra fuel, cut by hand on foot. Placed blocks never grow over, so a lined shaft stays open.
+A hazard of the Sleeper's growth, not a mob. A bore left unvisited grows over with soft moss, flecked with pale mould: drillable at extra fuel, cut by hand on foot. Placed blocks never grow over, so a lined shaft stays open.
 
 #### The kneeling shapes
 

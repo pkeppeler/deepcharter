@@ -42,11 +42,17 @@
     "block/slag_brick": {"kind": "opaque", "layers": [{"op": "noise", "ramp": ["basalt.1", "basalt.2", "basalt.3", "iron.2", "basalt.3", "basalt.4"], "seed": 701, "cell": 4, "octaves": 2, "dither": 0.8}, {"op": "speckle", "colours": ["basalt.0"], "density": 0.07, "seed": 702}, {"op": "speckle", "colours": ["rust.3", "rust.2", "steel.4"], "density": 0.04, "seed": 703}, {"op": "pixels", "legend": {"m": "crust.3", "h": "basalt.5", "s": "basalt.0"}, "rows": ["hhhhhhhmhhhhhhhm", ".......m.......m", "s.s....m...s...m", "mmmmmmmmmmmmmmmm", "hhhmhhhhhhhmhhhh", "...m.......m....", "..sm...s...m.s..", "mmmmmmmmmmmmmmmm", "hhhhhhhmhhhhhhhm", ".......m.......m", "...s...m.s.....m", "mmmmmmmmmmmmmmmm", "hhhmhhhhhhhmhhhh", "...m.......m....", ".s.m....s..m...s", "mmmmmmmmmmmmmmmm"]}]},
 
     "block/overgrowth": {"kind": "opaque", "layers": [
-      {"op": "noise", "ramp": ["stalk.3", "stalk.3", "stalk.4", "stalk.4", "stalk.4", "stalk.5"], "seed": 9741, "cell": 4, "octaves": 3, "dither": 0.6},
-      {"op": "cracks", "colour": "stalk.2", "seed": 9747, "count": 6, "length": 6, "lip": "stalk.5"},
-      {"op": "cracks", "colour": "stalk.5", "seed": 9748, "count": 5, "length": 9},
-      {"op": "speckle", "colours": ["stalk.2"], "density": 0.03, "seed": 9743},
-      {"op": "speckle", "colours": ["stalk.5"], "density": 0.05, "seed": 9744}
+      {"op": "noise", "ramp": ["moss.2", "moss.3", "moss.3", "moss.4", "moss.4", "moss.5"], "seed": 9741, "cell": 4, "octaves": 3, "dither": 0.9},
+      {"op": "speckle", "colours": ["moss.1", "moss.2"], "density": 0.08, "seed": 9743},
+      {"op": "speckle", "colours": ["moss.5", "moss.6"], "density": 0.07, "seed": 9744},
+      {"op": "speckle", "colours": ["moss.0"], "density": 0.025, "seed": 9745}
+    ]},
+
+    "block/overgrowth_mold": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["moss.2", "mold.1", "mold.2", "mold.2", "mold.3", "mold.3"], "seed": 9751, "cell": 4, "octaves": 3, "dither": 0.9},
+      {"op": "speckle", "colours": ["mold.4", "mold.5"], "density": 0.12, "seed": 9753},
+      {"op": "speckle", "colours": ["moss.2", "mold.0"], "density": 0.06, "seed": 9754},
+      {"op": "speckle", "colours": ["moss.5"], "density": 0.03, "seed": 9755}
     ]},
 
     "block/terminal_side": {

@@ -1,7 +1,14 @@
 {
   "variants": {
-    "": {
-      "model": "deepcharter:block/overgrowth"
-    }
+    "": [
+      {
+        "model": "deepcharter:block/overgrowth",
+        "weight": 3
+      },
+      {
+        "model": "deepcharter:block/overgrowth_mold",
+        "weight": 1
+      }
+    ]
   }
 }

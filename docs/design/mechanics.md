@@ -1928,7 +1928,9 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Problem.** The Fungal Hollows are the Sleeper's growth, and a bore is a hole in it ([CREATURES.md](../CREATURES.md#overgrowth)). A hazard that is not a mob and needs no new sensor: leave a bore alone and it heals over. It must read before it costs, never trap anyone, and never take a block a player built (SPEC section 10: hazards never delete player-built blocks).
 
-**What it does.** A bore that nobody visits grows over with the pale `overgrowth` block, from the walls inward, a few cells at a time. It is a soft full block with no drop.
+**What it does.** A bore that nobody visits grows over with the `overgrowth` block, from the walls inward, a few cells at a time. It is a soft full block with no drop.
+
+**The look (A).** Damp moss: clumped greens (the `moss` ramp, mid-bright so it still reads in lamp light and the Hollows dark), with dark pits and pale tufts. Every fourth cell or so is a paler, fuzzier mould patch (the `mold` ramp, grey-green with white bloom), picked by position through a weighted blockstate (3 moss to 1 mould), so a bore's lining is not uniform. The mould is the same block with a second model and texture: no new id, no new rule.
 
 | Situation | What happens | Counterplay |
 |---|---|---|
@@ -1950,7 +1952,7 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Never traps (A).** The player who could be walled in is within the radius, so nothing grows near them; a player who is not in the level (logged out) is not: leaving counts as a visit, and joining clears the growth from the feet and head cells, which stay pending; an entity in a cell stops that cell; the drill bores growth; a hand cuts it. A parked pod can be boxed in by growth above it, and then the pilot cuts it from the seat's side on foot: that is rung 1.
 
-**Sensed (A).** The film is the warning: pale cells show on the walls long before a bore closes (the 3 x 3 bore below takes 2 minutes to close from the first cell), and a growth cell sheds a spore into an open side now and then.
+**Sensed (A).** The film is the warning: moss cells show on the walls long before a bore closes (the 3 x 3 bore below takes 2 minutes to close from the first cell), and a growth cell sheds a spore into an open side now and then.
 
 **Knobs (`OvergrowthTuning`).** `delayTicks` (6000, 5 minutes), `visitRadius` (32), `passTicks` (100), `cellsPerPass` (3, for the whole chunk), `holdReach` (2), `visitStampTicks` (600), `maxLooks` (48, the cells one pass weighs: a chunk of thousands costs a scan of its keys and 48 block reads). Chunks pass on their own tick of the 100, by chunk hash, `drillFuelMultiplier` (3), `hardness` (1.0). Data: the biome tag `deepcharter:fungal_hollows` (empty), the block tag `deepcharter:lining` (slag brick), `minecraft:mineable/axe`.
 
