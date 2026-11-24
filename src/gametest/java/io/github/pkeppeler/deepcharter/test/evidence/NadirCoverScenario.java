@@ -12,9 +12,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ParticleStatus;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -72,7 +69,7 @@ public class NadirCoverScenario extends EvidenceScenario {
             ClientChecks.withHudHidden(context, ParticleStatus.MINIMAL, () -> {
                 ClientChecks.withRenderDistance(context, ShaftViews.RENDER_DISTANCE, () -> {
                     for (boolean nightVision : new boolean[] {false, true}) {
-                        nightVision(server, nightVision);
+                        ShaftViews.nightVision(server, nightVision);
                         for (ShaftViews.Shaft shaft : shafts) {
                             view(
                                     context,
@@ -107,17 +104,6 @@ public class NadirCoverScenario extends EvidenceScenario {
                 });
             });
         }
-    }
-
-    private static void nightVision(TestServerContext server, boolean on) {
-        server.runOnServer(s -> {
-            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
-            player.removeAllEffects();
-            if (on) {
-                player.addEffect(new MobEffectInstance(
-                        MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-            }
-        });
     }
 
     private void view(

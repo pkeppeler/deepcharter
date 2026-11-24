@@ -12,7 +12,10 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -161,6 +164,18 @@ public final class ShaftViews {
                         && server.computeOnServer(
                                 s -> !campaign(s, level).getLightEngine().hasLightWork()),
                 () -> "chunks still rendering or light still settling");
+    }
+
+    /** Gives the first player night vision, or takes every effect away. */
+    public static void nightVision(TestServerContext server, boolean on) {
+        server.runOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            player.removeAllEffects();
+            if (on) {
+                player.addEffect(new MobEffectInstance(
+                        MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
+            }
+        });
     }
 
     /** The top of the ground at ({@code x}, {@code z}) in {@code level}, generating its chunk first. */

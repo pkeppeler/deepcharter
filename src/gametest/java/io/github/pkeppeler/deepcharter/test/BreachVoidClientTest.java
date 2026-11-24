@@ -25,13 +25,10 @@ import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Vector4f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,7 +129,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                         new View("shallow", new Vec3(X - 6.5, minY + SHAFT_DEPTH + 1.7, Z + 0.5), true)
                     };
                     for (boolean nightVision : new boolean[] {false, true}) {
-                        nightVision(singleplayer, nightVision);
+                        ShaftViews.nightVision(singleplayer.getServer(), nightVision);
                         for (View view : views) {
                             if (nightVision && !view.bothLightings()) {
                                 continue;
@@ -160,7 +157,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                                 server -> ShaftViews.open(TestLayers.level(server, 1), X, Z + DEEP_SHAFTS_SOUTH));
                 ClientChecks.withRenderDistance(context, ShaftViews.RENDER_DISTANCE, () -> {
                     for (boolean nightVision : new boolean[] {false, true}) {
-                        nightVision(singleplayer, nightVision);
+                        ShaftViews.nightVision(singleplayer.getServer(), nightVision);
                         for (ShaftViews.Shaft shaft : shafts) {
                             String name = "breach-void-deep-" + shaft.name() + (nightVision ? "-night-vision" : "");
                             Path shot = lookUntilLit(
@@ -183,18 +180,6 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         if (!failures.isEmpty()) {
             throw new AssertionError(String.join("\n", failures));
         }
-    }
-
-    /** Gives the first player night vision, or takes every effect away. */
-    private static void nightVision(TestSingleplayerContext singleplayer, boolean on) {
-        singleplayer.getServer().runOnServer(server -> {
-            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.removeAllEffects();
-            if (on) {
-                player.addEffect(new MobEffectInstance(
-                        MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-            }
-        });
     }
 
     /**
@@ -293,7 +278,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         FarChunks.Deadline deadline = FarChunks.deadline();
         while (true) {
             Path shot = look(context, singleplayer, level, eye, target, held, name);
-            Optional<Vector4f> fog = againstFog ? Optional.of(fog(context)) : Optional.empty();
+            Optional<int[]> fog = againstFog ? Optional.of(fog(context)) : Optional.empty();
             Optional<String> problem = litProblem(context, read(shot), eye, target, landmarks, fog, name);
             if (problem.isEmpty()) {
                 return shot;
@@ -317,7 +302,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
             Vec3 eye,
             Vec3 target,
             List<Vec3> landmarks,
-            Optional<Vector4f> fog,
+            Optional<int[]> fog,
             String name) {
         float[] angles = ShaftViews.anglesTo(eye, target);
         double fov =
@@ -348,11 +333,11 @@ public class BreachVoidClientTest implements FabricClientGameTest {
     }
 
     /** Whether a pixel near ({@code px}, {@code py}) is brighter than {@link #LIT}, or stands out from {@code fog} by more than it. */
-    private static boolean litNear(BufferedImage image, int px, int py, Optional<Vector4f> fog) {
+    private static boolean litNear(BufferedImage image, int px, int py, Optional<int[]> fog) {
         for (int y = Math.max(0, py - WINDOW); y <= Math.min(image.getHeight() - 1, py + WINDOW); y++) {
             for (int x = Math.max(0, px - WINDOW); x <= Math.min(image.getWidth() - 1, px + WINDOW); x++) {
                 int rgb = image.getRGB(x, y);
-                if (fog.isPresent() ? fogDelta(rgb, fog.get()) > LIT : brightest(rgb) > LIT) {
+                if (fog.isPresent() ? delta(rgb, fog.get()) > LIT : brightest(rgb) > LIT) {
                     return true;
                 }
             }
@@ -462,16 +447,11 @@ public class BreachVoidClientTest implements FabricClientGameTest {
     }
 
     /** The fog colour of the client's last frame: what terrain fades into, and what the shader mixes into it. */
-    private static Vector4f fog(ClientGameTestContext context) {
-        return context.computeOnClient(client ->
-                new Vector4f(client.gameRenderer.gameRenderState().levelRenderState.cameraRenderState.fogData.color));
-    }
-
-    /** The largest difference, over the three channels, between {@code rgb} and {@code fog}. */
-    private static int fogDelta(int rgb, Vector4f fog) {
-        return Math.max(
-                Math.abs(((rgb >> 16) & 0xFF) - channel(fog.x())),
-                Math.max(Math.abs(((rgb >> 8) & 0xFF) - channel(fog.y())), Math.abs((rgb & 0xFF) - channel(fog.z()))));
+    private static int[] fog(ClientGameTestContext context) {
+        return context.computeOnClient(client -> {
+            var colour = client.gameRenderer.gameRenderState().levelRenderState.cameraRenderState.fogData.color;
+            return new int[] {channel(colour.x()), channel(colour.y()), channel(colour.z())};
+        });
     }
 
     private static int channel(float value) {
