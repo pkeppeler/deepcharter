@@ -54,11 +54,12 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Measures what the campaign generator (#742) costs a new column, per band (ADR 0086, which amends ADR 0029's bar). Each band's window
- * is the shipped campaign world cut to that band's rows ({@code campaign_surface}, {@code campaign_layer_1}, {@code campaign_layer_2}),
+ * is the shipped campaign world cut to that band's rows ({@code campaign_surface}, {@code campaign_layer_1} and so on),
  * and its floor is the window cut to its bottom 16 rows ({@code campaign_surface_floor} and so on). A band's marginal CPU per filled
  * row is its window's pooled median over its floor's, per row of the difference; {@code tall_layer} (one layer's rock and fill in every
  * row) over {@code tall_layer_floor} is the reference. The gate: every band at most {@value BandCost#BAR}x the reference, except the
- * bands {@link #RATCHETS} holds to their own measured ratio plus 15% until their issue. The whole world, {@code campaign_full} per
+ * bands {@link #RATCHETS} holds to their own measured ratio plus 15% until their issue. A band is over when the lower bound of its
+ * runs' own ratios is over its bar ({@link BandCost#lowerBound}), not when the pooled ratio is. The whole world, {@code campaign_full} per
  * block of height against {@code tall_baseline} (vanilla stone, no fill), is printed as a tracked number and no longer gates.
  *
  * <p>{@code everyCostWorldGeneratesColumns} generates a few columns of each world and checks they exist. With the number of rounds in
@@ -93,14 +94,17 @@ public class CampaignCostTest {
     private static final List<Window> WINDOWS = List.of(
             new Window(CampaignBands.SURFACE, "campaign_surface", "campaign_surface_floor"),
             new Window(CampaignBands.LAYER_1, "campaign_layer_1", "campaign_layer_1_floor"),
-            new Window(CampaignBands.LAYER_2, "campaign_layer_2", "campaign_layer_2_floor"));
+            new Window(CampaignBands.LAYER_2, "campaign_layer_2", "campaign_layer_2_floor"),
+            new Window(CampaignBands.LAYER_3, "campaign_layer_3", "campaign_layer_3_floor"));
 
-    /** The bands that were over the bar when the gate was written (ADR 0086). No other band may have one ({@link #RATCHETED}). */
-    private static final List<Ratchet> RATCHETS =
-            List.of(new Ratchet(CampaignBands.LAYER_1, 1.218, 1132), new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
+    /**
+     * The bands still over the bar (ADR 0086), each at its measured ratio. Layer 1 had one until #1160 (ADR 0090) took it under.
+     * No other band may have one ({@link #RATCHETED}).
+     */
+    private static final List<Ratchet> RATCHETS = List.of(new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
 
     /** The only bands a ratchet may hold. */
-    private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_1, CampaignBands.LAYER_2);
+    private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_2);
 
     /** The worlds the gate reads. */
     private static final List<String> GATED = Stream.concat(
@@ -112,7 +116,7 @@ public class CampaignCostTest {
             Stream.concat(Stream.of(BASELINE, CAMPAIGN), GATED.stream()).toList();
     /** The worlds whose zone fill has rock to work on. */
     private static final List<String> FILLED_WORLDS =
-            List.of(REFERENCE, CAMPAIGN, "campaign_layer_1", "campaign_layer_2");
+            List.of(REFERENCE, CAMPAIGN, "campaign_layer_1", "campaign_layer_2", "campaign_layer_3");
 
     private static final List<String> WORLDS =
             REQUESTED_WORLD == null ? ALL_WORLDS : List.of(REQUESTED_WORLD.split(","));
@@ -153,7 +157,7 @@ public class CampaignCostTest {
 
     /**
      * A window's rows are the campaign world's, so it costs what its band does there: in each of {@link #SAME_ROWS_CHUNKS} and, for a
-     * layer, a chunk that holds a site of that layer, every block state and every biome cell of every row of the window, both band
+     * layer with structures, a chunk that holds a site of that layer, every block state and every biome cell of every row of the window, both band
      * edges among them, are the campaign world's. It loads the chunks on the server thread, so it has a batch of its own.
      */
     @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = MAX_TICKS)
@@ -164,7 +168,9 @@ public class CampaignCostTest {
         for (Window window : WINDOWS) {
             ServerLevel level = world(helper, window.world());
             Set<ChunkPos> chunks = new LinkedHashSet<>(SAME_ROWS_CHUNKS);
-            LayerChain.campaignLayersIn(level).forEach(band -> chunks.add(siteChunk(helper, campaign, band, conduit)));
+            LayerChain.campaignLayersIn(level).stream()
+                    .filter(band -> !StructureKind.inLayer(band.layer()).isEmpty())
+                    .forEach(band -> chunks.add(siteChunk(helper, campaign, band, conduit)));
             for (ChunkPos chunk : chunks) {
                 expectSameRows(helper, campaign.getChunk(chunk.x(), chunk.z()), level, window.world());
             }
@@ -318,14 +324,16 @@ public class CampaignCostTest {
         JsonObject dimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject()
                 .getAsJsonObject("dimensions");
-        JsonElement campaign = read(helper, "/data/minecraft/dimension/overworld.json")
-                .getAsJsonObject()
-                .get("generator");
+        JsonObject shipped =
+                read(helper, "/data/minecraft/dimension/overworld.json").getAsJsonObject();
+        JsonElement campaign = shipped.get("generator");
         JsonObject campaignType =
                 read(helper, "/data/minecraft/dimension_type/overworld.json").getAsJsonObject();
         for (Window window : WINDOWS) {
             CampaignBands.Band band = window.band();
             boolean sky = band == CampaignBands.SURFACE;
+            expectFromShipped(helper, dimensions, window.world(), shipped);
+            expectFromShipped(helper, dimensions, window.floor(), shipped);
             expectCut(helper, dimensions, window.world(), campaign, cut(campaignType, band.minY(), band.height(), sky));
             expectCut(helper, dimensions, window.floor(), campaign, cut(campaignType, band.minY(), FLOOR_ROWS, sky));
         }
@@ -338,6 +346,19 @@ public class CampaignCostTest {
                 dimensions.getAsJsonObject("deepcharter:" + REFERENCE).get("generator"),
                 cut(referenceType, referenceType.get("min_y").getAsInt(), FLOOR_ROWS, false));
         helper.succeed();
+    }
+
+    // A stray key or a stale hand copy must not pass.
+    private static void expectFromShipped(
+            GameTestHelper helper, JsonObject dimensions, String world, JsonObject shipped) {
+        JsonObject expected = shipped.deepCopy();
+        expected.addProperty("type", "deepcharter:" + world);
+        expect(
+                helper,
+                expected.equals(dimensions.get("deepcharter:" + world)),
+                "%s is not the shipped overworld with its own type: %s",
+                world,
+                dimensions.get("deepcharter:" + world));
     }
 
     private static void expectCut(
@@ -435,12 +456,14 @@ public class CampaignCostTest {
         List<Ratio> ratios = BandCost.ratios(pool, WINDOWS, RATCHETS, REFERENCE, REFERENCE_FLOOR);
         for (Ratio ratio : ratios) {
             LOGGER.info(
-                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s; at most {}x{} ({})",
+                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s pooled,"
+                            + " the runs' own ratios at least {}x; at most {}x{} ({})",
                     ratio.window().band().name(),
                     String.format("%.4f", ratio.marginal()),
                     ratio.window().floor(),
                     String.format("%.3f", ratio.ratio()),
                     REFERENCE,
+                    String.format("%.3f", ratio.bound()),
                     String.format("%.3f", ratio.bar()),
                     ratio.ratchet()
                             .map(held -> ", a ratchet until #" + held.issue())

@@ -63,6 +63,38 @@
       {
         "model": "deepcharter:block/goldium_ore_green_shale_9"
       }
+    ],
+    "host=basalt_core": [
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_0"
+      },
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_1"
+      },
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_2"
+      },
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_3"
+      },
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_4"
+      },
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_5"
+      },
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_6"
+      },
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_7"
+      },
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_8"
+      },
+      {
+        "model": "deepcharter:block/goldium_ore_basalt_core_9"
+      }
     ]
   }
 }
