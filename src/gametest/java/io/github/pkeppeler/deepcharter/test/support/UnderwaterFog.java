@@ -86,7 +86,8 @@ public final class UnderwaterFog {
             ServerLevel level = TestLayers.level(s, layer);
             LayerChain.Band band = TestLayers.band(level, layer);
             Zones.Span zone = Zones.span(band.minY(), band.height(), ZONE);
-            BlockPos feet = new BlockPos(CavernSky.HALL_X + LAYER_STEP * layer, (zone.low() + zone.high()) / 2, CavernSky.HALL_Z);
+            BlockPos feet = new BlockPos(
+                    CavernSky.HALL_X + LAYER_STEP * layer, (zone.low() + zone.high()) / 2, CavernSky.HALL_Z);
             RoomCarver.carve(
                     level,
                     feet.offset(-BEHIND, -HALF_HEIGHT, -HALF_WIDTH),
