@@ -381,12 +381,16 @@ public class LightSyncRingHoldTest {
                         if (!unloaded) {
                             return;
                         }
-                        if (LightSync.hasPending(level, drawn) || LightSync.hasPending(level, neighbour)) {
-                            throw failure(
-                                    helper,
-                                    "%s and %s are unloaded but the hold still has work pending for them",
-                                    drawn,
-                                    neighbour);
+                        boolean pending = LightSync.hasPending(level, drawn) || LightSync.hasPending(level, neighbour);
+                        // The chunk reads as absent before its save finishes and the unload event runs.
+                        deadline.await(
+                                helper,
+                                level,
+                                !pending,
+                                () -> drawn + " and " + neighbour
+                                        + " are unloaded but the hold still has work pending");
+                        if (pending) {
+                            return;
                         }
                         finish.run();
                         helper.succeed();
