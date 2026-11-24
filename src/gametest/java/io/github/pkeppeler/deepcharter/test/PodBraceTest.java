@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -207,7 +208,13 @@ public class PodBraceTest {
     public void thereIsNoWarningWhereThereIsNoCrustToCross(GameTestHelper helper) {
         expectNone(
                 helper,
-                pod(helper, TestLayers.level(helper, 2), 2, 10, 1f, false),
+                pod(
+                        helper,
+                        TestLayers.level(helper, CampaignBands.lastLayer()),
+                        CampaignBands.lastLayer(),
+                        10,
+                        1f,
+                        false),
                 "in the last layer, whose crust is not drilled");
         expectNone(
                 helper,

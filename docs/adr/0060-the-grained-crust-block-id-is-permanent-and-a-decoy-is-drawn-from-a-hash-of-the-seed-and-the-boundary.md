@@ -4,7 +4,7 @@ status: accepted
 
 # The grained crust block id is permanent, and a decoy is drawn from a hash of the seed and the boundary
 
-Issue #746, part of #216 (the seams and the decoys) and the campaign world plan (#214, [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md)). The design is in the comments on #185; the SPEC section is [Seams and grained crust](../SPEC.md#seams-and-grained-crust).
+Issue #746, part of #216 (the seams and the decoys) and the campaign world plan (#214, [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md)). Amended by [ADR 0080](0080-a-crust-boundary-is-named-by-its-floor-y-and-a-decoy-is-drawn-from-the-seed-and-that-y.md): the boundary's identity is the Y of its crust's lowest row. The design is in the comments on #185; the SPEC section is [Seams and grained crust](../SPEC.md#seams-and-grained-crust).
 
 ## Decision
 

@@ -120,7 +120,8 @@ public final class Tally extends PathfinderMob {
 
     /**
      * Whether a pod draws a Tally: a survival pilot aboard, power, no lights, and ore in the bay. A parked pod is left alone, and so is a wreck, a lit
-     * pod, a pod flown by a creative player and a pod whose bay holds nothing to sample.
+     * pod, a pod flown by a creative player and a pod whose bay holds nothing to sample. A pod within the reach of a burning flare
+     * ({@link DrawSources}) counts as lit, though it frees no Tally already clamped.
      */
     public static boolean draws(PodEntity pod) {
         return pod.getFirstPassenger() instanceof Player pilot
@@ -128,6 +129,7 @@ public final class Tally extends PathfinderMob {
                 && !pilot.isSpectator()
                 && PodEvents.isPowered(pod)
                 && !PodLights.isLit(pod)
+                && !(pod.level() instanceof ServerLevel level && DrawSources.litByFlare(level, pod.position()))
                 && pod.cargo().isReadable()
                 && !pod.cargo().entries().isEmpty();
     }
