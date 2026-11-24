@@ -473,11 +473,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             String what = drive.name() + ", " + subject.name();
             double shortestTick = expectSmooth(what, subject.frames(), drive);
             if (drive.steady() && judgeFloor) {
+                // shortestTick is horizontalDistance(), x and z together, between two frames a tick apart.
                 require(
-                        DriveJudge.reaches(shortestTick, MIN_TICK_SHARE * drive.speed(), reach(subject.frames())),
+                        DriveJudge.reaches(shortestTick, MIN_TICK_SHARE * drive.speed()),
                         what + ": the drawn pod covered only " + shortestTick
                                 + " blocks in one tick of a steady drive, under " + MIN_TICK_SHARE * drive.speed()
-                                + " (less " + DriveJudge.tolerance(reach(subject.frames())) + " of float noise)");
+                                + " (less the " + DriveJudge.TOLERANCE + " network position quantum)");
             }
         }
         if (late != null && late.recovers()) {
@@ -517,16 +518,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         double covered = frames.getLast().z - frames.get(SETTLE_TICKS * FRAMES).z;
         double expected = MIN_PROGRESS_SHARE * drive.speed() * (drive.ticks() - SETTLE_TICKS);
         LOGGER.info("PodDriveSmoothClientTest: {}: covered {} (at least {})", what, covered, expected);
-        require(
-                DriveJudge.reaches(covered, expected, reach(frames)),
-                what + ": the drawn pod covered only " + covered + " blocks, under " + expected + " (less "
-                        + DriveJudge.tolerance(reach(frames)) + " of float noise)");
-    }
-
-    /** The largest coordinate the drawn pod reached, which sets the float precision of its measured steps. */
-    private static double reach(List<Vec3> frames) {
-        Vec3 last = frames.getLast();
-        return DriveJudge.magnitude(last.x, last.y, last.z);
+        require(covered >= expected, what + ": the drawn pod covered only " + covered + " blocks, under " + expected);
     }
 
     /**

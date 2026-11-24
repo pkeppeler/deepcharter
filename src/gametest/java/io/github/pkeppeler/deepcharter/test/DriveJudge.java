@@ -1,21 +1,16 @@
 package io.github.pkeppeler.deepcharter.test;
 
-/** The floor comparisons of {@link PodDriveSmoothClientTest}, apart from the game so {@link DriveJudgeTest} runs the same code. */
+/** The floor comparison of {@link PodDriveSmoothClientTest}, apart from the game so {@link DriveJudgeTest} runs the same code. */
 final class DriveJudge {
     private DriveJudge() {}
 
-    /** Four float ulps at the coordinate: the drawn positions are float-quantized, a real hitch (0.025 against 0.1) is orders above. */
-    static double tolerance(double coordinate) {
-        return 4 * Math.ulp((float) coordinate);
-    }
+    /** The network sends an entity's position as a multiple of this (VecDeltaCodec.TRUNCATION_STEPS is 4096), so the client's drawn one is rounded to it. */
+    static final double POSITION_QUANTUM = 1.0 / 4096;
 
-    /** True when {@code measured} reaches {@code floor}, give or take the float noise at {@code coordinate}. */
-    static boolean reaches(double measured, double floor, double coordinate) {
-        return measured >= floor - tolerance(coordinate);
-    }
+    /** Two rounded positions (each off by at most half a quantum, and a lerp between them no more) differ from the truth by at most one quantum. */
+    static final double TOLERANCE = POSITION_QUANTUM;
 
-    /** The largest coordinate magnitude of a position, which sets the float precision its differences carry. */
-    static double magnitude(double x, double y, double z) {
-        return Math.max(Math.abs(x), Math.max(Math.abs(y), Math.abs(z)));
+    static boolean reaches(double measured, double floor) {
+        return measured >= floor - TOLERANCE;
     }
 }
