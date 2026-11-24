@@ -73,6 +73,16 @@ public final class LightSync {
     /** The light tasks queued at a chunk after its last draw, until they have run. */
     private static final Map<Key, CompletableFuture<?>> QUEUED = new ConcurrentHashMap<>();
 
+    /** The chunks whose extended send is offered to their trackers when it can be sent, until then. */
+    private static final Map<Key, RingOffer> OFFERS = new ConcurrentHashMap<>();
+
+    /** An armed offer: the holder it follows and the players sent the chunk since. */
+    private record RingOffer(ChunkHolder holder, Set<UUID> sentSince) {
+        RingOffer(ChunkHolder holder) {
+            this(holder, ConcurrentHashMap.newKeySet());
+        }
+    }
+
     /** Server ticks a chunk's published light is compared after the chunk can be sent (5 s). */
     private static final int NET_WINDOW_TICKS = 100;
     /** Server ticks between two comparisons. */
@@ -121,6 +131,7 @@ public final class LightSync {
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             HOLDS.keySet().removeIf(key -> key.level.getServer() == server);
             QUEUED.keySet().removeIf(key -> key.level.getServer() == server);
+            OFFERS.keySet().removeIf(key -> key.level.getServer() == server);
             NET.keySet().removeIf(key -> key.level.getServer() == server);
         });
     }
@@ -157,7 +168,7 @@ public final class LightSync {
                 .filter(near -> level.getChunkSource().chunkMap.getChunkToSend(near.pack()) != null)
                 .forEach(sendable::add);
         level.getChunkSource().chunkMap.waitForLightBeforeSending(chunk, 0);
-        holdRingUntilTasksRun(level, chunk);
+        holdRingUntilTasksRun(level, chunk, sendable);
         int now = level.getServer().getTickCount();
         ChunkPos.rangeClosed(chunk, 1)
                 .filter(near -> level.getChunkSource().getChunkNow(near.x(), near.z()) != null)
@@ -180,21 +191,72 @@ public final class LightSync {
      * (#494). Each neighbour also waits for the tasks queued at {@code chunk}, after the draw's. A neighbour that has no holder yet,
      * or loads later, waits for them when it loads ({@link #holdLoadedNeighbour}).
      */
-    private static void holdRingUntilTasksRun(ServerLevel level, ChunkPos chunk) {
+    private static void holdRingUntilTasksRun(ServerLevel level, ChunkPos chunk, List<ChunkPos> sendable) {
         CompletableFuture<?> drawn = level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x(), chunk.z());
         Key key = new Key(level, chunk);
         QUEUED.put(key, drawn);
         var _ = drawn.thenRun(() -> QUEUED.remove(key, drawn));
-        ChunkPos.rangeClosed(chunk, 1)
-                .filter(near -> !near.equals(chunk))
-                .forEach(near -> dependOn(level, near, drawn));
+        ChunkPos.rangeClosed(chunk, 1).filter(near -> !near.equals(chunk)).forEach(near -> {
+            ChunkHolder holder = dependOn(level, near, drawn);
+            if (holder != null && !sendable.contains(near)) {
+                offerWhenSendable(level, near, holder);
+            }
+        });
     }
 
-    private static void dependOn(ServerLevel level, ChunkPos chunk, CompletableFuture<?> tasks) {
+    private static @Nullable ChunkHolder dependOn(ServerLevel level, ChunkPos chunk, CompletableFuture<?> tasks) {
         ChunkHolder holder = level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(chunk.pack());
         if (holder != null) {
             holder.addSendDependency(tasks);
         }
+        return holder;
+    }
+
+    /**
+     * Offers a chunk that could not be sent when its send was extended to the players who track it once it can be. Vanilla offers a
+     * chunk to its trackers once, when the send future it read at the chunk's tick promotion completes, and marks nothing for a
+     * player who starts tracking while {@code getChunkToSend} is null: a player who came into view after that future completed and
+     * before the extension did would never be sent the chunk. Players sent the chunk meanwhile, and those already queued for it,
+     * are left out.
+     */
+    private static void offerWhenSendable(ServerLevel level, ChunkPos chunk, ChunkHolder holder) {
+        Key key = new Key(level, chunk);
+        RingOffer open = OFFERS.get(key);
+        if (open != null && open.holder == holder) {
+            return; // armed already: it follows the holder's send future as it is extended
+        }
+        RingOffer offer = new RingOffer(holder);
+        OFFERS.put(key, offer);
+        armOffer(key, offer);
+    }
+
+    private static void armOffer(Key key, RingOffer offer) {
+        var _ = offer.holder()
+                .getSendSyncFuture()
+                .thenRun(() -> key.level.getServer().execute(() -> {
+                    ServerLevel level = key.level;
+                    if (OFFERS.get(key) != offer
+                            || level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(key.chunk.pack())
+                                    != offer.holder()) {
+                        return;
+                    }
+                    if (!offer.holder().getSendSyncFuture().isDone()) {
+                        armOffer(key, offer); // the send was extended again meanwhile
+                        return;
+                    }
+                    OFFERS.remove(key, offer);
+                    LevelChunk sendable = offer.holder().getChunkToSend();
+                    if (sendable == null) {
+                        return; // it does not tick yet: vanilla offers it when it does, reading the send future then
+                    }
+                    for (ServerPlayer player : level.players()) {
+                        if (player.getChunkTrackingView().contains(key.chunk)
+                                && !offer.sentSince().contains(player.getUUID())
+                                && !player.connection.chunkSender.isPending(key.chunk.pack())) {
+                            player.connection.chunkSender.markChunkPendingToSend(sendable);
+                        }
+                    }
+                }));
     }
 
     /** A chunk that loads while a neighbour's draw still has light tasks queued waits for them before it is sent. */
@@ -322,6 +384,10 @@ public final class LightSync {
 
     /** Called when a chunk packet is about to be built for a player: the player will hold the light published now. */
     public static void chunkSent(ServerPlayer player, LevelChunk chunk) {
+        RingOffer offer = OFFERS.get(new Key(player.level(), chunk.getPos()));
+        if (offer != null) {
+            offer.sentSince().add(player.getUUID());
+        }
         NetWatch watch = NET.get(new Key(player.level(), chunk.getPos()));
         if (watch != null) {
             watch.held.put(player.getUUID(), lightPrint(player.level(), chunk.getPos()));
@@ -408,7 +474,8 @@ public final class LightSync {
         }
         Settling settling = watch.settling;
         if (settling == null) {
-            settling = new Settling(tasksNear(key.level, key.chunk), now);
+            settling = new Settling(
+                    key.level.getChunkSource().getLightEngine().waitForPendingTasks(key.chunk.x(), key.chunk.z()), now);
             watch.settling = settling;
         }
         if (settling.tasks.isDone()) {
@@ -423,16 +490,6 @@ public final class LightSync {
                     now - settling.since);
         }
         return false;
-    }
-
-    /**
-     * The light tasks queued by now at the chunk and its eight neighbours: a neighbour's blocks change this chunk's light, and the
-     * queues of different positions run in no fixed order (#494).
-     */
-    private static CompletableFuture<?> tasksNear(ServerLevel level, ChunkPos chunk) {
-        return CompletableFuture.allOf(ChunkPos.rangeClosed(chunk, 1)
-                .map(near -> level.getChunkSource().getLightEngine().waitForPendingTasks(near.x(), near.z()))
-                .toArray(CompletableFuture[]::new));
     }
 
     private static void sendLight(ServerPlayer player, ClientboundLightUpdatePacket light) {

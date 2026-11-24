@@ -5,16 +5,23 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.LightEngineGate;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.jspecify.annotations.Nullable;
@@ -24,7 +31,12 @@ import org.jspecify.annotations.Nullable;
  * each neighbour wait only for the light tasks queued at its own position, and the light engine runs the queues of different
  * positions in no fixed order, so a neighbour could be sent the light it had before a draw. The order is not the test's to set: it
  * draws into many chunks as each becomes sendable, while the rest of the area is still being generated, and checks every tick that no
- * neighbour of a drawn chunk is sendable while the light tasks queued by the draw are waiting.
+ * neighbour of a drawn chunk is sendable while the light tasks queued by the draw are waiting. That sampled case is statistical: it
+ * can pass on a run where the engine happens to run the drawn chunk's queue first. The two cases with a gate
+ * ({@link LightEngineGate}) are not: the drawn chunk's wait for its light tasks is held back by the test, so the state "the draw's
+ * tasks have not run, the neighbours' own have" is set, not waited for, and a neighbour that is sendable in it fails. A third case
+ * adds a player who comes into view of a neighbour while its send is extended: vanilla marks nothing for a player who tracks a
+ * chunk that cannot be sent, so the chunk has to be offered to them when it can be.
  */
 public class LightSyncRingHoldTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -32,7 +44,7 @@ public class LightSyncRingHoldTest {
     private static final int HOME_X = (-40_000 >> 4) + 200;
 
     private static final int HOME_Z = 40_000 >> 4;
-    /** Chunks on a side of the area; the draws go in the ones that have a full ring inside it. */
+    /** Chunks on a side of the area; a draw goes into every chunk of it that is newly generated, so the neighbours of most have a ring to hold. */
     private static final int SIDE = 10;
     /** Rows the draw rewrites. */
     private static final int DRAW_ROWS = 6;
@@ -42,24 +54,35 @@ public class LightSyncRingHoldTest {
     /** A draw's chunk, and the light tasks queued at it after the draw. */
     private record Drawn(ChunkPos chunk, CompletableFuture<?> tasks) {}
 
-    /** The draws of the running case, filled by the chunk load callback; server thread only. Null when no case runs. */
+    /** The draws of the running case, filled by the chunk load callback. Null when no case runs. */
     private static volatile @Nullable Case running;
 
     private static final class Case {
         final ServerLevel level;
+        /** The server tick after which the case is over whatever became of its test: a timeout runs no exit path of the body. */
+        final int lastTick;
+
         final List<Drawn> drawn = new ArrayList<>();
 
         Case(ServerLevel level) {
             this.level = level;
+            this.lastTick = level.getServer().getTickCount() + MAX_TICKS;
+        }
+
+        boolean open() {
+            return level.getServer().getTickCount() <= lastTick;
         }
     }
 
     static {
-        // Fabric events cannot be unregistered: the callback acts only while a case runs, in its level and area.
+        // Fabric events cannot be unregistered: the callback acts only while a case runs (it ends by its tick limit if
+        // its test
+        // times out), in its level and area.
         ServerChunkEvents.CHUNK_LOAD.register((level, chunk, newlyGenerated) -> {
             Case current = running;
             ChunkPos pos = chunk.getPos();
             if (current != null
+                    && current.open()
                     && current.level == level
                     && newlyGenerated
                     && pos.x() >= HOME_X
@@ -85,7 +108,7 @@ public class LightSyncRingHoldTest {
         TestTicks.each(helper, () -> {
             if (!started[0]) {
                 started[0] = true;
-                running = current;
+                running = current; // replaces whatever an earlier case left
                 for (int x = 0; x < SIDE; x++) {
                     for (int z = 0; z < SIDE; z++) {
                         FarChunks.force(helper, level, HOME_X + x, HOME_Z + z);
@@ -118,21 +141,246 @@ public class LightSyncRingHoldTest {
                         finished,
                         () -> "only " + current.drawn.size() + " chunks were drawn and settled");
                 if (finished) {
-                    running = null;
+                    endCase(current);
                     helper.succeed();
                 }
             } catch (RuntimeException e) {
-                running = null;
+                endCase(current);
                 throw e;
             }
         });
     }
 
+    private static void endCase(Case current) {
+        if (running == current) {
+            running = null;
+        }
+    }
+
+    /** The gated cases' site: the drawn chunk, its ring, and a margin that ticks. Disjoint from the sampled case and the other light tests. */
+    private static final ChunkPos GATED = new ChunkPos((-40_000 >> 4) + 250, 40_000 >> 4);
+
+    private static final int GATED_REACH_X = 3;
+    private static final int GATED_REACH_Z = 2;
+    /** Ticks the ring is watched for after the neighbours' own waits are done. */
+    private static final int GATED_WATCH_TICKS = 20;
+    /** Ticks a released send may take to reach the player: the light engine runs in wall time. */
+    private static final int GATED_SEND_TICKS = 400;
+
+    /**
+     * The drawn chunk's light tasks are held back by {@link LightEngineGate}. The neighbours' own waits (all vanilla adds) are done,
+     * and none of them can be sent until the gate opens; then all can.
+     */
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void aNeighbourCannotBeSentWhileTheDrawnChunksLightTasksAreHeldBack(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        FarChunks.Deadline deadline = FarChunks.deadline(120);
+        List<ChunkPos> ring = ring(GATED);
+        List<CompletableFuture<?>> own = new ArrayList<>();
+        int[] phase = {0};
+        int[] waited = {0};
+        Runnable finish = () -> LightEngineGate.release(GATED);
+        TestTicks.each(helper, () -> {
+            try {
+                switch (phase[0]) {
+                    case 0 -> {
+                        forceAround(helper, level);
+                        phase[0] = 1;
+                    }
+                    case 1 -> {
+                        if (!allSendable(level, GATED, deadline, helper)) {
+                            return;
+                        }
+                        LightEngineGate.close(GATED);
+                        LightSync.holdSendUntilLit(level, GATED);
+                        for (ChunkPos near : ring) {
+                            own.add(level.getChunkSource().getLightEngine().waitForPendingTasks(near.x(), near.z()));
+                        }
+                        phase[0] = 2;
+                    }
+                    case 2 -> {
+                        if (!own.stream().allMatch(CompletableFuture::isDone)) {
+                            deadline.await(helper, level, false, () -> "the neighbours' own light tasks did not run");
+                            return;
+                        }
+                        // The neighbours' own waits are done and the drawn chunk's is not: the state the engine's order
+                        // can make.
+                        for (ChunkPos near : ring) {
+                            if (level.getChunkSource().chunkMap.getChunkToSend(near.pack()) != null) {
+                                throw failure(
+                                        helper,
+                                        "%s is sendable while the light tasks queued at %s are held back and its own are done",
+                                        near,
+                                        GATED);
+                            }
+                        }
+                        if (waited[0]++ < GATED_WATCH_TICKS) {
+                            return;
+                        }
+                        LightEngineGate.release(GATED);
+                        phase[0] = 3;
+                    }
+                    default -> {
+                        boolean sendable = allSendable(level, GATED, deadline, helper);
+                        if (sendable) {
+                            finish.run();
+                            helper.succeed();
+                        }
+                    }
+                }
+            } catch (RuntimeException e) {
+                finish.run();
+                throw e;
+            }
+        });
+    }
+
+    /**
+     * A neighbour whose send is already held by something else when a draw's hold is requested is not in the hold's own list, and a
+     * player who comes into view of it afterwards is marked for nothing, because it cannot be sent. When the extended send
+     * completes, the chunk must be offered to that player: they are sent it, once the other hold and the draw's tasks are done.
+     */
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void aPlayerWhoComesIntoViewWhileTheSendIsExtendedIsSentTheChunk(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ChunkPos drawn = new ChunkPos(GATED.x() + 20, GATED.z());
+        ChunkPos neighbour = new ChunkPos(drawn.x() + 1, drawn.z());
+        ChunkPos standAt = new ChunkPos(drawn.x() + 2, drawn.z());
+        List<ChunkPos> ring = ring(drawn);
+        MockPlayer mock = MockPlayers.join(helper, "ring-late-viewer");
+        mock.player().setGameMode(GameType.SPECTATOR);
+        FarChunks.Deadline deadline = FarChunks.deadline(120);
+        CompletableFuture<Void> otherHold = new CompletableFuture<>();
+        int[] phase = {0};
+        int[] waited = {0};
+        Runnable finish = () -> {
+            LightEngineGate.release(drawn);
+            otherHold.complete(null);
+            mock.leave();
+        };
+        TestTicks.each(helper, () -> {
+            try {
+                switch (phase[0]) {
+                    case 0 -> {
+                        forceAround(helper, level, drawn);
+                        phase[0] = 1;
+                    }
+                    case 1 -> {
+                        if (!allSendable(level, drawn, deadline, helper)) {
+                            return;
+                        }
+                        // Held by something else, so that the draw's hold finds the neighbour unsendable.
+                        ChunkHolder holder = Objects.requireNonNull(
+                                level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(neighbour.pack()),
+                                "the neighbour is loaded: allSendable");
+                        holder.addSendDependency(otherHold);
+                        LightEngineGate.close(drawn);
+                        LightSync.holdSendUntilLit(level, drawn);
+                        phase[0] = 2;
+                    }
+                    case 2 -> {
+                        boolean ticking = level.isPositionEntityTicking(standAt.getWorldPosition());
+                        deadline.await(helper, level, ticking, () -> "the chunk " + standAt + " did not tick");
+                        if (!ticking) {
+                            return;
+                        }
+                        // The player comes into view of the neighbour while it cannot be sent.
+                        mock.teleportTo(
+                                level,
+                                TestLayers.vec(
+                                        TestLayers.SURFACE,
+                                        standAt.getMiddleBlockX() + 0.5,
+                                        100,
+                                        standAt.getMiddleBlockZ()),
+                                0f,
+                                0f);
+                        phase[0] = 3;
+                    }
+                    case 3 -> {
+                        if (!mock.player().getChunkTrackingView().contains(neighbour)) {
+                            deadline.await(helper, level, false, () -> "the player did not come to track " + neighbour);
+                            return;
+                        }
+                        if (level.getChunkSource().chunkMap.getChunkToSend(neighbour.pack()) != null) {
+                            throw failure(helper, "%s can be sent, so the case proves nothing", neighbour);
+                        }
+                        // The other hold ends first, as a vanilla light wait does; the draw's tasks are the last to
+                        // run.
+                        otherHold.complete(null);
+                        waited[0] = 0;
+                        phase[0] = 4;
+                    }
+                    case 4 -> {
+                        if (waited[0]++ < GATED_WATCH_TICKS) {
+                            return;
+                        }
+                        LightEngineGate.release(drawn);
+                        waited[0] = 0;
+                        phase[0] = 5;
+                    }
+                    default -> {
+                        if (!mock.chunksSent().containsAll(ring) && waited[0]++ < GATED_SEND_TICKS) {
+                            return;
+                        }
+                        List<ChunkPos> unsent = ring.stream()
+                                .filter(near -> !mock.chunksSent().contains(near))
+                                .filter(near ->
+                                        mock.player().getChunkTrackingView().contains(near))
+                                .toList();
+                        if (!unsent.isEmpty()) {
+                            throw failure(
+                                    helper,
+                                    "the player tracks %s and was never sent them, %d ticks after the draw's light tasks ran",
+                                    unsent,
+                                    GATED_SEND_TICKS);
+                        }
+                        finish.run();
+                        helper.succeed();
+                    }
+                }
+            } catch (RuntimeException e) {
+                finish.run();
+                throw e;
+            }
+        });
+    }
+
+    private static List<ChunkPos> ring(ChunkPos chunk) {
+        return ChunkPos.rangeClosed(chunk, 1)
+                .filter(near -> !near.equals(chunk))
+                .toList();
+    }
+
+    private static void forceAround(GameTestHelper helper, ServerLevel level) {
+        forceAround(helper, level, GATED);
+    }
+
+    /** Forces the chunks round {@code chunk}, so that its 3x3 loads and ticks. */
+    private static void forceAround(GameTestHelper helper, ServerLevel level, ChunkPos chunk) {
+        for (int x = chunk.x() - GATED_REACH_X; x <= chunk.x() + GATED_REACH_X; x++) {
+            for (int z = chunk.z() - GATED_REACH_Z; z <= chunk.z() + GATED_REACH_Z; z++) {
+                FarChunks.force(helper, level, x, z);
+            }
+        }
+    }
+
+    /** Whether every chunk of the 3x3 can be sent and the light engine is idle; waits under the deadline. */
+    private static boolean allSendable(
+            ServerLevel level, ChunkPos chunk, FarChunks.Deadline deadline, GameTestHelper helper) {
+        boolean ready = ChunkPos.rangeClosed(chunk, 1)
+                        .allMatch(near -> level.getChunkSource().chunkMap.getChunkToSend(near.pack()) != null)
+                && !level.getLightEngine().hasLightWork();
+        deadline.await(helper, level, ready, () -> "the chunks round " + chunk + " were not all sendable");
+        return ready;
+    }
+
     /** Rewrites rows of the chunk with stone and glowstone in turn, so each write queues a light task at its position. */
     private static void draw(LevelChunk chunk) {
         ChunkPos at = chunk.getPos();
-        int y = chunk.getMinY()
-                + 8; // level-height: any rows of the chunk do, the draw is about light tasks and not a layer
+        // level-height: the sample dimension is one test world, not a layer of the campaign. The draw needs rows inside
+        // the
+        // chunk's own height; a layer-relative Y would assume a layer this test never stages.
+        int y = chunk.getMinY() + 8;
         for (int dy = 0; dy < DRAW_ROWS; dy++) {
             for (int dx = 0; dx < 16; dx++) {
                 for (int dz = 0; dz < 16; dz++) {
