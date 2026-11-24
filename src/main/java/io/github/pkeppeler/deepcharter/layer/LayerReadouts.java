@@ -6,7 +6,8 @@ import net.minecraft.network.chat.Component;
 
 /**
  * The block readout's hints for what the layer feature owns (#859): the breach crust, and the rock that only a pod drill breaks. Every
- * pod-only block ({@link HandBreak#isPodOnly}: the crust, Company rock, and rock below layer 1) reads "pod drill only", and says the
+ * pod-only block ({@link HandBreak#isPodOnly}: the breach and grained crusts, Company rock, and rock below layer 1) reads
+ * "pod drill only", and says the
  * pick would burn out when the viewer holds a tool that bites it (#858, ADR 0069). A creative player is exempt from the rule, so they read
  * no hint. Company rock reads its own hint ("Charges, or the best drill", from the ore feature, which registers after this one) to a viewer
  * whose tool cannot bite it, since that says what does break it.

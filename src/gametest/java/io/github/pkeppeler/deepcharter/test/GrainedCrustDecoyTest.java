@@ -369,7 +369,7 @@ public class GrainedCrustDecoyTest {
      * grained, so both kinds are seen.
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void layerTwosFloorIsTheSeedsDrawInEveryChunkOfTheCampaignWorld(GameTestHelper helper) {
+    public void layerFloorsTwoAndThreeAreTheSeedsDrawInEveryChunkOfTheCampaignWorld(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<Layer> layers =
                 ((BandBiomeSource) level.getChunkSource().getGenerator().getBiomeSource()).layers();
