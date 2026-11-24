@@ -14,6 +14,7 @@ import com.sun.source.util.SourcePositions;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.TreePathScanner;
 import com.sun.source.util.Trees;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,6 +32,7 @@ import java.util.stream.Stream;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
@@ -128,7 +130,7 @@ public final class EnumSwitchGate {
         try (StandardJavaFileManager manager = compiler.getStandardFileManager(diagnostics, null, null)) {
             List<String> options = new ArrayList<>(List.of("-proc:none", "-Xlint:none", "-XDuseUnsharedTable=true"));
             if (!classpath.isEmpty()) {
-                options.addAll(List.of("-classpath", String.join(java.io.File.pathSeparator, classpath)));
+                options.addAll(List.of("-classpath", String.join(File.pathSeparator, classpath)));
             }
             JavacTask task = (JavacTask) compiler.getTask(
                     null, manager, diagnostics, options, null, manager.getJavaFileObjectsFromPaths(files));
@@ -141,7 +143,7 @@ public final class EnumSwitchGate {
                     .toList();
             if (!errors.isEmpty()) {
                 System.err.println("EnumSwitchGate: " + errors.size()
-                        + " sources do not attribute, so a switch could pass unseen." + " Check the classpath.");
+                        + " sources do not attribute, so a switch could pass unseen. Check the classpath.");
                 errors.stream().limit(ERRORS_SHOWN).forEach(error -> System.err.println("  " + error));
                 System.exit(1);
             }
@@ -188,17 +190,15 @@ public final class EnumSwitchGate {
 
         private void check(ExpressionTree selector, List<? extends CaseTree> cases) {
             TypeMirror type = trees.getTypeMirror(new TreePath(getCurrentPath(), selector));
-            // Known limit: only a selector whose own type is an enum counts. A type-variable selector (E extends
-            // Enum<E>) and a sealed
-            // interface that enums implement, switched on with qualified constant labels, are skipped; the repo has
-            // neither.
+            // Known limit: a type-variable selector or a sealed interface of enums is skipped; the repo has neither.
             if (type == null || type.getKind() != TypeKind.DECLARED) {
                 return;
             }
-            Element element = ((javax.lang.model.type.DeclaredType) type).asElement();
+            Element element = ((DeclaredType) type).asElement();
             if (element.getKind() != ElementKind.ENUM) {
                 return;
             }
+            TypeElement enumType = (TypeElement) element;
             CaseTree withDefault = null;
             CaseLabelTree defaultLabel = null;
             Set<String> named = new HashSet<>();
@@ -219,13 +219,13 @@ public final class EnumSwitchGate {
                 return;
             }
             Set<String> hidden = new LinkedHashSet<>();
-            for (Element member : ((TypeElement) element).getEnclosedElements()) {
+            for (Element member : enumType.getEnclosedElements()) {
                 if (member.getKind() == ElementKind.ENUM_CONSTANT
                         && !named.contains(member.getSimpleName().toString())) {
                     hidden.add(member.getSimpleName().toString());
                 }
             }
-            String enumName = ((TypeElement) element).getQualifiedName().toString();
+            String enumName = enumType.getQualifiedName().toString();
             String file = relative(Path.of(unit.getSourceFile().toUri()));
             int line = (int) unit.getLineMap().getLineNumber(positions.getStartPosition(unit, defaultLabel));
             String where = file + ":" + line;
@@ -312,10 +312,10 @@ public final class EnumSwitchGate {
     }
 
     /** Splits {@code text} into lines, finding each line's {@code //} comment and whether it holds code, skipping literals and block comments. */
-    static Lexed lexText(String text) {
+    private static Lexed lexText(String text) {
         List<String> comments = new ArrayList<>();
         List<Boolean> code = new ArrayList<>();
-        StringBuilder comment = null;
+        String comment = null;
         boolean hasCode = false;
         int length = text.length();
         int i = 0;
@@ -323,7 +323,7 @@ public final class EnumSwitchGate {
             boolean end = i == length;
             char c = end ? '\n' : text.charAt(i);
             if (c == '\n') {
-                comments.add(comment == null ? null : comment.toString());
+                comments.add(comment);
                 code.add(hasCode);
                 comment = null;
                 hasCode = false;
@@ -331,14 +331,14 @@ public final class EnumSwitchGate {
             } else if (text.startsWith("//", i)) {
                 int stop = text.indexOf('\n', i);
                 stop = stop < 0 ? length : stop;
-                comment = new StringBuilder(text.substring(i, stop));
+                comment = text.substring(i, stop);
                 i = stop;
             } else if (text.startsWith("/*", i)) {
                 int stop = text.indexOf("*/", i + 2);
                 stop = stop < 0 ? length : stop + 2;
                 for (int k = i; k < stop; k++) {
                     if (text.charAt(k) == '\n') {
-                        comments.add(comment == null ? null : comment.toString());
+                        comments.add(comment);
                         code.add(hasCode);
                         comment = null;
                         hasCode = false;

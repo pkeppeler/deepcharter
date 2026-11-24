@@ -4,9 +4,8 @@
 // or the contiguous `//` lines above it, with `// enum-default: <reason>`.
 //
 // The scan is tools/EnumSwitchGate.java, run the way the test-only gate runs its tool. It attributes the sources with javac, because only
-// the compiler knows a switch is over an enum: a text scan cannot tell it from an int or String switch. A custom Error Prone BugChecker
-// would also know, but it needs its own subproject on the processor path, with a lockfile and dependency verification, for no extra
-// precision. The cost is one more javac attribution (no code generation) of the three source sets together, against the compile classpath.
+// the compiler knows a switch is over an enum. A custom Error Prone BugChecker would too, but needs its own subproject, lockfile and
+// dependency verification for no extra precision. The cost is one javac attribution of the three source sets together.
 // tools/tests/enum_switch_gate_check.py runs it over fixture trees (tools/py tools/tests/gate_checks.py enum_switch).
 // Every finding fails. -PenumSwitchList prints every enum switch with a default and how it passes or fails.
 tasks.register("checkEnumSwitchGate") {
