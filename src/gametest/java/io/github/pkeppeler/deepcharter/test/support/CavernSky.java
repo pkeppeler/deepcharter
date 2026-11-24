@@ -178,7 +178,7 @@ public final class CavernSky {
      * Runs {@code body} with the client's render distance at {@link #RENDER_DISTANCE}, and puts it back in a finally: every client test
      * shares one client.
      */
-    private static void withShortRenderDistance(ClientGameTestContext context, Runnable body) {
+    public static void withShortRenderDistance(ClientGameTestContext context, Runnable body) {
         int was = context.computeOnClient(
                 client -> client.options.renderDistance().get());
         try {
