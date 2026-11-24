@@ -15,6 +15,9 @@ Usage: tools/layer_concepts/make.py [--check]
       grain, the rock and rubble of layer 3 as round 2 drew it, on vanilla andesite and diorite, for the scenes;
       a layer's form (form_1, form_2, form_3): the Company Rock and the breach crust of that layer, in the formation the user assigned it. One block
       has one blockstate, so the scenario turns on the form of the layer it shoots
+  - the warm tint of layer 3's own rock for the hollows concept round (#1147, call 8): the recipes of the shipped columns and core under
+    tools/textures/variants/basalt_warm/, which texgen --variant basalt_warm draws in that variant's warmer basalt3 ramp into the test pack
+    src/gametest/resources/resourcepacks/basalt_warm/
   - the atmosphere of the scenes, shared by all packs: one biome per layer and kind of light, under
     src/gametest/resources/data/deepcharter-test/worldgen/biome/ (the scenario puts the scene's box in the biome with /fillbiome, so no file
     of src/main changes)
@@ -95,6 +98,9 @@ LAYER_3_STEMS = ("lc_rock_3", "lc_rubble_3")
 # Layer 3's own blocks (#972): the columns that line its caverns, and the dark core between them (#504).
 COLUMNS = "columnar_basalt"
 CORE = "basalt_core"
+# The warm tint of layer 3's own rock (#1147, call 8): the shipped recipes, drawn by texgen in its variant's palette into a test pack.
+WARM_RECIPES = ROOT / "tools/textures/variants/basalt_warm/recipes/layers.json"
+WARM_PACK = ROOT / "src/gametest/resources/resourcepacks/basalt_warm"
 # The seed of the core of the Grain pack (lc_core_3), the first of the shipped core's.
 CORE_SEED = 309
 
@@ -427,6 +433,10 @@ def outputs() -> tuple[dict[Path, bytes], dict[Path, bytes]]:
         for path, body in blockstates(pack, models).items():
             files[root / "assets" / path] = _json(body)
     files |= shipped_files() | lava()
+    files[WARM_RECIPES] = _json({"recipes": {f"block/{name}": art.recipe(grid) for name, grid in column_grids().items()}})
+    files[WARM_PACK / "pack.mcmeta"] = _json({"pack": {
+        "description": "Deep Charter test pack: layer 3's columns and core in a warmer basalt (issue 1147)",
+        "min_format": PACK_FORMAT, "max_format": PACK_FORMAT}})
     for layer in scenes.LAYERS:
         for light in TINTS:
             files[BIOMES / f"lc_layer_{layer}_{light}.json"] = _json(biome_body(layer, light))

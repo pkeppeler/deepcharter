@@ -4,6 +4,8 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.surface.GreatStalk;
+import io.github.pkeppeler.deepcharter.test.evidence.HollowsSpots.Face;
+import io.github.pkeppeler.deepcharter.test.evidence.HollowsSpots.Pocket;
 import io.github.pkeppeler.deepcharter.test.evidence.HollowsSpots.Spot;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -13,15 +15,18 @@ import java.util.Map;
 import java.util.Optional;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -465,6 +470,74 @@ final class HollowsMockups {
                                     + "equipment:{head:{id:\"deepcharter:great_stalk_cap\",count:1}},Tags:[\"%s\"]}")
                             .formatted(num(yaw), TAG));
         }
+    }
+
+    // ------------------------------------------------------------------------------------------------ basalt and lava
+
+    /** The joints a mock-up runs with lava: this many blocks to each side of the faced column, every other one, and this far up or down. */
+    private static final int JOINT_HALF_WIDTH = 2;
+
+    private static final int JOINT_HALF_HEIGHT = 2;
+
+    /**
+     * Round 1's open joints that run with lava (docs/design/layer-concepts.md, C), carried over as a mock-up on the wall the camera faces:
+     * every other vertical joint of the face, from {@link #JOINT_HALF_WIDTH} columns left of the faced one to as many right, turned to lava.
+     * The lava is real (it lights the wall) and held still: placed without telling its neighbours, its own flow tick taken away. Labelled.
+     * Returns how many blocks it turned.
+     */
+    static int lavaJoints(ServerLevel level, Face face) {
+        Direction across = face.out().getClockWise();
+        int turned = 0;
+        for (int side = -JOINT_HALF_WIDTH; side <= JOINT_HALF_WIDTH; side += 2) {
+            for (int up = -JOINT_HALF_HEIGHT; up <= JOINT_HALF_HEIGHT; up++) {
+                BlockPos cell = face.rock().relative(across, side).above(up);
+                if (level.getBlockState(cell).is(LayerBlocks.COLUMNAR_BASALT)) {
+                    level.setBlock(cell, Blocks.LAVA.defaultBlockState(), SET);
+                    turned++;
+                }
+            }
+        }
+        holdFluids(level, face.rock(), JOINT_HALF_WIDTH);
+        label(
+                level,
+                Vec3.atBottomCenterOf(face.rock().relative(face.out()).above(1)).add(0, 0.2, 0),
+                "mock-up: lava joints");
+        return turned;
+    }
+
+    /**
+     * Digs the pocket that opens {@code pocket}'s sealed lava, as a drill would: a 3 x 3 bore from the cavern through the rock in front of
+     * the lava, which stays where it lay. Nothing is told its neighbour changed, so the lava holds still for the still, as at the moment
+     * the bore breaks in. Returns how many blocks it dug.
+     */
+    static int dig(ServerLevel level, Pocket pocket) {
+        Direction across = pocket.out().getClockWise();
+        int dug = 0;
+        for (int step = 1; step <= pocket.depth(); step++) {
+            for (int side = -1; side <= 1; side++) {
+                for (int up = -1; up <= 1; up++) {
+                    BlockPos cell = pocket.lava()
+                            .relative(pocket.out(), step)
+                            .relative(across, side)
+                            .above(up);
+                    BlockState state = level.getBlockState(cell);
+                    if (!state.isAir() && !state.getFluidState().is(FluidTags.LAVA)) {
+                        level.setBlock(cell, air(), SET);
+                        dug++;
+                    }
+                }
+            }
+        }
+        holdFluids(level, pocket.lava(), pocket.depth() + 1);
+        return dug;
+    }
+
+    /** Takes away every flow tick within {@code reach} blocks of {@code centre}, so no lava there moves until the build is put back. */
+    private static void holdFluids(ServerLevel level, BlockPos centre, int reach) {
+        level.getFluidTicks()
+                .clearArea(BoundingBox.fromCorners(
+                        centre.offset(-reach - 1, -reach - 1, -reach - 1),
+                        centre.offset(reach + 1, reach + 1, reach + 1)));
     }
 
     // -------------------------------------------------------------------------------------------------- entities

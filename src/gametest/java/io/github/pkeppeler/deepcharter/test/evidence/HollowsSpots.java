@@ -8,9 +8,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -59,6 +61,26 @@ final class HollowsSpots {
     private static final int TALL_CLEAR_LEAST = 12;
     /** Only the best candidates are tried for a focus, in order of score. */
     private static final int TRIED = 200;
+    /**
+     * The close camera on a wall of columns: a column within this many blocks of the zone's camera, and this many up or down, faced from
+     * this many blocks out; the wall round it, this many blocks to each side and up or down, must be mostly columns open to the cavern.
+     */
+    private static final int WALL_REACH = 16;
+
+    private static final int WALL_RISE = 6;
+    private static final int WALL_BACK = 3;
+    private static final int WALL_HALF_WIDTH = 3;
+    private static final int WALL_HALF_HEIGHT = 2;
+    private static final int WALL_LINED_LEAST = 26;
+    /**
+     * The sealed lava a dug pocket opens: a lava source within this many blocks of the zone's camera, and this many up or down, behind at
+     * most this many blocks of rock along an axis; the camera stands this many blocks out from the rock's face.
+     */
+    private static final int LAVA_REACH = 24;
+
+    private static final int LAVA_RISE = 8;
+    private static final int POCKET_DEEPEST = 4;
+    private static final int POCKET_BACK = 2;
 
     private HollowsSpots() {}
 
@@ -104,6 +126,122 @@ final class HollowsSpots {
     }
 
     private static final double EYE = 1.62;
+
+    /** A close camera facing {@code rock}, a column of the wall, from {@code out} of it: the wall's face looks {@code out}. */
+    record Face(Spot camera, BlockPos rock, Direction out) {}
+
+    /**
+     * Sealed lava and how to open it: {@code lava}, a source with rock on every side, lies {@code depth} blocks of rock in from a cavern
+     * along {@code out}; the camera faces it from {@link #POCKET_BACK} blocks out of the rock's face.
+     */
+    record Pocket(Spot camera, BlockPos lava, Direction out, int depth) {}
+
+    /**
+     * The close camera on a wall of columns near {@code spot}: the brightest column whose face is open for {@link #WALL_BACK} blocks and
+     * whose wall round it is mostly columns open to the cavern, then the most of them, then the nearest. The eye is level with the
+     * column's middle. Empty if no wall near it is lined enough.
+     */
+    static Optional<Face> wall(ServerLevel level, Spot spot) {
+        Face best = null;
+        int bestScore = Integer.MIN_VALUE;
+        for (BlockPos pos : BlockPos.betweenClosed(
+                spot.feet().offset(-WALL_REACH, -WALL_RISE, -WALL_REACH),
+                spot.feet().offset(WALL_REACH, WALL_RISE, WALL_REACH))) {
+            if (!level.getBlockState(pos).is(LayerBlocks.COLUMNAR_BASALT)) {
+                continue;
+            }
+            for (Direction out : Direction.Plane.HORIZONTAL) {
+                if (!openRun(level, pos, out, 1, WALL_BACK)) {
+                    continue;
+                }
+                int lined = 0;
+                for (int across = -WALL_HALF_WIDTH; across <= WALL_HALF_WIDTH; across++) {
+                    for (int up = -WALL_HALF_HEIGHT; up <= WALL_HALF_HEIGHT; up++) {
+                        BlockPos cell = pos.relative(out.getClockWise(), across).above(up);
+                        if (level.getBlockState(cell).is(LayerBlocks.COLUMNAR_BASALT)
+                                && open(level.getBlockState(cell.relative(out)))) {
+                            lined++;
+                        }
+                    }
+                }
+                if (lined < WALL_LINED_LEAST) {
+                    continue;
+                }
+                int light = level.getBrightness(LightLayer.BLOCK, pos.relative(out));
+                int score = light * 100 + lined * 2 - (int) Math.sqrt(pos.distSqr(spot.feet()));
+                if (score > bestScore) {
+                    bestScore = score;
+                    BlockPos rock = pos.immutable();
+                    best = new Face(camera(spot, rock, out, WALL_BACK), rock, out);
+                }
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /**
+     * The nearest sealed lava near {@code spot} that a short dig opens: a lava source with no open cell beside it, at most {@link
+     * #POCKET_DEEPEST} blocks of rock in from a cavern along a flat axis, with the cavern open in front of it for the camera. Empty if
+     * there is none.
+     */
+    static Optional<Pocket> lavaPocket(ServerLevel level, Spot spot) {
+        Pocket best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (BlockPos pos : BlockPos.betweenClosed(
+                spot.feet().offset(-LAVA_REACH, -LAVA_RISE, -LAVA_REACH),
+                spot.feet().offset(LAVA_REACH, LAVA_RISE, LAVA_REACH))) {
+            BlockState state = level.getBlockState(pos);
+            if (!state.is(Blocks.LAVA) || !state.getFluidState().isSource() || !sealed(level, pos)) {
+                continue;
+            }
+            double distance = pos.distSqr(spot.feet());
+            if (distance >= bestDistance) {
+                continue;
+            }
+            for (Direction out : Direction.Plane.HORIZONTAL) {
+                int face = 1;
+                while (face <= POCKET_DEEPEST + 1 && !open(level.getBlockState(pos.relative(out, face)))) {
+                    face++;
+                }
+                if (face > POCKET_DEEPEST + 1 || !openRun(level, pos, out, face, face + POCKET_BACK)) {
+                    continue;
+                }
+                BlockPos lava = pos.immutable();
+                best = new Pocket(camera(spot, lava, out, face + POCKET_BACK), lava, out, face - 1);
+                bestDistance = distance;
+                break;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** A camera {@code back} blocks out of {@code target} along {@code out}, its eye level with the target's middle, facing it. */
+    private static Spot camera(Spot zone, BlockPos target, Direction out, int back) {
+        BlockPos feet = target.relative(out, back).below();
+        float yaw = out.getOpposite().toYRot();
+        return new Spot(zone.zone(), feet, yaw, feet.getY(), target, target, 0, 0);
+    }
+
+    /** True when the cells {@code from} to {@code to} blocks out of {@code pos} along {@code out}, at its height and the one under, are open. */
+    private static boolean openRun(ServerLevel level, BlockPos pos, Direction out, int from, int to) {
+        for (int step = from; step <= to; step++) {
+            BlockPos cell = pos.relative(out, step);
+            if (!open(level.getBlockState(cell)) || !open(level.getBlockState(cell.below()))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** True when no cell beside {@code pos} is open: lava there lights and flows into nothing. */
+    private static boolean sealed(ServerLevel level, BlockPos pos) {
+        for (Direction side : Direction.values()) {
+            if (open(level.getBlockState(pos.relative(side)))) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     private record Candidate(BlockPos feet, int floorY, float yaw, int score) {}
 

@@ -7,16 +7,20 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.test.evidence.HollowsMockups.Drifter;
 import io.github.pkeppeler.deepcharter.test.evidence.HollowsMockups.Growth;
 import io.github.pkeppeler.deepcharter.test.evidence.HollowsMockups.Snapshot;
+import io.github.pkeppeler.deepcharter.test.evidence.HollowsSpots.Face;
+import io.github.pkeppeler.deepcharter.test.evidence.HollowsSpots.Pocket;
 import io.github.pkeppeler.deepcharter.test.evidence.HollowsSpots.Spot;
 import io.github.pkeppeler.deepcharter.test.mixin.BlockStateAccess;
 import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes;
 import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.Holds;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -61,10 +65,15 @@ import org.slf4j.LoggerFactory;
  *       layer that hugs the floor (a mock-up).
  *   <li>The Quiet: the bare hall, and a mock-up of the cathedral, the Badger shrine and the Hush's membrane, at eye level and up at the roof.
  *   <li>Drifters (the Spore Fields) and Overgrowth (the Garden): two mock-ups of each, labelled as such.
+ *   <li>Basalt tint and lava (the Garden, one zone so the run stays inside the record job's limit): the shipped rock up close on a wall of
+ *       columns ({@link HollowsSpots#wall}) and a dug pocket that opens sealed lava ({@link HollowsSpots#lavaPocket}); the same wall in a
+ *       warmer basalt (the {@code basalt_warm} test pack, texgen's shipped recipes in a warmer ramp); and round 1's lava joints on it, a
+ *       mock-up.
  * </ol>
  *
- * A still is named {@code <call>-<option>-<zone>}. A default is one still under the name of each call it belongs to. The scenario ends on
- * the title screen.
+ * A still is named {@code <call>-<option>-<zone>}. A default is one still under the name of each call it belongs to. The overworld sky
+ * shows behind long caverns (#1161), so every still is taken with it hidden ({@link EvidencePins#skyHidden}) and says so in a corner. The
+ * scenario ends on the title screen.
  */
 public class HollowsConceptsScenario extends EvidenceScenario {
     private static final Logger LOGGER = LoggerFactory.getLogger(HollowsConceptsScenario.class);
@@ -149,6 +158,7 @@ public class HollowsConceptsScenario extends EvidenceScenario {
         EvidencePins.entitiesPosed = true;
         EvidencePins.figureSpawningOff = true;
         EvidencePins.figureAnimationAge = 0f;
+        EvidencePins.skyHidden = true;
     }
 
     private void hollows(ClientGameTestContext context) {
@@ -158,9 +168,9 @@ public class HollowsConceptsScenario extends EvidenceScenario {
                 .create()) {
             awaitWorld(context);
             EvidenceWorld.pin(context, singleplayer);
-            // The sky at its darkest: where a cavern runs past what the client has drawn, the sky shows, and at the
-            // pinned dusk it is a
-            // salmon band in a black cave.
+            // The sky at its darkest, though it is hidden: the clock also sets the fog colour where a cavern runs past
+            // what
+            // the client has drawn, and at the pinned dusk that is salmon.
             EvidenceWorld.skyPhase(context, singleplayer, EvidenceWorld.SKY_DARKEST);
             TestServerContext server = singleplayer.getServer();
             server.runOnServer(s -> s.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SPECTATOR));
@@ -268,6 +278,7 @@ public class HollowsConceptsScenario extends EvidenceScenario {
                         return growth.name();
                     });
         }
+        basalt(context, server, spot);
     }
 
     private void sporeFields(ClientGameTestContext context, TestServerContext server, Holds holds, Spot spot) {
@@ -324,6 +335,54 @@ public class HollowsConceptsScenario extends EvidenceScenario {
         shoot(context, server, spot, hall, "quiet-cathedral-quiet");
         shoot(context, server, spot, roof, "quiet-cathedral_roof-quiet");
         server.runOnServer(s -> HollowsMockups.clearEntities(TestLayers.level(s, LAYER)));
+    }
+
+    // ---------------------------------------------------------------------------------------------- basalt and lava
+
+    /**
+     * Call 8 round the Garden's camera: the shipped rock on a wall of columns up close and a dug pocket that opens sealed lava, then the
+     * wall with round 1's lava joints (a mock-up) and in the warmer basalt pack, last, so the client reloads only to turn it on and off. A
+     * view with no wall or lava near the camera is left out and logged.
+     */
+    private void basalt(ClientGameTestContext context, TestServerContext server, Spot spot) {
+        Optional<Face> wall = server.computeOnServer(s -> HollowsSpots.wall(TestLayers.level(s, LAYER), spot));
+        Optional<Pocket> pocket =
+                server.computeOnServer(s -> HollowsSpots.lavaPocket(TestLayers.level(s, LAYER), spot));
+        LOGGER.info("[hollows-concepts] basalt: wall {}, lava pocket {}", wall, pocket);
+        wall.ifPresent(face -> shoot(context, server, face.camera(), facing(face.camera()), "basalt-default-garden"));
+        pocket.ifPresent(p -> built(
+                context,
+                server,
+                p.camera(),
+                p.lava(),
+                facing(p.camera()),
+                "basalt-default_lava-garden",
+                (level, s) -> HollowsMockups.dig(level, p) + " blocks dug, " + p.depth() + " deep"));
+        if (wall.isEmpty()) {
+            LOGGER.warn(
+                    "[hollows-concepts] no wall of columns near the Garden's camera: no basalt-default, -seams or -warm still");
+            return;
+        }
+        Face face = wall.get();
+        built(
+                context,
+                server,
+                face.camera(),
+                face.rock(),
+                facing(face.camera()),
+                "basalt-seams-garden",
+                (level, s) -> HollowsMockups.lavaJoints(level, face) + " blocks of joint turned to lava");
+        ClientPacks.enable(context, TestPacks.BASALT_WARM);
+        try {
+            shoot(context, server, face.camera(), facing(face.camera()), "basalt-warm-garden");
+        } finally {
+            ClientPacks.disable(context, TestPacks.BASALT_WARM);
+        }
+    }
+
+    /** A close camera turned to the middle of what it faces. */
+    private static View facing(Spot camera) {
+        return aim(camera, Vec3.atCenterOf(camera.focus()));
     }
 
     // ------------------------------------------------------------------------------------------- fog and ambient

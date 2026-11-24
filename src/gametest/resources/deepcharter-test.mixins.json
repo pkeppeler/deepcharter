@@ -27,6 +27,7 @@
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
+    "SkyRendererMixin",
     "SpriteAnimationStateMixin"
   ],
   "injectors": {
