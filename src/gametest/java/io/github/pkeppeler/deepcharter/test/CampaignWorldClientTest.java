@@ -59,7 +59,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Client GameTest for the cutover of #803 (slice 8 of #214): in a default-preset world the overworld is the campaign world. It checks the
  * level (from -2032, 2352 tall, the {@code deepcharter:bands} biome source), the colony (at the origin, its pad at y 63, players
- * respawn in the Continuity Office), the Conduit (from -512 up to its stack), the world-format stamp (2), the sites of the chunks the
+ * respawn in the Continuity Office), the Conduit (from the deepest layer's floor up to its stack), the world-format stamp ({@link WorldFormat#CURRENT}), the sites of the chunks the
  * build loaded, that the presets give the same world (ADR 0036), that a saved world reopens with no experimental-settings screen, and
  * that a dedicated server runs it. The one-argument {@code TestLayers.dimension} has no server and is gone; its server form returns the
  * overworld here, the branch no server GameTest reaches (their overworld is flat).
@@ -71,9 +71,9 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
     private static final int OVERWORLD_MIN_Y = -2032; // fixed-pos: the shipped overworld's floor, which this test pins
     private static final int OVERWORLD_HEIGHT = 2352;
     private static final int PAD_GROUND_Y = 63; // fixed-pos: ADR 0036's pad ground, which this test pins
-    private static final int STAMP = 2;
+    /** The Conduit runs through every layer (ADR 0016): its floor is the deepest layer's. */
     private static final int DEEPEST_CONDUIT_Y =
-            -512; // fixed-pos: the Conduit's floor in the issue, which this test pins
+            CampaignBands.layer(CampaignBands.lastLayer()).minY();
     /** The columns read for the presets' fingerprint: on the pad, on its slope and far out. */
     private static final int[][] COLUMNS = {{0, 0}, {40, -25}, {-90, 60}, {300, 300}, {-700, 450}, {1200, -900}};
     /** Spacing cells either side of the origin whose sites touch the pad's chunks. */
@@ -221,7 +221,7 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
         return out.toString();
     }
 
-    /** From -512 up to the stack, and not below or above it; the stamp is 2. */
+    /** From the deepest layer's floor up to the stack, and not below or above it; the stamp is the current format. */
     private static String theConduit(MinecraftServer server) {
         StringBuilder out = new StringBuilder();
         ColonySite.Placed colony = Colony.placed(server).orElse(null);
@@ -258,11 +258,11 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
                     .append(top)
                     .append(" are missing; ");
         }
-        if (!WorldFormat.get(server).format().equals(OptionalInt.of(STAMP))) {
+        if (!WorldFormat.get(server).format().equals(OptionalInt.of(WorldFormat.CURRENT))) {
             out.append("the world-format stamp is ")
                     .append(WorldFormat.get(server).format())
                     .append(", not ")
-                    .append(STAMP)
+                    .append(WorldFormat.CURRENT)
                     .append("; ");
         }
         return out.toString();
