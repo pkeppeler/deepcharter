@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
-import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerRegistry;
@@ -10,6 +9,7 @@ import io.github.pkeppeler.deepcharter.layer.SeamStreaming;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.mixin.ServerChunkCacheAccess;
+import io.github.pkeppeler.deepcharter.test.mixin.TicketAccess;
 import io.github.pkeppeler.deepcharter.test.support.BlockingLoads;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
@@ -58,11 +58,9 @@ public class SeamStreamingTest {
     private static final int SHAFT_HALF_WIDTH = 2;
     /** Ticks a negative case watches for a ticket that must not come. */
     private static final int WATCH_TICKS = 40;
-    /** Ticks past the ticket's timeout that a release may take. */
-    private static final int RELEASE_SLACK_TICKS = 20;
     /** Ticks an approach may outlive the vehicle that left its zone: the next tick of the level it left. */
     private static final int APPROACH_SLACK_TICKS = 5;
-    /** The test's own ticks beside its chunk wait: a drop, a crossing, and a release of the ticket's 100-tick timeout. */
+    /** The test's own ticks beside its chunk wait: a drop, a crossing, and the run of the ticket's timeout when the chunk work is not in the way. */
     private static final int WORK_TICKS = 400;
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + WORK_TICKS;
@@ -484,14 +482,16 @@ public class SeamStreamingTest {
     }
 
     /**
-     * What a release test watches once its trigger has happened: the approach is gone within a few ticks and the ticket within its
-     * timeout and a slack. The ticks are counted from the first {@link #watch}.
+     * What a release test watches once its trigger has happened: the approach is gone within a few ticks, and the ticket runs down
+     * without once being taken again until it is gone, inside the wall-clock limit of the wait. The ticks are counted from the first
+     * {@link #watch}.
      */
     private static final class Release {
         private final Run run;
         private final UUID root;
         private boolean armed;
         private int firstWatch = -1;
+        private long lastLeft = -1;
 
         Release(Run run, UUID root) {
             this.run = run;
@@ -519,21 +519,33 @@ public class SeamStreamingTest {
             }
             int waited = ticks - firstWatch;
             boolean approachGone = SeamStreaming.approachOf(root).isEmpty();
-            boolean ticketGone =
-                    arrivalTickets(run.site().two(), run.site().centre()).isEmpty();
+            List<Ticket> tickets = arrivalTickets(run.site().two(), run.site().centre());
             if (waited > APPROACH_SLACK_TICKS) {
                 expect(run.helper(), approachGone, "the approach is still there %d ticks after the release", waited);
             }
-            if (approachGone && ticketGone) {
-                run.helper().succeed();
-                return;
-            }
-            if (waited > LayerTuning.DEFAULT.seamTicketTimeout() + RELEASE_SLACK_TICKS) {
-                throw failure(
+            // The ticket runs down once nothing takes it again. Vanilla counts it down only while its chunk has no work
+            // in flight, so how
+            // many ticks that takes depends on the load of the run: what is fixed is that it never goes up.
+            for (Ticket ticket : tickets) {
+                long left = ((TicketAccess) ticket).deepcharter$ticksLeft();
+                expect(
                         run.helper(),
-                        "%d ticks after the release the ticket is still held: %s",
+                        lastLeft < 0 || left <= lastLeft,
+                        "the ticket was taken again %d ticks after the release: %d ticks left, after %d",
                         waited,
-                        arrivalTickets(run.site().two(), run.site().centre()));
+                        left,
+                        lastLeft);
+                lastLeft = left;
+            }
+            boolean settled = approachGone && tickets.isEmpty();
+            run.deadline()
+                    .await(
+                            run.helper(),
+                            run.site().two(),
+                            settled,
+                            () -> waited + " ticks after the release the ticket is still held: " + tickets);
+            if (settled) {
+                run.helper().succeed();
             }
         }
     }
