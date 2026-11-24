@@ -1,60 +1,51 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The chunks the server thread waited for while a test held this armed: each is a synchronous load, which a streamed arrival area must
- * not need (#1159). Fed by {@code ServerChunkCacheBlockingLoadMixin}, inert until {@link #arm}. One test arms it at a time; the test's
- * finish ({@link #release}) disarms it, passed or failed, and one test's finish leaves another's arming alone.
+ * not need (#1159). Fed by {@code ServerChunkCacheBlockingLoadMixin}, inert until {@link #arm}. Every armed test is given every wait the
+ * server makes, so a test filters them to its own chunks; the test's finish ({@link #release}) disarms it, passed or failed.
  */
 public final class BlockingLoads {
     /** A chunk the server thread loaded by waiting. */
     public record Load(ResourceKey<Level> level, int chunkX, int chunkZ) {}
 
-    private static final List<Load> LOADS = new ArrayList<>();
-    /** The bounds of the test that armed this, or null when it is not armed. Server thread only. */
-    private static @Nullable AABB owner;
+    /** The waits seen since each armed test armed, by the test's bounds. Server thread only. */
+    private static final Map<AABB, List<Load>> ARMED = new HashMap<>();
 
     private BlockingLoads() {}
 
-    /** Starts recording for the test with these bounds. Fails when another test has it armed. */
+    /** Starts recording for the test with these bounds. */
     public static void arm(AABB testBounds) {
-        if (owner != null && !owner.equals(testBounds)) {
-            throw new IllegalStateException("BlockingLoads is armed by another test");
-        }
-        owner = testBounds;
-        LOADS.clear();
+        ARMED.put(testBounds, new ArrayList<>());
     }
 
-    /** Stops recording and returns what was recorded. */
-    public static List<Load> disarm() {
-        List<Load> loads = List.copyOf(LOADS);
-        LOADS.clear();
-        owner = null;
-        return loads;
+    /** Whether the test with these bounds has no recording going: it never armed, or has taken its record. */
+    public static boolean disarmed(AABB testBounds) {
+        return !ARMED.containsKey(testBounds);
     }
 
-    /** Whether nothing is armed: a step that disarms and fails is run again, and must not read the record twice. */
-    public static boolean disarmed() {
-        return owner == null;
+    /** Stops recording for the test and returns what it saw. */
+    public static List<Load> disarm(AABB testBounds) {
+        List<Load> loads = ARMED.remove(testBounds);
+        return loads == null ? List.of() : List.copyOf(loads);
     }
 
-    /** Disarms when {@code testBounds} armed it; called when a test finishes. */
+    /** Disarms the test with these bounds if it is armed; called when a test finishes. */
     public static void release(AABB testBounds) {
-        if (owner != null && owner.equals(testBounds)) {
-            disarm();
-        }
+        ARMED.remove(testBounds);
     }
 
     /** Called by the mixin, on the server thread. */
     public static void record(ResourceKey<Level> level, int chunkX, int chunkZ) {
-        if (owner != null) {
-            LOADS.add(new Load(level, chunkX, chunkZ));
-        }
+        Load load = new Load(level, chunkX, chunkZ);
+        ARMED.values().forEach(loads -> loads.add(load));
     }
 }

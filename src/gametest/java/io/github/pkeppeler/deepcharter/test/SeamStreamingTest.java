@@ -338,10 +338,10 @@ public class SeamStreamingTest {
                         return;
                     }
                     // A few ticks in layer 2, so what the arrival does after the teleport is in the record too.
-                    if (ticks - crossedAt[0] < 10 || BlockingLoads.disarmed()) {
+                    if (ticks - crossedAt[0] < 10 || BlockingLoads.disarmed(helper.getBounds())) {
                         return;
                     }
-                    List<BlockingLoads.Load> loads = BlockingLoads.disarm();
+                    List<BlockingLoads.Load> loads = BlockingLoads.disarm(helper.getBounds());
                     List<BlockingLoads.Load> inArea = loads.stream()
                             .filter(load -> load.level().equals(run.site().two().dimension()))
                             .filter(load -> inArea(run.site(), load))
@@ -378,10 +378,10 @@ public class SeamStreamingTest {
                                     run.site().z());
                 },
                 ticks -> {
-                    if (!TestLayers.isInDimensionOf(mock.player(), 2) || BlockingLoads.disarmed()) {
+                    if (!TestLayers.isInDimensionOf(mock.player(), 2) || BlockingLoads.disarmed(helper.getBounds())) {
                         return;
                     }
-                    List<BlockingLoads.Load> loads = BlockingLoads.disarm();
+                    List<BlockingLoads.Load> loads = BlockingLoads.disarm(helper.getBounds());
                     List<BlockingLoads.Load> inArea = loads.stream()
                             .filter(load -> load.level().equals(run.site().two().dimension()))
                             .filter(load -> inArea(run.site(), load))
