@@ -29,9 +29,11 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.CardinalLighting;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.block.Block;
@@ -39,6 +41,8 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
+import net.minecraft.world.level.dimension.DimensionType;
 
 /**
  * Server GameTests for the campaign world's terrain (#742, ADR 0059): the bands, the rock of each, the crust at the floor of each layer, and
@@ -433,6 +437,53 @@ public class CampaignTerrainTest {
                     biomes, biome -> biome.value().getGenerationSettings().features(), true);
         } catch (IllegalStateException e) {
             throw failure(helper, "the biome features have an order cycle: %s", e.getMessage());
+        }
+        helper.succeed();
+    }
+
+    /**
+     * No biome carves (#214): a carver picks its biome at quart Y 0, so one on a surface biome would run through the whole 2352-tall
+     * column. Covers every {@code deepcharter} biome of the registry and every biome the campaign generator can place.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
+    public void noBiomeHasCarvers(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Map<String, Biome> biomes = new TreeMap<>();
+        level.registryAccess().lookupOrThrow(Registries.BIOME).listElements().forEach(holder -> {
+            Identifier id = holder.key().identifier();
+            if (id.getNamespace().equals("deepcharter")) {
+                biomes.put(id.toString(), holder.value());
+            }
+        });
+        level.getChunkSource()
+                .getGenerator()
+                .getBiomeSource()
+                .possibleBiomes()
+                .forEach(holder ->
+                        biomes.put(holder.unwrapKey().orElseThrow().identifier().toString(), holder.value()));
+        expect(helper, !biomes.isEmpty(), "no biomes were found to check for carvers");
+        biomes.forEach((id, biome) -> expect(
+                helper,
+                !biome.getGenerationSettings().getCarvers().iterator().hasNext(),
+                "a carver on %s would cut the whole 2352-tall column (#214: no carvers)",
+                id));
+        helper.succeed();
+    }
+
+    /** The overworld keeps vanilla's default cardinal light: the user's decision on #214. */
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
+    public void theOverworldKeepsDefaultCardinalLight(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        DimensionType registered = level.registryAccess()
+                .lookupOrThrow(Registries.DIMENSION_TYPE)
+                .getOrThrow(BuiltinDimensionTypes.OVERWORLD)
+                .value();
+        for (DimensionType type : List.of(registered, level.dimensionType())) {
+            expect(
+                    helper,
+                    type.cardinalLightType() == CardinalLighting.Type.DEFAULT,
+                    "the overworld's cardinal light must stay vanilla's default (user decision on #214), not %s",
+                    type.cardinalLightType().getSerializedName());
         }
         helper.succeed();
     }
