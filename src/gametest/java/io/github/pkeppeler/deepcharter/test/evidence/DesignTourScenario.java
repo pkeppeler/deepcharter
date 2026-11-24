@@ -174,6 +174,7 @@ public class DesignTourScenario extends EvidenceScenario {
     private static final double HOLLOWS_DROP = 0.15;
     /** Ticks a layer 3 air still gives a zone's ambient particles to fill the view: they appear a few a tick round the camera. */
     private static final int HOLLOWS_AIR_TICKS = 40;
+
     private static final int ITEMS_PER_PAGE = 36;
     private static final long FUNDS = 5_000;
     private static final int TERMINAL_TYPING_TICKS = 140;
@@ -1569,7 +1570,8 @@ public class DesignTourScenario extends EvidenceScenario {
          */
         private void airStill(String stillName) {
             settle(stillName);
-            // tick-wait: the ambient particles appear a few a tick round the camera; nothing reports that the view is full
+            // tick-wait: the ambient particles appear a few a tick round the camera; nothing reports that the view is
+            // full
             ctx.waitTicks(HOLLOWS_AIR_TICKS);
             owner.screenshot(ctx, stillName);
             owner.frame(ctx);
