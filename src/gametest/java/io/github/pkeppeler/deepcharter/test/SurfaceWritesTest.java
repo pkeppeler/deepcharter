@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.surface.SurfaceWrites;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import java.util.Arrays;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -19,6 +20,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ImposterProtoChunk;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -109,10 +111,7 @@ public class SurfaceWritesTest {
             // A chunk far from every test, wrapped as the generator wraps a finished one.
             LevelChunk live = level.getChunk(1_000_100, 1_000_100);
             ImposterProtoChunk imposter = new ImposterProtoChunk(live, true);
-            BlockPos at = new BlockPos(
-                    live.getPos().getBlockX(3),
-                    level.getMinY() + 10,
-                    live.getPos().getBlockZ(3)); // level-height: a far chunk of the test level
+            BlockPos at = at(live, 3, level.getMinY() + 10, 3); // level-height: a far chunk of the test level
             long before = SurfaceWrites.fastWrites();
             expect(helper, live.getBlockState(at) == sandstone, "the far chunk holds sandstone at %s", at);
             SurfaceWrites.set(imposter, at, GREEN);
@@ -121,10 +120,7 @@ public class SurfaceWritesTest {
             live.setBlockState(at, sandstone, 3);
 
             ProtoChunk lit = chunk(level, 1_000_110, ChunkStatus.BIOMES);
-            BlockPos inLit = new BlockPos(
-                    lit.getPos().getBlockX(3),
-                    level.getMinY() + 10,
-                    lit.getPos().getBlockZ(3)); // level-height: a hand-built chunk
+            BlockPos inLit = at(lit, 3, level.getMinY() + 10, 3); // level-height: a hand-built chunk
             lit.setBlockState(inLit, GREEN, 3);
             lit.setPersistedStatus(ChunkStatus.INITIALIZE_LIGHT);
             SurfaceWrites.set(lit, inLit, PACKED);
@@ -174,8 +170,7 @@ public class SurfaceWritesTest {
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
                 for (int y = band.minY(); y < band.topExclusive(); y++) {
-                    BlockPos at = new BlockPos(
-                            on.getPos().getBlockX(x), y, on.getPos().getBlockZ(z));
+                    BlockPos at = at(on, x, y, z);
                     expect(
                             helper,
                             on.getBlockState(at) == off.getBlockState(at),
@@ -187,9 +182,7 @@ public class SurfaceWritesTest {
                 for (Heightmap.Types type : ChunkStatus.FINAL_HEIGHTMAPS) {
                     int top = on.getMinY() - 1; // level-height: reads the window's own rows to recompute a heightmap
                     for (int y = on.getMaxY(); y >= on.getMinY(); y--) { // level-height: as above
-                        if (type.isOpaque()
-                                .test(on.getBlockState(new BlockPos(
-                                        on.getPos().getBlockX(x), y, on.getPos().getBlockZ(z))))) {
+                        if (type.isOpaque().test(on.getBlockState(at(on, x, y, z)))) {
                             top = y;
                             break;
                         }
@@ -224,13 +217,7 @@ public class SurfaceWritesTest {
             for (int x = 0; x < 16; x++) {
                 for (int z = 0; z < 16; z++) {
                     for (int y = minY; y < minY + 70; y++) {
-                        chunk.setBlockState(
-                                new BlockPos(
-                                        chunk.getPos().getBlockX(x),
-                                        y,
-                                        chunk.getPos().getBlockZ(z)),
-                                GREEN,
-                                3);
+                        chunk.setBlockState(at(chunk, x, y, z), GREEN, 3);
                     }
                 }
             }
@@ -239,19 +226,16 @@ public class SurfaceWritesTest {
         RandomSource random = RandomSource.create(1160);
         int neutral = 0;
         for (int i = 0; i < 20_000; i++) {
-            int[] write = {
-                random.nextInt(16), minY + random.nextInt(80), random.nextInt(16), random.nextInt(PALETTE.size())
-            };
-            BlockPos at = new BlockPos(
-                    fast.getPos().getBlockX(write[0]), write[1], fast.getPos().getBlockZ(write[2]));
-            if (SurfaceWrites.neutral(fast.getBlockState(at), PALETTE.get(write[3]))) {
+            int x = random.nextInt(16);
+            int y = minY + random.nextInt(80);
+            int z = random.nextInt(16);
+            BlockState state = PALETTE.get(random.nextInt(PALETTE.size()));
+            BlockPos at = at(fast, x, y, z);
+            if (SurfaceWrites.neutral(fast.getBlockState(at), state)) {
                 neutral++;
             }
-            SurfaceWrites.setEnabled(true);
-            BlockState seen = SurfaceWrites.set(fast, at, PALETTE.get(write[3]));
-            BlockPos there = new BlockPos(
-                    slow.getPos().getBlockX(write[0]), write[1], slow.getPos().getBlockZ(write[2]));
-            BlockState wasSlow = slow.setBlockState(there, PALETTE.get(write[3]), 3);
+            BlockState seen = SurfaceWrites.set(fast, at, state);
+            BlockState wasSlow = slow.setBlockState(at(slow, x, y, z), state, 3);
             expect(helper, seen == wasSlow, "write %s returned %s on the fast path, %s on the slow", i, seen, wasSlow);
         }
         expect(
@@ -262,10 +246,8 @@ public class SurfaceWritesTest {
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
                 for (int y = minY; y < minY + 90; y++) {
-                    BlockState a = fast.getBlockState(new BlockPos(
-                            fast.getPos().getBlockX(x), y, fast.getPos().getBlockZ(z)));
-                    BlockState b = slow.getBlockState(new BlockPos(
-                            slow.getPos().getBlockX(x), y, slow.getPos().getBlockZ(z)));
+                    BlockState a = fast.getBlockState(at(fast, x, y, z));
+                    BlockState b = slow.getBlockState(at(slow, x, y, z));
                     expect(helper, a == b, "block %s %s %s: %s fast, %s slow", x, y, z, a, b);
                 }
                 for (Heightmap.Types type : ChunkStatus.FINAL_HEIGHTMAPS) {
@@ -294,8 +276,12 @@ public class SurfaceWritesTest {
         }
         expect(
                 helper,
-                java.util.Arrays.equals(fast.getPostProcessing(), slow.getPostProcessing()),
+                Arrays.equals(fast.getPostProcessing(), slow.getPostProcessing()),
                 "post-processing marks differ");
+    }
+
+    private static BlockPos at(ChunkAccess chunk, int x, int y, int z) {
+        return new BlockPos(chunk.getPos().getBlockX(x), y, chunk.getPos().getBlockZ(z));
     }
 
     private static ProtoChunk chunk(ServerLevel level, int chunkX, ChunkStatus status) {
