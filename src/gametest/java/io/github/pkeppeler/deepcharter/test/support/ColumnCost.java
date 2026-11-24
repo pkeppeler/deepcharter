@@ -75,10 +75,7 @@ public final class ColumnCost {
         TestTicks.each(helper, tickBody(helper, worlds, allWorlds, rounds, report));
     }
 
-    /**
-     * What {@link #run} does each tick, with the autosave already held for a measured run. Public so that {@code ColumnCostTest} can call
-     * the body itself and catch the throw a test's runner would turn into a failure.
-     */
+    /** {@link #run}'s tick body, so a test can call it where a throw is catchable. */
     public static Runnable tickBody(
             GameTestHelper helper,
             List<String> worlds,
@@ -117,8 +114,10 @@ public final class ColumnCost {
                 if (queue.isEmpty()) {
                     return;
                 }
-                current[0] = queue.poll();
-                current[0].begin(helper);
+                // Only a run that began is current: after a begin() that throws, the next tick must not read its level.
+                Run next = queue.poll();
+                next.begin(helper);
+                current[0] = next;
             }
             if (!current[0].isGenerated()) {
                 idle(smoke);
