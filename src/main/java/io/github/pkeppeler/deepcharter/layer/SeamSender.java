@@ -257,6 +257,14 @@ public final class SeamSender {
         SWAPPED.put(rider.getUUID(), new Swapped(to.dimension(), generationOf(rider), until));
     }
 
+    /** Whether the crossing of {@code player} into {@code level} left the chunk unsent, because the player holds it already. */
+    public static boolean skippedAtCrossing(ServerPlayer player, ServerLevel level, ChunkPos pos) {
+        Skipped skipped = RECENT.get(player.getUUID());
+        return skipped != null
+                && skipped.level().equals(level.dimension())
+                && skipped.positions().contains(pos.pack());
+    }
+
     /** The generation of the prepare most recently sent to {@code rider}, or 0 when it has no seam. */
     public static int generationOf(ServerPlayer rider) {
         RiderSeam seam = STATE.get(rider.getUUID());
@@ -284,7 +292,9 @@ public final class SeamSender {
                     continue;
                 }
                 awaitLight(to, pos);
-                LevelChunk chunk = to.getChunkSource().chunkMap.getChunkToSend(packed);
+                // Not getChunkToSend: the carve's light hold keeps that null until a later tick, and the light is
+                // settled now.
+                LevelChunk chunk = to.getChunkSource().getChunkNow(pos.x(), pos.z());
                 if (chunk == null) {
                     return false;
                 }
@@ -296,6 +306,7 @@ public final class SeamSender {
                     return false;
                 }
                 ServerPlayNetworking.send(rider, payload);
+                LightSync.seamSent(rider, to, pos);
                 seam.bytes += size;
                 seam.stale.remove(packed);
                 seam.fresh.add(packed);

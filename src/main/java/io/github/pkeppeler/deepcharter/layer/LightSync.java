@@ -237,7 +237,11 @@ public final class LightSync {
                 continue;
             }
             if (!hold.trackedThroughout.contains(player.getUUID())) {
-                player.connection.chunkSender.markChunkPendingToSend(chunk);
+                // A rider swapped in with this chunk was sent it at the swap, after the light settled: it holds it
+                // already.
+                if (!SeamSender.skippedAtCrossing(player, key.level, key.chunk)) {
+                    player.connection.chunkSender.markChunkPendingToSend(chunk);
+                }
             } else if (hold.sentAtStart.contains(player.getUUID())) {
                 // Every section of both layers: which sections the neighbour's light changed is not known here, and a
                 // ticking chunk that vanilla also updates gets a duplicate, which does no harm.
@@ -276,6 +280,18 @@ public final class LightSync {
         int print = lightPrint(level, chunk);
         for (UUID sent : sentTo(level, chunk)) {
             watch.held.putIfAbsent(sent, print);
+        }
+    }
+
+    /**
+     * Called when {@code player} is sent the chunk of {@code level} as a seam chunk, ahead of its swap into {@code level} (#1229): it
+     * holds the light published now, and the watch compares it later like any other.
+     */
+    public static void seamSent(ServerPlayer player, ServerLevel level, ChunkPos chunk) {
+        NetWatch watch = NET.get(new Key(level, chunk));
+        if (watch != null) {
+            watch.held.put(player.getUUID(), lightPrint(level, chunk));
+            watch.keepOpen(level.getServer().getTickCount());
         }
     }
 

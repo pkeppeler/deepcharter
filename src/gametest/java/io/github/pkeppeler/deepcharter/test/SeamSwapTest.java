@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.SeamSite.Run;
 import io.github.pkeppeler.deepcharter.test.support.SecondSeat;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -43,12 +44,15 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
+import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.phys.Vec3;
 
@@ -424,6 +428,17 @@ public class SeamSwapTest {
      */
     private static void podCrossing(
             GameTestHelper helper, int index, String name, List<Client> clients, Consumer<Crossed> verify) {
+        podCrossing(helper, index, name, clients, run -> {}, verify);
+    }
+
+    /** As above, with {@code beforeDrop} run on the tick the riders have answered, before the pod is dropped. */
+    private static void podCrossing(
+            GameTestHelper helper,
+            int index,
+            String name,
+            List<Client> clients,
+            Consumer<Run> beforeDrop,
+            Consumer<Crossed> verify) {
         Run run = Run.of(helper, index);
         List<MockPlayer> riders = new ArrayList<>();
         for (int i = 0; i < clients.size(); i++) {
@@ -476,6 +491,7 @@ public class SeamSwapTest {
                             }
                         }
                         riders.forEach(mock -> respawnsBefore.add(mock.respawns()));
+                        beforeDrop.accept(run);
                         phase[0] = 1;
                         return;
                     }
@@ -654,6 +670,68 @@ public class SeamSwapTest {
                 List.of(Client.NO_SWAP_CHANNEL, Client.ACCEPTS),
                 crossed -> {
                     expectTeleported(helper, crossed);
+                });
+    }
+
+    /**
+     * The arrival is solid rock when the pod drops: the swap carves the pocket, sends the changed chunks ahead of the swap as seam
+     * chunks, and the crossing does not send them again, so the held level has the pocket before the pod is in it.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSwapIntoRockCarvesAndSendsThePocketAhead(GameTestHelper helper) {
+        LayerTuning tuning = LayerTuning.DEFAULT;
+        podCrossing(
+                helper,
+                FIRST_INDEX + 14,
+                "seam-swap-rock",
+                List.of(Client.ACCEPTS),
+                run -> {
+                    ServerLevel two = run.site().two();
+                    int top = two.getMaxY();
+                    BlockPos bottom = BlockPos.containing(
+                            run.site().x(),
+                            top - tuning.pocketHeight() - 1,
+                            run.site().z());
+                    RoomCarver.carve(
+                            two,
+                            bottom.offset(-3, 0, -3),
+                            bottom.offset(3, tuning.pocketHeight() + 1, 3),
+                            Blocks.STONE.defaultBlockState(),
+                            Block.UPDATE_ALL);
+                },
+                crossed -> {
+                    expectSwapped(helper, crossed);
+                    ServerLevel two = crossed.run().site().two();
+                    ChunkPos arrival = crossed.run().site().centre();
+                    BlockPos at = crossed.pod().blockPosition();
+                    expect(
+                            helper,
+                            two.getBlockState(at).isAir(),
+                            "the arrival is not carved: %s",
+                            two.getBlockState(at));
+                    MockPlayer mock = crossed.riders().get(0);
+                    List<Object> sequence = mock.sequence();
+                    int swapAt = firstAfter(sequence, -1, packet -> packet instanceof SeamSwapPayload);
+                    long carvedAhead = sequence.subList(0, swapAt).stream()
+                            .filter(packet -> packet instanceof SeamChunkPayload chunk
+                                    && chunk.chunk().x() == arrival.x()
+                                    && chunk.chunk().z() == arrival.z())
+                            .count();
+                    expect(
+                            helper,
+                            carvedAhead == 2,
+                            "the arrival chunk was sent %d times before the swap, not 2",
+                            carvedAhead);
+                    expect(
+                            helper,
+                            firstAfter(
+                                            sequence,
+                                            swapAt,
+                                            packet -> packet instanceof ClientboundLevelChunkWithLightPacket chunk
+                                                    && chunk.x() == arrival.x()
+                                                    && chunk.z() == arrival.z())
+                                    < 0,
+                            "the crossing sent the carved chunk again after the swap");
                 });
     }
 }
