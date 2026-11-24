@@ -60,8 +60,10 @@ public final class Conduit {
         if (fromX > toX || fromZ > toZ) {
             return;
         }
-        int top =
-                layer == LayerChain.SURFACE ? colony.groundY() + ColonyTuning.DEFAULT.conduitStack() : level.getMaxY();
+        // A level cut below the pad's ground (a cost test's layer window) holds no row of the stack above it.
+        int top = layer == LayerChain.SURFACE
+                ? Math.min(colony.groundY() + ColonyTuning.DEFAULT.conduitStack(), level.getMaxY())
+                : level.getMaxY();
         int bottom = LayerChain.campaignLayersIn(level).stream()
                 .mapToInt(Band::minY)
                 .min()
