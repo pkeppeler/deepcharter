@@ -45,7 +45,7 @@ public class LightSyncRingHoldTest {
     private static final int HOME_X = (-40_000 >> 4) + 200;
 
     private static final int HOME_Z = 40_000 >> 4;
-    /** Chunks on a side of the area; a draw goes into every chunk of it that is newly generated, so the neighbours of most have a ring to hold. */
+    /** Chunks on a side of the area; a draw goes into every newly generated chunk of it, so most have a ring to hold. */
     private static final int SIDE = 10;
     /** Rows the draw rewrites. */
     private static final int DRAW_ROWS = 6;
@@ -60,7 +60,7 @@ public class LightSyncRingHoldTest {
 
     private static final class Case {
         final ServerLevel level;
-        /** The server tick after which the case is over whatever became of its test: a timeout runs no exit path of the body. */
+        /** The server tick after which the case is over, whatever became of its test: a timeout runs no exit path. */
         final int lastTick;
 
         final List<Drawn> drawn = new ArrayList<>();
@@ -158,7 +158,7 @@ public class LightSyncRingHoldTest {
         }
     }
 
-    /** The gated cases' site: the drawn chunk, its ring, and a margin that ticks. Disjoint from the sampled case and the other light tests. */
+    /** The gated cases' site: the drawn chunk, its ring and a margin that ticks. Disjoint from the other light tests. */
     private static final ChunkPos GATED = new ChunkPos((-40_000 >> 4) + 250, 40_000 >> 4);
 
     private static final int GATED_REACH_X = 3;
@@ -376,7 +376,7 @@ public class LightSyncRingHoldTest {
         return ready;
     }
 
-    /** Rewrites rows of the chunk with stone and glowstone in turn, so each write queues a light task at its position. */
+    /** Rewrites rows of the chunk with stone and glowstone in turn, so each write queues a light task there. */
     private static void draw(LevelChunk chunk) {
         ChunkPos at = chunk.getPos();
         // level-height: the sample dimension is one test world, not a layer of the campaign. The draw needs rows inside
