@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -380,36 +381,40 @@ public class PodSonarTest {
     public void creaturesInTheEchoTagEchoAsMovedOrAsOre(GameTestHelper helper) {
         int x = 7320;
         List<Entity> bodies = new ArrayList<>();
-        scene(
-                helper,
-                x,
-                level -> {
-                    room(level, x + 8, FLOOR, Z, 2, 1, 4);
-                    for (EntityType<?> type :
-                            List.of(EntityTypes.ARMOR_STAND, EntityTypes.ARMOR_STAND, EntityTypes.MARKER)) {
-                        Entity body = TestEntities.create(type, level);
-                        body.setNoGravity(true);
-                        body.setPos(x + 9 + 4 * bodies.size(), FLOOR + 1, Z + 1);
-                        level.addFreshEntity(body);
-                        bodies.add(body);
-                    }
-                },
-                scene -> {
-                    // The server's entity tick has not run since the velocity is set, so the ping reads it as set.
-                    bodies.get(1).setDeltaMovement(TUNING.movingSpeed() * 2, 0, 0);
-                    PodSonar.ping(scene.pod());
-                    expectEcho(helper, scene.pod(), SonarKind.ORE, bodies.get(0).blockPosition());
-                    expectEcho(
-                            helper, scene.pod(), SonarKind.MOVED, bodies.get(1).blockPosition());
-                    expect(
-                            helper,
-                            echoes(scene.pod()).stream()
-                                    .noneMatch(echo ->
-                                            echo.pos().equals(bodies.get(2).blockPosition())),
-                            "a creature outside the echo tag is hollow and returns nothing: %s",
-                            echoes(scene.pod()));
-                    bodies.forEach(Entity::discard);
-                });
+        List<EntityType<?>> types = List.of(EntityTypes.ARMOR_STAND, EntityTypes.ARMOR_STAND, EntityTypes.MARKER);
+        // The bodies stand 9, 13 and 17 blocks from the pod, in chunks other than the pod's.
+        List<BlockPos> spots = IntStream.range(0, types.size())
+                .mapToObj(i -> new BlockPos(x + 9 + 4 * i, FLOOR + 1, Z + 1))
+                .toList();
+        // An entity added to a chunk that is loaded but not yet entity ticking is not found by a query (#1125).
+        ServerLevel level = TestLayers.level(helper, 1);
+        FarChunks.awaitAllEntityTicking(helper, level, spots, () -> {
+            for (int i = 0; i < types.size(); i++) {
+                Entity body = TestEntities.create(types.get(i), level);
+                body.setNoGravity(true);
+                body.setPos(Vec3.atBottomCenterOf(spots.get(i)));
+                level.addFreshEntity(body);
+                bodies.add(body);
+            }
+        });
+        run(helper, x, build -> room(build, x + 8, FLOOR, Z, 2, 1, 4), scene -> {
+            if (bodies.isEmpty()) {
+                return false;
+            }
+            // The server's entity tick has not run since the velocity is set, so the ping reads it as set.
+            bodies.get(1).setDeltaMovement(TUNING.movingSpeed() * 2, 0, 0);
+            PodSonar.ping(scene.pod());
+            expectEcho(helper, scene.pod(), SonarKind.ORE, bodies.get(0).blockPosition());
+            expectEcho(helper, scene.pod(), SonarKind.MOVED, bodies.get(1).blockPosition());
+            expect(
+                    helper,
+                    echoes(scene.pod()).stream()
+                            .noneMatch(echo -> echo.pos().equals(bodies.get(2).blockPosition())),
+                    "a creature outside the echo tag is hollow and returns nothing: %s",
+                    echoes(scene.pod()));
+            bodies.forEach(Entity::discard);
+            return true;
+        });
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)

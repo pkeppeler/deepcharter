@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.layer.gen.AirFaceLiningFeature;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
+import io.github.pkeppeler.deepcharter.layer.gen.InChunkOffsetPlacement;
 import io.github.pkeppeler.deepcharter.layer.gen.LayerRowsPlacement;
 import io.github.pkeppeler.deepcharter.layer.gen.ZoneBiomeSource;
 
@@ -15,6 +16,7 @@ public final class LayerRegistry {
         ZoneBiomeSource.register();
         BandBiomeSource.register();
         LayerRowsPlacement.register();
+        InChunkOffsetPlacement.register();
         AirFaceLiningFeature.register();
     }
 }

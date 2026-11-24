@@ -112,6 +112,7 @@ public final class RepairStation {
             return Optional.of(unpaid.get().message());
         }
         inventory.add(stack);
+        RepairEvents.BOUGHT.invoker().onBought(context.server(), player, item.get());
         return Optional.empty();
     }
 

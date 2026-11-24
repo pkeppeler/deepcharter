@@ -87,7 +87,8 @@ public class CampaignContentTest {
             "minecraft:offset",
             "minecraft:heightmap",
             "minecraft:environment_scan",
-            "minecraft:block_predicate_filter");
+            "minecraft:block_predicate_filter",
+            "deepcharter:in_chunk_offset");
 
     private static final String FIGURE = "deepcharter:lampless_figure";
     /** The test data pack's campaign sample dimension. */
