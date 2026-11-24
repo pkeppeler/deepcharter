@@ -1,0 +1,11 @@
+{
+  "type": "deepcharter:giant_fungus",
+  "layer": 3,
+  "zone": 0,
+  "rarity": 3,
+  "weights": {
+    "great_stalk": 0.3,
+    "parasol": 0.4,
+    "spires": 0.3
+  }
+}
