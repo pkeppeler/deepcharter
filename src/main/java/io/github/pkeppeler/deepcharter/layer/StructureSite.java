@@ -70,7 +70,8 @@ public record StructureSite(StructureKind kind, BlockPos origin, boolean alongZ,
 
     /**
      * The Kells' shaft of the rail line {@code rails}: it stands {@link StructureKind#KELLS_OFFSET} blocks along the line from
-     * its centre, past the end the line stops at, and runs down from the floor of the line to the first block above the crust.
+     * its centre, past the end the line stops at, and runs down from the floor of the line to the first block above the crust, which
+     * its draw breaks through ({@link StructureKind#KELLS_SHAFT}).
      */
     private static StructureSite shaftOf(StructureSite rails, int minY) {
         int bottom = minY + LayerTuning.DEFAULT.crustThickness();
