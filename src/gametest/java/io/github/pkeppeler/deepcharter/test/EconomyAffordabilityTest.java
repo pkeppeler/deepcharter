@@ -98,7 +98,10 @@ public class EconomyAffordabilityTest {
             Map.entry(Consumable.THROWN_FLARE, new Target(false, 0.05, 0.15)),
             Map.entry(Consumable.THROWN_DECOY, new Target(false, 0.15, 0.30)),
             Map.entry(Consumable.THROWN_CHARGE, new Target(false, 0.35, 0.55)),
-            Map.entry(Consumable.TETHER, new Target(false, 0.25, 1)));
+            Map.entry(Consumable.TETHER, new Target(false, 0.25, 1)),
+            // On foot (#987): the driver is about two fifths of a layer 2 run, a pack of bolts a twentieth.
+            Map.entry(Consumable.BOLT_DRIVER, new Target(true, 0.25, 1)),
+            Map.entry(Consumable.BOLT, new Target(true, 0.02, 0.25)));
 
     private static Run stockRunInLayerOne() {
         return EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);

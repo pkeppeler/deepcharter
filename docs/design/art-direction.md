@@ -40,7 +40,7 @@ Rules for all areas:
 
 - **Decision:** regolith plains, craters and terraced mesas, from our own generator. No living flora or fauna, no water.
 - **Living things:** none, except the bootstrap's gatherable fungal stalks (section 11), the same prop as the "dry white stalks" below.
-- **Limits (ADR 0029):** about one material-rule condition per block, no sea and no aquifers, and every feature is measured against the 1.15x per-column bar.
+- **Limits (ADR 0029):** about one material-rule condition per block, no sea and no aquifers, and every feature is measured against the 1.15x bar, which holds each band to one layer's CPU per filled row ([ADR 0086](../adr/0086-each-campaign-band-is-held-to-one-layers-cost-per-row-and-the-whole-worlds-ratio-is-only-tracked.md)).
 - **Material, palette, silhouette:** iron-oxide reds and ochres, dust beige, black basalt outcrops. Low contrast, so the land stays behind everything else. Long flat horizons broken by mesas and crater rims. Dead props only (survey stakes, dry white stalks, a fallen mast), each one measured.
 - **Tools:** vanilla worldgen JSON with density functions (`distance_to_point` for craters, `floor` and `round` for terraces) and weighted block-model variants (tooling-options "Surface").
 - **Skin and data:** `data/minecraft/dimension/overworld.json`, `data/deepcharter/worldgen/**`, regolith blocks in `assets/deepcharter/{blockstates,models,textures}/block/`. New block ids need one registration line each.
@@ -138,7 +138,7 @@ Rules for all areas:
 
 ## 11. Bootstrap
 
-- **Decision (replaces SPEC section 4's "start like normal Minecraft"):** colony salvage plus fungal "wood". Salvage crates and wrecked prefabs supply wood, cloth and scrap. Crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. Fungal stalks and scattered salvage crates are surface features, measured against ADR 0029's 1.15× bar.
+- **Decision (replaces SPEC section 4's "start like normal Minecraft"):** colony salvage plus fungal "wood". Salvage crates and wrecked prefabs supply wood, cloth and scrap. Crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. Fungal stalks and scattered salvage crates are surface features, measured against the 1.15× bar (ADR 0029, per band since [ADR 0086](../adr/0086-each-campaign-band-is-held-to-one-layers-cost-per-row-and-the-whole-worlds-ratio-is-only-tracked.md)).
 - **Material, palette, silhouette:** crates stencilled with the Company mark; pale, hardy stalks that look like they should not grow here.
 - **Tools:** loot tables, worldgen features, handbook chapter data.
 - **Skin and data:** `data/deepcharter/loot_table/**`, `data/deepcharter/worldgen/**`, `data/deepcharter/handbook/**` (chapter 1 directives change).

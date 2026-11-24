@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -85,13 +84,13 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                     player.getAbilities().flying = true;
                     player.onUpdateAbilities();
                 });
-                // TODO(#819): the layers' floors too. In the campaign level a hole through a layer's crust
-                // shows the next layer's rock, not the void, so the void cases move to the bottom of the
-                // world with BreachVoidCover (#804).
+                // The void is under the bottom of the whole world: in the campaign level a hole through the floor of a
+                // band shows the next
+                // band's rock. TODO(#819): the pod 1 block under the bottom.
                 for (int layer : new int[] {LayerChain.SURFACE}) {
                     int minY = singleplayer
                             .getServer()
-                            .computeOnServer(server -> openHole(TestLayers.level(server, layer), layer));
+                            .computeOnServer(server -> openHole(TestLayers.level(server, layer)));
                     Vec3 hole = new Vec3(X + 0.5, minY + 0.5, Z + 0.5);
                     View[] views = {
                         new View(
@@ -114,8 +113,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                             if (nightVision && !view.bothLightings()) {
                                 continue;
                             }
-                            String name = "breach-void-layer-" + layer + "-" + view.name()
-                                    + (nightVision ? "-night-vision" : "");
+                            String name =
+                                    "breach-void-world-bottom-" + view.name() + (nightVision ? "-night-vision" : "");
                             Path shot = lookUntilLit(context, singleplayer, layer, view.eye(), hole, minY, name);
                             holeProblem(read(shot), name).ifPresent(failures::add);
                         }
@@ -133,8 +132,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
      * Carves a lit room, and a column over its middle, with a 9 x 9 hole through the floor to the void. Four glowstone lamps stand on the
      * floor round it. Returns the bottom Y.
      */
-    private static int openHole(ServerLevel level, int layer) {
-        int minY = TestLayers.band(level, layer).minY();
+    private static int openHole(ServerLevel level) {
+        int minY = level.getMinY(); // level-height: the void is under the bottom of the whole world, not of a layer
         RoomCarver.carve(
                 level,
                 new BlockPos(X - ROOM_RADIUS, minY + SHAFT_DEPTH, Z - ROOM_RADIUS),
@@ -147,17 +146,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                 Blocks.AIR.defaultBlockState());
         BlockPos low = new BlockPos(X - HOLE_RADIUS, minY, Z - HOLE_RADIUS);
         BlockPos high = new BlockPos(X + HOLE_RADIUS, minY + SHAFT_DEPTH - 1, Z + HOLE_RADIUS);
-        if (TestLayers.isIn(level, low, LayerChain.SURFACE)) {
-            // The surface has no crust: its floor is open, and the hole is a shaft bored to the bottom.
-            RoomCarver.carve(level, low, high, Blocks.AIR.defaultBlockState());
-        } else {
-            for (BlockPos pos : BlockPos.betweenClosed(low, high)) {
-                if (!BreachService.breakCrust(level, pos)) {
-                    throw new AssertionError(
-                            "The floor of " + level.dimension().identifier() + " at " + pos + " holds no breach crust");
-                }
-            }
-        }
+        // The bottom of the world is unbuilt rock with no crust: the hole is a shaft bored to the bottom.
+        RoomCarver.carve(level, low, high, Blocks.AIR.defaultBlockState());
         for (BlockPos lamp : lamps(minY)) {
             level.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);
         }
@@ -223,7 +213,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the camera at " + name,
-                client -> TestLayers.clientIsIn(client, layer)
+                client -> client.player != null
+                        && LayerChain.isCampaign(client.player.level())
                         && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                         && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - angles[0])) < 0.01f
                         && Math.abs(ClientSession.player(client).getXRot() - angles[1]) < 0.01f);

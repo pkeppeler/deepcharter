@@ -41,7 +41,7 @@ jobs:
     name: capture
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.label.name == 'record' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       contents: read
       pull-requests: write # to remove the record label

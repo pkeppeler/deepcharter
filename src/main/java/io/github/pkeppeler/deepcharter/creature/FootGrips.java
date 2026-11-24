@@ -42,9 +42,10 @@ public final class FootGrips {
     }
 
     /**
-     * Whether a person draws a figure: not on Peaceful, on foot, alive, not a creative or spectator player, not held already, standing where the block
-     * light is under {@link CreatureTuning#litBlockLight}, and with no light in either hand ({@link HandLights#held}). The suit lamp, when it exists, replaces the
-     * hand check.
+     * Whether a person draws a figure: not on Peaceful, on foot, alive, not a creative or spectator player, not held
+     * already, standing where the block light is under {@link CreatureTuning#litBlockLight}, with no light in either
+     * hand ({@link HandLights#held}), and not within the reach of a burning flare ({@link DrawSources}: a flare
+     * protects at once, though it frees no one already held). The suit lamp, when it exists, replaces the hand check.
      */
     public static boolean draws(ServerPlayer person) {
         return person.level().getDifficulty() != Difficulty.PEACEFUL
@@ -55,7 +56,8 @@ public final class FootGrips {
                 && holder(person) == null
                 && person.level().getBrightness(LightLayer.BLOCK, person.blockPosition())
                         < CreatureTuning.DEFAULT.litBlockLight()
-                && !HandLights.held(person);
+                && !HandLights.held(person)
+                && !DrawSources.litByFlare(person.level(), person.position());
     }
 
     /** The live figure that holds {@code person}, or null. A figure that was removed or died without letting go is forgotten here. */
