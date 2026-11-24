@@ -56,7 +56,7 @@ public final class CavernSky {
     /** The middle zone of layer 1, whose biome the camera stands in. */
     private static final int ZONE = 1;
 
-    /** How far the hall's floor is above the bottom of {@link #ZONE}: the pit stays in the zone. */
+    /** How far the hall's floor is above the bottom of {@link #ZONE}: every camera, under the pit's water too, stays in the zone. */
     private static final int FLOOR_ABOVE_ZONE_BOTTOM = 30;
 
     /**
