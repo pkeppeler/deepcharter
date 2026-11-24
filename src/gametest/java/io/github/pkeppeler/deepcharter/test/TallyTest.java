@@ -84,12 +84,12 @@ public class TallyTest {
     private static final int SAMPLE_BUDGET_TICKS = 160;
 
     private static final int ORES = 3;
-    /** How long the flare of the flare test burns, and how far it reaches. */
+    /** The approach to the mark, on top of the trail, at most: measured 37 to 83 ticks. */
+    private static final int APPROACH_TICKS_MAX = 100;
+    /** How long the flare of the flare tests burns, and how far it reaches. */
     private static final int FLARE_BURN_TICKS = 40;
 
     private static final double FLARE_REACH = 6;
-    /** The approach to the mark, on top of the trail, at most: measured 37 to 83 ticks. */
-    private static final int APPROACH_TICKS_MAX = 100;
     /** Ticks the cutter may take over the bites it needs: the pod's drill starts a tick or so after the input. */
     private static final int CUTTER_SLACK_TICKS = 5;
     /** Ticks a pod and its pilot take to settle before they are asked what they draw. */
@@ -583,41 +583,88 @@ public class TallyTest {
 
     /**
      * (#1003) A burning flare keeps a Tally off a dark pod as it keeps the Retained off (ADR 0078): the pod inside its reach draws none, and
-     * draws one again once the flare has burnt out.
+     * draws one again once the flare has burnt out and its block is gone.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SETTLE_TICKS + FLARE_BURN_TICKS + 60)
-    public void aBurningFlareKeepsATallyOffADarkPodUntilItBurnsOut(GameTestHelper helper) {
+    public void aBurningFlareKeepsATallyOffADarkPodUntilItIsOut(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos origin = slot(14);
         Arena[] made = {null};
+        BlockPos[] flare = {null};
         long[] burnsOutAt = {-1};
         TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null || arena.age(helper) < SETTLE_TICKS) {
                 return;
             }
-            if (burnsOutAt[0] < 0) {
+            if (flare[0] == null) {
                 if (!Tally.draws(arena.pod)) {
                     throw failure(helper, "a dark pod with ore and a pilot draws no Tally before the flare");
                 }
-                BlockPos flare = arena.pod.blockPosition().above(2);
+                flare[0] = arena.pod.blockPosition().above(2);
                 burnsOutAt[0] = level.getGameTime() + FLARE_BURN_TICKS;
                 // room-carver: a flare block in this test's own arena
-                level.setBlock(flare, RepairRegistry.FLARE_LIGHT.defaultBlockState(), 3);
-                DrawSources.addFlare(level, flare, RepairRegistry.FLARE_LIGHT, FLARE_REACH, burnsOutAt[0]);
+                level.setBlock(flare[0], RepairRegistry.FLARE_LIGHT.defaultBlockState(), 3);
+                DrawSources.addFlare(level, flare[0], RepairRegistry.FLARE_LIGHT, FLARE_REACH, burnsOutAt[0]);
+            } else if (level.getGameTime() < burnsOutAt[0]) {
                 if (Tally.draws(arena.pod)) {
                     throw failure(helper, "a dark pod inside a burning flare's reach draws a Tally");
                 }
-            } else if (level.getGameTime() < burnsOutAt[0]) {
-                if (Tally.draws(arena.pod)) {
-                    throw failure(helper, "a dark pod draws a Tally while the flare still burns");
-                }
             } else {
+                // room-carver: the flare block of this test's own arena goes out with its entry
+                level.removeBlock(flare[0], false);
                 if (!Tally.draws(arena.pod)) {
-                    throw failure(helper, "a dark pod draws no Tally once the flare has burnt out");
+                    throw failure(helper, "a dark pod draws no Tally once the flare is out");
                 }
                 arena.clear();
                 helper.succeed();
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
+    }
+
+    /**
+     * (#1003) A Tally that trails a pod drops it when a flare lights the pod, and takes it up again once the flare is out: the pilot is told
+     * of the approach a second time.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_TICKS_MAX + FLARE_BURN_TICKS + 400)
+    public void aTallyTrailingAPodDropsItWhenAFlareLightsIt(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(15);
+        Arena[] made = {null};
+        BlockPos[] flare = {null};
+        long[] litAt = {-1};
+        TestTicks.each(helper, () -> {
+            Arena arena = made[0];
+            if (arena == null) {
+                return;
+            }
+            if (flare[0] == null) {
+                if (arena.told(APPROACH_KEY) > 0) {
+                    flare[0] = arena.pod.blockPosition().above(2);
+                    litAt[0] = level.getGameTime();
+                    // room-carver: a flare block in this test's own arena
+                    level.setBlock(flare[0], RepairRegistry.FLARE_LIGHT.defaultBlockState(), 3);
+                    DrawSources.addFlare(
+                            level, flare[0], RepairRegistry.FLARE_LIGHT, FLARE_REACH, litAt[0] + FLARE_BURN_TICKS);
+                } else if (arena.age(helper) > APPROACH_TICKS_MAX) {
+                    throw failure(helper, "the Tally never began to trail the pod");
+                }
+                return;
+            }
+            if (level.getGameTime() < litAt[0] + FLARE_BURN_TICKS) {
+                if (arena.tally.isClamped()) {
+                    throw failure(helper, "a Tally clamped to a pod inside a burning flare's reach");
+                }
+                return;
+            }
+            // room-carver: the flare block of this test's own arena goes out with its entry
+            level.removeBlock(flare[0], false);
+            if (arena.told(APPROACH_KEY) > 1) {
+                arena.clear();
+                helper.succeed();
+            } else if (level.getGameTime() > litAt[0] + FLARE_BURN_TICKS + 300) {
+                throw failure(helper, "the Tally did not take the pod up again once the flare was out");
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
