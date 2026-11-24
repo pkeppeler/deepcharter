@@ -103,8 +103,11 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         ChunkAccess chunk = level.getChunk(origin);
         int firstX = chunk.getPos().getMinBlockX();
         int firstZ = chunk.getPos().getMinBlockZ();
-        int low = band.minY();
-        int high = band.minY() + band.height() - 1;
+        // A level cut to part of a band (the cost test's floors, ADR 0086) holds only some of its rows. Every shipped
+        // level
+        // holds whole bands, so this changes nothing there.
+        int low = Math.max(band.minY(), chunk.getMinY());
+        int high = Math.min(band.minY() + band.height() - 1, chunk.getMinY() + chunk.getHeight() - 1);
         BlockState lined = lining.defaultBlockState();
         int sealReach = depth + SEAL_MARGIN;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
@@ -151,8 +154,9 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
 
     /**
      * Which cells around a chunk's band are open, read once before the chunk is lined: the chunk's columns and {@code reach} columns of
-     * its neighbours, from {@code reach} rows below the band to {@code reach} rows above it. A cell outside the level is open, as the
-     * level reads it (void air). Lining never opens or closes a cell (neither the lining nor the rock is open), so the cells read before
+     * its neighbours, from {@code reach} rows below the band to {@code reach} rows above it. A cell outside the level is closed: only a
+     * level cut to a band's rows (the cost test's windows, ADR 0086) reads past its edge, and the campaign world it is cut from has
+     * rock there, never a cavern. Lining never opens or closes a cell (neither the lining nor the rock is open), so the cells read before
      * it are the cells it would see.
      */
     private static final class OpenCells {
@@ -199,11 +203,12 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
             while (y <= top) {
                 int sectionTop = Math.min(top, ((y >> 4) << 4) + 15);
                 int index = source.getSectionIndex(y);
-                boolean outside = index < 0 || index >= source.getSectionsCount();
-                LevelChunkSection section = outside ? null : source.getSection(index);
-                if (section == null || section.hasOnlyAir()) {
+                // Outside the level a cell is closed, so it stays false.
+                LevelChunkSection section =
+                        index < 0 || index >= source.getSectionsCount() ? null : source.getSection(index);
+                if (section != null && section.hasOnlyAir()) {
                     fill(fromX, toX, fromZ, toZ, y, sectionTop);
-                } else if (section.maybeHas(AirFaceLiningFeature::isOpen)) {
+                } else if (section != null && section.maybeHas(AirFaceLiningFeature::isOpen)) {
                     for (int row = y; row <= sectionTop; row++) {
                         for (int x = fromX; x <= toX; x++) {
                             for (int z = fromZ; z <= toZ; z++) {

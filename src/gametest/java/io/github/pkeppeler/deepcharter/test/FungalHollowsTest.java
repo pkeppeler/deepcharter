@@ -24,21 +24,29 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+import net.minecraft.world.level.levelgen.placement.PlacementContext;
+import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -216,6 +224,59 @@ public class FungalHollowsTest {
                 found[0],
                 found[1],
                 found[2]);
+        helper.succeed();
+    }
+
+    /**
+     * Every position a feature of layer 3 picks lies in the chunk it is placed for. A glowcap or stalk patch spread across a chunk's side
+     * would land where the neighbour grows its own, so which one stands would depend on the order chunks are decorated in (#972). It runs
+     * each placed feature of the zone biomes' placement, as the generator does, from each chunk of the sample, and checks the positions
+     * of every step: a later filter reads the world as it is now, after the sample grew, so it would drop most of them.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void everyFeaturePlacesInsideItsOwnChunk(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        Set<PlacedFeature> features = new LinkedHashSet<>();
+        level.registryAccess()
+                .lookupOrThrow(Registries.BIOME)
+                .getTagOrEmpty(FUNGAL_HOLLOWS)
+                .forEach(biome -> biome.value()
+                        .getGenerationSettings()
+                        .features()
+                        .forEach(step -> step.stream().map(Holder::value).forEach(features::add)));
+        expect(helper, !features.isEmpty(), "the zone biomes have no features");
+        int positions = 0;
+        for (int dx = 0; dx < SAMPLE_CHUNKS; dx++) {
+            for (int dz = 0; dz < SAMPLE_CHUNKS; dz++) {
+                ChunkPos chunk = new ChunkPos(SAMPLE_CHUNK + dx, SAMPLE_CHUNK + dz);
+                level.getChunk(chunk.x(), chunk.z());
+                for (PlacedFeature feature : features) {
+                    PlacementContext context =
+                            new PlacementContext(level, level.getChunkSource().getGenerator(), Optional.of(feature));
+                    RandomSource random = RandomSource.create(chunk.pack());
+                    List<BlockPos> picked = List.of(chunk.getWorldPosition());
+                    for (PlacementModifier modifier : feature.placement()) {
+                        List<BlockPos> next = new ArrayList<>();
+                        for (BlockPos pos : picked) {
+                            modifier.modify(context, random, pos, next::add);
+                        }
+                        for (BlockPos pos : next) {
+                            expect(
+                                    helper,
+                                    ChunkPos.containing(pos).equals(chunk),
+                                    "%s placed for chunk %s picks %s, in chunk %s",
+                                    feature.feature().getRegisteredName(),
+                                    chunk,
+                                    pos.toShortString(),
+                                    ChunkPos.containing(pos));
+                        }
+                        positions += next.size();
+                        picked = next;
+                    }
+                }
+            }
+        }
+        expect(helper, positions > 0, "no feature of layer 3 picked a position");
         helper.succeed();
     }
 

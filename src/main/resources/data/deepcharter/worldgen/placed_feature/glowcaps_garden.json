@@ -40,7 +40,7 @@
       "count": 12
     },
     {
-      "type": "minecraft:offset",
+      "type": "deepcharter:in_chunk_offset",
       "x": {
         "type": "minecraft:trapezoid",
         "min": -4,
