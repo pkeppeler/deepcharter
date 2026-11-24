@@ -110,22 +110,23 @@ public final class ColumnCost {
                 idle(smoke);
                 return;
             }
-            if (current[0] == null) {
+            Run active = current[0];
+            if (active == null) {
                 if (queue.isEmpty()) {
                     return;
                 }
                 // Only a run that began is current: after a begin() that throws, the next tick must not read its level.
-                Run next = queue.poll();
-                next.begin(helper);
-                current[0] = next;
+                active = queue.poll();
+                active.begin(helper);
+                current[0] = active;
             }
-            if (!current[0].isGenerated()) {
+            if (!active.isGenerated()) {
                 idle(smoke);
                 return;
             }
-            Measurement measurement = current[0].finish(helper);
-            if (current[0].measured) {
-                results.computeIfAbsent(current[0].world, world -> new ArrayList<>())
+            Measurement measurement = active.finish(helper);
+            if (active.measured) {
+                results.computeIfAbsent(active.world, world -> new ArrayList<>())
                         .add(measurement);
             }
             current[0] = null;

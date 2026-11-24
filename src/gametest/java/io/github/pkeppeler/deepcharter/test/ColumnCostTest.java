@@ -71,7 +71,8 @@ public class ColumnCostTest {
             threw = true;
         }
         expect(helper, threw, "a measured run in a world that does not exist did not throw");
-        // The runner may tick the body once more before it ends the test: that tick must fail the same way, not on a level
+        // The runner may tick the body once more before it ends the test: that tick must fail the same way, not on a
+        // level
         // that never arrived.
         boolean threwAgain = false;
         try {
