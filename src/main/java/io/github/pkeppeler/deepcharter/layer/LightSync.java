@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
@@ -37,6 +38,9 @@ import org.jspecify.annotations.Nullable;
  * <p>A player who already had a chunk of the hold when it began is sent the chunk's settled light when the hold ends (#824): a
  * neighbour's draw changes the light of that chunk, and vanilla drops a light change for a chunk that does not tick (issue 427), so
  * the player's client keeps the old light.
+ *
+ * <p>Each neighbour in the hold also waits for the light tasks queued at the drawn chunk itself (#494): vanilla's wait covers only the
+ * tasks queued at the neighbour's own position, and the engine runs different positions' queues in no fixed order.
  *
  * <p>The safety net (#863, ADR 0068): {@code LightSync} records the light each player was sent of a chunk in a hold's 3x3, and for
  * a window that starts when the chunk can be sent sends a player whose chunk's published light differs from it.
@@ -65,6 +69,9 @@ public final class LightSync {
     }
 
     private static final Map<Key, Hold> HOLDS = new ConcurrentHashMap<>();
+
+    /** The light tasks queued at a chunk after its last draw, until they have run. */
+    private static final Map<Key, CompletableFuture<?>> QUEUED = new ConcurrentHashMap<>();
 
     /** Server ticks a chunk's published light is compared after the chunk can be sent (5 s). */
     private static final int NET_WINDOW_TICKS = 100;
@@ -108,10 +115,12 @@ public final class LightSync {
     private LightSync() {}
 
     public static void init() {
+        ServerChunkEvents.CHUNK_LOAD.register((level, chunk, newlyGenerated) -> holdLoadedNeighbour(level, chunk));
         ServerTickEvents.END_SERVER_TICK.register(LightSync::sweep);
         ServerTickEvents.END_SERVER_TICK.register(LightSync::compareLight);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             HOLDS.keySet().removeIf(key -> key.level.getServer() == server);
+            QUEUED.keySet().removeIf(key -> key.level.getServer() == server);
             NET.keySet().removeIf(key -> key.level.getServer() == server);
         });
     }
@@ -168,16 +177,39 @@ public final class LightSync {
      * Vanilla's hold makes each chunk of the 3x3 wait for the light tasks queued at <em>its own</em> position. The tasks of the
      * blocks just placed are queued at {@code chunk}, and the light engine runs the queues of different positions in no fixed
      * order, so a neighbour's wait can end before they have run: the neighbour is then sent the light it had before the draw
-     * (#494). Each neighbour also waits for the tasks queued at {@code chunk}, after the draw's.
+     * (#494). Each neighbour also waits for the tasks queued at {@code chunk}, after the draw's. A neighbour that has no holder yet,
+     * or loads later, waits for them when it loads ({@link #holdLoadedNeighbour}).
      */
     private static void holdRingUntilTasksRun(ServerLevel level, ChunkPos chunk) {
         CompletableFuture<?> drawn = level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x(), chunk.z());
-        ChunkPos.rangeClosed(chunk, 1).filter(near -> !near.equals(chunk)).forEach(near -> {
-            ChunkHolder holder = level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(near.pack());
-            if (holder != null) {
-                holder.addSendDependency(drawn);
-            }
-        });
+        Key key = new Key(level, chunk);
+        QUEUED.put(key, drawn);
+        var _ = drawn.thenRun(() -> QUEUED.remove(key, drawn));
+        ChunkPos.rangeClosed(chunk, 1)
+                .filter(near -> !near.equals(chunk))
+                .forEach(near -> dependOn(level, near, drawn));
+    }
+
+    private static void dependOn(ServerLevel level, ChunkPos chunk, CompletableFuture<?> tasks) {
+        ChunkHolder holder = level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(chunk.pack());
+        if (holder != null) {
+            holder.addSendDependency(tasks);
+        }
+    }
+
+    /** A chunk that loads while a neighbour's draw still has light tasks queued waits for them before it is sent. */
+    private static void holdLoadedNeighbour(ServerLevel level, LevelChunk chunk) {
+        if (QUEUED.isEmpty()) {
+            return;
+        }
+        ChunkPos.rangeClosed(chunk.getPos(), 1)
+                .filter(near -> !near.equals(chunk.getPos()))
+                .forEach(near -> {
+                    CompletableFuture<?> tasks = QUEUED.get(new Key(level, near));
+                    if (tasks != null && !tasks.isDone()) {
+                        dependOn(level, chunk.getPos(), tasks);
+                    }
+                });
     }
 
     private static Set<UUID> trackers(ServerLevel level, ChunkPos chunk) {

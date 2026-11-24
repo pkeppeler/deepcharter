@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
 public class LightSyncRingHoldTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     /** Far from the cells other tests use. */
-    private static final int HOME_X = (-40_000 >> 4) + 80;
+    private static final int HOME_X = (-40_000 >> 4) + 200;
 
     private static final int HOME_Z = 40_000 >> 4;
     /** Chunks on a side of the area; the draws go in the ones that have a full ring inside it. */
@@ -67,9 +67,11 @@ public class LightSyncRingHoldTest {
                     && pos.z() >= HOME_Z
                     && pos.z() < HOME_Z + SIDE) {
                 draw(chunk);
+                // Queued before the hold's own marker, so it is done whenever a neighbour that waits for the hold's is.
+                CompletableFuture<?> tasks =
+                        level.getChunkSource().getLightEngine().waitForPendingTasks(pos.x(), pos.z());
                 LightSync.holdSendUntilLit(level, pos);
-                current.drawn.add(new Drawn(
-                        pos, level.getChunkSource().getLightEngine().waitForPendingTasks(pos.x(), pos.z())));
+                current.drawn.add(new Drawn(pos, tasks));
             }
         });
     }
@@ -129,7 +131,8 @@ public class LightSyncRingHoldTest {
     /** Rewrites rows of the chunk with stone and glowstone in turn, so each write queues a light task at its position. */
     private static void draw(LevelChunk chunk) {
         ChunkPos at = chunk.getPos();
-        int y = chunk.getMinY() + 8;
+        int y = chunk.getMinY()
+                + 8; // level-height: any rows of the chunk do, the draw is about light tasks and not a layer
         for (int dy = 0; dy < DRAW_ROWS; dy++) {
             for (int dx = 0; dx < 16; dx++) {
                 for (int dz = 0; dz < 16; dz++) {
