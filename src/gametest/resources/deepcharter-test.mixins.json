@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "BatchKeyMixin",
+    "BlockStateAccess",
     "ChunkHolderLightSuppressMixin",
     "ChunkMapAccess",
     "ChunkMapSaveMixin",
@@ -26,6 +27,7 @@
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
+    "SkyRendererMixin",
     "SpriteAnimationStateMixin"
   ],
   "injectors": {

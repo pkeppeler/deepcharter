@@ -1,0 +1,6 @@
+{
+  "description": "Call 8 of the hollows concept round (#1147): layer 3's basalt3 ramp with its red and blue swapped, so each shade keeps its lightness and leans warm brown-black instead of cold blue-black. Ramps run dark to light.",
+  "colours": {
+    "basalt3": ["#100a08", "#1f1612", "#2e231d", "#3e312a", "#524239", "#6b574b"]
+  }
+}

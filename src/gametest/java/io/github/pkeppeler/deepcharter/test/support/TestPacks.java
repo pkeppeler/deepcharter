@@ -35,6 +35,8 @@ public final class TestPacks implements ModInitializer {
     public static final String LAYER_CONCEPT_FORM_2 = "layer_concept_form_2";
     /** The Company Rock and breach crust of layer 3, Columnar. */
     public static final String LAYER_CONCEPT_FORM_3 = "layer_concept_form_3";
+    /** Layer 3's columns and core in a warmer basalt (#1147, call 8 of the hollows concept round): the shipped recipes in a warmer ramp. */
+    public static final String BASALT_WARM = "basalt_warm";
     /** The cockpit HUD is off ({@code theme/cockpit.json}'s {@code enabled} 0): the plain HUD shows while seated. The Ribbon is the mod's own look (#247). */
     public static final String COCKPIT_OFF = "cockpit_off";
     /** The front camera is on the pod (#448): a stand-in for the part, which a later build buys at the upgrade terminal. */
@@ -69,6 +71,7 @@ public final class TestPacks implements ModInitializer {
             LAYER_CONCEPT_FORM_1,
             LAYER_CONCEPT_FORM_2,
             LAYER_CONCEPT_FORM_3,
+            BASALT_WARM,
             COCKPIT_OFF,
             COCKPIT_CAMERA,
             COCKPIT_CAMERA_HOLD,
