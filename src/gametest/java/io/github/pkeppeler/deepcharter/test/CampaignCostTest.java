@@ -95,12 +95,14 @@ public class CampaignCostTest {
             new Window(CampaignBands.LAYER_1, "campaign_layer_1", "campaign_layer_1_floor"),
             new Window(CampaignBands.LAYER_2, "campaign_layer_2", "campaign_layer_2_floor"));
 
-    /** The bands that were over the bar when the gate was written (ADR 0086). No other band may have one ({@link #RATCHETED}). */
-    private static final List<Ratchet> RATCHETS =
-            List.of(new Ratchet(CampaignBands.LAYER_1, 1.218, 1132), new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
+    /**
+     * The bands still over the bar (ADR 0086), each at its measured ratio. Layer 1 had one until #1160 (ADR 0090) took it under.
+     * No other band may have one ({@link #RATCHETED}).
+     */
+    private static final List<Ratchet> RATCHETS = List.of(new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
 
     /** The only bands a ratchet may hold. */
-    private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_1, CampaignBands.LAYER_2);
+    private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_2);
 
     /** The worlds the gate reads. */
     private static final List<String> GATED = Stream.concat(
@@ -318,14 +320,16 @@ public class CampaignCostTest {
         JsonObject dimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject()
                 .getAsJsonObject("dimensions");
-        JsonElement campaign = read(helper, "/data/minecraft/dimension/overworld.json")
-                .getAsJsonObject()
-                .get("generator");
+        JsonObject shipped =
+                read(helper, "/data/minecraft/dimension/overworld.json").getAsJsonObject();
+        JsonElement campaign = shipped.get("generator");
         JsonObject campaignType =
                 read(helper, "/data/minecraft/dimension_type/overworld.json").getAsJsonObject();
         for (Window window : WINDOWS) {
             CampaignBands.Band band = window.band();
             boolean sky = band == CampaignBands.SURFACE;
+            expectFromShipped(helper, dimensions, window.world(), shipped);
+            expectFromShipped(helper, dimensions, window.floor(), shipped);
             expectCut(helper, dimensions, window.world(), campaign, cut(campaignType, band.minY(), band.height(), sky));
             expectCut(helper, dimensions, window.floor(), campaign, cut(campaignType, band.minY(), FLOOR_ROWS, sky));
         }
@@ -338,6 +342,19 @@ public class CampaignCostTest {
                 dimensions.getAsJsonObject("deepcharter:" + REFERENCE).get("generator"),
                 cut(referenceType, referenceType.get("min_y").getAsInt(), FLOOR_ROWS, false));
         helper.succeed();
+    }
+
+    // A stray key or a stale hand copy must not pass.
+    private static void expectFromShipped(
+            GameTestHelper helper, JsonObject dimensions, String world, JsonObject shipped) {
+        JsonObject expected = shipped.deepCopy();
+        expected.addProperty("type", "deepcharter:" + world);
+        expect(
+                helper,
+                expected.equals(dimensions.get("deepcharter:" + world)),
+                "%s is not the shipped overworld with its own type: %s",
+                world,
+                dimensions.get("deepcharter:" + world));
     }
 
     private static void expectCut(

@@ -35,6 +35,7 @@
   "hud.deepcharter.pod.glaze_spent": "GLAZE SPENT",
   "hud.deepcharter.pod.hard_landing": "HARD LANDING",
   "hud.deepcharter.pod.hull": "Hull %s/%s",
+  "hud.deepcharter.pod.drifter_alarm": "ALARM: THE HOLLOWS ARE AWAKE %s S",
   "hud.deepcharter.pod.lava_above": "LAVA ABOVE %s OFF  CAP THE SHAFT OR LEAVE",
   "hud.deepcharter.pod.lava_near": "LAVA IN THE SHAFT %s OFF  LINE OR LEAVE",
   "hud.deepcharter.pod.liner": "LINER  next ring in %s",
