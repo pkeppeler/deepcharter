@@ -321,17 +321,28 @@ public class CampaignAtmosphereTest {
     }
 
     /**
-     * Under water the client lifts the water's fog colour as the eyes adjust, to full brightness at its brightest channel, unless a channel
-     * is exactly 0 (26.3 {@code FogRenderer.computeFogColor}): vanilla's {@code #050533} becomes {@code #1919ff}, and any dark tint with
-     * no zero channel becomes as bright (#1187). So each layer biome sets a dark water fog with a zero channel and a fog end, and two zones
-     * one above the other share a zero channel, because the camera blends their colours and a blend of two different zeros has none.
+     * Under water the client lifts the water's fog colour as the eyes adjust, to full brightness at its brightest
+     * channel, unless a channel is exactly 0 (26.3 {@code FogRenderer.computeFogColor}): vanilla's {@code #050533}
+     * becomes {@code #1919ff}, and any dark tint with no zero channel becomes as bright (#1187). So each underground
+     * biome sets a dark water fog with a zero channel, ending where its air fog ends, so water is never clearer than
+     * air. Two biomes one above the other share a zero channel, because the camera blends their colours and a blend of
+     * two different zeros has none. Checking pairs is enough while a zone (at least 64 blocks) is taller than the blend
+     * window (about 24), so the camera never blends three biomes.
+     *
+     * <p>The walk runs from layer 1's top zone down to the unbuilt depth. The surface above layer 1 keeps vanilla's
+     * water fog, a known gap (#1213), so the surface and Topsoil Claims are not paired.
      */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
-    public void everyLayerBiomeSetsADarkWaterFogTheEyesCannotLift(GameTestHelper helper) {
-        List<Holder<Biome>> layerBiomes = layerBiomes(helper.getLevel());
-        expect(helper, !layerBiomes.isEmpty(), "the sample level places no layer biome");
+    public void everyUndergroundBiomeSetsADarkWaterFogTheEyesCannotLift(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        List<Holder<Biome>> topToBottom = new ArrayList<>();
+        source(level).layers().stream()
+                .sorted(Comparator.comparingInt(BandBiomeSource.Layer::minY).reversed())
+                .forEach(layer -> topToBottom.addAll(layer.biomes()));
+        expect(helper, !topToBottom.isEmpty(), "the sample level places no layer biome");
+        topToBottom.add(unbuiltBiome(helper, level));
         Holder<Biome> above = null;
-        for (Holder<Biome> holder : layerBiomes) {
+        for (Holder<Biome> holder : topToBottom) {
             Biome biome = holder.value();
             Identifier id = id(holder);
             for (EnvironmentAttribute<?> attribute :
@@ -339,21 +350,31 @@ public class CampaignAtmosphereTest {
                 expect(
                         helper,
                         biome.getAttributes().contains(attribute),
-                        "layer biome %s does not set %s, so its water shows vanilla's",
+                        "underground biome %s does not set %s, so its water shows vanilla's",
                         id,
                         name(attribute));
             }
+            float waterEnd = wanted(biome, EnvironmentAttributes.WATER_FOG_END_DISTANCE);
+            float airEnd = wanted(biome, EnvironmentAttributes.FOG_END_DISTANCE);
+            expect(
+                    helper,
+                    waterEnd == airEnd,
+                    "underground biome %s: water fog ends at %s blocks, its air fog at %s; set them equal",
+                    id,
+                    waterEnd,
+                    airEnd);
             Vector3fc water = wanted(biome, EnvironmentAttributes.WATER_FOG_COLOR);
             expect(
                     helper,
                     !zeroChannels(water).isEmpty(),
-                    "layer biome %s: water fog %s has no channel at 0, so the eyes adjusting lift it to full brightness",
+                    "underground biome %s: water fog %s has no channel at 0, so the eyes adjusting lift it to full"
+                            + " brightness",
                     id,
                     hex(water));
             expect(
                     helper,
                     Math.max(water.x(), Math.max(water.y(), water.z())) <= DARKEST_WATER,
-                    "layer biome %s: water fog %s is brighter than %s on a channel, but the world stays black",
+                    "underground biome %s: water fog %s is brighter than %s on a channel, but the world stays black",
                     id,
                     hex(water),
                     hex(new Vector3f(DARKEST_WATER)));
@@ -364,7 +385,8 @@ public class CampaignAtmosphereTest {
                 expect(
                         helper,
                         !shared.isEmpty(),
-                        "the water fogs of %s and %s below it share no zero channel, so their blend is lifted to full brightness",
+                        "the water fogs of %s and %s below it share no zero channel, so their blend is lifted to full"
+                                + " brightness",
                         id(above),
                         id);
             }
