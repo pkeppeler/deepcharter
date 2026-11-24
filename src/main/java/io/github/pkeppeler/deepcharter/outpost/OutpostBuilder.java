@@ -120,7 +120,7 @@ public final class OutpostBuilder {
         List<ItemStack> overflow = sweep(player, level, inShell);
         cut(level, clicked);
         placeOverflow(player, level, data, clicked, overflow);
-        data.add(new OutpostData.Outpost(charter.get().id(), LAYER, clicked.immutable()));
+        data.add(new OutpostData.Outpost(charter.get().id(), LAYER, level.dimension(), clicked.immutable()));
         return Optional.empty();
     }
 

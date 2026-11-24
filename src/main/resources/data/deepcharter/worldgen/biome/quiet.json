@@ -1,0 +1,56 @@
+{
+  "attributes": {
+    "minecraft:audio/ambient_sounds": {},
+    "minecraft:audio/background_music": {},
+    "minecraft:gameplay/bed_rule": {
+      "can_set_spawn": "never",
+      "can_sleep": "never",
+      "destroy_on_use": false
+    },
+    "minecraft:gameplay/can_pillager_patrol_spawn": false,
+    "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
+    "minecraft:gameplay/straw_bed_rule": {
+      "can_set_spawn": "never",
+      "can_sleep": "never",
+      "destroy_on_use": false
+    },
+    "minecraft:visual/ambient_light_color": "#07080a",
+    "minecraft:visual/ambient_particles": [],
+    "minecraft:visual/fog_color": "#05080e",
+    "minecraft:visual/fog_end_distance": 48.0,
+    "minecraft:visual/fog_start_distance": 4.0,
+    "minecraft:visual/moon_angle": 180.0,
+    "minecraft:visual/sky_color": "#05080e",
+    "minecraft:visual/sky_fog_end_distance": 0.0,
+    "minecraft:visual/sky_light_factor": 0.0,
+    "minecraft:visual/star_brightness": 0.0,
+    "minecraft:visual/sun_angle": 180.0,
+    "minecraft:visual/sunrise_sunset_color": "#00000000"
+  },
+  "carvers": [],
+  "downfall": 0.0,
+  "effects": {
+    "water_color": "#3f76e4"
+  },
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "deepcharter:fill_quiet"
+    ],
+    [],
+    [
+      "deepcharter:line_hollows"
+    ],
+    [
+      "deepcharter:glowcaps_quiet"
+    ],
+    [],
+    []
+  ],
+  "has_precipitation": false,
+  "temperature": 0.5
+}

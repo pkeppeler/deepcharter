@@ -83,3 +83,7 @@ The bands fix the overworld, the first dimension of a stack, not the whole game.
 ## Amended, 2026-11-23 (#1110): no vanilla mover opens a crust
 
 A breach crust has bedrock's blast resistance and an immovable push reaction, and is in `minecraft:wither_immune` and `minecraft:dragon_immune`, in every layer. Before this, any explosion of power 3 or more (a creeper, TNT, an end crystal, a bed) broke it and a piston pushed or pulled it, and a broken crust skips the breach gating. Only the pod's drill (through `BreachService.breakCrust`) and a creative hand open one. The last floor is found from `CampaignBands.lastLayer()`, so it follows when #972 moves it. See [mechanics](../design/mechanics.md#vanilla-block-movers-and-the-breach-crust-1110-a).
+
+## Amended, 2026-11-23 (#972): layer 3
+
+Layer 3, the Fungal Hollows, is built in unbuilt depth: Y -768 to -513 (256 blocks), its floor on a section edge. Unbuilt depth is now Y -2032 to -769 (1264 blocks), still plain rock of layer 2's green shale. The world-format stamp goes to 3, so a world made before layer 3 is refused, as the Decision says of every release that adds a layer. The rows above -512 are unchanged: `CampaignWorldHashTest` writes one line per section, and the only sections that differ from the tree before are those of layer 3.
