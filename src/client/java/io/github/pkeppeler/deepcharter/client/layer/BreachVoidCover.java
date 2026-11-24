@@ -35,10 +35,22 @@ public final class BreachVoidCover {
     /** The cover is a disc of rings, each cut into this many quads round the camera. */
     private static final int SEGMENTS = 64;
 
+    /** Written by the test thread, read by the render thread. */
+    private static volatile boolean drawn = true;
+
     private BreachVoidCover() {}
 
     public static void init() {
         LevelRenderEvents.COLLECT_SUBMITS.register(BreachVoidCover::submit);
+    }
+
+    // test-seam: the cover also hides the nadir past the drawn sections, so CavernSky's tour (its client test and the
+    // cavern-sky scenario) turns it off to check and show the guard that holds without it, LayerSky and the zone
+    // biomes' sky fog; the tour restores the value this returns.
+    public static boolean setDrawn(boolean on) {
+        boolean was = drawn;
+        drawn = on;
+        return was;
     }
 
     /**
@@ -54,7 +66,7 @@ public final class BreachVoidCover {
     private static void submit(LevelRenderContext context) {
         Minecraft client = Minecraft.getInstance();
         ClientLevel level = client.level;
-        if (level == null || !inLayerChain(level)) {
+        if (!drawn || level == null || !inLayerChain(level)) {
             return;
         }
         CameraRenderState camera = context.levelState().cameraRenderState;

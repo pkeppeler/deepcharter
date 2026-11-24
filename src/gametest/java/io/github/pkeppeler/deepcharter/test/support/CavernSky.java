@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.client.layer.BreachVoidCover;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
@@ -34,8 +35,11 @@ import org.joml.Vector3fc;
  * chunks, so the hall reaches past the last drawn chunk at both ends and the sky is what shows there. Under its east end a pit drops past
  * the render distance too, so a view pitched down sees the sky below the horizon: the dark disc the client draws over the sun and the
  * moon at 180 degrees, which {@code sky_fog_end_distance} 0 turns into fog. The pit is then flooded and the camera looks straight down
- * from under the water, past the drawn sections, where the client draws no dark disc and only {@code LayerSky} hides the sun and the
- * moon.
+ * from under the water, past the drawn sections, where the client draws no dark disc and {@code LayerSky} hides the sun and the moon.
+ *
+ * <p>In play {@code BreachVoidCover} also covers the nadir past the drawn sections (#1188), the views down into the pit and from under
+ * the water included. {@code LayerSky} and the sky fog are the guard that holds without it, so the tour turns the cover off and those
+ * views show the sky.
  */
 public final class CavernSky {
     /** Far from the colony, in the middle of a chunk, so the drawn chunks reach as far both ways. */
@@ -117,27 +121,32 @@ public final class CavernSky {
     private CavernSky() {}
 
     /**
-     * Carves the hall and its pit, cuts the render distance, and stands the camera at each view in turn: first every view from the hall's
-     * floor, then, with the pit flooded, every view from under its water. {@code atView} runs at each.
+     * Carves the hall and its pit, turns the cover off, cuts the render distance, and stands the camera at each view in turn: first
+     * every view from the hall's floor, then, with the pit flooded, every view from under its water. {@code atView} runs at each.
      */
     public static void tour(ClientGameTestContext context, TestServerContext server, AtView atView) {
         BlockPos floor = carve(server);
-        ClientChecks.withRenderDistance(context, RENDER_DISTANCE, () -> {
-            for (View view : VIEWS) {
-                stand(context, server, CavernSky::layer, floor, view);
-                atView.at(view, false);
-            }
-            flood(server, floor);
-            BlockPos inWater = floor.offset(PIT_START + UNDERWATER_EAST, -UNDERWATER_BELOW, 0);
-            for (View view : UNDERWATER_VIEWS) {
-                stand(context, server, CavernSky::layer, inWater, view);
-                ClientWait.until(
-                        context,
-                        "the camera under the water of the flooded pit",
-                        client -> client.player != null && client.player.isUnderWater());
-                atView.at(view, true);
-            }
-        });
+        boolean coverWas = BreachVoidCover.setDrawn(false);
+        try {
+            ClientChecks.withRenderDistance(context, RENDER_DISTANCE, () -> {
+                for (View view : VIEWS) {
+                    stand(context, server, CavernSky::layer, floor, view);
+                    atView.at(view, false);
+                }
+                flood(server, floor);
+                BlockPos inWater = floor.offset(PIT_START + UNDERWATER_EAST, -UNDERWATER_BELOW, 0);
+                for (View view : UNDERWATER_VIEWS) {
+                    stand(context, server, CavernSky::layer, inWater, view);
+                    ClientWait.until(
+                            context,
+                            "the camera under the water of the flooded pit",
+                            client -> client.player != null && client.player.isUnderWater());
+                    atView.at(view, true);
+                }
+            });
+        } finally {
+            BreachVoidCover.setDrawn(coverWas);
+        }
     }
 
     private static ServerLevel layer(MinecraftServer server) {
@@ -234,8 +243,7 @@ public final class CavernSky {
      *
      * @param fogOnly whether it is the fog colour throughout: a sun, moon, star or dusk glow is a pixel off the box's median, and a sky of
      *     its own colour (or a dark disc not turned to fog) is a median off the fog
-     * @param noneBrighter whether no pixel is brighter than the median: a sun or a moon is drawn brighter than the sky behind it, while
-     *     the black square {@code BreachVoidCover} draws under the bottom of the world is darker
+     * @param noneBrighter whether no pixel is brighter than the median: a sun or a moon is drawn brighter than the sky behind it
      * @param describe the median, the fog and the pixels off the median, for the failure and the log
      */
     public record Reading(boolean fogOnly, boolean noneBrighter, String describe) {}
