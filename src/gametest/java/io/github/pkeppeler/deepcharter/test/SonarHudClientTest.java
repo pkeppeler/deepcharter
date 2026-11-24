@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.requireNavigator;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
 import io.github.pkeppeler.deepcharter.client.pod.SonarScope;
@@ -10,10 +11,13 @@ import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSeat;
+import io.github.pkeppeler.deepcharter.pod.PodSeats;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.SonarEcho;
 import io.github.pkeppeler.deepcharter.pod.SonarKind;
 import io.github.pkeppeler.deepcharter.pod.SonarTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
@@ -34,14 +38,18 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest on a real dedicated server (#988): a mock player pilots a Prospector and the real client rides it as the navigator. The
  * navigator sees the sonar scope and the pilot does not; the real ping key sends the ping, and the echo of an ore block 8 ahead of the pod lands
- * on the scope in the ore colour, at the pixel {@link SonarScope} projects it to; the mark key then marks it, as a diamond at the middle of the screen
- * where the navigator looks; when the pilot gets off, the client is the pilot and the scope is gone.
+ * on the scope in the ore colour, at the pixel {@link SonarScope} projects it to; the mark key then marks it, as a diamond at the middle of the
+ * screen where the navigator looks.
+ *
+ * <p>Roles come from the server's seat assignment (#1088): a navigator the assignment has not reached yet, or whose pilot is missing from the
+ * client, keeps the scope and can ping. When the pilot gets off, the client is the pilot and the scope is gone.
  */
 public class SonarHudClientTest implements FabricClientGameTest {
     static final int X = 1600;
@@ -155,12 +163,68 @@ public class SonarHudClientTest implements FabricClientGameTest {
                                 .formatted(expected & 0xFFFFFF, diamond & 0xFFFFFF));
             }
 
+            // A pod entity the server's assignment has not reached yet (new after a crossing, or a boarding after the
+            // pod's tick)
+            // leaves no rider without a role: the visible riders take their places in the passenger list.
+            Versioned<PodSeats.State> assigned = context.computeOnClient(
+                    client -> TestEntities.vehicle(ClientSession.player(client), PodEntity.class)
+                            .getAttached(PodSeats.STATE));
+            context.runOnClient(client -> TestEntities.vehicle(ClientSession.player(client), PodEntity.class)
+                    .setAttached(PodSeats.STATE, Versioned.of(PodSeats.State.EMPTY)));
+            require(
+                    context.computeOnClient(client -> PodSeat.isNavigator(
+                                    TestEntities.vehicle(ClientSession.player(client), PodEntity.class),
+                                    ClientSession.player(client))
+                            && SonarHud.frame(client).isPresent()),
+                    "a navigator the seat assignment has not reached still has its role and its scope");
+            context.runOnClient(client -> TestEntities.vehicle(ClientSession.player(client), PodEntity.class)
+                    .setAttached(PodSeats.STATE, assigned));
+            // The pilot's chunk is queued for the navigator's client (#1088): the pilot is missing from the client's
+            // level, and the
+            // pod's passengers there are the navigator alone. The seat is the server's, so the navigator keeps the
+            // scope and can
+            // still ping.
+            long pingedBefore = context.computeOnClient(
+                    client -> PodSonar.reading(TestEntities.vehicle(ClientSession.player(client), PodEntity.class))
+                            .orElseThrow()
+                            .pingedAt());
+            int pilotId =
+                    two.server().computeOnServer(server -> two.mock().player().getId());
+            context.runOnClient(
+                    client -> ClientLight.clientLevel(client).removeEntity(pilotId, Entity.RemovalReason.DISCARDED));
+            ClientWait.until(
+                    context,
+                    "the pilot missing from the client's pod",
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
+                            && pod.getPassengers().size() == 1);
+            requireNavigator(context);
+            ClientWait.until(
+                    context,
+                    "the sonar cooling down for the next ping",
+                    () -> context.computeOnClient(client -> {
+                        PodEntity pod = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
+                        return ClientLight.clientLevel(client).getGameTime()
+                                >= PodSonar.reading(pod).orElseThrow().readyAt();
+                    }),
+                    () -> "no cooldown end");
+            requireNavigator(context);
+            context.getInput().pressKey(SonarKeys.PING);
+            ClientWait.until(
+                    context,
+                    "a second ping from the navigator whose pilot is not on the client",
+                    client -> PodSonar.reading(TestEntities.vehicle(ClientSession.player(client), PodEntity.class))
+                            .filter(state -> state.pingedAt() > pingedBefore)
+                            .isPresent());
+
             two.server().runOnServer(server -> two.mock().player().stopRiding());
             ClientWait.until(
                     context,
                     "the client alone in the pod, as its pilot",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
-                            && pod.getPassengers().size() == 1);
+                            && pod.getPassengers().size() == 1
+                            && PodSeats.pilot(pod)
+                                    .filter(ClientSession.player(client).getUUID()::equals)
+                                    .isPresent());
             context.waitTicks(2);
             require(
                     !context.computeOnClient(client -> SonarHud.frame(client).isPresent()),

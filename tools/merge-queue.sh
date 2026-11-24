@@ -34,7 +34,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 merge_pr=${MERGE_PR:-$root/tools/merge-pr.sh}
 lock=${MERGE_QUEUE_LOCK:-$HOME/.cache/deepcharter/merge-queue.lock}
 ci_poll=${MERGE_QUEUE_CI_POLL:-20}
-# Must stay above the longest CI job limit (client-gametest, 60 minutes) plus the changes job lead time.
+# Must stay above the longest CI job limit (a client-gametest shard, 30 minutes) plus the changes job lead time.
 ci_max=${MERGE_QUEUE_CI_MAX:-4200}
 stale_sleep=${MERGE_QUEUE_STALE_SLEEP:-90}
 unknown_sleep=${MERGE_QUEUE_UNKNOWN_SLEEP:-30}
@@ -120,7 +120,9 @@ wait_ci() {
 }
 
 # rerun_ci <pr> <sha>: re-run the workflow runs holding the jobs whose `merged-main` record the gate reads (build,
-# tool-tests and, when it ran, client-gametest; each merges the live main itself). Never a single job: a job re-run
+# tool-tests and, when it ran, client-gametest; each merges the live main itself). The `client-gametest` aggregate is
+# matched, not a shard: it sits in the same `Client tests` run as every `client-gametest-shard <i>` job (#1079), is
+# skipped exactly when the shards are, and is the legacy single job in CI from before sharding. Never a single job: a job re-run
 # copies the run's other finished jobs without their annotations, so the gate calls the base stale again (#1094).
 # Per job it takes the newest non-skipped one across the head sha's runs (#1092), then re-runs each distinct run whole.
 # Returns 1 and sets $rerun_err when build or tool-tests has no such job, a listing fails or the API refuses a re-run.

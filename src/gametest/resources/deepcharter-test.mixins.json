@@ -12,6 +12,7 @@
     "GameTestInfoMixin",
     "GameTestTickerMixin",
     "LightSyncSendMixin",
+    "MainShutdownHookMixin",
     "MinecraftServerAccess",
     "ServerLevelForcedMixin"
   ],

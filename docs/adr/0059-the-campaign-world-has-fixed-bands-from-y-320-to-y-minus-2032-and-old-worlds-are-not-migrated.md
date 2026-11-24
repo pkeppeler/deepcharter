@@ -79,3 +79,7 @@ The stamp that the Decision names is the saved record `colony/WorldFormat`, unde
 ## Amended, 2026-11-23 (#1111): the bands are not final
 
 The bands fix the overworld, the first dimension of a stack, not the whole game. Depth continues in deep dimensions below y -2032, and a layer can span two dimensions ([ADR 0085](0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). The clause of item 7 of the cutover list that deletes the layer types with the layer dimensions no longer applies (the deletion of the test dimension, #761, stands): the layer dimensions and their types stay as the base of the seam. The surface stays at y -64 to 319.
+
+## Amended, 2026-11-23 (#1110): no vanilla mover opens a crust
+
+A breach crust has bedrock's blast resistance and an immovable push reaction, and is in `minecraft:wither_immune` and `minecraft:dragon_immune`, in every layer. Before this, any explosion of power 3 or more (a creeper, TNT, an end crystal, a bed) broke it and a piston pushed or pulled it, and a broken crust skips the breach gating. Only the pod's drill (through `BreachService.breakCrust`) and a creative hand open one. The last floor is found from `CampaignBands.lastLayer()`, so it follows when #972 moves it. See [mechanics](../design/mechanics.md#vanilla-block-movers-and-the-breach-crust-1110-a).
