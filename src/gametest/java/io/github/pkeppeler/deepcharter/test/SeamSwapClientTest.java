@@ -23,12 +23,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client GameTest of the seamless swap (#1229, ADR 0089), on the shipped layer_1 to layer_2 crossing, with the real client and a mock
- * on one pod in a dedicated server. Three crossings. The swap: the mock accepts, the pod crosses, and the client keeps its player, its
- * vehicle object and id, the mock's player and its loaded state, and opens no loading screen, stops no sound and handles no respawn.
- * The fallback: the mock refuses, so the whole pod is teleported and the client takes the respawn (each of those probes counts at least
- * one, which shows the probes work) and adopts the level held ahead. The recovery: the client's swap is made to fail, and the server
- * respawns it alone, with the pod still under it and the mock still riding. Each logs a {@code SEAM-TIMING} line.
+ * Client GameTest of the seamless swap (#1229, ADR 0089), on the shipped layer_1 to layer_2 crossing, with the real
+ * client and a mock on one pod in a dedicated server. Three crossings. The swap: the mock accepts, the pod crosses, and
+ * the client keeps its player, its vehicle object and id, the mock's player and its loaded state, and opens no loading
+ * screen, stops no sound and handles no respawn. The fallback: the mock refuses, so the whole pod is teleported and the
+ * client takes the respawn (each of those probes counts at least one, which shows the probes work) and adopts the level
+ * held ahead. The recovery: the client's swap is made to fail, and the server respawns it alone, with the pod still
+ * under it and the mock still riding. Each logs a {@code SEAM-TIMING} line.
  *
  * <p>The mock sits in the first seat, so the pod is moved by the server and the real client is a passenger.
  */

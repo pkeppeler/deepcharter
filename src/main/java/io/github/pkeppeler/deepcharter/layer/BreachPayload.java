@@ -12,11 +12,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Clientbound: the receiving player has just crossed a breach, from layer {@code fromLayer} to
- * {@code toLayer}. The client answers with a rumble, a fade and a transmission. This is the only
- * custom payload in M1. {@code fades} is false for a crossing inside one level (the campaign world), where nothing was
- * moved and so nothing needs hiding: the client plays the rumble only. {@code swapped} is true for a crossing that moved the
- * vehicle with no respawn (#1229): it rumbles and never fades, and no respawn follows it.
+ * Clientbound: the receiving player has just crossed a breach, from layer {@code fromLayer} to {@code toLayer}. The
+ * client answers with a rumble, a fade and a transmission. This is the only custom payload in M1. {@code fades} is
+ * false for a crossing inside one level (the campaign world), where nothing was moved and so nothing needs hiding: the
+ * client plays the rumble only. {@code swapped} is true for a crossing that moved the vehicle with no respawn (#1229):
+ * it rumbles and never fades, and no respawn follows it.
  */
 public record BreachPayload(int fromLayer, int toLayer, boolean fades, boolean swapped) implements CustomPacketPayload {
     public static final Type<BreachPayload> TYPE =
@@ -43,7 +43,10 @@ public record BreachPayload(int fromLayer, int toLayer, boolean fades, boolean s
         });
     }
 
-    /** The payload for a crossing that moved the player between levels with ({@code swapped}) or without a respawn: a swap never fades. */
+    /**
+     * The payload for a crossing that moved the player between levels with ({@code swapped}) or without a respawn: a
+     * swap never fades.
+     */
     public static BreachPayload of(ServerLevel from, ServerLevel to, int fromLayer, int toLayer, boolean swapped) {
         return new BreachPayload(fromLayer, toLayer, from != to && !swapped, swapped);
     }

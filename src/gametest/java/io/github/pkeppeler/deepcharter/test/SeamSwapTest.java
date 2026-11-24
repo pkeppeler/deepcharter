@@ -113,7 +113,10 @@ public class SeamSwapTest {
         throw helper.assertionException(what + " should be refused");
     }
 
-    /** The shipped swap tuning is 3 chunks and 2 frames, and a swap radius beyond what is sendable, or below 1, is refused. */
+    /**
+     * The shipped swap tuning is 3 chunks and 2 frames, and a swap radius beyond what is sendable, or below 1, is
+     * refused.
+     */
     @GameTest
     public void swapTuningIsValidated(GameTestHelper helper) {
         LayerTuning tuning = LayerTuning.DEFAULT;
@@ -137,7 +140,9 @@ public class SeamSwapTest {
         return read;
     }
 
-    /** Every slice 3 payload reads back what it wrote, the prepare carries its generation, and a crossing flags a swap. */
+    /**
+     * Every slice 3 payload reads back what it wrote, the prepare carries its generation, and a crossing flags a swap.
+     */
     @GameTest
     public void swapPayloadsRoundTrip(GameTestHelper helper) {
         SeamPreparePayload prepare = new SeamPreparePayload(
@@ -184,7 +189,10 @@ public class SeamSwapTest {
         helper.succeed();
     }
 
-    /** The first site index of this class: {@link SeamStreamingTest} and {@link SeamDataAheadTest} use the ones below it. */
+    /**
+     * The first site index of this class: {@link SeamStreamingTest} and {@link SeamDataAheadTest} use the ones below
+     * it.
+     */
     private static final int FIRST_INDEX = 40;
 
     /** Chunks the server sends ahead: the square of the send radius. */
@@ -212,7 +220,10 @@ public class SeamSwapTest {
                 mock.player(), run.site().two(), run.site().centre());
     }
 
-    /** What the chunk check holds: every chunk within the radius of the area's centre sent, and the arrival chunk inside it. */
+    /**
+     * What the chunk check holds: every chunk within the radius of the area's centre sent, and the arrival chunk inside
+     * it.
+     */
     @GameTest
     public void theSwapAreaIsTheChunksAroundTheCentre(GameTestHelper helper) {
         ChunkPos centre = new ChunkPos(10, 10);
@@ -402,7 +413,10 @@ public class SeamSwapTest {
     /** A crossing of a pod with riders, once settled: the pod as it was, and the riders. */
     private record Crossed(
             Run run, PodEntity pod, int podId, UUID podUuid, List<MockPlayer> riders, List<Integer> respawnsBefore) {
-        /** Respawns the server sent {@code rider} since the crossing began, not those of its first teleport into layer 1. */
+        /**
+         * Respawns the server sent {@code rider} since the crossing began, not those of its first teleport into layer
+         * 1.
+         */
         int respawnsOf(MockPlayer rider) {
             return rider.respawns() - respawnsBefore.get(riders.indexOf(rider));
         }
@@ -412,9 +426,9 @@ public class SeamSwapTest {
     private static final int SETTLE_TICKS = 3;
 
     /**
-     * A pod with one rider for each of {@code clients}, held over the floor of layer 1 until each rider holds the area and has
-     * answered as its client does, then dropped across the floor. {@code verify} runs {@link #SETTLE_TICKS} ticks after every rider
-     * is in layer 2; the test passes when it returns.
+     * A pod with one rider for each of {@code clients}, held over the floor of layer 1 until each rider holds the area
+     * and has answered as its client does, then dropped across the floor. {@code verify} runs {@link #SETTLE_TICKS}
+     * ticks after every rider is in layer 2; the test passes when it returns.
      */
     private static void podCrossing(
             GameTestHelper helper, int index, String name, List<Client> clients, Consumer<Crossed> verify) {
@@ -435,7 +449,10 @@ public class SeamSwapTest {
         });
     }
 
-    /** As above, with {@code verify} run on each tick from {@link #SETTLE_TICKS} after the arrival until it returns true. */
+    /**
+     * As above, with {@code verify} run on each tick from {@link #SETTLE_TICKS} after the arrival until it returns
+     * true.
+     */
     private static void podCrossingUntil(
             GameTestHelper helper,
             int index,
@@ -539,7 +556,10 @@ public class SeamSwapTest {
         return -1;
     }
 
-    /** Checks that the crossing was a swap for every rider: same pod, same ids, still mounted, no respawn, the swap first. */
+    /**
+     * Checks that the crossing was a swap for every rider: same pod, same ids, still mounted, no respawn, the swap
+     * first.
+     */
     private static void expectSwapped(GameTestHelper helper, Crossed crossed) {
         UUID uuid = crossed.podUuid();
         ServerLevel one = crossed.run().site().one();
@@ -605,7 +625,10 @@ public class SeamSwapTest {
         }
     }
 
-    /** Checks that the crossing was the teleport for every rider: a respawn each, a new pod with the old UUID, still mounted. */
+    /**
+     * Checks that the crossing was the teleport for every rider: a respawn each, a new pod with the old UUID, still
+     * mounted.
+     */
     private static void expectTeleported(GameTestHelper helper, Crossed crossed) {
         Entity vehicle =
                 Objects.requireNonNull(crossed.riders().get(0).player().getVehicle(), "the rider has no vehicle");
@@ -641,7 +664,10 @@ public class SeamSwapTest {
         }
     }
 
-    /** One ready rider: the pod keeps its object, id and UUID, moves into layer 2 and the rider stays on it, with no respawn. */
+    /**
+     * One ready rider: the pod keeps its object, id and UUID, moves into layer 2 and the rider stays on it, with no
+     * respawn.
+     */
     @GameTest(maxTicks = MAX_TICKS)
     public void aReadyRiderSwapsAndThePodKeepsItsId(GameTestHelper helper) {
         podCrossing(helper, FIRST_INDEX + 10, "seam-swap-one", List.of(Client.ACCEPTS), crossed -> {
@@ -679,8 +705,9 @@ public class SeamSwapTest {
     }
 
     /**
-     * The arrival is solid rock when the pod drops: the swap carves the pocket, sends the changed chunks ahead of the swap as seam
-     * chunks, and the crossing does not send them again, so the held level has the pocket before the pod is in it.
+     * The arrival is solid rock when the pod drops: the swap carves the pocket, sends the changed chunks ahead of the
+     * swap as seam chunks, and the crossing does not send them again, so the held level has the pocket before the pod
+     * is in it.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aSwapIntoRockCarvesAndSendsThePocketAhead(GameTestHelper helper) {
@@ -741,8 +768,9 @@ public class SeamSwapTest {
     }
 
     /**
-     * One of two swapped riders reports its swap failed: only that rider is respawned, the other and the pod are untouched, and the
-     * rider is paired with the pod again and still rides it. A report that names another generation does nothing.
+     * One of two swapped riders reports its swap failed: only that rider is respawned, the other and the pod are
+     * untouched, and the rider is paired with the pod again and still rides it. A report that names another generation
+     * does nothing.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aFailedSwapRespawnsOnlyThatRider(GameTestHelper helper) {

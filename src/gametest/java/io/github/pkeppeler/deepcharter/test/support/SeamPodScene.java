@@ -39,11 +39,11 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A pod over the floor of layer 1 with the mock in its first seat and the real client in its second, for a client GameTest of a seam
- * crossing (#1229, ADR 0089): pinned at the hold height while the arrival area is sent, with the mock answering each prepare it is sent
- * (an accept, or a refusal that sends the whole pod through the fallback), and then dropped across the floor. The mock sits in the first
- * seat so the pod is moved by the server and the real client is a passenger. Shared by {@code SeamSwapClientTest} and
- * {@code SeamAdoptionClientTest}.
+ * A pod over the floor of layer 1 with the mock in its first seat and the real client in its second, for a client
+ * GameTest of a seam crossing (#1229, ADR 0089): pinned at the hold height while the arrival area is sent, with the
+ * mock answering each prepare it is sent (an accept, or a refusal that sends the whole pod through the fallback), and
+ * then dropped across the floor. The mock sits in the first seat so the pod is moved by the server and the real client
+ * is a passenger. Shared by {@code SeamSwapClientTest} and {@code SeamAdoptionClientTest}.
  */
 public final class SeamPodScene {
     private static final int AREA_SIDE = 2 * SeamSender.SEND_RADIUS + 1;
@@ -52,7 +52,10 @@ public final class SeamPodScene {
 
     private SeamPodScene() {}
 
-    /** Where each pod is pinned until its crossing, by UUID: pod movement ignores no-gravity (#554), so the hold is an after-tick pin. */
+    /**
+     * Where each pod is pinned until its crossing, by UUID: pod movement ignores no-gravity (#554), so the hold is an
+     * after-tick pin.
+     */
     private static final Map<UUID, Vec3> PINS = new ConcurrentHashMap<>();
     /** The mock that answers each prepare it is sent, and how. Read and written on the server thread. */
     private static @Nullable MockPlayer answering;
@@ -98,7 +101,10 @@ public final class SeamPodScene {
             ClientLevel shown,
             ClientLevel held) {}
 
-    /** A fresh pod over {@code site} with the mock in its first seat and the real client in its second, pinned at the hold height. */
+    /**
+     * A fresh pod over {@code site} with the mock in its first seat and the real client in its second, pinned at the
+     * hold height.
+     */
     public static PodEntity seat(
             ClientGameTestContext context, TwoPlayerServer two, UUID clientId, Site site, boolean mockAccepts) {
         MockPlayer mock = two.mock();
@@ -183,7 +189,10 @@ public final class SeamPodScene {
         return made[0];
     }
 
-    /** Waits until the held level has the area and both riders are ready, and reads what the client holds before the crossing. */
+    /**
+     * Waits until the held level has the area and both riders are ready, and reads what the client holds before the
+     * crossing.
+     */
     public static Before holdArea(
             ClientGameTestContext context, TwoPlayerServer two, UUID clientId, Site site, PodEntity pod) {
         int area = AREA_SIDE * AREA_SIDE;
@@ -302,7 +311,10 @@ public final class SeamPodScene {
         return Objects.requireNonNull(client.level, "the client has no level");
     }
 
-    /** Whether the client's player rides the vehicle {@code uuid}, which carries {@code riders} entities: it, the mock and nothing else. */
+    /**
+     * Whether the client's player rides the vehicle {@code uuid}, which carries {@code riders} entities: it, the mock
+     * and nothing else.
+     */
     public static boolean ridesWith(Minecraft client, UUID uuid, int riders) {
         Entity vehicle = vehicleOf(client);
         return vehicle != null

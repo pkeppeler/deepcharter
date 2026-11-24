@@ -16,7 +16,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(PlayerChunkSender.class)
 public abstract class PlayerChunkSenderMixin {
-    @Inject(method = "sendChunk", at = @At("HEAD"))
+    @Inject(
+            method =
+                    "sendChunk(Lnet/minecraft/server/network/ServerGamePacketListenerImpl;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/LevelChunk;)V",
+            at = @At("HEAD"))
     private static void deepcharter$noteLightSent(
             ServerGamePacketListenerImpl listener, ServerLevel level, LevelChunk chunk, CallbackInfo ci) {
         LightSync.chunkSent(listener.player, chunk);

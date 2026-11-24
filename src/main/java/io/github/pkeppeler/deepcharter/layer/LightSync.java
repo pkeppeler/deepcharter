@@ -284,8 +284,8 @@ public final class LightSync {
     }
 
     /**
-     * Called when {@code player} is sent the chunk of {@code level} as a seam chunk, ahead of its swap into {@code level} (#1229): it
-     * holds the light published now, and the watch compares it later like any other.
+     * Called when {@code player} is sent the chunk of {@code level} as a seam chunk, ahead of its swap into {@code
+     * level} (#1229): it holds the light published now, and the watch compares it later like any other.
      */
     public static void seamSent(ServerPlayer player, ServerLevel level, ChunkPos chunk) {
         NetWatch watch = NET.get(new Key(level, chunk));

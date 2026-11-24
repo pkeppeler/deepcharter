@@ -35,8 +35,9 @@ import net.minecraft.world.phys.Vec3;
  * it carves in loaded; one that does not logs how many were missing. {@link SeamSender} has sent the riders that area ahead (#1185), and the
  * teleport runs as its crossing scope: what a rider holds of it is not sent again.
  *
- * <p>A crossing whose riders all hold the arrival area and accepted it is a swap (#1229): {@link SeamSwap} moves the vehicle with no
- * respawn, carving the pocket first only if the arrival is obstructed. Otherwise it is the teleport above, with its pocket and fade.
+ * <p>A crossing whose riders all hold the arrival area and accepted it is a swap (#1229): {@link SeamSwap} moves the
+ * vehicle with no respawn, carving the pocket first only if the arrival is obstructed. Otherwise it is the teleport
+ * above, with its pocket and fade.
  *
  * <p>Survival and adventure players cannot break {@code breach_crust} by hand; creative players can.
  * Drills do it through {@link #breakCrust}.
@@ -157,7 +158,10 @@ public final class BreachService {
                 }));
     }
 
-    /** Whether {@code vehicle} and everything it carries would stand clear of blocks and entities in {@code to} with its root at {@code at}. */
+    /**
+     * Whether {@code vehicle} and everything it carries would stand clear of blocks and entities in {@code to} with its
+     * root at {@code at}.
+     */
     private static boolean arrivalIsFree(Entity vehicle, ServerLevel to, Vec3 at) {
         Vec3 shift = at.subtract(vehicle.position());
         return vehicle.getSelfAndPassengers()

@@ -6,10 +6,11 @@ import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 
 /**
- * Counts what a vanilla respawn does and a seam swap must not (#1229, ADR 0089), while a client test has it armed: the loading
- * screen opening, {@code SoundManager.stop()} running, a respawn packet being handled, and the client being not loaded. The sound
- * and respawn counts come from test mixins ({@code SoundManagerStopProbeMixin}, {@code ClientPacketListenerMixin}); inert until
- * {@link #arm}, and a test calls {@link #disarm} in a {@code finally}. Client thread to record, any thread to read.
+ * Counts what a vanilla respawn does and a seam swap must not (#1229, ADR 0089), while a client test has it armed: the
+ * loading screen opening, {@code SoundManager.stop()} running, a respawn packet being handled, and the client being not
+ * loaded. The sound and respawn counts come from test mixins ({@code SoundManagerStopProbeMixin}, {@code
+ * ClientPacketListenerMixin}); inert until {@link #arm}, and a test calls {@link #disarm} in a {@code finally}. Client
+ * thread to record, any thread to read.
  */
 public final class SwapProbes {
     /** What was counted between {@link #arm} and {@link #disarm}. */

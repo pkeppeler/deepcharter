@@ -14,11 +14,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.DimensionType;
 
 /**
- * Clientbound (#1185, ADR 0089): a rider's vehicle nears the floor of {@code dimension}, and its arrival chunks come next. The client
- * builds the background level they go into from the fields of the respawn it will adopt it at: the dimension, its type, the obfuscated
- * seed, the sea level, and whether it is flat or a debug world. {@code centre} is where the level's view is centred.
- * {@code generation} counts the rider's prepares (#1229): the client's accept or refusal names it, so one of an older prepare is not
- * taken for the current one.
+ * Clientbound (#1185, ADR 0089): a rider's vehicle nears the floor of {@code dimension}, and its arrival chunks come
+ * next. The client builds the background level they go into from the fields of the respawn it will adopt it at: the
+ * dimension, its type, the obfuscated seed, the sea level, and whether it is flat or a debug world. {@code centre} is
+ * where the level's view is centred. {@code generation} counts the rider's prepares (#1229): the client's accept or
+ * refusal names it, so one of an older prepare is not taken for the current one.
  */
 public record SeamPreparePayload(
         ResourceKey<Level> dimension,

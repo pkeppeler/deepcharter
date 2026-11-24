@@ -35,8 +35,8 @@ import java.util.Arrays;
  * @param seamRecentreChunks chunks (Chebyshev) a vehicle must be from the arrival area's centre before the area moves to it: one area per vehicle
  * @param seamBytesPerTick  estimated bytes of arrival-area chunks the server sends a rider each tick (#1185); at least one chunk goes each tick
  * @param seamMissedWindowTicks ticks after a crossing that the server keeps the chunks it skipped, for a client that reports them missing
- * @param seamSwapRadius    chunks out from the arrival chunk that a rider must hold before the crossing may be a swap (#1229); at most the chunks the
- *                          server can send ahead, {@code seamRadius} less 1
+ * @param seamSwapRadius    chunks out from the arrival chunk that a rider must hold before the crossing may be a swap
+ *     (#1229); at most the chunks the server can send ahead, {@code seamRadius} less 1
  * @param seamFlawlessFrames frames the optional Flawless Frames mod freezes around a swap (#1229); 0 turns it off
  */
 public record LayerTuning(

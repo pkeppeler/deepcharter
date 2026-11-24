@@ -8,8 +8,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Lets {@link SwapProbes} count the stops of every sound ({@code SoundManager.stop()V}, which vanilla runs when it swaps the client's
- * level), to show a swap leaves the sounds playing. Inert unless a test arms the probes. Test code only.
+ * Lets {@link SwapProbes} count the stops of every sound ({@code SoundManager.stop()V}, which vanilla runs when it
+ * swaps the client's level), to show a swap leaves the sounds playing. Inert unless a test arms the probes. Test code
+ * only.
  */
 @Mixin(value = SoundManager.class, remap = false)
 public abstract class SoundManagerStopProbeMixin {

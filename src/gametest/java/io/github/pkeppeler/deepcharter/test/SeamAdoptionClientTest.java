@@ -37,13 +37,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client GameTest of the seam's arrival data (#1185, ADR 0089), on the shipped layer_1 to layer_2 crossing, with a real client on a
- * dedicated server. Two crossings. In the first the client rides a pod over the floor with a mock that refuses the swap, until its
- * background level holds the arrival area, and the pod falls through: the whole pod is teleported (a vehicle never splits), the client's
- * level after the crossing is the level it held, the section the camera is in is meshed, and the chunk packets vanilla sent at the
- * crossing are only those near the pocket. In the second there is no lead, so the crossing finds no
- * background level and falls back to the vanilla path: a fresh level, the camera's section meshed, and the whole area sent by vanilla.
- * Each logs a {@code SEAM-TIMING} line; no frame budget is asserted, since CI renders in software.
+ * Client GameTest of the seam's arrival data (#1185, ADR 0089), on the shipped layer_1 to layer_2 crossing, with a real
+ * client on a dedicated server. Two crossings. In the first the client rides a pod over the floor with a mock that
+ * refuses the swap, until its background level holds the arrival area, and the pod falls through: the whole pod is
+ * teleported (a vehicle never splits), the client's level after the crossing is the level it held, the section the
+ * camera is in is meshed, and the chunk packets vanilla sent at the crossing are only those near the pocket. In the
+ * second there is no lead, so the crossing finds no background level and falls back to the vanilla path: a fresh level,
+ * the camera's section meshed, and the whole area sent by vanilla. Each logs a {@code SEAM-TIMING} line; no frame
+ * budget is asserted, since CI renders in software.
  *
  */
 public class SeamAdoptionClientTest implements FabricClientGameTest {

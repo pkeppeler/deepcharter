@@ -70,8 +70,8 @@ public final class SeamSender {
         /** Positions in the area that were sent and have since changed or may have: the crossing sends them again. */
         final LongSet stale = new LongOpenHashSet();
         /**
-         * Positions of the carve ahead of a swap, sent again at once: the crossing skips them whatever {@link LightSync} is
-         * settling, since the client holds them right.
+         * Positions of the carve ahead of a swap, sent again at once: the crossing skips them whatever {@link
+         * LightSync} is settling, since the client holds them right.
          */
         final LongSet fresh = new LongOpenHashSet();
         /** Positions the crossing skipped, because the client holds them already. */
@@ -96,7 +96,10 @@ public final class SeamSender {
     /** Whether a crossing's teleport is under way, so the sends of the chunks around the arrival may be skipped. Server thread only. */
     private static boolean crossing;
 
-    /** A swap of a rider into {@code level} at {@code generation}, kept until {@code until} for a client that reports it failed. */
+    /**
+     * A swap of a rider into {@code level} at {@code generation}, kept until {@code until} for a client that reports it
+     * failed.
+     */
     private record Swapped(ResourceKey<Level> level, int generation, long until) {}
 
     /** Swaps by rider UUID. Server thread only. */
@@ -261,7 +264,10 @@ public final class SeamSender {
         SWAPPED.put(rider.getUUID(), new Swapped(to.dimension(), generationOf(rider), until));
     }
 
-    /** Whether the crossing of {@code player} into {@code level} left the chunk unsent, because the player holds it already. */
+    /**
+     * Whether the crossing of {@code player} into {@code level} left the chunk unsent, because the player holds it
+     * already.
+     */
     public static boolean skippedAtCrossing(ServerPlayer player, ServerLevel level, ChunkPos pos) {
         Skipped skipped = RECENT.get(player.getUUID());
         return skipped != null
@@ -279,10 +285,10 @@ public final class SeamSender {
     private static final int RESEND_LIGHT_WAIT_MILLIS = 250;
 
     /**
-     * Sends each of {@code riders} the chunks around {@code arrival} that changed since they were sent (the pocket a crossing
-     * carved and the shell round it), at once and over the byte budget, built after the carve and its light. They count as held
-     * for the crossing whatever {@link LightSync} is settling. Returns false if a chunk is too big to send, so the crossing must
-     * not be a swap.
+     * Sends each of {@code riders} the chunks around {@code arrival} that changed since they were sent (the pocket a
+     * crossing carved and the shell round it), at once and over the byte budget, built after the carve and its light.
+     * They count as held for the crossing whatever {@link LightSync} is settling. Returns false if a chunk is too big
+     * to send, so the crossing must not be a swap.
      */
     public static boolean resendCarved(List<ServerPlayer> riders, ServerLevel to, ChunkPos arrival) {
         for (ServerPlayer rider : riders) {
@@ -362,8 +368,9 @@ public final class SeamSender {
     }
 
     /**
-     * A client answered the prepare of {@code generation} for {@code dimension}: it accepted, or it refused. An answer to another
-     * dimension or an older generation is ignored, so a late accept never makes a rider ready for a prepare it was not sent.
+     * A client answered the prepare of {@code generation} for {@code dimension}: it accepted, or it refused. An answer
+     * to another dimension or an older generation is ignored, so a late accept never makes a rider ready for a prepare
+     * it was not sent.
      */
     private static void answered(ServerPlayer player, ResourceKey<Level> dimension, int generation, boolean accept) {
         RiderSeam seam = STATE.get(player.getUUID());
@@ -374,9 +381,9 @@ public final class SeamSender {
     }
 
     /**
-     * A client could not take the swap of {@code generation} into {@code dimension} it was sent: if the server swapped that rider
-     * then, a moment ago, the rider alone is respawned where it is ({@link SeamSwap#recover}). Its vehicle and the other riders are
-     * in the new level already and are not touched, so nobody is split from the vehicle.
+     * A client could not take the swap of {@code generation} into {@code dimension} it was sent: if the server swapped
+     * that rider then, a moment ago, the rider alone is respawned where it is ({@link SeamSwap#recover}). Its vehicle
+     * and the other riders are in the new level already and are not touched, so nobody is split from the vehicle.
      */
     private static void swapFailed(ServerPlayer player, ResourceKey<Level> dimension, int generation) {
         Swapped swapped = SWAPPED.get(player.getUUID());
@@ -394,10 +401,10 @@ public final class SeamSender {
     }
 
     /**
-     * Whether a crossing of {@code rider} into {@code to}, arriving in {@code arrivalChunk}, can be a swap: its client can receive the
-     * swap, accepted the current prepare and has not refused it since, and holds every chunk within
-     * {@link LayerTuning#seamSwapRadius()} of its area's centre, with the arrival inside it. A vehicle swaps only if each of its riders passes:
-     * the vehicle never splits.
+     * Whether a crossing of {@code rider} into {@code to}, arriving in {@code arrivalChunk}, can be a swap: its client
+     * can receive the swap, accepted the current prepare and has not refused it since, and holds every chunk within
+     * {@link LayerTuning#seamSwapRadius()} of its area's centre, with the arrival inside it. A vehicle swaps only if
+     * each of its riders passes: the vehicle never splits.
      */
     public static boolean readyToSwap(ServerPlayer rider, ServerLevel to, ChunkPos arrivalChunk) {
         RiderSeam seam = STATE.get(rider.getUUID());
@@ -409,8 +416,9 @@ public final class SeamSender {
     }
 
     /**
-     * Whether {@code arrival} lies within {@code radius} chunks (Chebyshev) of {@code centre}, and every chunk within {@code radius} of
-     * {@code centre} satisfies {@code sent}: the area the rider's held level has, with the arrival inside it.
+     * Whether {@code arrival} lies within {@code radius} chunks (Chebyshev) of {@code centre}, and every chunk within
+     * {@code radius} of {@code centre} satisfies {@code sent}: the area the rider's held level has, with the arrival
+     * inside it.
      */
     public static boolean holdsSwapArea(LongPredicate sent, ChunkPos centre, ChunkPos arrival, int radius) {
         if (Math.max(Math.abs(arrival.x() - centre.x()), Math.abs(arrival.z() - centre.z())) > radius) {

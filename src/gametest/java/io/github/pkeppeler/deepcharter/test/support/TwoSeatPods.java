@@ -8,9 +8,10 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 
 /**
- * Pods that keep a second seat across a teleport (#1229). {@link SecondSeat} gives one pod object a second seat, but the teleport of a
- * crossing recreates the pod from its data, which has none, and would leave the second rider behind. A pod added here gets the seat
- * again each time it loads, so a test of the fallback keeps both riders on it, as a chassis with two seats would.
+ * Pods that keep a second seat across a teleport (#1229). {@link SecondSeat} gives one pod object a second seat, but
+ * the teleport of a crossing recreates the pod from its data, which has none, and would leave the second rider behind.
+ * A pod added here gets the seat again each time it loads, so a test of the fallback keeps both riders on it, as a
+ * chassis with two seats would.
  */
 public final class TwoSeatPods {
     private static final Set<UUID> PODS = ConcurrentHashMap.newKeySet();
@@ -29,9 +30,9 @@ public final class TwoSeatPods {
     private TwoSeatPods() {}
 
     /**
-     * Gives every pod the client loads a second seat while armed, for a client test with a rider on each seat: the client's pod is its
-     * own object and has the chassis' one seat, so it would refuse the second rider. A pod the server recreates is loaded again here,
-     * so it gets the seat again. Call it with false at the end of the test.
+     * Gives every pod the client loads a second seat while armed, for a client test with a rider on each seat: the
+     * client's pod is its own object and has the chassis' one seat, so it would refuse the second rider. A pod the
+     * server recreates is loaded again here, so it gets the seat again. Call it with false at the end of the test.
      */
     public static synchronized void armClient(boolean armed) {
         clientArmed = armed;

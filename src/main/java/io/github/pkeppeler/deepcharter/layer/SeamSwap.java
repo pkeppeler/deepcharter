@@ -20,18 +20,21 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The server half of the swap (#1229, ADR 0089): moves a vehicle and all its riders into another level with no respawn, so the
- * vehicle keeps its object, entity id and UUID, and each rider's client keeps its player. Vanilla moves a {@code ServerPlayer}
- * between levels like this already; this does the same for a vehicle, which vanilla recreates.
+ * The server half of the swap (#1229, ADR 0089): moves a vehicle and all its riders into another level with no respawn,
+ * so the vehicle keeps its object, entity id and UUID, and each rider's client keeps its player. Vanilla moves a {@code
+ * ServerPlayer} between levels like this already; this does the same for a vehicle, which vanilla recreates.
  *
- * <p>The order is the one vanilla's {@code ServerPlayer.teleport} has, with the respawn left out: the client is told first
- * ({@code seam_swap}), so every packet about the new level reaches it after it has switched. A non-player is detached through its
- * level callback and never {@code setRemoved}, which would run {@code stopRiding} on its passengers and tell the clients they
- * dismounted. A player is removed by vanilla's {@code removePlayerImmediately}, because a callback-only detach would let the
- * tracker send forgets for every chunk of the held level.
+ * <p>The order is the one vanilla's {@code ServerPlayer.teleport} has, with the respawn left out: the client is told
+ * first ({@code seam_swap}), so every packet about the new level reaches it after it has switched. A non-player is
+ * detached through its level callback and never {@code setRemoved}, which would run {@code stopRiding} on its
+ * passengers and tell the clients they dismounted. A player is removed by vanilla's {@code removePlayerImmediately},
+ * because a callback-only detach would let the tracker send forgets for every chunk of the held level.
  */
 public final class SeamSwap {
-    /** Whether the {@link BreachEvents#CROSSED} being fired is for a swap, so its payload rumbles and does not fade. Server thread only. */
+    /**
+     * Whether the {@link BreachEvents#CROSSED} being fired is for a swap, so its payload rumbles and does not fade.
+     * Server thread only.
+     */
     private static boolean announcing;
 
     private SeamSwap() {}
@@ -52,8 +55,9 @@ public final class SeamSwap {
     }
 
     /**
-     * Moves {@code root} and everything it carries from {@code from} into {@code to}, the root at {@code arrival}. Every player in
-     * the tree must be ready ({@link SeamSender#readyToSwap}). Returns the root, which is the same object.
+     * Moves {@code root} and everything it carries from {@code from} into {@code to}, the root at {@code arrival}.
+     * Every player in the tree must be ready ({@link SeamSender#readyToSwap}). Returns the root, which is the same
+     * object.
      */
     public static Entity move(Entity root, ServerLevel from, ServerLevel to, Vec3 arrival) {
         List<Entity> tree = root.getSelfAndPassengers().toList();
@@ -136,9 +140,10 @@ public final class SeamSwap {
     }
 
     /**
-     * Respawns {@code rider} in the level it is in, for a client that could not take the swap that put it there (#1229): vanilla's
-     * respawn packet and the sends that follow it, then the rider leaves and joins its own level, which pairs it again with the
-     * vehicle it still rides and sends it the area from nothing. The vehicle is not touched.
+     * Respawns {@code rider} in the level it is in, for a client that could not take the swap that put it there
+     * (#1229): vanilla's respawn packet and the sends that follow it, then the rider leaves and joins its own level,
+     * which pairs it again with the vehicle it still rides and sends it the area from nothing. The vehicle is not
+     * touched.
      */
     static void recover(ServerPlayer rider) {
         ServerLevel level = rider.level();

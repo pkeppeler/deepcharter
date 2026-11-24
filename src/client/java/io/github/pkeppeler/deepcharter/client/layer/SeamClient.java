@@ -93,7 +93,10 @@ public final class SeamClient {
     /** An entity the server will add again to the new level after a swap, which the client holds already. */
     private record Carried(UUID uuid, EntityType<?> type) {}
 
-    /** The entities a swap carried that the server has not yet added again, by id: their removal is dropped, and their add pairs. */
+    /**
+     * The entities a swap carried that the server has not yet added again, by id: their removal is dropped, and their
+     * add pairs.
+     */
     private static final Map<Integer, Carried> CARRIED = new HashMap<>();
     /** The client tick at which the carried window ends. */
     private static long carriedUntil;
@@ -291,8 +294,9 @@ public final class SeamClient {
     }
 
     /**
-     * The swap (#1229, ADR 0089): the vehicle the player rides, and everything it carries, moves into the held level with no respawn.
-     * Checks first; a client that cannot swap tells the server, which respawns it alone, and fades while it waits.
+     * The swap (#1229, ADR 0089): the vehicle the player rides, and everything it carries, moves into the held level
+     * with no respawn. Checks first; a client that cannot swap tells the server, which respawns it alone, and fades
+     * while it waits.
      */
     private static void swap(Minecraft client, SeamSwapPayload payload) {
         String problem = swapProblem(client, payload);
@@ -394,7 +398,9 @@ public final class SeamClient {
         return null;
     }
 
-    /** Whether the breach payload that follows a failed swap fades: it does, once, since the client is about to respawn. */
+    /**
+     * Whether the breach payload that follows a failed swap fades: it does, once, since the client is about to respawn.
+     */
     public static boolean takeSwapFailure() {
         boolean failed = swapFailed;
         swapFailed = false;
@@ -402,8 +408,8 @@ public final class SeamClient {
     }
 
     /**
-     * An add of {@code packet}'s entity into the level {@code level} the client swapped into, which it holds already: only its
-     * position codec is synced. Returns true when it was one of those and the add is done.
+     * An add of {@code packet}'s entity into the level {@code level} the client swapped into, which it holds already:
+     * only its position codec is synced. Returns true when it was one of those and the add is done.
      */
     public static boolean pairCarried(ClientLevel level, ClientboundAddEntityPacket packet) {
         Carried carried = CARRIED.get(packet.getId());
@@ -421,7 +427,10 @@ public final class SeamClient {
         return true;
     }
 
-    /** {@code ids} without the carried entities that await their add: the server removed them from the level the vehicle left. */
+    /**
+     * {@code ids} without the carried entities that await their add: the server removed them from the level the vehicle
+     * left.
+     */
     public static IntList withoutCarried(IntList ids) {
         if (CARRIED.isEmpty()) {
             return ids;

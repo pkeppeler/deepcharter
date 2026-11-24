@@ -196,16 +196,16 @@ public final class MockPlayer {
     }
 
     /**
-     * Every packet of {@code type} the server has sent this player so far, oldest first, with a bundle's packets taken apart. Read on
-     * the mock's tick, so it lags by one.
+     * Every packet of {@code type} the server has sent this player so far, oldest first, with a bundle's packets taken
+     * apart. Read on the mock's tick, so it lags by one.
      */
     public <T extends Packet<?>> List<T> packetsOf(Class<T> type) {
         return packets.stream().filter(type::isInstance).map(type::cast).toList();
     }
 
     /**
-     * Every packet the server has sent this player so far, oldest first, a custom payload as its payload, a bundle taken apart: for a
-     * test of the order packets came in. Read on the mock's tick, so it lags by one.
+     * Every packet the server has sent this player so far, oldest first, a custom payload as its payload, a bundle
+     * taken apart: for a test of the order packets came in. Read on the mock's tick, so it lags by one.
      */
     public List<Object> sequence() {
         List<Object> sequence = new ArrayList<>();
@@ -215,7 +215,10 @@ public final class MockPlayer {
         return sequence;
     }
 
-    /** How many respawn packets the server has sent this player: a swap sends none. Read on the mock's tick, so it lags by one. */
+    /**
+     * How many respawn packets the server has sent this player: a swap sends none. Read on the mock's tick, so it lags
+     * by one.
+     */
     public int respawns() {
         return packetsOf(ClientboundRespawnPacket.class).size();
     }

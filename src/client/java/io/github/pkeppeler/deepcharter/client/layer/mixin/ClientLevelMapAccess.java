@@ -8,8 +8,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
 /**
- * Reaches the map data a client level holds, which vanilla copies into the level a respawn builds (#1229, ADR 0089): a swap copies it
- * into the held level the same way, so a map in a hand or a frame still draws.
+ * Reaches the map data a client level holds, which vanilla copies into the level a respawn builds (#1229, ADR 0089): a
+ * swap copies it into the held level the same way, so a map in a hand or a frame still draws.
  */
 @Mixin(ClientLevel.class)
 public interface ClientLevelMapAccess {
