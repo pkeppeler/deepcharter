@@ -2,6 +2,8 @@ package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
+import io.github.pkeppeler.deepcharter.handbook.PencilPath;
+import java.util.List;
 import java.util.Set;
 import net.minecraft.resources.Identifier;
 
@@ -59,6 +61,19 @@ public sealed interface HandbookPage {
      */
     record ChapterText(int number, Identifier id, HandbookChapter chapter, int part, int parts)
             implements HandbookPage {}
+
+    /** One pencil path on the pencil sheet: the path, and whether the charter has reached the place it points to. */
+    record PencilEntry(PencilPath path, boolean done) {}
+
+    /**
+     * A pencil sheet, after the last chapter: earlier miners' paths from the Notes the charter has found, which are not Directives.
+     * The paths flow over {@code parts} sheets, so that every one has room on any size of sheet. {@code part} counts from 1.
+     */
+    record Pencil(int part, int parts, List<PencilEntry> entries) implements HandbookPage {
+        public Pencil {
+            entries = List.copyOf(entries);
+        }
+    }
 
     /** The end page: the end of the official chapters. */
     record Appendix() implements HandbookPage {}
