@@ -33,6 +33,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
@@ -42,6 +43,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
+import net.minecraft.world.level.material.PushReaction;
 
 /**
  * Server GameTests for the decoys of the grained crust (#216, ADR 0060): one draw for each boundary between bands, from the world seed and
@@ -68,6 +70,28 @@ public class GrainedCrustDecoyTest {
 
     private static final int SAMPLE_CHUNKS = 2;
     private static final int SAMPLE_STEP = 5;
+
+    /**
+     * The swap puts the grained crust where the breach crust was, so it holds what #1110 gave the breach crust: the blast resistance of bedrock,
+     * no push, and a place in the wither and dragon tags. {@code BreachCrustMoversTest} proves the movers against these properties.
+     */
+    @GameTest
+    public void aDecoyIsAsBlastProofAndImmovableAsTheBreachCrust(GameTestHelper helper) {
+        BlockState grained = LayerBlocks.GRAINED_CRUST.defaultBlockState();
+        expect(
+                helper,
+                LayerBlocks.GRAINED_CRUST.getExplosionResistance() >= Blocks.BEDROCK.getExplosionResistance(),
+                "the grained crust's blast resistance is %s",
+                LayerBlocks.GRAINED_CRUST.getExplosionResistance());
+        expect(
+                helper,
+                grained.getPistonPushReaction() == PushReaction.IMMOVEABLE,
+                "a piston can move the grained crust: its push reaction is %s",
+                grained.getPistonPushReaction());
+        expect(helper, grained.is(BlockTags.WITHER_IMMUNE), "the grained crust is not in minecraft:wither_immune");
+        expect(helper, grained.is(BlockTags.DRAGON_IMMUNE), "the grained crust is not in minecraft:dragon_immune");
+        helper.succeed();
+    }
 
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void theSameSeedGivesTheSameBoundaries(GameTestHelper helper) {
