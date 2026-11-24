@@ -26,11 +26,11 @@ import net.minecraft.world.level.levelgen.feature.Feature;
  * parasol ({@link ParasolShape}) or a spire cluster ({@link SpireShape}), picked by the zone's {@code weights}, in one
  * chunk in {@code rarity}.
  *
- * <p>Whether a chunk has a site, and which form it grows, come from a hash of the world seed, the chunk and the zone,
- * never from the world: so a chunk knows what its west and north neighbours pick without reading them, and a chunk
- * whose form matches either re-rolls once, which gives runs of mixed forms instead of rows of one. The shape itself is
- * rolled from the feature's own random. The giant is fitted whole into its chunk (ADR 0088): moved or mirrored, never
- * cut.
+ * <p>Whether a chunk has a site, and which form it grows, come from a hash of the world seed, the chunk, the layer and
+ * the zone, never from the world: so a chunk knows what its west and north neighbours pick without reading them, and a
+ * chunk whose form matches either re-rolls once, which gives runs of mixed forms instead of rows of one. The shape
+ * itself is rolled from the feature's own random. The giant is fitted whole into its chunk (ADR 0088): moved or
+ * mirrored, never cut.
  *
  * <p>It runs once per chunk with the zone's rows picked by its placement, and finds its own floor: it tries a few
  * columns of the chunk, and on each the floors of the zone's rows with room over them.
@@ -118,10 +118,16 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
         return CODEC;
     }
 
-    /** A hash of the world seed, a chunk, the zone and a salt, spread over all 64 bits (SplitMix64's finaliser). */
+    /**
+     * A hash of the world seed, a chunk, the layer, the zone and a salt, spread over all 64 bits (SplitMix64's
+     * finaliser).
+     */
     private long hash(long seed, int chunkX, int chunkZ, long salt) {
         long h = seed ^ salt * 0x9E3779B97F4A7C15L;
-        h += chunkX * 0xC2B2AE3D27D4EB4FL + chunkZ * 0x165667B19E3779F9L + zone * 0x27D4EB2F165667C5L;
+        h += chunkX * 0xC2B2AE3D27D4EB4FL
+                + chunkZ * 0x165667B19E3779F9L
+                + zone * 0x27D4EB2F165667C5L
+                + layer * 0x9FB21C651E98DF25L;
         h = (h ^ (h >>> 30)) * 0xBF58476D1CE4E5B9L;
         h = (h ^ (h >>> 27)) * 0x94D049BB133111EBL;
         return h ^ (h >>> 31);
@@ -315,7 +321,7 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
                 }
                 Optional<SpireShape.Params> params =
                         SpireShape.roll(ints, floor.get().room());
-                for (int shrink = 0; params.isPresent() && shrink < SHRINKS; shrink++) {
+                for (int shrink = 0; params.isPresent() && shrink <= SHRINKS; shrink++) {
                     GiantLayout layout = SpireShape.layout(params.get(), ints);
                     Optional<Fit> fit = layout.fitInChunk(wantX, wantZ);
                     Optional<Floor> base = fit.flatMap(f -> floorNear(f, floor.get(), layout.maxY() + 1));

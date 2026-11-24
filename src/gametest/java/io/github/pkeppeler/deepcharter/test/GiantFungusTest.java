@@ -421,6 +421,63 @@ public class GiantFungusTest {
         helper.succeed();
     }
 
+    /** The shipped giant fungus feature of the zone named {@code zone}. */
+    private static GiantFungusFeature zoneFeature(GameTestHelper helper, String zone) {
+        return (GiantFungusFeature) helper.getLevel()
+                .registryAccess()
+                .lookupOrThrow(Registries.FEATURE)
+                .getValueOrThrow(ResourceKey.create(
+                        Registries.FEATURE,
+                        Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "giant_fungus_" + zone)));
+    }
+
+    private static void expectAtMostAcross(GameTestHelper helper, GiantLayout layout, String what) {
+        int acrossX = layout.maxX() - layout.minX() + 1;
+        int acrossZ = layout.maxZ() - layout.minZ() + 1;
+        expect(
+                helper,
+                acrossX <= GiantLayout.MOST_ACROSS && acrossZ <= GiantLayout.MOST_ACROSS,
+                "%s is %s by %s cells across",
+                what,
+                acrossX,
+                acrossZ);
+    }
+
+    /**
+     * A giant is at most 15 cells across in x and in z: every layout either form rolls, in every zone's style, is no
+     * wider, and a layout one cell wider does not fit a chunk.
+     */
+    @GameTest
+    public void everyGiantIsAtMostFifteenAcross(GameTestHelper helper) {
+        for (String zone : List.of("garden", "spore_fields", "quiet")) {
+            ParasolShape.Style style = zoneFeature(helper, zone).parasol();
+            for (long seed = 0; seed < SEEDS; seed++) {
+                ParasolShape.Params params =
+                        ParasolShape.roll(random(seed), ROOM, style).orElseThrow();
+                expectAtMostAcross(
+                        helper, ParasolShape.layout(params, random(seed + 1)), zone + " parasol seed " + seed);
+            }
+        }
+        for (long seed = 0; seed < SEEDS; seed++) {
+            expectAtMostAcross(helper, spireLayout(seed), "spire cluster seed " + seed);
+        }
+        for (int across : new int[] {GiantLayout.MOST_ACROSS, GiantLayout.MOST_ACROSS + 1}) {
+            Cell far = new Cell(across - 1, 0, 0);
+            GiantLayout wide = new GiantLayout(
+                    Map.of(new Cell(0, 0, 0), new GiantPiece.SpireBase(), far, new GiantPiece.SpireBase()),
+                    Map.of(new Cell(0, 0, 0), 0, far, 0),
+                    Set.of());
+            boolean fits = wide.fitInChunk(8, 8).isPresent();
+            expect(
+                    helper,
+                    fits == (across <= GiantLayout.MOST_ACROSS),
+                    "a layout %s cells across %s a chunk",
+                    across,
+                    fits ? "fits" : "does not fit");
+        }
+        helper.succeed();
+    }
+
     /** A mirror turns each piece that faces a way, and twice over is the piece itself. */
     @GameTest
     public void aMirrorTurnsEachPieceAndTwiceIsItself(GameTestHelper helper) {
@@ -666,12 +723,7 @@ public class GiantFungusTest {
                 new Zone("spore_fields", 5, 0.25, 0.15, 0.6),
                 new Zone("quiet", 10, 0, 0.7, 0.3));
         for (Zone zone : zones) {
-            GiantFungusFeature feature = (GiantFungusFeature) helper.getLevel()
-                    .registryAccess()
-                    .lookupOrThrow(Registries.FEATURE)
-                    .getValueOrThrow(ResourceKey.create(
-                            Registries.FEATURE,
-                            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "giant_fungus_" + zone.name())));
+            GiantFungusFeature feature = zoneFeature(helper, zone.name());
             expect(helper, feature.rarity() == zone.rarity(), "%s has rarity %s", zone.name(), feature.rarity());
             Map<Form, Integer> forms = new EnumMap<>(Form.class);
             int sites = 0;

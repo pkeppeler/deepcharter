@@ -2312,7 +2312,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Knobs.** `SuitTuning.DEFAULT` (capacity, base and per-level costs, the stock suit's ratings, the uncharted row, `leakShare`, refill, warning times, breach damage and cadence), `RatingTuning.DEFAULT` (the rows), `theme/suit.json` (the gauge).
 
-**Open questions.** What layer 3 asks (its worldgen's to say, and this test holds it to a minute); whether a hall's leak should grow with its worst axis rather than stay a flat share.
+**Open questions.** Whether a hall's leak should grow with its worst axis rather than stay a flat share. (Layer 3 now asks heat 1, pressure 2, flooding 1 and quake 2, `RatingTuning`: a stock suit lasts 90 s there dry, modelled, over this test's minute.)
 
 ## Suit tracks (#1064, A)
 

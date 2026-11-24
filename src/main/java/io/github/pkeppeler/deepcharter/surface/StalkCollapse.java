@@ -48,9 +48,9 @@ import net.minecraft.world.phys.AABB;
  */
 final class StalkCollapse {
     /** The most blocks one collapse lowers, so that no chain of touching great stalks makes a step cost a lot. */
-    private static final int MOST_BLOCKS = 1024;
-    // A great stalk is at most 90 blocks (its yield, tested), far under this, so a walk never reaches it for
-    // one.
+    private static final int MOST_BLOCKS = 2048;
+    // The most that can hang together: two parasols whose caps touch across a chunk edge (the largest of 4000 rolls
+    // per zone is 535 blocks, flare and twin included) and a great stalk (at most 90, its yield, tested) on them.
 
     private static final Direction[] JOINS = {
         Direction.UP, Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST

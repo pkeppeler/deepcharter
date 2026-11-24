@@ -9,8 +9,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 
 /**
- * A block of a great stalk, its thick trunk or its cap: a full cube that drops one fungal stalk, like every stalk block. Breaking one
- * brings down the great stalk above it ({@link StalkCollapse}).
+ * A block of a giant fungus, which drops one fungal stalk like every stalk block: a great stalk's full-cube trunk or
+ * cap, and the class every parasol and spire block extends with its own shape ({@link GiantFungusBlocks}). Breaking one
+ * brings down what it holds up ({@link StalkCollapse}).
  */
 class GreatStalkBlock extends Block {
     private final boolean cap;
