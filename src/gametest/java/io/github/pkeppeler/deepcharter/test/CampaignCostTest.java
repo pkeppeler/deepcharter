@@ -64,11 +64,11 @@ import org.slf4j.LoggerFactory;
  *
  * <p>{@code everyCostWorldGeneratesColumns} generates a few columns of each world and checks they exist. With the number of rounds in
  * the environment, for example {@code DEEPCHARTER_CAMPAIGN_COST=6 tools/gametest.sh 'campaign_cost_test_each_band*'}, the measured run
- * takes that many readings of each world, alternating which is first, and prints them (CPU, heap, wall, and garbage collection time and
- * count, per round) as {@code [campaign-cost]} lines; a run needs at least {@value #MIN_ROUNDS} rounds. {@value #POOL_ENV}=<absolute
- * file> pools runs: each run appends its readings to the file and reads every run's back, and the gate judges the pool once it is full
- * ({@link BandCost.Pool#judged}). A pool short of that prints the ratios and asserts nothing. {@value #ONLY_ENV}=<world> (or a
- * comma-separated list) measures only those worlds.
+ * takes that many readings of each world, alternating which is first, and prints them (CPU, heap, wall, and garbage
+ * collection time and count, per round) as {@code [campaign-cost]} lines; a run needs at least {@value #MIN_ROUNDS}
+ * rounds. {@value #POOL_ENV}=<absolute file> pools runs: each run appends its readings to the file and reads every
+ * run's back, and the gate judges the pool once it is full ({@link BandCost.Pool#judged}). A pool short of that prints
+ * the ratios and asserts nothing. {@value #ONLY_ENV}=<world> (or a comma-separated list) measures only those worlds.
  */
 public class CampaignCostTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(CampaignCostTest.class);

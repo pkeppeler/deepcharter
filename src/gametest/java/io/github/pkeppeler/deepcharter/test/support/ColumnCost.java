@@ -42,8 +42,9 @@ public final class ColumnCost {
     private static final int UNLOADED_CHUNKS = 30;
 
     /**
-     * Set to {@code 1} to start a measured run with the last world of the list instead of the first, so that {@code tools/cost-run.sh}
-     * can alternate the order between runs as the rounds already alternate it inside one. Unset is the order of the list.
+     * Set to {@code 1} to start a measured run with the last world of the list instead of the first, so that
+     * {@code tools/cost-run.sh} can alternate the order between runs as the rounds already alternate it inside one.
+     * Unset is the order of the list.
      */
     public static final String REVERSE_ENV = "DEEPCHARTER_COST_REVERSE";
 
@@ -61,9 +62,10 @@ public final class ColumnCost {
     private ColumnCost() {}
 
     /**
-     * One run's reading, per column, and the blocks of height of the world it was taken in. {@code gcMsPerColumn} and {@code gcCount} are
-     * the JVM's garbage collection time and count over the same window as the CPU reading (the heap readings' own forced collections
-     * are outside it), which tells a cost that grows with the world's age from a collector working on the chunks the world keeps.
+     * One run's reading, per column, and the blocks of height of the world it was taken in. {@code gcMsPerColumn} and
+     * {@code gcCount} are the JVM's garbage collection time and count over the same window as the CPU reading (the heap
+     * readings' own forced collections are outside it), which tells a cost that grows with the world's age from a
+     * collector working on the chunks the world keeps.
      */
     public record Measurement(
             double cpuMsPerColumn,
@@ -81,7 +83,8 @@ public final class ColumnCost {
     /**
      * Generates the columns of {@code worlds} and, for {@code rounds} above 0, hands the readings of each world (one per round) to
      * {@code report} and succeeds. With 0 rounds it is the smoke case: a few columns of each world, no heap readings, no waits. A measured
-     * run first warms every world up, then runs each round over {@code worlds} (reversed on even rounds, or on odd ones with {@value #REVERSE_ENV}=1), and waits for every world in
+     * run first warms every world up, then runs each round over {@code worlds} (reversed on even rounds, or on odd ones
+     * with {@value #REVERSE_ENV}=1), and waits for every world in
      * {@code allWorlds} to hold nothing of the last region before it starts the next, because heap is read with the one before it gone.
      * Call it from the test method.
      */
