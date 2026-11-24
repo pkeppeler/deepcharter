@@ -31,7 +31,8 @@ import net.minecraft.world.phys.Vec3;
  * <p>In the campaign world the layers are bands of one level, so nobody moves: {@link BandCrossing} fires the same event in place.
  *
  * <p>{@link SeamStreaming} loads the arrival area of the level below ahead of a descent (#1159, ADR 0089), so the crossing finds the chunks
- * it carves in loaded; one that does not logs how many were missing.
+ * it carves in loaded; one that does not logs how many were missing. {@link SeamSender} has sent the riders that area ahead (#1185), and the
+ * teleport runs as its crossing scope: what a rider holds of it is not sent again.
  *
  * <p>Survival and adventure players cannot break {@code breach_crust} by hand; creative players can.
  * Drills do it through {@link #breakCrust}.
@@ -110,8 +111,11 @@ public final class BreachService {
         Vec3 position = pocket.equals(requested)
                 ? new Vec3(entity.getX(), arrivalY, entity.getZ())
                 : new Vec3(pocket.getX() + 0.5, arrivalY, pocket.getZ() + 0.5);
-        Entity arrived = entity.teleport(new TeleportTransition(
-                to, position, Vec3.ZERO, entity.getYRot(), entity.getXRot(), TeleportTransition.DO_NOTHING));
+        Entity arrived = SeamSender.crossing(
+                to,
+                entity,
+                () -> entity.teleport(new TeleportTransition(
+                        to, position, Vec3.ZERO, entity.getYRot(), entity.getXRot(), TeleportTransition.DO_NOTHING)));
         if (arrived == null) {
             throw new IllegalStateException(
                     "Vanilla refused to teleport " + entity + " from layer " + fromLayer + " to layer " + toLayer);
