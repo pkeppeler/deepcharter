@@ -186,7 +186,7 @@ class ModelGuardTest(unittest.TestCase):
     collared column), layer 3's columns have open joints between them as their formation, and layer 3's crust has a layer of glow 0.02 pixel
     over its cracks; all are exempt by name."""
 
-    EXEMPT = re.compile(r"lc_company_rock_\d|lc_(rock|rubble)_3_\d")
+    EXEMPT = re.compile(r"lc_company_rock_\d|lc_(rock|rubble)_3_\d|columnar_basalt_\d")
     GLOW_CRUST = ("layer_concept_form_3", "lc_breach_crust_0")
 
     @staticmethod
@@ -305,11 +305,12 @@ class LayerConceptsTest(unittest.TestCase):
                     for x in range(x0, x1 + 1):
                         self.assertNotIn((x, y, south - 1), blocks, "the wide wall is not flat: a block stands out of it")
 
-    def test_layers_1_and_2_have_blocks_of_their_own_and_the_packs_redraw_only_what_they_must(self):
-        """The mod's rock is its own blocks (no vanilla file is redrawn), layer 3's stand-ins are vanilla andesite and diorite, and stone and deepslate,
-        which the hall of each scene shows untouched, are never redrawn."""
+    def test_the_layers_have_blocks_of_their_own_and_the_packs_redraw_only_what_they_must(self):
+        """The mod's rock is its own blocks (no vanilla file is redrawn), layer 3's included (#972); the scenes' stand-ins for layer 3 are vanilla
+        andesite and diorite, and stone and deepslate, which the hall of each scene shows untouched, are never redrawn."""
         shipped = {p.relative_to(make.MOD_ASSETS).as_posix() for p in self.files if p.is_relative_to(make.MOD_ASSETS) and "/blockstates/" in p.as_posix()}
-        self.assertEqual({f"deepcharter/blockstates/{block}.json" for pair in make.BLOCKS.values() for block in pair}, shipped)
+        blocks = {block for pair in make.BLOCKS.values() for block in pair} | {make.COLUMNS, make.CORE}
+        self.assertEqual({f"deepcharter/blockstates/{block}.json" for block in blocks}, shipped)
         redrawn_by_grain = {f"minecraft/blockstates/{n}.json" for n in make.LAYER_3}
         pack = make.pack_dir(make.GRAIN) / "assets"
         redrawn = {p.relative_to(pack).as_posix() for p in self.files if p.is_relative_to(pack) and "/blockstates/" in p.as_posix()}

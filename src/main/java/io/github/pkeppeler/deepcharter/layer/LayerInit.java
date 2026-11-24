@@ -11,6 +11,7 @@ public final class LayerInit {
         LayerRegistry.register();
         LayerCommands.init();
         BreachService.init();
+        SeamStreaming.init();
         BreachPayload.init();
         LayerRock.init();
         LayerReadouts.init();

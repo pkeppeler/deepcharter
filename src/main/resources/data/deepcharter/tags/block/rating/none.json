@@ -15,6 +15,7 @@
     "deepcharter:great_stalk_cap",
     "deepcharter:stalk_planks",
     "deepcharter:salvage_crate",
+    "deepcharter:salvage_heap",
     "deepcharter:flare_light",
     "deepcharter:roof_bolt",
     "deepcharter:note",
@@ -27,6 +28,7 @@
     "deepcharter:einsteinium_ore",
     "deepcharter:cicatrium_ore",
     "deepcharter:phonograph",
-    "deepcharter:colony_phonograph"
+    "deepcharter:colony_phonograph",
+    "deepcharter:glowcap"
   ]
 }

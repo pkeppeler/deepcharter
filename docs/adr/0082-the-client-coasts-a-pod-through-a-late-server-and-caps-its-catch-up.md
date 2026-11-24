@@ -10,10 +10,10 @@ Issue [#1041](https://github.com/pkeppeler/deepcharter/issues/1041). Extends [AD
 
 `PodEntity.createInterpolationHandler` returns `PodGlide`, and nothing else about `PodEntity` changes (it holds no state). The values live in `PodGlideTuning`, a second tuning record, because `PodTuning` is frozen.
 
-- **Coast.** With no move to follow, the client keeps the pod going at the speed the server last reported (the entity's synced delta movement) for `coastTicks` ticks (4), the last at `coastTailShare` (0.6) of the speed. The coast stops short of any block, so a pod that hit a wall or the ground is never drawn inside it.
+- **Coast.** With no move to follow, the client keeps the pod going at the speed the server last reported (the entity's synced delta movement) for `coastTicks` ticks (4), the last at `coastTailShare` (0.6) of the speed. The coast is swept in sub-steps no longer than the box's smallest side (at most `coastSweepSteps`, 8, so a huge synced speed costs a bounded number of checks) and stops short of any block, so a pod that hit a wall or the ground is never drawn inside it, and a step bigger than the box cannot skip a thin block.
 - **Catch-up.** A pod that fell behind covers at most `max(catchUp × speed, gap / catchUpTicks)` a tick, where speed is the faster of the reported speed and the stock drive speed (so a nearly stopped pod never crawls), `catchUp` is 1.35 (under the 1.4 frame-step bound of `PodDriveSmoothClientTest`) and `catchUpTicks` is 12. The pace is continuous in the gap: there is no size at which it jumps.
 - **Settle.** A pod that coasted past where the server put it waits for the next move while the server still reports it moving, for `settleDelayTicks` (10) ticks; once the server reports it still, or the wait ends, or a move arrives, it gives the excess back at `settleShare` (0.12) of the gap a tick and ends exactly on the server's last position. A pod the server pins in place while it reports a speed (an `AFTER_TICK` pin, a tow, `noPhysics`) therefore ends on the pin, not up to a coast off.
-- **Snap.** A glide that begins further than `snapGap` (16 blocks, 80 ticks of driving) from its target is not eased: it takes `steps` ticks, as before. That is a real teleport, or a server so far behind that easing would trail the pilot for seconds.
+- **Snap.** A glide that begins further than `snapGap` (16 blocks, 80 ticks of driving) from its target is not eased: it takes `steps` ticks, as before. That is a real teleport, or a server so far behind that easing would trail the pilot for seconds. It also forgets the direction of any coast before it (and so the catch-up floor of the amendment below, which needs one), and the snap holds until the pod arrives, so a far teleport behind a pod that just coasted, or one of a pod still being driven, is not taken for an overshoot to settle back from or eased by the short moves that follow.
 - **The server stays the authority.** The target is only ever a position the server sent. Coasting is a drawn guess that ends.
 
 ## Measured
@@ -29,6 +29,8 @@ At the stock speed 0.2, in `PodDriveSmoothClientTest`:
 | landing across a stall, drawn inside a block | every frame of the stall (coast unclipped) | none |
 | push of 2.0 and of 2.01 blocks, longest tick | 0.25 and about 1.0 (the cliff of the first version) | 0.27 and 0.27 |
 | push of 5 and of 15 blocks, longest tick | 2.5 and 7.5 | 0.42 and 1.25 |
+| push of 5 and of 15 blocks, ticks to arrive | n/a | 18 and 31 (without the `gap / catchUpTicks` term: 20 and 57; `PodDriveSmoothClientTest` floors the 15 at 40) |
+| far teleport (24 blocks) behind a pod that just coasted, ticks to arrive | 37 (eased at `settleShare`) | 6 (4 held by the stall, then 2) |
 | push of 20 blocks (past `snapGap`) | 10 | 10 (glides over 2 ticks) |
 | pod pinned by the server | up to 0.4 off until the 20 s full sync | past the pin by 0.72 at most, a few thousandths off after 40 ticks |
 
