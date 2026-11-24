@@ -108,7 +108,7 @@ Act 2 opens. The navigator seat is new, and this is the first real on-foot explo
 
 #### Drifters
 
-The Sleeper's: pod-sized glowing spore bladders that drift toward drill noise and footsteps.
+The Sleeper's: glowing spore creatures that drift toward drill noise and footsteps. Each placement draws one of three forms ([#1203](https://github.com/pkeppeler/deepcharter/issues/1203)): a **jellyfish** (a translucent bell round a cyan core, with long tendrils), a **spore sac** (a veined, bone-white puffball with gills underneath) or a **chain** (a string of small blue-white bulbs on glowing filaments). The form is the look only; every form draws, bursts and reads on sonar the same.
 
 The mechanics are built before the layer is ([#973](https://github.com/pkeppeler/deepcharter/issues/973), numbers and decisions in [mechanics.md](design/mechanics.md#drifters-and-the-alarm-973-a)); they key on the biome tag `deepcharter:fungal_hollows`, which #972 fills.
 

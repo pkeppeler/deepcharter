@@ -4,6 +4,10 @@ texel by where it lies on the creature (so a vein or a gradient runs on across t
 Model space is Bedrock's: pixels, y up, 16 pixels to a block, the floor at y 0. A cube turns about its pivot, first about x, then y, then z
 (the matrix is Rz * Ry * Rx). The angles here are the maths of a right-handed frame with y up; `EMIT` maps them to the signs the model file
 wants. A flat plane is a cube with no thickness on one axis: a membrane, drawn from both sides, whose texture's alpha cuts its outline.
+
+A skin texel above the shader's alpha cut (about 25 of 255) writes depth, and the glow layer is tested against that depth, so what glows
+inside a see-through skin is hidden by it. A membrane is therefore painted with alpha 0 in the skin and carried by the glowmask, which adds light
+(the forms in the stills of #1204 showed it); only what is meant to be opaque, or has nothing glowing behind it, has skin alpha.
 """
 import json
 import math
