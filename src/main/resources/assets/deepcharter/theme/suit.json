@@ -1,0 +1,14 @@
+{
+  "leftMargin": 6,
+  "topMargin": 20,
+  "barWidth": 96,
+  "barHeight": 5,
+  "segments": 16,
+  "segmentGap": 1,
+  "lineGap": 2,
+  "okColor": "#7CFC9A",
+  "amberColor": "#FFB000",
+  "redColor": "#FF4A3A",
+  "dimColor": "#2E7A45",
+  "blinkTicks": 5
+}

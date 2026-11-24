@@ -234,7 +234,7 @@ The handbook's view of its Directives: chapter tabs, and for each chapter a flow
 _Avoid_: quest book, tech tree
 
 **Pencil path**:
-A route on the quest map, drawn by earlier miners when a charter finds a Note. It is not a Directive.
+A route on the pencil sheet after the last chapter of the quest map, drawn by earlier miners when a charter finds a Note. It completes when the charter reaches the place the Note points to, and gives nothing but the place. It is not a Directive.
 _Avoid_: side quest, Directive
 
 **Parts catalogue**:
