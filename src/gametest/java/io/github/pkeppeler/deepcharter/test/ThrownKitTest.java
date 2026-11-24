@@ -407,6 +407,9 @@ public class ThrownKitTest {
                 helper,
                 KEEP_OFF_X,
                 room -> {
+                    // A person on foot in the dark draws a figure until the light engine lights their cell, and that
+                    // reads as clinging here: the thrower is not what this test is about (#1074).
+                    room.thrower().player().setGameMode(GameType.CREATIVE);
                     dark[0] = darkPodWithFigure(room, pilot, -9);
                     expect(helper, LamplessFigure.draws(dark[0].pod()), "a dark pod with a pilot draws a figure");
                 },
