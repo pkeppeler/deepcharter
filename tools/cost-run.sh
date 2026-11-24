@@ -6,22 +6,28 @@
 # table in `configure` below (default `surface`):
 #   surface   SurfaceCostTest, one JVM per world (a heap reading is only clean for the first world
 #             a JVM measures), at least two worlds, for example `tall_baseline_biomes tall_surface_biomes`.
-#   campaign  CampaignCostTest, one JVM for all the worlds (the bar needs the campaign world and
-#             tall_baseline in the same run); no worlds means the test's three. At least 4 rounds.
+#   campaign  CampaignCostTest's measured run, one JVM for all the worlds (a band's window is judged
+#             against its floor and the reference from the same runs); no worlds means the test's
+#             own list, the only one its gate judges. At least 4 rounds.
 #
 # --runs N repeats the whole measurement N times (default 1). A campaign run alternates the order
 # the worlds start in (DEEPCHARTER_COST_REVERSE, 1 on even runs), because the rounds alternate it
-# only inside a run. With N above 1 it ends with the rounds of every run pooled per world and the
-# ratio of the pooled medians, which the ADR 0029 follow-ups judge on: one run of a few rounds is
-# too noisy for a 1.15x bar. The pooled line says how many runs were LOADED and pools them anyway;
-# --quiet-only leaves LOADED runs out. The bar is read from the campaign test's own output
-# ("at most <bar>x"); a log without it is an error.
+# only inside a run.
+#
+# Pooling. Surface: with N above 1 it ends with the rounds of every run pooled per world and the
+# ratio of the pooled medians. The pooled line says how many runs were LOADED and pools them anyway;
+# --quiet-only leaves LOADED runs out. Campaign: the test pools itself (ADR 0086). Every run gets
+# DEEPCHARTER_CAMPAIGN_COST_POOL, a fresh file in this script's temp directory unless the caller
+# sets that variable (made absolute; it keeps its runs across invocations), and the test judges the
+# pooled bands once the pool is full (BandCost.Pool.judged: 3 runs of 6 rounds). The script pools
+# nothing and computes no ratio of its own; it ends with the test's verdict line of the last run.
+# --quiet-only is a usage error for campaign, since the test's pool keeps every run.
 #
 # Before a run: refuses to start while the 1-minute load average is above
 # DEEPCHARTER_COST_MAX_LOAD (default 2, may be fractional), after waiting up to
 # DEEPCHARTER_COST_WAIT seconds (default 0, or 600 with --runs above 1, since a run raises the
-# average itself) for it to fall. A refusal after some runs finished still prints their pooled
-# lines, then exits 3.
+# average itself) for it to fall. A refusal after some runs finished still prints their pooled or
+# verdict lines, then exits 3.
 #
 # During a run: world generation fills the cores, so the load average says little. Instead, every
 # DEEPCHARTER_COST_SAMPLE seconds (default 10) and once more at the end, the script sums the CPU of
@@ -33,16 +39,13 @@
 #
 # After a run: one `[cost-run]` line (load at start and end, peak foreign CPU and its top process,
 # verdict, time, exit status), the test's own log lines, each world's per-round CPU ms per column
-# as min and median, and the ratio of the numerator world over the denominator one (the second over
-# the first for exactly two surface worlds; campaign_sample over tall_baseline, also per block of
-# height). A test that fails with readings (the campaign test's own assertion) has them kept and
-# pooled.
+# as min and median, and for exactly two surface worlds the ratio of the second over the first. A
+# test that fails with readings (the campaign test's own assertion on a judged pool) has them kept.
 #
-# Exit status: 0 when every run exited 0 and, for campaign with --runs above 1, the pooled per-block
-# ratio is within the bar; otherwise the worst nonzero status of a run, 1 when only the pooled ratio
-# is over the bar (or --quiet-only left nothing to pool), 3 when a run was refused for load, 2 for
-# a usage error. The pooled lines print before the exit. A run with no readings exits at once with
-# its status.
+# Exit status: 0 when every run exited 0; otherwise the worst nonzero status of a run (a campaign
+# pool judged over its bar is the test's own failure), 1 when --quiet-only left nothing to pool, 3
+# when a run was refused for load, 2 for a usage error. The pooled or verdict lines print before
+# the exit. A run with no readings exits at once with its status.
 #
 # Drift line per world and run: the median CPU of the first half of the rounds against the second
 # half, and the same with the JVM's GC time per column taken off, with the halves' GC time and
@@ -80,7 +83,8 @@ shift
 # The per-test table: what to run, how to hand it rounds and worlds, and how to read its lines.
 # tag: the log tag. cpu_label, gc_label, count_label: the text before each per-round list, as a sed
 # pattern (gc_label and count_label empty: no GC series). per_world_jvm: 1 starts one JVM per world.
-# reverse: 1 when the test has an order switch. Heights: the campaign test prints both, for per block.
+# reverse: 1 when the test has an order switch. pool_env: the test's own pool file variable, or
+# empty when the script pools.
 configure() {
   case $test_name in
     surface)
@@ -93,10 +97,11 @@ configure() {
       count_label=
       per_world_jvm=1
       reverse=0
+      pool_env=
       [[ $# -ge 2 ]] || usage
       ;;
     campaign)
-      filter='campaign_cost_test*'
+      filter='campaign_cost_test_each_band*'
       rounds_env=DEEPCHARTER_CAMPAIGN_COST
       only_env=DEEPCHARTER_CAMPAIGN_COST_ONLY
       tag='[campaign-cost]'
@@ -105,24 +110,21 @@ configure() {
       count_label='GC count: '
       per_world_jvm=0
       reverse=1
+      pool_env=DEEPCHARTER_CAMPAIGN_COST_POOL
+      if [[ $quiet_only -eq 1 ]]; then
+        echo "cost-run.sh: --quiet-only cannot leave a run out of the campaign test's pool ($pool_env keeps every run)" >&2
+        exit 2
+      fi
       ;;
   esac
 }
 configure "$@"
-if [[ $# -gt 0 ]]; then
-  worlds=("$@")
-else
-  worlds=(tall_baseline tall_layer campaign_sample)
-fi
-# The pair the ratio line compares: numerator, then denominator.
+# No worlds (campaign only) leaves the list to the test; each run's worlds then come from its log.
+worlds=("$@")
+# The pair the surface ratio line compares: numerator, then denominator.
 num=
 den=
-if [[ $test_name == campaign ]]; then
-  if [[ " ${worlds[*]} " == *" campaign_sample "* && " ${worlds[*]} " == *" tall_baseline "* ]]; then
-    num=campaign_sample
-    den=tall_baseline
-  fi
-elif [[ ${#worlds[@]} -eq 2 ]]; then
+if [[ -z $pool_env && ${#worlds[@]} -eq 2 ]]; then
   num=${worlds[1]}
   den=${worlds[0]}
 fi
@@ -134,6 +136,12 @@ sample_seconds=${DEEPCHARTER_COST_SAMPLE:-10}
 if [[ ! $max_load =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
   echo "cost-run.sh: DEEPCHARTER_COST_MAX_LOAD must be a number, got '$max_load'" >&2
   exit 2
+fi
+# A pool file the caller names, made absolute before the cd below.
+pool=
+if [[ -n $pool_env && -n ${!pool_env:-} ]]; then
+  pool=${!pool_env}
+  [[ $pool == /* ]] || pool=$PWD/$pool
 fi
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -161,30 +169,25 @@ series() { # series <log> <world> <label>
   tag_re=$(printf '%s' "$tag" | sed 's/[][]/\\&/g')
   sed -nE "s/^.*${tag_re} $2: .*$3\[([^]]*)\].*/\1/p" "$1" | head -1 | tr -d ' ' | tr ',' '\n'
 }
+# The worlds with a per-round CPU list in the log, in its order.
+series_worlds() { # series_worlds <log>
+  local tag_re
+  tag_re=$(printf '%s' "$tag" | sed 's/[][]/\\&/g')
+  sed -nE "s/^.*${tag_re} ([a-z0-9_]+): .*${cpu_label}\\[.*/\\1/p" "$1" | tr '\n' ' '
+}
 # "<min> <median>" of the values in a file.
 stats() {
   sort -n "$1" | awk '
     { v[NR] = $1 }
     END { if (NR) printf "%s %s\n", v[1], (NR % 2 ? v[(NR + 1) / 2] : (v[NR / 2] + v[NR / 2 + 1]) / 2) }'
 }
-# [cost-run] <prefix><num> over <den>: ratios of two worlds' CPU files; <scale> (den height over num
-# height, or empty) adds the per-block ratio, and with a bar the verdict on it; returns 1 when the
-# per-block ratio is over the bar.
-ratio_line() { # ratio_line <prefix> <num-file> <den-file> <scale> <bar>
+# [cost-run] <prefix><num> over <den>: ratios of two worlds' CPU files.
+ratio_line() { # ratio_line <prefix> <num-file> <den-file>
   local n d
   n=$(stats "$2")
   d=$(stats "$3")
-  awk -v a="${d#* }" -v b="${n#* }" -v c="${d%% *}" -v e="${n%% *}" -v p="$1" -v w="$num" -v v="$den" -v s="$4" -v bar="$5" '
-    BEGIN {
-      printf "[cost-run] %s%s over %s: %.3fx on the medians, %.3fx on the minimums", p, w, v, b / a, e / c
-      if (s != "") {
-        pb = b / a * s
-        printf ", %.3fx per block of height", pb
-        if (bar != "") { over = pb > bar; printf " (%s the %sx bar)", (over ? "over" : "within"), bar }
-      }
-      printf "\n"
-      exit over
-    }'
+  awk -v a="${d#* }" -v b="${n#* }" -v c="${d%% *}" -v e="${n%% *}" -v p="$1" -v w="$num" -v v="$den" '
+    BEGIN { printf "[cost-run] %s%s over %s: %.3fx on the medians, %.3fx on the minimums\n", p, w, v, b / a, e / c }'
 }
 # One drift line: first-half against second-half median CPU per column, with and without GC time.
 drift_line() { # drift_line <world> <cpu-file> <gc-file> <count-file> <prefix>
@@ -212,6 +215,9 @@ drift_line() { # drift_line <world> <cpu-file> <gc-file> <count-file> <prefix>
 log=
 samples=
 state=$(mktemp -d)
+if [[ -n $pool_env && -z $pool ]]; then
+  pool=$state/campaign-pool.tsv
+fi
 sampler=
 stop_sampler() {
   if [[ -n $sampler ]]; then
@@ -232,20 +238,22 @@ limit=$(awk -v m="$max_load" 'BEGIN { print m * 100 }')
 if [[ $per_world_jvm -eq 1 ]]; then
   units=("${worlds[@]}")
 else
-  units=("$(IFS=,; echo "${worlds[*]}")")
+  units=("$(IFS=,; echo "${worlds[*]-}")")
 fi
-scale=
-bar=
 worst=0
 finished=0
 loaded_runs=0
-for world in "${worlds[@]}"; do
-  : >"$state/pool.cpu.$world"
-done
+# The test's verdict line of the last finished campaign run.
+verdict_line=
+if [[ -z $pool_env ]]; then
+  for world in "${worlds[@]}"; do
+    : >"$state/pool.cpu.$world"
+  done
+fi
 
-# The pooled lines over the finished runs; returns 1 when the pooled per-block ratio is over the bar.
+# The surface pooled lines over the finished runs; returns 1 when --quiet-only left nothing.
 pooled_lines() {
-  local used=$((quiet_only == 1 ? finished - loaded_runs : finished)) total w st note over=0
+  local used=$((quiet_only == 1 ? finished - loaded_runs : finished)) total w st note
   if [[ $used -lt 1 ]]; then
     echo "[cost-run] pooled: no quiet run to pool ($loaded_runs of $finished runs LOADED, --quiet-only)"
     return 1
@@ -258,14 +266,16 @@ pooled_lines() {
     echo "[cost-run] pooled over $used runs ($total rounds, $note): $w: CPU ms per column, min ${st%% *}, median ${st#* }"
   done
   if [[ -n $num ]]; then
-    ratio_line "pooled " "$state/pool.cpu.$num" "$state/pool.cpu.$den" "$scale" "$bar" || over=1
+    ratio_line "pooled " "$state/pool.cpu.$num" "$state/pool.cpu.$den"
   fi
-  return "$over"
 }
-# Pools what finished (one run too when a refusal ended the rest) and returns the exit status.
+# Pools what finished (one run too when a refusal ended the rest), or for campaign prints the
+# test's verdict, and returns the exit status.
 finish() {
   local over=0
-  if [[ $finished -gt 1 || ( $finished -gt 0 && $worst -eq 3 ) ]]; then
+  if [[ -n $pool_env ]]; then
+    echo "[cost-run] verdict over $finished runs ($loaded_runs LOADED), from the test's pool $pool: ${verdict_line:-no verdict line (a world list without every world the gate reads is never judged)}"
+  elif [[ $finished -gt 1 || ( $finished -gt 0 && $worst -eq 3 ) ]]; then
     pooled_lines || over=1
   fi
   if [[ $worst -ne 0 ]]; then
@@ -302,7 +312,13 @@ while [[ $run -le $runs ]]; do
       done
     ) &
     sampler=$!
-    envs=("$rounds_env=$rounds" "$only_env=$unit")
+    envs=("$rounds_env=$rounds")
+    if [[ -n $unit ]]; then
+      envs+=("$only_env=$unit")
+    fi
+    if [[ -n $pool_env ]]; then
+      envs+=("$pool_env=$pool")
+    fi
     if [[ $reverse -eq 1 ]]; then
       envs+=("DEEPCHARTER_COST_REVERSE=$((1 - run % 2))")
     fi
@@ -320,8 +336,13 @@ while [[ $run -le $runs ]]; do
     fi
     echo "[cost-run] $unit: $rounds rounds, run $run of $runs, load average at start $start, at end $end, foreign CPU peak ${peak_cpu}% (top: ${peak#* }) ($verdict), $(date -u +%FT%TZ), exit $status"
     grep -F "$tag" "$log" || true
+    listed=${unit//,/ }
+    if [[ -z $listed ]]; then
+      listed=$(series_worlds "$log")
+    fi
     missing=
-    for world in ${unit//,/ }; do
+    [[ -n $listed ]] || missing=1
+    for world in $listed; do
       series "$log" "$world" "$cpu_label" >"$state/run$run.cpu.$world"
       series "$log" "$world" "$gc_label" >"$state/run$run.gc.$world"
       series "$log" "$world" "$count_label" >"$state/run$run.count.$world"
@@ -337,23 +358,15 @@ while [[ $run -le $runs ]]; do
       fi
       exit "$status"
     fi
-    if [[ $test_name == campaign && -z $bar ]]; then
-      bar=$(sed -nE "s/^.*bar: .* at most ([0-9.]+)x .*/\\1/p" "$log" | head -1)
-      if [[ -z $bar ]]; then
-        echo "cost-run.sh: no 'at most <bar>x' line in the campaign test's output; the test's log format changed" >&2
-        exit 1
-      fi
-    fi
     if [[ $status -ne 0 ]]; then
       worst=$status
       tail -5 "$log" >&2
       echo "cost-run.sh: $unit: the test's own assertion failed (exit $status); its readings are kept" >&2
     fi
-    heights=$(sed -nE 's/^.*campaign_sample vs tall_baseline.*\(([0-9]+) against ([0-9]+) blocks\).*/\1 \2/p' "$log" | head -1)
-    if [[ -n $heights ]]; then
-      scale=$(awk -v h="$heights" 'BEGIN { split(h, a, " "); printf "%.6f", a[2] / a[1] }')
+    if [[ -n $pool_env ]]; then
+      verdict_line=$(sed -nE 's/^.*\[campaign-cost\] ((not )?judged: .*)/\1/p' "$log" | tail -1)
     fi
-    for world in ${unit//,/ }; do
+    for world in $listed; do
       stats=$(stats "$state/run$run.cpu.$world")
       echo "[cost-run] run $run: $world: CPU ms per column, min ${stats%% *}, median ${stats#* }"
       drift_line "$world" "$state/run$run.cpu.$world" "$state/run$run.gc.$world" "$state/run$run.count.$world" "run $run "
@@ -361,11 +374,11 @@ while [[ $run -le $runs ]]; do
     rm -f "$log" "$samples"
   done
   if [[ -n $num ]]; then
-    ratio_line "run $run: " "$state/run$run.cpu.$num" "$state/run$run.cpu.$den" "$scale" "" || true
+    ratio_line "run $run: " "$state/run$run.cpu.$num" "$state/run$run.cpu.$den"
   fi
   finished=$run
   loaded_runs=$((loaded_runs + run_loaded))
-  if [[ $run_loaded -eq 0 || $quiet_only -eq 0 ]]; then
+  if [[ -z $pool_env ]] && [[ $run_loaded -eq 0 || $quiet_only -eq 0 ]]; then
     for world in "${worlds[@]}"; do
       cat "$state/run$run.cpu.$world" >>"$state/pool.cpu.$world"
     done
