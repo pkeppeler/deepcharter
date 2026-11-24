@@ -50,7 +50,10 @@ public enum Consumable {
     // bands and BoltDriverPacingTest what a fight and a stretch of tunnel cost.
     BOLT_DRIVER("bolt_driver", 175, Kind.TOOL, false, true),
     // The driver's ammunition, bought in packs of 8 for a twentieth of a layer 2 run; the driver spends them.
-    BOLT("bolt", 24, Kind.CONSUMED, false, true, 8);
+    BOLT("bolt", 24, Kind.CONSUMED, false, true, 8),
+    // On foot (#1194): a layer 3 item, about a third of a Mole layer 2 run ($455). It tops up the suit's reserve
+    // anywhere, so it is sold at the repair station and has no recipe.
+    AIR_CANISTER("air_canister", 150, Kind.CONSUMED, false, true);
 
     /** What using the item does to it. */
     public enum Kind {

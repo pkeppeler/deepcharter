@@ -7,6 +7,8 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.suit.SuitReserve;
+import io.github.pkeppeler.deepcharter.suit.SuitTuning;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -18,7 +20,8 @@ import net.minecraft.sounds.SoundSource;
 /**
  * What each item does (SPEC sections 10 and 11). All of them but the thrown kit work on the pod the player is piloting, and
  * on no other: an item used on foot, or in a wreck, is refused and kept. The thrown kit (#985) is the other way round: it is
- * thrown on foot and refused from a seat, and {@link ThrownKit} does it.
+ * thrown on foot and refused from a seat, and {@link ThrownKit} does it. The air canister (#1194) is neither: it tops up the suit
+ * wherever the person is, a pod's seat included.
  */
 final class Consumables {
     private Consumables() {}
@@ -27,6 +30,9 @@ final class Consumables {
     static Optional<Component> use(ServerPlayer player, Consumable consumable) {
         if (consumable.thrown()) {
             return ThrownKit.throwFrom(player, consumable, ThrownKitTuning.DEFAULT);
+        }
+        if (consumable == Consumable.AIR_CANISTER) {
+            return SuitReserve.topUp(player, SuitTuning.DEFAULT.canisterSeconds());
         }
         if (!(player.getVehicle() instanceof PodEntity pod) || pod.getControllingPassenger() != player) {
             return refusal("not_piloting");
@@ -50,6 +56,7 @@ final class Consumables {
             // item, and the bolts are the driver's ammunition, not a use of their own.
             case TETHER, BOLT_DRIVER, BOLT ->
                 throw new IllegalStateException(consumable + " is not used from the pilot's seat");
+            case AIR_CANISTER -> throw new IllegalStateException("the air canister is used on foot and handled above");
         };
     }
 
