@@ -18,6 +18,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
@@ -147,6 +148,7 @@ public final class LightSync {
                 .filter(near -> level.getChunkSource().chunkMap.getChunkToSend(near.pack()) != null)
                 .forEach(sendable::add);
         level.getChunkSource().chunkMap.waitForLightBeforeSending(chunk, 0);
+        holdRingUntilTasksRun(level, chunk);
         int now = level.getServer().getTickCount();
         ChunkPos.rangeClosed(chunk, 1)
                 .filter(near -> level.getChunkSource().getChunkNow(near.x(), near.z()) != null)
@@ -160,6 +162,22 @@ public final class LightSync {
                 existing.reported = false;
             }
         }
+    }
+
+    /**
+     * Vanilla's hold makes each chunk of the 3x3 wait for the light tasks queued at <em>its own</em> position. The tasks of the
+     * blocks just placed are queued at {@code chunk}, and the light engine runs the queues of different positions in no fixed
+     * order, so a neighbour's wait can end before they have run: the neighbour is then sent the light it had before the draw
+     * (#494). Each neighbour also waits for the tasks queued at {@code chunk}, after the draw's.
+     */
+    private static void holdRingUntilTasksRun(ServerLevel level, ChunkPos chunk) {
+        CompletableFuture<?> drawn = level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x(), chunk.z());
+        ChunkPos.rangeClosed(chunk, 1).filter(near -> !near.equals(chunk)).forEach(near -> {
+            ChunkHolder holder = level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(near.pack());
+            if (holder != null) {
+                holder.addSendDependency(drawn);
+            }
+        });
     }
 
     private static Set<UUID> trackers(ServerLevel level, ChunkPos chunk) {
@@ -358,8 +376,7 @@ public final class LightSync {
         }
         Settling settling = watch.settling;
         if (settling == null) {
-            settling = new Settling(
-                    key.level.getChunkSource().getLightEngine().waitForPendingTasks(key.chunk.x(), key.chunk.z()), now);
+            settling = new Settling(tasksNear(key.level, key.chunk), now);
             watch.settling = settling;
         }
         if (settling.tasks.isDone()) {
@@ -374,6 +391,16 @@ public final class LightSync {
                     now - settling.since);
         }
         return false;
+    }
+
+    /**
+     * The light tasks queued by now at the chunk and its eight neighbours: a neighbour's blocks change this chunk's light, and the
+     * queues of different positions run in no fixed order (#494).
+     */
+    private static CompletableFuture<?> tasksNear(ServerLevel level, ChunkPos chunk) {
+        return CompletableFuture.allOf(ChunkPos.rangeClosed(chunk, 1)
+                .map(near -> level.getChunkSource().getLightEngine().waitForPendingTasks(near.x(), near.z()))
+                .toArray(CompletableFuture[]::new));
     }
 
     private static void sendLight(ServerPlayer player, ClientboundLightUpdatePacket light) {
