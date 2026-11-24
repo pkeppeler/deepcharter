@@ -22,6 +22,8 @@ public class FixtureScenario extends EvidenceScenario {
 """
 # Clean files: each must be left alone by the gate.
 CLEAN = {
+    # The fixed-site gate (#1182) wants a server test that calls FarChunks named in the table.
+    "support/TestSiteTable.java": 'static void fill() { exempt("ThroughFarChunksTest", "a fixture"); }',
     "support/FarChunks.java": """
 public class FarChunks {
     static void force(ServerLevel level, int x, int z) {
