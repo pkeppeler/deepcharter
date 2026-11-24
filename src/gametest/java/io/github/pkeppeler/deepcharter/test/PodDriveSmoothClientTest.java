@@ -26,6 +26,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -129,6 +130,33 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /** Client ticks a push beyond the snap gap has to arrive in: it glides over {@code steps} ticks as it always did. */
     private static final int SNAP_TICKS = 5;
 
+    /** The push whose arrival time is floored: the catch-up's {@code gap / catchUpTicks} term is what gets a gap this big home. */
+    private static final double FLOOR_GAP = 15.0;
+
+    /**
+     * Client ticks the push of {@link #FLOOR_GAP} blocks has to arrive in. Measured 31; without the {@code gap / catchUpTicks} term
+     * the pace is 0.27 a tick and it takes 57.
+     */
+    private static final int FLOOR_TICKS = 40;
+
+    /** A backward teleport past the snap gap, from a pod that has just coasted: a snap, so it arrives as one does. */
+    private static final double TELEPORT_BACK = 24.0;
+
+    /** How near the drawn pod must get to the server's, which keeps driving off, in {@link #SNAP_TICKS}: measured 1.73 with the snap held, 10.9 without it. */
+    private static final double DRIVING_TELEPORT_TOLERANCE = 3.0;
+
+    /** Client ticks a held move is stalled for before the teleport arrives behind a coasting pod. */
+    private static final int TELEPORT_STALL_TICKS = 4;
+
+    /** Blocks a fast coast is offered: well over the pod's box, so an unswept destination test lands beyond the wall. */
+    private static final double FAST_COAST_SPEED = 4.0;
+
+    /** Blocks between the pod and the thin wall its fast coast heads for. */
+    private static final double THIN_WALL_AHEAD = 1.6;
+
+    /** Client ticks a fast coast is watched. */
+    private static final int FAST_COAST_TICKS = 8;
+
     /** Two gaps this close in size draw pushes whose steps differ by no more than this: the catch-up has no cliff. */
     private static final double CLIFF_TOLERANCE = 0.02;
 
@@ -223,6 +251,9 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                 }
             });
             expectPushesEase(context, rig);
+            expectTeleportBehindCoastSnaps(context, rig);
+            expectTeleportWhileDrivingSnaps(context, rig);
+            expectFastCoastStopsAtThinWall(context, rig);
             expectPinnedPodSettles(context, rig);
             PacketJitter.start();
             try {
@@ -522,19 +553,24 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             rig.two().server().runOnServer(server -> put(server.overworld(), rig.ownPodId(), to));
             Vec3 last = rig.ownStart();
             Vec3 afterSnap = rig.ownStart();
+            int arrivedAt = -1;
             for (int tick = 0; tick < PUSH_TICKS; tick++) {
                 context.waitTick();
                 Vec3 now = onClient(context, rig.ownPodId());
                 longest[i] = Math.max(longest[i], now.distanceTo(last));
                 last = now;
+                if (arrivedAt < 0 && now.distanceTo(to) <= SETTLE_TOLERANCE) {
+                    arrivedAt = tick + 1;
+                }
                 if (tick == SNAP_TICKS - 1) {
                     afterSnap = now;
                 }
             }
             String what = "a pod pushed " + gap + " blocks";
             LOGGER.info(
-                    "PodDriveSmoothClientTest: {}: longest tick {}, {} blocks short after {} ticks, {} after {}",
+                    "PodDriveSmoothClientTest: {}: arrived after {} ticks, longest tick {}, {} blocks short after {} ticks, {} after {}",
                     what,
+                    arrivedAt,
                     longest[i],
                     afterSnap.distanceTo(to),
                     SNAP_TICKS,
@@ -552,6 +588,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             require(
                     last.distanceTo(to) <= SETTLE_TOLERANCE,
                     what + " is " + last.distanceTo(to) + " blocks short of its place after " + PUSH_TICKS + " ticks");
+            if (gap == FLOOR_GAP) {
+                require(
+                        arrivedAt >= 0 && arrivedAt <= FLOOR_TICKS,
+                        what + " arrived after " + arrivedAt + " ticks, over " + FLOOR_TICKS
+                                + ": the catch-up is too slow for a big gap");
+            }
         }
         double justUnder = longest[1];
         double justOver = longest[2];
@@ -559,6 +601,152 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                 Math.abs(justOver - justUnder) <= CLIFF_TOLERANCE,
                 "a push of 2.01 blocks drew " + justOver + " blocks in a tick and one of 2.0 drew " + justUnder
                         + ": the catch-up has a cliff");
+    }
+
+    /**
+     * A pod that has just coasted and is then teleported more than {@code snapGap} blocks behind itself arrives as a snap does, in the
+     * ticks of {@code steps} once the held moves come in: the coast's direction does not make the far move an overshoot to settle back
+     * from at a share of the gap a tick.
+     */
+    private static void expectTeleportBehindCoastSnaps(ClientGameTestContext context, Rig rig) {
+        returnToStart(context, rig);
+        Vec3 to = rig.ownStart().add(0, 0, -TELEPORT_BACK);
+        List<Vec3> drawn = new ArrayList<>();
+        try {
+            context.getInput().holdKey(options -> options.keyUp);
+            context.waitTicks(PIN_AFTER_TICKS);
+            context.runOnClient(client -> PacketJitter.stall(TELEPORT_STALL_TICKS));
+            context.getInput().releaseKey(options -> options.keyUp);
+            rig.two().server().runOnServer(server -> put(server.overworld(), rig.ownPodId(), to));
+            for (int tick = 1; tick <= TELEPORT_STALL_TICKS + PUSH_TICKS; tick++) {
+                context.waitTick();
+                drawn.add(onClient(context, rig.ownPodId()));
+            }
+        } finally {
+            PacketJitter.stop();
+            stopDriving(context);
+        }
+        // The server still drives the pod on the last input it had for a tick or two after the put: the place it ends
+        // on is the target.
+        Vec3 end = serverPosition(rig.two(), rig.ownPodId());
+        int arrivedAt = -1;
+        for (int i = 0; i < drawn.size() && arrivedAt < 0; i++) {
+            if (drawn.get(i).distanceTo(end) <= SETTLE_TOLERANCE) {
+                arrivedAt = i + 1;
+            }
+        }
+        LOGGER.info(
+                "PodDriveSmoothClientTest: a teleport {} blocks behind a coasting pod: arrived after {} ticks (stall {}), {} short at the end",
+                TELEPORT_BACK,
+                arrivedAt,
+                TELEPORT_STALL_TICKS,
+                drawn.getLast().distanceTo(end));
+        int byTick = TELEPORT_STALL_TICKS + SNAP_TICKS;
+        require(
+                drawn.get(byTick - 1).distanceTo(end) <= SETTLE_TOLERANCE,
+                "a teleport behind a coasting pod was " + drawn.get(byTick - 1).distanceTo(end)
+                        + " blocks short of its place after " + byTick + " ticks (arrived after " + arrivedAt
+                        + "): it was eased, not snapped");
+    }
+
+    /**
+     * A teleport of more than {@code snapGap} blocks while the pod is still being driven snaps, though the moves that follow it find the
+     * pod within {@code snapGap} of its place: the snap lasts until the pod arrives. Judged against the server's own pod, which keeps
+     * driving, by how near the drawn pod gets within {@link #SNAP_TICKS} ticks.
+     */
+    private static void expectTeleportWhileDrivingSnaps(ClientGameTestContext context, Rig rig) {
+        returnToStart(context, rig);
+        Vec3 to = rig.ownStart().add(0, 0, -TELEPORT_BACK);
+        double nearest = Double.MAX_VALUE;
+        try {
+            context.getInput().holdKey(options -> options.keyUp);
+            context.waitTicks(PIN_AFTER_TICKS);
+            rig.two().server().runOnServer(server -> put(server.overworld(), rig.ownPodId(), to));
+            for (int tick = 1; tick <= SNAP_TICKS; tick++) {
+                context.waitTick();
+                nearest = Math.min(
+                        nearest,
+                        onClient(context, rig.ownPodId()).distanceTo(serverPosition(rig.two(), rig.ownPodId())));
+            }
+        } finally {
+            stopDriving(context);
+        }
+        LOGGER.info(
+                "PodDriveSmoothClientTest: a teleport {} blocks behind a pod still being driven: within {} blocks of the server's pod after {} ticks (allowed {})",
+                TELEPORT_BACK,
+                nearest,
+                SNAP_TICKS,
+                DRIVING_TELEPORT_TOLERANCE);
+        require(
+                nearest <= DRIVING_TELEPORT_TOLERANCE,
+                "a teleport behind a pod still being driven came within " + nearest + " blocks of its place in "
+                        + SNAP_TICKS + " ticks, over " + DRIVING_TELEPORT_TOLERANCE + ": the snap did not last");
+    }
+
+    /**
+     * A pod that is offered a coast longer than its own box, toward a wall one block thick, is drawn up to the wall and never beyond
+     * it: the coast is swept, not tested at its far end only. Driven on the client's copy of the watched pod, which the server holds still.
+     */
+    private static void expectFastCoastStopsAtThinWall(ClientGameTestContext context, Rig rig) {
+        Vec3 at = rig.mockStart();
+        BlockPos wall = BlockPos.containing(at.x, at.y, at.z + THIN_WALL_AHEAD);
+        double wallFrom = wall.getZ();
+        double deepest = 0;
+        try {
+            rig.two().server().runOnServer(server -> {
+                put(server.overworld(), rig.mockPodId(), at);
+                setWall(server.overworld(), wall, Blocks.STONE);
+            });
+            ClientWait.until(
+                    context,
+                    "the watched pod standing at its place before the wall",
+                    () -> context.computeOnClient(client -> standsAt(client, rig.mockPodId(), at)),
+                    () -> "watched pod on the client " + onClient(context, rig.mockPodId()) + " for " + at);
+            context.runOnClient(client -> {
+                Entity pod = TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId());
+                pod.setDeltaMovement(0, 0, FAST_COAST_SPEED);
+                pod.moveOrInterpolateTo(pod.position(), pod.getYRot(), pod.getXRot());
+            });
+            for (int tick = 0; tick < FAST_COAST_TICKS; tick++) {
+                context.waitTick();
+                deepest = Math.max(
+                        deepest,
+                        context.computeOnClient(
+                                client -> TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId())
+                                        .getBoundingBox()
+                                        .maxZ));
+            }
+        } finally {
+            context.runOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId())
+                    .setDeltaMovement(Vec3.ZERO));
+            rig.two().server().runOnServer(server -> {
+                setWall(server.overworld(), wall, Blocks.AIR);
+                put(server.overworld(), rig.mockPodId(), rig.mockStart());
+            });
+        }
+        LOGGER.info(
+                "PodDriveSmoothClientTest: a coast of {} blocks a tick at a wall from z {}: the pod's box reached z {}",
+                FAST_COAST_SPEED,
+                wallFrom,
+                deepest);
+        require(
+                deepest <= wallFrom + SETTLE_TOLERANCE,
+                "a fast coast drew the pod to z " + deepest + ", through the wall that begins at z " + wallFrom);
+    }
+
+    /** Releases the drive key and waits for the release to reach the server. */
+    private static void stopDriving(ClientGameTestContext context) {
+        context.getInput().releaseKey(options -> options.keyUp);
+        context.waitTicks(INPUT_LAG_TICKS);
+    }
+
+    /** Fills the thin wall of {@link #expectFastCoastStopsAtThinWall} with {@code block}, centred on {@code wall}. */
+    private static void setWall(ServerLevel level, BlockPos wall, Block block) {
+        for (int x = -3; x <= 3; x++) {
+            for (int y = 0; y < WALL_HEIGHT; y++) {
+                level.setBlock(wall.offset(x, y, 0), block.defaultBlockState(), 3);
+            }
+        }
     }
 
     /**
