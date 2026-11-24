@@ -229,7 +229,6 @@ public class DrifterSpawnTest {
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 120)
     public void killingADrifterRaisesTheAlarmOfItsZone(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        CampaignBands.Band two = CampaignBands.LAYER_2;
         CampaignBands.Band three = CampaignBands.LAYER_3;
         int top = topY(three.minY(), three.height(), 0);
         BlockPos origin = new BlockPos(25_500, top, 25_500);
@@ -270,13 +269,13 @@ public class DrifterSpawnTest {
                     DrifterAlarm.ticksLeft(level, top));
             expect(
                     helper,
-                    !DrifterAlarm.isRinging(level, topY(two.minY(), two.height(), 2)),
-                    "the alarm of the top zone rings in the bottom zone");
+                    !DrifterAlarm.isRinging(level, topY(three.minY(), three.height(), 2)),
+                    "the alarm of the top zone of layer 3 rings in its bottom zone");
             expect(
                     helper,
                     !DrifterAlarm.isRinging(
                             level, topY(CampaignBands.LAYER_1.minY(), CampaignBands.LAYER_1.height(), 2)),
-                    "the alarm of layer 2 rings in layer 1");
+                    "the alarm of layer 3 rings in the bottom zone of layer 1");
             since[0] = helper.getTick();
         });
     }
