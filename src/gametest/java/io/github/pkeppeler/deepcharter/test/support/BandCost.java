@@ -44,10 +44,7 @@ public final class BandCost {
 
     /**
      * The least the runs' mean can be, with 90% confidence one-sided: the mean less the t of the runs' own scatter over the square root of
-     * their number. A band is over only when this is over its bar, so a pool whose runs disagree cannot fail it, and one whose runs agree
-     * fails it as soon as they are over. With 3 runs and the per-run scatter measured in ADR 0086 (a standard deviation of 7.5% of the
-     * ratio), a band whose true ratio is exactly its bar fails with probability 0.10, one 10% over it 0.69, one 20% over it 0.98 and
-     * one 35% over it all but certainly; a band 10% under it fails with probability 0.001.
+     * their number. A band is over only when this is over its bar, so a pool whose runs disagree cannot fail it (detection odds: ADR 0086).
      */
     public static double lowerBound(double[] perRun) {
         int n = perRun.length;
@@ -273,9 +270,8 @@ public final class BandCost {
         return windows.stream()
                 .map(window -> {
                     double marginal = pool.marginalPerRow(window.world(), window.floor());
-                    // Only a run that read all four worlds has a ratio of its own; a pool short of runs is not judged,
-                    // and its
-                    // printed bound is the pooled ratio.
+                    // Only a run that read all four worlds has a ratio of its own; with none, the bound is the pooled
+                    // ratio.
                     double[] perRun = pool.runs(window.world()).stream()
                             .filter(run -> Stream.of(window.floor(), reference, referenceFloor)
                                     .allMatch(world -> pool.runs(world).contains(run)))

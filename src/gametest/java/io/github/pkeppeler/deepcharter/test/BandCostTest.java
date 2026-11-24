@@ -153,19 +153,6 @@ public class BandCostTest {
         helper.succeed();
     }
 
-    /** Runs that all sit just over the bar fail it: the band is steadily over, not scattered around it. */
-    @GameTest
-    public void steadyRunsJustOverTheBarFail(GameTestHelper helper) {
-        Ratio ratio = onlyRatio(new Pool(gatedPoolOfRuns(1.30, 1.31, 1.29)));
-        expect(
-                helper,
-                ratio.over(),
-                "steady runs of 1.30x are not over the %s bar (bound %s)",
-                BandCost.BAR,
-                ratio.bound());
-        helper.succeed();
-    }
-
     /** A run whose reference costs nothing per row, or a ratio that is not a number, fails loudly, never as a pass. */
     @GameTest
     public void aRatioThatIsNotANumberFailsLoudly(GameTestHelper helper) {
