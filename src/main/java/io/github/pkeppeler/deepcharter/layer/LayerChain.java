@@ -92,6 +92,16 @@ public final class LayerChain {
     }
 
     /**
+     * The {@link #campaignLayers} inside {@code level}'s height: every one in a campaign world, and only its own in a level of the
+     * campaign generator cut to one band's rows (the cost test's band windows, ADR 0086), where another band would lie outside it.
+     */
+    public static List<Band> campaignLayersIn(ServerLevel level) {
+        return campaignLayers(level).stream()
+                .filter(band -> !level.isOutsideBuildHeight(band.minY()) && !level.isOutsideBuildHeight(band.maxY()))
+                .toList();
+    }
+
+    /**
      * The band of layer {@code layer} as {@code generator} lays it out in a level: a band of a campaign world, or the whole level of a
      * layer dimension. {@code feature} names the caller, for the failure when a campaign world has no such layer.
      */

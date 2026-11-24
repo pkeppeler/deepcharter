@@ -2107,3 +2107,15 @@ A default build is not harder than on main: nothing changes for a pod with no na
 **Knobs.** `RatingTuning.DEFAULT` (the layer rows and the highest tag level), the tags in `data/deepcharter/tags/block/rating/`.
 
 **Open questions.** What layer 3 asks, which is its worldgen's to say.
+
+## Vanilla block movers and the breach crust (#1110, A)
+
+**Problem.** The crust at each layer's floor is the one gate the pod's drill, a creative hand and nothing else may open ([ADR 0059](../adr/0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md), [ADR 0061](../adr/0061-a-crossing-in-the-campaign-world-is-an-event-in-place-found-by-the-root-vehicles-y-with-the-crust-rows-as-hysteresis.md)). It had stone's blast resistance (6) and vanilla's default push reaction, so any explosion of power 3 or more broke part of it, and a piston pushed it, pulled it (sticky) or lifted it. A broken crust skips the breach gating: no crossing event, no hull cost, no transmission.
+
+**Rule.** Every crust block (the crust rows of every layer's floor, found from `CampaignBands`, not only the last) has bedrock's blast resistance (3,600,000) and `PushReaction.IMMOVEABLE`, and is in `minecraft:wither_immune` and `minecraft:dragon_immune`. Its hardness stays 5, so the drill's refusal, the hand-break guard and `PodCharge`'s spare of crust are unchanged. An enderman cannot hold it (it is not in `enderman_holdable`), and a falling block lands on it and leaves it alone.
+
+**Decision.** Blast-proof and immovable, with no tell: a blast that meets crust is a blast that meets a wall, which is what a player expects of a floor. A visible or audible tell (a thud, a spark) was left out because no hook catches "an explosion reached this block" without a mixin on `Explosion`, and the crust's job is to be a floor, not a puzzle.
+
+**Survival TNT.** The recipe exists and crafts (nothing removes vanilla's, and unknown recipes still craft, [ADR 0070](../adr/0070-the-server-recipe-book-holds-exactly-the-known-recipes-and-the-vanilla-recipe-packets-carry-it.md)), but the gunpowder has no source in the pack: no vanilla monster spawns (#943), the vanilla structures that hold loot are emptied or unreachable, the Nether and the End have no portal, and the salvage crate drops planks, sticks, cloth and redstone. The crust is blast-proof anyway, so creative and operator `/give` change nothing.
+
+**Tests.** `BreachCrustMoversTest` runs each mover against the crust of every layer: TNT, a creeper (3), a charged creeper (6), an end crystal, a bed or anchor (5, fire), a wither's spawn blast (7), a piston push, a sticky pull, a piston lifting from under the floor, a falling block, and the wither, dragon and enderman tags.

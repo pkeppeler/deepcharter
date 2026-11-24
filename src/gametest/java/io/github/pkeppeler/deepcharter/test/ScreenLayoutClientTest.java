@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetScreen;
 import io.github.pkeppeler.deepcharter.client.outpost.IncidentReportScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
@@ -45,6 +46,7 @@ import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
@@ -682,6 +684,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         List<Case> cases = new ArrayList<>();
         cases.add(new Case("ui demo", CrtDemoScreen::new));
         cases.add(new Case("incident report", () -> new IncidentReportScreen(longestIncidentReport(), null)));
+        // The longest sheet there is: a part with a stock tier and six bought ones.
+        cases.add(new Case("spec sheet", () -> new SpecSheetScreen(ComponentItems.item(ComponentTrack.DRILL))));
         // The notes the game ships, all found: the longest real one is what the page must hold.
         List<HandbookNote> notes =
                 ShippedNotes.ids().stream().map(ClientNotes::entry).toList();
