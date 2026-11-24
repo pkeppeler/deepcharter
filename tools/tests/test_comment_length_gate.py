@@ -43,8 +43,8 @@ class CommentLengthGateTest(unittest.TestCase):
     def git(self, *args):
         return subprocess.run(["git", *args], cwd=self.repo, env=self.env, check=True, capture_output=True, text=True).stdout
 
-    def write(self, text):
-        path = self.repo / PATH
+    def write(self, text, relative=PATH):
+        path = self.repo / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
 
@@ -161,7 +161,7 @@ class CommentLengthGateTest(unittest.TestCase):
         self.assertIn("git fetch", str(raised.exception))
 
     def test_non_ascii_path_is_read(self):
-        self.write_file("src/main/java/\u00e9.java", f"// {LONG}\n")
+        self.write(f"// {LONG}\n", "src/main/java/\u00e9.java")
         self.git("add", ".")
         self.git("commit", "-q", "-m", "accent")
         found = self.violations()
@@ -177,7 +177,7 @@ class CommentLengthGateTest(unittest.TestCase):
         self.assertEqual(gate.added_lines(diff), {"A.java": [4, 10, 11, 12]})
 
     def test_new_file_fails(self):
-        self.write_file("src/main/java/Other.java", f"/**\n * {LONG}\n */\nclass Other {{}}\n")
+        self.write(f"/**\n * {LONG}\n */\nclass Other {{}}\n", "src/main/java/Other.java")
         self.git("add", ".")
         self.git("commit", "-q", "-m", "new")
         self.assertEqual(len(self.violations()), 1)
@@ -190,7 +190,7 @@ class CommentLengthGateTest(unittest.TestCase):
     def test_rename_with_an_added_long_line_fails_once(self):
         self.git("mv", PATH, "src/main/java/Renamed.java")
         self.git("commit", "-q", "-m", "rename")
-        self.write_file("src/main/java/Renamed.java", BASE.replace("int shortened;", f"// {LONG}\n    int shortened;"))
+        self.write(BASE.replace("int shortened;", f"// {LONG}\n    int shortened;"), "src/main/java/Renamed.java")
         self.git("commit", "-q", "-am", "edit")
         found = self.violations()
         self.assertEqual(len(found), 1)
@@ -219,11 +219,6 @@ class CommentLengthGateTest(unittest.TestCase):
         self.git("branch", "-f", "main", "topic")
         self.commit(with_block.replace("* two", f"* {LONG}"))
         self.assertEqual(len(self.violations()), 1)
-
-    def write_file(self, relative, text):
-        path = self.repo / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
 
 
 if __name__ == "__main__":
