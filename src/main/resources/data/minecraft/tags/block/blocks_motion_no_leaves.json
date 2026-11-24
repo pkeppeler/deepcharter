@@ -47,6 +47,7 @@
     "deepcharter:riveted_plate",
     "deepcharter:riveted_plate_red",
     "deepcharter:salvage_crate",
+    "deepcharter:salvage_heap",
     "deepcharter:silverium_ore",
     "deepcharter:slag_brick",
     "deepcharter:steel_beam",
@@ -58,6 +59,8 @@
     "deepcharter:packed_shale",
     "deepcharter:packed_shale_rubble",
     "deepcharter:green_shale",
-    "deepcharter:green_shale_rubble"
+    "deepcharter:green_shale_rubble",
+    "deepcharter:basalt_core",
+    "deepcharter:columnar_basalt"
   ]
 }

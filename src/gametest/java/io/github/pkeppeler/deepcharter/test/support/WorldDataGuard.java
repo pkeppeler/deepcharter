@@ -7,11 +7,13 @@ import io.github.pkeppeler.deepcharter.colony.WorldFormat;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.KnownRecipesData;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
+import io.github.pkeppeler.deepcharter.handbook.PencilPathsData;
 import io.github.pkeppeler.deepcharter.handbook.PersonalHandbookData;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.layer.PendingStructures;
 import io.github.pkeppeler.deepcharter.market.WorkOrderData;
 import io.github.pkeppeler.deepcharter.outpost.OutpostData;
+import io.github.pkeppeler.deepcharter.outpost.OutpostVisits;
 import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -45,6 +47,7 @@ public final class WorldDataGuard implements ModInitializer {
             HandbookProgressData.TYPE,
             NotesData.TYPE,
             KnownRecipesData.TYPE,
+            PencilPathsData.TYPE,
             PersonalHandbookData.TYPE,
             HangarData.TYPE,
             WorkOrderData.TYPE,
@@ -54,6 +57,7 @@ public final class WorldDataGuard implements ModInitializer {
             TransmissionData.TYPE,
             ColonyDisplays.TYPE,
             OutpostData.TYPE,
+            OutpostVisits.TYPE,
             WorldFormat.TYPE,
             PendingStructures.TYPE);
     private static final Map<SavedDataType<?>, SavedData> SEEN = new HashMap<>();

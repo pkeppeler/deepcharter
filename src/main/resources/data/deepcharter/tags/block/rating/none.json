@@ -15,6 +15,7 @@
     "deepcharter:great_stalk_cap",
     "deepcharter:stalk_planks",
     "deepcharter:salvage_crate",
+    "deepcharter:salvage_heap",
     "deepcharter:flare_light",
     "deepcharter:roof_bolt",
     "deepcharter:note",
@@ -29,6 +30,7 @@
     "deepcharter:phonograph",
     "deepcharter:colony_phonograph",
     "deepcharter:company_horn",
-    "deepcharter:wreck_phonograph"
+    "deepcharter:wreck_phonograph",
+    "deepcharter:glowcap"
   ]
 }

@@ -1,0 +1,21 @@
+# The campaign generator's placed features by decoration step and index in it, which seed them (CampaignDecorationStepsTest, ADR 0015).
+# step	index	placed feature
+5	0	deepcharter:fill_quiet
+5	1	deepcharter:fill_spore_fields
+5	2	deepcharter:fill_garden
+6	0	deepcharter:grained_crust_pass
+6	1	deepcharter:fill_prospectors_run
+6	2	deepcharter:fill_shift_change
+6	3	deepcharter:fill_upper_levels
+6	4	deepcharter:fill_deep_claim
+6	5	deepcharter:fill_stone_benches
+6	6	deepcharter:fill_topsoil_claims
+7	0	deepcharter:line_hollows
+8	0	deepcharter:glowcaps_quiet
+8	1	deepcharter:glowcaps_spore_fields
+8	2	deepcharter:fungal_stalks_hollows
+8	3	deepcharter:glowcaps_garden
+9	0	deepcharter:salvage_litter
+9	1	deepcharter:fungal_stalks
+9	2	deepcharter:fungal_stalks_yard
+9	3	deepcharter:fungal_stalks_cave
