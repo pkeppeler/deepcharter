@@ -18,7 +18,12 @@ public final class DrifterAssets {
 
     /** The id GeckoLib knows a form's model and animations by. */
     public static Identifier resource(DrifterVariant variant) {
-        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "creature/drifter_" + variant.id());
+        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "creature/" + stem(variant));
+    }
+
+    /** {@code drifter_<id>}: what every file and animation of a form is named by. */
+    private static String stem(DrifterVariant variant) {
+        return "drifter_" + variant.id();
     }
 
     public static Identifier modelFile(DrifterVariant variant) {
@@ -33,23 +38,23 @@ public final class DrifterAssets {
 
     /** The skin. */
     public static Identifier texture(DrifterVariant variant) {
-        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "textures/entity/drifter_" + variant.id() + ".png");
+        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "textures/entity/" + stem(variant) + ".png");
     }
 
     /** Clear except the form's light, drawn at full bright. */
     public static Identifier glowmask(DrifterVariant variant) {
         return Identifier.fromNamespaceAndPath(
-                DeepCharter.MOD_ID, "textures/entity/drifter_" + variant.id() + "_glowmask.png");
+                DeepCharter.MOD_ID, "textures/entity/" + stem(variant) + "_glowmask.png");
     }
 
     /** Drifting. */
     public static String idle(DrifterVariant variant) {
-        return "animation.drifter_" + variant.id() + ".idle";
+        return "animation." + stem(variant) + ".idle";
     }
 
     /** Drawn to a noise: the motion quickens. */
     public static String drawn(DrifterVariant variant) {
-        return "animation.drifter_" + variant.id() + ".drawn";
+        return "animation." + stem(variant) + ".drawn";
     }
 
     /** Throws, naming it, when a file or animation is missing: that would draw a magenta cube or a frozen bind pose. */
