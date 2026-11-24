@@ -91,8 +91,6 @@ final class LayerConceptsWorld {
 
     private static void openHidden(
             ClientGameTestContext ctx, Consumer<String> shoot, Consumer<LayerConceptsWorld> body) {
-        int renderDistance =
-                ctx.computeOnClient(client -> client.options.renderDistance().get());
         try (TestSingleplayerContext singleplayer = ctx.worldBuilder()
                 .setUseConsistentSettings(false)
                 .adjustSettings(state -> state.setSeed("deepcharter-design-tour"))
@@ -103,14 +101,11 @@ final class LayerConceptsWorld {
             Size size = singleplayer.getServer().computeOnServer(LayerConceptScenes::size);
             LayerConceptsWorld world = new LayerConceptsWorld(ctx, singleplayer, shoot, scenes, size);
             world.preparePlayer();
-            ctx.runOnClient(client -> {
-                client.options.renderDistance().set(RENDER_DISTANCE);
-                client.options.setCameraType(CameraType.FIRST_PERSON);
+            ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+            ClientChecks.withRenderDistance(ctx, RENDER_DISTANCE, () -> {
+                world.buildScenes();
+                body.accept(world);
             });
-            world.buildScenes();
-            body.accept(world);
-        } finally {
-            ctx.runOnClient(client -> client.options.renderDistance().set(renderDistance));
         }
     }
 

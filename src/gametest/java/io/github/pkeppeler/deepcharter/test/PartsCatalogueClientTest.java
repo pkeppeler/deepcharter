@@ -69,11 +69,11 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 
 /**
- * Client GameTest for #846, the parts catalogue. The model (what is known, the search, craftable now, the lookup, the favourites file) and
- * the layout at each window size are checked with no game running. Then the real game: the panels beside the inventory, the hidden
- * recipe-book button, R and U on a hovered item, the search, the favourites, the craftable filter, and that every string the panels draw
- * lies whole inside its panel's glass (a string past the glass is clipped away, and {@code DrawnText} drops a string wholly outside its
- * scissor, so a missing string fails too).
+ * Client GameTest for #846, the parts catalogue. The model (what is known, the search, craftable now, the lookup, the favourites file)
+ * and the layout at each window size are checked first, once a world is loaded; they read no world state. Then the real game: the panels
+ * beside the inventory, the hidden recipe-book button, R and U on a hovered item, the search, the favourites, the craftable filter, and
+ * that every string the panels draw lies whole inside its panel's glass (a string past the glass is clipped away, and {@code DrawnText}
+ * drops a string wholly outside its scissor, so a missing string fails too).
  */
 public class PartsCatalogueClientTest implements FabricClientGameTest {
     private static final Item DRILL = HangarParts.DRILL_HEAD;
@@ -93,18 +93,6 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
-        context.runOnClient(client -> {
-            onlyTheKnownAreListed();
-            theSearchMatchesNamesIdsAndNamespaces();
-            craftableNowNeedsTheIngredientsInHand();
-            craftableNowMeansCraftableOnThisScreen();
-            theLookupListsRecipesAndUsesAndStepsThrough();
-            pagesStopAtTheEnds();
-            favouritesAreKeptPerPlayerAndSurviveReopening();
-            aFavouritesFileOfAnotherVersionIsNeverWritten();
-            thePanelsFitAtEveryWindowSize();
-            aGlassWithNoRadiusKeepsFullWidthScanlines();
-        });
         inTheRealGame(context);
     }
 
@@ -521,6 +509,19 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the player's inventory", client -> client.player != null && client.level != null);
+            // Item components are bound only once a world is loaded ("Components not bound yet" before it, #1124).
+            context.runOnClient(client -> {
+                onlyTheKnownAreListed();
+                theSearchMatchesNamesIdsAndNamespaces();
+                craftableNowNeedsTheIngredientsInHand();
+                craftableNowMeansCraftableOnThisScreen();
+                theLookupListsRecipesAndUsesAndStepsThrough();
+                pagesStopAtTheEnds();
+                favouritesAreKeptPerPlayerAndSurviveReopening();
+                aFavouritesFileOfAnotherVersionIsNeverWritten();
+                thePanelsFitAtEveryWindowSize();
+                aGlassWithNoRadiusKeepsFullWidthScanlines();
+            });
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
             everythingTheRealGameIsAsked(context, singleplayer);

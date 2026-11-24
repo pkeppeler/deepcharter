@@ -299,6 +299,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
             case HandbookPage.Contents contents -> 0;
             case HandbookPage.ChapterText text -> text.number();
             case HandbookPage.Chapter map -> map.number();
+            case HandbookPage.Pencil pencil -> throw new AssertionError("these pages hold no pencil sheet");
             case HandbookPage.Appendix appendix -> -1;
             case HandbookPage.Contract contract -> -1;
         };

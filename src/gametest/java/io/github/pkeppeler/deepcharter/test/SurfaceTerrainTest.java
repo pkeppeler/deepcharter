@@ -63,7 +63,7 @@ public class SurfaceTerrainTest {
      * The top of the depth that campaign_sample leaves as air: two sections (32 rows) of the shipped rock stay under the last layer's
      * floor. A literal, because it is data in campaign_sample.json; a test pins it to the layers.
      */
-    private static final int EMPTY_BELOW = -544;
+    private static final int EMPTY_BELOW = -800;
 
     private static final int MAX_TICKS = 6000;
     /** The ground of the colony pad: the first block above it is free. */

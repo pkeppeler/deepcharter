@@ -4,6 +4,8 @@ status: accepted
 
 # The suit timer drains at the depth's row measured against the suit's ratings, and an uninhabitable hall leaks it
 
+Amended by [ADR 0091](0091-the-suit-tracks-are-a-personal-attachment-bought-a-tier-at-a-time-and-the-air-track-carries-flooding-and-capacity.md): the capacity is the person's own (180, 240, 300 or 360 suit-seconds by air tier), 180 being the stock suit's, and the suit's ratings come from its tracks.
+
 SPEC section 9 gives a person on foot a suit timer ("how long you can stay on foot outside a pod or habitable outpost") and section 11 makes an outpost below its depth's rating uninhabitable: "heat leaks in, water seeps in, the suit timer keeps running inside". [ADR 0076](0076-environment-ratings-are-block-tags-per-axis-and-a-per-layer-table-of-what-a-depth-asks.md) gave every depth a row of ratings and left the effects to this issue ([#993](https://github.com/pkeppeler/deepcharter/issues/993)). Nothing on foot read the depth, and no outpost said whether its shell held.
 
 ## Decision
