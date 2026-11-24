@@ -12,9 +12,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * Server GameTests for the wreck pieces of the salvage prefab concept round (#1214, docs/design/salvage-prefab-concepts.md): the three
- * structure files that {@code tools/colony/wrecks.py} writes load as the layout file says, with every block known to the game, and each
- * has salvage crates worked into it. The evidence scenario {@code salvage-prefab-concepts} shoots them.
+ * Server GameTests for the wreck pieces of the salvage prefab concept round (#1214,
+ * docs/design/salvage-prefab-concepts.md): the three structure files that {@code tools/colony/wrecks.py} writes load as
+ * the layout file says, with every block known to the game, and each has salvage crates worked into it. The evidence
+ * scenario {@code salvage-prefab-concepts} shoots them.
  */
 public class SalvagePrefabConceptsTest {
     /** A wreck shows where its salvage would come from: at least this many crates stand in it. */

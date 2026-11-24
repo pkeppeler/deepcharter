@@ -32,14 +32,15 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Evidence scenario "salvage-prefab-concepts" (#1214, docs/design/salvage-prefab-concepts.md), the look round for the wrecked salvage
- * prefabs of #471: each of three wrecks (a downed supply lander, a toppled survey derrick, a derailed ore train;
- * {@code tools/colony/wrecks.py}) stands in the salvage yard, the biome ring 100 to 160 blocks out from the colony, on open ground, among
- * the yard's own crates and under its dust haze, with a parked pod and a player beside it for scale. Each is shot near, mid, from the air
- * and from a long way off ({@code <option>-near}, {@code -mid}, {@code -aerial}, {@code -range}), and flown round once for the GIF.
+ * Evidence scenario "salvage-prefab-concepts" (#1214, docs/design/salvage-prefab-concepts.md), the look round for the
+ * wrecked salvage prefabs of #471: each of three wrecks (a downed supply lander, a toppled survey derrick, a derailed
+ * ore train; {@code tools/colony/wrecks.py}) stands in the salvage yard, the biome ring 100 to 160 blocks out from the
+ * colony, on open ground, among the yard's own crates and under its dust haze, with a parked pod and a player beside it
+ * for scale. Each is shot near, mid, from the air and from a long way off ({@code <option>-near}, {@code -mid},
+ * {@code -aerial}, {@code -range}), and flown round once for the GIF.
  *
- * <p>The ground under a wreck is levelled and cleared of the yard's litter inside the box its layout names, nothing more. Nothing here
- * reaches a player's world: the pieces are test resources.
+ * <p>The ground under a wreck is levelled and cleared of the yard's litter inside the box its layout names, nothing
+ * more. Nothing here reaches a player's world: the pieces are test resources.
  */
 public class SalvagePrefabConceptsScenario extends EvidenceScenario {
     private static final ResourceKey<Biome> YARD =
@@ -48,12 +49,18 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
     private static final int[] RADII = {115, 128, 141, 152};
 
     private static final int BEARINGS = 20;
-    /** The most the ground may rise and fall over the box a wreck needs (between its tenth and ninetieth percentile), and how far apart two wrecks stand. */
+    /**
+     * The most the ground may rise and fall over the box a wreck needs (between its tenth and ninetieth percentile),
+     * and how far apart two wrecks stand.
+     */
     private static final int MAX_RELIEF = 8;
 
     private static final int SPACING = 90;
     private static final int SAMPLE_STEP = 4;
-    /** The wreck's ground is flat this far past its bounds and blends into the plain's over the next stretch, to {@code BLEND}. */
+    /**
+     * The wreck's ground is flat this far past its bounds and blends into the plain's over the next stretch, to
+     * {@code BLEND}.
+     */
     private static final double FLAT = 2;
 
     private static final double BLEND = 12;
@@ -63,7 +70,10 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
     private static final double YARD_SHARE = 0.7;
     /** How far above the ground a wreck's clearing reaches. */
     private static final int CLEARING_HEIGHT = 34;
-    /** The pod, the player and the cameras: how far past the figures the near and mid stills stand, and the aerial's and range's reach. */
+    /**
+     * The pod, the player and the cameras: how far past the figures the near and mid stills stand, and the aerial's and
+     * range's reach.
+     */
     private static final double NEAR_BEHIND = 4.5;
 
     private static final double MID_BEHIND = 9.0;
@@ -110,9 +120,9 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
     // ------------------------------------------------------------------------------------------------ the site
 
     /**
-     * The flattest open ground in the yard, on a bearing and a radius from the colony: every sample of the box the wreck needs is in the yard
-     * biome and none is water, and the box's ground rises and falls by the least. Fails, naming the best it saw, if none is within
-     * {@link #MAX_RELIEF}.
+     * The flattest open ground in the yard, on a bearing and a radius from the colony: every sample of the box the
+     * wreck needs is in the yard biome and none is water, and the box's ground rises and falls by the least. Fails,
+     * naming the best it saw, if none is within {@link #MAX_RELIEF}.
      */
     private static Site find(ServerLevel level, BlockPos colony, Option option, List<BlockPos> used) {
         @Nullable Site best = null;
@@ -140,8 +150,9 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
     }
 
     /**
-     * The site at {@code at}, or null when the box holds water, a ground that will not carry a wreck, or too little of the yard's biome
-     * ({@link #YARD_SHARE} of its samples). Every site seen is added to {@code seen}, for the failure message.
+     * The site at {@code at}, or null when the box holds water, a ground that will not carry a wreck, or too little of
+     * the yard's biome ({@link #YARD_SHARE} of its samples). Every site seen is added to {@code seen}, for the failure
+     * message.
      */
     private static @Nullable Site assess(ServerLevel level, BlockPos at, Option option, List<String> seen) {
         List<Integer> heights = new ArrayList<>();
@@ -251,7 +262,10 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
         }
     }
 
-    /** A parked pod to the camera's left and a mannequin in a player's shape to its right, both turned to look at the wreck. */
+    /**
+     * A parked pod to the camera's left and a mannequin in a player's shape to its right, both turned to look at the
+     * wreck.
+     */
     private static void stand(MinecraftServer server, Option option, BlockPos ground) {
         ServerLevel level = server.overworld();
         Vec3 focus = pieceAt(ground, option.focus());
@@ -320,7 +334,10 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
         }
     }
 
-    /** One still: the camera {@code distance} blocks from the focus along the wreck's open side, {@code eyeY} up, looking at the focus. */
+    /**
+     * One still: the camera {@code distance} blocks from the focus along the wreck's open side, {@code eyeY} up,
+     * looking at the focus.
+     */
     private void view(
             TextureTestWorld world,
             Vec3 focus,
@@ -336,9 +353,9 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
     }
 
     /**
-     * The eye lifted until neither a block holds the camera nor ground that is not the wreck's stands in its sight line to the focus: a
-     * rise in the plain must not hide a wreck from the range still. Throws, naming {@code what} and the eye, when 24 lifts
-     * do not clear it: a still from inside a hill is never recorded.
+     * The eye lifted until neither a block holds the camera nor ground that is not the wreck's stands in its sight line
+     * to the focus: a rise in the plain must not hide a wreck from the range still. Throws, naming {@code what} and the
+     * eye, when 24 lifts do not clear it: a still from inside a hill is never recorded.
      */
     private static Vec3 clearView(TextureTestWorld world, Vec3 eye, Vec3 focus, String what) {
         return world.serverGet(server -> {

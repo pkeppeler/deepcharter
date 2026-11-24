@@ -24,9 +24,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The three wreck pieces of the salvage prefab concept round (#1214, docs/design/salvage-prefab-concepts.md) and the layout file
- * {@code tools/colony/wrecks.py} writes with them: where each piece's ground is, what stands beside it for scale and where the cameras
- * look. Both are test resources: nothing of the round reaches a player's world.
+ * The three wreck pieces of the salvage prefab concept round (#1214, docs/design/salvage-prefab-concepts.md) and the
+ * layout file {@code tools/colony/wrecks.py} writes with them: where each piece's ground is, what stands beside it for
+ * scale and where the cameras look. Both are test resources: nothing of the round reaches a player's world.
  */
 public final class SalvagePrefabConcepts {
     private static final Identifier LAYOUT =
@@ -118,8 +118,9 @@ public final class SalvagePrefabConcepts {
     }
 
     /**
-     * The palette of a piece's file, each state parsed as the game parses it. A block the game does not know loads as air without a word,
-     * and a property it does not know fails the parse, so this fails on either: every state must come back as the block the file names.
+     * The palette of a piece's file, each state parsed as the game parses it. A block the game does not know loads as
+     * air without a word, and a property it does not know fails the parse, so this fails on either: every state must
+     * come back as the block the file names.
      */
     public static List<BlockState> palette(CompoundTag root, String label) {
         List<BlockState> palette = new ArrayList<>();
