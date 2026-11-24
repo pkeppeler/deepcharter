@@ -8,6 +8,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
@@ -267,6 +268,26 @@ public class CampaignCostTest {
             }
             expect(helper, ore, "%s has no ore in a fresh column", world);
         }
+        helper.succeed();
+    }
+
+    /**
+     * A layer's window ends far below the pad's ground, where the campaign world's Conduit tops out, so the casing stops at the window's
+     * top row instead of writing past it when its chunk loads. It loads the chunk on the server thread, so it has a batch of its own.
+     */
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = MAX_TICKS)
+    public void theConduitStopsAtALayerWindowsTop(GameTestHelper helper) {
+        BlockPos conduit = Colony.plannedAnchor(helper.getLevel().getServer(), ColonyAnchor.CONDUIT)
+                .orElseThrow(() -> failure(helper, "the colony's pad is not chosen, so it has no Conduit"));
+        ServerLevel level = world(helper, "campaign_layer_1");
+        LevelChunk chunk = level.getChunk(conduit.getX() >> 4, conduit.getZ() >> 4);
+        // level-height: the top row of a window, a test world cut to a band's rows
+        BlockPos top = new BlockPos(conduit.getX(), level.getMaxY(), conduit.getZ());
+        expect(
+                helper,
+                chunk.getBlockState(top).is(ColonyBlocks.CONDUIT),
+                "no Conduit casing at campaign_layer_1's top, %s",
+                top);
         helper.succeed();
     }
 

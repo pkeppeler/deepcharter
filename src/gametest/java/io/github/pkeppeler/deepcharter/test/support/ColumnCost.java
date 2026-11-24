@@ -5,6 +5,7 @@ import java.lang.management.ManagementFactory;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -37,6 +39,15 @@ public final class ColumnCost {
     private static final int COOL_DOWN_TICKS = 100;
     /** A region counts as unloaded when this few chunks of a world are left, such as those around a spawn. */
     private static final int UNLOADED_CHUNKS = 30;
+
+    /**
+     * The tests whose measured run holds the autosave off, by their bounds, and the countdown from before the first of them. The hold
+     * ends with the last of them, on any exit of the test, through {@link #release} from {@code GameTestInfoMixin}'s {@code finish}.
+     * Server thread only.
+     */
+    private static final Map<AABB, MinecraftServerAccess> AUTOSAVE_HOLDERS = new HashMap<>();
+
+    private static int countdownBeforeHold;
 
     private ColumnCost() {}
 
@@ -62,10 +73,8 @@ public final class ColumnCost {
             int rounds,
             Consumer<Map<String, List<Measurement>>> report) {
         boolean smoke = rounds == 0;
-        MinecraftServerAccess server = (MinecraftServerAccess) helper.getLevel().getServer();
-        int autosave = server.deepcharter$ticksUntilAutosave();
         if (!smoke) {
-            server.deepcharter$setTicksUntilAutosave(Integer.MAX_VALUE);
+            holdAutosave(helper);
         }
         ArrayDeque<Run> queue = new ArrayDeque<>();
         if (smoke) {
@@ -111,12 +120,29 @@ public final class ColumnCost {
             cooldown[0] = smoke ? 0 : COOL_DOWN_TICKS;
             if (queue.isEmpty()) {
                 if (rounds > 0) {
-                    server.deepcharter$setTicksUntilAutosave(autosave);
                     report.accept(results);
                 }
                 helper.succeed();
             }
         });
+    }
+
+    /** Pushes the server's next autosave past the end of {@code helper}'s test, until {@link #release}. */
+    private static void holdAutosave(GameTestHelper helper) {
+        MinecraftServerAccess server = (MinecraftServerAccess) helper.getLevel().getServer();
+        if (AUTOSAVE_HOLDERS.isEmpty()) {
+            countdownBeforeHold = server.deepcharter$ticksUntilAutosave();
+            server.deepcharter$setTicksUntilAutosave(Integer.MAX_VALUE);
+        }
+        AUTOSAVE_HOLDERS.put(helper.getBounds(), server);
+    }
+
+    /** Ends the autosave hold of the test with these bounds, and restores the countdown when no other test holds it. */
+    public static void release(AABB testBounds) {
+        MinecraftServerAccess server = AUTOSAVE_HOLDERS.remove(testBounds);
+        if (server != null && AUTOSAVE_HOLDERS.isEmpty()) {
+            server.deepcharter$setTicksUntilAutosave(countdownBeforeHold);
+        }
     }
 
     /** The median of each reading over {@code all}. */
