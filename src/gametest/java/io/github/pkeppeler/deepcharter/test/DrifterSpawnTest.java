@@ -150,8 +150,11 @@ public class DrifterSpawnTest {
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void driftersKeyOnTheTagAndAreCountedByPodsAndCappedByZone(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
+        // Not layer 3: its zones are in the hollows tag already. Layer 2's top zone and layer 1's bottom zone are this
+        // test's.
         CampaignBands.Band one = CampaignBands.LAYER_1;
-        int top = topY(one.minY(), one.height(), 0);
+        CampaignBands.Band two = CampaignBands.LAYER_2;
+        int top = topY(two.minY(), two.height(), 0);
         int bottom = topY(one.minY(), one.height(), 2);
         List<BlockPos> columns = new ArrayList<>();
         for (int x = CX - HALF_X; x <= CX + HALF_X; x += 16) {
@@ -181,38 +184,42 @@ public class DrifterSpawnTest {
                     level.getBiome(BlockPos.containing(topSource.pos())).is(Drifters.FUNGAL_HOLLOWS),
                     "the test biome is not in the hollows tag");
             List<Drifter> made = new ArrayList<>();
-            Drifter first = placed(helper, level, topSource, 1, made);
-            double away = first.position().distanceTo(topSource.pos());
-            LOGGER.info("[drifter] one placed {} blocks from its source", String.format("%.1f", away));
-            expect(
-                    helper,
-                    away >= TUNING.spawn().minBlocks() - 1.5
-                            && away <= TUNING.spawn().maxBlocks() + 1.5,
-                    "a drifter was placed %s blocks from its source",
-                    away);
-            expect(
-                    helper,
-                    level.getBiome(first.blockPosition()).is(Drifters.FUNGAL_HOLLOWS),
-                    "a drifter was placed outside the hollows");
-            refused(helper, level, topSource, 1, "a second one for one source");
-            placed(helper, level, topSource, 2, made);
-            refused(helper, level, topSource, 3, "a third in a zone that holds two");
-            made.forEach(Drifter::discard);
-            made.clear();
-            // The alarm of the top zone lets one source hold two.
-            DrifterAlarm.raise(level, top);
-            placed(helper, level, topSource, 1, made);
-            placed(helper, level, topSource, 1, made);
-            refused(helper, level, topSource, 1, "a third for one source under the alarm");
-            made.forEach(Drifter::discard);
-            made.clear();
-            // The bottom zone holds four.
-            Drifters.Source bottomSource = middle(bottom);
-            for (int i = 0; i < 4; i++) {
-                placed(helper, level, bottomSource, 5, made);
+            try {
+                Drifter first = placed(helper, level, topSource, 1, made);
+                double away = first.position().distanceTo(topSource.pos());
+                LOGGER.info("[drifter] one placed {} blocks from its source", String.format("%.1f", away));
+                expect(
+                        helper,
+                        away >= TUNING.spawn().minBlocks() - 1.5
+                                && away <= TUNING.spawn().maxBlocks() + 1.5,
+                        "a drifter was placed %s blocks from its source",
+                        away);
+                expect(
+                        helper,
+                        level.getBiome(first.blockPosition()).is(Drifters.FUNGAL_HOLLOWS),
+                        "a drifter was placed outside the hollows");
+                refused(helper, level, topSource, 1, "a second one for one source");
+                placed(helper, level, topSource, 2, made);
+                refused(helper, level, topSource, 3, "a third in a zone that holds two");
+                made.forEach(Drifter::discard);
+                made.clear();
+                // The alarm of the top zone lets one source hold two.
+                DrifterAlarm.raise(level, top);
+                placed(helper, level, topSource, 1, made);
+                placed(helper, level, topSource, 1, made);
+                refused(helper, level, topSource, 1, "a third for one source under the alarm");
+                made.forEach(Drifter::discard);
+                made.clear();
+                // The bottom zone holds four.
+                Drifters.Source bottomSource = middle(bottom);
+                for (int i = 0; i < 4; i++) {
+                    placed(helper, level, bottomSource, 5, made);
+                }
+                refused(helper, level, bottomSource, 5, "a fifth in the bottom zone, which holds four");
+            } finally {
+                // A failed check must not leave a drifter in a zone another test counts (#1180).
+                made.forEach(Drifter::discard);
             }
-            refused(helper, level, bottomSource, 5, "a fifth in the bottom zone, which holds four");
-            made.forEach(Drifter::discard);
             helper.succeed();
         });
         FarChunks.awaitEntityTicking(helper, level, columns, index -> ready[0]++);
@@ -223,7 +230,8 @@ public class DrifterSpawnTest {
     public void killingADrifterRaisesTheAlarmOfItsZone(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band two = CampaignBands.LAYER_2;
-        int top = topY(two.minY(), two.height(), 0);
+        CampaignBands.Band three = CampaignBands.LAYER_3;
+        int top = topY(three.minY(), three.height(), 0);
         BlockPos origin = new BlockPos(25_500, top, 25_500);
         MockPlayer[] striker = {null};
         long[] since = {-1};
@@ -393,10 +401,10 @@ public class DrifterSpawnTest {
     public void aDrifterIsPlacedInTheZoneOfItsSourceAndNeverAcrossAnEdge(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band one = CampaignBands.LAYER_1;
-        CampaignBands.Band two = CampaignBands.LAYER_2;
-        // Three blocks under layer 1's ceiling, and four blocks inside layer 2's middle zone from its top zone.
+        CampaignBands.Band three = CampaignBands.LAYER_3;
+        // Three blocks under layer 1's ceiling, and the top of layer 3's middle zone (its own: no other test uses it).
         int ceiling = one.minY() + one.height() - 4;
-        int edge = Zones.span(two.minY(), two.height(), 1).high() - 3;
+        int edge = Zones.span(three.minY(), three.height(), 1).high() - 3;
         int[] ready = {0};
         boolean[] done = {false};
         List<BlockPos> columns = columns(ceiling);
@@ -425,7 +433,8 @@ public class DrifterSpawnTest {
                                                 .equals(zone)
                                         && level.isInWorldBounds(drifter.blockPosition());
                         double placedY = drifter.getY();
-                        double away = drifter.position().distanceTo(source.pos());
+                        // The spawner's own measure, on the same doubles: its place is the drifter's position.
+                        double away = drifter.position().distanceTo(Vec3.atCenterOf(BlockPos.containing(source.pos())));
                         drifter.discard();
                         expect(
                                 helper,
@@ -434,13 +443,12 @@ public class DrifterSpawnTest {
                                 placedY,
                                 zone,
                                 y);
-                        // The spawner measures from the centre of the source's block, half a block above source.pos().
                         expect(
                                 helper,
-                                away >= TUNING.spawn().minBlocks() - 0.5,
+                                away >= TUNING.spawn().minBlocks(),
                                 "a drifter was placed %s blocks from its source, under %s",
                                 away,
-                                TUNING.spawn().minBlocks() - 0.5);
+                                TUNING.spawn().minBlocks());
                     }
                 }
                 expect(
@@ -460,7 +468,7 @@ public class DrifterSpawnTest {
      * ringing so that a roll comes in a few checks: none while {@code spawn_mobs} is off; one pod holds two (1 plus the alarm's 1), a second pod
      * three (the middle zone's cap), and each new drifter comes at least a check after the last. The drifters are held still so that none
      * bursts on its pod. The roll and the placement draw from a seeded source ({@link Drifters#seed}), so the counts are reproducible, not a
-     * chance of a flake; the seed is of this zone alone (no other test uses layer 2's middle zone), so a timeout that skips the reset leaves
+     * chance of a flake; the seed is of this zone alone (no other test uses layer 2's middle zone; GameTests of a batch run side by side, and drifters are counted level-wide by zone), so a timeout that skips the reset leaves
      * nothing another test draws from. The budget only bounds a failure.
      */
     @GameTest(
