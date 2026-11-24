@@ -32,8 +32,11 @@ public final class TestSites {
 
     private static final String TEST_PACKAGE = TestSites.class.getPackageName().replaceAll("\\.support$", "");
 
+    /** The last built layer. A claim for "the last layer" uses this, never its number, which moves when a layer is built. */
+    public static final int LAST = CampaignBands.lastLayer();
+
     /** The first layer past the built ones: the campaign sample's unbuilt depth, which tests carve pockets in too. */
-    private static final int UNBUILT = CampaignBands.lastLayer() + 1;
+    public static final int UNBUILT = LAST + 1;
 
     /** One owner's inclusive block columns in one layer; layer 0 is the surface. */
     public record Site(String owner, int layer, int x0, int x1, int z0, int z1) {

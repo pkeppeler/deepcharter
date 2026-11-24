@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.test.support.TestSites;
 import io.github.pkeppeler.deepcharter.test.support.TestSites.Site;
 import java.util.List;
@@ -178,6 +179,30 @@ public class TestSitesTest {
                                 && site.z0() <= 9500
                                 && 9500 <= site.z1()),
                 "ColonyTest reads the surface at 9500, 9500 and claims no box around it in TestSiteTable");
+        helper.succeed();
+    }
+
+    /** A claim for "the unbuilt depth" or "the last layer" names a symbol, not a number, so building a layer moves it (#1182). */
+    @GameTest
+    public void aSymbolicClaimResolvesToTheCurrentLayerCount(GameTestHelper helper) {
+        expect(
+                helper,
+                TestSites.LAST == CampaignBands.lastLayer() && TestSites.UNBUILT == CampaignBands.lastLayer() + 1,
+                "LAST is %s and UNBUILT %s, with %s layers built",
+                TestSites.LAST,
+                TestSites.UNBUILT,
+                CampaignBands.lastLayer());
+        expect(
+                helper,
+                TestSites.sites().stream()
+                                .anyMatch(site -> site.owner().equals("SuitTimerTest")
+                                        && site.x0() == 6595
+                                        && site.layer() == CampaignBands.lastLayer() + 1)
+                        && TestSites.sites().stream()
+                                .anyMatch(site -> site.owner().equals("BandReadersTest")
+                                        && site.layer() == CampaignBands.lastLayer()
+                                        && site.x0() == 22997),
+                "SuitTimerTest does not claim the layer below the last built one, or BandReadersTest the last one");
         helper.succeed();
     }
 }

@@ -1,12 +1,14 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import static io.github.pkeppeler.deepcharter.test.support.TestSites.LAST;
+import static io.github.pkeppeler.deepcharter.test.support.TestSites.UNBUILT;
 import static io.github.pkeppeler.deepcharter.test.support.TestSites.claim;
 import static io.github.pkeppeler.deepcharter.test.support.TestSites.exempt;
 import static io.github.pkeppeler.deepcharter.test.support.TestSites.row;
 
 /**
  * The table of {@link TestSites}: every server test class that stages at a fixed place of the shared worlds, with the block columns
- * it takes in each layer (layer 0 is the surface). A box is one room with its shell ({@link RoomCarver} writes the shell one block
+ * it takes in each layer (layer 0 is the surface; {@code LAST} is the last built layer and {@code UNBUILT} the depth below it, resolved from {@code CampaignBands}, so a claim for either survives a new layer). A box is one room with its shell ({@link RoomCarver} writes the shell one block
  * outside the room) and whatever the test moves or flies beyond it; a {@code row} is {@code count} boxes {@code step} columns apart.
  * A test that only forces or reads a chunk claims that chunk's 16 x 16 columns. Two owners never share a column of a layer: pick the
  * next free place and run {@code TestSitesTest}, which names the pair that does.
@@ -30,7 +32,7 @@ final class TestSiteTable {
         claim("BandReadersTest", 1, 22997, 23003, 22997, 23003);
         claim("BandReadersTest", 1, 23511, 23513, 22999, 23001);
         claim("BandReadersTest", 2, 23347, 23357, 22995, 23005);
-        claim("BandReadersTest", 2, 22997, 23003, 22997, 23003);
+        claim("BandReadersTest", LAST, 22997, 23003, 22997, 23003);
 
         row("BlastingChargeTest", 1, 2993, 3023, 64, 7, 5185, 5215);
 
@@ -57,7 +59,9 @@ final class TestSiteTable {
         row("BreachCrustMoversTest", 1, 31040, 31056, 32, 10, 31072, 31088);
         claim("BreachCrustMoversTest", 2, 31302, 31306, 31078, 31082);
         row("BreachCrustMoversTest", 2, 31040, 31056, 32, 10, 31104, 31120);
+        row("BreachCrustMoversTest", 3, 31040, 31056, 32, 10, 31136, 31152);
         claim("BreachCrustMoversTest", 3, 31302, 31306, 31110, 31114);
+        claim("BreachCrustMoversTest", UNBUILT, 31302, 31306, 31142, 31146);
 
         claim("CampaignCrossingTest", 1, 21395, 21404, 21395, 21404);
         claim("CampaignCrossingTest", 2, 21395, 21404, 21395, 21404);
@@ -170,6 +174,7 @@ final class TestSiteTable {
 
         claim("OreHostTest", 1, 7399, 7408, 3007, 3009);
         claim("OreHostTest", 2, 7399, 7408, 3015, 3017);
+        claim("OreHostTest", 3, 7399, 7408, 3023, 3025);
 
         claim("OrePlacementTest", 1, 7088, 7103, 2992, 3007);
         claim("OrePlacementTest", 1, 7792, 7807, 2992, 3007);
@@ -180,15 +185,15 @@ final class TestSiteTable {
 
         claim("OutpostHabitabilityTest", 1, 6391, 6409, 9491, 9509);
         claim("OutpostHabitabilityTest", 1, 6451, 6469, 9491, 9509);
-        claim("OutpostHabitabilityTest", 3, 6515, 6525, 7395, 7405);
+        claim("OutpostHabitabilityTest", UNBUILT, 6515, 6525, 7395, 7405);
 
         claim("OutpostLeakTest", 1, 6631, 6649, 9491, 9509);
         claim("OutpostLeakTest", 1, 6947, 6965, 9491, 9509);
-        claim("OutpostLeakTest", 3, 6575, 6585, 7395, 7405);
+        claim("OutpostLeakTest", UNBUILT, 6575, 6585, 7395, 7405);
 
         claim("OutpostRiskLineTest", 1, 6755, 6773, 9491, 9509);
         claim("OutpostRiskLineTest", 1, 6883, 6901, 9491, 9509);
-        claim("OutpostRiskLineTest", 3, 6823, 6833, 7395, 7405);
+        claim("OutpostRiskLineTest", UNBUILT, 6823, 6833, 7395, 7405);
 
         claim("OutpostSettlingReloadTest", 1, 10353, 10383, 9585, 9615);
 
@@ -229,9 +234,9 @@ final class TestSiteTable {
         row("PodDrillTest", 1, 4019, 4030, 64, 3, 2995, 3005);
         claim("PodDrillTest", 1, 3509, 3515, 2997, 3003);
         claim("PodDrillTest", 2, 3509, 3515, 2997, 3003);
-        claim("PodDrillTest", 2, 3573, 3579, 2997, 3003);
-        claim("PodDrillTest", 3, 3123, 3134, 2995, 3005);
-        claim("PodDrillTest", 3, 3187, 3198, 2995, 3005);
+        claim("PodDrillTest", LAST, 3573, 3579, 2997, 3003);
+        claim("PodDrillTest", UNBUILT, 3123, 3134, 2995, 3005);
+        claim("PodDrillTest", UNBUILT, 3187, 3198, 2995, 3005);
 
         claim("PodDriveStepTest", 1, 4259, 4270, 2995, 3005);
         claim("PodDriveStepTest", 1, 4259, 4270, 3011, 3021);
@@ -337,12 +342,12 @@ final class TestSiteTable {
         claim("StructureLightBorderTest", 1, 16576, 16623, 15552, 15615);
         claim("StructureLightBorderTest", 1, 41488, 41551, 15584, 15631);
 
-        row("SuitPacingTest", 3, 7395, 7405, 64, 3, 7395, 7405);
+        row("SuitPacingTest", UNBUILT, 7395, 7405, 64, 3, 7395, 7405);
 
         claim("SuitTimerTest", 0, 6395, 6405, 7395, 7405);
         claim("SuitTimerTest", 1, 6443, 6453, 7395, 7405);
         claim("SuitTimerTest", 2, 6491, 6501, 7395, 7405);
-        row("SuitTimerTest", 3, 6595, 6605, 100, 7, 7395, 7405);
+        row("SuitTimerTest", UNBUILT, 6595, 6605, 100, 7, 7395, 7405);
 
         claim("SurfaceBreachTest", 0, 2499, 2501, 2499, 2501);
         claim("SurfaceBreachTest", 0, 2599, 2601, 2599, 2601);
