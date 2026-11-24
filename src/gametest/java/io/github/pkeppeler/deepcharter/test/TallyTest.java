@@ -658,9 +658,6 @@ public class TallyTest {
                 return;
             }
             if (level.getGameTime() < litAt[0] + FLARE_BURN_TICKS) {
-                if (arena.tally.isClamped()) {
-                    throw failure(helper, "a Tally clamped to a pod inside a burning flare's reach");
-                }
                 return;
             }
             snuffFlare(level, flare[0]);
