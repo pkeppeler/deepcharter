@@ -148,7 +148,7 @@ public final class MockPlayers {
     }
 
     // GameTestHelper has no public accessor for its test, and this is the only way to know when it ends.
-    private static GameTestInfo testInfo(GameTestHelper helper) {
+    public static GameTestInfo testInfo(GameTestHelper helper) {
         try {
             Field field = GameTestHelper.class.getDeclaredField("testInfo");
             field.setAccessible(true);

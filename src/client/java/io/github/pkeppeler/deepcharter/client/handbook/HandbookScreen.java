@@ -84,6 +84,8 @@ public final class HandbookScreen extends Screen {
     private final Map<Integer, Integer> mapPages;
     /** The index of the first page of any chapter: the pages before it are the intro. */
     private final int firstChapterPage;
+    /** The index of the first pencil sheet, or -1 when no Note has drawn a path. */
+    private final int pencilPage;
 
     private int page;
     private int previousPage;
@@ -148,8 +150,10 @@ public final class HandbookScreen extends Screen {
         Map<Integer, Integer> firstPages = new HashMap<>();
         Map<Integer, HandbookPage.Chapter> byNumber = new HashMap<>();
         Map<Integer, Integer> maps = new HashMap<>();
+        int firstPencil = -1;
         for (int index = 0; index < this.pages.size(); index++) {
             switch (this.pages.get(index)) {
+                case HandbookPage.Pencil pencil -> firstPencil = firstPencil < 0 ? index : firstPencil;
                 case HandbookPage.ChapterText text -> firstPages.putIfAbsent(text.number(), index);
                 case HandbookPage.Chapter chapter -> {
                     firstPages.putIfAbsent(chapter.number(), index);
@@ -162,6 +166,7 @@ public final class HandbookScreen extends Screen {
         this.chapterPages = Map.copyOf(firstPages);
         this.chapters = Map.copyOf(byNumber);
         this.mapPages = Map.copyOf(maps);
+        this.pencilPage = firstPencil;
         this.firstChapterPage =
                 firstPages.values().stream().min(Integer::compare).orElse(this.pages.size());
         this.memory = memory;
@@ -219,7 +224,7 @@ public final class HandbookScreen extends Screen {
         screen.openNote(note);
     }
 
-    /** The pages of the Handbook tab, from the chapters and progress the server synced. */
+    /** The pages of the Handbook tab, from the chapters, progress and pencil paths the server synced. */
     public static List<HandbookPage> currentPages(Minecraft client) {
         Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
         HandbookChapters.all(Objects.requireNonNull(
@@ -227,7 +232,7 @@ public final class HandbookScreen extends Screen {
                                 "the handbook pages need a connection to the server for its chapters")
                         .registryAccess())
                 .forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
-        return HandbookPages.of(chapters, ClientHandbook.completed());
+        return HandbookPages.withPencil(HandbookPages.of(chapters, ClientHandbook.completed()), ClientPencil.entries());
     }
 
     /**
@@ -427,24 +432,43 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * The tabs down the right edge of the sheet, stepped as far as the sheet is tall: the intro's first, then one for each chapter. The
-     * intro's opens the cover, a chapter's opens its map. A tab is at index {@link #section} of the list.
+     * The tabs down the right edge of the sheet, stepped as far as the sheet is tall: the intro's first, then one for each chapter, then
+     * the pencil sheet's once a Note has drawn a path. The intro's opens the cover, a chapter's opens its map, the last opens the
+     * pencil sheet. A tab is at index {@link #section} of the list.
      */
     private List<PaperButton> chapterTabs() {
         QuestMapTuning q = QuestMapTuning.current();
-        int count = mapPages.size() + 1;
+        int count = mapPages.size() + 1 + (pencilPage >= 0 ? 1 : 0);
         int pitch = Math.min(tuning().tabHeight() + q.chapterTabGap(), (paperHeight - q.chapterTabTop()) / count);
+        int tabsTop = paperTop + q.chapterTabTop();
+        int minPitch = font.lineHeight + q.chapterTabGap();
         int tabHeight = pitch - q.chapterTabGap();
+        if (pitch < minPitch) {
+            // a window too short for the tabs to be a line of text each: they stand a line tall, the gap between them
+            // goes first when even that is too long for the window, and the column starts higher
+            pitch = Math.max(font.lineHeight, Math.min(minPitch, height / count));
+            tabHeight = Math.max(font.lineHeight, pitch - q.chapterTabGap());
+            tabsTop = Math.max(0, paperTop + paperHeight - count * pitch);
+        }
         List<PaperButton> tabs = new ArrayList<>();
         for (int section = 0; section < count; section++) {
             int target = section;
             PaperButton tab = addRenderableWidget(new PaperButton(
                     paperLeft + paperWidth - 1,
-                    paperTop + q.chapterTabTop() + section * pitch,
+                    tabsTop + section * pitch,
                     q.chapterTabWidth(),
                     tabHeight,
-                    Component.literal(section == 0 ? INTRO_TAB : Integer.toString(section)),
-                    button -> goTo(target == 0 ? 0 : Objects.requireNonNull(mapPages.get(target)))));
+                    section == 0
+                            ? Component.literal(INTRO_TAB)
+                            : section > mapPages.size()
+                                    ? Component.translatable("deepcharter.handbook.pencil.tab")
+                                    : Component.literal(Integer.toString(section)),
+                    button -> goTo(
+                            target == 0
+                                    ? 0
+                                    : target > mapPages.size()
+                                            ? pencilPage
+                                            : Objects.requireNonNull(mapPages.get(target)))));
             tab.setJoinsLeft();
             tabs.add(tab);
         }
@@ -453,11 +477,14 @@ public final class HandbookScreen extends Screen {
 
     /**
      * The section of the book the open page belongs to, whose tab reads as selected: 0 for the intro (cover, slip, letter and
-     * contents), a chapter's number for its text and map, or -1 for the end pages and the Notes tab, which have no tab.
+     * contents), a chapter's number for its text and map, the pencil sheet's own tab after the chapters, or -1 for the end pages and the Notes tab, which have no tab.
      */
     public int section() {
         if (notesTab) {
             return -1;
+        }
+        if (pages.get(page) instanceof HandbookPage.Pencil) {
+            return mapPages.size() + 1;
         }
         int chapter = HandbookPage.chapterNumber(pages.get(page));
         if (chapter > 0) {
@@ -664,6 +691,7 @@ public final class HandbookScreen extends Screen {
             case HandbookPage.Contents contents -> drawContents(graphics, contents);
             case HandbookPage.ChapterText text -> drawChapterText(graphics, text);
             case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
+            case HandbookPage.Pencil pencil -> drawPencil(graphics, pencil);
             case HandbookPage.Appendix appendix -> drawAppendix(graphics);
             case HandbookPage.Contract contract -> drawContract(graphics, contract);
         }
@@ -1046,6 +1074,33 @@ public final class HandbookScreen extends Screen {
             QuestMap.Card card = indexCard(chapter);
             QuestMap.drawCard(graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter));
         }
+    }
+
+    /** The pencil sheet: its heading and rule, then a row for each path on it. The page is fixed: nothing on it drags or zooms. */
+    private void drawPencil(GuiGraphicsExtractor graphics, HandbookPage.Pencil pencil) {
+        int y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("pencil.label"),
+                textLeft,
+                paperTop + tuning().topMargin(),
+                mapWidth(),
+                tuning().faintInkColor());
+        y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("pencil.title"),
+                textLeft,
+                y + QuestMapTuning.current().headingGap(),
+                mapWidth(),
+                tuning().inkColor());
+        // as drawMap's rule: across the whole sheet the rows are drawn on
+        graphics.fill(textLeft, y + 1, textLeft + mapWidth(), y + 2, Colors.opaque(tuning().inkColor()));
+        PencilSheet.draw(graphics, font, pencilLayout(pencil, y + tuning().paragraphGap() + 2));
+    }
+
+    private PencilSheet.Layout pencilLayout(HandbookPage.Pencil pencil, int top) {
+        return PencilSheet.layout(pencil.entries(), textLeft, top, mapWidth(), bottom(), font.lineHeight);
     }
 
     private void drawAppendix(GuiGraphicsExtractor graphics) {
