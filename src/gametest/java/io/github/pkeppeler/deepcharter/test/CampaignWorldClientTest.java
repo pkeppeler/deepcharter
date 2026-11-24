@@ -383,7 +383,7 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
             player.teleportTo(s.overworld(), away.x, away.y, away.z, Set.of(), 0f, 0f, true);
         });
         // The arrival chunk is loaded before it ticks entities, and a pod added to it then is not in the level: the
-        // wreck would have no crew to kill (#1199).
+        // wreck would have no crew to kill.
         BlockPos awayPos = BlockPos.containing(away);
         ClientWait.until(
                 context,
@@ -404,9 +404,10 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
             pod.setPos(away);
             boolean added = s.overworld().addFreshEntity(pod);
             player.startRiding(pod, true, false);
-            if (!added || s.overworld().getEntity(pod.getUUID()) != pod) {
+            boolean held = s.overworld().getEntity(pod.getUUID()) == pod;
+            if (!added || !held) {
                 throw new AssertionError("the pod should be in the level before the wreck: addFreshEntity returned "
-                        + added + ", the level holds it " + (s.overworld().getEntity(pod.getUUID()) == pod));
+                        + added + ", the level holds it " + held);
             }
             if (player.getVehicle() != pod) {
                 throw new AssertionError(
