@@ -503,7 +503,34 @@ public class OvergrowthScenario extends EvidenceScenario {
                 }
             }
         }
+        if (fluidReaches(level, feet, run, cells)) {
+            return Optional.empty();
+        }
         return Optional.of(new Cave(feet.relative(run, 1), run, List.copyOf(cells), clear));
+    }
+
+    /**
+     * True when fluid would run into the bore once it is cut: lava or water in the mouth, or beside, above or at the end of a bore cell
+     * (fluid does not climb, so what lies under a cell is no threat). Fluid is never grown over, so a cell it fills stays pending for good.
+     */
+    private static boolean fluidReaches(ServerLevel level, BlockPos feet, Direction run, List<BlockPos> cells) {
+        Direction side = run.getClockWise();
+        for (int across = -1; across <= 1; across++) {
+            for (int up = 0; up < BORE_HEIGHT; up++) {
+                if (!level.getFluidState(feet.relative(side, across).above(up)).isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        for (BlockPos cell : cells) {
+            for (Direction face : Direction.values()) {
+                if (face != Direction.DOWN
+                        && !level.getFluidState(cell.relative(face)).isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Nothing to collide with: air, a glowcap. */
