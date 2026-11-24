@@ -106,39 +106,34 @@ public class SurfaceWritesTest {
         ServerLevel level = helper.getLevel();
         BlockState sandstone = Blocks.SANDSTONE.defaultBlockState();
         expect(helper, SurfaceWrites.neutral(sandstone, GREEN), "the pair is one the fast path would take");
-        boolean was = SurfaceWrites.setEnabled(true);
-        try {
-            // A chunk far from every test, wrapped as the generator wraps a finished one.
-            LevelChunk live = level.getChunk(1_000_100, 1_000_100);
-            ImposterProtoChunk imposter = new ImposterProtoChunk(live, true);
-            BlockPos at = at(live, 3, level.getMinY() + 10, 3); // level-height: a far chunk of the test level
-            long before = SurfaceWrites.fastWrites();
-            expect(helper, live.getBlockState(at) == sandstone, "the far chunk holds sandstone at %s", at);
-            SurfaceWrites.set(imposter, at, GREEN);
-            expect(helper, SurfaceWrites.fastWrites() == before, "an imposter chunk took the fast path");
-            expect(helper, live.getBlockState(at) == GREEN, "the vanilla write did not reach the live chunk");
-            live.setBlockState(at, sandstone, 3);
+        // A chunk far from every test, wrapped as the generator wraps a finished one.
+        LevelChunk live = level.getChunk(1_000_100, 1_000_100);
+        ImposterProtoChunk imposter = new ImposterProtoChunk(live, true);
+        BlockPos at = at(live, 3, level.getMinY() + 10, 3); // level-height: a far chunk of the test level
+        expect(helper, live.getBlockState(at) == sandstone, "the far chunk holds sandstone at %s", at);
+        expect(helper, SurfaceWrites.fastSection(imposter, at, GREEN) == null, "an imposter chunk takes the fast path");
+        imposter.setBlockState(at, GREEN, 3);
+        expect(helper, live.getBlockState(at) == GREEN, "the vanilla write did not reach the live chunk");
+        live.setBlockState(at, sandstone, 3);
 
-            ProtoChunk lit = chunk(level, 1_000_110, ChunkStatus.BIOMES);
-            BlockPos inLit = at(lit, 3, level.getMinY() + 10, 3); // level-height: a hand-built chunk
-            lit.setBlockState(inLit, GREEN, 3);
-            lit.setPersistedStatus(ChunkStatus.INITIALIZE_LIGHT);
-            SurfaceWrites.set(lit, inLit, PACKED);
-            expect(helper, SurfaceWrites.fastWrites() == before, "a chunk at the light status took the fast path");
-            expect(helper, lit.getBlockState(inLit) == PACKED, "the vanilla write was lost");
-
-            lit.setPersistedStatus(ChunkStatus.BIOMES);
-            SurfaceWrites.set(lit, inLit, GREEN);
-            expect(helper, SurfaceWrites.fastWrites() == before + 1, "a proto chunk before the light status did not");
-        } finally {
-            SurfaceWrites.setEnabled(was);
-        }
+        ProtoChunk lit = chunk(level, 1_000_110, ChunkStatus.BIOMES);
+        BlockPos inLit = at(lit, 3, level.getMinY() + 10, 3); // level-height: a hand-built chunk
+        lit.setBlockState(inLit, GREEN, 3);
+        expect(
+                helper,
+                SurfaceWrites.fastSection(lit, inLit, PACKED) != null,
+                "a proto chunk before the light status does not");
+        lit.setPersistedStatus(ChunkStatus.INITIALIZE_LIGHT);
+        expect(
+                helper,
+                SurfaceWrites.fastSection(lit, inLit, PACKED) == null,
+                "a chunk at the light status takes the fast path");
         helper.succeed();
     }
 
     /**
      * Generates one chunk of layer 1's window through the normal worldgen with the fast path on, and the same chunk of the campaign
-     * world (the window's rows are its, ADR 0086) with it off: the mixin must take the path (a count of writes), and the band's blocks
+     * world (the window's rows are its, ADR 0086) with it off: the mixin must take the path (a count of that chunk's writes), and the band's blocks
      * must be those the vanilla path writes. The window chunk's four finished heightmaps must also equal what its blocks say.
      */
     @GameTest(maxTicks = 2400)
@@ -146,26 +141,31 @@ public class SurfaceWritesTest {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel window = layer(server, "campaign_layer_1");
         ServerLevel campaign = layer(server, "campaign_sample");
-        boolean was = SurfaceWrites.setEnabled(true);
-        LevelChunk on;
+        // The campaign world's chunk first, with the path off, then the window's with it on, watching only that
+        // position: the
+        // count is of one chunk position, so another test's worldgen cannot move it. The toggle is flipped only while
+        // this
+        // test waits on the one chunk.
         LevelChunk off;
-        long taken;
+        boolean was = SurfaceWrites.setEnabled(false);
         try {
-            long before = SurfaceWrites.fastWrites();
-            on = window.getChunk(1_000_200, 1_000_200);
-            taken = SurfaceWrites.fastWrites() - before;
-            SurfaceWrites.setEnabled(false);
-            before = SurfaceWrites.fastWrites();
             off = campaign.getChunk(1_000_200, 1_000_200);
-            expect(helper, SurfaceWrites.fastWrites() == before, "the path ran with the toggle off");
         } finally {
             SurfaceWrites.setEnabled(was);
         }
-        expect(
-                helper,
-                taken > 20_000,
-                "layer 1's chunk took the fast path %s times: the mixin is not on its writes",
-                taken);
+        LevelChunk on;
+        SurfaceWrites.watch(new ChunkPos(1_000_200, 1_000_200));
+        try {
+            on = window.getChunk(1_000_200, 1_000_200);
+            long taken = SurfaceWrites.watchedWrites();
+            expect(
+                    helper,
+                    taken > 20_000,
+                    "layer 1's chunk took the fast path %s times: the mixin is not on its writes",
+                    taken);
+        } finally {
+            SurfaceWrites.watch(null);
+        }
         CampaignBands.Band band = CampaignBands.LAYER_1;
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {

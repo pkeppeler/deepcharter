@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.LongAdder;
 import net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -28,7 +29,9 @@ public final class SurfaceWrites {
     /** Bumped when tags reload, so a verdict judged before the reload is a miss after it, whenever it is stored. */
     private static final AtomicInteger TAGS_GENERATION = new AtomicInteger();
 
-    private static final LongAdder FAST_WRITES = new LongAdder();
+    private static final LongAdder WATCHED_WRITES = new LongAdder();
+
+    private static volatile @Nullable ChunkPos watched;
 
     /**
      * The last pair {@link #judge} ruled on, and the tag generation it read. A column writes one pair row after row, and the
@@ -51,30 +54,56 @@ public final class SurfaceWrites {
         return was;
     }
 
-    // test-seam: SurfaceWritesTest asserts the mixin routes a real chunk's writes through the fast path.
-    public static long fastWrites() {
-        return FAST_WRITES.sum();
+    // test-seam: SurfaceWritesTest counts the fast writes of one chunk position, so concurrent worldgen elsewhere
+    // cannot move it.
+    public static void watch(@Nullable ChunkPos pos) {
+        watched = pos;
+        WATCHED_WRITES.reset();
+    }
+
+    // test-seam: the fast writes into the watched chunk position since watch.
+    public static long watchedWrites() {
+        return WATCHED_WRITES.sum();
     }
 
     /** What {@code chunk.setBlockState(pos, state)} returns and does, by the cheaper way when that is provably the same. */
     public static @Nullable BlockState set(ChunkAccess chunk, BlockPos pos, BlockState state) {
-        if (enabled
-                && chunk.getClass() == ProtoChunk.class
-                && !chunk.getPersistedStatus().isOrAfter(ChunkStatus.INITIALIZE_LIGHT)) {
-            int y = pos.getY();
-            if (!chunk.isOutsideBuildHeight(y)) {
-                LevelChunkSection section = chunk.getSection(chunk.getSectionIndex(y));
-                int x = SectionPos.sectionRelative(pos.getX());
-                int sectionY = SectionPos.sectionRelative(y);
-                int z = SectionPos.sectionRelative(pos.getZ());
-                if (neutral(section.getBlockState(x, sectionY, z), state)) {
-                    // false: no ThreadingDetector lock (ADR 0090).
-                    FAST_WRITES.increment();
-                    return section.setBlockState(x, sectionY, z, state, false);
-                }
-            }
+        LevelChunkSection section = enabled ? fastSection(chunk, pos, state) : null;
+        if (section == null) {
+            return chunk.setBlockState(pos, state);
         }
-        return chunk.setBlockState(pos, state);
+        ChunkPos watching = watched;
+        if (watching != null && watching.equals(chunk.getPos())) {
+            WATCHED_WRITES.increment();
+        }
+        // false: no ThreadingDetector lock (ADR 0090).
+        return section.setBlockState(
+                SectionPos.sectionRelative(pos.getX()),
+                SectionPos.sectionRelative(pos.getY()),
+                SectionPos.sectionRelative(pos.getZ()),
+                state,
+                false);
+    }
+
+    /**
+     * The section to write {@code state} into at {@code pos}, when the fast path may, else null. It does not read the toggle, so a
+     * test of the guard does not depend on it.
+     */
+    public static @Nullable LevelChunkSection fastSection(ChunkAccess chunk, BlockPos pos, BlockState state) {
+        if (chunk.getClass() != ProtoChunk.class
+                || chunk.getPersistedStatus().isOrAfter(ChunkStatus.INITIALIZE_LIGHT)) {
+            return null;
+        }
+        int y = pos.getY();
+        if (chunk.isOutsideBuildHeight(y)) {
+            return null;
+        }
+        LevelChunkSection section = chunk.getSection(chunk.getSectionIndex(y));
+        BlockState was = section.getBlockState(
+                SectionPos.sectionRelative(pos.getX()),
+                SectionPos.sectionRelative(y),
+                SectionPos.sectionRelative(pos.getZ()));
+        return neutral(was, state) ? section : null;
     }
 
     /** Whether writing {@code now} over {@code was} leaves every side effect of {@code ProtoChunk.setBlockState} a no-op. */
