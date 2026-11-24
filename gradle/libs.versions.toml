@@ -13,7 +13,7 @@ palantirJavaFormat = "2.102.0"
 spotless = "8.11.0"
 errorprone = "2.52.0"
 errorproneGradle = "5.2.0"
-nullaway = "0.14.3"
+nullaway = "0.14.4"
 jspecify = "1.0.1"
 # Pinned above what Error Prone and Checkstyle bring (GHSA-xxph-c9ww-hj94); build.gradle.kts has the buildscript copy
 guava = "33.8.0-jre"

@@ -96,24 +96,26 @@ public final class ColumnCost {
                 idle(smoke);
                 return;
             }
-            if (current[0] == null && !smoke && !everyWorldIsUnloaded(helper, allWorlds)) {
+            Run active = current[0];
+            if (active == null && !smoke && !everyWorldIsUnloaded(helper, allWorlds)) {
                 idle(smoke);
                 return;
             }
-            if (current[0] == null) {
+            if (active == null) {
                 if (queue.isEmpty()) {
                     return;
                 }
-                current[0] = queue.poll();
-                current[0].begin(helper);
+                active = queue.remove();
+                current[0] = active;
+                active.begin(helper);
             }
-            if (!current[0].isGenerated()) {
+            if (!active.isGenerated()) {
                 idle(smoke);
                 return;
             }
-            Measurement measurement = current[0].finish(helper);
-            if (current[0].measured) {
-                results.computeIfAbsent(current[0].world, world -> new ArrayList<>())
+            Measurement measurement = active.finish(helper);
+            if (active.measured) {
+                results.computeIfAbsent(active.world, world -> new ArrayList<>())
                         .add(measurement);
             }
             current[0] = null;
