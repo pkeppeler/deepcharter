@@ -1,8 +1,9 @@
 # Builds what would merge now: the PR head merged with origin/main as fetched at run time, never GitHub's
 # refs/pull/N/merge, which can be hours stale (#979). The workflow checks out the PR head (fetch-depth 0), then
-# main's copy of this action and tools/ci-merge-main.sh into .ci-main, so a branch cut before this existed
-# still runs it and a head cannot swap the script. It runs once, before any sub-action that builds or tests,
-# and records the merged main sha in a `merged-main` notice annotation that tools/merge-pr.sh reads through REST.
+# uses this action as `pkeppeler/deepcharter/.github/actions/merge-main@main`. The runner downloads the whole
+# repo at that ref outside the workspace, so tools/ci-merge-main.sh is main's copy and a head cannot swap it.
+# It runs once, before any sub-action that builds or tests, and records the merged main sha in a `merged-main`
+# notice annotation that tools/merge-pr.sh reads through REST.
 name: Merge main into the PR head
 description: Merge origin/main (fetched now) into the checked-out PR head, check the result and record the main sha.
 
@@ -19,6 +20,4 @@ runs:
       env:
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       run: |
-        # .ci-main is main's copy of this action, not part of the PR: keep it out of git's view.
-        echo "/.ci-main" >> "$(git rev-parse --git-path info/exclude)"
         "$GITHUB_ACTION_PATH/../../../tools/ci-merge-main.sh" "$HEAD_SHA"

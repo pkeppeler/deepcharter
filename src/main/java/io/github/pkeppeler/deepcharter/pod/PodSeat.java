@@ -13,11 +13,13 @@ public enum PodSeat {
     NAVIGATOR;
 
     /**
-     * The seat of {@code rider} in {@code pod}, or empty when the rider is not in its passenger list. That happens on a client for
-     * a tick or two while the pod and its passengers sync, so a render or tick path treats it as no readout and never throws.
+     * The seat of {@code rider} in {@code pod}, or empty when the rider holds no seat. The seat comes from the server's assignment ({@link PodSeats}), so
+     * a client that has not loaded another rider still gives each rider its role. A rider the assignment has not reached yet (a tick after boarding)
+     * takes the next seat after the listed ones, so it is empty only for an entity that is not aboard: a render or tick path treats that as no
+     * readout and never throws.
      */
     public static Optional<PodSeat> find(PodEntity pod, Entity rider) {
-        int index = pod.getPassengers().indexOf(rider);
+        int index = PodSeats.order(pod).indexOf(rider.getUUID());
         if (index < 0) {
             return Optional.empty();
         }
