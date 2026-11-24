@@ -97,7 +97,7 @@ public class GreatStalkScenario extends EvidenceScenario {
                     Block.UPDATE_ALL); // room-carver: a pad of the plain's own ground on the surface, which is not
             // layer rock
         }
-        if (!GreatStalk.place(level, RandomSource.create(SEED), origin)) {
+        if (!GreatStalk.place(level, RandomSource.create(SEED), origin, false)) {
             throw new AssertionError("the great stalk would not grow on its pad at " + origin);
         }
         BlockState crate = BuiltInRegistries.BLOCK

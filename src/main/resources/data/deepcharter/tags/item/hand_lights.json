@@ -26,6 +26,7 @@
     "minecraft:pearlescent_froglight",
     "deepcharter:company_lamp",
     "deepcharter:wall_lamp",
-    "deepcharter:floodlight"
+    "deepcharter:floodlight",
+    "deepcharter:glowcap"
   ]
 }

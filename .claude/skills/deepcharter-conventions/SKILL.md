@@ -52,7 +52,7 @@ Code lives under `io.github.pkeppeler.deepcharter`. Detail beyond this file:
 
 ## Code layout
 
-Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features are `layer pod scanner` and the M2 set `charter terminal colony ore handbook transmission wreck fuel market upgrade repair hangar sound surface creature`. The client mirrors each one under `client/<feature>/` (`colony` has only a client mixin and its refusal screen, `client/colony/`). A feature has:
+Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features are `layer pod scanner` and the M2 set `charter terminal colony ore handbook transmission wreck fuel market upgrade repair hangar sound surface creature suit`. The client mirrors each one under `client/<feature>/` (`colony` has only a client mixin and its refusal screen, `client/colony/`). A feature has:
 
 - `XInit.init()`, called once from `DeepCharter` (`XClientInit.init()` from `DeepCharterClient`). It calls the `init()` of each part, so adding a part edits the feature, never the entrypoints.
 - `XRegistry.register()`: its entities, blocks, items and other registrations.
@@ -74,6 +74,8 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
   Marking package B makes B's signatures non-null for every marked caller, so a PR can pass its own CI and break `main` once another merges: before queueing a batch of NullAway PRs, run the integration compile on the merged tree. NullAway stops at the first source set with errors (main, then client, then gametest), so rebuild until the whole build is clean, and probe a zero-finding package with a temporary `String s = null;`.
 
 Do not spell out counts of enum members or registry entries in prose ("the seven ores"): they drift. Name them, or point at the code.
+
+A per-tick hook must not throw on a missing level: look it up with `server.getLevel(...)` and handle null.
 
 A new part that needs its own `init()` and has no feature of its own gets a stub in its feature, wired into that feature's `XInit` already: `pod/PodComponents` (#65), `pod/PodTowing` (#76) and `layer/LayerStructures` (#79).
 

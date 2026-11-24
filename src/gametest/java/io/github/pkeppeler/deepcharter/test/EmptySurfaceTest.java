@@ -66,6 +66,9 @@ public class EmptySurfaceTest {
         return BuiltInRegistries.ENTITY_TYPE.getKey(type).toString();
     }
 
+    /** The layers whose zones list the Retained: the Claim and the Old Workings (CREATURES section 5). */
+    private static final int RETAINED_LAYERS = 2;
+
     /** The middle of a zone of a layer: a Y in that zone's biome. */
     private static int zoneMiddle(Band layer, int zone) {
         Zones.Span span = Zones.span(layer.minY(), layer.height(), zone);
@@ -73,8 +76,9 @@ public class EmptySurfaceTest {
     }
 
     /**
-     * The surface lists no creature at all. A layer lists the Retained as its one monster, in each of its three zones, and nothing else
-     * in any category. The unbuilt depth lists nothing.
+     * The surface lists no creature at all. Layers 1 and 2 list the Retained as their one monster, in each of their three zones, and
+     * nothing else in any category. Layer 3 lists nothing yet: its creatures are its own (CREATURES section 5; #918 to #920). The unbuilt
+     * depth lists nothing.
      */
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.B, maxTicks = MAX_TICKS)
     public void noBandListsAVanillaMonsterAndTheLayersKeepTheRetained(GameTestHelper helper) {
@@ -89,23 +93,25 @@ public class EmptySurfaceTest {
         spots.put("unbuilt depth", -1000);
         for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
             for (int zone = 0; zone < Zones.COUNT; zone++) {
-                spots.put("layer %d zone %d".formatted(number, zone), zoneMiddle(CampaignBands.layer(number), zone));
+                String place = number <= RETAINED_LAYERS ? "retained layer" : "layer";
+                spots.put(
+                        "%s %d zone %d".formatted(place, number, zone), zoneMiddle(CampaignBands.layer(number), zone));
             }
         }
         for (Map.Entry<String, Integer> spot : spots.entrySet()) {
-            boolean layer = spot.getKey().startsWith("layer");
+            boolean retained = spot.getKey().startsWith("retained layer");
             for (MobCategory category : MobCategory.values()) {
                 var mobs = generator
                         .getMobsAt(level, level.structureManager(), category, column.atY(spot.getValue()))
                         .unwrap();
-                boolean retainedOnly = layer
+                boolean retainedOnly = retained
                         && category == MobCategory.MONSTER
                         && !mobs.isEmpty()
                         && mobs.stream().allMatch(entry -> entry.value().type() == CreatureRegistry.LAMPLESS_FIGURE);
                 if (!mobs.isEmpty() && !retainedOnly) {
                     throw failure(helper, "%s lists %s creatures: %s", spot.getKey(), category, mobs);
                 }
-                if (layer && category == MobCategory.MONSTER && !retainedOnly) {
+                if (retained && category == MobCategory.MONSTER && !retainedOnly) {
                     throw failure(helper, "%s does not list the Retained as a monster", spot.getKey());
                 }
             }

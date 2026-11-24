@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -84,25 +85,23 @@ public class CompanyRockScenario extends EvidenceScenario {
 
     @Override
     protected void run(ClientGameTestContext context) {
-        int renderDistance = context.computeOnClient(
-                client -> client.options.renderDistance().get());
         TextureTestWorld.open(context, shot -> screenshot(context, shot), world -> {
             world.settleLimit(SETTLE_LIMIT_SECONDS);
-            context.runOnClient(client -> client.options.renderDistance().set(RENDER_DISTANCE));
-            ClientPacks.enable(context, TestPacks.LAYER_CONCEPT_GRAIN);
-            try {
-                for (int layer : List.of(1, 2)) {
-                    world.serverDo(server -> build(TestLayers.level(server, layer), layer));
+            ClientChecks.withRenderDistance(context, RENDER_DISTANCE, () -> {
+                ClientPacks.enable(context, TestPacks.LAYER_CONCEPT_GRAIN);
+                try {
+                    for (int layer : List.of(1, 2)) {
+                        world.serverDo(server -> build(TestLayers.level(server, layer), layer));
+                    }
+                    for (int layer : List.of(1, 2)) {
+                        world.serverDo(server -> place(TestLayers.level(server, layer), layer));
+                        shoot(context, world, layer);
+                    }
+                    frame(context);
+                } finally {
+                    ClientPacks.disable(context, TestPacks.LAYER_CONCEPT_GRAIN);
                 }
-                for (int layer : List.of(1, 2)) {
-                    world.serverDo(server -> place(TestLayers.level(server, layer), layer));
-                    shoot(context, world, layer);
-                }
-                frame(context);
-            } finally {
-                ClientPacks.disable(context, TestPacks.LAYER_CONCEPT_GRAIN);
-                context.runOnClient(client -> client.options.renderDistance().set(renderDistance));
-            }
+            });
         });
     }
 

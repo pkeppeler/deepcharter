@@ -14,7 +14,10 @@
     "LightSyncSendMixin",
     "MainShutdownHookMixin",
     "MinecraftServerAccess",
-    "ServerLevelForcedMixin"
+    "ServerChunkCacheAccess",
+    "ServerChunkCacheBlockingLoadMixin",
+    "ServerLevelForcedMixin",
+    "TicketAccess"
   ],
   "client": [
     "CardinalLightingMixin",
