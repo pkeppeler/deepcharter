@@ -2143,7 +2143,7 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Ladder.**
 1. **By hand.** Time every trip, retreat before the amber line, patch a hall's open pit and hatch with slag brick, and read the placement readout and the risk line to see what is short.
-2. **A suit track and an air canister** raise what the suit holds and top the reserve up in the field ([#1064](https://github.com/pkeppeler/deepcharter/issues/1064), not in this change). The stock suit is rated (0,0,0), as a block is, so a track is a step in every row.
+2. **Suit tracks and an air canister** raise what the suit holds and top the reserve up in the field: the tracks are [#1064](https://github.com/pkeppeler/deepcharter/issues/1064) (see [Suit tracks](#suit-tracks-1064-a)), the canister [#1194](https://github.com/pkeppeler/deepcharter/issues/1194). The stock suit is rated (0,0,0), as a block is, so a track is a step in every row.
 3. **Mastery.** Rated halls at every depth, and the top suit tiers: the timer stops being a trip's limit. The deeper-floor kit ([#1063](https://github.com/pkeppeler/deepcharter/issues/1063)) is the answer to a hall that does not hold.
 
 **The suit.** A reserve of 180 suit-seconds, kept for each player across logins, levels and crossings (a versioned attachment, `deepcharter:suit`). It pays only on foot (alive, not creative or spectator, not seated in a pod), and only where the depth's row asks something (`DepthRatings.requiredAt`). A depth with no row, the campaign's unbuilt depth, reads as (5,5,5). The surface, layers 1 and 2 and any level outside the chain ask nothing, so the suit is inert there: **the default build is no harder than before**, in the unpacked and the early game alike. A second on foot costs `0.5 + 0.5 * (heat the depth asks over the suit's) + 0.5 * (pressure over) + [submerged] 1.0 * (flooding over)`, summed so that every suit-track step shows. Quake is ignored. Submerged, or seeping inside a hall that is short on flooding, is wet.
@@ -2180,9 +2180,59 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 - A hall is judged for the suit on heat, pressure and flooding only. A hall short on quake alone shelters the suit and its risk line says it holds: quake is a structural risk, not a leak, and is left to a later change.
 - The suit is inert in layers 1 and 2 and on the surface, and its breach is harmless where the depth asks nothing. The only place this is harder than before is the unbuilt depth below layer 2, which no early run reaches: the unpacked and the early-game columns are unchanged.
 - "Water seeps in" is particles and the drain, with no real water: placing fluid would delete a player's blocks.
-- Flooding is answered by the oxygen and toxins track (#1064), so the SPEC's four suit tracks stay four.
+- Flooding is answered by the air track (#1064, "oxygen and toxins"), so the SPEC's four suit tracks stay four.
 - The air holds only where the suit is active, so a swim at the surface is as it was.
 
 **Knobs.** `SuitTuning.DEFAULT` (capacity, base and per-level costs, the stock suit's ratings, the uncharted row, `leakShare`, refill, warning times, breach damage and cadence), `RatingTuning.DEFAULT` (the rows), `theme/suit.json` (the gauge).
 
 **Open questions.** What layer 3 asks (its worldgen's to say, and this test holds it to a minute); whether a hall's leak should grow with its worst axis rather than stay a flat share.
+
+## Suit tracks (#1064, A)
+
+**Problem.** The suit (#993) is rated (0,0,0) and holds 180 suit-seconds, so below layer 2 a person on foot has a fixed trip and nothing to spend money on. SPEC section 9: "Suit: upgraded separately: oxygen and toxins, heat, pressure, lamp battery". The model is [ADR 0091](../adr/0091-the-suit-tracks-are-a-personal-attachment-bought-a-tier-at-a-time-and-the-air-track-carries-flooding-and-capacity.md).
+
+**Ladder.**
+1. **By hand.** The stock suit: time the trip, retreat before the amber line, patch a hall.
+2. **The tracks.** Three tracks bought a tier at a time at the repair station, tiers 1 to 3, next tier only. Heat and pressure each add a level of rating. Air adds a level of flooding rating and raises the capacity to 240, 300 and 360 s, so the SPEC's "oxygen and toxins" and flooding are one track and the four SPEC tracks need no fifth ("toxins" is a name until a toxin axis exists). The lamp battery stays its own, later track.
+3. **Mastery.** All three at tier 3 against a rated hall at every depth: the timer stops being a trip's limit. The air canister ([#1194](https://github.com/pkeppeler/deepcharter/issues/1194)) tops the reserve up in the field.
+
+**Trade-offs.** Money, and the order of purchases: a pilot chooses whether the next $1,100 buys 4 s of heat or 11 s of air. A bigger suit takes longer to fill, because the refill is a flat 15 a second (A): 24 s from empty at air tier 3.
+
+**Where it pays.** Layers 1 and 2 and the surface ask nothing of a suit, so a track buys nothing there. The repair station says so in its intro, and the fitting message says it again: the tracks pay off from layer 3 down.
+
+**Prices (A).** Banded against the layer 2 runs that fund them (`EconomyAffordabilityTest`): tier 1 within two runs of a Mole with tier 2 parts from the outpost (net $455 a run), tier 2 within four, tier 3 within two runs of a Prospector with tier 3 parts (net $1,728 a run; three for air).
+
+| Track | Tier 1 | Tier 2 | Tier 3 | Runs to afford |
+|---|---|---|---|---|
+| Heat | $450 | $1,100 | $2,500 | 1 Mole, 3 Mole, 2 Prospector |
+| Pressure | $450 | $1,100 | $2,500 | 1 Mole, 3 Mole, 2 Prospector |
+| Air | $550 | $1,400 | $3,000 | 2 Mole, 4 Mole, 2 Prospector |
+
+**Pacing in player units (`SuitPacingTest`; whole seconds until the reserve is spent, at the unbuilt depth's (5,5,5)).**
+
+| Suit | Dry | Submerged | Measured or modelled |
+|---|---|---|---|
+| Stock (180 s) | 33 s | 18 s | measured |
+| Heat tier 1, 2, 3 | 36, 40, 45 s | | heat 3 dry measured |
+| Air tier 1 (240 s) | 44 s | 26 s | modelled |
+| Air tier 2 (300 s) | 55 s | 36 s | modelled |
+| Air tier 3 (360 s) | 66 s | 48 s | measured |
+| Heat 3 and pressure 3 | 72 s | | modelled |
+| All tier 3 | 144 s | 80 s | modelled |
+| All tier 3, inside an unrated hall | 288 s | | modelled |
+| Refill from empty in a powered pod seat, stock | 12 s | | measured |
+| Refill from empty, air tier 3 | 24 s | | measured |
+| A row (2,2,2) with heat 2 and pressure 2, stock capacity: the base alone | 360 s | | modelled |
+
+**Decisions (A).**
+- The suit's tier 1 is bought, not crafted: SPEC section 7's crafted tier 1 is the pods' and the scanner's (ADR 0048), and section 9 keeps the suit separate.
+- Tiers are personal, kept on death, and bought one at a time; the next tier only.
+- Prices are on the layer 2 run curve above. Payoff only below layer 2: layers 1 and 2 stay rated NONE.
+- "Toxins" is a name only until a toxin axis exists.
+- The refill rate stays flat.
+- The air canister is split out to #1194.
+
+**Knobs.** `SuitTrack` (prices, tiers), `SuitTuning.DEFAULT.capacities`, `SuitTuning` costs per level, `theme/suit.json` (the gauge).
+
+**Open questions.** Whether the refill should grow with capacity once the canister exists; whether a toxin axis should join the air track or stand alone.
+

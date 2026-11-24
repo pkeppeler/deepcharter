@@ -10,17 +10,21 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.suit.SuitTracks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RepairRows;
 import io.github.pkeppeler.deepcharter.test.support.ScreenScroll;
+import io.github.pkeppeler.deepcharter.test.support.SuitScenes;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -82,8 +86,79 @@ public class RepairStationClientTest implements FabricClientGameTest {
             require(
                     account(singleplayer, scene) == START_BALANCE - 10 - 100 - 30 * 1,
                     "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
+            expectTheSuitRowsMoveOnAsTiersAreBought(context, singleplayer, scene);
             context.setScreen(() -> null);
         }
+    }
+
+    /**
+     * The suit track rows (#1064) read the tier the server last sent: buying heat tier 1 takes its price from the account and the row
+     * moves on to tier 2 at its price, and at the top tier the row says so and cannot be pressed. The other tracks keep their rows.
+     */
+    private static void expectTheSuitRowsMoveOnAsTiersAreBought(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
+        long before = account(singleplayer, scene);
+        require(
+                rowActive(context, "SUIT HEAT T1 $450").orElse(false)
+                        && rowActive(context, "SUIT PRESSURE T1 $450").orElse(false)
+                        && rowActive(context, "SUIT AIR T1 $550").orElse(false),
+                "a stock suit is offered tier 1 of each track at its price");
+        clickRow(context, "SUIT HEAT T1 $450");
+        ClientWait.until(
+                context,
+                "the row at tier 2",
+                () -> rowActive(context, "SUIT HEAT T2 $1,100").isPresent(),
+                () -> "heat " + tracks(singleplayer).heat() + ", account $" + account(singleplayer, scene));
+        require(
+                account(singleplayer, scene) == before - 450
+                        && tracks(singleplayer).heat() == 1,
+                "heat tier 1 cost $450 and was fitted, the account is $" + account(singleplayer, scene));
+        require(
+                rowActive(context, "SUIT HEAT T1 $450").isEmpty()
+                        && rowActive(context, "SUIT PRESSURE T1 $450").isPresent(),
+                "only the heat row moved on");
+        clickRow(context, "SUIT HEAT T2 $1,100");
+        ClientWait.until(
+                context,
+                "the row at tier 3",
+                () -> rowActive(context, "SUIT HEAT T3 $2,500").isPresent(),
+                () -> "heat " + tracks(singleplayer).heat());
+        clickRow(context, "SUIT HEAT T3 $2,500");
+        ClientWait.until(
+                context,
+                "the top row",
+                () -> rowActive(context, "SUIT HEAT (TOP)").isPresent(),
+                () -> "heat " + tracks(singleplayer).heat());
+        require(
+                rowActive(context, "SUIT HEAT (TOP)").equals(Optional.of(false)),
+                "a track at its top tier shows (TOP) and cannot be pressed");
+        require(
+                account(singleplayer, scene) == before - 450 - 1_100 - 2_500,
+                "the three heat tiers cost $4,050, the account is $" + account(singleplayer, scene));
+    }
+
+    private static SuitTracks tracks(TestSingleplayerContext singleplayer) {
+        return singleplayer
+                .getServer()
+                .computeOnServer(server ->
+                        SuitScenes.tracks(server.getPlayerList().getPlayers().getFirst()));
+    }
+
+    /** Whether the button labelled {@code label} can be pressed, or empty when no row has that label. Scrolls the list to find it. */
+    private static Optional<Boolean> rowActive(ClientGameTestContext context, String label) {
+        RepairStationScreen screen =
+                context.computeOnClient(client -> ClientSession.screen(client, RepairStationScreen.class));
+        return context.computeOnClient(client -> {
+            for (int first = 0; first < screen.rowCount(); first++) {
+                ScreenScroll.scrollTo(screen, first);
+                for (Button button : ClientChecks.buttons(screen)) {
+                    if (button.getMessage().getString().equals(label)) {
+                        return Optional.of(button.active);
+                    }
+                }
+            }
+            return Optional.empty();
+        });
     }
 
     /**
