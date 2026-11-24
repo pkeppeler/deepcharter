@@ -83,6 +83,7 @@ public class FarChunksTest {
         GameTestInfo owner = MockPlayers.testInfo(helper);
         GameTestInfo probe = ProbeInfos.of(owner, level);
         probe.setTestBlockPos(owner.getTestBlockPos());
+        // finish() also releases the owner's ItemSpawns and ColumnCost bookkeeping on the shared bounds, harmless here.
         ProbeInfos.finish(probe);
         if (level.getForceLoadedChunks().contains(chunk.pack())) {
             throw helper.assertionException("chunk %s is still forced after its test finished", chunk);

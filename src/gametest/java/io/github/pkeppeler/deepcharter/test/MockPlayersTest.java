@@ -288,8 +288,7 @@ public class MockPlayersTest {
     @GameTest(maxTicks = 200)
     public void finishedTestDoesNotRetainItsMock(GameTestHelper helper) {
         // The runner keeps every finished test to the end of the run, so these stay reachable: only dropping what they
-        // have pending
-        // frees the mocks.
+        // have pending frees the mocks.
         List<GameTestInfo> finished = new ArrayList<>();
         List<WeakReference<ServerPlayer>> probes = startProbes(helper, finished);
         helper.succeedWhen(() -> {
@@ -312,25 +311,49 @@ public class MockPlayersTest {
         Vec3 spawn = helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN);
         List<WeakReference<ServerPlayer>> weak = new ArrayList<>();
 
+        // Set before any probe exists, so the probes made before a failing step are still finished: a mock left joined
+        // would stay on the player list for the rest of the run. The ticker iterates its infos while it ticks, so they
+        // join it from an end-of-tick event, already done.
+        AFTER_TICK.set(() -> {
+            RuntimeException failure = null;
+            for (GameTestInfo info : infos) {
+                try {
+                    ProbeInfos.finish(info);
+                    GameTestTicker.SINGLETON.add(info);
+                } catch (RuntimeException e) {
+                    if (failure == null) {
+                        failure = e;
+                    } else {
+                        failure.addSuppressed(e);
+                    }
+                }
+            }
+            if (failure != null) {
+                throw failure;
+            }
+        });
+
         // A callback scheduled for the tick after the test ends, as TestTicks.each leaves.
         GameTestInfo each = ProbeInfos.of(owner, level);
         GameTestHelper eachHelper = new GameTestHelper(each);
-        MockPlayer eachMock = MockPlayers.join(level.getServer(), "retention-each", level, spawn, each::isDone);
-        TestTicks.each(eachHelper, eachMock.player()::getName);
         infos.add(each);
+        MockPlayer eachMock = MockPlayers.join(level.getServer(), "retention-each", level, spawn, each::isDone);
+        infos.add(each);
+        TestTicks.each(eachHelper, eachMock.player()::getName);
         weak.add(new WeakReference<>(eachMock.player()));
 
         // A callback far in the future, never reached.
         GameTestInfo delayed = ProbeInfos.of(owner, level);
+        infos.add(delayed);
         MockPlayer delayedMock =
                 MockPlayers.join(level.getServer(), "retention-delayed", level, spawn, delayed::isDone);
         new GameTestHelper(delayed)
                 .runAfterDelay(100_000, () -> delayedMock.player().getName());
-        infos.add(delayed);
         weak.add(new WeakReference<>(delayedMock.player()));
 
         // A mock respawned as the Respawn button does, so the sweep must disconnect the listener (#698).
         GameTestInfo respawn = ProbeInfos.of(owner, level);
+        infos.add(respawn);
         MockPlayer respawnMock =
                 MockPlayers.join(level.getServer(), "retention-respawn", level, spawn, respawn::isDone);
         ServerPlayer dead = respawnMock.player();
@@ -342,17 +365,9 @@ public class MockPlayersTest {
         if (reborn == dead) {
             throw helper.assertionException("the respawn should replace the dead ServerPlayer");
         }
-        infos.add(respawn);
         weak.add(new WeakReference<>(dead));
         weak.add(new WeakReference<>(reborn));
 
-        // The ticker iterates its infos while it ticks, so they join it from an end-of-tick event, already done.
-        AFTER_TICK.set(() -> {
-            for (GameTestInfo info : infos) {
-                ProbeInfos.finish(info);
-                GameTestTicker.SINGLETON.add(info);
-            }
-        });
         return weak;
     }
 }

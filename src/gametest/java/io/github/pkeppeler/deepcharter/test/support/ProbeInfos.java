@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import net.minecraft.gametest.framework.GameTestInfo;
 import net.minecraft.gametest.framework.RetryOptions;
@@ -25,6 +26,16 @@ public final class ProbeInfos {
             Method finish = GameTestInfo.class.getDeclaredMethod("finish");
             finish.setAccessible(true);
             finish.invoke(info);
+        } catch (InvocationTargetException e) {
+            // finish() itself threw: report its own failure, not a mapping change.
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtime) {
+                throw runtime;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new IllegalStateException(String.valueOf(cause), cause);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Cannot call GameTestInfo.finish, likely a mapping change in Minecraft", e);
         }
