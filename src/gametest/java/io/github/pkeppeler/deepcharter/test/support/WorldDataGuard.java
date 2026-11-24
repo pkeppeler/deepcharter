@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.handbook.KnownRecipesData;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
 import io.github.pkeppeler.deepcharter.handbook.PersonalHandbookData;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
+import io.github.pkeppeler.deepcharter.layer.PendingStructures;
 import io.github.pkeppeler.deepcharter.market.WorkOrderData;
 import io.github.pkeppeler.deepcharter.outpost.OutpostData;
 import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
@@ -53,7 +54,8 @@ public final class WorldDataGuard implements ModInitializer {
             TransmissionData.TYPE,
             ColonyDisplays.TYPE,
             OutpostData.TYPE,
-            WorldFormat.TYPE);
+            WorldFormat.TYPE,
+            PendingStructures.TYPE);
     private static final Map<SavedDataType<?>, SavedData> SEEN = new HashMap<>();
 
     @Override
