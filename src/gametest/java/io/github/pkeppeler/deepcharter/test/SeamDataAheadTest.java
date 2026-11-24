@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
-import static io.github.pkeppeler.deepcharter.test.support.SeamSite.AREA_CHUNKS;
 import static io.github.pkeppeler.deepcharter.test.support.SeamSite.HOLD_HEIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.SeamSite.MAX_TICKS;
 
@@ -56,9 +55,12 @@ public class SeamDataAheadTest {
         return counts;
     }
 
-    /** The positions of the arrival area of {@code centre}: a square of the tuned radius. */
+    /** Chunks the server sends ahead: the square of {@link SeamSender#SEND_RADIUS}, since the ticket's outermost ring is not sendable. */
+    private static final int SENT_CHUNKS = (2 * SeamSender.SEND_RADIUS + 1) * (2 * SeamSender.SEND_RADIUS + 1);
+
+    /** The positions sent ahead for the arrival area of {@code centre}. */
     private static Set<ChunkPos> area(ChunkPos centre) {
-        int radius = LayerTuning.DEFAULT.seamRadius();
+        int radius = SeamSender.SEND_RADIUS;
         Set<ChunkPos> positions = new HashSet<>();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
@@ -88,7 +90,7 @@ public class SeamDataAheadTest {
                     mock.teleportTo(run.site().one(), run.site().at(HOLD_HEIGHT), 0, 0);
                 },
                 ticks -> {
-                    if (mock.payloadsOf(SeamChunkPayload.class).size() < AREA_CHUNKS) {
+                    if (mock.payloadsOf(SeamChunkPayload.class).size() < SENT_CHUNKS) {
                         return;
                     }
                     List<SeamPreparePayload> prepares = mock.payloadsOf(SeamPreparePayload.class);
@@ -104,12 +106,15 @@ public class SeamDataAheadTest {
                                     && prepare.seaLevel() == run.site().two().getSeaLevel(),
                             "the prepare does not describe layer 2 under the vehicle: %s",
                             prepare);
-                    List<CustomPacketPayload> all = mock.payloadsOf(CustomPacketPayload.class);
+                    List<CustomPacketPayload> seam = mock.payloadsOf(CustomPacketPayload.class).stream()
+                            .filter(payload ->
+                                    payload instanceof SeamPreparePayload || payload instanceof SeamChunkPayload)
+                            .toList();
                     expect(
                             helper,
-                            all.get(0) instanceof SeamPreparePayload,
-                            "the first payload is %s, not the prepare",
-                            all.get(0));
+                            seam.get(0) instanceof SeamPreparePayload,
+                            "the first seam payload is %s, not the prepare",
+                            seam.get(0));
                     Map<ChunkPos, Integer> counts = chunkCounts(mock);
                     expect(
                             helper,
@@ -153,7 +158,7 @@ public class SeamDataAheadTest {
                         perTick.add(sent.size() - seen[0]);
                         seen[0] = sent.size();
                     }
-                    if (sent.size() < AREA_CHUNKS) {
+                    if (sent.size() < SENT_CHUNKS) {
                         return;
                     }
                     int budget = LayerTuning.DEFAULT.seamBytesPerTick();
@@ -216,7 +221,7 @@ public class SeamDataAheadTest {
                         if (!mock.payloadsOf(SeamChunkPayload.class).isEmpty()) {
                             expect(
                                     helper,
-                                    mock.payloadsOf(SeamChunkPayload.class).size() < AREA_CHUNKS,
+                                    mock.payloadsOf(SeamChunkPayload.class).size() < SENT_CHUNKS,
                                     "the area was whole before the retreat");
                             mock.player().setPos(run.site().at(outside));
                             retreatedAt[0] = ticks;
@@ -276,7 +281,7 @@ public class SeamDataAheadTest {
                 },
                 ticks -> {
                     if (movedAt[0] < 0) {
-                        if (mock.payloadsOf(SeamChunkPayload.class).size() >= AREA_CHUNKS) {
+                        if (mock.payloadsOf(SeamChunkPayload.class).size() >= SENT_CHUNKS) {
                             mock.player()
                                     .setPos(
                                             movedX,
@@ -383,7 +388,7 @@ public class SeamDataAheadTest {
                     without.teleportTo(run.site().one(), run.site().at(HOLD_HEIGHT), 0, 0);
                 },
                 ticks -> {
-                    if (with.payloadsOf(SeamChunkPayload.class).size() < AREA_CHUNKS) {
+                    if (with.payloadsOf(SeamChunkPayload.class).size() < SENT_CHUNKS) {
                         expect(
                                 helper,
                                 without.payloadsOf(CustomPacketPayload.class).stream()
