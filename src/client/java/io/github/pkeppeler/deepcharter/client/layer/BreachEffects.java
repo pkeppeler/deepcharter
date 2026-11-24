@@ -24,29 +24,14 @@ public final class BreachEffects {
     /** Whether the running effects include the fade. */
     private static boolean fading;
 
-    /**
-     * Whether the fade waits at the end of its black stretch: set when a fading crossing begins and cleared when the hold ends, which is
-     * when the client has seen the respawn into the new level and reports itself loaded again, or at the cap.
-     */
-    private static boolean pending;
+    /** The fade's hold at the end of its black stretch; see {@link FadeHold}. */
+    private static final FadeHold HOLD = new FadeHold();
 
     /** Whether the hold is on this tick, so {@link #fadeAlpha} stays black however far the fade had come. */
     private static boolean holdingBlack;
 
-    /** Whether the respawn of the crossing has been seen: it came just before the fade began, or since. */
-    private static boolean sawRespawn;
-
-    /** Client ticks since the last respawn; the respawn of a crossing comes just before its payload. */
-    private static int ticksSinceRespawn = Integer.MAX_VALUE;
-
-    /** Ticks the latest fade has been held black; kept after it ends. */
-    private static int heldTicks;
-
-    /** The most ticks the fade is held black, so a level that never reports itself loaded does not leave the screen black (10 s). */
-    public static final int MAX_HOLD_TICKS = 200;
-
-    /** A respawn this many client ticks before the payload is the crossing's own: the server sends the respawn, then the payload. */
-    private static final int RESPAWN_WINDOW_TICKS = 40;
+    /** The most ticks the fade is held black. */
+    public static final int MAX_HOLD_TICKS = FadeHold.MAX_HOLD_TICKS;
 
     private BreachEffects() {}
 
@@ -62,10 +47,8 @@ public final class BreachEffects {
     public static void begin(boolean fades) {
         elapsed = 0;
         fading = fades;
-        pending = fades;
         holdingBlack = false;
-        heldTicks = 0;
-        sawRespawn = fades && ticksSinceRespawn <= RESPAWN_WINDOW_TICKS;
+        HOLD.begin(fades);
         Minecraft.getInstance()
                 .getSoundManager()
                 .play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EXPLODE.value(), 0.4f, 0.8f));
@@ -76,34 +59,29 @@ public final class BreachEffects {
      * not loaded). A crossing's fade that waits for it stops waiting.
      */
     public static void respawned() {
-        ticksSinceRespawn = 0;
-        if (pending) {
-            sawRespawn = true;
-        }
+        HOLD.respawned();
     }
 
     /** Ticks the latest fade was held black, kept after it ends for the timing log of a test. */
     // test-seam: BreachFadeHoldClientTest and SeamAdoptionClientTest read how long the hold lasted
     public static int heldTicks() {
-        return heldTicks;
+        return HOLD.heldTicks();
     }
 
     /** The end of a disconnect: nothing runs on, and a respawn seen before it is not a later crossing's. */
     public static void reset() {
         end();
-        ticksSinceRespawn = Integer.MAX_VALUE;
+        HOLD.reset();
     }
 
     private static void end() {
         elapsed = -1;
-        pending = false;
         holdingBlack = false;
-        sawRespawn = false;
+        HOLD.end();
     }
 
     public static void tick() {
-        Minecraft client = Minecraft.getInstance();
-        ClientPacketListener connection = client.getConnection();
+        ClientPacketListener connection = Minecraft.getInstance().getConnection();
         advance(connection != null && connection.hasClientLoaded());
     }
 
@@ -111,37 +89,19 @@ public final class BreachEffects {
     // test-seam: BreachFadeHoldClientTest steps the fade with a chosen loaded answer, which a real client cannot be
     // made to give on demand
     public static void advance(boolean clientLoaded) {
-        if (ticksSinceRespawn < Integer.MAX_VALUE) {
-            ticksSinceRespawn++;
-        }
+        HOLD.clockTick();
         if (elapsed < 0) {
             return;
         }
-        if (fading && shouldHoldBlack(clientLoaded)) {
-            holdingBlack = true;
-            heldTicks++;
+        BreachLook look = BreachLook.current();
+        holdingBlack = fading && HOLD.holds(elapsed, look.fadeInTicks() + look.blackTicks(), clientLoaded);
+        if (holdingBlack) {
             return;
         }
-        holdingBlack = false;
-        pending = false;
         elapsed++;
         if (elapsed > fadeTicks()) {
             end();
         }
-    }
-
-    /**
-     * Whether the fade waits at the end of its black stretch: until the client has seen the respawn into the level it crossed to and
-     * reports itself loaded, which it does once the section it is in is meshed (vanilla's renderer and Sodium's both answer that), so
-     * what the fade lifts on is a world that can be drawn (#1185). A respawn that came before the payload is already seen, and a
-     * {@code loaded} that was true before the respawn does not count. Never past {@link #MAX_HOLD_TICKS}.
-     */
-    private static boolean shouldHoldBlack(boolean clientLoaded) {
-        BreachLook look = BreachLook.current();
-        if (!pending || elapsed < look.fadeInTicks() + look.blackTicks() || heldTicks >= MAX_HOLD_TICKS) {
-            return false;
-        }
-        return !(sawRespawn && clientLoaded);
     }
 
     /** 0 is clear, 1 is black: up, a short stretch of full black, then down, all within {@link #fadeTicks()}. */
