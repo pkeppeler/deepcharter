@@ -20,11 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunkSection;
-import net.minecraft.world.level.chunk.ProtoChunk;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
-import net.minecraft.world.level.lighting.LightEngine;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -85,8 +81,6 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
                     : DataResult.error(() ->
                             "The chances of a zone fill's ores, and of its hazards, must each add up to at most 1"));
 
-    private static final Heightmap.Types[] HEIGHTMAP_TYPES = Heightmap.Types.values();
-
     private static boolean within(List<? extends Entry<?>> entries) {
         return entries.stream().mapToDouble(Entry::chance).sum() <= 1.0 + 1e-9;
     }
@@ -101,9 +95,13 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
         Band band = LayerChain.layerBand(generator, level, layer, "A zone fill");
         int minY = band.minY();
         int height = band.height();
+        int firstX = origin.getX() >> 4 << 4;
+        int firstZ = origin.getZ() >> 4 << 4;
         // The chunk itself, not the region: a block lookup through the region costs several times as much, and this
         // reads every block of a third of the layer. The chunk's own writes keep its heightmaps and light sources.
         ChunkAccess chunk = level.getChunk(origin);
+        boolean placed = false;
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         // The zone is a run of rows (a third of the layer); find its ends once.
         int low = minY;
         while (Zones.index(minY, height, low) != zone) {
@@ -117,28 +115,15 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
         // shipped level holds whole bands, so this changes nothing there.
         low = Math.max(low, chunk.getMinY());
         high = Math.min(high, chunk.getMinY() + chunk.getHeight() - 1);
-        return fill(chunk, random, low, high, writesDirectly(chunk));
-    }
-
-    /**
-     * Fills rows {@code low} to {@code high} of {@code chunk}: one roll for each block of ground, or two when the first finds no ore,
-     * whether or not anything is placed, so the draws are the same whichever way the blocks are written. The rolls and the states they
-     * place do not change from block to block, and the rock hardly does: a layer is mostly one state, so its ore states are worked out
-     * once for each new rock. A section that holds nothing but ground is not read block by block: its blocks are only rolled for, and the
-     * few that place something are read. With {@code direct}, a block whose old and new states have the same bookkeeping
-     * ({@link #sameBookkeeping}) is written into its section, skipping what {@code ProtoChunk.setBlockState} would find nothing to do
-     * for; any other block takes the chunk's own write.
-     *
-     * @return whether it placed anything
-     */
-    public boolean fill(ChunkAccess chunk, RandomSource random, int low, int high, boolean direct) {
-        int firstX = chunk.getPos().getMinBlockX();
-        int firstZ = chunk.getPos().getMinBlockZ();
-        boolean placed = false;
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        // The rolls and the states they place do not change from block to block, and the rock hardly does: a layer is
+        // mostly one state, so its ore states are worked out once for each new rock. A section that holds nothing but
+        // ground is not read block by block: its blocks are only rolled for, and the few that place something are read.
         double[] oreFloors = floors(ores);
         double[] hazardFloors = floors(hazards);
-        Placements placements = new Placements(ores.size(), hazards.size());
+        @Nullable BlockState[] oreStates = new BlockState[ores.size()];
+        @Nullable BlockState[] hazardStates = new BlockState[hazards.size()];
+        @Nullable BlockState lastRock = null;
+        boolean lastIsGround = false;
         for (int index = chunk.getSectionIndex(low); index <= chunk.getSectionIndex(high); index++) {
             LevelChunkSection section = chunk.getSection(index);
             if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(LayerBlocks.GROUND))) {
@@ -152,10 +137,13 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
                         @Nullable BlockState rock = null;
                         if (!onlyGround) {
                             rock = section.getBlockState(x, y & 15, z);
-                            if (rock != placements.rock) {
-                                placements.rockIs(rock, rock.is(LayerBlocks.GROUND));
+                            if (rock != lastRock) {
+                                lastRock = rock;
+                                lastIsGround = rock.is(LayerBlocks.GROUND);
+                                Arrays.fill(oreStates, null);
+                                Arrays.fill(hazardStates, null);
                             }
-                            if (!placements.rockIsGround) {
+                            if (!lastIsGround) {
                                 continue;
                             }
                         }
@@ -166,104 +154,37 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
                         }
                         if (rock == null) {
                             rock = section.getBlockState(x, y & 15, z);
-                            if (rock != placements.rock) {
-                                placements.rockIs(rock, true);
+                            if (rock != lastRock) {
+                                lastRock = rock;
+                                lastIsGround = true;
+                                Arrays.fill(oreStates, null);
+                                Arrays.fill(hazardStates, null);
                             }
                         }
                         BlockState state;
-                        boolean writeDirectly;
                         if (ore >= 0) {
-                            state = placements.oreStates[ore];
+                            state = oreStates[ore];
                             if (state == null) {
                                 state = ores.get(ore).block().in(rock);
-                                placements.oreStates[ore] = state;
-                                placements.oreDirect[ore] = direct && sameBookkeeping(rock, state);
+                                oreStates[ore] = state;
                             }
-                            writeDirectly = placements.oreDirect[ore];
                         } else {
-                            state = placements.hazardStates[hazard];
+                            state = hazardStates[hazard];
                             if (state == null) {
                                 Block block = hazards.get(hazard).block();
                                 state = block instanceof CompanyRockBlock company
                                         ? company.in(rock)
                                         : block.defaultBlockState();
-                                placements.hazardStates[hazard] = state;
-                                placements.hazardDirect[hazard] = direct && sameBookkeeping(rock, state);
+                                hazardStates[hazard] = state;
                             }
-                            writeDirectly = placements.hazardDirect[hazard];
                         }
-                        if (writeDirectly) {
-                            section.setBlockState(x, y & 15, z, state, false);
-                        } else {
-                            chunk.setBlockState(pos.set(firstX + x, y, firstZ + z), state, Block.UPDATE_CLIENTS);
-                        }
+                        chunk.setBlockState(pos.set(firstX + x, y, firstZ + z), state, Block.UPDATE_CLIENTS);
                         placed = true;
                     }
                 }
             }
         }
         return placed;
-    }
-
-    /** The rock last read and the states placed over it, which are worked out once for each new rock. */
-    private static final class Placements {
-        final @Nullable BlockState[] oreStates;
-        final @Nullable BlockState[] hazardStates;
-        final boolean[] oreDirect;
-        final boolean[] hazardDirect;
-
-        @Nullable
-        BlockState rock;
-
-        boolean rockIsGround;
-
-        Placements(int ores, int hazards) {
-            oreStates = new BlockState[ores];
-            hazardStates = new BlockState[hazards];
-            oreDirect = new boolean[ores];
-            hazardDirect = new boolean[hazards];
-        }
-
-        void rockIs(BlockState newRock, boolean isGround) {
-            rock = newRock;
-            rockIsGround = isGround;
-            Arrays.fill(oreStates, null);
-            Arrays.fill(hazardStates, null);
-        }
-    }
-
-    /**
-     * Whether a chunk's blocks may be written into its sections: a prototype chunk (not a live chunk's imposter) before light is
-     * initialised, the zone fill's own step. Then {@code ProtoChunk.setBlockState} writes the section, and only keeps its heightmaps and,
-     * after that step, its light, which {@link #sameBookkeeping} leaves unchanged. Checked against the 26.3 jar; the equality test in
-     * {@code ZoneFillWritesTest} is the drift guard.
-     */
-    public static boolean writesDirectly(ChunkAccess chunk) {
-        return chunk.getClass() == ProtoChunk.class
-                && !((ProtoChunk) chunk).getPersistedStatus().isOrAfter(ChunkStatus.INITIALIZE_LIGHT);
-    }
-
-    /**
-     * Whether swapping {@code old} for {@code replacement} leaves the chunk's bookkeeping alone: both solid, no block entity, no fluid, the
-     * same light properties, and the same answer for every heightmap's opacity test. Each heightmap test is called, not read off a list of
-     * what it tests, so a change of a type in a Minecraft update is covered.
-     */
-    private static boolean sameBookkeeping(BlockState old, BlockState replacement) {
-        if (old.isAir()
-                || replacement.isAir()
-                || old.hasBlockEntity()
-                || replacement.hasBlockEntity()
-                || !old.getFluidState().isEmpty()
-                || !replacement.getFluidState().isEmpty()
-                || LightEngine.hasDifferentLightProperties(old, replacement)) {
-            return false;
-        }
-        for (Heightmap.Types type : HEIGHTMAP_TYPES) {
-            if (type.isOpaque().test(old) != type.isOpaque().test(replacement)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /** The running totals of the entries' chances, so that a roll finds its entry the way a sum over the list would. */
