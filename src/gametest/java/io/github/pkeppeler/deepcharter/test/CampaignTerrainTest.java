@@ -42,11 +42,11 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 
 /**
  * Server GameTests for the campaign world's terrain (#742, ADR 0059): the bands, the rock of each, the crust at the floor of each layer, and
- * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_sample}, the test data pack's copy of the shipped overworld, which the GameTest server cannot use (it bakes its
+ * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_full}, the test data pack's exact copy of the shipped overworld, which the GameTest server cannot use (it bakes its
  * overworld from a flat preset). The band table is {@link CampaignBands}.
  */
 public class CampaignTerrainTest {
-    private static final String SAMPLE = "deepcharter:campaign_sample";
+    private static final String FULL = "deepcharter:campaign_full";
     private static final int MAX_TICKS = 6000;
     /** The chunks sampled: a square this many chunks on a side, away from the colony pad. */
     private static final int SAMPLE_CHUNK_X = 10;
@@ -74,7 +74,7 @@ public class CampaignTerrainTest {
     /** Air, and the lava the zone fill leaves in a layer (#743). */
     private static final Set<String> FLUIDS_AND_AIR = Set.of("minecraft:air", "minecraft:cave_air", "minecraft:lava");
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theBandsAreWhereTheDecisionPutsThem(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         expect(helper, CampaignBands.SURFACE.minY() == -64 && CampaignBands.SURFACE.maxY() == 319, "the surface band");
@@ -105,7 +105,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theFloorOfLayers1And2HoldsThreeRowsOfCrust(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int rows = CampaignBands.crustRows();
@@ -137,7 +137,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void crustIsOnlyAtTheFloorsSoNoneLiesUnderTheSurface(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<Integer> expected = new TreeSet<>();
@@ -170,7 +170,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void eachBandHoldsItsOwnRock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Map<String, Set<String>> found = new TreeMap<>();
@@ -207,7 +207,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void eachBandHasItsZoneBiome(GameTestHelper helper) throws IOException {
         ServerLevel level = helper.getLevel();
         BlockPos column = sampledColumns().getFirst();
@@ -263,7 +263,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void noVanillaBlockIsGenerated(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<String> vanilla = new TreeSet<>();
@@ -286,7 +286,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theDataMatchesTheBandTable(GameTestHelper helper) throws IOException {
         int crust = CampaignBands.crustRows();
         JsonObject settings = read(helper, "/data/deepcharter/worldgen/noise_settings/campaign.json")
@@ -368,7 +368,7 @@ public class CampaignTerrainTest {
         expect(helper, anchors.equals(expectedAnchors), "rule anchors %s, expected %s", anchors, expectedAnchors);
 
         JsonObject dimension =
-                read(helper, "/data/deepcharter/dimension/campaign_sample.json").getAsJsonObject();
+                read(helper, "/data/deepcharter/dimension/campaign_full.json").getAsJsonObject();
         JsonObject type =
                 read(helper, "/data/minecraft/dimension_type/overworld.json").getAsJsonObject();
         expect(
@@ -381,7 +381,7 @@ public class CampaignTerrainTest {
         expect(
                 helper,
                 generator.get("settings").getAsString().equals("deepcharter:campaign"),
-                "campaign_sample uses the campaign noise settings");
+                "campaign_full uses the campaign noise settings");
         JsonObject source = generator.getAsJsonObject("biome_source");
         expect(
                 helper,
@@ -403,11 +403,11 @@ public class CampaignTerrainTest {
         expect(
                 helper,
                 read(helper, "/data/minecraft/dimension/overworld.json").equals(dimension),
-                "campaign_sample is not the shipped overworld");
+                "campaign_full is not the shipped overworld");
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theBiomeFeaturesHaveNoOrderCycle(GameTestHelper helper) {
         ChunkGenerator generator = helper.getLevel().getChunkSource().getGenerator();
         List<Holder<Biome>> biomes = List.copyOf(generator.getBiomeSource().possibleBiomes());

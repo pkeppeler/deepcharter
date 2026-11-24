@@ -280,6 +280,7 @@
   "deepcharter.spec.item.rotor_hub": "A spare rotor hub for the Mole's drive.",
   "deepcharter.spec.item.salvage_cloth": "Salvage cloth. Sew it, patch it, count it.",
   "deepcharter.spec.item.salvage_crate": "A salvage crate from the yard. Contents as found.",
+  "deepcharter.spec.item.salvage_heap": "What an outpost left behind, heaped up. Open it and take your share.",
   "deepcharter.spec.item.scanner_unit": "Crafted unit. Use it on your pod to fit a tier 1 scanner.",
   "deepcharter.spec.item.scrap_copper": "Scrap copper from the yard. Smelts to a proper ingot.",
   "deepcharter.spec.item.scrap_iron": "Scrap iron from the yard. Smelts to a proper ingot.",

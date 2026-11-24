@@ -50,7 +50,7 @@ public final class Terminals {
             case Access.Denied denied -> refuse(player, denied.refusal());
             case Access.Granted granted -> {
                 sendView(player, pos, granted);
-                TerminalEvents.OPENED.invoker().onOpened(player.level().getServer(), granted.type(), player);
+                TerminalEvents.OPENED.invoker().onOpened(player.level().getServer(), granted.type(), player, pos);
                 yield Optional.empty();
             }
         };
