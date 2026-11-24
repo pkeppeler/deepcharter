@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -59,6 +61,13 @@ public final class TestSites {
             return "%s layer %s x %s..%s z %s..%s".formatted(owner, layer, x0, x1, z0, z1);
         }
     }
+
+    /**
+     * Whether this is a client GameTest JVM ({@code runClientGameTest}, evidence scenarios): each test starts a world of its own, which nothing
+     * else stages in, and it carves from the integrated server thread, where the test's frame is not on the stack. Server GameTests run a
+     * dedicated server and are guarded.
+     */
+    private static final boolean CLIENT_JVM = FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT;
 
     /** The owner of the test whose scheduled callback is running, for a callback with no test frame under it. */
     private static final ThreadLocal<String> SCOPED = new ThreadLocal<>();
@@ -182,12 +191,11 @@ public final class TestSites {
     }
 
     /**
-     * The owner whose claims must cover the box, or empty when the box is not checked: another dimension, the spawn square, a test with
-     * a world of its own, or an exempt owner. Throws when a checked call has no owner.
+     * The owner whose claims must cover the box, or empty when the box is not checked: another dimension, the spawn square, a client JVM, or an exempt owner. Throws when a checked call has no owner.
      */
     private static Optional<String> checkedOwner(
             ServerLevel level, List<Class<?>> stack, int x0, int x1, int z0, int z1, Supplier<String> what) {
-        if (!shared(level) || inSpawn(x0, x1, z0, z1) || ownsItsWorld(stack)) {
+        if (!shared(level) || inSpawn(x0, x1, z0, z1) || CLIENT_JVM) {
             return Optional.empty();
         }
         String owner =
@@ -242,14 +250,6 @@ public final class TestSites {
         return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
                 .walk(frames -> frames.<Class<?>>map(StackWalker.StackFrame::getDeclaringClass)
                         .toList());
-    }
-
-    /** Whether the stack is a client test's or an evidence scenario's: each starts a world of its own, which nothing else stages in. */
-    private static boolean ownsItsWorld(List<Class<?>> stack) {
-        return stack.stream()
-                .anyMatch(c -> c.getPackageName().equals(TEST_PACKAGE + ".evidence")
-                        || (c.getPackageName().equals(TEST_PACKAGE)
-                                && outer(c).getSimpleName().endsWith("ClientTest")));
     }
 
     /**
