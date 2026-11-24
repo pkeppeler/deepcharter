@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
+import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.creature.Tallies;
 import io.github.pkeppeler.deepcharter.creature.Tally;
 import io.github.pkeppeler.deepcharter.creature.TallyTuning;
@@ -16,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.scanner.EchoedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
@@ -82,6 +84,10 @@ public class TallyTest {
     private static final int SAMPLE_BUDGET_TICKS = 160;
 
     private static final int ORES = 3;
+    /** How long the flare of the flare test burns, and how far it reaches. */
+    private static final int FLARE_BURN_TICKS = 40;
+
+    private static final double FLARE_REACH = 6;
     /** The approach to the mark, on top of the trail, at most: measured 37 to 83 ticks. */
     private static final int APPROACH_TICKS_MAX = 100;
     /** Ticks the cutter may take over the bites it needs: the pod's drill starts a tick or so after the input. */
@@ -570,6 +576,48 @@ public class TallyTest {
                 helper.succeed();
             } else {
                 lit[0].await(helper, level, false, () -> "the light did not reach the person");
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
+    }
+
+    /**
+     * (#1003) A burning flare keeps a Tally off a dark pod as it keeps the Retained off (ADR 0078): the pod inside its reach draws none, and
+     * draws one again once the flare has burnt out.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SETTLE_TICKS + FLARE_BURN_TICKS + 60)
+    public void aBurningFlareKeepsATallyOffADarkPodUntilItBurnsOut(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(14);
+        Arena[] made = {null};
+        long[] burnsOutAt = {-1};
+        TestTicks.each(helper, () -> {
+            Arena arena = made[0];
+            if (arena == null || arena.age(helper) < SETTLE_TICKS) {
+                return;
+            }
+            if (burnsOutAt[0] < 0) {
+                if (!Tally.draws(arena.pod)) {
+                    throw failure(helper, "a dark pod with ore and a pilot draws no Tally before the flare");
+                }
+                BlockPos flare = arena.pod.blockPosition().above(2);
+                burnsOutAt[0] = level.getGameTime() + FLARE_BURN_TICKS;
+                // room-carver: a flare block in this test's own arena
+                level.setBlock(flare, RepairRegistry.FLARE_LIGHT.defaultBlockState(), 3);
+                DrawSources.addFlare(level, flare, RepairRegistry.FLARE_LIGHT, FLARE_REACH, burnsOutAt[0]);
+                if (Tally.draws(arena.pod)) {
+                    throw failure(helper, "a dark pod inside a burning flare's reach draws a Tally");
+                }
+            } else if (level.getGameTime() < burnsOutAt[0]) {
+                if (Tally.draws(arena.pod)) {
+                    throw failure(helper, "a dark pod draws a Tally while the flare still burns");
+                }
+            } else {
+                if (!Tally.draws(arena.pod)) {
+                    throw failure(helper, "a dark pod draws no Tally once the flare has burnt out");
+                }
+                arena.clear();
+                helper.succeed();
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
