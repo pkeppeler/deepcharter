@@ -52,6 +52,9 @@ import org.slf4j.LoggerFactory;
  * arrival at a wall, and 5 ticks across a landing from 10 blocks (never drawn inside a block, never below the ground). They do not cover
  * stalls beyond 6 ticks: a longer one stands the pod for the rest of it, and a gap over {@code snapGap} blocks glides over as before
  * (ADR 0082).
+ *
+ * <p>A steady drive is judged for the stall it injects, not a longer one: when the real test server also ran late and the drive saw more
+ * moveless ticks than the glide covers ({@link #COVERED_MOVELESS_TICKS}), it is run again (#1168).
  */
 public class PodDriveSmoothClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodDriveSmoothClientTest.class);
@@ -176,6 +179,17 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      * speed or more (#1041).
      */
     private static final double STEP_MARGIN = 1.4;
+
+    /**
+     * The most client ticks in a row without an entity move handled that a steady drive is judged for: the glide's window (2 of glide, 3 at
+     * full speed, the tail, ADR 0082). A drive that saw a longer one was not the drive it says it is, because the test server is a real one
+     * and a loaded machine can deliver late on top of the stall the drive injects (#1168: 3 injected plus 3 or more of its own drew the 0.0675
+     * of #1112 in CI, and the same 7 ticks reproduce it here). It is run again, not judged.
+     */
+    private static final int COVERED_MOVELESS_TICKS = 6;
+
+    /** Runs of a steady drive before the run fails for a server that was late on its own every time. */
+    private static final int DRIVE_ATTEMPTS = 3;
 
     private static final double BACKWARD_TOLERANCE = 1e-4;
     /** A flat drive covers at least this share of the pod's speed in every tick past the settle. */
@@ -349,6 +363,28 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      * what the pilot's camera and the watched pod drew.
      */
     private static void drive(ClientGameTestContext context, Rig rig, Drive drive) {
+        int moveless = 0;
+        for (int attempt = 1; attempt <= DRIVE_ATTEMPTS; attempt++) {
+            moveless = driveOnce(context, rig, drive);
+            if (!drive.steady() || moveless <= COVERED_MOVELESS_TICKS) {
+                return;
+            }
+            LOGGER.info(
+                    "PodDriveSmoothClientTest: {}: the server was late on its own, {} client ticks in a row without a move (the pod is judged"
+                            + " up to {}); attempt {} of {}",
+                    drive.name(),
+                    moveless,
+                    COVERED_MOVELESS_TICKS,
+                    attempt,
+                    DRIVE_ATTEMPTS);
+        }
+        throw new AssertionError(drive.name() + ": the server was late on its own in all " + DRIVE_ATTEMPTS
+                + " attempts, up to " + moveless + " client ticks in a row without a move; the pod is judged up to "
+                + COVERED_MOVELESS_TICKS);
+    }
+
+    /** One run of {@code drive}; returns the most client ticks in a row it saw without an entity move handled. */
+    private static int driveOnce(ClientGameTestContext context, Rig rig, Drive drive) {
         TwoPlayerServer two = rig.two();
         Late late = drive.late();
         // A drop starts held in the air: the pods wait there without gravity, so the client has them in place before
@@ -383,6 +419,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             });
         }
 
+        PacketJitter.resetMoveless();
         Subject pilot = new Subject("the pilot's own view");
         Subject watched = new Subject("the watched pod");
         Subject ownPod = new Subject("the pilot's own pod");
@@ -419,6 +456,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             // before that would drive on from the start.
             context.waitTicks(INPUT_LAG_TICKS);
         }
+        int moveless = PacketJitter.movelessTicks();
+        boolean judgeFloor = moveless <= COVERED_MOVELESS_TICKS;
         if (drive.wall()) {
             require(drilled[0], "The watched pod never drilled, so the drilling drive was not a drilling drive");
         }
@@ -427,11 +466,11 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             if (late.stops()) {
                 context.waitTicks(SETTLE_AFTER_TICKS);
                 expectStopped(drive, late, rig, context, ownPod, watched);
-                return;
+                return moveless;
             }
         }
         for (Subject subject : List.of(pilot, watched)) {
-            expectSmooth(drive.name() + ", " + subject.name(), subject.frames(), drive);
+            expectSmooth(drive.name() + ", " + subject.name(), subject.frames(), drive, judgeFloor);
         }
         if (late != null && late.recovers()) {
             for (Subject subject : List.of(ownPod, watched)) {
@@ -442,6 +481,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             context.waitTicks(SETTLE_AFTER_TICKS);
             expectSettled(drive.name(), rig, context);
         }
+        return moveless;
     }
 
     /** 1 when the pod's drawn box, shrunk by {@link #INSIDE_MARGIN}, overlaps a block at {@code partial}; else 0. */
@@ -834,7 +874,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      * longer than {@link #STEP_MARGIN} times one frame's share of the drive's speed, and, when the drive is steady, a tick's whole
      * displacement of at least {@link #MIN_TICK_SHARE} of it.
      */
-    private static void expectSmooth(String what, List<Vec3> frames, Drive drive) {
+    private static void expectSmooth(String what, List<Vec3> frames, Drive drive, boolean judgeFloor) {
         double backwardTolerance =
                 drive.late() == null ? BACKWARD_TOLERANCE : MAX_BOUNCE_SHARE * drive.speed() / FRAMES;
         double speed = drive.speed();
@@ -868,7 +908,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                 longest <= stepBound,
                 what + ": the drawn pod stepped " + longest + " blocks in one frame, over the " + stepBound
                         + " its speed allows");
-        if (steady) {
+        if (steady && judgeFloor) {
             require(
                     shortestTick >= MIN_TICK_SHARE * speed,
                     what + ": the drawn pod covered only " + shortestTick
