@@ -5,13 +5,17 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -23,7 +27,8 @@ import org.slf4j.LoggerFactory;
  * the campaign world, never a staged room. A spot is a free cell over a floor whose view, in one of eight headings,
  * runs furthest through the cavern (a fan of rays) and takes in the most glowcaps; its tall focus is the floor cell
  * with the most free height a giant can be grown on. A view of the mix ({@link #mix}) looks instead at the densest
- * group of giants the world grew. Copied from {@code HollowsSpots} of the #1147 concept round (on its branch), which
+ * group of giants the world grew, and a view of a pair ({@link #pair}) at two giants of two forms in neighbouring
+ * chunks. Copied from {@code HollowsSpots} of the #1147 concept round (on its branch), which
  * the before and after stills share a camera with. Runs on the server thread over chunks the scenario has forced.
  */
 final class GiantFungiSpots {
@@ -453,6 +458,168 @@ final class GiantFungiSpots {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /** A giant the world grew in one chunk: its form, and its cells. */
+    private record Grown(ChunkPos chunk, String form, List<BlockPos> cells) {
+        Vec3 middle() {
+            Vec3 sum = Vec3.ZERO;
+            for (BlockPos cell : cells) {
+                sum = sum.add(Vec3.atCenterOf(cell));
+            }
+            return sum.scale(1.0 / cells.size());
+        }
+
+        /** Up to {@link #PAIR_SAMPLES} of its cells, spread through it, that a camera is checked against. */
+        List<BlockPos> samples() {
+            List<BlockPos> sorted = new ArrayList<>(cells);
+            sorted.sort(Comparator.comparingInt((BlockPos pos) -> pos.getY())
+                    .thenComparingInt(pos -> pos.getX())
+                    .thenComparingInt(pos -> pos.getZ()));
+            List<BlockPos> picked = new ArrayList<>();
+            for (int i = 0; i < PAIR_SAMPLES; i++) {
+                picked.add(sorted.get(i * (sorted.size() - 1) / (PAIR_SAMPLES - 1)));
+            }
+            return picked;
+        }
+    }
+
+    /** The cells of a giant a camera is checked against. */
+    private static final int PAIR_SAMPLES = 12;
+    /** A pair's camera stands this near to this far from the middle of each giant: inside the Garden's 40-block fog. */
+    private static final int PAIR_NEAR = 12;
+
+    private static final int PAIR_FAR = 28;
+    /** The most degrees apart the two giants are seen, so both fit the frame with room round them. */
+    private static final double PAIR_SPREAD = 50;
+    /** Candidate cameras for a pair stand every this many blocks. */
+    private static final int PAIR_GRID = 2;
+
+    /** The form of a giant's block, or empty for a block of none. */
+    private static Optional<String> form(BlockState state) {
+        Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (!id.getNamespace().equals("deepcharter")) {
+            return Optional.empty();
+        }
+        String path = id.getPath();
+        if (path.startsWith("parasol_")) {
+            return Optional.of("parasol");
+        }
+        if (path.startsWith("spire")) {
+            return Optional.of("spires");
+        }
+        if (path.startsWith("great_stalk")) {
+            return Optional.of("great stalk");
+        }
+        return path.equals("fungal_flare") ? Optional.of("") : Optional.empty();
+    }
+
+    /**
+     * A camera on two giants the world grew in neighbouring chunks of zone {@code zone} round ({@code x}, {@code z}),
+     * of two forms, both {@link #PAIR_NEAR} to {@link #PAIR_FAR} blocks off and at most {@link #PAIR_SPREAD} degrees
+     * apart; of those, the one that sees the most of the less seen giant, then of both. It looks at the middle of the
+     * two. Empty if no two such giants have a camera.
+     */
+    static Optional<MixView> pair(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
+        Zones.Span span = Zones.span(band.minY(), band.height(), zone);
+        String name = Zones.of(3, band.minY(), band.height(), span.low())
+                .orElseThrow()
+                .id()
+                .getPath();
+        Map<ChunkPos, List<BlockPos>> cells = new HashMap<>();
+        Map<ChunkPos, String> forms = new HashMap<>();
+        for (BlockPos pos : scan(level, x, z, span, state -> form(state).isPresent())) {
+            ChunkPos chunk = ChunkPos.containing(pos);
+            cells.computeIfAbsent(chunk, key -> new ArrayList<>()).add(pos);
+            String form = form(level.getBlockState(pos)).orElseThrow();
+            if (!form.isEmpty()) {
+                forms.put(chunk, form);
+            }
+        }
+        List<Grown> grown = new ArrayList<>();
+        cells.forEach((chunk, list) -> {
+            if (forms.containsKey(chunk)) {
+                grown.add(new Grown(chunk, forms.get(chunk), list));
+            }
+        });
+        LOGGER.info("[giant-fungi] {}: {} giants round {}, {}", name, grown.size(), x, z);
+        MixView best = null;
+        int bestScore = 0;
+        for (int i = 0; i < grown.size(); i++) {
+            for (int j = i + 1; j < grown.size(); j++) {
+                Grown a = grown.get(i);
+                Grown b = grown.get(j);
+                int apartX = Math.abs(a.chunk().x() - b.chunk().x());
+                int apartZ = Math.abs(a.chunk().z() - b.chunk().z());
+                if (a.form().equals(b.form()) || apartX > 1 || apartZ > 1) {
+                    continue;
+                }
+                Optional<MixView> view = pairCamera(level, span, name, a, b, x, z);
+                if (view.isPresent() && view.get().giants() > bestScore) {
+                    best = view.get();
+                    bestScore = view.get().giants();
+                }
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /**
+     * The best camera on {@code a} and {@code b}, if any sees some of each, standing in the region scanned round
+     * ({@code x}, {@code z}); its {@code giants} is a score, the cells seen of the less seen giant first.
+     */
+    private static Optional<MixView> pairCamera(
+            ServerLevel level, Zones.Span span, String name, Grown a, Grown b, int x, int z) {
+        int reach = SEARCH_RADIUS + GLOW_FAR;
+        Vec3 middleA = a.middle();
+        Vec3 middleB = b.middle();
+        Vec3 middle = middleA.add(middleB).scale(0.5);
+        List<BlockPos> samplesA = a.samples();
+        List<BlockPos> samplesB = b.samples();
+        MixView best = null;
+        int bestScore = 0;
+        int cx0 = (int) Math.floor(middle.x);
+        int cz0 = (int) Math.floor(middle.z);
+        for (int cx = cx0 - PAIR_FAR; cx <= cx0 + PAIR_FAR; cx += PAIR_GRID) {
+            for (int cz = cz0 - PAIR_FAR; cz <= cz0 + PAIR_FAR; cz += PAIR_GRID) {
+                double toA = Math.hypot(middleA.x - cx - 0.5, middleA.z - cz - 0.5);
+                double toB = Math.hypot(middleB.x - cx - 0.5, middleB.z - cz - 0.5);
+                boolean inRegion = Math.abs(cx - x) <= reach && Math.abs(cz - z) <= reach;
+                if (!inRegion || toA < PAIR_NEAR || toA > PAIR_FAR || toB < PAIR_NEAR || toB > PAIR_FAR) {
+                    continue;
+                }
+                double bearingA = Math.toDegrees(Math.atan2(-(middleA.x - cx - 0.5), middleA.z - cz - 0.5));
+                double bearingB = Math.toDegrees(Math.atan2(-(middleB.x - cx - 0.5), middleB.z - cz - 0.5));
+                if (Math.abs(Mth.wrapDegrees(bearingA - bearingB)) > PAIR_SPREAD) {
+                    continue;
+                }
+                for (int y = span.high() - ZONE_INSET; y >= span.low() + ZONE_INSET; y--) {
+                    if (!isFloor(level, new BlockPos(cx, y, cz), HEADROOM)) {
+                        continue;
+                    }
+                    BlockPos feet = new BlockPos(cx, y + FEET_RISE, cz);
+                    Vec3 eye = new Vec3(cx + 0.5, feet.getY() + EYE, cz + 0.5);
+                    int seenA = seen(level, eye, samplesA);
+                    int seenB = seen(level, eye, samplesB);
+                    int score = Math.min(seenA, seenB) * 100 + seenA + seenB;
+                    if (Math.min(seenA, seenB) > 0 && score > bestScore) {
+                        bestScore = score;
+                        best = new MixView(name + " (" + a.form() + ", " + b.form() + ")", feet, middle, score);
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    private static int seen(ServerLevel level, Vec3 eye, List<BlockPos> samples) {
+        int seen = 0;
+        for (BlockPos sample : samples) {
+            if (inSight(level, eye, sample)) {
+                seen++;
+            }
+        }
+        return seen;
     }
 
     /**

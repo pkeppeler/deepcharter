@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.surface.GiantLayout;
@@ -22,8 +23,6 @@ import java.util.function.Function;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.minecraft.client.gui.components.debug.DebugScreenEntries;
-import net.minecraft.client.gui.components.debug.DebugScreenEntryStatus;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
@@ -36,6 +35,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,14 +46,14 @@ import org.slf4j.LoggerFactory;
  * EvidencePins#skyHidden}, #1161). Each view is taken as played and, named {@code -nv}, with night vision.
  *
  * <ol>
- * <li>The mix the world grew: a Garden view chosen for the most giants in it, and one each of the Spore Fields and the
- * Quiet.
+ * <li>The mix the world grew: two Garden giants of two forms in neighbouring chunks, inside the fog, and a view
+ * each of the Spore Fields and the Quiet chosen for the most giants in it.
  * <li>Before and after: the #1149 mock-ups ({@link GiantMockups}) and the new forms, grown at the same place in a
  * Garden cavern and seen from the same camera.
  *   <li>Each form close (12 blocks off) and far (30 blocks off).
  *   <li>Six seeds of each form, one still each, from the same camera.
- * <li>Top down, with chunk borders: a parasol fitted against the east side of its chunk and a spire cluster against the
- * west side of the next, each whole in its own chunk.
+ * <li>Top down, with the two chunks outlined in the world: a parasol fitted against the east side of its chunk and a
+ * spire cluster against the west side of the next, each whole in its own chunk.
  * </ol>
  *
  * Every build is put back as the world grew it before the next. The scenario ends on the title screen.
@@ -172,7 +172,11 @@ public class GiantFungiScenario extends EvidenceScenario {
             }
             Optional<GiantFungiSpots.MixView> view = server.computeOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
-                return GiantFungiSpots.mix(level, TestLayers.band(level, LAYER), zone, x, REGION_Z);
+                LayerChain.Band band = TestLayers.band(level, LAYER);
+                // The Garden grows a site in one chunk in three, so two neighbours of two forms are near.
+                return zone == 0
+                        ? GiantFungiSpots.pair(level, band, zone, x, REGION_Z)
+                        : GiantFungiSpots.mix(level, band, zone, x, REGION_Z);
             });
             if (view.isPresent()) {
                 LOGGER.info(
@@ -324,52 +328,42 @@ public class GiantFungiScenario extends EvidenceScenario {
 
     /**
      * A parasol fitted against the east side of the stage's chunk and a spire cluster against the west side of the
-     * chunk east of it, seen from straight above with the chunk borders drawn: each whole, in its own chunk.
+     * chunk east of it, seen from straight above: each whole, in its own chunk. The two chunks are outlined in the
+     * world, red and yellow, in their border cells a row under the parasol's gills, so the chunk edge runs between the
+     * red and the yellow line.
      */
     private void topDown(ClientGameTestContext context, TestServerContext server, Spot stage) {
         ChunkPos chunk = ChunkPos.containing(stage.tall());
+        ChunkPos east = new ChunkPos(chunk.x() + 1, chunk.z());
         GiantLayout.Fit parasol = parasol(stage, PARASOL_SEED).fitInChunk(15, 8).orElseThrow();
         GiantLayout.Fit spires = spires(stage, SPIRES_SEED).fitInChunk(0, 8).orElseThrow();
         BlockPos parasolBase = new BlockPos(
                 chunk.getMinBlockX() + parasol.baseX(), stage.tall().getY(), chunk.getMinBlockZ() + parasol.baseZ());
         BlockPos spiresBase = new BlockPos(
-                chunk.getMinBlockX() + 16 + spires.baseX(), stage.tall().getY(), chunk.getMinBlockZ() + spires.baseZ());
-        BlockPos eye =
-                new BlockPos(chunk.getMinBlockX() + 16, stage.tall().getY() + TOP_DOWN_RISE, chunk.getMinBlockZ() + 8);
+                east.getMinBlockX() + spires.baseX(), stage.tall().getY(), east.getMinBlockZ() + spires.baseZ());
+        int outlineY = parasolBase.getY() + GiantMockups.gillsRow(parasol.layout()) - 1;
+        BlockPos eye = new BlockPos(east.getMinBlockX(), stage.tall().getY() + TOP_DOWN_RISE, chunk.getMinBlockZ() + 8);
         Snapshot under = server.computeOnServer(s -> Snapshot.around(
                 TestLayers.level(s, LAYER), eye.atY(stage.tall().getY()), 26, BUILD_BELOW, BUILD_ABOVE));
         try {
             server.runOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 LOGGER.info(
-                        "[giant-fungi] top down: parasol {} cells, spires {} cells",
+                        "[giant-fungi] top down: parasol {} cells, spires {} cells, outlines {} and {} cells at Y {}",
                         GiantMockups.grow(level, parasol.layout(), parasolBase),
-                        GiantMockups.grow(level, spires.layout(), spiresBase));
+                        GiantMockups.grow(level, spires.layout(), spiresBase),
+                        GiantMockups.outline(
+                                level, chunk, outlineY, Blocks.CONCRETE.red().defaultBlockState()),
+                        GiantMockups.outline(
+                                level, east, outlineY, Blocks.CONCRETE.yellow().defaultBlockState()),
+                        outlineY);
                 LightSync.holdSendUntilLit(level, parasolBase.offset(-24, 0, -24), spiresBase.offset(24, 0, 24));
             });
             awaitLight(context, server);
-            // The game keeps the debug view reduced, which leaves the chunk borders out.
-            server.runCommand("gamerule reduced_debug_info false");
-            ClientWait.until(
-                    context,
-                    "the client's debug view to be full",
-                    client -> !client.showOnlyReducedInfo(),
-                    client -> "the debug view is still reduced");
-            context.runOnClient(client -> {
-                client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.ALWAYS_ON);
-                client.debugEntries.rebuildCurrentList();
-            });
             nightVision(server, true);
-            // The chunk borders are a debug renderer, which the hidden HUD hides too.
-            ClientChecks.withHudShown(
-                    context, () -> shootOne(context, server, eye, new float[] {0f, 90f}, "top-down-chunks"));
+            shootOne(context, server, eye, new float[] {0f, 90f}, "top-down-chunks");
         } finally {
             nightVision(server, false);
-            context.runOnClient(client -> {
-                client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.NEVER);
-                client.debugEntries.rebuildCurrentList();
-            });
-            server.runCommand("gamerule reduced_debug_info true");
             server.runOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 under.restore(level);

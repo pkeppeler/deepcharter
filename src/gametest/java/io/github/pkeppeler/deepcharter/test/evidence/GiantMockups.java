@@ -2,8 +2,10 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.surface.GiantFungus;
 import io.github.pkeppeler.deepcharter.surface.GiantLayout;
+import io.github.pkeppeler.deepcharter.surface.GiantPiece;
 import io.github.pkeppeler.deepcharter.test.evidence.GiantFungiSpots.Spot;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -11,6 +13,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -77,6 +80,36 @@ final class GiantMockups {
             if (GiantFungus.open(level.getBlockState(pos))) {
                 level.setBlock(pos, GiantFungus.state(entry.getValue()), SET);
                 set++;
+            }
+        }
+        return set;
+    }
+
+    /** The lowest row of a parasol's gills over its base. */
+    static int gillsRow(GiantLayout layout) {
+        return layout.pieces().entrySet().stream()
+                .filter(entry -> entry.getValue() instanceof GiantPiece.Gills)
+                .mapToInt(entry -> entry.getKey().y())
+                .min()
+                .orElseThrow(() -> new AssertionError("a parasol with no gills"));
+    }
+
+    /**
+     * Sets {@code state} in each open border cell of {@code chunk} at row {@code y}, a line round the chunk inside its
+     * edge, so a still shows where the chunk ends. Returns how many cells it set.
+     */
+    static int outline(ServerLevel level, ChunkPos chunk, int y, BlockState state) {
+        int set = 0;
+        for (int i = 0; i < GiantLayout.CHUNK; i++) {
+            for (BlockPos pos : List.of(
+                    new BlockPos(chunk.getMinBlockX() + i, y, chunk.getMinBlockZ()),
+                    new BlockPos(chunk.getMinBlockX() + i, y, chunk.getMaxBlockZ()),
+                    new BlockPos(chunk.getMinBlockX(), y, chunk.getMinBlockZ() + i),
+                    new BlockPos(chunk.getMaxBlockX(), y, chunk.getMinBlockZ() + i))) {
+                if (GiantFungiSpots.open(level.getBlockState(pos))) {
+                    level.setBlock(pos, state, SET);
+                    set++;
+                }
             }
         }
         return set;
