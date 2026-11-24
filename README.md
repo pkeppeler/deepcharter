@@ -154,7 +154,7 @@ A pod with no hull goes dark and stays where it fell, and its owners are told. A
 
 ![A transmission from an unknown signal, on a green screen](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true)
 
-A crust of hard rock at the floor of each layer is a breach. Any drill can get through, slowly and hot. You cross by digging, in place, with no teleport: a rumble, then a transmission on a green screen. The words in this picture are stand-ins until the story is written.
+A crust of hard rock at the floor of each layer is a breach. Any drill can get through, slowly and hot. In the campaign world you cross by digging, in place, with no teleport: a rumble, then a transmission on a green screen. The words in this picture are stand-ins until the story is written.
 
 ![The pod's readout warns CRUST 7 DOWN, HULL 8, IT TAKES 24](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-brace.png?raw=true)
 
