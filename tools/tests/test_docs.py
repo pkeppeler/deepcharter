@@ -122,20 +122,18 @@ class DocLinks(unittest.TestCase):
 # What a doc may quote, and where the build sets it: gradle/libs.versions.toml, the Java release in build.gradle.kts,
 # and the Sodium and Lithium jars in tools/package-friends-build.sh. A line with an HTML comment
 # "<!-- version-ok: reason -->" may mention another version (Java 17 mods, Minecraft 1.21 worlds).
+NUMBER = r"(\d+(?:\.\d+)+)"
+TOML = "gradle/libs.versions.toml"
+FRIENDS = "tools/package-friends-build.sh"
 QUOTED_VERSIONS = (
-    ("Fabric Loader", re.compile(r"Fabric Loader (\d+(?:\.\d+)+)"), "fabricLoader"),
-    ("Fabric API", re.compile(r"Fabric API (\d+(?:\.\d+)+(?:\+[\w.]+)?)"), "fabricApi"),
-    ("Minecraft", re.compile(r"Minecraft (\d+(?:\.\d+)+)"), "minecraft"),
-    ("Java", re.compile(r"\b(?:Java|JDK) (\d+)\b"), "javaRelease"),
-    ("Sodium", re.compile(r"Sodium (\d+(?:\.\d+)+)"), "sodium"),
-    ("Lithium", re.compile(r"Lithium (\d+(?:\.\d+)+)"), "lithium"),
+    ("Fabric Loader", re.compile(rf"Fabric Loader {NUMBER}"), "fabricLoader", TOML),
+    ("Fabric API", re.compile(rf"Fabric API {NUMBER}(?:\+[\w.]+)?"), "fabricApi", TOML),
+    ("Minecraft", re.compile(rf"Minecraft {NUMBER}"), "minecraft", TOML),
+    ("Java", re.compile(r"\b(?:Java|JDK) (\d+)\b"), "javaRelease", "build.gradle.kts"),
+    ("Sodium", re.compile(rf"Sodium {NUMBER}"), "sodium", FRIENDS),
+    ("Lithium", re.compile(rf"Lithium {NUMBER}"), "lithium", FRIENDS),
 )
 VERSION_OK = re.compile(r"<!--\s*version-ok:\s*\S")
-WHERE = {
-    "javaRelease": "build.gradle.kts",
-    "sodium": "tools/package-friends-build.sh",
-    "lithium": "tools/package-friends-build.sh",
-}
 VERSION_DOCS = ("README.md", "docs/PLAYING.md")
 CURRENT_FIXTURE = {
     "fabricLoader": "0.19.5",
@@ -154,7 +152,7 @@ def build_versions(root):
     found["javaRelease"] = release.group(1) if release else ""
     script = (root / "tools/package-friends-build.sh").read_text()
     for mod in ("sodium", "lithium"):
-        jar = re.search(rf"{mod}-fabric-(\d+(?:\.\d+)+)\+mc", script)
+        jar = re.search(rf"{mod}-fabric-{NUMBER}\+mc", script)
         found[mod] = jar.group(1) if jar else ""
     return found
 
@@ -169,11 +167,11 @@ def stale_versions(text, name, current):
     for number, line in enumerate(text.splitlines(), 1):
         if VERSION_OK.search(line):
             continue
-        for label, pattern, key in QUOTED_VERSIONS:
-            for match in pattern.finditer(INLINE_CODE.sub("", line)):
+        prose = INLINE_CODE.sub("", line)
+        for label, pattern, key, where in QUOTED_VERSIONS:
+            for match in pattern.finditer(prose):
                 want = current[key]
                 if match.group(1) not in (want, want.split("+")[0]):
-                    where = WHERE.get(key, "gradle/libs.versions.toml")
                     problems.append(
                         f"{name}:{number}: stale '{match.group(0)}', the build has {label} {want} ({where});"
                         " if the line means another version on purpose, add <!-- version-ok: reason -->"
@@ -197,16 +195,14 @@ class DocVersions(unittest.TestCase):
     def test_a_stale_version_fails_and_names_the_right_one(self):
         text = "Fabric Loader 0.19.4, Fabric API 0.162.0, Minecraft 26.2, Java 21, Sodium 0.9.1, Lithium 0.2.\n"
         hint = "; if the line means another version on purpose, add <!-- version-ok: reason -->"
-        toml = "gradle/libs.versions.toml"
-        script = "tools/package-friends-build.sh"
         self.assertEqual(
             [
-                f"d.md:1: stale 'Fabric Loader 0.19.4', the build has Fabric Loader 0.19.5 ({toml}){hint}",
-                f"d.md:1: stale 'Fabric API 0.162.0', the build has Fabric API 0.164.0+26.3 ({toml}){hint}",
-                f"d.md:1: stale 'Minecraft 26.2', the build has Minecraft 26.3 ({toml}){hint}",
+                f"d.md:1: stale 'Fabric Loader 0.19.4', the build has Fabric Loader 0.19.5 ({TOML}){hint}",
+                f"d.md:1: stale 'Fabric API 0.162.0', the build has Fabric API 0.164.0+26.3 ({TOML}){hint}",
+                f"d.md:1: stale 'Minecraft 26.2', the build has Minecraft 26.3 ({TOML}){hint}",
                 f"d.md:1: stale 'Java 21', the build has Java 25 (build.gradle.kts){hint}",
-                f"d.md:1: stale 'Sodium 0.9.1', the build has Sodium 0.9.2 ({script}){hint}",
-                f"d.md:1: stale 'Lithium 0.2', the build has Lithium 0.26.2 ({script}){hint}",
+                f"d.md:1: stale 'Sodium 0.9.1', the build has Sodium 0.9.2 ({FRIENDS}){hint}",
+                f"d.md:1: stale 'Lithium 0.2', the build has Lithium 0.26.2 ({FRIENDS}){hint}",
             ],
             stale_versions(text, "d.md", CURRENT_FIXTURE),
         )
