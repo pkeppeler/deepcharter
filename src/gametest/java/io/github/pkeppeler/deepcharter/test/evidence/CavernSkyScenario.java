@@ -51,8 +51,8 @@ public class CavernSkyScenario extends EvidenceScenario {
     /** A still and a frame of the view, with the HUD hidden and no particles, once the sky clock has reached the client. */
     private void still(ClientGameTestContext context, String still) {
         ClientChecks.withHudHidden(context, ParticleStatus.MINIMAL, () -> {
-            // tick-wait: the sky clock and the camera's attribute probe ease over a few ticks, and nothing reports when
-            // they have
+            // tick-wait: the sky clock and the camera's attribute probe ease over a few ticks, and nothing
+            // reports when they have
             context.waitTicks(40);
             screenshot(context, still);
             frame(context);

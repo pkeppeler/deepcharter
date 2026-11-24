@@ -45,7 +45,7 @@ public final class CavernSky {
     private static final int HALL_Z = 5_000;
 
     /** The render distance, in chunks, while the camera is in the hall: the hall must reach past it. */
-    public static final int RENDER_DISTANCE = 2;
+    private static final int RENDER_DISTANCE = 2;
 
     /** From the camera to either end of the hall: past the 2 chunks drawn round the camera's chunk, with a chunk to spare. */
     private static final int HALF_LENGTH = 64;
@@ -131,18 +131,13 @@ public final class CavernSky {
             BlockPos inWater = floor.offset(PIT_START + UNDERWATER_EAST, -UNDERWATER_BELOW, 0);
             for (View view : UNDERWATER_VIEWS) {
                 stand(context, server, CavernSky::layer, inWater, view);
-                awaitUnderWater(context);
+                ClientWait.until(
+                        context,
+                        "the camera under the water of the flooded pit",
+                        client -> client.player != null && client.player.isUnderWater());
                 atView.at(view, true);
             }
         });
-    }
-
-    /** Waits until the client's player is under water, where the client draws no dark disc. */
-    private static void awaitUnderWater(ClientGameTestContext context) {
-        ClientWait.until(
-                context,
-                "the camera under the water of the flooded pit",
-                client -> client.player != null && client.player.isUnderWater());
     }
 
     private static ServerLevel layer(MinecraftServer server) {

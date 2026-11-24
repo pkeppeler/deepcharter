@@ -38,9 +38,8 @@ public class CavernSkyClientTest implements FabricClientGameTest {
                 Path shot = ClientChecks.skyShot(context, "cavern-sky-" + view.name());
                 CavernSky.Reading reading = CavernSky.read(shot, CavernSky.fogAtCamera(context));
                 LOGGER.info("[cavern-sky] {}: {}", view.name(), reading.describe());
-                // Under water the fog is the water's, brightened as the eyes adjust, and the view straight down meets
-                // the
-                // cover under the world's bottom: no sun or moon brighter than the sky is the check.
+                // Under water the fog is the water's, brightened as the eyes adjust, and the view straight down
+                // meets the cover under the world's bottom: no sun or moon brighter than the sky is the check.
                 if (!(underwater ? reading.noneBrighter() : reading.fogOnly())) {
                     leaks.add(view.name() + ": " + reading.describe());
                 }
