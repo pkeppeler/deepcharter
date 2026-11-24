@@ -53,7 +53,8 @@ final class Consumables {
             case SHAPED_CHARGE -> PodCharge.set(pod, tuning, PodCharge.Kind.SHAPED);
             case QUANTUM_TELEPORTER -> Teleports.send(pod, tuning.quantumScatter());
             case MATTER_TRANSMITTER -> Teleports.send(pod, 0.0);
-            default -> throw new IllegalStateException(consumable + " is not a pilot-seat item");
+            case THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE, TETHER, BOLT_DRIVER, BOLT, AIR_CANISTER ->
+                throw new IllegalStateException(consumable + " is not used from the pilot's seat");
         };
     }
 

@@ -29,8 +29,7 @@ public final class SuitReserve {
             return refusal("refilling");
         }
         SuitState filled = state.get().withReserve(Math.min(capacity, reserve + seconds));
-        // A breached suit is breached no longer: the breach hit reads the stored mode, and the next second would take a
-        // while.
+        // The breach hit reads the stored mode, so a breached suit leaves BREACHED now, not at the next second.
         player.setAttached(
                 SuitRegistry.SUIT,
                 Versioned.of(filled.mode() == Mode.BREACHED ? filled.withMode(Mode.EXPOSED) : filled));

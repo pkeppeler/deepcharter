@@ -49,11 +49,15 @@ public class AirCanisterTest {
         player.setGameMode(GameType.SURVIVAL);
         SuitScenes.setTracks(player, tracks);
         SuitScenes.setReserve(player, reserve, true);
+        giveCanisters(player);
+        return player;
+    }
+
+    private static void giveCanisters(ServerPlayer player) {
         player.getInventory()
                 .setItem(
                         player.getInventory().getSelectedSlot(),
                         new ItemStack(RepairRegistry.item(Consumable.AIR_CANISTER), STACK));
-        return player;
     }
 
     private static InteractionResult use(ServerPlayer player) {
@@ -194,10 +198,7 @@ public class AirCanisterTest {
             SuitScenes.onFootIn(mock, pocket, () -> {
                 SuitScenes.setTracks(player, SuitTracks.STOCK);
                 SuitScenes.setReserve(player, 0f, true);
-                player.getInventory()
-                        .setItem(
-                                player.getInventory().getSelectedSlot(),
-                                new ItemStack(RepairRegistry.item(Consumable.AIR_CANISTER), STACK));
+                giveCanisters(player);
                 SuitTicker.second(player);
                 expect(
                         helper,
@@ -246,10 +247,7 @@ public class AirCanisterTest {
                             SuitScenes.setReserve(breached, 0f, true);
                             SuitTicker.second(breached);
                         }
-                        player.getInventory()
-                                .setItem(
-                                        player.getInventory().getSelectedSlot(),
-                                        new ItemStack(RepairRegistry.item(Consumable.AIR_CANISTER), STACK));
+                        giveCanisters(player);
                         use(player);
                         float health = player.getHealth();
                         breachTick(helper, control);
@@ -301,10 +299,7 @@ public class AirCanisterTest {
                     }
                     SuitScenes.setTracks(player, SuitTracks.STOCK);
                     SuitScenes.setReserve(player, 60f, true);
-                    player.getInventory()
-                            .setItem(
-                                    player.getInventory().getSelectedSlot(),
-                                    new ItemStack(RepairRegistry.item(Consumable.AIR_CANISTER), STACK));
+                    giveCanisters(player);
                     InteractionResult powered = use(player);
                     expect(
                             helper,
