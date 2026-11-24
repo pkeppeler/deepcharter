@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.sound;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodSeats;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.SoundTuning;
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.SoundManager;
@@ -42,7 +44,7 @@ public final class PodLoops {
 
         /** The sound this channel should make for {@code pod} now: none when the pod has no pilot or no power. */
         Optional<DeepSound> soundOf(PodEntity pod) {
-            return pod.getControllingPassenger() == null || pod.stranded() ? Optional.empty() : sound.apply(pod);
+            return PodSeats.pilot(pod).isEmpty() || pod.stranded() ? Optional.empty() : sound.apply(pod);
         }
     }
 
@@ -135,7 +137,9 @@ public final class PodLoops {
 
     /** Whether the player at this client pilots {@code pod}. */
     private static boolean isCab(PodEntity pod) {
-        return pod.getControllingPassenger() == Minecraft.getInstance().player;
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null
+                && PodSeats.pilot(pod).filter(player.getUUID()::equals).isPresent();
     }
 
     /** Follows its pod, fades in while the pod is in the loop's state and out when it leaves it, and stops once it is silent or its pod is gone. */

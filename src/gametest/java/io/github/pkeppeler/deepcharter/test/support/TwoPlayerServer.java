@@ -58,7 +58,7 @@ public final class TwoPlayerServer implements AutoCloseable {
         properties.setProperty("server-port", Integer.toString(port));
         properties.setProperty("max-players", Integer.toString(PLAYER_LIMIT));
         LOGGER.info("TwoPlayerServer: dedicated server on port {}", port);
-        TestDedicatedServerContext server = context.worldBuilder().createServer(properties);
+        TestDedicatedServerContext server = DedicatedServerRelease.createServer(context, properties);
         TestDedicatedServerConnection connection = null;
         String stage =
                 "the real client joining the dedicated server (connect, login and world load, waited on by WorldLoadWait for "
