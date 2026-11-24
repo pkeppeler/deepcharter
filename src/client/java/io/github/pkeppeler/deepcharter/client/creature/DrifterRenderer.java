@@ -10,7 +10,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
-/** Draws the drifter from the model, texture and animations of {@link DrifterAssets} for its form: a translucent body with a glow of its own. */
+/** Draws a drifter as its form's model, translucent with a glow of its own. */
 public final class DrifterRenderer extends GeoReplacedEntityRenderer<DrifterAnimatable, Drifter, DrifterRenderState> {
     /** Blocks the tendrils of a jellyfish hang below, and a chain trails, past the hitbox. */
     private static final double CULL_MARGIN_BLOCKS = 3.0;

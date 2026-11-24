@@ -8,6 +8,12 @@ import net.minecraft.resources.Identifier;
 
 /** Picks the model and the texture by the form in the render state. */
 final class DrifterModel extends GeoModel<DrifterAnimatable> {
+    private static final Identifier PRIMARY = DrifterAssets.resource(DrifterVariant.JELLYFISH);
+    private static final Identifier[] FALLBACKS = Arrays.stream(DrifterVariant.values())
+            .filter(variant -> variant != DrifterVariant.JELLYFISH)
+            .map(DrifterAssets::resource)
+            .toArray(Identifier[]::new);
+
     @Override
     public Identifier getModelResource(GeoRenderState renderState) {
         return DrifterAssets.resource(DrifterRenderState.variantOf(renderState));
@@ -18,20 +24,14 @@ final class DrifterModel extends GeoModel<DrifterAnimatable> {
         return DrifterAssets.texture(DrifterRenderState.variantOf(renderState));
     }
 
-    /**
-     * One stand-in animates every drifter, so the animation file cannot follow the form. The names do: each file holds only the
-     * animations named for its form ({@link DrifterAssets#idle}), and GeckoLib looks a name up in this file and then in the fallbacks.
-     */
+    /** One stand-in animates every form, so the file cannot follow it; the animation names do, and GeckoLib tries the fallbacks for them. */
     @Override
     public Identifier getAnimationResource(DrifterAnimatable animatable) {
-        return DrifterAssets.resource(DrifterVariant.values()[0]);
+        return PRIMARY;
     }
 
     @Override
     public Identifier[] getAnimationResourceFallbacks(DrifterAnimatable animatable) {
-        return Arrays.stream(DrifterVariant.values())
-                .skip(1)
-                .map(DrifterAssets::resource)
-                .toArray(Identifier[]::new);
+        return FALLBACKS;
     }
 }

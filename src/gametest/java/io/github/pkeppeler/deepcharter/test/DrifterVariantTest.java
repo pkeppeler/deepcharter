@@ -9,10 +9,12 @@ import io.github.pkeppeler.deepcharter.creature.DrifterVariant;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.RandomSource;
 
 /**
@@ -32,6 +34,42 @@ public class DrifterVariantTest {
             counts.merge(DrifterVariant.pick(random, weights), 1, Integer::sum);
         }
         return counts;
+    }
+
+    private static DrifterTuning.Spawn withWeights(List<Double> weights) {
+        DrifterTuning.Spawn base = DrifterTuning.DEFAULT.spawn();
+        return new DrifterTuning.Spawn(
+                base.checkTicks(),
+                base.perMinute(),
+                base.zoneCap(),
+                base.perSource(),
+                base.minBlocks(),
+                base.maxBlocks(),
+                base.tries(),
+                weights);
+    }
+
+    /** Each clause of the weight guard turns one of these away; a list that passes every clause but one still fails on that one. */
+    @GameTest
+    public void aBadWeightListIsRefused(GameTestHelper helper) {
+        Map<String, List<Double>> bad = new LinkedHashMap<>();
+        bad.put("too few", List.of(1.0, 1.0));
+        bad.put("too many", List.of(1.0, 1.0, 1.0, 1.0));
+        bad.put("negative", List.of(1.0, -1.0, 1.0));
+        bad.put("NaN", List.of(1.0, Double.NaN, 1.0));
+        bad.put("infinite", List.of(1.0, Double.POSITIVE_INFINITY, 1.0));
+        bad.put("all zero", List.of(0.0, 0.0, 0.0));
+        bad.forEach((why, weights) -> {
+            try {
+                withWeights(weights);
+            } catch (IllegalArgumentException expected) {
+                return;
+            }
+            throw helper.assertionException(
+                    Component.literal("a " + why + " weight list " + weights + " was accepted"));
+        });
+        withWeights(List.of(0.0, 0.0, 2.0));
+        helper.succeed();
     }
 
     /** What {@code /summon} makes: no variant was set, so it is the jellyfish. */

@@ -13,7 +13,7 @@ import java.util.function.Function;
 
 /** One shared stand-in for every drifter, so the entity stays free of GeckoLib and a server never loads it. */
 public final class DrifterAnimatable implements GeoReplacedEntity {
-    /** The loop of each form, by {@link DrifterVariant#ordinal()}. */
+    /** By {@link DrifterVariant#ordinal()}. */
     private static final RawAnimation[] IDLE = poses(DrifterAssets::idle);
 
     private static final RawAnimation[] DRAWN = poses(DrifterAssets::drawn);

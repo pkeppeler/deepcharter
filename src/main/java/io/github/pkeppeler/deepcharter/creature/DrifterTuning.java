@@ -135,7 +135,7 @@ public record DrifterTuning(
                     || maxBlocks <= minBlocks
                     || tries < 1
                     || variantWeights.size() != DrifterVariant.values().length
-                    || variantWeights.stream().anyMatch(weight -> !(weight >= 0))
+                    || variantWeights.stream().anyMatch(weight -> !(weight >= 0 && Double.isFinite(weight)))
                     || variantWeights.stream().noneMatch(weight -> weight > 0)) {
                 throw new IllegalArgumentException("drifter spawn tuning out of range: " + this);
             }
