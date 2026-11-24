@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSeats;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.SonarEcho;
@@ -237,6 +238,73 @@ public class PodSonarTest {
                     "a player in no pod has no sonar");
             expect(helper, echoes(scene.pod()).isEmpty(), "and the pod heard nothing");
         });
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void theSeatAssignmentFollowsBoardingOrder(GameTestHelper helper) {
+        int x = 8152;
+        boolean[] left = {false};
+        run(helper, x, level -> {}, scene -> {
+            // The assignment is written at the end of the pod's tick, so each step waits for it to catch up.
+            List<UUID> synced = Versioned.readable(scene.pod(), PodSeats.STATE)
+                    .orElseThrow()
+                    .riders();
+            UUID pilot = scene.pilot().player().getUUID();
+            UUID navigator = scene.navigator().player().getUUID();
+            if (!left[0]) {
+                if (!synced.equals(List.of(pilot, navigator))) {
+                    return false;
+                }
+                scene.pilot().player().stopRiding();
+                left[0] = true;
+                return false;
+            }
+            if (!synced.equals(List.of(navigator))) {
+                return false;
+            }
+            expect(
+                    helper,
+                    PodSeats.pilot(scene.pod()).filter(navigator::equals).isPresent(),
+                    "once the pilot gets off the navigator holds the pilot's seat");
+            return true;
+        });
+    }
+
+    @GameTest
+    public void aRiderThatIsNoPlayerDoesNotPilot(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
+        Entity stand = TestEntities.create(EntityTypes.ARMOR_STAND, level);
+        expect(helper, stand.startRiding(pod, true, false), "the armour stand boards the pod");
+        PodEvents.AFTER_TICK.invoker().afterTick(pod);
+        PodSeats.State state = Versioned.readable(pod, PodSeats.STATE).orElseThrow();
+        expect(
+                helper,
+                state.riders().equals(List.of(stand.getUUID())) && !state.pilotIsPlayer(),
+                "the stand holds seat 0 and the assignment says it is no player, got %s",
+                state);
+        expect(helper, PodSeats.pilot(pod).isEmpty(), "a pod whose first rider is no player has no pilot");
+        stand.discard();
+        pod.discard();
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aSeatAssignmentOfAnotherVersionIsKeptAndNeverThrows(GameTestHelper helper) {
+        PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, helper.getLevel());
+        UnreadableChecks.makeUnreadable(pod, PodSeats.STATE);
+        UnreadableChecks.assertNoThrow(
+                helper,
+                "pod seats",
+                Map.of(
+                        "the pilot", () -> PodSeats.pilot(pod),
+                        "the tick", () -> PodEvents.AFTER_TICK.invoker().afterTick(pod)));
+        expect(
+                helper,
+                pod.getAttached(PodSeats.STATE) instanceof Versioned.Unreadable<PodSeats.State>,
+                "an unreadable seat assignment is left as it was read");
+        pod.discard();
+        helper.succeed();
     }
 
     // ---- what a ping returns ----
