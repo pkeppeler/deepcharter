@@ -10,12 +10,15 @@ import io.github.pkeppeler.deepcharter.client.theme.BeamLook;
 import io.github.pkeppeler.deepcharter.client.theme.BeamStyle;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
+import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
+import io.github.pkeppeler.deepcharter.client.theme.SuitLook;
 import io.github.pkeppeler.deepcharter.client.theme.TowChainLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.theme.UiTheme;
@@ -222,6 +225,34 @@ public class ThemeLooksTest {
                 "readout",
                 new ReadoutLook(14, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
                 ReadoutLook.of(area("readout", null)));
+        expect(
+                helper,
+                "sonar",
+                new SonarLook(
+                        81,
+                        4,
+                        0xFF7CE0FF,
+                        0xC0081018,
+                        0xFF000000,
+                        0x40FFFFFF,
+                        0xFF38F06E,
+                        0xFFE8E8F0,
+                        0xFFE040E0,
+                        0xFF7A8896,
+                        0xFFFF7A2A,
+                        0xFF7CE0FF,
+                        0x80000000,
+                        0xFFB0B0B0,
+                        60,
+                        0xFFFFFFFF,
+                        9,
+                        14),
+                SonarLook.of(area("sonar", null)));
+        expect(
+                helper,
+                "suit",
+                new SuitLook(6, 20, 96, 5, 16, 1, 2, 0xFF7CFC9A, 0xFFFFB000, 0xFFFF4A3A, 0xFF2E7A45, 5),
+                SuitLook.of(area("suit", null)));
         helper.succeed();
     }
 
@@ -634,7 +665,10 @@ public class ThemeLooksTest {
                 "cockpit",
                 "tow",
                 "beam",
-                "readout")) {
+                "catalogue",
+                "readout",
+                "sonar",
+                "suit")) {
             areas.put(name, area(name, null));
         }
         return areas;
@@ -651,12 +685,53 @@ public class ThemeLooksTest {
     }
 
     @GameTest
+    public void theSuitGaugeStaysWithinItsBounds(GameTestHelper helper) {
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"barWidth\": 10 }")), "barWidth");
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"segments\": 1 }")), "segments");
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"blinkTicks\": 0 }")), "blinkTicks");
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"barWidth\": 20, \"segments\": 20 }")), "segments");
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"redColor\": 5 }")), "redColor");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theCatalogueLooksAreTheMockupsSizesAndKeepTheirBounds(GameTestHelper helper) {
+        CatalogueLook look = CatalogueLook.of(area("catalogue", null));
+        expect(
+                helper,
+                "catalogue panel widths",
+                List.of(123, 122),
+                List.of(look.maxPanelWidth(), look.minPanelWidth()));
+        expect(helper, "catalogue console height, the inventory's", List.of(166), List.of(look.consoleHeight()));
+        expect(
+                helper,
+                "catalogue grid",
+                List.of(5, 3, 19),
+                List.of(look.gridColumns(), look.gridRows(), look.gridCell()));
+        rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"minPanelWidth\": 200 }")), "minPanelWidth");
+        rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"gridColumns\": 0 }")), "gridColumns");
+        rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"cycleMillis\": 5 }")), "cycleMillis");
+        helper.succeed();
+    }
+
+    @GameTest
     public void theBlockReadoutStaysWithinItsBounds(GameTestHelper helper) {
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"scale\": 3 }")), "scale");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeInTicks\": 0 }")), "fadeInTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeOutTicks\": 41 }")), "fadeOutTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"settleTicks\": -1 }")), "settleTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"hintColor\": 5 }")), "hintColor");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theSonarScopeStaysWithinItsBounds(GameTestHelper helper) {
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"scopePixels\": 80 }")), "scopePixels");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"scopePixels\": 9 }")), "scopePixels");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"minAlpha\": 256 }")), "minAlpha");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"markPixels\": 8 }")), "markPixels");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"markMargin\": 101 }")), "markMargin");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"oreColor\": 5 }")), "oreColor");
         helper.succeed();
     }
 

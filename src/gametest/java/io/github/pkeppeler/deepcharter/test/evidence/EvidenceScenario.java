@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -36,11 +37,17 @@ import net.minecraft.world.phys.Vec3;
  */
 public abstract class EvidenceScenario implements FabricClientGameTest {
     /** Above the layer 1 signal decay (#502), so the gauges are live: the decay starts {@code onset} slabs above the floor, and a stock console shrinks that. */
-    protected static final int LIVE_GAUGES_FLOOR_Y =
+    protected static final int LIVE_GAUGES_LOCAL_Y =
             SignalDecayTuning.DEFAULT.band(1).onset() + 4;
 
-    /** Where a scenario carves a room in a layer: 60 slabs above the live-gauges floor, so the gauges stay live. */
-    protected static final int LAYER_ROOM_Y = LIVE_GAUGES_FLOOR_Y + 60;
+    /** {@link #LIVE_GAUGES_LOCAL_Y} as a world Y in layer 1: a layer is a band of the campaign level. */
+    protected static final int LIVE_GAUGES_FLOOR_Y = TestLayers.worldY(1, LIVE_GAUGES_LOCAL_Y);
+
+    /** Where a scenario carves a room in a layer, counted from the layer's floor: 60 slabs above the live-gauges floor, so the gauges stay live. */
+    protected static final int LAYER_ROOM_LOCAL_Y = LIVE_GAUGES_LOCAL_Y + 60;
+
+    /** {@link #LAYER_ROOM_LOCAL_Y} as a world Y in layer 1. */
+    protected static final int LAYER_ROOM_Y = TestLayers.worldY(1, LAYER_ROOM_LOCAL_Y);
 
     /** Where a scenario builds a slab or hall in the overworld's sky, clear of the terrain. */
     // fixed-pos: the overworld has no anchor to derive a sky slab from; 200 sits 120 under its 320 build limit

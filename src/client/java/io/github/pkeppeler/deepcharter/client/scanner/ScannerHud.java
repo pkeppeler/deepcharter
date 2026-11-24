@@ -5,10 +5,13 @@ import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.scanner.EchoedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import java.util.List;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
@@ -47,6 +50,27 @@ public final class ScannerHud {
     public static void init() {
         ClientTickEvents.END_CLIENT_TICK.register(ScannerHud::tick);
         HudElementRegistry.addLast(ID, ScannerHud::extract);
+        HudKeepClear.register(ScannerHud::keepClear);
+    }
+
+    /**
+     * The plain panel's frame on a GUI {@code guiWidth} x {@code guiHeight}, top right: the cells, their frame and the title above them.
+     * What is drawn and what is kept clear are this one box.
+     */
+    private static HudKeepClear.Rect frame(int guiWidth, int guiHeight, ScanArea area) {
+        int cell = cellSize(guiWidth, guiHeight, area);
+        int left = cellLeft(guiWidth, guiHeight, area, -area.halfWidth()) - FRAME;
+        int right = cellLeft(guiWidth, guiHeight, area, area.halfWidth()) + cell + FRAME;
+        int top = ScannerLook.current().margin();
+        int bottom = cellTop(guiWidth, guiHeight, area, -area.down()) + cell + FRAME;
+        return new HudKeepClear.Rect("scanner panel", left, top, right - left, bottom - top);
+    }
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        ScanSlice scanned = slice;
+        if (scanned != null && CockpitHud.seated(client, guiWidth, guiHeight).isEmpty()) {
+            into.add(frame(guiWidth, guiHeight, scanned.area()));
+        }
     }
 
     /**
@@ -90,11 +114,11 @@ public final class ScannerHud {
             ticksUntilScan--;
             return;
         }
-        slice = ScanSlice.scan(client.level, pod).orElse(null);
+        slice = ScanSlice.scan(EchoedBlocks.ofTallies(client.level, pod), pod).orElse(null);
         ticksUntilScan = TUNING.rescanTicks() - 1;
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         ScanSlice scanned = slice;
         if (scanned == null || CockpitHud.seated(client).isPresent()) {
@@ -106,11 +130,10 @@ public final class ScannerHud {
         ScanArea area = scanned.area();
         int cell = cellSize(guiWidth, guiHeight, area);
         int left = cellLeft(guiWidth, guiHeight, area, -area.halfWidth());
-        int right = cellLeft(guiWidth, guiHeight, area, area.halfWidth()) + cell;
+        HudKeepClear.Rect frame = frame(guiWidth, guiHeight, area);
         int top = cellTop(guiWidth, guiHeight, area, area.up());
-        int bottom = cellTop(guiWidth, guiHeight, area, -area.down()) + cell;
 
-        graphics.fill(left - FRAME, look.margin(), right + FRAME, bottom + FRAME, look.frameColor());
+        graphics.fill(frame.x(), frame.y(), frame.right(), frame.bottom(), look.frameColor());
         graphics.text(client.font, title(scanned), left, look.margin() + 1, look.titleColor());
         drawCells(graphics, client, scanned, cell, left, top);
     }

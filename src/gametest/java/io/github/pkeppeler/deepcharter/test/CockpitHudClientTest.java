@@ -2,6 +2,8 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitDecay;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
@@ -222,6 +224,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         Set<String> expected = Stream.of(
                         "burning",
                         "stranded",
+                        "recovery",
                         "crust_ahead",
                         "crust_in",
                         "brace_waits",
@@ -240,7 +243,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .collect(Collectors.toSet());
         if (!alerts.equals(expected)) {
             throw new AssertionError(
-                    "The warnings that light the fourth lamp are the burning hull, the glaze that holds or is spent, stranded, the crust, the brace that cannot work, the seepage, no brick, a hard landing and lava in or above the shaft: got "
+                    "The warnings that light the fourth lamp are the burning hull, the glaze that holds or is spent, stranded and the Company winch's countdown, the crust, the brace that cannot work, the seepage, no brick, a hard landing and lava in or above the shaft: got "
                             + alerts);
         }
         PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
@@ -334,6 +337,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
         context.waitTicks(5); // tick-wait: the pod and the view settle for a few frames
+        // A toast queued during the settle must not land in the frame (#1023).
+        context.runOnClient(client -> client.gui.toastManager().clear());
         Path file = context.takeScreenshot(name);
         try {
             return ImageIO.read(file.toFile());
@@ -499,6 +504,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         && shown.getBlockY() <= floorFeetY
                         && shown.stranded()
                         && SignalDecay.intensity(shown) >= 1);
+        // The Claim floor completes a directive whose toast the server queues some ticks after arrival, over the lamps.
+        // Await its sync so the shot's clear removes it (#1023).
+        ClientWait.until(
+                context,
+                "the Deep Claim directive synced to the client",
+                client -> ClientHandbook.completed()
+                        .contains(Identifier.fromNamespaceAndPath(
+                                DeepCharter.MOD_ID, "handbook/staying_safe/reach_deep_claim")),
+                client -> "completed directives " + ClientHandbook.completed());
         context.runOnClient(client -> {
             CockpitDecay decay = CockpitDecay.of(
                     client, TestEntities.vehicle(ClientSession.player(client), PodEntity.class), CockpitLook.current());
@@ -514,7 +528,12 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "In the blackout the fuel lamp and the alert lamp are dark and the hull lamp and the burning lamp stay lit, got "
                                 + Arrays.toString(CockpitHud.decayedLamps(decay, truth)));
             }
-            if (CockpitHud.altimeter(client, Component.literal("-1,200 ft.")).isPresent()) {
+            if (CockpitHud.altimeter(
+                            client,
+                            client.getWindow().getGuiScaledWidth(),
+                            client.getWindow().getGuiScaledHeight(),
+                            Component.literal("-1,200 ft."))
+                    .isPresent()) {
                 throw new AssertionError("In the blackout the altimeter is dark with the depth gauge");
             }
             CockpitHud.Row tag = CockpitHud.tag(decay, CockpitLook.current());
@@ -899,6 +918,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         for (PodStatusHud.Line note : notes) {
             cases.add(rowsOf(head, List.of(note)));
         }
+        // The stranded pod's own pair, as the readout builds it: the warning, then the Company winch's countdown (a
+        // minute, the fee of layer 8).
+        cases.add(rowsOf(head, List.of(line("stranded"), line("recovery", 60, 240))));
 
         cases.add(rowsOf(
                 head,

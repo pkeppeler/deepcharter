@@ -640,7 +640,9 @@ public class LavaBoreTest {
         CharterId charter = null;
         for (int i = 0; i < count; i++) {
             MockPlayer pilot = MockPlayers.join(helper, "Bore pilot " + i);
-            pilot.player().setGameMode(GameType.SURVIVAL);
+            // Creative while the pilot waits inside the rock for the chunk to tick, where survival suffocates on a slow
+            // runner; launch() makes it survival.
+            pilot.player().setGameMode(GameType.CREATIVE);
             charter = joinTheCharter(helper, server, pilot, charter, i);
             int centreX = (FIRST_CHUNK_X + i * CHUNK_SPACING) * 16 + 8;
             int centreZ = CHUNK_Z * 16 + 8;
@@ -781,6 +783,7 @@ public class LavaBoreTest {
         if (bore.lookahead > 0) {
             ScannerPods.fit(server, bore.pilot.player(), pod, ComponentTrack.SPOIL_HOPPER, 1);
         }
+        bore.pilot.player().setGameMode(GameType.SURVIVAL);
         if (!bore.pilot.player().startRiding(pod)) {
             throw helper.assertionException(Component.literal("pilot " + bore.index + " could not mount the pod"));
         }

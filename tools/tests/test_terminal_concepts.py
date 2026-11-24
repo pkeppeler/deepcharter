@@ -132,6 +132,23 @@ class Panel(unittest.TestCase):
                     with self.subTest(x=x, y=row):
                         self.assertEqual(0, self.alpha(glass, x, row), "glass drawn over the bezel")
 
+    def test_the_glass_shades_the_rim_and_leaves_the_content_corner_clear(self):
+        # Content starts `margin` px inside the glass edge; a title there keeps 95% of its brightness (#1012). The corner pixel is on the arc and may be dark.
+        glass = pngio.decode((SPRITES / "glass.png").read_bytes())
+        margin = self.theme["insetLeft"] - self.theme["glassLeft"]
+        for y in range(margin + 1, glass.height - margin - 1):
+            for x in range(margin + 1, glass.width - margin - 1):
+                self.assertLessEqual(self.alpha(glass, x, y), 12, f"glass shade over the content at {x}, {y}")
+        # The catalogue consoles draw the same sprite with their title box at (pad, titleTop) of the glass, and the font lights the box's top row, so the
+        # first stem starts a column in, on the box's top row.
+        catalogue = load(MOD_ASSETS / "theme/catalogue.json")
+        x = catalogue["pad"] + 1
+        for y in (catalogue["titleTop"], catalogue["titleTop"] + 1):
+            self.assertLessEqual(self.alpha(glass, x, y), 12, f"glass shade over a catalogue console's title at {x}, {y}")
+        for row in range(self.theme["glassRadius"] // 2):
+            first = next(x for x in range(glass.width) if self.alpha(glass, x, row) != 0)
+            self.assertGreaterEqual(self.alpha(glass, first, row), 100, f"the glass's rim in row {row}")
+
     def test_the_glass_has_the_same_corner_in_all_four_corners(self):
         glass = pngio.decode((SPRITES / "glass.png").read_bytes())
         size = glass.width

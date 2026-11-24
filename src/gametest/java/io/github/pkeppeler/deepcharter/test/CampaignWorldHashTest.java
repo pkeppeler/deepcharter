@@ -38,7 +38,7 @@ public class CampaignWorldHashTest {
     private static final String OUTPUT = System.getenv(OUTPUT_ENV);
 
     /** The worlds whose generation runs the zone fill: the campaign, a layer, and the layer-rock baseline. */
-    private static final List<String> WORLDS = List.of("campaign_sample", "layer_1", "tall_layer");
+    private static final List<String> WORLDS = List.of("campaign_full", "layer_1", "tall_layer");
     /** The low corner chunk of each 6 x 6 patch. */
     private static final int[] PATCH_CORNERS = {700, -402};
 

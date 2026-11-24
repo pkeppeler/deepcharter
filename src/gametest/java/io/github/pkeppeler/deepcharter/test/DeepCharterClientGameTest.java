@@ -21,15 +21,17 @@ public class DeepCharterClientGameTest implements FabricClientGameTest {
             if (!loaded) {
                 throw new AssertionError("Singleplayer world did not load");
             }
-            // A real world, without the test-only world preset: proves the shipped mod loads the layers.
+            // A real world, without the test-only world preset: proves the campaign level is in it and holds both
+            // layers as bands.
             String problems = singleplayer.getServer().computeOnServer(server -> {
                 StringBuilder out = new StringBuilder();
+                int[] floors = {-256, -512};
                 int[] heights = {192, 256};
                 for (int layer = 1; layer <= 2; layer++) {
                     ServerLevel level = TestLayers.level(server, layer);
                     LayerChain.Band levelBand = TestLayers.band(level, layer);
-                    if (levelBand.minY() != 0 || levelBand.height() != heights[layer - 1]) {
-                        out.append("layer_")
+                    if (levelBand.minY() != floors[layer - 1] || levelBand.height() != heights[layer - 1]) {
+                        out.append("layer ")
                                 .append(layer)
                                 .append(" has minY ")
                                 .append(levelBand.minY())
@@ -41,7 +43,7 @@ public class DeepCharterClientGameTest implements FabricClientGameTest {
                 return out.toString();
             });
             if (!problems.isEmpty()) {
-                throw new AssertionError("Shipped layer dimensions did not load in a real world: " + problems);
+                throw new AssertionError("The campaign level did not hold the layers in a real world: " + problems);
             }
         }
     }

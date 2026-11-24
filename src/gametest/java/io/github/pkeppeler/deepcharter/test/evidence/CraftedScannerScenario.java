@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Objects;
 import java.util.Set;
@@ -77,14 +78,7 @@ public class CraftedScannerScenario extends EvidenceScenario {
             EvidenceWorld.pin(context, singleplayer);
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ScannerHudTest.goToLayer(server, 1);
-            ClientWait.until(
-                    context,
-                    "the client in layer 1",
-                    client -> ClientLight.clientLevel(client)
-                            .dimension()
-                            .identifier()
-                            .getPath()
-                            .equals("layer_1"));
+            ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
             context.waitTicks(40); // tick-wait: the chunks round the arrival come in before the room is cut
             RoomCarver.carveAroundFirstPlayer(server);
             BlockPos[] spots = server.computeOnServer(CraftedScannerScenario::furnish);
