@@ -581,6 +581,17 @@ public class TallyTest {
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
     }
 
+    private static void lightFlare(ServerLevel level, BlockPos pos, long burnsOutAt) {
+        // room-carver: a flare block in this test's own arena
+        level.setBlock(pos, RepairRegistry.FLARE_LIGHT.defaultBlockState(), 3);
+        DrawSources.addFlare(level, pos, RepairRegistry.FLARE_LIGHT, FLARE_REACH, burnsOutAt);
+    }
+
+    private static void snuffFlare(ServerLevel level, BlockPos pos) {
+        // room-carver: the flare block of this test's own arena goes out with its entry
+        level.removeBlock(pos, false);
+    }
+
     /**
      * (#1003) A burning flare keeps a Tally off a dark pod as it keeps the Retained off (ADR 0078): the pod inside its reach draws none, and
      * draws one again once the flare has burnt out and its block is gone.
@@ -603,16 +614,13 @@ public class TallyTest {
                 }
                 flare[0] = arena.pod.blockPosition().above(2);
                 burnsOutAt[0] = level.getGameTime() + FLARE_BURN_TICKS;
-                // room-carver: a flare block in this test's own arena
-                level.setBlock(flare[0], RepairRegistry.FLARE_LIGHT.defaultBlockState(), 3);
-                DrawSources.addFlare(level, flare[0], RepairRegistry.FLARE_LIGHT, FLARE_REACH, burnsOutAt[0]);
+                lightFlare(level, flare[0], burnsOutAt[0]);
             } else if (level.getGameTime() < burnsOutAt[0]) {
                 if (Tally.draws(arena.pod)) {
                     throw failure(helper, "a dark pod inside a burning flare's reach draws a Tally");
                 }
             } else {
-                // room-carver: the flare block of this test's own arena goes out with its entry
-                level.removeBlock(flare[0], false);
+                snuffFlare(level, flare[0]);
                 if (!Tally.draws(arena.pod)) {
                     throw failure(helper, "a dark pod draws no Tally once the flare is out");
                 }
@@ -643,10 +651,7 @@ public class TallyTest {
                 if (arena.told(APPROACH_KEY) > 0) {
                     flare[0] = arena.pod.blockPosition().above(2);
                     litAt[0] = level.getGameTime();
-                    // room-carver: a flare block in this test's own arena
-                    level.setBlock(flare[0], RepairRegistry.FLARE_LIGHT.defaultBlockState(), 3);
-                    DrawSources.addFlare(
-                            level, flare[0], RepairRegistry.FLARE_LIGHT, FLARE_REACH, litAt[0] + FLARE_BURN_TICKS);
+                    lightFlare(level, flare[0], litAt[0] + FLARE_BURN_TICKS);
                 } else if (arena.age(helper) > APPROACH_TICKS_MAX) {
                     throw failure(helper, "the Tally never began to trail the pod");
                 }
@@ -658,8 +663,7 @@ public class TallyTest {
                 }
                 return;
             }
-            // room-carver: the flare block of this test's own arena goes out with its entry
-            level.removeBlock(flare[0], false);
+            snuffFlare(level, flare[0]);
             if (arena.told(APPROACH_KEY) > 1) {
                 arena.clear();
                 helper.succeed();
