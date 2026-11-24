@@ -276,6 +276,8 @@ public final class Drifters {
                     "The drifter could not be created in " + level.dimension().identifier());
         }
         drifter.setPos(place.get());
+        // After the place: the variant never changes where a drifter appears.
+        drifter.setVariant(DrifterVariant.pick(random, tuning.variantWeights()));
         drifter.hunt(source.pos());
         level.addFreshEntity(drifter);
         return Optional.of(drifter);
