@@ -97,7 +97,7 @@ public class CampaignCostTest {
 
     /** The bands that were over the bar when the gate was written (ADR 0086). No other band may have one ({@link #RATCHETED}). */
     private static final List<Ratchet> RATCHETS =
-            List.of(new Ratchet(CampaignBands.LAYER_1, 1.265, 1132), new Ratchet(CampaignBands.LAYER_2, 1.598, 1132));
+            List.of(new Ratchet(CampaignBands.LAYER_1, 1.218, 1132), new Ratchet(CampaignBands.LAYER_2, 1.597, 1132));
 
     /** The only bands a ratchet may hold. */
     private static final Set<CampaignBands.Band> RATCHETED = Set.of(CampaignBands.LAYER_1, CampaignBands.LAYER_2);
