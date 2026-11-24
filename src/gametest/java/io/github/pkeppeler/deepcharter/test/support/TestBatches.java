@@ -18,9 +18,8 @@ import org.slf4j.LoggerFactory;
  * cap does, through {@code GameTestBatchFactoryMixin}, and {@code TestBatchesTest} checks the result. Raise a cap and re-measure
  * {@code gameTestHeap} ({@code gradle/run-jvm.gradle.kts}).
  *
- * <p>40 rather than 20 (#823): fewer batches cost less time (each ends on its slowest test, and the box idles in the tail), 5% of the suite
- * in alternating runs (708 s against 745 s, a run to run spread of 20 s), for 7% more live heap (1907 MB against 1781 MB at 1650 tests).
- * A cap of 12 for a campaign environment saved nothing beyond that spread, so it stays 6.
+ * <p>40 rather than 20 (#823): fewer batches cost 5% of the suite (708 s against 745 s, a spread of 20 s), for 7% more live heap (1907 MB
+ * against 1781 MB at 1650 tests). A cap of 12 for a campaign environment saved nothing beyond that spread, so it stays 6.
  *
  * <p>A campaign environment ({@link CampaignEnvironments}) holds the heaviest tests, so its batches are smaller. 6 everywhere also
  * kept the peak under 1.45 GB, but tests that race the light and chunk threads failed more often in short batches (#1049).

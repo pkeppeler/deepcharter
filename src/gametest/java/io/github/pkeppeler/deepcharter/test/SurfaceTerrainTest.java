@@ -125,9 +125,9 @@ public class SurfaceTerrainTest {
             for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
                     chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
                     chunkZ++) {
-                // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a
-                // 13 x 13 square of them held the server tick (and the deadlines of the tests beside this one) for
-                // a minute.
+                // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a 13 x
+                // 13
+                // square of them held the server tick (and the deadlines of the tests beside this one) for a minute.
                 ChunkAccess chunk = level.getChunk(chunkX, chunkZ, ChunkStatus.FEATURES);
                 LevelChunkSection[] sections = chunk.getSections();
                 for (int index = 0; index < sections.length; index++) {
@@ -526,16 +526,13 @@ public class SurfaceTerrainTest {
                 .getAsJsonObject();
         JsonObject sample = read(helper, "/data/deepcharter/worldgen/noise_settings/campaign_sample.json")
                 .getAsJsonObject();
-        // final_density: add(squeeze(interpolated(max(range_choice over the layers and unbuilt depth, surface))),
-        // beardifier)
         JsonObject choice = sample;
         for (String step : List.of("noise_router", "final_density", "left", "input", "input", "left")) {
             JsonElement next = choice.get(step);
             if (next == null || !next.isJsonObject()) {
                 throw failure(
                         helper,
-                        "campaign_sample.json has no object at noise_router.final_density.left.input.input.left (missing \"%s\"); "
-                                + "the density was restructured, so update this test",
+                        "campaign_sample.json's density was restructured: no object at \"%s\" on the path to the unbuilt depth",
                         step);
             }
             choice = next.getAsJsonObject();
