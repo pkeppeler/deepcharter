@@ -11,7 +11,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Keeps the background level of a seam (#1185, ADR 0089) from marking sections dirty in the renderer, which it shares with the level the
- * client shows. Target: the four methods of {@code ClientLevel} that pass a dirty mark on to the level extractor, at their heads. The
+ * client shows. Target: the four methods of {@code ClientLevel} that pass a dirty mark on to the level extractor, at their heads;
+ * {@code ClientChunkCacheSeamMixin} does the same for the light update of its chunk cache. The
  * background level is meshed by nothing until the client adopts it, and adopting it rebuilds the renderer from what it holds.
  */
 @Mixin(ClientLevel.class)

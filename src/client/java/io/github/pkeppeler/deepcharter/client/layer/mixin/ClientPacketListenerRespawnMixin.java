@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.layer.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.layer.SeamClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -84,5 +85,6 @@ public abstract class ClientPacketListenerRespawnMixin {
     @Inject(method = "handleRespawn", at = @At("RETURN"))
     private void deepcharter$endClaim(ClientboundRespawnPacket packet, CallbackInfo ci) {
         SeamClient.endClaim(packet.commonPlayerSpawnInfo().dimension());
+        BreachEffects.respawned();
     }
 }

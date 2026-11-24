@@ -3,6 +3,7 @@
   "package": "io.github.pkeppeler.deepcharter.client.layer.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ClientChunkCacheSeamMixin",
     "ClientLevelSeamMixin",
     "ClientPacketListenerAccess",
     "ClientPacketListenerRespawnMixin"

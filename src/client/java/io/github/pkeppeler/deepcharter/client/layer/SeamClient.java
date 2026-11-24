@@ -232,6 +232,7 @@ public final class SeamClient {
      */
     public static void claim(CommonPlayerSpawnInfo spawn, @Nullable LocalPlayer oldPlayer) {
         adoptedThisRespawn = false;
+        adopting = null;
         ClientLevel level = held;
         Prepared prepared = heldPrepared;
         if (level == null

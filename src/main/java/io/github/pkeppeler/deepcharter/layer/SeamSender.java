@@ -47,6 +47,9 @@ public final class SeamSender {
     /** The most a custom payload may take on the wire in vanilla's codec: a bigger one is an encoder error that drops the client. */
     private static final int MAX_PAYLOAD_SIZE = 1_048_576;
 
+    /** Bytes kept under the payload limit for what {@link #estimatedBytes} does not count: heightmaps, block entities and the codec's framing. */
+    private static final int ESTIMATE_MARGIN = 64 * 1024;
+
     /** Bytes the estimate counts for each light section of a chunk packet: a light array is 2048 bytes. */
     private static final int LIGHT_ARRAY_BYTES = 2048;
 
@@ -138,12 +141,15 @@ public final class SeamSender {
         return List.copyOf(offsets);
     }
 
-    /** Whether a chunk packet estimated at {@code estimatedBytes} is sent: under the payload limit by the margin of what the estimate leaves out. */
+    /**
+     * Whether a chunk packet estimated at {@code estimatedBytes} is sent: at most the payload limit less {@link #ESTIMATE_MARGIN}, for
+     * what the estimate leaves out (heightmaps and block entities).
+     */
     public static boolean fitsPayload(int estimatedBytes) {
-        return true;
+        return estimatedBytes <= MAX_PAYLOAD_SIZE - ESTIMATE_MARGIN;
     }
 
-    /** The bytes a chunk packet is estimated to take on the wire: its block data and heightmaps, and 2048 for each light array. */
+    /** The bytes a chunk packet is estimated to take on the wire: its section data, and 2048 for each light array. Not its heightmaps or block entities. */
     public static int estimatedBytes(ClientboundLevelChunkWithLightPacket packet) {
         int lightArrays = packet.lightData().skyUpdates().size()
                 + packet.lightData().blockUpdates().size();
@@ -152,19 +158,24 @@ public final class SeamSender {
 
     /**
      * Runs {@code teleport}, a crossing of {@code vehicle} and its riders into {@code to}, as a seam crossing: while it runs,
-     * {@link #takePreSent} may skip the chunks vanilla would send each rider around its arrival, and when it ends each rider's seam into
+     * {@link #takePreSent} may skip the chunks vanilla would send each rider around its arrival, and when it returns an entity (a teleport that threw or was refused moved nobody) each rider's seam into
      * {@code to} becomes the chunks it skipped, kept for {@link LayerTuning#seamMissedWindowTicks()} ticks.
      */
-    public static <T> T crossing(ServerLevel to, Entity vehicle, Supplier<T> teleport) {
+    public static @Nullable Entity crossing(ServerLevel to, Entity vehicle, Supplier<@Nullable Entity> teleport) {
         Set<UUID> riders = new HashSet<>();
         vehicle.getPassengersAndSelf().forEach(crossed -> riders.add(crossed.getUUID()));
         crossing = true;
+        Entity arrived;
         try {
-            return teleport.get();
+            arrived = teleport.get();
         } finally {
             crossing = false;
+        }
+        // A teleport that threw or was refused moved nobody: the riders still approach the floor and keep their seams.
+        if (arrived != null) {
             endCrossing(to, riders);
         }
+        return arrived;
     }
 
     private static void endCrossing(ServerLevel to, Set<UUID> riders) {
@@ -365,9 +376,9 @@ public final class SeamSender {
                 continue;
             }
             int size = estimatedBytes(payload.chunk());
-            if (size > MAX_PAYLOAD_SIZE) {
+            if (!fitsPayload(size)) {
                 DeepCharter.LOGGER.warn(
-                        "The chunk {} of {} is estimated at {} bytes, over the {} a payload may take: it is not sent ahead",
+                        "The chunk {} of {} is estimated at {} bytes, over the {} a payload may take less a margin: it is not sent ahead",
                         pos,
                         below.dimension().identifier(),
                         size,
