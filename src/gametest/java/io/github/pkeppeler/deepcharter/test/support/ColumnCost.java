@@ -1,10 +1,12 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.test.mixin.MinecraftServerAccess;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -45,6 +48,15 @@ public final class ColumnCost {
     public static final String REVERSE_ENV = "DEEPCHARTER_COST_REVERSE";
 
     private static final boolean REVERSE = "1".equals(System.getenv(REVERSE_ENV));
+
+    /**
+     * The tests whose measured run holds the autosave off, by their bounds, and the countdown from before the first of them. The hold
+     * ends with the last of them, on any exit of the test, through {@link #release} from {@code GameTestInfoMixin}'s {@code finish}.
+     * Server thread only.
+     */
+    private static final Map<AABB, MinecraftServerAccess> AUTOSAVE_HOLDERS = new HashMap<>();
+
+    private static int countdownBeforeHold;
 
     private ColumnCost() {}
 
@@ -80,6 +92,9 @@ public final class ColumnCost {
             int rounds,
             Consumer<Map<String, List<Measurement>>> report) {
         boolean smoke = rounds == 0;
+        if (!smoke) {
+            holdAutosave(helper);
+        }
         ArrayDeque<Run> queue = new ArrayDeque<>();
         if (smoke) {
             worlds.forEach(world -> queue.add(new Run(world, SMOKE_RADIUS, 0, false, true)));
@@ -97,9 +112,11 @@ public final class ColumnCost {
         TestTicks.each(helper, () -> {
             if (cooldown[0] > 0) {
                 cooldown[0]--;
+                idle(smoke);
                 return;
             }
             if (current[0] == null && !smoke && !everyWorldIsUnloaded(helper, allWorlds)) {
+                idle(smoke);
                 return;
             }
             if (current[0] == null) {
@@ -110,6 +127,7 @@ public final class ColumnCost {
                 current[0].begin(helper);
             }
             if (!current[0].isGenerated()) {
+                idle(smoke);
                 return;
             }
             Measurement measurement = current[0].finish(helper);
@@ -126,6 +144,24 @@ public final class ColumnCost {
                 helper.succeed();
             }
         });
+    }
+
+    /** Pushes the server's next autosave past the end of {@code helper}'s test, until {@link #release}. */
+    private static void holdAutosave(GameTestHelper helper) {
+        MinecraftServerAccess server = (MinecraftServerAccess) helper.getLevel().getServer();
+        if (AUTOSAVE_HOLDERS.isEmpty()) {
+            countdownBeforeHold = server.deepcharter$ticksUntilAutosave();
+            server.deepcharter$setTicksUntilAutosave(Integer.MAX_VALUE);
+        }
+        AUTOSAVE_HOLDERS.put(helper.getBounds(), server);
+    }
+
+    /** Ends the autosave hold of the test with these bounds, and restores the countdown when no other test holds it. */
+    public static void release(AABB testBounds) {
+        MinecraftServerAccess server = AUTOSAVE_HOLDERS.remove(testBounds);
+        if (server != null && AUTOSAVE_HOLDERS.isEmpty()) {
+            server.deepcharter$setTicksUntilAutosave(countdownBeforeHold);
+        }
     }
 
     /** The median of each reading over {@code all}. */
@@ -149,6 +185,19 @@ public final class ColumnCost {
         return columnsOf(MEASURED_RADIUS);
     }
 
+    /** A sleeping thread accrues no CPU; without the sleep the server spun empty ticks the reading counted (ADR 0086). */
+    private static void idle(boolean smoke) {
+        if (smoke) {
+            return;
+        }
+        try {
+            Thread.sleep(FarChunks.POLL_MILLIS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while waiting for columns", e);
+        }
+    }
+
     private static boolean everyWorldIsUnloaded(GameTestHelper helper, List<String> allWorlds) {
         for (String world : allWorlds) {
             ServerLevel level = helper.getLevel()
@@ -162,7 +211,7 @@ public final class ColumnCost {
         return true;
     }
 
-    private static double medianOf(double[] values) {
+    static double medianOf(double[] values) {
         double[] sorted = values.clone();
         Arrays.sort(sorted);
         int middle = sorted.length / 2;
@@ -185,6 +234,7 @@ public final class ColumnCost {
         return (2 * radius + 1) * (2 * radius + 1);
     }
 
+    /** CPU time of every thread of this JVM, not of the generation workers alone. */
     private static long processCpuNanos() {
         return ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean())
                 .getProcessCpuTime();
