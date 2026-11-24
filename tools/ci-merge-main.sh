@@ -17,10 +17,8 @@ head_sha=$1
 [[ $(git rev-parse HEAD) == "$head_sha" ]] \
   || { echo "::error::The checkout is not the PR head $head_sha (check out github.event.pull_request.head.sha)"; exit 1; }
 
-# A fetch can fail on a passing network or GitHub error (#1189: a 403 after 75 ms, or github.com unreachable), so
-# it gets 4 attempts, sleeping 5, 10 and 20 s between them (35 s at most). Any fetch failure retries, not only
-# matched messages: a bad ref would fail every time and cost the same 35 s. Each attempt's error is printed
-# (stderr is not captured away); the last one fails the job. Only the fetch retries, never the merge.
+# A fetch can fail on a passing network or GitHub error (#1189), so it gets 4 attempts, sleeping 5, 10 and 20 s.
+# Any failure retries; each attempt's error is printed.
 fetch_attempts=4
 delay=5
 for ((attempt = 1; attempt <= fetch_attempts; attempt++)); do

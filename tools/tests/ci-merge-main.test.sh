@@ -117,7 +117,8 @@ main=$(git -C "$work/origin" rev-parse HEAD)
 run_flaky "$head" 2
 check "fetch that fails twice then succeeds exits 0" "$rc" 0
 check "it fetched three times" "$(cat "$work/fetches")" 3
-check "it slept between attempts" "$(wc -l <"$work/sleeps" | tr -d ' ')" 2
+check "it backed off 5 then 10 s" "$(tr '\n' ' ' <"$work/sleeps")" "5 10 "
+has "the retry is annotated" "::warning::git fetch origin main failed (attempt 1 of 4); retrying in 5s"
 has "the first failure is logged" "error: 403 (try 1)"
 has "the second failure is logged" "error: 403 (try 2)"
 has "the merge still happens" "::notice title=merged-main::$main"
@@ -128,6 +129,7 @@ head=$(git -C "$work/pr" rev-parse HEAD)
 run_flaky "$head" 99
 check "a fetch that never works exits 1" "$rc" 1
 check "it gave up after 4 fetches" "$(cat "$work/fetches")" 4
+check "it backed off 5, 10, 20 s" "$(tr '\n' ' ' <"$work/sleeps")" "5 10 20 "
 has "it fails loudly" "::error::git fetch origin main failed after 4 attempts"
 has "it shows the last error" "error: 403 (try 4)"
 
