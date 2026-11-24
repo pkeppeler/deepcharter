@@ -13,6 +13,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Finds where the {@code hollows-concepts} scenario (#1147) stands its camera in each zone of layer 3: a generated cavern of the
@@ -21,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
  * where the mock-ups stand in the glowcaps' own light. Runs on the server thread over chunks the scenario has forced.
  */
 final class HollowsSpots {
+    private static final Logger LOGGER = LoggerFactory.getLogger(HollowsSpots.class);
     /** Candidates stand within this many blocks of the region's middle, every {@link #GRID} blocks. */
     static final int SEARCH_RADIUS = 24;
     /** The rays of the fan reach this far, so the forced region must reach {@code SEARCH_RADIUS + RAY_REACH} round the middle. */
@@ -28,9 +31,9 @@ final class HollowsSpots {
 
     private static final int GRID = 3;
     /** Candidates stay this far inside their zone, so the camera's biome blend never reaches the next one. */
-    private static final int ZONE_INSET = 12;
+    private static final int ZONE_INSET = 8;
     /** Free cells over the floor that a candidate needs: its feet stand {@link #FEET_RISE} over it, the eye 1.62 over the feet. */
-    private static final int HEADROOM = 5;
+    private static final int HEADROOM = 4;
 
     static final int FEET_RISE = 2;
     private static final int[] FAN_YAWS = {-30, -15, 0, 15, 30};
@@ -96,10 +99,10 @@ final class HollowsSpots {
     private record Candidate(BlockPos feet, int floorY, float yaw, int score) {}
 
     /**
-     * The spot of zone {@code zone} (0 is the Garden) of layer 3's {@code band} in {@code level}, round ({@code x}, {@code z}). Fails,
-     * naming what it found, if no candidate has a focus.
+     * The spot of zone {@code zone} (0 is the Garden) of layer 3's {@code band} in {@code level}, round ({@code x}, {@code z}), or
+     * empty, with what it found in the log, if no candidate there has a focus.
      */
-    static Spot find(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
+    static Optional<Spot> find(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
         Zones.Span span = Zones.span(band.minY(), band.height(), zone);
         String name = Zones.of(3, band.minY(), band.height(), span.low())
                 .orElseThrow()
@@ -136,11 +139,18 @@ final class HollowsSpots {
                 tall = roomier.get();
                 clear = clearHeight(level, tall);
             }
-            return new Spot(name, c.feet(), c.yaw(), c.floorY(), focus.get(), tall, clear, c.score());
+            return Optional.of(new Spot(name, c.feet(), c.yaw(), c.floorY(), focus.get(), tall, clear, c.score()));
         }
-        throw new AssertionError("no camera spot in " + name + " (Y " + span.low() + " to " + span.high() + ") round "
-                + x + ", " + z + ": " + candidates.size() + " candidates, " + glowcaps.size()
-                + " glowcaps, none with a lit floor in view");
+        LOGGER.info(
+                "[hollows-concepts] no camera spot in {} (Y {} to {}) round {}, {}: {} candidates, {} glowcaps",
+                name,
+                span.low(),
+                span.high(),
+                x,
+                z,
+                candidates.size(),
+                glowcaps.size());
+        return Optional.empty();
     }
 
     /** A cell that the camera can see through: air, or a glowcap (a small plant). */

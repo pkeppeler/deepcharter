@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.test.evidence.HollowsMockups.Drifter;
@@ -18,8 +17,11 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -69,6 +71,10 @@ public class HollowsConceptsScenario extends EvidenceScenario {
     private static final int REGION_X = 3_000;
 
     private static final int REGION_Z = 3_000;
+    /** A zone with no camera spot in a region is searched in the next, this far east, up to this many regions. */
+    private static final int REGION_STEP = 160;
+
+    private static final int REGIONS = 8;
     /** The camera looks this far down at the cavern; up at a giant fungus; and up at the Quiet's roof. */
     private static final float PITCH = 10f;
 
@@ -93,6 +99,8 @@ public class HollowsConceptsScenario extends EvidenceScenario {
     private static final int BUILD_ABOVE = 28;
 
     private ResourceKey<Level> dimension = Level.OVERWORLD;
+    /** The regions already forced, by their middle's X. */
+    private final Set<Integer> forced = new HashSet<>();
 
     @Override
     protected String name() {
@@ -132,17 +140,10 @@ public class HollowsConceptsScenario extends EvidenceScenario {
             TestServerContext server = singleplayer.getServer();
             server.runOnServer(s -> s.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SPECTATOR));
             dimension = server.computeOnServer(s -> TestLayers.dimension(s, LAYER));
-            forceRegion(server);
-            awaitLight(context, server);
-            List<Spot> spots = server.computeOnServer(s -> {
-                ServerLevel level = TestLayers.level(s, LAYER);
-                LayerChain.Band band = TestLayers.band(level, LAYER);
-                List<Spot> found = new ArrayList<>();
-                for (int zone = 0; zone < Zones.COUNT; zone++) {
-                    found.add(HollowsSpots.find(level, band, zone, REGION_X, REGION_Z));
-                }
-                return found;
-            });
+            List<Spot> spots = new ArrayList<>();
+            for (int zone = 0; zone < Zones.COUNT; zone++) {
+                spots.add(findSpot(context, server, zone));
+            }
             spots.forEach(spot -> LOGGER.info(
                     "[hollows-concepts] {}: feet {} yaw {} floor {} focus {} tall {} clear {} score {}",
                     spot.zone(),
@@ -164,14 +165,37 @@ public class HollowsConceptsScenario extends EvidenceScenario {
     }
 
     /**
-     * Forces, and so generates, the chunks the cameras can stand in and see: {@link HollowsSpots#SEARCH_RADIUS} plus the reach of the
-     * search's rays round the region's middle, in every zone at once.
+     * The camera of zone {@code zone}: the first region, from {@link #REGION_X} on in steps of {@link #REGION_STEP}, in which {@link
+     * HollowsSpots} finds one. Fails after {@link #REGIONS} regions.
      */
-    private void forceRegion(TestServerContext server) {
+    private Spot findSpot(ClientGameTestContext context, TestServerContext server, int zone) {
+        for (int region = 0; region < REGIONS; region++) {
+            int x = REGION_X + region * REGION_STEP;
+            if (forced.add(x)) {
+                forceRegion(server, x);
+                awaitLight(context, server);
+            }
+            Optional<Spot> spot = server.computeOnServer(s -> {
+                ServerLevel level = TestLayers.level(s, LAYER);
+                return HollowsSpots.find(level, TestLayers.band(level, LAYER), zone, x, REGION_Z);
+            });
+            if (spot.isPresent()) {
+                return spot.get();
+            }
+        }
+        throw new AssertionError("no camera spot in zone " + zone + " of layer 3 in " + REGIONS + " regions from "
+                + REGION_X + ", " + REGION_Z + "; the log names what each region had");
+    }
+
+    /**
+     * Forces, and so generates, the chunks the cameras can stand in and see round ({@code x}, {@link #REGION_Z}): {@link
+     * HollowsSpots#SEARCH_RADIUS} plus the reach of the search's rays, in every zone at once.
+     */
+    private static void forceRegion(TestServerContext server, int x) {
         int reach = HollowsSpots.SEARCH_RADIUS + HollowsSpots.RAY_REACH;
         server.runOnServer(s -> {
             ServerLevel level = TestLayers.level(s, LAYER);
-            for (int cx = (REGION_X - reach) >> 4; cx <= (REGION_X + reach) >> 4; cx++) {
+            for (int cx = (x - reach) >> 4; cx <= (x + reach) >> 4; cx++) {
                 for (int cz = (REGION_Z - reach) >> 4; cz <= (REGION_Z + reach) >> 4; cz++) {
                     // force-ok: an evidence scenario has no GameTestHelper to release through; the world is discarded
                     // when the scenario ends
