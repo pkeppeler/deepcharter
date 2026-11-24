@@ -4,12 +4,13 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
-import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.ProbeInfos;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestInfo;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.AABB;
@@ -18,11 +19,6 @@ import net.minecraft.world.phys.AABB;
 public class FarChunksTest {
     private static final String NESTED_MESSAGE =
             "FarChunks.awaitEntityTicking must be called from the test method, not from a tick callback";
-
-    /** A chunk a finished test forced, to be found unforced a few ticks later. */
-    private record Forced(ServerLevel level, ChunkPos chunk) {}
-
-    private static final AtomicReference<Forced> FORCED_BY_A_FINISHED_TEST = new AtomicReference<>();
 
     /** A wait fails past its limit only after {@link FarChunks#MIN_WAITED_TICKS} ticks, or past the ceiling: each clause is needed (#1002). */
     @GameTest
@@ -53,7 +49,6 @@ public class FarChunksTest {
         if (!level.getForceLoadedChunks().contains(chunk.pack())) {
             throw helper.assertionException("the chunk should be forced while the test runs");
         }
-        FORCED_BY_A_FINISHED_TEST.set(new Forced(level, chunk));
         helper.succeed();
     }
 
@@ -73,21 +68,27 @@ public class FarChunksTest {
         FarChunks.whenBlocksLoaded(helper, List.of(new FarChunks.At(level, chunk.x(), chunk.z())), helper::succeed);
     }
 
-    /** A chunk a test forced is released when that test finishes, or the suite's heap grows with it (#569). */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
+    /**
+     * A chunk a test forced is released when that test finishes, or the suite's heap grows with it (#569). The test ends a probe of itself,
+     * which shares its test block and so its bounds, as the runner ends it, and needs no other test (#1163).
+     */
+    @GameTest
     public void aChunkIsNotForcedAfterTheTestThatForcedItFinished(GameTestHelper helper) {
-        FarChunks.Deadline deadline = FarChunks.deadline();
-        TestTicks.each(helper, () -> {
-            Forced forced = FORCED_BY_A_FINISHED_TEST.get();
-            deadline.await(helper, helper.getLevel(), forced != null, () -> "no test forced a chunk");
-            if (forced == null) {
-                return;
-            }
-            if (forced.level().getForceLoadedChunks().contains(forced.chunk().pack())) {
-                throw helper.assertionException("chunk %s is still forced after its test finished", forced.chunk());
-            }
-            helper.succeed();
-        });
+        ServerLevel level = helper.getLevel();
+        ChunkPos chunk = new ChunkPos(4005, 4005);
+        FarChunks.force(helper, level, chunk.x(), chunk.z());
+        if (!level.getForceLoadedChunks().contains(chunk.pack())) {
+            throw helper.assertionException("the chunk should be forced while the test runs");
+        }
+        GameTestInfo owner = MockPlayers.testInfo(helper);
+        GameTestInfo probe = ProbeInfos.of(owner, level);
+        probe.setTestBlockPos(owner.getTestBlockPos());
+        // finish() also releases the owner's ItemSpawns and ColumnCost bookkeeping on the shared bounds, harmless here.
+        ProbeInfos.finish(probe);
+        if (level.getForceLoadedChunks().contains(chunk.pack())) {
+            throw helper.assertionException("chunk %s is still forced after its test finished", chunk);
+        }
+        helper.succeed();
     }
 
     /**

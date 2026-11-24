@@ -93,6 +93,9 @@ public class CampaignContentTest {
     /** The test data pack's campaign sample dimension. */
     private static final String DIMENSION = "/data/deepcharter/dimension/campaign_sample.json";
 
+    /** The one feature unbuilt depth carries: its biome is in every column of the campaign world, so the pass runs once for each chunk. */
+    private static final String CRUST_PASS = "deepcharter:grained_crust_pass";
+
     private static final String UNBUILT_BIOME = "deepcharter:unbuilt_depth";
 
     /**
@@ -415,8 +418,9 @@ public class CampaignContentTest {
                         .getAsJsonArray("features")
                         .asList()
                         .stream()
-                        .allMatch(step -> step.getAsJsonArray().isEmpty()),
-                "unbuilt depth places features");
+                        .flatMap(step -> step.getAsJsonArray().asList().stream())
+                        .allMatch(feature -> feature.getAsString().equals(CRUST_PASS)),
+                "unbuilt depth places a feature besides the grained crust pass (#216), which every column runs once");
         helper.succeed();
     }
 
