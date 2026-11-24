@@ -137,9 +137,12 @@ public final class SeamSender {
         ServerPlayNetworking.registerGlobalReceiver(
                 SeamAcceptPayload.TYPE,
                 (payload, context) -> answered(context.player(), payload.dimension(), payload.generation(), true));
-        ServerPlayNetworking.registerGlobalReceiver(
-                SeamRefusePayload.TYPE,
-                (payload, context) -> answered(context.player(), payload.dimension(), payload.generation(), false));
+        ServerPlayNetworking.registerGlobalReceiver(SeamRefusePayload.TYPE, (payload, context) -> {
+            answered(context.player(), payload.dimension(), payload.generation(), false);
+            if (payload.reason() == SeamRefuseReason.SWAP_FAILED) {
+                swapFailed(context.player(), payload.dimension(), payload.generation());
+            }
+        });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             STATE.remove(handler.player.getUUID());
             RECENT.remove(handler.player.getUUID());
@@ -367,6 +370,26 @@ public final class SeamSender {
             return;
         }
         seam.accepted = accept;
+    }
+
+    /**
+     * A client could not take the swap of {@code generation} into {@code dimension} it was sent: if the server swapped that rider
+     * then, a moment ago, the rider alone is respawned where it is ({@link SeamSwap#recover}). Its vehicle and the other riders are
+     * in the new level already and are not touched, so nobody is split from the vehicle.
+     */
+    private static void swapFailed(ServerPlayer player, ResourceKey<Level> dimension, int generation) {
+        Swapped swapped = SWAPPED.get(player.getUUID());
+        if (swapped == null
+                || !swapped.level().equals(dimension)
+                || swapped.generation() != generation
+                || !player.level().dimension().equals(dimension)
+                || player.isRemoved()) {
+            return;
+        }
+        SWAPPED.remove(player.getUUID());
+        DeepCharter.LOGGER.warn(
+                "{} could not take the swap into {}: it is respawned there", player.getUUID(), dimension.identifier());
+        SeamSwap.recover(player);
     }
 
     /**

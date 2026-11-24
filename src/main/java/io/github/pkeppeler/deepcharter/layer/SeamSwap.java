@@ -3,9 +3,12 @@ package io.github.pkeppeler.deepcharter.layer;
 import io.github.pkeppeler.deepcharter.layer.mixin.EntitySeamAccess;
 import io.github.pkeppeler.deepcharter.layer.mixin.ServerPlayerSeamAccess;
 import java.util.List;
+import java.util.Set;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.protocol.game.ClientboundChangeDifficultyPacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
+import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
@@ -130,5 +133,32 @@ public final class SeamSwap {
             ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.invoker().afterChangeLevel(rider, from, to);
         }
         return root;
+    }
+
+    /**
+     * Respawns {@code rider} in the level it is in, for a client that could not take the swap that put it there (#1229): vanilla's
+     * respawn packet and the sends that follow it, then the rider leaves and joins its own level, which pairs it again with the
+     * vehicle it still rides and sends it the area from nothing. The vehicle is not touched.
+     */
+    static void recover(ServerPlayer rider) {
+        ServerLevel level = rider.level();
+        PlayerList playerList = level.getServer().getPlayerList();
+        LevelData levelData = level.getLevelData();
+        ((ServerPlayerSeamAccess) rider).deepcharter$setChangingDimension(true);
+        rider.connection.send(new ClientboundRespawnPacket(rider.createCommonSpawnInfo(level), (byte) 3));
+        rider.connection.send(
+                new ClientboundChangeDifficultyPacket(levelData.getDifficulty(), levelData.isDifficultyLocked()));
+        playerList.sendPlayerPermissionLevel(rider);
+        level.removePlayerImmediately(rider, RemovalReason.CHANGED_DIMENSION);
+        ((EntitySeamAccess) rider).deepcharter$unsetRemoved();
+        rider.connection.teleport(
+                new PositionMoveRotation(rider.position(), Vec3.ZERO, rider.getYRot(), rider.getXRot()), Set.of());
+        rider.connection.resetPosition();
+        level.addDuringTeleport(rider);
+        rider.connection.send(new ClientboundPlayerAbilitiesPacket(rider.getAbilities()));
+        playerList.sendLevelInfo(rider, level);
+        playerList.sendAllPlayerInfo(rider);
+        playerList.sendActivePlayerEffects(rider);
+        rider.sendPostEffects();
     }
 }

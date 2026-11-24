@@ -46,6 +46,7 @@ import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
+import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -439,6 +440,20 @@ public class SeamSwapTest {
             List<Client> clients,
             Consumer<Run> beforeDrop,
             Consumer<Crossed> verify) {
+        podCrossingUntil(helper, index, name, clients, beforeDrop, crossed -> {
+            verify.accept(crossed);
+            return true;
+        });
+    }
+
+    /** As above, with {@code verify} run on each tick from {@link #SETTLE_TICKS} after the arrival until it returns true. */
+    private static void podCrossingUntil(
+            GameTestHelper helper,
+            int index,
+            String name,
+            List<Client> clients,
+            Consumer<Run> beforeDrop,
+            Predicate<Crossed> verify) {
         Run run = Run.of(helper, index);
         List<MockPlayer> riders = new ArrayList<>();
         for (int i = 0; i < clients.size(); i++) {
@@ -513,8 +528,10 @@ public class SeamSwapTest {
                     if (ticks - arrivedAt[0] < SETTLE_TICKS) {
                         return;
                     }
+                    if (!verify.test(new Crossed(run, pod, pod.getId(), pod.getUUID(), riders, respawnsBefore))) {
+                        return;
+                    }
                     TWO_SEATS.remove(pod.getUUID());
-                    verify.accept(new Crossed(run, pod, pod.getId(), pod.getUUID(), riders, respawnsBefore));
                     Entity vehicle = riders.get(0).player().getVehicle();
                     riders.forEach(mock -> mock.player().stopRiding());
                     if (vehicle != null) {
@@ -732,6 +749,79 @@ public class SeamSwapTest {
                                                     && chunk.z() == arrival.z())
                                     < 0,
                             "the crossing sent the carved chunk again after the swap");
+                });
+    }
+
+    /**
+     * One of two swapped riders reports its swap failed: only that rider is respawned, the other and the pod are untouched, and the
+     * rider is paired with the pod again and still rides it. A report that names another generation does nothing.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aFailedSwapRespawnsOnlyThatRider(GameTestHelper helper) {
+        int[] calls = {0};
+        podCrossingUntil(
+                helper,
+                FIRST_INDEX + 15,
+                "seam-swap-failed",
+                List.of(Client.ACCEPTS, Client.ACCEPTS),
+                run -> {},
+                crossed -> {
+                    MockPlayer failing = crossed.riders().get(1);
+                    MockPlayer fine = crossed.riders().get(0);
+                    ResourceKey<Level> two = crossed.run().site().two().dimension();
+                    int generation =
+                            failing.payloadsOf(SeamSwapPayload.class).get(0).generation();
+                    if (calls[0]++ == 0) {
+                        expectSwapped(helper, crossed);
+                        failing.send(new SeamRefusePayload(two, generation + 1, SeamRefuseReason.SWAP_FAILED));
+                        return false;
+                    }
+                    if (calls[0] == 2) {
+                        expect(
+                                helper,
+                                crossed.respawnsOf(failing) == 0,
+                                "a report of another generation respawned the rider");
+                        failing.send(new SeamRefusePayload(two, generation, SeamRefuseReason.SWAP_FAILED));
+                        return false;
+                    }
+                    if (calls[0] < 2 + SETTLE_TICKS) {
+                        return false;
+                    }
+                    // The pod pairs with the rider again once the pod's chunk has been sent to it, some ticks on.
+                    List<Object> sequence = failing.sequence();
+                    int swapAt = firstAfter(sequence, -1, packet -> packet instanceof SeamSwapPayload);
+                    int respawnAt = firstAfter(sequence, swapAt, packet -> packet instanceof ClientboundRespawnPacket);
+                    int pairedAt = respawnAt < 0
+                            ? -1
+                            : firstAfter(
+                                    sequence,
+                                    respawnAt,
+                                    packet -> packet instanceof ClientboundAddEntityPacket add
+                                            && add.getId() == crossed.podId());
+                    if (pairedAt < 0) {
+                        return false;
+                    }
+                    expect(
+                            helper,
+                            crossed.respawnsOf(failing) == 1,
+                            "the failing rider was sent %d respawns",
+                            crossed.respawnsOf(failing));
+                    expect(helper, crossed.respawnsOf(fine) == 0, "the other rider was respawned");
+                    expect(
+                            helper,
+                            crossed.pod().getId() == crossed.podId()
+                                    && crossed.pod().level()
+                                            == crossed.run().site().two(),
+                            "the pod was moved again");
+                    expect(
+                            helper,
+                            failing.player().getVehicle() == crossed.pod()
+                                    && fine.player().getVehicle() == crossed.pod()
+                                    && crossed.pod()
+                                            .getPassengers()
+                                            .containsAll(List.of(failing.player(), fine.player())),
+                            "a rider is not on the pod any more");
+                    return true;
                 });
     }
 }
