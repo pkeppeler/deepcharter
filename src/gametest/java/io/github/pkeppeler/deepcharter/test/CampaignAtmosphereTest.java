@@ -72,9 +72,9 @@ public class CampaignAtmosphereTest {
             EnvironmentAttributes.STAR_BRIGHTNESS);
 
     /**
-     * What the biome layer must put back in a layer, with the ambient colour and the sky's fog end: the six values of #797 and the sky of
-     * #1161. The ambient colour and the sky's fog end are no timeline's, so the biome's static layer already wins; they are read here to pin
-     * that it stays so.
+     * What the biome layer must put back in a layer, with the ambient colour, the sky's fog end and the water's fog: the six values of #797,
+     * the sky of #1161 and the water of #1187. The ambient colour, the sky's fog end and the water's fog are no timeline's, so the biome's
+     * static layer already wins; they are read here to pin that it stays so.
      */
     private static final List<EnvironmentAttribute<?>> LAYER_VALUES = List.of(
             EnvironmentAttributes.FOG_COLOR,
@@ -88,13 +88,18 @@ public class CampaignAtmosphereTest {
             EnvironmentAttributes.SUN_ANGLE,
             EnvironmentAttributes.MOON_ANGLE,
             EnvironmentAttributes.STAR_BRIGHTNESS,
-            EnvironmentAttributes.SKY_FOG_END_DISTANCE);
+            EnvironmentAttributes.SKY_FOG_END_DISTANCE,
+            EnvironmentAttributes.WATER_FOG_COLOR,
+            EnvironmentAttributes.WATER_FOG_END_DISTANCE);
 
     /**
      * The angle that puts the sun and the moon straight down. Below the horizon the client draws a dark disc over them (vanilla's
      * {@code SkyRenderer.renderDarkDisc}, under y 63 in a level that is not flat), which a sky fog end of 0 turns to the fog colour.
      */
     private static final float NADIR = 180f;
+
+    /** The brightest a channel of a layer's water fog may be: the art direction's world stays black (#1187). */
+    private static final float DARKEST_WATER = 0x20 / 255f;
 
     /**
      * The visual and audio attributes a timeline of the type drives that no underground player can see or hear, each with why. A new
@@ -313,6 +318,58 @@ public class CampaignAtmosphereTest {
         helper.succeed();
     }
 
+    /**
+     * Under water the client lifts the water's fog colour as the eyes adjust, to full brightness at its brightest channel, unless a channel
+     * is exactly 0 (26.3 {@code FogRenderer.computeFogColor}): vanilla's {@code #050533} becomes {@code #1919ff}, and any dark tint with
+     * no zero channel becomes as bright (#1187). So each layer biome sets a dark water fog with a zero channel and a fog end, and two zones
+     * one above the other share a zero channel, because the camera blends their colours and a blend of two different zeros has none.
+     */
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
+    public void everyLayerBiomeSetsADarkWaterFogTheEyesCannotLift(GameTestHelper helper) {
+        List<Holder<Biome>> layerBiomes = layerBiomes(helper.getLevel());
+        expect(helper, !layerBiomes.isEmpty(), "the sample level places no layer biome");
+        Holder<Biome> above = null;
+        for (Holder<Biome> holder : layerBiomes) {
+            Biome biome = holder.value();
+            Identifier id = id(holder);
+            for (EnvironmentAttribute<?> attribute :
+                    List.of(EnvironmentAttributes.WATER_FOG_COLOR, EnvironmentAttributes.WATER_FOG_END_DISTANCE)) {
+                expect(
+                        helper,
+                        biome.getAttributes().contains(attribute),
+                        "layer biome %s does not set %s, so its water shows vanilla's",
+                        id,
+                        name(attribute));
+            }
+            Vector3fc water = wanted(biome, EnvironmentAttributes.WATER_FOG_COLOR);
+            expect(
+                    helper,
+                    !zeroChannels(water).isEmpty(),
+                    "layer biome %s: water fog %s has no channel at 0, so the eyes adjusting lift it to full brightness",
+                    id,
+                    hex(water));
+            expect(
+                    helper,
+                    Math.max(water.x(), Math.max(water.y(), water.z())) <= DARKEST_WATER,
+                    "layer biome %s: water fog %s is brighter than %s on a channel, but the world stays black",
+                    id,
+                    hex(water),
+                    hex(new Vector3f(DARKEST_WATER)));
+            if (above != null) {
+                Set<Integer> shared = new TreeSet<>(zeroChannels(wanted(above.value(), EnvironmentAttributes.WATER_FOG_COLOR)));
+                shared.retainAll(zeroChannels(water));
+                expect(
+                        helper,
+                        !shared.isEmpty(),
+                        "the water fogs of %s and %s below it share no zero channel, so their blend is lifted to full brightness",
+                        id(above),
+                        id);
+            }
+            above = holder;
+        }
+        helper.succeed();
+    }
+
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void everyTimelineAttributeIsSeenOrAcknowledged(GameTestHelper helper) {
         for (EnvironmentAttribute<?> attribute : timelineAttributes(helper.getLevel())) {
@@ -485,6 +542,17 @@ public class CampaignAtmosphereTest {
     /** The audio is not compared: the flat overworld's biome has its own music and sounds. {@link #noSurfaceBiomeSetsWhatATimelineSets} covers audio. */
     private static boolean isVisual(EnvironmentAttribute<?> attribute) {
         return name(attribute).startsWith("minecraft:visual/");
+    }
+
+    /** The channels (0 red, 1 green, 2 blue) of {@code colour} that are exactly 0, the only ones the client's brightening skips. */
+    private static Set<Integer> zeroChannels(Vector3fc colour) {
+        Set<Integer> zeros = new TreeSet<>();
+        for (int c = 0; c < 3; c++) {
+            if (colour.get(c) == 0f) {
+                zeros.add(c);
+            }
+        }
+        return zeros;
     }
 
     private static String hex(Vector3fc colour) {
