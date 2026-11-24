@@ -39,11 +39,14 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -92,8 +95,17 @@ public final class PodTowing {
     private static final Map<PodEntity, Line> LINES = Collections.synchronizedMap(new WeakHashMap<>());
 
     private static final double EPSILON = 1e-7;
-    /** Blocks along the line between the samples that test it for rock: less than any wall is thick. */
-    private static final double FIT_STEP = 0.5;
+    /**
+     * Blocks a pod hangs below its tower at least for the line to drape over a lip: beside it a line that is blocked is not a line
+     * over an edge. 0.25, not more: a hull's bottom corners meet a lip at about 0.46 of drop.
+     */
+    private static final double DRAPE_MIN_DROP = 0.25;
+    /** Blocks a pod may be past the length of its line and still count as on it: the clamp onto the line's sphere leaves rounding. */
+    private static final double LINE_SLACK = 1e-3;
+    /** Blocks of open space around a pod for the line to drape over a lip for it: in a shaft or a tunnel the pod follows the path instead. */
+    private static final double DRAPE_ROOM = 0.5;
+    /** Share of a block's half diagonal that a lip the line drapes over stands off the block, so that the line clears it. */
+    private static final double DRAPE_CLEARANCE = 0.04;
     /** Blocks the tower moves between two points of the path it leaves. */
     private static final double PATH_STEP = 0.25;
     /** Blocks the tower moves in one tick, at the least, for it to count as having been carried across a breach: the path starts over. */
@@ -109,6 +121,8 @@ public final class PodTowing {
     private static final class Line {
         Vec3 velocity = Vec3.ZERO;
         boolean resting;
+        /** The lip the line is draped over while the tower does not see the pod, in the middle-of-the-hull space the line is measured in. */
+        Optional<Vec3> bend = Optional.empty();
         /** Where the tower has been, newest first, {@link #PATH_STEP} apart, for as far back as the line is long. */
         private final ArrayDeque<Vec3> path = new ArrayDeque<>();
 
@@ -350,8 +364,10 @@ public final class PodTowing {
     }
 
     /**
-     * Moves the towed pod as a weight on the line. Where the pod or the line to the tower is not in open space it goes along the
-     * tower's path, or failing that to the nearest open place on the line, so that the line never drags it into rock.
+     * Moves the towed pod as a weight on the line. Where the pod or the line to the tower is not in open space it goes along
+     * the tower's path, or failing that to the nearest open place on the line, so that the line never drags it into rock. A
+     * pod below its tower in open space is the exception: the line drapes over the lip that blocks it ({@link #drape}) and
+     * the pod hangs below the lip.
      */
     private static void follow(PodEntity towed) {
         Optional<PodEntity> found = tower(towed);
@@ -369,6 +385,12 @@ public final class PodTowing {
         Vec3 anchor = tower.position();
         Vec3 held = new Vec3(towed.xo, towed.yo, towed.zo);
         line.remember(anchor, rope);
+        Vec3 eye = tower.getBoundingBox().getCenter();
+        Vec3 middle = towed.getBoundingBox().getCenter().subtract(towed.position());
+        // The line stays draped while the tower still does not see the pod where it was and the line reaches the lip.
+        Optional<Vec3> bend = line.bend.filter(lip -> eye.distanceTo(lip) < rope
+                && clear(towed, eye, lip)
+                && !sees(towed, eye, towed.getBoundingBox().move(held.subtract(towed.position()))));
 
         double slowing = line.resting ? tuning.groundFriction() : tuning.drag();
         Vec3 wanted = new Vec3(
@@ -381,26 +403,104 @@ public final class PodTowing {
         Vec3 moved = collide(wanted, box, blocks);
         line.resting = wanted.y < 0 && moved.y > wanted.y + EPSILON;
         Vec3 next = restOnTower(tower, towed, held.add(moved));
-        Vec3 out = next.subtract(anchor);
-        if (out.lengthSqr() > rope * rope) {
-            next = anchor.add(out.normalize().scale(rope));
+        Vec3 pivot = anchor;
+        double left = rope;
+        if (bend.isPresent()) {
+            pivot = bend.get().subtract(middle);
+            left = rope - eye.distanceTo(bend.get());
         }
+        next = clamp(next, pivot, left);
+        Vec3 from = bend.orElse(eye);
         Vec3 carried = null;
-        if (!fits(towed, anchor, next)) {
-            carried = line.pathPoints(anchor, rope).stream()
-                    .filter(point -> openAt(towed.level(), towed, point))
-                    .findFirst()
-                    .or(() -> held.distanceToSqr(anchor) > rope * rope
-                            ? nearestOpenOnLine(towed, anchor, held, rope)
-                            : Optional.empty())
-                    .orElse(held);
-            next = carried;
-            line.resting = false;
+        if (!fits(towed, from, next, bend.isEmpty())) {
+            Optional<Drape> draped = bend.isPresent() ? Optional.empty() : drape(towed, eye, middle, next, rope);
+            Optional<Vec3> caught =
+                    bend.isPresent() ? caughtOnLip(towed, bend.get(), pivot, left, held, next) : Optional.empty();
+            if (draped.isPresent()) {
+                bend = Optional.of(draped.get().lip());
+                pivot = bend.get().subtract(middle);
+                next = draped.get().next();
+            } else if (caught.isPresent()) {
+                next = caught.get();
+                carried = Vec3.ZERO;
+            } else {
+                bend = Optional.empty();
+                pivot = anchor;
+                carried = line.pathPoints(anchor, rope).stream()
+                        .filter(point -> openAt(towed.level(), towed, point))
+                        .findFirst()
+                        .or(() -> held.distanceToSqr(anchor) > rope * rope
+                                ? nearestOpenOnLine(towed, anchor, held, rope)
+                                : Optional.empty())
+                        .orElse(held);
+                next = carried;
+                line.resting = false;
+            }
         }
-        line.velocity = carried == null ? withoutPullAgainstLine(moved, next.subtract(anchor)) : Vec3.ZERO;
+        line.bend = bend;
+        line.velocity = carried == null ? withoutPullAgainstLine(moved, next.subtract(pivot)) : Vec3.ZERO;
         towed.setPos(next);
         towed.setDeltaMovement(Vec3.ZERO);
         towed.resetFallDistance();
+    }
+
+    /**
+     * Where a pod hanging from a lip goes when its swing would carry it into rock, as in under the ledge it hangs from: down the
+     * line it hangs on if the way is open, else nowhere. The line is caught on the lip and the pod keeps to the side it is on.
+     */
+    private static Optional<Vec3> caughtOnLip(
+            PodEntity towed, Vec3 lip, Vec3 pivot, double left, Vec3 held, Vec3 next) {
+        Vec3 down = new Vec3(held.x, next.y, held.z);
+        if (pivot.distanceTo(down) <= left + LINE_SLACK && fits(towed, lip, down, false)) {
+            return Optional.of(down);
+        }
+        return pivot.distanceTo(held) <= left + LINE_SLACK && fits(towed, lip, held, false)
+                ? Optional.of(held)
+                : Optional.empty();
+    }
+
+    /** {@code at} brought back onto the sphere of radius {@code rope} about {@code centre} if it lies outside it. */
+    private static Vec3 clamp(Vec3 at, Vec3 centre, double rope) {
+        Vec3 out = at.subtract(centre);
+        return out.lengthSqr() > rope * rope ? centre.add(out.normalize().scale(rope)) : at;
+    }
+
+    /** A line bent over a lip: where it bends, in the same space as the pod's middle, and where the pod then is. */
+    private record Drape(Vec3 lip, Vec3 next) {}
+
+    /**
+     * Drapes the line over the edge that blocks it, for a pod below its tower and in open space: of the corners of the block the
+     * line from {@code eye} (the tower's centre) to the pod at {@code next} runs into, the nearest one both see. The pod then hangs
+     * on what is left of the line. Empty where no corner serves, as in a bend of rock the pod must follow the path round.
+     */
+    private static Optional<Drape> drape(PodEntity towed, Vec3 eye, Vec3 middle, Vec3 next, double rope) {
+        Vec3 podMiddle = next.add(middle);
+        AABB hull = towed.getBoundingBox().move(next.subtract(towed.position()));
+        if (podMiddle.y > eye.y - DRAPE_MIN_DROP || !inOpenSpace(towed.level(), towed, hull.inflate(DRAPE_ROOM))) {
+            return Optional.empty();
+        }
+        Optional<BlockHitResult> hit = blocker(towed, eye, hull);
+        if (hit.isEmpty()) {
+            return Optional.empty();
+        }
+        Vec3 centre = Vec3.atCenterOf(hit.get().getBlockPos());
+        List<Vec3> lips = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            Vec3 corner = centre.add((i & 1) - 0.5, ((i >> 1) & 1) - 0.5, ((i >> 2) & 1) - 0.5);
+            lips.add(corner.add(corner.subtract(centre).scale(DRAPE_CLEARANCE)));
+        }
+        lips.sort(Comparator.comparingDouble(lip -> eye.distanceTo(lip) + lip.distanceTo(podMiddle)));
+        for (Vec3 lip : lips) {
+            double left = rope - eye.distanceTo(lip);
+            if (left <= 0 || !clear(towed, eye, lip)) {
+                continue;
+            }
+            Vec3 hung = clamp(podMiddle, lip, left).subtract(middle);
+            if (fits(towed, lip, hung, false)) {
+                return Optional.of(new Drape(lip, hung));
+            }
+        }
+        return Optional.empty();
     }
 
     /**
@@ -463,20 +563,50 @@ public final class PodTowing {
     }
 
     /**
-     * True when the towed pod's box is in open space at {@code at} and all along the line from {@code anchor} to it, so the line does
-     * not cut through rock. Sampled every {@link #FIT_STEP} blocks, closer than the narrowest wall.
+     * True when the towed pod's box is in open space at {@code at} and no block lies between {@code from} and the box's middle, or with
+     * {@code hull} its corners too: a line from the tower is not left cutting rock by the edge of the pod's hull. A line from a lip
+     * it is draped over runs to the middle only, for the hull swings in under the lip.
      */
-    private static boolean fits(PodEntity towed, Vec3 anchor, Vec3 at) {
-        Vec3 line = at.subtract(anchor);
-        int samples = (int) Math.ceil(line.length() / FIT_STEP);
-        AABB box = towed.getBoundingBox().move(anchor.subtract(towed.position()));
-        for (int i = samples; i >= 0; i--) {
-            Vec3 sample = line.scale(samples == 0 ? 0 : (double) i / samples);
-            if (!inOpenSpace(towed.level(), towed, box.move(sample))) {
-                return false;
+    private static boolean fits(PodEntity towed, Vec3 from, Vec3 at, boolean hull) {
+        AABB box = towed.getBoundingBox().move(at.subtract(towed.position()));
+        return inOpenSpace(towed.level(), towed, box)
+                && (hull ? sees(towed, from, box) : clear(towed, from, box.getCenter()));
+    }
+
+    /**
+     * True when no block lies between {@code from} and the middle of {@code box} or any of its corners. The box itself is not swept
+     * along the line (#1122): a pod below its tower's floor would then be tested against the floor under the tower.
+     */
+    private static boolean sees(PodEntity towed, Vec3 from, AABB box) {
+        return blocker(towed, from, box).isEmpty();
+    }
+
+    /** The first block on a line from {@code from} to the middle or a corner of {@code box}, if there is one. */
+    private static Optional<BlockHitResult> blocker(PodEntity towed, Vec3 from, AABB box) {
+        List<Vec3> ends = new ArrayList<>();
+        ends.add(box.getCenter());
+        for (int i = 0; i < 8; i++) {
+            ends.add(new Vec3(
+                    (i & 1) == 0 ? box.minX : box.maxX,
+                    (i & 2) == 0 ? box.minY : box.maxY,
+                    (i & 4) == 0 ? box.minZ : box.maxZ));
+        }
+        for (Vec3 end : ends) {
+            BlockHitResult hit = clip(towed, from, end);
+            if (hit.getType() == HitResult.Type.BLOCK) {
+                return Optional.of(hit);
             }
         }
-        return true;
+        return Optional.empty();
+    }
+
+    private static BlockHitResult clip(PodEntity towed, Vec3 from, Vec3 to) {
+        return towed.level().clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, towed));
+    }
+
+    /** True when no block lies on the straight line from {@code from} to {@code to}. */
+    private static boolean clear(PodEntity towed, Vec3 from, Vec3 to) {
+        return clip(towed, from, to).getType() == HitResult.Type.MISS;
     }
 
     /**

@@ -69,7 +69,7 @@ public class StepToastClientTest implements FabricClientGameTest {
     /** The popup of {@code text} draws every word of it, each line inside the slip's border, with the head rule and "Directive complete". */
     private static void requireWhole(Minecraft client, Component text) {
         StepToast toast = StepToast.of(text);
-        List<Drawn> drawn = DrawnText.of(graphics -> toast.extractRenderState(graphics, client.font, 0));
+        List<Drawn> drawn = DrawnText.of(graphics -> toast.draw(graphics, client.font));
         String head = Component.translatable("deepcharter.handbook.quest.toast").getString();
         require(!drawn.isEmpty() && drawn.getFirst().text().equals(head), "the popup is headed '" + head + "'");
         List<String> body = new ArrayList<>();

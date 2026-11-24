@@ -15,5 +15,6 @@ public final class HandbookInit {
         ProgressCarry.register();
         KnownRecipes.register();
         PencilPaths.register();
+        SpecSheetPopups.init();
     }
 }

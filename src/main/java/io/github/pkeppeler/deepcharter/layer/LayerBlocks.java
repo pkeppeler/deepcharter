@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.PushReaction;
 
 /**
  * Blocks of the layer feature: the breach crust, and the rock of layers 1 and 2 with its rubble. Their looks (ten textures of the rock, two of the
@@ -25,12 +26,15 @@ public final class LayerBlocks {
     private static final Identifier BREACH_CRUST_ID =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "breach_crust");
 
+    // Bedrock's blast resistance: no vanilla explosion breaks a crust, which only the pod's drill and a creative hand
+    // open (#1110).
     // The layer material rule (worldgen/material_rule/layer.json) puts 3 of these at each floor, as LayerTuning says.
     public static final Block BREACH_CRUST = registerBlock(
             BREACH_CRUST_ID,
             key -> new Block(BlockBehaviour.Properties.of()
                     .setId(key)
-                    .strength(5.0F, 6.0F)
+                    .strength(5.0F, Blocks.BEDROCK.getExplosionResistance())
+                    .pushReaction(PushReaction.IMMOVEABLE)
                     .sound(SoundType.STONE)
                     .noLootTable()));
 
@@ -44,6 +48,20 @@ public final class LayerBlocks {
                     .setId(key)
                     .strength(5.0F, 6.0F)
                     .sound(SoundType.STONE)
+                    .noLootTable()));
+
+    /**
+     * The roof bolt (#987): set in a roof by the bolt driver, it holds the roof round it against a cave-in ({@link CaveIns}). The id is
+     * permanent, since a bolt set in the roof stays in a saved world. It has no item: only the driver sets one.
+     */
+    public static final Block ROOF_BOLT = registerBlockOnly(
+            id("roof_bolt"),
+            key -> new RoofBoltBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(0.5F, 6.0F)
+                    .sound(SoundType.CHAIN)
+                    .noCollision()
+                    .noOcclusion()
                     .noLootTable()));
 
     /** The rust-brown rock of layer 1, which the layer's noise settings fill the ground with. */
@@ -107,6 +125,11 @@ public final class LayerBlocks {
 
     /** Loads the class, which registers the blocks. */
     public static void register() {}
+
+    private static Block registerBlockOnly(Identifier id, Function<ResourceKey<Block>, Block> factory) {
+        ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
+        return Registry.register(BuiltInRegistries.BLOCK, blockKey, factory.apply(blockKey));
+    }
 
     private static Block registerBlock(Identifier id, Function<ResourceKey<Block>, Block> factory) {
         ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
