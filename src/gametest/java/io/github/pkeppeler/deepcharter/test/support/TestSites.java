@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -27,9 +28,9 @@ public final class TestSites {
     /** Blocks around the origin that every test world shares and that no test claims. */
     public static final int SPAWN_RADIUS = 512;
 
-    /** The first layer past the built ones: the campaign sample's unbuilt depth, which tests carve pockets in too. */
     private static final String TEST_PACKAGE = TestSites.class.getPackageName().replaceAll("\\.support$", "");
 
+    /** The first layer past the built ones: the campaign sample's unbuilt depth, which tests carve pockets in too. */
     private static final int UNBUILT = CampaignBands.lastLayer() + 1;
 
     /** One owner's inclusive block columns in one layer; layer 0 is the surface. */
@@ -133,34 +134,26 @@ public final class TestSites {
 
     /** As {@link #guardCarve(ServerLevel, BlockPos, BlockPos)}, for the classes of a call stack, innermost first. */
     public static void guardCarve(ServerLevel level, BlockPos min, BlockPos max, List<Class<?>> stack) {
-        if (!shared(level)) {
-            return;
-        }
         // The shell RoomSeal writes is one block outside the room.
         int x0 = min.getX() - 1;
         int x1 = max.getX() + 1;
         int z0 = min.getZ() - 1;
         int z1 = max.getZ() + 1;
-        if (inSpawn(x0, x1, z0, z1)) {
-            return;
-        }
-        if (ownsItsWorld(stack)) {
-            return;
-        }
-        Optional<String> owner = ownerOf(stack).or(() -> Optional.ofNullable(SCOPED.get()));
-        if (owner.isEmpty()) {
-            throw unattributed("carves layer " + layerAt((min.getY() + max.getY()) / 2) + " x " + x0 + ".." + x1 + " z "
-                    + z0 + ".." + z1);
-        }
-        if (EXEMPT.contains(owner.get())) {
-            return;
-        }
         int layer = layerAt((min.getY() + max.getY()) / 2);
-        boolean claimed = SITES.stream()
-                .anyMatch(site ->
-                        site.owner().equals(owner.get()) && site.layer() == layer && site.contains(x0, x1, z0, z1));
-        if (!claimed) {
-            throw new IllegalStateException(owner.get() + " carves layer " + layer + " x " + x0 + ".." + x1 + " z " + z0
+        String owner = checkedOwner(
+                        level,
+                        stack,
+                        x0,
+                        x1,
+                        z0,
+                        z1,
+                        () -> "carves layer " + layer + " x " + x0 + ".." + x1 + " z " + z0 + ".." + z1)
+                .orElse(null);
+        if (owner != null
+                && SITES.stream()
+                        .noneMatch(site ->
+                                site.owner().equals(owner) && site.layer() == layer && site.contains(x0, x1, z0, z1))) {
+            throw new IllegalStateException(owner + " carves layer " + layer + " x " + x0 + ".." + x1 + " z " + z0
                     + ".." + z1
                     + " (the room and its shell), outside its claims. Claim the site in TestSiteTable: a test that"
                     + " stages where another stages fails only when they share a batch (#1182).");
@@ -174,32 +167,32 @@ public final class TestSites {
 
     /** As {@link #guardChunk(ServerLevel, int, int)}, for the classes of a call stack, innermost first. */
     public static void guardChunk(ServerLevel level, int chunkX, int chunkZ, List<Class<?>> stack) {
-        if (!shared(level)) {
-            return;
-        }
         int x0 = chunkX * 16;
         int z0 = chunkZ * 16;
-        if (inSpawn(x0, x0 + 15, z0, z0 + 15)) {
-            return;
+        String place = "chunk " + chunkX + ", " + chunkZ + " (x " + x0 + ".." + (x0 + 15) + ", z " + z0 + ".."
+                + (z0 + 15) + ")";
+        String owner = checkedOwner(level, stack, x0, x0 + 15, z0, z0 + 15, () -> "forces " + place)
+                .orElse(null);
+        if (owner != null
+                && SITES.stream()
+                        .noneMatch(site -> site.owner().equals(owner) && site.touches(x0, x0 + 15, z0, z0 + 15))) {
+            throw new IllegalStateException(owner + " forces " + place
+                    + ", which none of its claims touches. Claim the site in TestSiteTable (#1182).");
         }
-        if (ownsItsWorld(stack)) {
-            return;
+    }
+
+    /**
+     * The owner whose claims must cover the box, or empty when the box is not checked: another dimension, the spawn square, a test with
+     * a world of its own, or an exempt owner. Throws when a checked call has no owner.
+     */
+    private static Optional<String> checkedOwner(
+            ServerLevel level, List<Class<?>> stack, int x0, int x1, int z0, int z1, Supplier<String> what) {
+        if (!shared(level) || inSpawn(x0, x1, z0, z1) || ownsItsWorld(stack)) {
+            return Optional.empty();
         }
-        Optional<String> owner = ownerOf(stack).or(() -> Optional.ofNullable(SCOPED.get()));
-        if (owner.isEmpty()) {
-            throw unattributed("forces chunk " + chunkX + ", " + chunkZ + " (x " + x0 + ".." + (x0 + 15) + ", z " + z0
-                    + ".." + (z0 + 15) + ")");
-        }
-        if (EXEMPT.contains(owner.get())) {
-            return;
-        }
-        boolean claimed = SITES.stream()
-                .anyMatch(site -> site.owner().equals(owner.get()) && site.touches(x0, x0 + 15, z0, z0 + 15));
-        if (!claimed) {
-            throw new IllegalStateException(owner.get() + " forces chunk " + chunkX + ", " + chunkZ + " (x " + x0 + ".."
-                    + (x0 + 15) + ", z " + z0 + ".." + (z0 + 15)
-                    + "), which none of its claims touches. Claim the site in TestSiteTable (#1182).");
-        }
+        String owner =
+                ownerOf(stack).or(() -> Optional.ofNullable(SCOPED.get())).orElseThrow(() -> unattributed(what.get()));
+        return EXEMPT.contains(owner) ? Optional.empty() : Optional.of(owner);
     }
 
     private static boolean shared(ServerLevel level) {
