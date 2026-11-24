@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.sound.ambience;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +20,8 @@ import org.jspecify.annotations.Nullable;
  *   <li>Near a horn the horn's timer replaces the layer's, and the fragment comes from the horn. The horn adds one fragment: the first
  *       after arriving, not sooner than a minute. After any fragment both timers are drawn again, and the horn's gap is never shorter than
  *       the layer's own, so a horn changes where a fragment is heard from and never how often.
+ *   <li>A horn chooses among the layer's fragments and its own pool, which is not a tier and which the dark never draws from: more to
+ *       hear from it, not more often. Each fragment of the two is as likely as the next.
  * </ul>
  */
 public final class AmbienceScheduler {
@@ -28,23 +31,44 @@ public final class AmbienceScheduler {
         HORN
     }
 
-    /** A fragment due now: its tier, its name in the tier's pool, and where it sounds from. */
-    public record Pick(AmbienceTier tier, String fragment, Source source) {}
+    /** Where a fragment is drawn from: a layer's tier pool, or the horn's own. */
+    public enum Pool {
+        LAYER,
+        HORN
+    }
+
+    /** A fragment due now: the layer's tier, its name in {@code pool}, where it sounds from. The horn's pool is only ever heard from a horn. */
+    public record Pick(AmbienceTier tier, String fragment, Source source, Pool pool) {
+        public Pick {
+            if (pool == Pool.HORN && source != Source.HORN) {
+                throw new IllegalArgumentException("the horn's pool is only heard from a horn");
+            }
+        }
+    }
 
     private static final int UNSET = -1;
 
     private final AmbienceTuning tuning;
     private final Map<AmbienceTier, List<String>> pools;
+    private final List<String> hornPool;
     private final RandomGenerator random;
     private int layer = 0;
     private int ticksLeft = UNSET;
     private int hornTicksLeft = UNSET;
     private @Nullable String last;
 
-    /** @param pools the fragments of each tier, by name */
-    public AmbienceScheduler(AmbienceTuning tuning, Map<AmbienceTier, List<String>> pools, RandomGenerator random) {
+    /**
+     * @param pools    the fragments of each tier, by name
+     * @param hornPool the fragments only a horn plays, by name
+     */
+    public AmbienceScheduler(
+            AmbienceTuning tuning,
+            Map<AmbienceTier, List<String>> pools,
+            List<String> hornPool,
+            RandomGenerator random) {
         this.tuning = tuning;
         this.pools = pools;
+        this.hornPool = hornPool;
         this.random = random;
     }
 
@@ -77,9 +101,8 @@ public final class AmbienceScheduler {
         if ((hornNear ? --hornTicksLeft : --ticksLeft) > 0) {
             return Optional.empty();
         }
-        AmbienceTier tier = rate.tier();
-        String fragment = quiet ? null : choose(tier);
-        if (fragment == null) {
+        Optional<Pick> chosen = quiet ? Optional.empty() : choose(rate.tier(), hornNear);
+        if (chosen.isEmpty()) {
             int retry = draw(tuning.retryMinTicks(), tuning.retryMaxTicks());
             if (hornNear) {
                 hornTicksLeft = retry;
@@ -88,22 +111,34 @@ public final class AmbienceScheduler {
             }
             return Optional.empty();
         }
-        last = fragment;
+        Pick pick = chosen.get();
+        last = pick.fragment();
         // Any fragment redraws both timers.
         ticksLeft = draw(rate.minTicks(), rate.maxTicks());
         if (hornNear) {
             hornTicksLeft = draw(
                     Math.max(tuning.hornMinTicks(), rate.minTicks()), Math.max(tuning.hornMaxTicks(), rate.maxTicks()));
         }
-        return Optional.of(new Pick(tier, fragment, hornNear ? Source.HORN : Source.DARK));
+        return chosen;
     }
 
-    /** A fragment of the tier other than the last, or null when the pool has nothing else to say. */
-    private @Nullable String choose(AmbienceTier tier) {
-        List<String> others = pools.getOrDefault(tier, List.of()).stream()
-                .filter(name -> !name.equals(last))
-                .toList();
-        return others.isEmpty() ? null : others.get(random.nextInt(others.size()));
+    /** A fragment of the tier other than the last, or empty when there is nothing else to say. Near a horn its own pool is added. */
+    private Optional<Pick> choose(AmbienceTier tier, boolean hornNear) {
+        Source source = hornNear ? Source.HORN : Source.DARK;
+        List<Pick> others = new ArrayList<>();
+        for (String name : pools.getOrDefault(tier, List.of())) {
+            if (!name.equals(last)) {
+                others.add(new Pick(tier, name, source, Pool.LAYER));
+            }
+        }
+        if (hornNear) {
+            for (String name : hornPool) {
+                if (!name.equals(last)) {
+                    others.add(new Pick(tier, name, source, Pool.HORN));
+                }
+            }
+        }
+        return others.isEmpty() ? Optional.empty() : Optional.of(others.get(random.nextInt(others.size())));
     }
 
     /** A whole number of ticks from {@code min} to {@code max}, both included. */

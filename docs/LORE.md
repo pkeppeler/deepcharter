@@ -37,7 +37,7 @@ H. Colom & Company has reopened Prosperity, a mining colony that emptied in one 
 1. The Company and its Chairman get the jokes. The dead never do.
 2. **The lure never goes dark.** No story beat ever blocks selling, buying or upgrading. The Chairman's threats come with a receipt. This protects pillar 1.
 3. The handbook can change its tone, never its rules.
-4. Faith is quiet and unnamed. No denomination, no quoted scripture, no sermons. It shows in the miners' private lives: a candle, a hymn, a prayer card.
+4. Faith is quiet and unnamed. No denomination, no sermons. It shows in the miners' private lives: a candle, a hymn, a prayer card. Period recordings of hymns, choirs and prayers are welcome as found material, heard and never explained; our own text still doesn't preach.
 5. The thing at the bottom is never named, gendered or explained in game text. The game hints; it never explains.
 6. **No children in the deep.** In scripture, Moloch is the idol children were sacrificed to. We keep his shape and his hunger and nothing else: no child characters, victims or sacrifice imagery. Miners may mention their families.
 7. **No gore** (the default; the user may lift it). Horror comes from wrongness and absence: an empty cab, a loop counter, a punch clock still ticking.

@@ -101,7 +101,7 @@ public final class AmbienceTicker {
     }
 
     private static AmbienceScheduler newScheduler() {
-        return new AmbienceScheduler(tuning, AmbienceFragments.pools(), RANDOM.split());
+        return new AmbienceScheduler(tuning, AmbienceFragments.pools(), AmbienceFragments.hornPool(), RANDOM.split());
     }
 
     private static void reset() {
@@ -177,8 +177,9 @@ public final class AmbienceTicker {
         if (pick.isEmpty()) {
             return;
         }
-        SoundEvent fragment =
-                AmbienceFragments.sound(pick.get().tier(), pick.get().fragment());
+        SoundEvent fragment = pick.get().pool() == AmbienceScheduler.Pool.HORN
+                ? AmbienceFragments.hornSound(pick.get().fragment())
+                : AmbienceFragments.sound(pick.get().tier(), pick.get().fragment());
         if (pick.get().source() == AmbienceScheduler.Source.HORN && horn.isPresent()) {
             Vec3 at = Vec3.atCenterOf(horn.get());
             sounds.play(at(DeepSound.AMBIENCE_HORN_WARMUP.event(), at));

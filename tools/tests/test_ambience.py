@@ -8,10 +8,12 @@ import io
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from array import array
+from unittest import mock
 from pathlib import Path
 
 SOUNDS = Path(__file__).resolve().parent.parent / "sounds"
@@ -29,14 +31,44 @@ LANG = ROOT / "src/lang/en_us/sound.json"
 CLOCK = "ambience.clock."
 
 
+# What #946 added, as the source's canonical URL and the sha256 of the file the manifest credits (no test downloads: these pin the manifest).
+NEW_SOURCES = {
+    "listening_dead": ("https://www.firstsounds.org/features/mp3/listening-dead.mp3", "b21a0fe4da6584d511c91bcca026e64eb7ff03ee8d6d5d3b58e0312016b0ff2a"),
+    "noematachogram": ("https://www.firstsounds.org/features/mp3/noematachogram.mp3", "fa40f26c7b30615926193854d29ffe8460a15bf13201e298a948c7bfd21e010a"),
+    "morey_mood": ("https://www.firstsounds.org/features/mp3/morey-mood.mp3", "b8a49faf5f3a458a785a7acb0819cd0bd888969d833449571f9a108cd7ef9e8d"),
+    "vocal_scale_crosstalk": ("https://www.firstsounds.org/sounds/1860-Vocal-Scale.mp3", "c13f5d490bf699cc5a4ec309c7619529ca68982c3df9c3825bd1a43267a83fce"),
+    "diapason_scale": ("https://www.firstsounds.org/features/mp3/diapason-scale.mp3", "22f4641d0902a3e15fddb6b14c050e62adc80f3981855fdbfe7c433a4bc5d9f5"),
+    "elevated_railroad": ("https://www.firstsounds.org/sounds/1878-Edison-MERR.mp3", "bb43ff95ac8a0287a14003cd9d5004c60c54bf536838dba9109820d76e838d4b"),
+    "handel_choir": ("https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0154-17.mp3", "d2e4a0f4648c53695654a3564b2072c3933bf44236ff70a1b701ce390cd01e3c"),
+    "volta_barometer": ("https://www.firstsounds.org/sounds/volta/287686_Barometer.wav", "a78affeae998b32203a3e1e1e259f81372e44ddf0222c45b0adf86d9b40f1922"),
+}
+DEEP_FRAGMENTS = {"ear_a", "donders_ki", "morey_oo", "scale_crosstalk", "choir_a", "choir_b"}
+HORN_POOL = {"diapason", "railway", "test_voices", "barometer"}
+TOOLS = (shutil.which("ffmpeg"), shutil.which("ffprobe"))
+
+
 def voices(tier):
-    return [fragment for fragment in ambience.FRAGMENTS if tier in fragment.tiers and fragment.kind != ambience.WARMUP]
+    """The fragments the layers play in a tier (the horn's own pool and its warm-up are not among them)."""
+    return [
+        fragment
+        for fragment in ambience.FRAGMENTS
+        if tier in fragment.tiers and fragment.kind != ambience.WARMUP and not fragment.pool
+    ]
+
+
+def measure(path):
+    """The integrated loudness (LUFS) and the true peak (dBTP) of an OGG, by ffmpeg's ebur128."""
+    done = subprocess.run(
+        ["ffmpeg", "-nostdin", "-i", str(path), "-af", "ebur128=peak=true", "-f", "null", "-"], capture_output=True, text=True
+    )
+    return float(re.findall(r"I:\s+(-?\d+\.\d) LUFS", done.stderr)[-1]), float(re.findall(r"Peak:\s+(-?\d+\.\d) dBFS", done.stderr)[-1])
 
 
 class DeclaredFragmentsTest(unittest.TestCase):
-    def test_there_are_roughly_ten_to_sixteen_fragments_and_every_tier_has_a_pool_to_draw_from(self):
-        names = {fragment.name for fragment in ambience.FRAGMENTS if fragment.kind != ambience.WARMUP}
-        self.assertTrue(10 <= len(names) <= 16, len(names))
+    def test_there_are_roughly_ten_to_twenty_fragments_and_every_tier_has_a_pool_to_draw_from(self):
+        # Fourteen from the first cut and four deep ones (#946): more variety, and the rates in AmbienceTuning did not change.
+        names = {fragment.name for fragment in ambience.FRAGMENTS if fragment.kind != ambience.WARMUP and not fragment.pool}
+        self.assertTrue(10 <= len(names) <= 20, len(names))
         for tier in ambience.ALL:
             self.assertGreaterEqual(len(voices(tier)), 4, tier)
 
@@ -66,6 +98,28 @@ class DeclaredFragmentsTest(unittest.TestCase):
         warmups = [fragment for fragment in ambience.FRAGMENTS if fragment.kind == ambience.WARMUP]
         self.assertEqual(["horn_warmup"], [fragment.name for fragment in warmups])
         self.assertEqual((ambience.WORN,), warmups[0].tiers)
+
+    def test_the_deep_fragments_are_in_the_broken_tier_and_no_other(self):
+        deep = [fragment for fragment in ambience.FRAGMENTS if fragment.name in DEEP_FRAGMENTS]
+        self.assertEqual(DEEP_FRAGMENTS, {fragment.name for fragment in deep})
+        for fragment in deep:
+            self.assertEqual((ambience.BROKEN,), fragment.tiers, fragment.name)
+            self.assertEqual("", fragment.pool, fragment.name)
+        # The human ear is the deepest of them: only the tier below every layer's own.
+        self.assertEqual({"listening_dead"}, {f.source for f in deep if f.name == "ear_a"})
+
+    def test_the_horn_pool_is_worn_voices_and_tones_and_never_a_layers_fragment(self):
+        pool = [fragment for fragment in ambience.FRAGMENTS if fragment.pool]
+        self.assertEqual(HORN_POOL, {fragment.name for fragment in pool})
+        for fragment in pool:
+            self.assertEqual(ambience.HORN, fragment.pool)
+            self.assertEqual((ambience.WORN,), fragment.tiers, fragment.name)
+            self.assertIn(fragment.kind, (ambience.VOICE, ambience.TONE), fragment.name)
+            self.assertEqual(f"ambience.horn.{fragment.name}", ambience.event(fragment, ambience.WORN))
+        # A layer's fragment keeps the event it always had.
+        breath = next(f for f in ambience.FRAGMENTS if f.name == "breath_a")
+        self.assertEqual("ambience.faint.breath_a", ambience.event(breath, ambience.FAINT))
+        self.assertEqual("ambience.horn_warmup", ambience.event(next(f for f in ambience.FRAGMENTS if f.name == "horn_warmup"), ambience.WORN))
 
     def test_the_deepest_words_are_only_for_the_deepest_tiers(self):
         for fragment in ambience.FRAGMENTS:
@@ -108,6 +162,8 @@ class CommittedFragmentsTest(unittest.TestCase):
 
     def test_every_credit_is_in_the_form_the_licence_holders_ask_for(self):
         for name, entry in self.manifest["sources"].items():
+            if ambience.source_named(name).credit_line:
+                continue  # #946's own credits, in NewSourcesTest
             credit = entry["credit"]
             self.assertTrue(credit.startswith("Phonautogram by Édouard-Léon Scott de Martinville ("), credit)
             self.assertTrue(
@@ -139,6 +195,129 @@ class CommittedFragmentsTest(unittest.TestCase):
         speeds = [ambience.TIERS[tier].speed for tier in ambience.ALL]
         self.assertEqual(sorted(speeds, reverse=True), speeds)
         self.assertLess(ambience.TIERS[ambience.BROKEN].speed, 1.0)
+
+
+class NewSourcesTest(unittest.TestCase):
+    """#946: each source's canonical URL, hash and credit are in the manifest, and the fragments cut from it are the ones declared."""
+
+    manifest = json.loads(ambience.MANIFEST.read_text())
+
+    def test_the_manifest_holds_each_new_sources_canonical_url_and_hash(self):
+        for name, (url, digest) in NEW_SOURCES.items():
+            entry = self.manifest["sources"][name]
+            self.assertEqual(url, entry["source_url"], name)
+            self.assertEqual(digest, entry["source_sha256"], name)
+            self.assertEqual(url, ambience.source_named(name).url, name)
+
+    def test_every_new_source_is_cut_from_by_a_fragment(self):
+        cut = {fragment.source for fragment in ambience.FRAGMENTS}
+        self.assertTrue(set(NEW_SOURCES) <= cut)
+
+    def test_a_credit_says_what_is_known_of_its_licence_and_nothing_more(self):
+        for name in NEW_SOURCES:
+            entry = self.manifest["sources"][name]
+            if "Courtesy of the U.S. National Park Service" in entry["credit"]:
+                self.assertEqual("none stated", entry["license"], name)  # the park's own words are the credit: no licence is claimed
+                self.assertNotIn("CC BY", entry["credit"], name)
+                continue
+            if entry["license"] == "none stated":
+                self.assertIn("states no licence", entry["credit"], name)
+                self.assertNotIn("CC BY", entry["credit"], name)
+            else:
+                self.assertEqual("CC BY", entry["license"], name)
+                self.assertTrue(ambience.source_named(name).tagged, name)
+                self.assertIn("CC BY", entry["credit"], name)
+            self.assertIn("First Sounds", entry["credit"], name)
+
+    def test_morey_states_no_licence_because_its_file_states_none(self):
+        entry = self.manifest["sources"]["morey_mood"]
+        self.assertEqual("none stated", entry["license"])
+        self.assertNotIn("CC BY", entry["credit"])
+        self.assertFalse(ambience.source_named("morey_mood").tagged)
+
+    def test_the_tagged_sources_are_exactly_the_ones_whose_files_say_cc_by(self):
+        # A pin of which sources carry the check; the refusal itself is BuildTaggedTest below.
+        tagged = {name for name in NEW_SOURCES if ambience.source_named(name).tagged}
+        self.assertEqual({"listening_dead", "noematachogram", "vocal_scale_crosstalk", "diapason_scale", "elevated_railroad"}, tagged)
+
+    def test_no_new_source_is_the_wrecks_song_or_a_takes_of_it(self):
+        for name in NEW_SOURCES:
+            source = ambience.source_named(name)
+            for text in (source.name, source.file, source.title, source.url):
+                self.assertNotRegex(text.lower(), r"clair|lune|no-?36|no-?44")
+
+    def test_the_choir_is_credited_to_the_park_and_says_only_what_its_tags_say(self):
+        entry = self.manifest["sources"]["handel_choir"]
+        self.assertEqual("none stated", entry["license"])
+        self.assertIn("Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park", entry["credit"])
+        self.assertIn("August Manns", entry["credit"])
+        self.assertIn("catalog E-2440-20", entry["credit"])
+        self.assertNotIn("Crystal Palace", entry["credit"])  # the tags do not say where
+        self.assertEqual({"choir_a", "choir_b"}, {f.name for f in ambience.FRAGMENTS if f.source == "handel_choir"})
+        for fragment in ambience.FRAGMENTS:
+            if fragment.source == "handel_choir":
+                self.assertEqual((ambience.BROKEN,), fragment.tiers)
+                self.assertTrue(2.0 <= fragment.end - fragment.start <= 4.0)
+
+    def test_the_oldest_ear_is_the_one_that_is_credited_to_its_maker(self):
+        entry = self.manifest["sources"]["listening_dead"]
+        self.assertIn("August Lucae", entry["credit"])
+        self.assertIn("1862", entry["credit"])
+
+
+@unittest.skipUnless(all(TOOLS), "ffmpeg is needed to measure loudness")
+class LoudnessTest(unittest.TestCase):
+    """The new fragments sit with the old ones: the layers' voices are -26 to -32 LUFS, and the tones near -28."""
+
+    def test_every_new_fragment_is_as_loud_as_the_ones_it_joins(self):
+        for fragment, tier in ambience.variants():
+            if not (fragment.name in DEEP_FRAGMENTS or fragment.pool):
+                continue
+            loudness = measure(ambience.OUT / "ambience" / tier / f"{fragment.name}.ogg")[0]
+            self.assertGreaterEqual(loudness, -34.0, ambience.key(fragment, tier))
+            self.assertLessEqual(loudness, -24.0, ambience.key(fragment, tier))
+
+    def test_every_new_cylinder_is_level_with_the_first_three_and_under_a_ceiling_of_minus_one_dbtp(self):
+        # The first three are -13.1 to -19.3 LUFS (and overshoot, to +0.5 dBTP: left as they were). The new ones sit in that range, within 2 dB of
+        # -13.5 at the loudest, and none passes -1 dBTP.
+        manifest = json.loads(first_sounds.MANIFEST.read_text())
+        for recording in first_sounds.RECORDINGS[3:]:
+            loudness, peak = measure(first_sounds.OUT / "phonograph" / f"{recording.name}.ogg")
+            self.assertTrue(-19.5 <= loudness <= -12.5, (recording.name, loudness))
+            self.assertLessEqual(peak, -1.0, recording.name)
+            self.assertEqual(recording.gain_db, manifest[recording.name].get("gain_db", 0.0), recording.name)
+
+
+@unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
+class BuildTaggedTest(unittest.TestCase):
+    """A source whose file does not say CC BY is refused when it is `tagged` and accepted when it is not."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.sources = self.tmp / "sources"
+        self.sources.mkdir()
+        import math
+        import wave
+
+        with wave.open(str(self.sources / "tone.wav"), "wb") as out:
+            out.setnchannels(1)
+            out.setsampwidth(2)
+            out.setframerate(44100)
+            out.writeframes(array("h", (int(9000 * math.sin(i * 0.03)) for i in range(44100 * 3))).tobytes())
+
+    def build(self, tagged):
+        source = first_sounds.Recording("t", "tone.wav", "T", "1900", tagged=tagged, license="CC BY" if tagged else "none stated")
+        fragment = ambience.Fragment("t_a", "t", 0.2, 1.2, (ambience.BROKEN,))
+        with mock.patch.object(ambience, "SOURCES", (source,)), mock.patch.object(ambience, "FRAGMENTS", (fragment,)):
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                return ambience.build(self.sources, self.tmp / "out", self.tmp / "ambience.json")
+
+    def test_an_untagged_file_is_refused_when_the_source_must_say_cc_by_and_accepted_when_it_need_not(self):
+        self.assertEqual(1, self.build(tagged=True))
+        self.assertFalse((self.tmp / "ambience.json").exists())
+        self.assertEqual(0, self.build(tagged=False))
+        self.assertEqual("none stated", json.loads((self.tmp / "ambience.json").read_text())["sources"]["t"]["license"])
 
 
 class TreatmentTest(unittest.TestCase):
@@ -304,7 +483,7 @@ class WiringTest(unittest.TestCase):
 
     def test_every_fragment_has_a_sound_event_with_its_file_and_a_subtitle_that_explains_nothing(self):
         for fragment, tier in ambience.variants():
-            event = f"ambience.{fragment.name}" if fragment.kind == ambience.WARMUP else f"ambience.{tier}.{fragment.name}"
+            event = ambience.event(fragment, tier)
             self.assertIn(event, self.sounds, event)
             entry = self.sounds[event]
             self.assertEqual([f"deepcharter:ambience/{tier}/{fragment.name}"], [s["name"] for s in entry["sounds"]], event)
@@ -314,12 +493,12 @@ class WiringTest(unittest.TestCase):
 
     def test_a_tone_or_a_warmup_is_static_and_a_voice_is_a_voice(self):
         for fragment, tier in ambience.variants():
-            event = f"ambience.{fragment.name}" if fragment.kind == ambience.WARMUP else f"ambience.{tier}.{fragment.name}"
+            event = ambience.event(fragment, tier)
             expected = "voice" if fragment.kind == ambience.VOICE else "static"
             self.assertEqual(f"subtitles.deepcharter.ambience.{expected}", self.sounds[event]["subtitle"], event)
 
     def test_sounds_json_lists_no_ambience_the_pipeline_does_not_make(self):
-        made = {f"ambience.{t}.{f.name}" for f, t in ambience.variants() if f.kind != ambience.WARMUP} | {"ambience.horn_warmup"}
+        made = {ambience.event(f, t) for f, t in ambience.variants()}
         self.assertEqual(made, {name for name in self.sounds if name.startswith("ambience.") and not name.startswith(CLOCK)})
 
     def test_deep_sound_declares_every_event(self):
