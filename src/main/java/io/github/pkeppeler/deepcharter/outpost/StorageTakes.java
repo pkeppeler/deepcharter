@@ -28,20 +28,24 @@ final class StorageTakes {
 
     private StorageTakes() {}
 
-    /** The storage block entities in {@code zone} whose chunk is loaded, in position order. */
-    static List<Container> storage(ServerLevel level, BoundingBox zone) {
+    /**
+     * The storage block entities in {@code zone} whose chunk is loaded and that {@code reaches} says a creature can reach (the Retained
+     * take only what a creature can walk up to, ADR 0092), in position order.
+     */
+    static List<Container> storage(ServerLevel level, BoundingBox zone, Predicate<BlockPos> reaches) {
         return OutpostSettling.blockEntities(level, zone).stream()
-                .filter(entity ->
-                        entity instanceof Container && !entity.getBlockState().is(OutpostSettling.NEVER_SETTLED))
+                .filter(entity -> entity instanceof Container
+                        && !entity.getBlockState().is(OutpostSettling.NEVER_SETTLED)
+                        && reaches.test(entity.getBlockPos()))
                 .sorted(Comparator.comparing(BlockEntity::getBlockPos, BY_POSITION))
                 .map(entity -> (Container) entity)
                 .toList();
     }
 
-    /** How many items of {@code wanted} the zone's storage holds. */
-    static int count(ServerLevel level, BoundingBox zone, Predicate<ItemStack> wanted) {
+    /** How many items of {@code wanted} the zone's reachable storage holds. */
+    static int count(ServerLevel level, BoundingBox zone, Predicate<ItemStack> wanted, Predicate<BlockPos> reaches) {
         long count = 0;
-        for (Container container : storage(level, zone)) {
+        for (Container container : storage(level, zone, reaches)) {
             for (int slot = 0; slot < container.getContainerSize(); slot++) {
                 ItemStack stack = container.getItem(slot);
                 if (wanted.test(stack)) {
@@ -53,7 +57,7 @@ final class StorageTakes {
     }
 
     /**
-     * Takes up to {@code maxItems} items of {@code wanted} from the zone's storage, those that sort first by {@code first} (ties in
+     * Takes up to {@code maxItems} items of {@code wanted} from the zone's reachable storage, those that sort first by {@code first} (ties in
      * container order from a random first container). Shrinks the stacks and marks each container changed. Returns what was taken, by item.
      */
     static Map<Item, Integer> take(
@@ -62,8 +66,9 @@ final class StorageTakes {
             Predicate<ItemStack> wanted,
             Comparator<ItemStack> first,
             int maxItems,
-            RandomSource random) {
-        List<Container> containers = new ArrayList<>(storage(level, zone));
+            RandomSource random,
+            Predicate<BlockPos> reaches) {
+        List<Container> containers = new ArrayList<>(storage(level, zone, reaches));
         if (containers.isEmpty()) {
             return Map.of();
         }

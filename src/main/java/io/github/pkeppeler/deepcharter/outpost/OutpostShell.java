@@ -1,21 +1,61 @@
 package io.github.pkeppeler.deepcharter.outpost;
 
 import io.github.pkeppeler.deepcharter.outpost.OutpostData.Outpost;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.LongPredicate;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
-/**
- * Whether a creature can reach a block of an outpost: the exposure rule of ADR 0072, "open space reachable from outside the shell". A
- * visit breaks only blocks it can reach.
- */
-final class OutpostShell {
+/** STUB, replaced below. */
+public final class OutpostShell {
     private OutpostShell() {}
 
-    /**
-     * True when a visit can reach the block at {@code pos}. Filled by #926: until its exposure rule lands, every block of the zone counts
-     * as reachable, which changes nothing while the Sleeper's rate is 0.
-     */
-    static boolean reachable(ServerLevel level, Outpost outpost, BlockPos pos) {
-        return true;
+    /** What the rule reads: the blocks, and which chunks are loaded (an unloaded chunk is outside). */
+    public record Terrain(BlockGetter blocks, LongPredicate chunkLoaded) {
+        public static Terrain of(Level level) {
+            return new Terrain(
+                    level,
+                    chunk -> level.getChunkSource().hasChunk(ChunkPos.getX(chunk), ChunkPos.getZ(chunk)));
+        }
+    }
+
+    /** The result of a survey. */
+    public static final class Shell {
+        public boolean isOutside(BlockPos pos) {
+            return false;
+        }
+
+        public boolean reaches(BlockPos pos) {
+            return false;
+        }
+
+        public List<BlockPos> candidates() {
+            return new ArrayList<>();
+        }
+
+        public int gaps(Outpost outpost) {
+            return 0;
+        }
+
+        public void opened(BlockPos pos) {}
+
+        public int reads() {
+            return 0;
+        }
+    }
+
+    public static Shell survey(Terrain terrain, BoundingBox zone, ShellTuning tuning, Predicate<BlockState> candidate) {
+        return new Shell();
+    }
+
+    public static boolean sheltered(
+            Terrain terrain, BlockPos at, Predicate<BlockState> breakable, ShellTuning tuning) {
+        return false;
     }
 }

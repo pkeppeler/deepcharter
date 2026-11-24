@@ -9,6 +9,8 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostData.Outpost;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Ledger;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Pending;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Report;
+import io.github.pkeppeler.deepcharter.outpost.OutpostShell.Shell;
+import io.github.pkeppeler.deepcharter.outpost.OutpostShell.Terrain;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Survey;
 import io.github.pkeppeler.deepcharter.outpost.VisitBreaks.Broken;
 import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
@@ -18,8 +20,10 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
@@ -122,7 +126,7 @@ public final class OutpostSettling {
         long nowWindow = now / tuning.windowTicks();
         BoundingBox zone = zone(outpost, tuning);
         boolean loaded = isLoaded(level, zone);
-        Ledger surveyed = loaded ? ledger.withSurvey(survey(level, outpost, zone)) : ledger;
+        Ledger surveyed = loaded ? ledger.withSurvey(survey(level, outpost, zone, tuning)) : ledger;
         Ledger settled = surveyed;
         int rolled = 0;
         if (playerNear(level, outpost, tuning)) {
@@ -190,36 +194,72 @@ public final class OutpostSettling {
         return false;
     }
 
-    /** What the outpost has to lose, read from its loaded zone. */
-    private static Survey survey(ServerLevel level, Outpost outpost, BoundingBox zone) {
+    /**
+     * What the outpost has to lose, read from its loaded zone: what a creature can reach (ADR 0092), so storage a closed shell keeps out of
+     * reach is not counted. The flood that finds it is skipped while it cannot matter: the layer's Sleeper's rate is 0 and no container
+     * holds fuel or ore.
+     */
+    private static Survey survey(ServerLevel level, Outpost outpost, BoundingBox zone, SettlingTuning tuning) {
+        boolean dark = isDark(level, outpost);
+        int terminals = terminals(level, zone);
+        boolean stored = StorageTakes.count(level, zone, OutpostSettling::isFuel, OutpostSettling::anywhere) > 0
+                || StorageTakes.count(level, zone, OutpostSettling::isOre, OutpostSettling::anywhere) > 0;
+        if (!stored && tuning.ratesOf(outpost.layer()).sleepersPerDay() == 0) {
+            return new Survey(dark, terminals, 0, 0, 0);
+        }
+        Shell shell = shell(level, outpost, zone);
+        return new Survey(
+                dark,
+                terminals,
+                StorageTakes.count(level, zone, OutpostSettling::isFuel, shell::reaches),
+                StorageTakes.count(level, zone, OutpostSettling::isOre, shell::reaches),
+                shell.candidates().size());
+    }
+
+    /** The shell of {@code outpost} in its loaded {@code zone}: what a creature outside reaches, and what of it a visit may break. */
+    static Shell shell(ServerLevel level, Outpost outpost, BoundingBox zone) {
+        return OutpostShell.survey(
+                Terrain.of(level), zone, ShellTuning.DEFAULT, breakable(DepthRatings.forLayer(outpost.layer())));
+    }
+
+    /**
+     * True when a depth that asks {@code required} (empty where nothing is rated) is held by {@code state}: it meets every axis. An empty
+     * {@code required} holds nothing.
+     */
+    public static boolean holds(BlockState state, Optional<Ratings> required) {
+        return required.isPresent() && BlockRatings.of(state).meets(required.get());
+    }
+
+    /**
+     * What a visit may break at a depth that asks {@code required}: a block (not air or a fluid) that is not in {@link #NEVER_SETTLED} (the
+     * terminals, the heaps and the {@code #wild} blocks of the world) and that the depth does not hold.
+     */
+    public static Predicate<BlockState> breakable(Optional<Ratings> required) {
+        return state -> !state.isAir()
+                && state.getFluidState().isEmpty()
+                && !state.is(NEVER_SETTLED)
+                && !holds(state, required);
+    }
+
+    /** True when the hall is dark: block light below the lit level at its middle or at any of four spots round it. */
+    public static boolean isDark(ServerLevel level, Outpost outpost) {
         BlockPos spot = outpost.centre().above();
-        boolean dark = false;
+        boolean dark = isDark(level, spot);
         for (int dx : new int[] {-QUADRANT, QUADRANT}) {
             for (int dz : new int[] {-QUADRANT, QUADRANT}) {
                 dark |= isDark(level, spot.offset(dx, 0, dz));
             }
         }
-        dark |= isDark(level, spot);
-        return new Survey(
-                dark,
-                terminals(level, zone),
-                StorageTakes.count(level, zone, OutpostSettling::isFuel),
-                StorageTakes.count(level, zone, OutpostSettling::isOre),
-                VisitBreaks.candidates(level, outpost, zone, OutpostSettling::holds)
-                        .size());
-    }
-
-    /**
-     * True when the depth the outpost stands at rates {@code state} enough that a visit leaves it alone. The ratings are outpost ratings
-     * (#989, PR #991); wired in #1005. Until then every block counts as held, so no visit breaks anything, which changes nothing while
-     * the Sleeper's rate is 0.
-     */
-    private static boolean holds(BlockState state) {
-        return true;
+        return dark;
     }
 
     private static boolean isDark(ServerLevel level, BlockPos pos) {
         return level.getBrightness(LightLayer.BLOCK, pos) < CreatureTuning.DEFAULT.litBlockLight();
+    }
+
+    /** Storage anywhere in the zone: the reach of a count that asks only what is stored. */
+    private static boolean anywhere(BlockPos pos) {
+        return true;
     }
 
     private static boolean isFuel(ItemStack stack) {
@@ -261,11 +301,12 @@ public final class OutpostSettling {
             ServerLevel level, Outpost outpost, BoundingBox zone, Ledger ledger, long now, SettlingTuning tuning) {
         RandomSource random = RandomSource.create(VisitRoll.mix(seed(level, outpost), now, tuning.windowTicks()));
         Pending pending = ledger.pending();
+        Shell shell = shell(level, outpost, zone);
         Map<Identifier, Integer> taken = new LinkedHashMap<>();
         int fuelItems = ledger.survey().map(Survey::fuelItems).orElse(0);
         for (int visit = 0; visit < pending.retained(); visit++) {
             int most = Math.clamp((long) Math.ceil(tuning.fuelShare() * fuelItems), 1, tuning.maxFuelItemsPerVisit());
-            int took = record(taken, StorageTakes.take(level, zone, OutpostSettling::isFuel, ANY_ORDER, most, random));
+            int took = record(taken, StorageTakes.take(level, zone, OutpostSettling::isFuel, ANY_ORDER, most, random, shell::reaches));
             if (took == 0) {
                 break;
             }
@@ -275,13 +316,18 @@ public final class OutpostSettling {
             int took = record(
                     taken,
                     StorageTakes.take(
-                            level, zone, OutpostSettling::isOre, DEAREST_ORE_FIRST, tuning.maxOrePerVisit(), random));
+                            level,
+                            zone,
+                            OutpostSettling::isOre,
+                            DEAREST_ORE_FIRST,
+                            tuning.maxOrePerVisit(),
+                            random,
+                            shell::reaches));
             if (took == 0) {
                 break;
             }
         }
-        Broken broken = VisitBreaks.apply(
-                level, outpost, zone, OutpostSettling::holds, pending.sleepers(), tuning.maxBlocksPerVisit(), random);
+        Broken broken = VisitBreaks.apply(level, shell, pending.sleepers(), tuning.maxBlocksPerVisit(), random);
         broken.changed()
                 .ifPresent(box -> LightSync.holdSendUntilLit(
                         level,
@@ -295,7 +341,7 @@ public final class OutpostSettling {
                 pending.retained() > 0 ? Set.of(VisitCause.DARK) : Set.of());
         return ledger.withPending(Pending.NONE)
                 .withUnread(ledger.unread().plus(done))
-                .withSurvey(survey(level, outpost, zone));
+                .withSurvey(survey(level, outpost, zone, tuning));
     }
 
     /** Adds {@code took} to {@code into}, by item id, and returns how many items it holds. */

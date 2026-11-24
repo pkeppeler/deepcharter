@@ -1,0 +1,14 @@
+{
+  "values": [
+    "#minecraft:base_stone_overworld",
+    "#c:ores",
+    "#deepcharter:undiggable",
+    "deepcharter:gas_pocket",
+    "deepcharter:breach_crust",
+    "deepcharter:grained_crust",
+    "deepcharter:basalt_outcrop",
+    "deepcharter:glowcap",
+    "deepcharter:great_stalk",
+    "deepcharter:great_stalk_cap"
+  ]
+}
