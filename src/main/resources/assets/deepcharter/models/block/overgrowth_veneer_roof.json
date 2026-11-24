@@ -1,4 +1,5 @@
 {
+  "ambientocclusion": false,
   "textures": {
     "all": "deepcharter:block/overgrowth_veneer",
     "strand": "deepcharter:block/overgrowth_strands",

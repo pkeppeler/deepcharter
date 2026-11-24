@@ -54,7 +54,7 @@ public final class LayerBlocks {
                     .noLootTable()));
 
     /**
-     * The pale growth that closes an unvisited bore (#974, {@link Overgrowth}). A soft block with no drop: a hand cuts it in seconds, the
+     * The moss growth that closes an unvisited bore (#974, {@link Overgrowth}). A soft block with no drop: a hand cuts it in seconds, the
      * drill bores it at extra fuel.
      */
     public static final Block OVERGROWTH = registerBlock(
@@ -78,6 +78,7 @@ public final class LayerBlocks {
                     .sound(SoundType.MOSS)
                     .noCollision()
                     .noOcclusion()
+                    .replaceable()
                     .pushReaction(PushReaction.POPPED)
                     .noLootTable()));
 

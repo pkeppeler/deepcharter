@@ -1,4 +1,5 @@
 {
+  "ambientocclusion": false,
   "textures": {
     "all": "deepcharter:block/overgrowth_veneer_mold",
     "particle": "deepcharter:block/overgrowth_veneer_mold"

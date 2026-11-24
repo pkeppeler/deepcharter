@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.MultifaceBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -13,24 +14,22 @@ import net.minecraft.world.level.block.state.BlockState;
  * drops nothing; {@link Overgrowth} places it and this block takes itself away once nothing holds it ({@link Overgrowth#anchored}).
  */
 public final class OvergrowthVeneerBlock extends MultifaceBlock {
-    /** Ticks between two checks that the film is still held. */
-    private static final int CHECK_TICKS = 40;
-
     public OvergrowthVeneerBlock(Properties properties) {
         super(properties);
     }
 
     @Override
     protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
-        level.scheduleTick(pos, this, CHECK_TICKS);
+        level.scheduleTick(pos, this, OvergrowthTuning.DEFAULT.filmCheckTicks());
     }
 
     @Override
     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        if (Overgrowth.anchored(level, pos)) {
-            level.scheduleTick(pos, this, CHECK_TICKS);
+        if (Overgrowth.anchored(level, pos, level.getGameTime())) {
+            level.scheduleTick(pos, this, OvergrowthTuning.DEFAULT.filmCheckTicks());
         } else {
-            level.removeBlock(pos, false);
+            // A film in water leaves the water, not an air pocket.
+            level.setBlock(pos, state.getFluidState().createLegacyBlock(), Block.UPDATE_ALL);
         }
     }
 }

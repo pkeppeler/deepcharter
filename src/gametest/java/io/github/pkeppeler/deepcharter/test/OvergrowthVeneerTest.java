@@ -3,9 +3,11 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.layer.CaveIns;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.Overgrowth;
 import io.github.pkeppeler.deepcharter.layer.OvergrowthTuning;
+import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.Hollows;
@@ -13,16 +15,24 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.MultifaceBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for the overgrowth veneer (#974): the thin moss film that creeps ahead of the fill along a bore's walls, spills round a
@@ -211,7 +221,297 @@ public class OvergrowthVeneerTest {
         });
     }
 
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theScheduledCheckHoldsTheFilmWhileUnvisitedAndLetsGoAfterAVisit(GameTestHelper helper) {
+        int x = 5320;
+        ServerLevel level = TestLayers.level(helper, 1);
+        int[] stage = {0};
+        long[] mark = {0};
+        AtomicReference<List<BlockPos>> far = new AtomicReference<>(List.of());
+        Arrival<Boolean> ready = new Arrival<>("the room", "the far chunk ticks");
+        buildRoom(level, x, (l, c) -> {});
+        FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> ready.set(true));
+        TestTicks.each(helper, () -> {
+            if (!ready.isPresent()) {
+                return;
+            }
+            long now = level.getGameTime();
+            LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
+            switch (stage[0]) {
+                case 0 -> {
+                    cutBore(level, x);
+                    // The real clock: the bore was last visited longer ago than the delay, so the film is placed and
+                    // held by it.
+                    setLastVisit(level, x, now - TUNING.delayTicks() - 1);
+                    Overgrowth.grow(level, chunk, now);
+                    // With the growth taken away again, only the pending cell holds the film.
+                    for (BlockPos cell : boreCells(x)) {
+                        if (level.getBlockState(cell).is(LayerBlocks.OVERGROWTH)) {
+                            level.setBlock(cell, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                        }
+                    }
+                    setLastVisit(level, x, now - TUNING.delayTicks() - 1);
+                    far.set(boreCells(x).stream()
+                            .filter(cell -> level.getBlockState(cell).is(LayerBlocks.OVERGROWTH_VENEER))
+                            .toList());
+                    if (far.get().isEmpty()) {
+                        throw failure(helper, "no film ahead of the fill");
+                    }
+                    mark[0] = now;
+                    stage[0] = 1;
+                }
+                case 1 -> {
+                    if (now - mark[0] >= TUNING.filmCheckTicks() + 5) {
+                        if (far.get().stream()
+                                .noneMatch(cell -> level.getBlockState(cell).is(LayerBlocks.OVERGROWTH_VENEER)
+                                        && !nearGrowth(level, cell))) {
+                            throw failure(helper, "the film ahead of the fill went while the bore was still unvisited");
+                        }
+                        // A visit: the clock starts over.
+                        setLastVisit(level, x, now);
+                        mark[0] = now;
+                        stage[0] = 2;
+                    }
+                }
+                default -> {
+                    if (now - mark[0] >= TUNING.filmCheckTicks() + 5) {
+                        long left = far.get().stream()
+                                .filter(cell -> level.getBlockState(cell).is(LayerBlocks.OVERGROWTH_VENEER)
+                                        && !nearGrowth(level, cell))
+                                .count();
+                        if (left != 0) {
+                            throw failure(helper, "%d film cells ahead of the fill outlived a visit", left);
+                        }
+                        helper.succeed();
+                        stage[0] = 3;
+                    }
+                }
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theFilmSpillsOnlyInTheHollowsAndOnlyIntoAir(GameTestHelper helper) {
+        onceReady(
+                helper,
+                5400,
+                (level, x) -> {
+                    plane(level, x, 3, 2);
+                    Hollows.fill(
+                            level,
+                            new BlockPos(x - 8, FLOOR - 4, Z - 8),
+                            new BlockPos(x - 1, FLOOR + BORE_LENGTH + 1, Z + 7),
+                            Identifier.withDefaultNamespace("plains"));
+                    for (BlockPos cell : occupiedCells(x)) {
+                        level.setBlock(cell, occupant(cell).defaultBlockState(), Block.UPDATE_ALL);
+                    }
+                },
+                (level, x) -> {
+                    growPlugs(level, x, List.of(new int[] {0, 0}));
+                    List<BlockPos> film = planeCells(x, 3, 2).stream()
+                            .filter(cell -> level.getBlockState(cell).is(LayerBlocks.OVERGROWTH_VENEER))
+                            .toList();
+                    if (film.stream().noneMatch(cell -> cell.getX() >= x)) {
+                        throw failure(helper, "no film spilled on the hollows side");
+                    }
+                    for (BlockPos cell : film) {
+                        if (cell.getX() < x) {
+                            throw failure(helper, "film at %s, which is outside the hollows biome", cell);
+                        }
+                    }
+                    for (BlockPos cell : occupiedCells(x)) {
+                        if (!level.getBlockState(cell).is(occupant(cell))) {
+                            throw failure(helper, "the film replaced %s at %s", occupant(cell), cell);
+                        }
+                    }
+                });
+    }
+
+    /** Cells beside the plug that hold water or a placed block, so a film that took them would show. */
+    private static List<BlockPos> occupiedCells(int x) {
+        return planeCells(x, 3, 2).stream()
+                .filter(cell -> cell.getX() > x && cell.getX() <= x + 2 && cell.getZ() != Z)
+                .toList();
+    }
+
+    private static Block occupant(BlockPos cell) {
+        return cell.getZ() % 2 == 0 ? Blocks.WATER : Blocks.OAK_PLANKS;
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void noFilmSpillsWithinReachOfALiningBlock(GameTestHelper helper) {
+        onceReady(
+                helper,
+                5480,
+                (level, x) -> {
+                    plane(level, x, 3, 6);
+                    for (int dz = -6; dz <= 6; dz++) {
+                        level.setBlock(
+                                new BlockPos(x + 4, FLOOR, Z + dz),
+                                SlagBrick.BLOCK.defaultBlockState(),
+                                Block.UPDATE_ALL);
+                    }
+                },
+                (level, x) -> {
+                    growPlugs(level, x, List.of(new int[] {0, -3}, new int[] {0, 0}, new int[] {0, 3}));
+                    int reach = TUNING.holdReach();
+                    long held = 0;
+                    long free = 0;
+                    for (BlockPos cell : planeCells(x, 3, 4)) {
+                        if (level.getBlockState(cell).is(LayerBlocks.OVERGROWTH_VENEER)) {
+                            if (4 - (cell.getX() - x) <= reach) {
+                                held++;
+                            } else {
+                                free++;
+                            }
+                        }
+                    }
+                    if (free == 0) {
+                        throw failure(helper, "no film away from the lining, so the test proves nothing");
+                    }
+                    if (held != 0) {
+                        throw failure(helper, "%d film cells within %d blocks of a lining block", held, reach);
+                    }
+                });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theSpillIsDenserBesideAGrownCellThanTwoOut(GameTestHelper helper) {
+        onceReady(helper, 5560, (level, x) -> plane(level, x, 6, 2), (level, x) -> {
+            growPlugs(level, x, List.of(new int[] {-5, 0}, new int[] {0, 0}, new int[] {5, 0}));
+            long[] cells = new long[3];
+            long[] film = new long[3];
+            for (BlockPos cell : planeCells(x, 6, 2)) {
+                int distance = 9;
+                for (int plug : new int[] {-5, 0, 5}) {
+                    distance =
+                            Math.min(distance, Math.max(Math.abs(cell.getX() - x - plug), Math.abs(cell.getZ() - Z)));
+                }
+                if (distance == 1 || distance == 2) {
+                    cells[distance]++;
+                    film[distance] += level.getBlockState(cell).is(LayerBlocks.OVERGROWTH_VENEER) ? 1 : 0;
+                }
+            }
+            double near = (double) film[1] / cells[1];
+            double far = (double) film[2] / cells[2];
+            if (!(near > 1.3 * far) || far == 0) {
+                throw failure(
+                        helper,
+                        "the film covers %.2f of the cells beside a grown cell and %.2f of those two out: it should fall off",
+                        near,
+                        far);
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theFilmIsNoRoofAndNoBoltRefusal(GameTestHelper helper) {
+        onceReady(
+                helper,
+                5640,
+                (level, x) -> {
+                    for (int y = FLOOR; y <= FLOOR + 3; y++) {
+                        level.setBlock(new BlockPos(x, y, Z), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                    }
+                },
+                (level, x) -> {
+                    BlockPos feet = new BlockPos(x, FLOOR, Z);
+                    BlockPos roof = new BlockPos(x, FLOOR + 4, Z);
+                    if (!CaveIns.looseRoof(level, feet).contains(roof)) {
+                        throw failure(helper, "the bare roof is not loose, so the test proves nothing");
+                    }
+                    BlockState film = LayerBlocks.OVERGROWTH_VENEER
+                            .defaultBlockState()
+                            .setValue(MultifaceBlock.getFaceProperty(Direction.UP), true);
+                    level.setBlock(roof.below(), film, Block.UPDATE_ALL);
+                    if (!CaveIns.looseRoof(level, feet).contains(roof)) {
+                        throw failure(helper, "a film of moss under the roof hides it from a cave-in");
+                    }
+                    if (CaveIns.boltRefusal(level, roof, 3.0).isPresent()) {
+                        throw failure(
+                                helper,
+                                "a film of moss under the roof refuses a bolt: %s",
+                                CaveIns.boltRefusal(level, roof, 3.0));
+                    }
+                });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void thePlacedBlockGoesIntoTheFilmCell(GameTestHelper helper) {
+        onceReady(
+                helper,
+                5720,
+                (level, x) -> level.setBlock(
+                        new BlockPos(x, FLOOR, Z),
+                        LayerBlocks.OVERGROWTH_VENEER
+                                .defaultBlockState()
+                                .setValue(MultifaceBlock.getFaceProperty(Direction.DOWN), true),
+                        Block.UPDATE_ALL),
+                (level, x) -> {
+                    BlockPos cell = new BlockPos(x, FLOOR, Z);
+                    if (!level.getBlockState(cell).canBeReplaced()) {
+                        throw failure(helper, "the film cell is not replaceable, so a block is not placed into it");
+                    }
+                    BlockPos floor = cell.below();
+                    BlockPlaceContext context = new BlockPlaceContext(
+                            level,
+                            null,
+                            InteractionHand.MAIN_HAND,
+                            new ItemStack(Items.STONE),
+                            new BlockHitResult(Vec3.atCenterOf(floor).add(0, 0.5, 0), Direction.UP, floor, false));
+                    if (!context.canPlace() || !context.getClickedPos().equals(cell)) {
+                        throw failure(helper, "a block placed on the filmed floor does not go into the film's cell");
+                    }
+                });
+    }
+
     // ---------------------------------------------------------------------------------------------------------------
+
+    private static void buildRoom(ServerLevel level, int x, Body setup) {
+        RoomCarver.carve(
+                level, x - ROCK, x + ROCK, FLOOR - 2, FLOOR + BORE_LENGTH + 1, Z - ROCK, Z + ROCK, Blocks.STONE);
+        Hollows.fill(
+                level,
+                new BlockPos(x - 8, FLOOR - 4, Z - 8),
+                new BlockPos(x + 7, FLOOR + BORE_LENGTH + 1, Z + 7),
+                Hollows.BIOME);
+        setup.run(level, x);
+    }
+
+    private static void setLastVisit(ServerLevel level, int x, long time) {
+        LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
+        Overgrowth.Bores bores = Versioned.readable(chunk, Overgrowth.BORES).orElseThrow();
+        chunk.setAttached(Overgrowth.BORES, Versioned.of(new Overgrowth.Bores(time, bores.cells())));
+    }
+
+    /** A one-block-high cave at the bore's floor, {@code halfX} and {@code halfZ} either side of the column's middle. */
+    private static void plane(ServerLevel level, int x, int halfX, int halfZ) {
+        for (BlockPos cell : planeCells(x, halfX, halfZ)) {
+            level.setBlock(cell, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    private static List<BlockPos> planeCells(int x, int halfX, int halfZ) {
+        return BlockPos.betweenClosedStream(x - halfX, FLOOR, Z - halfZ, x + halfX, FLOOR, Z + halfZ)
+                .map(BlockPos::immutable)
+                .toList();
+    }
+
+    /** Cuts a one-cell bore at each offset {@code {dx, dz}} from the middle, lets the real clock say they are long unvisited, and runs one growth pass. */
+    private static void growPlugs(ServerLevel level, int x, List<int[]> offsets) {
+        for (int[] offset : offsets) {
+            Hollows.cut(level, new BlockPos(x + offset[0], FLOOR, Z + offset[1]));
+        }
+        long now = level.getGameTime();
+        setLastVisit(level, x, now - TUNING.delayTicks() - 1);
+        Overgrowth.grow(level, level.getChunkAt(new BlockPos(x, FLOOR, Z)), now);
+        for (int[] offset : offsets) {
+            if (!level.getBlockState(new BlockPos(x + offset[0], FLOOR, Z + offset[1]))
+                    .is(LayerBlocks.OVERGROWTH)) {
+                throw new IllegalStateException("the plug at " + offset[0] + "," + offset[1] + " did not grow");
+            }
+        }
+    }
 
     private static void tickAll(ServerLevel level, List<BlockPos> cells) {
         for (BlockPos cell : cells) {
@@ -234,6 +534,19 @@ public class OvergrowthVeneerTest {
     }
 
     private static void onceReady(GameTestHelper helper, int x, Body body) {
+        onceReady(
+                helper,
+                x,
+                (level, column) -> {
+                    for (BlockPos cell : caveCells(column)) {
+                        level.setBlock(cell, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                    }
+                },
+                body);
+    }
+
+    /** The column's stone box, all in the hollows biome, then {@code setup} carves what the test needs; {@code body} runs once the chunk ticks. */
+    private static void onceReady(GameTestHelper helper, int x, Body setup, Body body) {
         ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(
                 level, x - ROCK, x + ROCK, FLOOR - 2, FLOOR + BORE_LENGTH + 1, Z - ROCK, Z + ROCK, Blocks.STONE);
@@ -242,9 +555,7 @@ public class OvergrowthVeneerTest {
                 new BlockPos(x - 8, FLOOR - 4, Z - 8),
                 new BlockPos(x + 7, FLOOR + BORE_LENGTH + 1, Z + 7),
                 Hollows.BIOME);
-        for (BlockPos cell : caveCells(x)) {
-            level.setBlock(cell, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-        }
+        setup.run(level, x);
         Arrival<Boolean> ready = new Arrival<>("the room", "the far chunk ticks");
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> ready.set(true));
         boolean[] done = {false};

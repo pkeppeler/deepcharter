@@ -63,13 +63,6 @@ import net.minecraft.world.phys.AABB;
 public final class Overgrowth {
     private static final int VERSION = 1;
 
-    /** Blocks round a grown cell, and round the film, that the film spills to and is held by. */
-    private static final int FILM_REACH = 2;
-
-    /** The chance in percent that an air cell next to a grown cell, and one two out, takes a film (A). */
-    private static final int SPILL_NEAR_PERCENT = 70;
-
-    private static final int SPILL_FAR_PERCENT = 35;
     private static final long SPILL_SALT = 5L;
 
     /** The biomes whose bores grow over. Empty in shipped data: the layer that has the hollows fills it (#972). */
@@ -302,7 +295,7 @@ public final class Overgrowth {
                     done.add(cell);
                     spill(level, blocks, pos);
                 } else {
-                    film(level, blocks, pos, pass);
+                    film(level, blocks, pos, pass, liningNear(blocks, pos, OvergrowthTuning.DEFAULT.holdReach()));
                 }
             } else if (state.is(LayerBlocks.OVERGROWTH)
                     || (!isWall(state) && state.getFluidState().isEmpty())) {
@@ -317,21 +310,30 @@ public final class Overgrowth {
     }
 
     /**
-     * Lays the moss film in {@code pos}, an air cell, on the faces of the rock round it, leaving about a third of the faces bare so the film is
-     * ragged. It does nothing where growth would not: outside the hollows, near a lining block, or where a chunk is not loaded. {@code salt} varies which faces.
+     * Lays the moss film in {@code pos}, an air cell, on the faces of the rock round it, leaving {@link OvergrowthTuning#filmBarePercent} of the
+     * faces bare so the film is ragged. It does nothing where growth would not: outside the hollows, within reach of one of {@code lining}
+     * (the lining blocks near the cell), or where a chunk is not loaded. {@code salt} varies which faces.
      */
-    private static void film(ServerLevel level, LoadedBlocks blocks, BlockPos pos, long salt) {
+    private static void film(ServerLevel level, LoadedBlocks blocks, BlockPos pos, long salt, List<BlockPos> lining) {
         if (!blocks.getBlockState(pos).isAir()
                 || !blocks.canChange(pos)
-                || !stored(level, pos).is(HOLLOWS)
-                || heldOpen(blocks, pos)) {
+                || !stored(level, pos).is(HOLLOWS)) {
             return;
+        }
+        int reach = OvergrowthTuning.DEFAULT.holdReach();
+        for (BlockPos block : lining) {
+            if (Math.abs(block.getX() - pos.getX()) <= reach
+                    && Math.abs(block.getY() - pos.getY()) <= reach
+                    && Math.abs(block.getZ() - pos.getZ()) <= reach) {
+                return;
+            }
         }
         BlockState film = LayerBlocks.OVERGROWTH_VENEER.defaultBlockState();
         boolean any = false;
         for (Direction side : Direction.values()) {
             if (isWall(blocks.getBlockState(pos.relative(side)))
-                    && Math.floorMod(scramble(pos.asLong() * 6 + side.ordinal(), salt), 3) != 0) {
+                    && Math.floorMod(scramble(pos.asLong() * 6 + side.ordinal(), salt), 100)
+                            >= OvergrowthTuning.DEFAULT.filmBarePercent()) {
                 film = film.setValue(MultifaceBlock.getFaceProperty(side), true);
                 any = true;
             }
@@ -341,40 +343,59 @@ public final class Overgrowth {
         }
     }
 
+    /** The lining blocks within {@code reach} of {@code centre}, read once for a cell or for all the cells a spill reaches. */
+    private static List<BlockPos> liningNear(LoadedBlocks blocks, BlockPos centre, int reach) {
+        List<BlockPos> found = new ArrayList<>();
+        for (BlockPos near :
+                BlockPos.betweenClosed(centre.offset(-reach, -reach, -reach), centre.offset(reach, reach, reach))) {
+            if (blocks.getBlockState(near).is(LINING)) {
+                found.add(near.immutable());
+            }
+        }
+        return found;
+    }
+
     /**
-     * The film spills out round a cell that has just grown: each air cell within {@link #FILM_REACH} of it takes a film with a chance that
-     * falls with distance, fixed by the cell, so the edge round a closed mouth is ragged and the same every time.
+     * The film spills out round a cell that has just grown: each air cell within {@link OvergrowthTuning#filmReach} of it takes a film with a
+     * chance that falls with distance, fixed by the cell, so the edge round a closed mouth is ragged and the same every time.
      */
     private static void spill(ServerLevel level, LoadedBlocks blocks, BlockPos grown) {
-        for (BlockPos near : BlockPos.betweenClosed(
-                grown.offset(-FILM_REACH, -FILM_REACH, -FILM_REACH),
-                grown.offset(FILM_REACH, FILM_REACH, FILM_REACH))) {
+        OvergrowthTuning tuning = OvergrowthTuning.DEFAULT;
+        int spill = tuning.filmReach();
+        List<BlockPos> lining = liningNear(blocks, grown, spill + tuning.holdReach());
+        for (BlockPos near :
+                BlockPos.betweenClosed(grown.offset(-spill, -spill, -spill), grown.offset(spill, spill, spill))) {
             int reach = Math.max(
                     Math.abs(near.getX() - grown.getX()),
                     Math.max(Math.abs(near.getY() - grown.getY()), Math.abs(near.getZ() - grown.getZ())));
-            int chance = reach <= 1 ? SPILL_NEAR_PERCENT : SPILL_FAR_PERCENT;
+            int chance = reach <= 1 ? tuning.spillNearPercent() : tuning.spillFarPercent();
             if (reach > 0 && Math.floorMod(scramble(near.asLong(), SPILL_SALT), 100) < chance) {
-                film(level, blocks, near.immutable(), SPILL_SALT);
+                film(level, blocks, near.immutable(), SPILL_SALT, lining);
             }
         }
     }
 
     /**
-     * True while something holds the film at {@code pos}: growth within {@link #FILM_REACH} of it, or the cell is a pending bore cell of a chunk
-     * that has gone unvisited for the delay (the film ahead of the fill). A visit, or a cut of the growth, lets go of it.
+     * True while something holds the film at {@code pos} at game time {@code now}: the cell is a pending bore cell of a chunk that has gone
+     * unvisited for the delay (the film ahead of the fill), or growth stands within {@link OvergrowthTuning#filmReach} of it. A visit, or a cut of
+     * the growth, lets go of it. A film never lets go because of a chunk it cannot see: an unloaded cell in reach counts as held.
      */
-    public static boolean anchored(ServerLevel level, BlockPos pos) {
-        LoadedBlocks blocks = new LoadedBlocks(level);
-        for (BlockPos near : BlockPos.betweenClosed(
-                pos.offset(-FILM_REACH, -FILM_REACH, -FILM_REACH), pos.offset(FILM_REACH, FILM_REACH, FILM_REACH))) {
-            if (blocks.getBlockState(near).is(LayerBlocks.OVERGROWTH)) {
+    public static boolean anchored(ServerLevel level, BlockPos pos, long now) {
+        boolean pending = Versioned.readable(level.getChunkAt(pos), BORES)
+                .filter(bores -> bores.cells().contains(pos.asLong())
+                        && now - bores.lastVisit() >= OvergrowthTuning.DEFAULT.delayTicks())
+                .isPresent();
+        if (pending) {
+            return true;
+        }
+        int reach = OvergrowthTuning.DEFAULT.filmReach();
+        for (BlockPos near :
+                BlockPos.betweenClosed(pos.offset(-reach, -reach, -reach), pos.offset(reach, reach, reach))) {
+            if (!LoadedBlocks.isLoaded(level, near) || level.getBlockState(near).is(LayerBlocks.OVERGROWTH)) {
                 return true;
             }
         }
-        return Versioned.readable(level.getChunkAt(pos), BORES)
-                .filter(bores -> bores.cells().contains(pos.asLong())
-                        && level.getGameTime() - bores.lastVisit() >= OvergrowthTuning.DEFAULT.delayTicks())
-                .isPresent();
+        return false;
     }
 
     /** The {@link OvergrowthTuning#maxLooks} cells with the smallest key this pass, smallest first, in one scan with no sort of the whole set. */
