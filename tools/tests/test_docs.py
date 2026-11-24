@@ -207,6 +207,13 @@ class DocVersions(unittest.TestCase):
             stale_versions(text, "d.md", CURRENT_FIXTURE),
         )
 
+    def test_a_fabric_api_quote_with_the_wrong_suffix_is_stale(self):
+        hint = "; if the line means another version on purpose, add <!-- version-ok: reason -->"
+        self.assertEqual(
+            [f"d.md:1: stale 'Fabric API 0.164.0+wrong', the build has Fabric API 0.164.0+26.3 ({TOML}){hint}"],
+            stale_versions("Fabric API 0.164.0+wrong\n", "d.md", CURRENT_FIXTURE),
+        )
+
     def test_current_versions_pass(self):
         text = (
             "Fabric Loader 0.19.5, Fabric API 0.164.0 or Fabric API 0.164.0+26.3, Minecraft 26.3, JDK 25,"
