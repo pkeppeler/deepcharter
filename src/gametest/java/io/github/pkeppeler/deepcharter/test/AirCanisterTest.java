@@ -3,6 +3,8 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
@@ -17,9 +19,13 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.SuitScenes;
 import io.github.pkeppeler.deepcharter.test.support.SuitScenes.Pocket;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import java.lang.reflect.Method;
+import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -215,6 +221,116 @@ public class AirCanisterTest {
                         SuitScenes.state(player).mode(),
                         SuitScenes.state(player).reserve());
             });
+            helper.succeed();
+        });
+    }
+
+    /**
+     * The breach hurts from the stored mode, every {@code breachTicks}: a canister that leaves BREACHED standing for the rest of the
+     * second would still be hurt by it. The breach is driven by hand at a tick on the cadence, before any second can run.
+     */
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void aBreachedSuitThatTakesACanisterIsNotHurtAtTheNextBreachTick(GameTestHelper helper) {
+        Pocket pocket = SuitScenes.unbuilt(helper.getLevel(), 7830);
+        MockPlayer plain = MockPlayers.join(helper, "canister-breach-plain");
+        MockPlayer filled = MockPlayers.join(helper, "canister-breach-filled");
+        SuitScenes.whenReady(helper, pocket, () -> {
+            SuitScenes.onFootIn(
+                    plain,
+                    pocket,
+                    () -> SuitScenes.onFootIn(filled, pocket, () -> {
+                        ServerPlayer control = plain.player();
+                        ServerPlayer player = filled.player();
+                        for (ServerPlayer breached : List.of(control, player)) {
+                            SuitScenes.setTracks(breached, SuitTracks.STOCK);
+                            SuitScenes.setReserve(breached, 0f, true);
+                            SuitTicker.second(breached);
+                        }
+                        player.getInventory()
+                                .setItem(
+                                        player.getInventory().getSelectedSlot(),
+                                        new ItemStack(RepairRegistry.item(Consumable.AIR_CANISTER), STACK));
+                        use(player);
+                        float health = player.getHealth();
+                        breachTick(helper, control);
+                        breachTick(helper, player);
+                        expect(
+                                helper,
+                                control.getHealth() < control.getMaxHealth(),
+                                "the harness must hurt a breached suit on the cadence, health is %s",
+                                control.getHealth());
+                        expect(
+                                helper,
+                                player.getHealth() == health
+                                        && SuitScenes.state(player).mode() != Mode.BREACHED,
+                                "a suit that took a canister is not hurt on the next breach tick, health is %s of %s, mode %s",
+                                player.getHealth(),
+                                health,
+                                SuitScenes.state(player).mode());
+                    }));
+            helper.succeed();
+        });
+    }
+
+    private static void breachTick(GameTestHelper helper, ServerPlayer player) {
+        player.tickCount = SuitTuning.DEFAULT.breachTicks();
+        try {
+            Method perTick = SuitTicker.class.getDeclaredMethod("perTick", ServerPlayer.class);
+            perTick.setAccessible(true);
+            perTick.invoke(null, player);
+        } catch (ReflectiveOperationException e) {
+            throw helper.assertionException("SuitTicker.perTick could not be driven: %s", e);
+        }
+    }
+
+    /** A powered seat already refills the suit, so a canister there is refused and kept; an unpowered one holds the reserve, so it takes it. */
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void aSeatThatRefillsRefusesAndASeatThatHoldsTakesOne(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Pocket pocket = SuitScenes.unbuilt(level, 7850);
+        MockPlayer mock = MockPlayers.join(helper, "canister-seat");
+        ServerPlayer player = mock.player();
+        SuitScenes.whenReady(helper, pocket, () -> {
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
+            pod.setPos(pocket.stand());
+            level.addFreshEntity(pod);
+            try {
+                SuitScenes.onFootIn(mock, pocket, () -> {
+                    if (!player.startRiding(pod, true, false)) {
+                        throw helper.assertionException("the player could not mount the pod");
+                    }
+                    SuitScenes.setTracks(player, SuitTracks.STOCK);
+                    SuitScenes.setReserve(player, 60f, true);
+                    player.getInventory()
+                            .setItem(
+                                    player.getInventory().getSelectedSlot(),
+                                    new ItemStack(RepairRegistry.item(Consumable.AIR_CANISTER), STACK));
+                    InteractionResult powered = use(player);
+                    expect(
+                            helper,
+                            powered == InteractionResult.FAIL
+                                    && SuitScenes.state(player).reserve() == 60f
+                                    && held(player) == STACK,
+                            "a canister in a powered seat is refused and kept, got %s, %s s, %s held",
+                            powered,
+                            SuitScenes.state(player).reserve(),
+                            held(player));
+                    pod.setStranded(true);
+                    InteractionResult unpowered = use(player);
+                    expect(
+                            helper,
+                            unpowered instanceof InteractionResult.Success
+                                    && SuitScenes.state(player).reserve() == 60f + MINUTE
+                                    && held(player) == STACK - 1,
+                            "a canister in an unpowered seat is taken, got %s, %s s, %s held",
+                            unpowered,
+                            SuitScenes.state(player).reserve(),
+                            held(player));
+                });
+            } finally {
+                player.stopRiding();
+                pod.discard();
+            }
             helper.succeed();
         });
     }

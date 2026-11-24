@@ -1,21 +1,18 @@
 package io.github.pkeppeler.deepcharter.suit;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.suit.SuitState.Mode;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
-/**
- * Adds to a person's reserve from outside the suit's own tick (#1194): what the air canister does. It never fills the suit past its own
- * capacity ({@link SuitTracks#capacity}), and what does not fit is lost.
- */
+/** Adds to a person's reserve outside the suit's tick (#1194): the air canister. */
 public final class SuitReserve {
     private SuitReserve() {}
 
     /**
-     * Adds {@code seconds} of reserve to {@code player}'s suit, up to its capacity. Empty when it was added, or the refusal: nothing
-     * changes when the suit or its tracks cannot be read, or the suit is already full. The mode is left for the next second to decide,
-     * so a breached suit leaves its breach then.
+     * Adds {@code seconds} to {@code player}'s reserve, up to the suit's capacity; empty when it did, else the refusal.
+     * A suit that is already refilling (a powered seat or a sound hall) refuses it, so the canister is not wasted.
      */
     public static Optional<Component> topUp(ServerPlayer player, float seconds) {
         Optional<SuitState> state = Versioned.readable(player, SuitRegistry.SUIT);
@@ -28,8 +25,15 @@ public final class SuitReserve {
         if (reserve >= capacity) {
             return refusal("full");
         }
+        if (SuitTicker.modeNow(player, tracks.get()).refills()) {
+            return refusal("refilling");
+        }
+        SuitState filled = state.get().withReserve(Math.min(capacity, reserve + seconds));
+        // A breached suit is breached no longer: the breach hit reads the stored mode, and the next second would take a
+        // while.
         player.setAttached(
-                SuitRegistry.SUIT, Versioned.of(state.get().withReserve(Math.min(capacity, reserve + seconds))));
+                SuitRegistry.SUIT,
+                Versioned.of(filled.mode() == Mode.BREACHED ? filled.withMode(Mode.EXPOSED) : filled));
         return Optional.empty();
     }
 
