@@ -76,3 +76,26 @@ Verdict: the surface passes; layers 1 and 2 are over the bar. The bar is not loo
 A first measurement on an earlier tree took each band over one floor of unbuilt depth (`campaign_floor`, 3.34 ms) and read layer 1 at 1.583x and layer 2 at 1.834x. A band's own bottom rows cost more than unbuilt depth's (4.64 and 5.62 ms against 3.34 in that run), so that floor overstated each layer's marginal; the per-band floors replace it.
 
 The reference is not what makes the layers read high. The layer dimensions, which hold one layer's own generator at its own height, cost 10.00 ms per column for `layer_1` (192 rows) and 17.99 for `layer_2` (256), against 15.66 and 21.44 for the windows of the same rows, in one diagnostic run of 4 rounds. Over a floor of about 3.3 ms, `layer_1` costs about 0.04 ms per row, close to `tall_layer`'s 0.0439 in the earlier pool. A layer's rows cost more in the campaign generator than in its own dimension: 1.57x for layer 1 and 1.19x for layer 2 per column. ADR 0029's feature split puts most of the campaign world's extra cost in the layer rock written by the material rule.
+
+## Amended
+
+2026-11-24, [#1169](https://github.com/pkeppeler/deepcharter/issues/1169), part of [#1132](https://github.com/pkeppeler/deepcharter/issues/1132).
+
+- **A band is over when its runs say so.** Each run's ratio (that run's band marginal over that run's `tall_layer` marginal, each on the run's own medians) is taken, and the band is over when the one-sided 90% lower bound of those ratios' mean is over its bar: the mean less `t` times the runs' standard error (`BandCost.lowerBound`; `t` is 1.886 for the 3 runs a pool needs). The pooled ratio is still printed. A ratchet's ceiling (measured ratio times 1.15) is judged the same way. A pool whose runs disagree cannot fail a band, and one whose runs agree fails it once they are over.
+- **Why.** Runs of one unchanged tree read layer 2 at 1.50x to 1.73x of `tall_layer` (below), a spread of about 7% (one standard deviation over six runs), and a pool of three at 1.61x to 1.79x. A flat bar on one pooled number fails or passes by which pool it drew.
+- **Rejected: paired ABAB against `main`.** Three interleaved runs of each of three trees, two of which change next to nothing for layer 2 (`B1` and `B2` below, measured as no gain), read 1.610x, 1.613x and 1.786x pooled: a pair of 3-run pools cannot tell 10% from none, so pairing would need many more runs, and it doubles the cost of an already 20-minute measured run. The runs' own spread is the noise the pool can see for itself, at no extra run.
+- **Layer 2's ratchet stays** at 1.597x (ceiling 1.837x). Three levers were measured to bring it toward 1.15x and none did:
+  - Reordering the material rule (`not y_above(-509)` first) so a layer 2 row meets 2 conditions, not 3, is output-neutral only by costing every row under the layers 3 conditions instead of 1: layer 2 read 1.613x against 1.610x, and the whole world (`campaign_full`) 151 ms a column against 138. The rule stays as it was, nested under `y_above(-512)`.
+  - The zone fill writing a placed block straight into its section (the block-for-block bookkeeping test of #1165's ADR, with identical draws): 1.45 ms against 1.38 ms for the chunk's own write on one 96-row chunk of layer 2's bottom zone table, in the same JVM, and 1.786x pooled. A section write costs its palette, which both paths pay. Dropped, not shipped.
+  - Sections the fill cannot touch are already skipped (`hasOnlyAir`, `maybeHas`), and every block of ground in the others is rolled once or twice whether or not it places, so the draws cannot be skipped.
+  - The rest is the content: layer 2's zones place a hazard in a fifth of their ground blocks, and its open halls light more rows (+0.68 samples a row in #1132's profile, inherent while the halls hold lava). Nothing here changes gameplay.
+
+Measured, 4 vCPU cloud VM, three interleaved runs of 6 rounds each of every tree (`A`, `B1`, `B2`, `A`, ...; order reversed on even runs), autosave off, `DEEPCHARTER_CAMPAIGN_COST_ONLY` the six worlds of the gate and `campaign_full`. `A` is `origin/main` at `e9ab83317`; `B1` the rule reordered; `B2` the zone fill writing into sections. Ratio of the band's marginal per row to `tall_layer`'s, per run, then pooled:
+
+| Tree | Layer 2, runs 1 / 2 / 3 | Layer 2 pooled | Layer 2 lower bound | Layer 1 pooled | `campaign_full` ms a column |
+|---|---|---|---|---|---|
+| `A` | 1.717 / 1.727 / 1.497 | 1.610 | 1.505 | 1.291 | 138.4 |
+| `B1` | 1.531 / 1.713 / 1.477 | 1.613 | 1.439 | 1.183 | 151.1 |
+| `B2` | 1.891 / 1.683 / 1.531 | 1.786 | 1.505 | 1.224 | 143.4 |
+
+Every lower bound is under the ratchet's 1.837x and over the bar's 1.15x, so the gate passes with the ratchet and layer 2 stays over the bar.

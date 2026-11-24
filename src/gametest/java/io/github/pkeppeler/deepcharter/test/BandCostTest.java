@@ -75,7 +75,7 @@ public class BandCostTest {
     /** At exactly the bar a band passes: the bar is the most a band may cost, not the least it may not. */
     @GameTest
     public void aBandExactlyAtTheBarPasses(GameTestHelper helper) {
-        Ratio ratio = new Ratio(WINDOW, REFERENCE_PER_ROW, BandCost.BAR, Optional.empty());
+        Ratio ratio = new Ratio(WINDOW, REFERENCE_PER_ROW, BandCost.BAR, BandCost.BAR, Optional.empty());
         expect(helper, !ratio.over(), "%sx is over the %s bar", ratio.ratio(), ratio.bar());
         helper.succeed();
     }
@@ -108,6 +108,63 @@ public class BandCostTest {
         Ratchet ratchet = new Ratchet(BAND, 1.5, 1132);
         Ratio ratio = onlyRatio(new Pool(gatedPool(3, 6, ratchet.ceiling() + 0.001)), List.of(ratchet));
         expect(helper, ratio.over(), "%sx is not over the ratchet's %s ceiling", ratio.ratio(), ratio.bar());
+        helper.succeed();
+    }
+
+    /**
+     * Runs that scatter around the bar do not fail the band (#1169): the pooled ratio reads over, but the runs do not agree, so the
+     * pool cannot say the band is over. The judgement is of the runs' own ratios, not of one pooled number.
+     */
+    @GameTest
+    public void aBandWhoseRunsScatterAroundTheBarPasses(GameTestHelper helper) {
+        Ratio ratio = onlyRatio(new Pool(gatedPoolOfRuns(1.0, 1.2, 1.4)));
+        expect(helper, ratio.ratio() > BandCost.BAR, "the pooled ratio %s is not over the bar", ratio.ratio());
+        expect(helper, !ratio.over(), "runs of 1.0x, 1.2x and 1.4x are over the %s bar", BandCost.BAR);
+        helper.succeed();
+    }
+
+    /** The lower bound is the mean less t times the standard error: 1.2 less 1.886 times 0.2 over the square root of 3. */
+    @GameTest
+    public void theLowerBoundIsTheMeanLessTheErrorOfTheMean(GameTestHelper helper) {
+        double bound = BandCost.lowerBound(new double[] {1.0, 1.2, 1.4});
+        expect(helper, Math.abs(bound - 0.98222) < 1e-4, "bound %s, expected 0.98222", bound);
+        expect(helper, near(BandCost.lowerBound(new double[] {1.5}), 1.5), "one run is its own bound");
+        expect(helper, near(BandCost.lowerBound(new double[] {1.3, 1.3, 1.3}), 1.3), "steady runs are their mean");
+        helper.succeed();
+    }
+
+    /** Runs that all read well over the bar fail it, however they scatter. */
+    @GameTest
+    public void aBandWhoseRunsAllReadOverTheBarFails(GameTestHelper helper) {
+        expect(
+                helper,
+                onlyRatio(new Pool(gatedPoolOfRuns(1.30, 1.32, 1.28))).over(),
+                "steady runs of about 1.3x are not over the %s bar",
+                BandCost.BAR);
+        expect(
+                helper,
+                onlyRatio(new Pool(gatedPoolOfRuns(1.35, 1.45, 1.55))).over(),
+                "scattered runs of about 1.45x are not over the %s bar",
+                BandCost.BAR);
+        helper.succeed();
+    }
+
+    /** A ratchet is judged the same way: runs scattered around its ceiling pass it, steady runs over it fail. */
+    @GameTest
+    public void aRatchetIsJudgedOnTheRunsToo(GameTestHelper helper) {
+        Ratchet ratchet = new Ratchet(BAND, 1.5, 1132);
+        expect(
+                helper,
+                !onlyRatio(new Pool(gatedPoolOfRuns(1.5, 1.8, 2.0)), List.of(ratchet))
+                        .over(),
+                "runs of 1.5x, 1.8x and 2.0x are over a ceiling of %s",
+                ratchet.ceiling());
+        expect(
+                helper,
+                onlyRatio(new Pool(gatedPoolOfRuns(1.9, 1.95, 1.9)), List.of(ratchet))
+                        .over(),
+                "steady runs of 1.9x are not over a ceiling of %s",
+                ratchet.ceiling());
         helper.succeed();
     }
 
@@ -253,6 +310,24 @@ public class BandCostTest {
             readings.addAll(spread(id, REFERENCE_FLOOR, FLOOR_ROWS, 20, rounds));
             readings.addAll(spread(
                     id, REFERENCE, REFERENCE_ROWS, 20 + (REFERENCE_ROWS - FLOOR_ROWS) * REFERENCE_PER_ROW, rounds));
+        }
+        return readings;
+    }
+
+    /** One run of 6 rounds for each of {@code times}, each run's band costing that many times the reference's. */
+    private static List<Reading> gatedPoolOfRuns(double... times) {
+        List<Reading> readings = new ArrayList<>();
+        for (int run = 0; run < times.length; run++) {
+            String id = "run" + run;
+            for (Reading reading : gatedPool(1, 6, times[run])) {
+                readings.add(new Reading(
+                        id,
+                        reading.tree(),
+                        reading.columns(),
+                        reading.world(),
+                        reading.height(),
+                        reading.cpuMsPerColumn()));
+            }
         }
         return readings;
     }
