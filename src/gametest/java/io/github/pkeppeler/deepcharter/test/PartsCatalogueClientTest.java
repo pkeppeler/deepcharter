@@ -93,18 +93,6 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
-        context.runOnClient(client -> {
-            onlyTheKnownAreListed();
-            theSearchMatchesNamesIdsAndNamespaces();
-            craftableNowNeedsTheIngredientsInHand();
-            craftableNowMeansCraftableOnThisScreen();
-            theLookupListsRecipesAndUsesAndStepsThrough();
-            pagesStopAtTheEnds();
-            favouritesAreKeptPerPlayerAndSurviveReopening();
-            aFavouritesFileOfAnotherVersionIsNeverWritten();
-            thePanelsFitAtEveryWindowSize();
-            aGlassWithNoRadiusKeepsFullWidthScanlines();
-        });
         inTheRealGame(context);
     }
 
@@ -521,6 +509,19 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the player's inventory", client -> client.player != null && client.level != null);
+            // Item components are bound only once a world is loaded, so the fixtures cannot be built before it.
+            context.runOnClient(client -> {
+                onlyTheKnownAreListed();
+                theSearchMatchesNamesIdsAndNamespaces();
+                craftableNowNeedsTheIngredientsInHand();
+                craftableNowMeansCraftableOnThisScreen();
+                theLookupListsRecipesAndUsesAndStepsThrough();
+                pagesStopAtTheEnds();
+                favouritesAreKeptPerPlayerAndSurviveReopening();
+                aFavouritesFileOfAnotherVersionIsNeverWritten();
+                thePanelsFitAtEveryWindowSize();
+                aGlassWithNoRadiusKeepsFullWidthScanlines();
+            });
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
             everythingTheRealGameIsAsked(context, singleplayer);
