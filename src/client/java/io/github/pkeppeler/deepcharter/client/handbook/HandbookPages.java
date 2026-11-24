@@ -19,6 +19,9 @@ public final class HandbookPages {
      */
     public static final int CONTENTS_PER_PAGE = 3;
 
+    /** Paths on one pencil sheet: each row takes a box's height, so this many fit on the smallest sheet. */
+    public static final int PENCILS_PER_PAGE = 2;
+
     private HandbookPages() {}
 
     /**
@@ -71,6 +74,32 @@ public final class HandbookPages {
             pages.add(new HandbookPage.Contract(part, contractParts));
         }
         return List.copyOf(pages);
+    }
+
+    /**
+     * {@code pages} with the pencil sheets of {@code entries} bound in after the last chapter, before the end page: a sheet for each
+     * {@link #PENCILS_PER_PAGE} paths. No paths, no sheet: the map continues in pencil only once a Note has drawn a path.
+     */
+    public static List<HandbookPage> withPencil(List<HandbookPage> pages, List<HandbookPage.PencilEntry> entries) {
+        if (entries.isEmpty()) {
+            return pages;
+        }
+        int sheets = (entries.size() + PENCILS_PER_PAGE - 1) / PENCILS_PER_PAGE;
+        List<HandbookPage> bound = new ArrayList<>(pages);
+        int end = 0;
+        while (end < bound.size() && !(bound.get(end) instanceof HandbookPage.Appendix)) {
+            end++;
+        }
+        for (int part = 1; part <= sheets; part++) {
+            bound.add(
+                    end + part - 1,
+                    new HandbookPage.Pencil(
+                            part,
+                            sheets,
+                            entries.subList(
+                                    (part - 1) * PENCILS_PER_PAGE, Math.min(entries.size(), part * PENCILS_PER_PAGE))));
+        }
+        return List.copyOf(bound);
     }
 
     /** How many pages in a row, counted from 1, the language file has a key for. */
