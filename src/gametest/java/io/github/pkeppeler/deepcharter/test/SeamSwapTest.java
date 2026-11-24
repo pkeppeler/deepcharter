@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.SeamSite.HOLD_HEIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.SeamSite.MAX_TICKS;
 import static io.github.pkeppeler.deepcharter.test.support.SeamSite.hold;
 
+import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.BreachPayload;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.SeamAcceptPayload;
@@ -24,20 +25,25 @@ import io.github.pkeppeler.deepcharter.test.support.SeamSite.Run;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoSeatPods;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 import java.util.function.UnaryOperator;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.VarInt;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
@@ -51,6 +57,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.phys.Vec3;
 
@@ -64,10 +71,10 @@ public class SeamSwapTest {
         return change.apply(new Builder(LayerTuning.DEFAULT)).build();
     }
 
-    /** The two slice 3 components over the default; the rest are the default's. */
-    private record Builder(int swapRadius, int flawlessFrames, int radius) {
+    /** The slice 3 swap radius and the send radius over the default; the rest are the default's. */
+    private record Builder(int swapRadius, int radius) {
         Builder(LayerTuning base) {
-            this(base.seamSwapRadius(), base.seamFlawlessFrames(), base.seamRadius());
+            this(base.seamSwapRadius(), base.seamRadius());
         }
 
         LayerTuning build() {
@@ -99,8 +106,7 @@ public class SeamSwapTest {
                     d.seamRecentreChunks(),
                     d.seamBytesPerTick(),
                     d.seamMissedWindowTicks(),
-                    swapRadius,
-                    flawlessFrames);
+                    swapRadius);
         }
     }
 
@@ -114,19 +120,18 @@ public class SeamSwapTest {
     }
 
     /**
-     * The shipped swap tuning is 3 chunks and 2 frames, and a swap radius beyond what is sendable, or below 1, is
+     * The shipped swap radius is 3 chunks, and a swap radius beyond what is sendable, or below 1, is
      * refused.
      */
     @GameTest
     public void swapTuningIsValidated(GameTestHelper helper) {
         LayerTuning tuning = LayerTuning.DEFAULT;
-        if (tuning.seamSwapRadius() != 3 || tuning.seamFlawlessFrames() != 2) {
-            throw helper.assertionException("the swap tuning is not 3 chunks and 2 frames: " + tuning);
+        if (tuning.seamSwapRadius() != 3) {
+            throw helper.assertionException("the swap tuning is not 3 chunks: " + tuning);
         }
-        with(b -> new Builder(3, 0, 4));
-        expectRejected(helper, "a swap radius of 4, past the send radius 3", b -> new Builder(4, 2, 4));
-        expectRejected(helper, "a swap radius of 0", b -> new Builder(0, 2, 4));
-        expectRejected(helper, "a negative Flawless Frames count", b -> new Builder(3, -1, 4));
+        with(b -> new Builder(3, 4));
+        expectRejected(helper, "a swap radius of 4, past the send radius 3", b -> new Builder(4, 4));
+        expectRejected(helper, "a swap radius of 0", b -> new Builder(0, 4));
         helper.succeed();
     }
 
@@ -186,6 +191,12 @@ public class SeamSwapTest {
                         && SeamRefuseReason.RELEASED.ordinal() == 1
                         && SeamRefuseReason.SWAP_FAILED.ordinal() == 2,
                 "the wire ids moved");
+        ByteBuf bad = Unpooled.buffer();
+        VarInt.write(bad, 99);
+        expect(
+                helper,
+                SeamRefuseReason.CODEC.decode(bad) == SeamRefuseReason.BUILD_FAILED,
+                "an id out of range did not decode as the first reason");
         helper.succeed();
     }
 
@@ -422,6 +433,17 @@ public class SeamSwapTest {
         }
     }
 
+    /** The pod's velocity when its crossing was announced, by UUID: what the arrival left it. */
+    private static final Map<UUID, Vec3> ARRIVAL_VELOCITY = new ConcurrentHashMap<>();
+
+    static {
+        BreachEvents.CROSSED.register((crossed, from, to, fromLayer, toLayer) -> {
+            if (crossed instanceof PodEntity) {
+                ARRIVAL_VELOCITY.put(crossed.getUUID(), crossed.getDeltaMovement());
+            }
+        });
+    }
+
     /** Ticks after the riders arrive that a crossing waits, for the mock to read what the server sent. */
     private static final int SETTLE_TICKS = 3;
 
@@ -459,6 +481,19 @@ public class SeamSwapTest {
             String name,
             List<Client> clients,
             Consumer<Run> beforeDrop,
+            Predicate<Crossed> verify) {
+        podCrossingAt(
+                helper, index, name, clients, beforeDrop, run -> run.site().x(), verify);
+    }
+
+    /** As above, with the pod dropped across the floor at the X that {@code dropX} gives, not over where it was held. */
+    private static void podCrossingAt(
+            GameTestHelper helper,
+            int index,
+            String name,
+            List<Client> clients,
+            Consumer<Run> beforeDrop,
+            ToDoubleFunction<Run> dropX,
             Predicate<Crossed> verify) {
         Run run = Run.of(helper, index);
         List<MockPlayer> riders = new ArrayList<>();
@@ -517,9 +552,11 @@ public class SeamSwapTest {
                     }
                     if (phase[0] == 1) {
                         pod.setPos(
-                                run.site().x(),
+                                dropX.applyAsDouble(run),
                                 run.site().floorY() - 1,
                                 run.site().z());
+                        // The speed the arrival is sized for: a swap must not carry it into the new level.
+                        pod.setDeltaMovement(0, -LayerTuning.DEFAULT.seamDesignFallSpeed(), 0);
                         phase[0] = 2;
                         return;
                     }
@@ -571,6 +608,12 @@ public class SeamSwapTest {
                 crossed.pod().level().dimension());
         expect(helper, crossed.pod().getId() == crossed.podId(), "the pod's id changed");
         expect(helper, crossed.pod().getUUID().equals(uuid), "the pod's UUID changed");
+        Vec3 velocity = ARRIVAL_VELOCITY.getOrDefault(uuid, new Vec3(Double.NaN, Double.NaN, Double.NaN));
+        expect(
+                helper,
+                Vec3.ZERO.equals(velocity),
+                "the swap left the pod the velocity %s, not none: the fallback's teleport zeroes it",
+                velocity);
         expect(helper, one.getEntity(uuid) == null, "layer 1 still holds the pod");
         expect(helper, two.getEntity(uuid) == crossed.pod(), "layer 2 does not hold the very same pod by UUID");
         expect(helper, two.getEntity(crossed.podId()) == crossed.pod(), "layer 2 does not hold the pod by id");
@@ -839,5 +882,179 @@ public class SeamSwapTest {
                             "a rider is not on the pod any more");
                     return true;
                 });
+    }
+
+    /** The Y a pod arrives at in layer 2: where {@code BreachService} puts the bottom of the pocket. */
+    private static int arrivalY(Run run) {
+        return run.site().two().getMaxY() - LayerTuning.DEFAULT.pocketHeight();
+    }
+
+    /** Fills, in layer 2, the 7 by 7 columns round the arrival from {@code depth} blocks under it to the layer's top. */
+    private static void fillArrival(Run run, int depth, BlockState fill) {
+        int radius = 3;
+        BlockPos at =
+                BlockPos.containing(run.site().x(), arrivalY(run), run.site().z());
+        RoomCarver.carve(
+                run.site().two(),
+                at.offset(-radius, -depth, -radius),
+                new BlockPos(at.getX() + radius, run.site().two().getMaxY(), at.getZ() + radius),
+                fill,
+                Block.UPDATE_ALL);
+    }
+
+    /** How many times the arrival chunk was sent as a seam chunk before the swap: once ahead, twice with a carve. */
+    private static long arrivalChunkSentBeforeSwap(Crossed crossed) {
+        ChunkPos arrival = crossed.run().site().centre();
+        List<Object> sequence = crossed.riders().get(0).sequence();
+        int swapAt = firstAfter(sequence, -1, packet -> packet instanceof SeamSwapPayload);
+        return sequence.subList(0, swapAt).stream()
+                .filter(packet -> packet instanceof SeamChunkPayload chunk
+                        && chunk.chunk().x() == arrival.x()
+                        && chunk.chunk().z() == arrival.z())
+                .count();
+    }
+
+    /** Waits for the new level's add of the pod, which a loaded server may send some ticks after the swap, then checks. */
+    private static boolean landed(GameTestHelper helper, Crossed crossed, long sentBeforeSwap) {
+        List<Object> sequence = crossed.riders().get(0).sequence();
+        int swapAt = firstAfter(sequence, -1, packet -> packet instanceof SeamSwapPayload);
+        if (firstAfter(
+                        sequence,
+                        swapAt,
+                        packet -> packet instanceof ClientboundAddEntityPacket add && add.getId() == crossed.podId())
+                < 0) {
+            return false;
+        }
+        expectLanded(helper, crossed, sentBeforeSwap);
+        return true;
+    }
+
+    /** The pod swapped in and stands on the floor of the pocket the crossing carved, not at the bottom of a drop. */
+    private static void expectLanded(GameTestHelper helper, Crossed crossed, long sentBeforeSwap) {
+        expectSwapped(helper, crossed);
+        PodEntity pod = crossed.pod();
+        int arrivalY = arrivalY(crossed.run());
+        expect(
+                helper,
+                arrivalChunkSentBeforeSwap(crossed) == sentBeforeSwap,
+                "the arrival chunk was sent %d times before the swap, not %d",
+                arrivalChunkSentBeforeSwap(crossed),
+                sentBeforeSwap);
+        expect(helper, pod.getY() >= arrivalY - 0.5, "the pod fell to %s from the arrival at %d", pod.getY(), arrivalY);
+        expect(helper, !pod.isInLava() && !pod.isInWater(), "the pod arrived in a liquid at %s", pod.position());
+        BlockState floor =
+                crossed.run().site().two().getBlockState(BlockPos.containing(pod.getX(), arrivalY - 1, pod.getZ()));
+        expect(helper, !floor.isAir() && floor.getFluidState().isEmpty(), "the pod has no floor: %s", floor);
+    }
+
+    /**
+     * The arrival hangs over a cavern, with air for 6 blocks under it: the swap carves, so the pocket and its floor
+     * are sent ahead, and the pod lands on the floor with no velocity, not at the bottom of the cavern at terminal
+     * speed.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSwapOverACavernCarvesAFloorAndLands(GameTestHelper helper) {
+        podCrossingUntil(
+                helper,
+                FIRST_INDEX + 16,
+                "seam-swap-cavern",
+                List.of(Client.ACCEPTS),
+                run -> fillArrival(run, 6, Blocks.AIR.defaultBlockState()),
+                crossed -> landed(helper, crossed, 2));
+    }
+
+    /** The arrival is a pool of lava: the swap carves it away, and the pod does not arrive in lava. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSwapIntoLavaCarvesItAwayAndLands(GameTestHelper helper) {
+        podCrossingUntil(
+                helper,
+                FIRST_INDEX + 17,
+                "seam-swap-lava",
+                List.of(Client.ACCEPTS),
+                run -> fillArrival(run, 3, Blocks.LAVA.defaultBlockState()),
+                crossed -> landed(helper, crossed, 2));
+    }
+
+    /** The arrival is clear, dry and floored: the swap does not carve, and sends the arrival chunk once. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSwapOverAFloorIsNotCarved(GameTestHelper helper) {
+        podCrossingUntil(
+                helper,
+                FIRST_INDEX + 18,
+                "seam-swap-floor",
+                List.of(Client.ACCEPTS),
+                run -> {
+                    fillArrival(run, 6, Blocks.AIR.defaultBlockState());
+                    int y = arrivalY(run) - 1;
+                    BlockPos at =
+                            BlockPos.containing(run.site().x(), y, run.site().z());
+                    RoomCarver.carve(
+                            run.site().two(),
+                            at.offset(-3, 0, -3),
+                            at.offset(3, 0, 3),
+                            Blocks.STONE.defaultBlockState(),
+                            Block.UPDATE_ALL);
+                },
+                crossed -> landed(helper, crossed, 1));
+    }
+
+    /**
+     * A chunk the carve changed is gone when it is to be sent again (it is made so): {@code resendCarved} says no, and
+     * the whole pod goes through the teleport, the pocket carved for it.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aChunkThatCannotBeSentAgainSendsTheWholePodThroughTheFallback(GameTestHelper helper) {
+        podCrossing(
+                helper,
+                FIRST_INDEX + 19,
+                "seam-swap-unsendable",
+                List.of(Client.ACCEPTS, Client.ACCEPTS),
+                run -> {
+                    fillArrival(run, 1, Blocks.STONE.defaultBlockState());
+                    SeamSender.setVanished(run.site().centre(), true);
+                },
+                crossed -> {
+                    SeamSender.setVanished(crossed.run().site().centre(), false);
+                    expectTeleported(helper, crossed);
+                });
+    }
+
+    /**
+     * The pod drops at the last column of the held area, where a chest forces the pocket out of it, into a chunk the
+     * riders were not sent: the readiness is asked again of the carved pocket, and the whole pod goes through the
+     * teleport.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPocketCarvedOutsideTheHeldAreaSendsTheWholePodThroughTheFallback(GameTestHelper helper) {
+        int edge = LayerTuning.DEFAULT.seamSwapRadius();
+        podCrossingAt(
+                helper,
+                FIRST_INDEX + 20,
+                "seam-swap-outside",
+                List.of(Client.ACCEPTS, Client.ACCEPTS),
+                run -> {
+                    // A block entity in the pocket moves it to the nearest column clear of it, 3 blocks out.
+                    BlockPos chest = BlockPos.containing(
+                            edgeX(run, edge), arrivalY(run), run.site().z());
+                    run.site().two().setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
+                },
+                run -> edgeX(run, edge),
+                crossed -> {
+                    expect(
+                            helper,
+                            crossed.riders()
+                                            .get(0)
+                                            .payloadsOf(SeamPreparePayload.class)
+                                            .size()
+                                    == 1,
+                            "the area was moved before the crossing: the swap was never tried");
+                    expectTeleported(helper, crossed);
+                    return true;
+                });
+    }
+
+    /** The X of the first block column of the chunk {@code chunks} out from the held area's centre, at -X. */
+    private static double edgeX(Run run, int chunks) {
+        return 16 * (run.site().centre().x() - chunks) + 0.5;
     }
 }

@@ -111,8 +111,7 @@ public final class SeamPodScene {
         PodEntity[] made = new PodEntity[1];
         Vec3 hold = two.server().computeOnServer(server -> site.at(HOLD_HEIGHT));
         // The riders go first, and the pod joins once its chunk ticks entities: an entity added to a chunk that does
-        // not yet is not in
-        // the level's lookup, so no rider could board it and no client would be told of it.
+        // not yet is not in the level's lookup, so no rider could board it and no client would be told of it.
         two.server().runOnServer(server -> {
             site.carveShaft(site.x(), HOLD_HEIGHT + 4);
             ServerPlayer real = player(server, clientId);
@@ -218,8 +217,7 @@ public final class SeamPodScene {
                                         || SeamSender.readyToSwap(two.mock().player(), site.two(), site.centre()))),
                 () -> "server pod at " + pod.position());
         // The server resends a chunk whose light it is settling, a seam's or a structure's: let those settle, so what
-        // the crossing
-        // sends again is the pocket's and nothing else.
+        // the crossing sends again is the pocket's and nothing else.
         ClientWait.until(
                 context,
                 "the light of the arrival area to settle on the server",

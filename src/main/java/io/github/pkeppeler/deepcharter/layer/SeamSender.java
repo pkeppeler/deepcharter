@@ -8,13 +8,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.LongPredicate;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -281,68 +280,72 @@ public final class SeamSender {
         return seam == null ? 0 : seam.generation;
     }
 
-    /** Sent to each of {@code riders} who has the chunk of the carve, once it is lit; see {@link #resendCarved}. */
-    private static final int RESEND_LIGHT_WAIT_MILLIS = 250;
+    /** Chunks {@link #resendCarved} is made to find gone, as one unloaded since it was sent is. Server thread and tests. */
+    private static final Set<ChunkPos> VANISHED = ConcurrentHashMap.newKeySet();
+
+    /** Makes {@link #resendCarved} find {@code pos} not loaded while {@code vanished}. */
+    // test-seam: SeamSwapTest needs a chunk gone since it was sent, which a test cannot unload on demand; one chunk, so
+    // that GameTests running at once do not meet each other's
+    public static void setVanished(ChunkPos pos, boolean vanished) {
+        if (vanished) {
+            VANISHED.add(pos);
+        } else {
+            VANISHED.remove(pos);
+        }
+    }
 
     /**
      * Sends each of {@code riders} the chunks around {@code arrival} that changed since they were sent (the pocket a
-     * crossing carved and the shell round it), at once and over the byte budget, built after the carve and its light.
-     * They count as held for the crossing whatever {@link LightSync} is settling. Returns false if a chunk is too big
-     * to send, so the crossing must not be a swap.
+     * crossing carved and the shell round it), at once and over the byte budget. They count as held for the crossing
+     * whatever {@link LightSync} is settling, and {@link LightSync} sends them again once their light is. The server
+     * does not wait for that light here: the light engine's tasks run on the server thread, so a wait on it from this
+     * thread only ends at its timeout. Every chunk is built and checked before any is sent. Returns false, sending
+     * nothing, if a rider has no seam or a chunk is not loaded or too big to send, so the crossing must not be a swap.
      */
     public static boolean resendCarved(List<ServerPlayer> riders, ServerLevel to, ChunkPos arrival) {
+        List<RiderSeam> seams = new ArrayList<>();
         for (ServerPlayer rider : riders) {
             RiderSeam seam = STATE.get(rider.getUUID());
             if (seam == null) {
                 return false;
             }
-            for (ChunkPos pos : ChunkPos.rangeClosed(arrival, 1).toList()) {
-                long packed = pos.pack();
+            seams.add(seam);
+        }
+        Map<ChunkPos, SeamChunkPayload> payloads = new LinkedHashMap<>();
+        for (ChunkPos pos : ChunkPos.rangeClosed(arrival, 1).toList()) {
+            long packed = pos.pack();
+            if (seams.stream().noneMatch(seam -> seam.stale.contains(packed))) {
+                continue;
+            }
+            // Not getChunkToSend: the carve's light hold keeps that null until a later tick.
+            LevelChunk chunk =
+                    VANISHED.contains(pos) ? null : to.getChunkSource().getChunkNow(pos.x(), pos.z());
+            if (chunk == null) {
+                return false;
+            }
+            SeamChunkPayload payload = new SeamChunkPayload(
+                    to.dimension(), new ClientboundLevelChunkWithLightPacket(chunk, to.getLightEngine(), null, null));
+            if (!fitsPayload(estimatedBytes(payload.chunk()))) {
+                return false;
+            }
+            payloads.put(pos, payload);
+        }
+        for (int i = 0; i < riders.size(); i++) {
+            ServerPlayer rider = riders.get(i);
+            RiderSeam seam = seams.get(i);
+            for (Map.Entry<ChunkPos, SeamChunkPayload> entry : payloads.entrySet()) {
+                long packed = entry.getKey().pack();
                 if (!seam.stale.contains(packed)) {
                     continue;
                 }
-                awaitLight(to, pos);
-                // Not getChunkToSend: the carve's light hold keeps that null until a later tick, and the light is
-                // settled now.
-                LevelChunk chunk = to.getChunkSource().getChunkNow(pos.x(), pos.z());
-                if (chunk == null) {
-                    return false;
-                }
-                SeamChunkPayload payload = new SeamChunkPayload(
-                        to.dimension(),
-                        new ClientboundLevelChunkWithLightPacket(chunk, to.getLightEngine(), null, null));
-                int size = estimatedBytes(payload.chunk());
-                if (!fitsPayload(size)) {
-                    return false;
-                }
-                ServerPlayNetworking.send(rider, payload);
-                LightSync.seamSent(rider, to, pos);
-                seam.bytes += size;
+                ServerPlayNetworking.send(rider, entry.getValue());
+                LightSync.seamSent(rider, to, entry.getKey());
+                seam.bytes += estimatedBytes(entry.getValue().chunk());
                 seam.stale.remove(packed);
                 seam.fresh.add(packed);
             }
         }
         return true;
-    }
-
-    /** Waits, on the server thread and for a moment only, for the light work queued for the chunk: the carve's. */
-    private static void awaitLight(ServerLevel level, ChunkPos pos) {
-        try {
-            level.getChunkSource()
-                    .getLightEngine()
-                    .waitForPendingTasks(pos.x(), pos.z())
-                    .get(RESEND_LIGHT_WAIT_MILLIS, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException slow) {
-            DeepCharter.LOGGER.warn(
-                    "The light of {} in {} was not settled after {} ms: the carve is sent as it is",
-                    pos,
-                    level.dimension().identifier(),
-                    RESEND_LIGHT_WAIT_MILLIS);
-        } catch (ExecutionException failed) {
-            throw new IllegalStateException("The light work of " + pos + " failed", failed);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     /** A block of {@code level} changed: each rider that was sent the chunk of it, or one beside it, ahead no longer holds it right. */
@@ -361,6 +364,7 @@ public final class SeamSender {
                     long packed = ChunkPos.pack(chunkX + dx, chunkZ + dz);
                     if (seam.sent.contains(packed)) {
                         seam.stale.add(packed);
+                        seam.fresh.remove(packed);
                     }
                 }
             }
@@ -459,6 +463,7 @@ public final class SeamSender {
     }
 
     private static void tick(MinecraftServer server) {
+        SeamSwap.tick(server);
         if (!RECENT.isEmpty()) {
             long now = server.getTickCount();
             RECENT.values().removeIf(skipped -> skipped.until() <= now);
@@ -533,6 +538,7 @@ public final class SeamSender {
         }
         seam.sent.removeIf(pos -> !inArea.contains(pos));
         seam.stale.removeIf(pos -> !inArea.contains(pos));
+        seam.fresh.removeIf(pos -> !inArea.contains(pos));
         seam.oversize.clear();
     }
 

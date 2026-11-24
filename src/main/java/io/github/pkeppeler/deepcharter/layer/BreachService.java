@@ -11,11 +11,13 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -159,13 +161,33 @@ public final class BreachService {
     }
 
     /**
-     * Whether {@code vehicle} and everything it carries would stand clear of blocks and entities in {@code to} with its
-     * root at {@code at}.
+     * Whether {@code vehicle} and everything it carries would stand clear of blocks, liquid and entities in {@code to}
+     * with its root at {@code at}, over a floor under the root: otherwise the arrival is carved, as {@link #carve}
+     * lays its floor over air and liquid, so the vehicle is not dropped into lava or a cavern.
      */
     private static boolean arrivalIsFree(Entity vehicle, ServerLevel to, Vec3 at) {
         Vec3 shift = at.subtract(vehicle.position());
-        return vehicle.getSelfAndPassengers()
-                .allMatch(e -> to.noCollision(e, e.getBoundingBox().move(shift)));
+        boolean clear = vehicle.getSelfAndPassengers().allMatch(e -> {
+            AABB box = e.getBoundingBox().move(shift);
+            return to.noCollision(e, box) && !to.containsAnyLiquid(box);
+        });
+        return clear && hasFloor(to, vehicle.getBoundingBox().move(shift));
+    }
+
+    /** Whether every block directly under {@code box} is one to stand on: it has a collision shape and holds no fluid. */
+    private static boolean hasFloor(ServerLevel level, AABB box) {
+        int y = Mth.floor(box.minY) - 1;
+        for (int x = Mth.floor(box.minX); x <= Mth.floor(box.maxX); x++) {
+            for (int z = Mth.floor(box.minZ); z <= Mth.floor(box.maxZ); z++) {
+                BlockPos pos = new BlockPos(x, y, z);
+                BlockState state = level.getBlockState(pos);
+                if (state.getCollisionShape(level, pos).isEmpty()
+                        || !state.getFluidState().isEmpty()) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**

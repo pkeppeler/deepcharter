@@ -2,13 +2,17 @@ package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.layer.mixin.EntitySeamAccess;
 import io.github.pkeppeler.deepcharter.layer.mixin.ServerPlayerSeamAccess;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.protocol.game.ClientboundChangeDifficultyPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerAbilitiesPacket;
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
@@ -37,7 +41,33 @@ public final class SeamSwap {
      */
     private static boolean announcing;
 
+    /**
+     * Riders swapped by {@link #move} or respawned by {@link #recover}, with the tick their chunk tracking is re-read
+     * until. Server thread only.
+     */
+    private static final Map<UUID, Long> PAIRING = new HashMap<>();
+
     private SeamSwap() {}
+
+    /**
+     * Re-reads the chunk tracking of each rider just swapped or recovered, as a move of the player does: the vehicle it rides is paired
+     * with it once the chunk of the vehicle is sent (a chunk that changed since it was sent is sent again), and vanilla
+     * looks again only when someone changes section, which a vehicle at rest never does.
+     */
+    static void tick(MinecraftServer server) {
+        if (PAIRING.isEmpty()) {
+            return;
+        }
+        long now = server.getTickCount();
+        PAIRING.entrySet().removeIf(entry -> {
+            ServerPlayer rider = server.getPlayerList().getPlayer(entry.getKey());
+            if (rider == null || entry.getValue() <= now) {
+                return true;
+            }
+            rider.level().getChunkSource().chunkMap.move(rider);
+            return false;
+        });
+    }
 
     /** Whether the crossing event being fired now is for a swap: {@link BreachPayload} reads it. */
     public static boolean announcing() {
@@ -70,6 +100,11 @@ public final class SeamSwap {
         List<Integer> carried = tree.stream().map(Entity::getId).toList();
         PlayerList playerList = from.getServer().getPlayerList();
 
+        // The velocity ends here, as the fallback's teleport ends it: a vehicle whose arrival is a floor away must not
+        // land at terminal speed.
+        for (Entity entity : tree) {
+            entity.setDeltaMovement(Vec3.ZERO);
+        }
         // 1. The client first: everything about the new level follows this packet.
         for (ServerPlayer rider : riders) {
             ServerPlayNetworking.send(
@@ -120,15 +155,22 @@ public final class SeamSwap {
             rider.connection.resetPosition();
             to.addDuringTeleport(rider);
         }
-        // 7. What vanilla sends after a respawn that the client has not kept, and the events no respawn path fires
-        // here.
+        // 7. What vanilla sends after a respawn that the client has not kept, and the level-change events, which
+        // vanilla's own moves fire from paths this one does not take.
         for (ServerPlayer rider : riders) {
             playerList.sendLevelInfo(rider, to);
             playerList.sendAllPlayerInfo(rider);
             rider.sendPostEffects();
         }
         to.resetEmptyTime();
-        for (Entity entity : tree) {
+        for (ServerPlayer rider : riders) {
+            PAIRING.put(
+                    rider.getUUID(),
+                    (long) to.getServer().getTickCount() + LayerTuning.DEFAULT.seamMissedWindowTicks());
+        }
+        // Fabric fires the entity event around Entity.teleportCrossDimension, which ServerPlayer's own teleport does
+        // not go through, and fires the player event from there: a player gets only the second.
+        for (Entity entity : others) {
             ServerEntityLevelChangeEvents.AFTER_ENTITY_CHANGE_LEVEL
                     .invoker()
                     .afterChangeLevel(entity, entity, from, to);
@@ -165,5 +207,7 @@ public final class SeamSwap {
         playerList.sendAllPlayerInfo(rider);
         playerList.sendActivePlayerEffects(rider);
         rider.sendPostEffects();
+        PAIRING.put(
+                rider.getUUID(), (long) level.getServer().getTickCount() + LayerTuning.DEFAULT.seamMissedWindowTicks());
     }
 }

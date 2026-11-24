@@ -308,6 +308,21 @@ public final class SeamClient {
                     new SeamRefusePayload(payload.dimension(), payload.generation(), SeamRefuseReason.SWAP_FAILED));
             return;
         }
+        try {
+            applySwap(client, payload);
+        } catch (RuntimeException failure) {
+            // Best effort: what has moved stays where it is, the server is told, and its recovery respawns this
+            // player, which builds the level again from nothing.
+            DeepCharter.LOGGER.error(
+                    "The swap into {} failed half way", payload.dimension().identifier(), failure);
+            swapFailed = true;
+            ClientPlayNetworking.send(
+                    new SeamRefusePayload(payload.dimension(), payload.generation(), SeamRefuseReason.SWAP_FAILED));
+        }
+    }
+
+    /** Moves the player and what it rides into the held level and shows that level: the part of a swap that mutates. */
+    private static void applySwap(Minecraft client, SeamSwapPayload payload) {
         ClientLevel from = Objects.requireNonNull(client.level);
         ClientLevel to = Objects.requireNonNull(held);
         LocalPlayer player = Objects.requireNonNull(client.player);
