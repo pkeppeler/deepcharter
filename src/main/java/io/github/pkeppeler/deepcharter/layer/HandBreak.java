@@ -23,10 +23,11 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * The one rule for pod-only blocks (ADR 0069): the breach crust, Company rock ({@code deepcharter:undiggable}) and the
- * rock of layer 2 and below ({@code deepcharter:deep_rock}, which includes {@code #c:ores}). A pod drill or a charge
- * removes them directly and never meets this. A hand tool may brute-force one at a ruinous cost ({@link HandBreakCost}):
- * the right pick, 60 s a block, and a share of its durability that grows with depth.
+ * The one rule for pod-only blocks (ADR 0069): the breach crust, the grained crust that takes its place at a seam or a
+ * decoy (#1022), Company rock ({@code deepcharter:undiggable}) and the rock of layer 2 and below
+ * ({@code deepcharter:deep_rock}, which includes {@code #c:ores}). A pod drill or a charge removes them directly and
+ * never meets this. A hand tool may brute-force one at a ruinous cost ({@link HandBreakCost}): the right pick, 60 s a
+ * block, and a share of its durability that grows with depth.
  *
  * <p>This class holds what both sides must agree on, so it runs on the client as well: the predicate, the layer a block
  * counts as, which tools bite, the destroy progress (read by the client's prediction and by the server's check through
@@ -64,7 +65,10 @@ public final class HandBreak {
      * reads only the level, so it works on the client.
      */
     public static boolean isPodOnly(Level level, BlockPos pos, BlockState state) {
-        if (state.is(LayerBlocks.BREACH_CRUST) || state.is(HazardBlocks.UNDIGGABLE)) {
+        // Picking through a grained floor would skip the breach as surely as through a breach crust one.
+        if (state.is(LayerBlocks.BREACH_CRUST)
+                || state.is(LayerBlocks.GRAINED_CRUST)
+                || state.is(HazardBlocks.UNDIGGABLE)) {
             return true;
         }
         return state.is(DEEP_ROCK) && layerOf(level, pos) > 1;

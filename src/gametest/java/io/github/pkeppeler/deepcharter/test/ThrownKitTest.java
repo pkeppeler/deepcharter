@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.creature.FootGrips;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.layer.CaveInTuning;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -641,7 +642,7 @@ public class ThrownKitTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void aThrownChargeSparesWhatIsBuiltFluidsBedrockAndVentsNoGas(GameTestHelper helper) {
+    public void aThrownChargeSparesWhatIsBuiltFluidsBedrockCrustAndVentsNoGas(GameTestHelper helper) {
         blast(
                 helper,
                 SPARES_X,
@@ -650,6 +651,9 @@ public class ThrownKitTest {
                     set(room, -1, -2, -1, Blocks.OAK_PLANKS);
                     set(room, -1, -1, 0, SlagBrick.BLOCK);
                     set(room, 0, -1, -1, Blocks.BEDROCK);
+                    // Not beside the lava: the grained crust absorbs a fluid that touches it.
+                    set(room, 1, -1, 1, LayerBlocks.BREACH_CRUST);
+                    set(room, 1, -2, 1, LayerBlocks.GRAINED_CRUST);
                     set(room, 0, -2, -1, Blocks.LAVA);
                     set(room, 0, -2, 0, HazardBlocks.GAS_POCKET);
                     set(room, 2, -2, 0, Blocks.STONE);
@@ -659,6 +663,14 @@ public class ThrownKitTest {
                     ChargeUse.expectBlock(helper2, room.level(), room.cell(-1, -2, -1), Blocks.OAK_PLANKS, "planks");
                     ChargeUse.expectBlock(helper2, room.level(), room.cell(-1, -1, 0), SlagBrick.BLOCK, "a slag brick");
                     ChargeUse.expectBlock(helper2, room.level(), room.cell(0, -1, -1), Blocks.BEDROCK, "bedrock");
+                    ChargeUse.expectBlock(
+                            helper2, room.level(), room.cell(1, -1, 1), LayerBlocks.BREACH_CRUST, "breach crust");
+                    ChargeUse.expectBlock(
+                            helper2,
+                            room.level(),
+                            room.cell(1, -2, 1),
+                            LayerBlocks.GRAINED_CRUST,
+                            "grained crust (#1022)");
                     ChargeUse.expectBlock(helper2, room.level(), room.cell(0, -2, -1), Blocks.LAVA, "lava");
                     expectAir(helper2, room, room.cell(0, -2, 0), "the gas pocket goes with the blast");
                     ChargeUse.expectBlock(

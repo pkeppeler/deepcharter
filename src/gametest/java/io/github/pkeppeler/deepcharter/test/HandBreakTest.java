@@ -50,8 +50,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Server GameTests for brute-forcing pod-only blocks with a hand tool (#858, ADR 0069): the one predicate, the constant
  * 60 s break time, the tool each layer needs, the durability a block costs (Unbreaking cannot lower it), the pick that
- * shatters, no drops, and creative players left alone. The three kinds of pod-only block are the breach crust, Company
- * rock and {@code deep_rock} below layer 1. Every test has its own column.
+ * shatters, no drops, and creative players left alone. The kinds of pod-only block are the breach crust, the grained crust
+ * (#1022), Company rock and {@code deep_rock} below layer 1. Every test has its own column.
  *
  * <p>A test that breaks a block in one call uses {@code gameMode.destroyBlock}, which pays the whole cost at once;
  * {@link #aFullMiningRunTakesTheBreakTicksAndPaysTheShare} mines for real, tick by tick.
@@ -100,10 +100,14 @@ public class HandBreakTest {
 
     private static List<Kind> kinds() {
         BlockState stone = Blocks.STONE.defaultBlockState();
+        BlockState grained = LayerBlocks.GRAINED_CRUST.defaultBlockState();
         return List.of(
                 new Kind("crust in layer 1", 1, LayerBlocks.BREACH_CRUST.defaultBlockState(), Items.DIAMOND_PICKAXE),
                 new Kind("crust in layer 2", 2, LayerBlocks.BREACH_CRUST.defaultBlockState(), Items.NETHERITE_PICKAXE),
                 new Kind("crust in layer 3", 3, LayerBlocks.BREACH_CRUST.defaultBlockState(), Items.NETHERITE_PICKAXE),
+                new Kind("grained crust in layer 1", 1, grained, Items.DIAMOND_PICKAXE),
+                new Kind("grained crust in layer 2", 2, grained, Items.NETHERITE_PICKAXE),
+                new Kind("grained crust in layer 3", 3, grained, Items.NETHERITE_PICKAXE),
                 new Kind(
                         "Company rock in layer 1",
                         1,
@@ -249,7 +253,9 @@ public class HandBreakTest {
         List<Refusal> cases = List.of(
                 new Refusal(one, Items.IRON_PICKAXE, LayerBlocks.BREACH_CRUST.defaultBlockState()),
                 new Refusal(one, Items.DIAMOND_AXE, HazardBlocks.COMPANY_ROCK.defaultBlockState()),
+                new Refusal(one, Items.IRON_PICKAXE, LayerBlocks.GRAINED_CRUST.defaultBlockState()),
                 new Refusal(two, Items.DIAMOND_PICKAXE, LayerBlocks.BREACH_CRUST.defaultBlockState()),
+                new Refusal(two, Items.DIAMOND_PICKAXE, LayerBlocks.GRAINED_CRUST.defaultBlockState()),
                 new Refusal(two, Items.DIAMOND_PICKAXE, HazardBlocks.COMPANY_ROCK.defaultBlockState()),
                 new Refusal(two, Items.DIAMOND_PICKAXE, Blocks.STONE.defaultBlockState()));
         for (Refusal refusal : cases) {
