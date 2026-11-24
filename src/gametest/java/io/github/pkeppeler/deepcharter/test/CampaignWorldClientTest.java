@@ -389,14 +389,25 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
                 context,
                 "the arrival chunk entity-ticking on the server",
                 () -> server.computeOnServer(s -> s.overworld().isPositionEntityTicking(awayPos)),
-                () -> "the chunk at " + awayPos.toShortString() + " is not entity-ticking");
+                () -> server.computeOnServer(s -> {
+                    ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+                    return "the chunk at " + awayPos.toShortString() + " is entity-ticking "
+                            + s.overworld().isPositionEntityTicking(awayPos) + ", loaded "
+                            + s.overworld().getChunkSource().hasChunk(awayPos.getX() >> 4, awayPos.getZ() >> 4)
+                            + "; the player is at " + player.blockPosition().toShortString() + " in "
+                            + player.gameMode();
+                }));
         server.runOnServer(s -> {
             ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             PodEntity pod = TestEntities.create(PodRegistry.POD, s.overworld());
             pod.setPos(away);
-            s.overworld().addFreshEntity(pod);
+            boolean added = s.overworld().addFreshEntity(pod);
             player.startRiding(pod, true, false);
+            if (!added || s.overworld().getEntity(pod.getUUID()) != pod) {
+                throw new AssertionError("the pod should be in the level before the wreck: addFreshEntity returned "
+                        + added + ", the level holds it " + (s.overworld().getEntity(pod.getUUID()) == pod));
+            }
             if (player.getVehicle() != pod) {
                 throw new AssertionError(
                         "the pilot should ride the pod before the wreck, rides " + player.getVehicle());
