@@ -36,7 +36,8 @@ import net.minecraft.world.phys.Vec3;
  * Hollows, both cut the way a drill cuts them. The left one is bare; the right one is lined, with a slag brick in the wall every four cells.
  * Nobody visits them: the clock is moved on a pass at a time (the production growth pass, called with a later game time), so the
  * time-lapse shows the left bore growing over from its walls inward while the lined one stays open. Close-up stills show the grown
- * mouth face on, where the moss meets the rock, and the growth on the ceiling seen from inside the bore. Then a pod drills into the growth.
+ * mouth face on, where the moss meets the rock, the film of moss that creeps ahead of the growth and spills round the mouth in patches, the strands
+ * that hang from the roof over it, and the growth on the ceiling seen from inside the bore. Then a pod drills into the growth.
  * The place comes from where the world puts the player and from {@link #LIVE_GAUGES_FLOOR_Y}, never a fixed position.
  */
 public class OvergrowthScenario extends EvidenceScenario {
@@ -141,6 +142,7 @@ public class OvergrowthScenario extends EvidenceScenario {
         };
         boolean shotGrowing = false;
         boolean shotUnderside = false;
+        boolean shotCreep = false;
         for (int frame = 0; frame < GROW_FRAMES; frame++) {
             singleplayer.getServer().runOnServer(server -> {
                 for (int pass = 0; pass < PASSES_PER_FRAME; pass++) {
@@ -151,6 +153,13 @@ public class OvergrowthScenario extends EvidenceScenario {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
             int grown = grown(singleplayer, site, -1);
+            if (!shotCreep && grown > 0) {
+                // The film runs ahead of the plug along the walls: the first cells to grow, and the moss on the rock
+                // round them.
+                frames(context, 2);
+                screenshot(context, "overgrowth-creep");
+                shotCreep = true;
+            }
             if (!shotGrowing && grown > BORE_WIDTH * BORE_HEIGHT * TUNNEL / 3) {
                 screenshot(context, "overgrowth-growing");
                 shotGrowing = true;
@@ -217,6 +226,16 @@ public class OvergrowthScenario extends EvidenceScenario {
         context.waitTicks(40);
         frames(context, 2);
         screenshot(context, "overgrowth-edge");
+        // The ragged spill on the wall round the mouth, from beside it, and the strands that hang from the chamber's
+        // roof over it.
+        lookFrom(singleplayer, new Vec3(x + 3.5, FLOOR_Y + 1.5, z - 3.5), new Vec3(x + 1.0, FLOOR_Y + 1.5, z));
+        context.waitTicks(40);
+        frames(context, 2);
+        screenshot(context, "overgrowth-spill");
+        lookFrom(singleplayer, new Vec3(x + 1.5, FLOOR_Y + 1.0, z - 3.0), new Vec3(x, FLOOR_Y + 4.5, z - 1.0));
+        context.waitTicks(40);
+        frames(context, 2);
+        screenshot(context, "overgrowth-hanging");
     }
 
     /** The spectator's eye at {@code eye} in layer 1, turned to look at {@code target}. */

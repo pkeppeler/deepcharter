@@ -1944,7 +1944,16 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **What it does.** A bore that nobody visits grows over with the `overgrowth` block, from the walls inward, a few cells at a time. It is a soft full block with no drop.
 
-**The look (A).** Damp, dark moss that sits in the layer palette, not a tiled cube. Clumped greens (the `moss` ramp, desaturated, with enough value range to read in lamp light), dark pits and pale tufts, and a ragged one-pixel border band, so neighbouring cells merge into one mat and the cube outline dissolves. The block is one id with a weighted blockstate over five textures picked by position: three moss (3, 3, 2) and two with a mould colony (1, 1): a soft, roughly round pale bloom with a fuzzy halo on the moss (the `mold` ramp). A bore's lining reads as patches, not one repeated tile. No new id, no new rule. Hanging strands and a fringe over rock are a model experiment (stage B), judged on in-game stills.
+**The look (A).** Growth, not a cube set in a hole. The block is damp, dark moss in the layer palette: clumped greens (the `moss` ramp), dark pits, pale tufts and a ragged border so neighbouring cells merge into one mat. It is one id with a weighted blockstate over five textures chosen by position, three moss and two with a pale mould colony (a soft round bloom with a fuzzy halo, the `mold` ramp), so a bore's lining reads as patches. Round it goes a film, `overgrowth_veneer`, a vanilla multiface block (as glow lichen is): a thin cutout layer on the faces of the rock, so the growth seems to creep over a surface.
+
+| Where | What the film does |
+|---|---|
+| Ahead of the fill | A pending bore cell that a pass weighs but does not fill gets film on its rock faces, about a third of them bare. The growth front shows on the walls before the plug arrives, which is the warning |
+| Round a plug | When a cell grows, each air cell within 2 of it takes a film with a chance that falls with distance (70% beside it, 35% two out), fixed by the cell: partial and ragged round a closed mouth, never a frame |
+| On a roof | A film on the face of a ceiling hangs 6/16 of a block of strands (crossed cutout planes inside the cell, so vanilla lights them as an air cell, not as a black quad of the opaque block) |
+| Variation | Each face picks moss or mould (4 to 1) by position through the blockstate |
+
+The film has no collision, breaks at once by hand or by the drill, drops nothing, blocks no light, has no rating, and has no item. It needs no state of its own: a check every 2 s (40 ticks) removes it unless growth stands within 2 blocks of it, or it is a pending bore cell of a chunk unvisited for the delay. So a cut plug takes its film within 2 s, and a visit takes the film ahead of the fill (but not what standing growth still holds). The film is placed only where growth could be: inside the hollows biome tag, and never within `holdReach` of a lining block. The closing rules and timings of the growth are unchanged.
 
 | Situation | What happens | Counterplay |
 |---|---|---|
