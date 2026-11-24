@@ -21,8 +21,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Finds where the {@code giant-fungi} scenario (#1202) stands its camera in a zone of layer 3: a generated cavern of the campaign world,
  * never a staged room. A spot is a free cell over a floor whose view, in one of eight headings, runs furthest through the cavern (a fan of
- * rays) and takes in the most glowcaps, and for a still of the mix the most giant fungi the world grew; its tall focus is the floor cell
- * with the most free height a giant can be grown on. Copied from {@code HollowsSpots} of the #1147 concept round (on its branch), which
+ * rays) and takes in the most glowcaps; its tall focus is the floor cell with the most free height a giant can be grown on. A view of the
+ * mix ({@link #mix}) looks instead at the densest group of giants the world grew. Copied from {@code HollowsSpots} of the #1147 concept round (on its branch), which
  * the before and after stills share a camera with. Runs on the server thread over chunks the scenario has forced.
  */
 final class GiantFungiSpots {
@@ -48,11 +48,6 @@ final class GiantFungiSpots {
     private static final double GLOW_CONE = 35;
     private static final int GLOW_WEIGHT = 4;
     private static final int GLOW_CAP = 30;
-    /** A giant fungus the world grew, told by its glowing rim, tip or great stalk cap, within the cone, adds this much, to a cap. */
-    private static final int GIANT_FAR = 36;
-
-    private static final int GIANT_WEIGHT = 12;
-    private static final int GIANT_CAP = 40;
     /** The focus is a floor cell this far ahead (in blocks), within this many degrees of the heading and this far up or down from the camera's floor. */
     private static final int FOCUS_NEAR = 7;
 
@@ -119,14 +114,13 @@ final class GiantFungiSpots {
      * The spot of zone {@code zone} (0 is the Garden) of layer 3's {@code band} in {@code level}, round ({@code x}, {@code z}), or
      * empty, with what it found in the log, if no candidate there has a focus.
      */
-    static Optional<Spot> find(ServerLevel level, LayerChain.Band band, int zone, int x, int z, boolean giants) {
+    static Optional<Spot> find(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
         Zones.Span span = Zones.span(band.minY(), band.height(), zone);
         String name = Zones.of(3, band.minY(), band.height(), span.low())
                 .orElseThrow()
                 .id()
                 .getPath();
         List<BlockPos> glowcaps = scan(level, x, z, span, GiantFungiSpots::glowcap);
-        List<BlockPos> landmarks = giants ? scan(level, x, z, span, GiantFungiSpots::landmark) : List.of();
         List<Candidate> candidates = new ArrayList<>();
         for (int cx = x - SEARCH_RADIUS; cx <= x + SEARCH_RADIUS; cx += GRID) {
             for (int cz = z - SEARCH_RADIUS; cz <= z + SEARCH_RADIUS; cz += GRID) {
@@ -137,9 +131,7 @@ final class GiantFungiSpots {
                     BlockPos feet = new BlockPos(cx, y + FEET_RISE, cz);
                     for (int heading = 0; heading < 8; heading++) {
                         float yaw = heading * 45f;
-                        int score = fan(level, feet, yaw)
-                                + glowScore(glowcaps, feet, yaw)
-                                + giantScore(landmarks, feet, yaw);
+                        int score = fan(level, feet, yaw) + glowScore(glowcaps, feet, yaw);
                         candidates.add(new Candidate(feet, y, yaw, score));
                     }
                 }
@@ -228,16 +220,6 @@ final class GiantFungiSpots {
             }
         }
         return Math.min(seen, GLOW_CAP) * GLOW_WEIGHT;
-    }
-
-    private static int giantScore(List<BlockPos> landmarks, BlockPos feet, float yaw) {
-        int seen = 0;
-        for (BlockPos g : landmarks) {
-            if (inCone(feet, yaw, g, GLOW_NEAR, GIANT_FAR, GLOW_CONE) && Math.abs(g.getY() - feet.getY()) < GIANT_FAR) {
-                seen++;
-            }
-        }
-        return Math.min(seen, GIANT_CAP) * GIANT_WEIGHT;
     }
 
     private static boolean glowcap(BlockState state) {
@@ -379,5 +361,121 @@ final class GiantFungiSpots {
             }
         }
         return true;
+    }
+
+    /** A view of the mix the world grew: the camera's feet, and the point among the giants it looks at. */
+    record MixView(String zone, BlockPos feet, Vec3 target, int giants) {}
+
+    /** How far the mix's camera stands from the middle of the giants it looks at, and how far round them a giant counts. */
+    private static final int MIX_NEAR = 16;
+
+    private static final int MIX_FAR = 28;
+    private static final int MIX_GROUP = 26;
+
+    /**
+     * A camera on the giants of zone {@code zone} the world grew round ({@code x}, {@code z}): the foot of the giant with the most others
+     * near it, and a floor {@link #MIX_NEAR} to {@link #MIX_FAR} blocks off from which the most of them are in the camera's cone and its
+     * middle is in sight. Empty if the zone grew no giant there.
+     */
+    static Optional<MixView> mix(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
+        Zones.Span span = Zones.span(band.minY(), band.height(), zone);
+        String name = Zones.of(3, band.minY(), band.height(), span.low())
+                .orElseThrow()
+                .id()
+                .getPath();
+        List<BlockPos> feet = scan(level, x, z, span, GiantFungiSpots::foot);
+        feet.removeIf(pos -> foot(level.getBlockState(pos.below())));
+        List<BlockPos> marks = scan(level, x, z, span, GiantFungiSpots::landmark);
+        BlockPos middle = null;
+        int most = 0;
+        for (BlockPos a : feet) {
+            int near = 0;
+            for (BlockPos b : feet) {
+                if (a.distSqr(b) < MIX_GROUP * MIX_GROUP) {
+                    near++;
+                }
+            }
+            if (near > most) {
+                most = near;
+                middle = a;
+            }
+        }
+        LOGGER.info(
+                "[giant-fungi] {}: {} giant feet round {}, {}; the most in one group {}",
+                name,
+                feet.size(),
+                x,
+                z,
+                most);
+        if (middle == null) {
+            return Optional.empty();
+        }
+        Vec3 target = Vec3.atBottomCenterOf(middle).add(0, 9, 0);
+        MixView best = null;
+        int bestSeen = -1;
+        for (int heading = 0; heading < 16; heading++) {
+            double angle = Math.toRadians(heading * 22.5);
+            for (int d = MIX_FAR; d >= MIX_NEAR; d -= 2) {
+                int cx = (int) Math.floor(middle.getX() + 0.5 + Math.cos(angle) * d);
+                int cz = (int) Math.floor(middle.getZ() + 0.5 + Math.sin(angle) * d);
+                Optional<BlockPos> floor = floorAt(level, cx, cz, middle.getY(), 8);
+                if (floor.isEmpty()) {
+                    continue;
+                }
+                BlockPos at = floor.get().above(FEET_RISE - 1);
+                Vec3 eye = new Vec3(at.getX() + 0.5, at.getY() + EYE, at.getZ() + 0.5);
+                if (!inSight(level, eye, BlockPos.containing(target))) {
+                    continue;
+                }
+                float yaw = (float) Math.toDegrees(Math.atan2(-(target.x - eye.x), target.z - eye.z));
+                int seen = 0;
+                for (BlockPos mark : marks) {
+                    if (inCone(at, yaw, mark, 2, MIX_FAR + MIX_GROUP, GLOW_CONE)) {
+                        seen++;
+                    }
+                }
+                if (seen > bestSeen) {
+                    bestSeen = seen;
+                    best = new MixView(name, at, target, seen);
+                }
+                break;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** The bottom block of a giant: a parasol's stem, a spire's mound or a great stalk's trunk. */
+    private static boolean foot(BlockState state) {
+        String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+        return path.equals("parasol_stem") || path.equals("spire_base") || path.equals("great_stalk");
+    }
+
+    /**
+     * The feet of a camera about {@code distance} blocks from {@code base} (2 either way) on a floor within 10 rows of it, whose eye sees
+     * both {@code target} and the cell over {@code base}, the heading nearest {@code prefer} first; empty if no heading has one.
+     */
+    static Optional<BlockPos> cameraAt(ServerLevel level, BlockPos base, Vec3 target, int distance, float prefer) {
+        BlockPos foot = base.above(2);
+        for (int turn = 0; turn < 32; turn++) {
+            // 0, +1, -1, +2, -2 ... steps of 11.25 degrees from the preferred heading.
+            int step = (turn + 1) / 2 * (turn % 2 == 0 ? -1 : 1);
+            double yaw = Math.toRadians(prefer + 180 + step * 11.25);
+            for (int d : new int[] {distance, distance - 1, distance + 1, distance - 2, distance + 2}) {
+                int x = (int) Math.floor(base.getX() + 0.5 - Math.sin(yaw) * d);
+                int z = (int) Math.floor(base.getZ() + 0.5 + Math.cos(yaw) * d);
+                Optional<BlockPos> floor = floorAt(level, x, z, base.getY(), 10);
+                if (floor.isEmpty()) {
+                    continue;
+                }
+                BlockPos feet = floor.get().above(FEET_RISE - 1);
+                Vec3 eye = new Vec3(feet.getX() + 0.5, feet.getY() + EYE, feet.getZ() + 0.5);
+                if (open(level.getBlockState(BlockPos.containing(eye)))
+                        && inSight(level, eye, BlockPos.containing(target))
+                        && inSight(level, eye, foot)) {
+                    return Optional.of(feet);
+                }
+            }
+        }
+        return Optional.empty();
     }
 }

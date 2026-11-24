@@ -14,7 +14,6 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +27,7 @@ import net.minecraft.client.gui.components.debug.DebugScreenEntryStatus;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
@@ -71,6 +71,8 @@ public class GiantFungiScenario extends EvidenceScenario {
     private static final int CLOSE = 12;
 
     private static final int FAR = 30;
+    /** The sheets of six seeds are shot from this far off, so the widest cap and the tallest spire fit the frame. */
+    private static final int VARIETY_DISTANCE = 22;
     /** How high up a form the camera aims, as a share of its height. */
     private static final double AIM_SHARE = 0.55;
     /** The box round a build that is put back after it. */
@@ -139,26 +141,48 @@ public class GiantFungiScenario extends EvidenceScenario {
             TestServerContext server = singleplayer.getServer();
             server.runOnServer(s -> s.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SPECTATOR));
             dimension = server.computeOnServer(s -> TestLayers.dimension(s, LAYER));
-            ClientChecks.withHudHidden(context, () -> {
-                List<Spot> mix = new ArrayList<>();
-                for (int zone = 0; zone < Zones.COUNT; zone++) {
-                    mix.add(findSpot(context, server, zone, true));
-                }
-                for (Spot spot : mix) {
-                    shootBoth(context, server, spot.feet(), spot.yaw(), 10f, "mix-" + spot.zone());
-                }
-                Spot stage = findSpot(context, server, 0, false);
+            // Minimal particles: the zones' drifting motes would keep the steady-picture check from settling.
+            ClientChecks.withHudHidden(context, ParticleStatus.MINIMAL, () -> {
+                Spot stage = findSpot(context, server, 0);
                 LOGGER.info(
                         "[giant-fungi] staging at {} toward {}, {} clear", stage.feet(), stage.tall(), stage.clear());
                 beforeAndAfter(context, server, stage);
                 closeAndFar(context, server, stage);
                 variety(context, server, stage);
                 topDown(context, server, stage);
+                for (int zone = 0; zone < Zones.COUNT; zone++) {
+                    GiantFungiSpots.MixView view = findMix(context, server, zone);
+                    float[] look = lookFrom(view.feet(), view.target());
+                    shootBoth(context, server, view.feet(), look[0], look[1], "mix-" + view.zone());
+                }
             });
         }
     }
 
-    private Spot findSpot(ClientGameTestContext context, TestServerContext server, int zone, boolean giants) {
+    private GiantFungiSpots.MixView findMix(ClientGameTestContext context, TestServerContext server, int zone) {
+        for (int region = 0; region < REGIONS; region++) {
+            int x = REGION_X + region * REGION_STEP;
+            if (forced.add(x)) {
+                forceRegion(server, x);
+                awaitLight(context, server);
+            }
+            Optional<GiantFungiSpots.MixView> view = server.computeOnServer(s -> {
+                ServerLevel level = TestLayers.level(s, LAYER);
+                return GiantFungiSpots.mix(level, TestLayers.band(level, LAYER), zone, x, REGION_Z);
+            });
+            if (view.isPresent()) {
+                LOGGER.info(
+                        "[giant-fungi] mix {}: feet {}, {} giant marks in view",
+                        view.get().zone(),
+                        view.get().feet(),
+                        view.get().giants());
+                return view.get();
+            }
+        }
+        throw new AssertionError("no giant fungus grew in zone " + zone + " of layer 3 in " + REGIONS + " regions");
+    }
+
+    private Spot findSpot(ClientGameTestContext context, TestServerContext server, int zone) {
         for (int region = 0; region < REGIONS; region++) {
             int x = REGION_X + region * REGION_STEP;
             if (forced.add(x)) {
@@ -167,13 +191,12 @@ public class GiantFungiScenario extends EvidenceScenario {
             }
             Optional<Spot> spot = server.computeOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
-                return GiantFungiSpots.find(level, TestLayers.band(level, LAYER), zone, x, REGION_Z, giants);
+                return GiantFungiSpots.find(level, TestLayers.band(level, LAYER), zone, x, REGION_Z);
             });
             if (spot.isPresent()) {
                 LOGGER.info(
-                        "[giant-fungi] zone {} ({}): feet {} yaw {} tall {} clear {} score {}",
+                        "[giant-fungi] zone {} stage: feet {} yaw {} tall {} clear {} score {}",
                         zone,
-                        giants ? "the mix" : "a stage",
                         spot.get().feet().toShortString(),
                         spot.get().yaw(),
                         spot.get().tall().toShortString(),
@@ -218,33 +241,38 @@ public class GiantFungiScenario extends EvidenceScenario {
         return SpireShape.layout(params, RandomSource.create(seed + 1)::nextInt);
     }
 
+    /**
+     * The #1149 mock-up and the new form, each grown at the stage's tall focus and shot from one camera, about {@value #VARIETY_DISTANCE}
+     * blocks off and aimed at the middle of the new form's height, so the pair is the same view.
+     */
     private void beforeAndAfter(ClientGameTestContext context, TestServerContext server, Spot stage) {
-        Vec3 aim = Vec3.atBottomCenterOf(stage.tall()).add(0, 9, 0);
-        float[] look = stage.look(aim);
+        pair(
+                context,
+                server,
+                stage,
+                "parasol",
+                parasol(stage, PARASOL_SEED),
+                level -> GiantMockups.parasol(level, stage));
+        pair(context, server, stage, "spires", spires(stage, SPIRES_SEED), level -> GiantMockups.spires(level, stage));
+    }
+
+    private void pair(
+            ClientGameTestContext context,
+            TestServerContext server,
+            Spot stage,
+            String form,
+            GiantLayout layout,
+            Function<ServerLevel, Object> mockup) {
+        Vec3 aim = Vec3.atBottomCenterOf(stage.tall()).add(0, (layout.maxY() + 1) * AIM_SHARE, 0);
+        BlockPos feet = server.computeOnServer(s -> back(TestLayers.level(s, LAYER), stage, aim, VARIETY_DISTANCE));
+        float[] look = lookFrom(feet, aim);
+        built(context, server, stage, mockup, () -> shootOne(context, server, feet, look, "before-" + form));
         built(
                 context,
                 server,
                 stage,
-                level -> GiantMockups.parasol(level, stage),
-                () -> shootOne(context, server, stage.feet(), look, "before-parasol"));
-        built(
-                context,
-                server,
-                stage,
-                level -> GiantMockups.grow(level, parasol(stage, PARASOL_SEED), stage.tall()),
-                () -> shootOne(context, server, stage.feet(), look, "after-parasol"));
-        built(
-                context,
-                server,
-                stage,
-                level -> GiantMockups.spires(level, stage),
-                () -> shootOne(context, server, stage.feet(), look, "before-spires"));
-        built(
-                context,
-                server,
-                stage,
-                level -> GiantMockups.grow(level, spires(stage, SPIRES_SEED), stage.tall()),
-                () -> shootOne(context, server, stage.feet(), look, "after-spires"));
+                level -> GiantMockups.grow(level, layout, stage.tall()),
+                () -> shootOne(context, server, feet, look, "after-" + form));
     }
 
     private void closeAndFar(ClientGameTestContext context, TestServerContext server, Spot stage) {
@@ -253,7 +281,7 @@ public class GiantFungiScenario extends EvidenceScenario {
             Vec3 aim = Vec3.atBottomCenterOf(stage.tall()).add(0, (layout.maxY() + 1) * AIM_SHARE, 0);
             built(context, server, stage, level -> GiantMockups.grow(level, layout, stage.tall()), () -> {
                 for (int distance : new int[] {CLOSE, FAR}) {
-                    BlockPos feet = server.computeOnServer(s -> back(TestLayers.level(s, LAYER), stage, distance));
+                    BlockPos feet = server.computeOnServer(s -> back(TestLayers.level(s, LAYER), stage, aim, distance));
                     float[] look = lookFrom(feet, aim);
                     shootBoth(
                             context,
@@ -273,9 +301,10 @@ public class GiantFungiScenario extends EvidenceScenario {
             for (int i = 0; i < seeds.length; i++) {
                 long seed = seeds[i];
                 GiantLayout layout = form.equals("parasol") ? parasol(stage, seed) : spires(stage, seed);
-                BlockPos feet = server.computeOnServer(s -> back(TestLayers.level(s, LAYER), stage, 22));
-                float[] look =
-                        lookFrom(feet, Vec3.atBottomCenterOf(stage.tall()).add(0, (layout.maxY() + 1) * 0.45, 0));
+                Vec3 aim = Vec3.atBottomCenterOf(stage.tall()).add(0, (layout.maxY() + 1) * AIM_SHARE, 0);
+                BlockPos feet =
+                        server.computeOnServer(s -> back(TestLayers.level(s, LAYER), stage, aim, VARIETY_DISTANCE));
+                float[] look = lookFrom(feet, aim);
                 String name = "variety-" + form + "-" + i;
                 built(context, server, stage, level -> GiantMockups.grow(level, layout, stage.tall()), () -> {
                     nightVision(server, true);
@@ -335,28 +364,12 @@ public class GiantFungiScenario extends EvidenceScenario {
     // ---------------------------------------------------------------------------------------------- the camera
 
     /**
-     * Where the camera stands {@code distance} blocks back from the stage's tall focus toward its own feet: the floor there, or, if there is
-     * none in sight, the nearest place on that line that has one; the stage's own camera if none does.
+     * Where the camera stands about {@code distance} blocks from the stage's tall focus, seeing {@code target} and the foot: on the side of
+     * the stage's own camera if it can, the stage's own camera if no side has one.
      */
-    private static BlockPos back(ServerLevel level, Spot stage, int distance) {
-        Vec3 from = Vec3.atBottomCenterOf(stage.tall());
-        Vec3 toward = Vec3.atBottomCenterOf(stage.feet())
-                .subtract(from)
-                .multiply(1, 0, 1)
-                .normalize();
-        for (int d = distance; d >= CLOSE - 4; d--) {
-            Vec3 at = from.add(toward.scale(d));
-            Optional<BlockPos> floor = GiantFungiSpots.floorAt(
-                    level,
-                    (int) Math.floor(at.x),
-                    (int) Math.floor(at.z),
-                    stage.tall().getY(),
-                    8);
-            if (floor.isPresent()) {
-                return floor.get().above(GiantFungiSpots.FEET_RISE - 1);
-            }
-        }
-        return stage.feet();
+    private static BlockPos back(ServerLevel level, Spot stage, Vec3 target, int distance) {
+        return GiantFungiSpots.cameraAt(level, stage.tall(), target, distance, stage.yaw())
+                .orElse(stage.feet());
     }
 
     /** The yaw and pitch at which an eye at {@code feet} looks at {@code target}. */
