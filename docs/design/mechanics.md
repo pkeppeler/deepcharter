@@ -2211,7 +2211,7 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **The band.** Y -768 to -513 (256 blocks), the three zones in equal thirds: the Garden on top, the Spore Fields, the Quiet at the bottom. The caverns are three stacked halls, each about 85 blocks: the band's density is a floor, two holed rock shelves at the zone edges, and 2D basalt columns that stand from floor to roof, fewer in the Quiet. The roof rows under layer 2's crust are open, as layer 2's top is under layer 1's. Every block of the core within `depth` (1) blocks of an open cell, straight along an axis, becomes a column (`AirFaceLiningFeature`), after the zone fill, so exposed ore keeps its basalt host.
 
-**The hazard: spore gas.** The Spore Fields' fill holds the layer's most gas pockets (12% of non-ore rock against 5 and 6), and the pockets are the existing `gas_pocket`: the same blast, sounder, scanner tier and sideways share. No new counter is needed, so the gas ladder serves layer 3 as it is; drifting spores (ambient particles) mark the zone. Spore-gas clouds that drift in the open caverns belong to the Drifters (#918).
+**The hazard: spore gas.** The Spore Fields' fill holds the layer's most gas pockets (12% of non-ore rock against 5 and 6), and the pockets are the existing `gas_pocket`: the same blast, sounder, scanner tier and sideways share. No new counter is needed, so the gas ladder serves layer 3 as it is; a haze of spores marks the zone: the biome's ambient particles, dust motes at 0.3 and cold `minecraft:glow` glints at 0.02 (the user's pick from the concept stills, #1147). Spore-gas clouds that drift in the open caverns belong to the Drifters (#918).
 
 **Light.** Glowcaps, a small fungus on cavern floors, give block light 6 (`LayerTuning.glowcapLight`): cold, small and scattered, so the caverns stay dark and a lamp still matters. A picked glowcap is a hand light (`hand_lights`): it keeps the Retained off a person on foot as a torch does.
 
@@ -2223,7 +2223,9 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Tuning knobs.** The noise in `campaign.json` (column threshold 0.40, 0.62 in the Quiet; shelf thickness and holes), `line_hollows.json` (`depth`), the glowcap counts in `glowcaps_<zone>.json`, the fills in `fill_<zone>.json`, `LayerTuning.glowcapLight`.
 
-**Open questions.** The look calls go to the user as stills: fog, glow, ambient light, giant fungus forms, the gas's look, the Quiet's cathedral and shrine, the Drifters and Overgrowth, the basalt's tint and lava. The Garden and the Spore Fields borrow layer 2's drone and music until layer 3 has its own; the Quiet is silent on purpose.
+**Look calls.** The user picked from the concept stills (#1147): the shipped fog, glow, ambient light, bare Quiet and cold basalt with lava kept in the rock stay; the spore gas is the denser haze. The giant fungi are to mix stalks, parasols and spires ([#1202](https://github.com/pkeppeler/deepcharter/issues/1202)); until then only the stalks grow. Drifters and Overgrowth are #975 and #976.
+
+**Open questions.** The Garden and the Spore Fields borrow layer 2's drone and music until layer 3 has its own; the Quiet is silent on purpose.
 
 ## Suit timer and habitable outposts (#993, A)
 
