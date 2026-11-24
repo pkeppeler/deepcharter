@@ -13,7 +13,8 @@ import net.minecraft.server.level.ParticleStatus;
 
 /**
  * Evidence for #1161: the hall of {@code CavernSkyClientTest} in layer 1, at each of its views (dusk, moonrise and night, down into the
- * pit at dusk and night, and straight down from under the water of the flooded pit), then the surface sky over the colony at dusk (the
+ * pit at dusk and night, and straight down from under the water of the flooded pit) with {@code BreachVoidCover} off, so the sky
+ * fix shows alone, then the surface sky over the colony at dusk (the
  * sun in the west) and at night (the moon high in the east), which must not change.
  */
 public class CavernSkyScenario extends EvidenceScenario {

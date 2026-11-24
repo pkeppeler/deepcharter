@@ -582,16 +582,20 @@ Every band holds after the change. The matter transmitter is the one price that 
 
 **Problem.** The crust is the bottom 3 blocks of a layer, and the surface's open floor is rock down to the bottom of the world. Under that there is nothing: a hole showed the clear colour, which is the fog colour (lifted to full brightness by a night-vision potion) or the sky's, a flat bright square.
 
-**What it does.** `client/layer/BreachVoidCover` draws one black square 8 blocks under the bottom of the world (the surface and every layer). A hole in the floor shows darkness from any angle, at any distance and under night vision. The square lies 8 blocks down so it stays clear of a crossing pod: the breach fires when the pod's feet pass the bottom, a pod falls under 4 blocks a tick, and the square never cuts the pod, its particles or the fade. It draws nothing for a camera under the square. `BreachVoidClientTest` reads the pixels of a 9 x 9 hole in the surface, layer 1 and layer 2, from 46 blocks above, straight down, from high at the side and from the floor at the side, with and without night vision, and checks that a pod under the bottom shows over the hole. Each frame must also show a lit lamp where the camera maths puts one, so a black frame cannot pass.
+**What it does.** `client/layer/BreachVoidCover` draws one black cover, a disc, 8 blocks under the bottom of the world (the surface and every layer), or higher when the camera is far above it (below). A hole in the floor shows darkness from any angle, at any distance and under night vision. The cover lies 8 blocks down so it stays clear of a crossing pod: the breach fires when the pod's feet pass the bottom, a pod falls under 4 blocks a tick, and the cover never cuts the pod, its particles or the fade. It draws nothing for a camera under the cover. `BreachVoidClientTest` reads the pixels of a 9 x 9 hole in the surface, layer 1 and layer 2, from 46 blocks above, straight down, from high at the side and from the floor at the side, with and without night vision, and checks that a pod under the bottom shows over the hole. Each frame must also show a lit lamp where the camera maths puts one, so a black frame cannot pass.
 
-**The render type.** The square uses `RenderTypes.debugQuads()`, checked in the 26.3 client jar. It is not gated on any debug mode. Its pipeline is `position_color` (so no fog and no lighting), depth-tested with the normal comparison (the reversed-Z `GREATER_THAN_OR_EQUAL`) and does not write depth, has culling off (so the camera-side check above is what hides it from below), and blends as translucent (alpha 1 is opaque) in the order-independent-transparency phase, so water, particles and other translucent geometry above it sort against it. The sky is drawn before everything, and the terrain's depth hides the square wherever there is rock.
+**A deep shaft (#1188).** The client draws the sections only up to the render distance above and below the camera's (`SectionOcclusionGraph.getRelativeFrom`), and a shaft's walls fade into the fog colour at their drawn ends. Past them a straight-down view showed the sky (in a layer the zone's fog colour since #1161, [ADR 0062](../adr/0062-the-campaign-world-applies-the-biome-layer-again-after-the-timelines-and-the-weather.md)), and in it the cover, then a square, far under the camera and only the render distance wide: a small black shape with a hard edge (about 12 pixels across from layer 1 at render distance 2, and most of the view down a shaft in unbuilt depth). So the cover now lies no deeper than one section under the sections the client draws, and takes the render-distance fog that the terrain shader gives a block at the same place, set per vertex on a disc of rings round the camera. A cover that deep is past the fog's end everywhere, so it is the fog colour, as the walls' ends are, and the shaft fades into fog with no edge. A cover under a hole nearer the camera than the render-distance fog stays black. It leaves out the environmental fog: with it, the hole of `BreachVoidClientTest` seen from 46 blocks above took 40 levels of the unbuilt depth's fog, which is what the cover hides. The disc reaches 0.6 of the camera's far plane. Anything under a cover lifted this way is past the fog's end, so it would draw as the fog colour anyway. In a layer the cover now also covers the nadir past the drawn sections that #1161's sky fog and `LayerSky` cover (the dark disc, and the sun and the moon from under water); those stay the guard that holds without it, and `CavernSkyClientTest` checks them with the cover off. `BreachVoidClientTest` also looks straight down a shaft deeper than the render distance, to the floor of layer 1, the floor of layer 2 and the bottom of the world, with and without night vision, and needs the middle of the picture, out to about 12 degrees off straight down where the walls' drawn ends show, to match the walls' fogged ends in the same frame; the `nadir-cover` scenario shows the same views. Since #1192 the unbuilt depth has a black fog of its own, from 2 to 20 blocks, so a shaft there fades into darkness, and at the bottom of the world the cover and the walls' ends are both black whatever the cover does; `BreachVoidClientTest` gives the air round its breach shaft's eye a layer 1 zone biome, a fog that is not black, so that view still tests the cover's edge ([ADR 0062](../adr/0062-the-campaign-world-applies-the-biome-layer-again-after-the-timelines-and-the-weather.md)).
 
-**Mods.** Sodium replaces the terrain renderer only, and entity, particle and custom geometry still go through the vanilla submit path, so the square should draw the same. I did not run Sodium. I cannot test Iris or any shader pack: a pack that does not draw this pipeline shows the void again.
+**The surface.** The surface's bottom is the campaign world's, far under any ordinary view, so the lift applies to every surface frame: the cover lies one section under the drawn sections there too. No drawn block is under it, so it hides only what was sky below the horizon, which was the fog colour already; the `nadir-cover` scenario's high views over open ground at render distance 6 show no change. Clouds would be the one thing it could hide, from a camera high enough over them that the drawn sections end above them, but the surface draws none: the sky timeline (`data/deepcharter/timeline/sky.json`) sets `cloud_color` clear for the whole day. If clouds come back, keep the cover under them.
+
+**The render type.** The cover uses `RenderTypes.debugQuads()`, checked in the 26.3 client jar. It is not gated on any debug mode. Its pipeline is `position_color` (so no fog of its own and no lighting: the fog is in the vertex colours), depth-tested with the normal comparison (the reversed-Z `GREATER_THAN_OR_EQUAL`) and does not write depth, has culling off (so the camera-side check above is what hides it from below), and blends as translucent (alpha 1 is opaque) in the order-independent-transparency phase, so water, particles and other translucent geometry above it sort against it. The sky is drawn before everything, and the terrain's depth hides the cover wherever there is rock.
+
+**Mods.** Sodium replaces the terrain renderer only, and entity, particle and custom geometry still go through the vanilla submit path, so the cover should draw the same. I did not run Sodium. I cannot test Iris or any shader pack: a pack that does not draw this pipeline shows the void again.
 
 **Trade-offs.**
 - It is client-only.
 - Black fog or generated rock were rejected: fog is the colour of the whole layer and cannot change on the surface's dusk, and rock below the crust would move `min_y`, which the crossing line, the depth readout and every layer test read.
-- A hole shows void only at angles steep enough to pass the 3 blocks of crust (31 degrees above the floor, in the test's 9 wide hole). A shallow view towards the edge of the render distance meets rock first, so the square needs no reach beyond what holes show. It still reaches the render distance.
+- A hole shows void only at angles steep enough to pass the 3 blocks of crust (31 degrees above the floor, in the test's 9 wide hole). A shallow view towards the edge of the render distance meets rock first, so the cover needs no reach beyond what holes show. It reaches 0.6 of the far plane, for the deep shafts.
 
 ## The breach crust (#378, A)
 
@@ -1863,13 +1867,13 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **The tool.** The navigator presses V (the ping key). The pod pays power, a ring goes out, and the scope on the navigator's screen (left edge, a round plan view, the pod at the middle and facing up) fills with echoes. The pilot's scanner and Ribbon are not touched; the scope is the one thing only the navigator sees past the headlights.
 - **Echoes are contacts of four kinds, drawn as four shapes** so they read without colour: ore (filled square), gas (hollow square), an empty cave (small dot), something that moved (cross). A tick over or under a shape says it is 2 or more blocks above or below the pod.
-- **Ambiguous on purpose.** A block echo is a 4-block cell of the world's grid, reported at its middle, so the navigator knows the neighbourhood and not the block. A cell with any ore in it is ore; else a cell with a gas pocket is gas; else a cell at least half air is a cave. Gas reads as gas only inside 12 blocks: farther off it reads as an empty cave, the SPEC's ambiguous echo, so the navigator has to get closer or listen for the hiss. A creature in the `deepcharter:sonar_echoes` entity tag returns an echo at its block: moved if it is faster than 1 block a second, else ore (a body standing still is a dense return). The tag ships empty: **until #924 fills it, nothing in the game returns a moved echo**, and the moved shape and its speed rule have no production source.
+- **Ambiguous on purpose.** A block echo is a 4-block cell of the world's grid, reported at its middle, so the navigator knows the neighbourhood and not the block. A cell with any ore in it is ore; else a cell with a gas pocket is gas; else a cell at least half air is a cave. Gas reads as gas only inside 12 blocks: farther off it reads as an empty cave, the SPEC's ambiguous echo, so the navigator has to get closer or listen for the hiss. A creature's signature is data: see [Sonar signatures and the lure](#sonar-signatures-and-the-lure-924-a).
 - **Cells within 6 blocks of the pod are silent**: its own cab and bore are not a cave. Chunks that are not loaded return nothing, as the scanner shows them. A ping returns at most 32 echoes: what moves first, then ore, gas and open space, nearest first.
 - **Marks.** The navigator looks toward an echo (within 12 degrees of the look) and presses G: it goes on the HUD of everyone riding the pod as a diamond in its kind's colour with its kind and distance, at the screen's edge toward it when it is off screen or behind. A mark holds a minute and outlives the echo it came from, so the pilot flies by it after the next ping. A pod holds three; a fourth drops the oldest; G toward a marked echo (even after its echo faded) takes its mark off. A pod takes a mark at most every 5 ticks; a refused one changes nothing and syncs nothing. The server checks the seat and that the echo is on the pod's picture.
 - **Costs and refusals.** Power: a ping takes 0.4 L from the tank and never takes it under the pod's urgent-fuel reserve (6%): the navigator cannot ping the pod dry. A pod without power cannot ping. The sonar rings for 4 seconds before the next ping. Each refusal says why on the action bar.
-- **Loud.** The ping plays a sound at the pod and fires `SonarEvents.PINGED`, a noise 48 blocks wide: twice what the ping sees. **The 48-block radius is a placeholder: nothing consumes it yet**, #924 makes the Sleeper's creatures answer it and adds the distance test with its first caller.
+- **Loud.** The ping plays a sound at the pod and fires `SonarEvents.PINGED`, a noise 48 blocks wide: twice what the ping sees. The Sleeper's answer it ([below](#sonar-signatures-and-the-lure-924-a)).
 
-**Ladder.** By hand: ping and read, mark what the pilot should fly to or from. A part: passive listening (silent, short range; #924) and the sonar burst (#928). Mastery: the robot navigator (`robot-crew`) pings on a fixed timer and cannot stay quiet; it calls `PodSonar.ping(pod)`, which asks nothing of a seat.
+**Ladder.** By hand: ping and read, mark what the pilot should fly to or from. A part: passive listening (silent, short range; #1028, not built) and the sonar burst (#928). Mastery: the robot navigator (`robot-crew`) pings on a fixed timer and cannot stay quiet; it calls `PodSonar.ping(pod)`, which asks nothing of a seat.
 
 **What sonar reveals against the scanner.** Ore: the scanner shows ore at every tier, as a one-block slice in the pod's facing plane; sonar's ore echoes are 3D (a 24-block radius, coarse to a 4-block cell) and need no scanner part, so they reveal no ore the scanner hides, only more of it at less precision. Gas: the scanner shows gas pockets only from tier 3 (`ScannerTuning.gasTier`), and a pocket otherwise looks like stone. Sonar does reveal gas pockets, within 12 blocks, with no scanner tier. This is chosen, not matched: SPEC section 8 names gas among the navigator's echoes, it needs a Prospector with a navigator, it is ambiguous beyond 12 blocks, and it costs power and noise. It makes the Prospector's navigator a second gas counter beside the tier 3 scanner and the seep sounder; if playtests find gas trivial on a Prospector, lower `gasResolveBlocks` or make gas resolve only from the scanner's tier.
 
@@ -1877,7 +1881,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Trade-offs.** Power from the tank the pilot also needs; noise that calls the Sleeper's once #924 lands; the navigator's eyes on the scope and not the view; a mark list of three.
 
-**Hooks for #924.** `SonarEvents.COLLECT` (a listener adds echoes with a `SonarKind` to the sink: a Sleeper creature a real echo, the hollow ones none, a Company machine ore), `SonarEvents.PINGED` (the noise: the ping carries its origin and `noiseBlocks()`; the distance test comes with its first caller), the `sonar_echoes` entity tag for the plain case, and `PodSonar.State` on the pod (synced, versioned) for anything that reads what the pod holds. Passive listening is a ping that skips the sound and `PINGED` and uses a shorter range: `SonarTuning` is the record to extend.
+**Hooks.** `SonarEvents.COLLECT` (a listener adds echoes with a `SonarKind` to the sink: a Sleeper creature a real echo, the hollow ones none, a Company machine ore), `SonarEvents.PINGED` (the noise: the ping carries its origin and `noiseBlocks()`, and `SonarPing.hears` is the distance test; `SonarLure` is its first caller), the entity tags of [the signatures](#sonar-signatures-and-the-lure-924-a) for the plain case, and `PodSonar.State` on the pod (synced, versioned) for anything that reads what the pod holds. Passive listening (#1028) is a ping that skips the sound and `PINGED` and uses a shorter range: `SonarTuning` is the record to extend. The robot navigator (#1029) calls `PodSonar.ping(pod)` on a timer.
 
 ### Pacing, in player units
 
@@ -1890,7 +1894,7 @@ Each row is asserted in `PodSonarTest`. *Measured*: read off the running game (t
 | What a ping costs in the pod's other burn | 6.3 s of idling, 2.1 s of driving, 1.3 s of drilling | modelled (0.4 L over 0.063, 0.19 and 0.32 L/s) |
 | Pings in one tank pinging as soon as the sonar clears, idling between | about 14, over about a minute | modelled (9.4 L usable over 0.1 L/s of pinging and 0.063 L/s of idling) |
 | Range | 24 blocks to the middle of a cell: the farthest echoing ore cell was 22.8 blocks off, the nearest silent one 26.6 | measured |
-| Noise radius | 48 blocks | measured (the event's radius, and a listener at 48 and at 48.01) |
+| Noise radius | 48 blocks | measured (the event's radius, and `SonarPing.hears` at 48 and at 48.01) |
 | An echo shows | 200 ticks, 10 s | measured on the world clock (the picture clears on tick 200 or 201) |
 | Sonar rings between pings | 80 ticks, 4 s | measured (refused on every tick before 80, accepted on it) |
 | A mark holds | 1200 ticks, 60 s, three at a time | measured (lapses on its tick; the fourth drops the oldest) |
@@ -1899,6 +1903,39 @@ Each row is asserted in `PodSonarTest`. *Measured*: read off the running game (t
 A default build is not harder than on main: nothing changes for a pod with no navigator, and a navigator who never pings spends nothing.
 
 **Knobs.** `SonarTuning` (range, noise, power, wait, lifetime, cell, blind zone, gas distance, moving speed, echo cap, mark life, marks, aim) and `theme/sonar.json` (the scope's look). **Open questions.** Should the ping's cost grow with depth? Should a ping light the echoes' cells for the pilot's lamps? Should marks be shared between a towed pair? None is built.
+
+## Sonar signatures and the lure (#924, A)
+
+**Problem.** The navigator's sonar is how a crew senses the Sleeper's defences, and its blind spot is what keeps Moloch's things unsettling ([CREATURES.md](../CREATURES.md#2-the-three-families)). A ping must also be a decision: it is how you see them and how you call them.
+
+**Signatures are entity tags** (`data/deepcharter/tags/entity_type/`), so a new creature joins with a line of JSON and the sonar never changes:
+- `sonar_echoes`: real things, the Sleeper's creatures and gnawers. An echo at the creature's block, **moved** when it goes faster than 1 block a second, else a still contact (an ore return: a body standing still is a dense return). A creature on the ground is judged by its horizontal speed, so gravity does not make a standing mob read as moving. It ships empty: no Sleeper creature is built yet (Drifters #918, gnawers #936); its first member is a line here.
+- `sonar_ore`: Company machines, an ore echo at any speed, as the pilot's scanner reads them. Tallies.
+- `sonar_hollow`: Moloch's things, no echo. The Retained (`lampless_figure`); masks join when built. It wins over the two tags above, so a type in a broad tag can still be silenced.
+- `sonar_cave`: things that read as an empty cave at any speed (CREATURES.md's Drifters: "sonar reads one as empty cave"). It ships empty.
+- `sonar_hears`: creatures a ping draws. It ships empty, for the same reason.
+
+The tags map to kinds in one table (`SonarTags`), the first match deciding: hollow, ore, cave, echoes. A creature that joins a tag brings the attribute the tag needs: for `sonar_hears`, a follow range of at least the noise radius (checked by a test over the shipped tag).
+
+**The lure.** On `SonarEvents.PINGED`, every creature in `sonar_hears` within the ping's noise radius (`SonarPing.hears`: a straight line of 48 blocks, through rock) gets a navigation to where the ping came from, at its own full pace. The order holds for `SonarTuning.lureTicks` (200 ticks, 10 s, CREATURES.md's ten seconds of silence): while it holds, a creature whose own goals have sent it elsewhere is sent again within 10 ticks, and a new ping refreshes the hold. After it the creature is left to its goals, and what it does on arrival is the creature's. A creature's pathfinder is also capped by its follow range, so a Sleeper's creature sets a follow range of at least the noise radius (48 blocks) in its attributes to come the whole way; one with a shorter reach comes as far as its path goes and stops (the measurement below).
+
+**Ladder and trade-offs.** By hand, ping and read, and pay for it in who comes. The listening part (#1028) is the quiet way; the sonar burst (#928) the loud one; the robot navigator (#1029) cannot choose. No new cost: the noise was already there, and now something answers it.
+
+**Pacing, in player units.** Asserted in `PodSonarTest`, with a husk (a walker with no goals, follow range 35) standing in for a Sleeper's creature. *Measured*: read off the running game. *Modelled*: worked out, not run.
+
+| Row | Value | |
+|---|---|---|
+| Who hears a ping | tagged creatures within 48 blocks, in a line through rock; a tagged one at 52 blocks stayed, an untagged one inside the noise stayed | measured |
+| The edge | 48.00 blocks hears, 48.01 does not | measured |
+| A walker from 36 blocks off at the hull | 375 ticks, 19 s: the husk's own pace, about 1.7 blocks a second over the 31 blocks it had to cover | measured (one husk in a straight 7-block-wide corridor) |
+| A walker heard from 47.5 blocks, follow range 35 | walked 34 blocks and stopped 13.9 blocks off | measured: why a Sleeper's creature sets its follow range to 48 |
+| The hold | a cow with all its own goals, taken off the ping at tick 13, was heading for it again within 10 ticks; 40 ticks after the 200-tick hold it was left alone | measured |
+| A walker at a player's walking pace (4.3 blocks a second) from the edge of the noise | 11 s to cover 48 blocks | modelled |
+| What the navigator can do with it | ping, mark, and the pilot has about the time it takes the nearest one to cross the gap | modelled |
+
+A default build is not harder than on main: no Sleeper creature is shipped, so nothing yet answers a ping. The first (#918) makes it so, and states its own pacing.
+
+**Knobs.** `SonarTuning.noiseBlocks` (48) is the radius, `lureTicks` (200) the hold; the tags are the signatures. **Open questions.** Should a ping also wake things that are not the Sleeper's? (CREATURES.md says the sonar burst does.) Neither is built.
 
 ## The first tank and the Company recovery (#963, A)
 
@@ -2233,7 +2270,7 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Ladder.**
 1. **By hand.** Time every trip, retreat before the amber line, patch a hall's open pit and hatch with slag brick, and read the placement readout and the risk line to see what is short.
-2. **A suit track and an air canister** raise what the suit holds and top the reserve up in the field ([#1064](https://github.com/pkeppeler/deepcharter/issues/1064), not in this change). The stock suit is rated (0,0,0), as a block is, so a track is a step in every row.
+2. **Suit tracks and an air canister** raise what the suit holds and top the reserve up in the field: the tracks are [#1064](https://github.com/pkeppeler/deepcharter/issues/1064) (see [Suit tracks](#suit-tracks-1064-a)), the canister [#1194](https://github.com/pkeppeler/deepcharter/issues/1194). The stock suit is rated (0,0,0), as a block is, so a track is a step in every row.
 3. **Mastery.** Rated halls at every depth, and the top suit tiers: the timer stops being a trip's limit. The deeper-floor kit ([#1063](https://github.com/pkeppeler/deepcharter/issues/1063)) is the answer to a hall that does not hold.
 
 **The suit.** A reserve of 180 suit-seconds, kept for each player across logins, levels and crossings (a versioned attachment, `deepcharter:suit`). It pays only on foot (alive, not creative or spectator, not seated in a pod), and only where the depth's row asks something (`DepthRatings.requiredAt`). A depth with no row, the campaign's unbuilt depth, reads as (5,5,5). The surface, layers 1 and 2 and any level outside the chain ask nothing, so the suit is inert there: **the default build is no harder than before**, in the unpacked and the early game alike. A second on foot costs `0.5 + 0.5 * (heat the depth asks over the suit's) + 0.5 * (pressure over) + [submerged] 1.0 * (flooding over)`, summed so that every suit-track step shows. Quake is ignored. Submerged, or seeping inside a hall that is short on flooding, is wet.
@@ -2270,11 +2307,63 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 - A hall is judged for the suit on heat, pressure and flooding only. A hall short on quake alone shelters the suit and its risk line says it holds: quake is a structural risk, not a leak, and is left to a later change.
 - The suit is inert in layers 1 and 2 and on the surface, and its breach is harmless where the depth asks nothing. The only place this is harder than before is the unbuilt depth below layer 2, which no early run reaches: the unpacked and the early-game columns are unchanged.
 - "Water seeps in" is particles and the drain, with no real water: placing fluid would delete a player's blocks.
-- Flooding is answered by the oxygen and toxins track (#1064), so the SPEC's four suit tracks stay four.
+- Flooding is answered by the air track (#1064, "oxygen and toxins"), so the SPEC's four suit tracks stay four.
 - The air holds only where the suit is active, so a swim at the surface is as it was.
 
 **Knobs.** `SuitTuning.DEFAULT` (capacity, base and per-level costs, the stock suit's ratings, the uncharted row, `leakShare`, refill, warning times, breach damage and cadence), `RatingTuning.DEFAULT` (the rows), `theme/suit.json` (the gauge).
 
-**Layer 3's row** is set (#972): heat and flooding 1, pressure and quake 2, so a stock suit lasts 90 s dry there, over this test's minute.
-
 **Open questions.** Whether a hall's leak should grow with its worst axis rather than stay a flat share.
+
+## Suit tracks (#1064, A)
+
+**Problem.** The suit (#993) is rated (0,0,0) and holds 180 suit-seconds, so below layer 2 a person on foot has a fixed trip and nothing to spend money on. SPEC section 9: "Suit: upgraded separately: oxygen and toxins, heat, pressure, lamp battery". The model is [ADR 0091](../adr/0091-the-suit-tracks-are-a-personal-attachment-bought-a-tier-at-a-time-and-the-air-track-carries-flooding-and-capacity.md).
+
+**Ladder.**
+1. **By hand.** The stock suit: time the trip, retreat before the amber line, patch a hall.
+2. **The tracks.** Three tracks bought a tier at a time at the repair station, tiers 1 to 3, next tier only. Heat and pressure each add a level of rating. Air adds a level of flooding rating and raises the capacity to 240, 300 and 360 s, so the SPEC's "oxygen and toxins" and flooding are one track and the four SPEC tracks need no fifth ("toxins" is a name until a toxin axis exists). The lamp battery stays its own, later track.
+3. **Mastery.** All three at tier 3 against a rated hall at every depth: the timer stops being a trip's limit. The air canister ([#1194](https://github.com/pkeppeler/deepcharter/issues/1194)) tops the reserve up in the field.
+
+**Trade-offs.** Money, and the order of purchases: a pilot chooses whether the next $1,100 buys 4 s of heat or 11 s of air. A bigger suit takes longer to fill, because the refill is a flat 15 a second (A): 24 s from empty at air tier 3.
+
+**Where it pays.** Layers 1 and 2 and the surface ask nothing of a suit, so a track buys nothing there. The repair station says so in its intro, and the fitting message says it again: the tracks pay off from layer 3 down.
+
+**Prices (A).** Banded against the layer 2 runs that fund them (`EconomyAffordabilityTest`): tier 1 within two runs of a Mole with tier 2 parts from the outpost (net $455 a run), tier 2 within four, tier 3 within two runs of a Prospector with tier 3 parts (net $1,728 a run; three for air).
+
+| Track | Tier 1 | Tier 2 | Tier 3 | Runs to afford |
+|---|---|---|---|---|
+| Heat | $450 | $1,100 | $2,500 | 1 Mole, 3 Mole, 2 Prospector |
+| Pressure | $450 | $1,100 | $2,500 | 1 Mole, 3 Mole, 2 Prospector |
+| Air | $550 | $1,400 | $3,000 | 2 Mole, 4 Mole, 2 Prospector |
+
+**Pacing in player units (`SuitPacingTest`; whole seconds until the reserve is spent, at the unbuilt depth's (5,5,5)).**
+
+| Suit | Dry | Submerged | Measured or modelled |
+|---|---|---|---|
+| Stock (180 s) | 33 s | 18 s | measured |
+| Heat tier 1, 2, 3 | 36, 40, 45 s | | heat 3 dry measured |
+| Air tier 1 (240 s) | 44 s | 26 s | modelled |
+| Air tier 2 (300 s) | 55 s | 36 s | modelled |
+| Air tier 3 (360 s) | 66 s | 48 s | measured |
+| Heat 3 and pressure 3 | 72 s | | modelled |
+| All tier 3 | 144 s | 80 s | modelled |
+| All tier 3, inside an unrated hall | 288 s | | modelled |
+| Refill from empty in a powered pod seat, stock | 12 s | | measured |
+| Refill from empty, air tier 3 | 24 s | | measured |
+| A row (2,2,2) with heat 2 and pressure 2, stock capacity: the base alone | 360 s | | modelled |
+| An air canister (60 s) on a spent suit, stock | 11 s | | measured |
+| An air canister on a spent suit, all tier 3 | 24 s | | modelled |
+
+**Decisions (A).**
+- The suit's tier 1 is bought, not crafted: SPEC section 7's crafted tier 1 is the pods' and the scanner's (ADR 0048), and section 9 keeps the suit separate.
+- Tiers are personal, kept on death, and bought one at a time; the next tier only.
+- Prices are on the layer 2 run curve above. Payoff only below layer 2: layers 1 and 2 stay rated NONE.
+- "Toxins" is a name only until a toxin axis exists.
+- The refill rate stays flat.
+- The air canister is split out to #1194 and built there (below).
+
+**The air canister (#1194, A).** A consumable, $150, stacking to 16, sold at the repair station only (no recipe), a layer 3 item at about a third of a Mole layer 2 run ($455). It is an emergency extension, not a refill: retreating stays the default answer to an amber gauge. Used on foot with a right click, not thrown, it adds `canisterSeconds` (60) to the suit's reserve wherever the person is: below the amber line in a tunnel, breached (the suit leaves BREACHED at once, so no further breach hit lands), or from an unpowered pod seat. It never fills past the suit's own capacity, so a part-used canister wastes the rest. It is refused and kept on a full suit ("SUIT ALREADY FULL"), when the suit's log cannot be read, and where the suit already refills for nothing: a powered pod seat or a sound hall ("SUIT ALREADY REFILLING"). A canister is worth the same minute to every suit, so it buys more of a better one: from empty it lasts 11 s at the unbuilt depth on a stock suit and 24 s on an all-tier-3 one. The normal item cooldown applies. `SuitReserve.topUp` is the one place the reserve is added to from outside the suit's tick.
+
+**Knobs.** `SuitTrack` (prices, tiers), `SuitTuning.DEFAULT.capacities`, `SuitTuning` costs per level, `SuitTuning.DEFAULT.canisterSeconds`, `Consumable.AIR_CANISTER` (price), `theme/suit.json` (the gauge).
+
+**Open questions.** Whether the refill should grow with capacity once the canister exists; whether a toxin axis should join the air track or stand alone.
+

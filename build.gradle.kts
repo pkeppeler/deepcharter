@@ -316,7 +316,7 @@ spotless {
 
 // RELAXED: Error Prone's unused checks would flag every injector method and its Mixin-supplied parameters; any other unused code is still reported.
 val mixinHandlers = (listOf("Inject", "Redirect", "ModifyArg", "ModifyArgs", "ModifyVariable", "ModifyConstant")
-	.map { "org.spongepowered.asm.mixin.injection.$it" } + "com.llamalad7.mixinextras.injector.ModifyExpressionValue")
+	.map { "org.spongepowered.asm.mixin.injection.$it" } + listOf("ModifyExpressionValue", "wrapoperation.WrapOperation").map { "com.llamalad7.mixinextras.injector.$it" })
 	.joinToString(",")
 
 // Error Prone runs on every source set; -Werror fails on any warning.
