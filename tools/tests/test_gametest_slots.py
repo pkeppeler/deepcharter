@@ -31,6 +31,10 @@ def code_lines(text: str) -> list[str]:
     return [line.split("//", 1)[0] for line in text.splitlines()]
 
 
+def line_of(text: str, offset: int) -> int:
+    return text[:offset].count("\n") + 1
+
+
 def int_constant(text: str, name: str) -> int | None:
     found = re.search(rf"\bint\s+{name}\s*=\s*(-?[\d_]+)\s*;", text)
     return int(found.group(1).replace("_", "")) if found else None
@@ -44,9 +48,8 @@ def floor_expression(text: str, name: str) -> str | None:
 class Space:
     """One `slot(int)` helper: where its arenas stand and which literal indices call it."""
 
-    def __init__(self, owner: str, path: str, base_x: int, step: int, half: int, floor: str) -> None:
+    def __init__(self, owner: str, base_x: int, step: int, half: int, floor: str) -> None:
         self.owner = owner
-        self.path = path
         self.base_x = base_x
         self.step = step
         self.half = half
@@ -71,7 +74,7 @@ def read_spaces(sources: dict[str, str]) -> tuple[dict[str, Space], list[str]]:
         if not declared:
             continue
         if len(declared) > 1:
-            number = stripped[: declared[1].start()].count("\n") + 1
+            number = line_of(stripped, declared[1].start())
             unreadable.append(
                 f"{path}:{number}: a second slot(int) helper in one file; the slot gate reads one per file. Share the "
                 "first, or put the second class in its own file."
@@ -79,7 +82,7 @@ def read_spaces(sources: dict[str, str]) -> tuple[dict[str, Space], list[str]]:
             continue
         helper = HELPER.search(stripped)
         if helper is None:
-            number = stripped[: declared[0].start()].count("\n") + 1
+            number = line_of(stripped, declared[0].start())
             unreadable.append(
                 f"{path}:{number}: the slot(int) helper is not in the form the slot gate reads. Write it as "
                 "`return new BlockPos(FIRST_SLOT_X, FLOOR_Y, FIRST_SLOT_X + index * SLOT_Z_SPACING);`"
@@ -89,7 +92,7 @@ def read_spaces(sources: dict[str, str]) -> tuple[dict[str, Space], list[str]]:
         step = int_constant(stripped, helper.group("step"))
         floor = floor_expression(stripped, helper.group("y"))
         if base is None or step is None or floor is None:
-            number = stripped[: helper.start()].count("\n") + 1
+            number = line_of(stripped, helper.start())
             unreadable.append(
                 f"{path}:{number}: the slot helper's {helper.group('x')}, {helper.group('step')} or "
                 f"{helper.group('y')} is not a `static final int` set in the same file (a literal for the first two), "
@@ -97,7 +100,7 @@ def read_spaces(sources: dict[str, str]) -> tuple[dict[str, Space], list[str]]:
             )
             continue
         half = int_constant(stripped, "HALF")
-        spaces[owner] = Space(owner, path, base, step, DEFAULT_HALF if half is None else half, floor)
+        spaces[owner] = Space(owner, base, step, DEFAULT_HALF if half is None else half, floor)
     return spaces, unreadable
 
 
