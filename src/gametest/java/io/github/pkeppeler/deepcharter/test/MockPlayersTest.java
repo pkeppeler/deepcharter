@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.TickLists;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,24 +16,22 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestInfo;
+import net.minecraft.gametest.framework.GameTestTicker;
+import net.minecraft.gametest.framework.RetryOptions;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.util.Util;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /** Proves the {@link MockPlayers} harness: a mock player is a real player that stays connected. */
 public class MockPlayersTest {
-    /** The batch of the retention probes and their checker (test_environment/mock_retention.json). */
-    private static final String RETENTION = "deepcharter-test:mock_retention";
-
-    private static final AtomicReference<WeakReference<ServerPlayer>> PROBE = new AtomicReference<>();
-    private static final AtomicReference<WeakReference<ServerPlayer>> OUTSIDE_PROBE = new AtomicReference<>();
-    private static final AtomicReference<List<WeakReference<ServerPlayer>>> RESPAWN_PROBE = new AtomicReference<>();
     private static final AtomicReference<@Nullable Runnable> AFTER_TICK = new AtomicReference<>();
 
     static {
@@ -261,64 +260,6 @@ public class MockPlayersTest {
         return field(name).get(target);
     }
 
-    /**
-     * The probe half of the retention check (#656): joins a mock, which the test's own callbacks capture, and ends with one
-     * callback still scheduled. The runner keeps every finished test, so what its pending callbacks capture lives to the end of the run
-     * unless the test's end drops them.
-     */
-    @GameTest(environment = RETENTION)
-    public void retentionProbeJoinsAMockAndEnds(GameTestHelper helper) {
-        MockPlayer mock = MockPlayers.join(helper, "retention-probe");
-        PROBE.set(new WeakReference<>(mock.player()));
-        // TestTicks.each leaves one callback scheduled for the tick after the test ends, and it captures the mock.
-        TestTicks.each(helper, () -> {
-            if (!mock.isOnline()) {
-                throw helper.assertionException("the probe mock left before its test ended");
-            }
-        });
-        helper.succeedWhen(() -> {
-            if (helper.getTick() < 2) {
-                throw helper.assertionException("waiting two ticks");
-            }
-        });
-    }
-
-    /**
-     * Ends the test from the server's task queue, outside {@code GameTestInfo.tick}, with a callback still scheduled that
-     * captures the mock (#656): the runner's tick returns early for a done test, so only a release that does not depend on
-     * the finishing tick drops it.
-     */
-    @GameTest(environment = RETENTION)
-    public void retentionProbeEndsOutsideItsTick(GameTestHelper helper) {
-        MockPlayer mock = MockPlayers.join(helper, "retention-outside");
-        OUTSIDE_PROBE.set(new WeakReference<>(mock.player()));
-        helper.runAfterDelay(100_000, () -> mock.player().getName());
-        // MinecraftServer.execute runs a task at once on the server thread, inside the tick; an end-of-tick event does
-        // not.
-        AFTER_TICK.set(helper::succeed);
-    }
-
-    /** Respawns its mock as the Respawn button does, so the sweep must disconnect the listener (#698). */
-    @GameTest(environment = RETENTION)
-    public void retentionProbeRespawnsItsMock(GameTestHelper helper) {
-        MockPlayer mock = MockPlayers.join(helper, "retention-respawn");
-        ServerPlayer dead = mock.player();
-        dead.setGameMode(GameType.SURVIVAL);
-        dead.kill(helper.getLevel());
-        dead.connection.handleClientCommand(
-                new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
-        ServerPlayer reborn = dead.connection.getPlayer();
-        if (reborn == dead) {
-            throw helper.assertionException("the respawn should replace the dead ServerPlayer");
-        }
-        RESPAWN_PROBE.set(List.of(new WeakReference<>(dead), new WeakReference<>(reborn)));
-        helper.succeedWhen(() -> {
-            if (helper.getTick() < 2) {
-                throw helper.assertionException("waiting two ticks");
-            }
-        });
-    }
-
     /** A mock that left is dropped from the tick list's stale snapshot (#723). */
     @GameTest
     public void aLeftMockIsNotHeldByTheTickList(GameTestHelper helper) {
@@ -341,23 +282,15 @@ public class MockPlayersTest {
     }
 
     /**
-     * A finished test lets go of its mock player (#656). It reads what the three retention probes stored, so they and it share {@link
-     * #RETENTION}, a batch of their own: the batches hold at most 20 tests and split a class wherever the count falls, and a checker in an
-     * earlier batch than its probes would never see them. It polls until the probes have joined.
+     * A finished test lets go of its mock player (#656, #1163). It stands up its own probes, so it needs no other test and no batch
+     * layout: three {@link GameTestInfo}s that never run, each owning a mock and ending with a callback still pending that captures it.
+     * They end and join the runner's ticker outside its tick, as a test the server's task queue finishes does, and the ticker's drop of a
+     * done test's pending work, with the mock sweep, must leave nothing holding the mocks, which it reads through weak references.
      */
-    @GameTest(environment = RETENTION, maxTicks = 200)
+    @GameTest(maxTicks = 200)
     public void finishedTestDoesNotRetainItsMock(GameTestHelper helper) {
+        List<WeakReference<ServerPlayer>> probes = startProbes(helper);
         helper.succeedWhen(() -> {
-            List<WeakReference<ServerPlayer>> respawned = RESPAWN_PROBE.get();
-            WeakReference<ServerPlayer> first = PROBE.get();
-            WeakReference<ServerPlayer> outside = OUTSIDE_PROBE.get();
-            if (respawned == null || first == null || outside == null) {
-                throw helper.assertionException(
-                        "a probe test has not joined its mock yet; run the whole MockPlayersTest class, not this test alone");
-            }
-            List<WeakReference<ServerPlayer>> probes = new ArrayList<>(respawned);
-            probes.add(first);
-            probes.add(outside);
             for (WeakReference<ServerPlayer> probe : probes) {
                 System.gc();
                 if (probe.get() != null) {
@@ -365,5 +298,73 @@ public class MockPlayersTest {
                 }
             }
         });
+    }
+
+    /** Starts the probes and returns weak references to their mocks, so that the caller holds neither a probe nor a mock. */
+    private static List<WeakReference<ServerPlayer>> startProbes(GameTestHelper helper) {
+        GameTestInfo owner = MockPlayers.testInfo(helper);
+        ServerLevel level = helper.getLevel();
+        Vec3 spawn = helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN);
+        List<GameTestInfo> infos = new ArrayList<>();
+        List<WeakReference<ServerPlayer>> weak = new ArrayList<>();
+
+        // A callback scheduled for the tick after the test ends, as TestTicks.each leaves.
+        GameTestInfo each = probeInfo(owner, level);
+        GameTestHelper eachHelper = new GameTestHelper(each);
+        MockPlayer eachMock = MockPlayers.join(level.getServer(), "retention-each", level, spawn, each::isDone);
+        TestTicks.each(eachHelper, eachMock.player()::getName);
+        infos.add(each);
+        weak.add(new WeakReference<>(eachMock.player()));
+
+        // A callback far in the future, never reached.
+        GameTestInfo delayed = probeInfo(owner, level);
+        MockPlayer delayedMock =
+                MockPlayers.join(level.getServer(), "retention-delayed", level, spawn, delayed::isDone);
+        new GameTestHelper(delayed)
+                .runAfterDelay(100_000, () -> delayedMock.player().getName());
+        infos.add(delayed);
+        weak.add(new WeakReference<>(delayedMock.player()));
+
+        // A mock respawned as the Respawn button does, so the sweep must disconnect the listener (#698).
+        GameTestInfo respawn = probeInfo(owner, level);
+        MockPlayer respawnMock =
+                MockPlayers.join(level.getServer(), "retention-respawn", level, spawn, respawn::isDone);
+        ServerPlayer dead = respawnMock.player();
+        dead.setGameMode(GameType.SURVIVAL);
+        dead.kill(level);
+        dead.connection.handleClientCommand(
+                new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+        ServerPlayer reborn = dead.connection.getPlayer();
+        if (reborn == dead) {
+            throw helper.assertionException("the respawn should replace the dead ServerPlayer");
+        }
+        infos.add(respawn);
+        weak.add(new WeakReference<>(dead));
+        weak.add(new WeakReference<>(reborn));
+
+        // The ticker iterates its infos while it ticks, so they join it from an end-of-tick event, already done.
+        AFTER_TICK.set(() -> {
+            for (GameTestInfo info : infos) {
+                finish(info);
+                GameTestTicker.SINGLETON.add(info);
+            }
+        });
+        return weak;
+    }
+
+    // succeed() and fail() read the test block, which a probe has not got; finish() is what marks a test done.
+    private static void finish(GameTestInfo info) {
+        try {
+            Method finish = GameTestInfo.class.getDeclaredMethod("finish");
+            finish.setAccessible(true);
+            finish.invoke(info);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Cannot call GameTestInfo.finish, likely a mapping change in Minecraft", e);
+        }
+    }
+
+    /** A test that never starts, on the owner's test and level: it has no structure, so the ticker must never tick it before it is done. */
+    private static GameTestInfo probeInfo(GameTestInfo owner, ServerLevel level) {
+        return new GameTestInfo(owner.getTestHolder(), Rotation.NONE, level, RetryOptions.noRetries());
     }
 }
