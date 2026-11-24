@@ -215,8 +215,10 @@ public class PodSonarTest {
                 if (helper.getTick() == laterChunksTick) {
                     later.forEach(chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
                 }
-                // A body in a chunk that is not entity ticking does not move: the settle ticks count from when all of them do.
-                boolean bodiesTick = bodies.stream().allMatch(body -> level.isPositionEntityTicking(body.blockPosition()));
+                // A body in a chunk that is not entity ticking does not move: the settle ticks count from when all of
+                // them do.
+                boolean bodiesTick =
+                        bodies.stream().allMatch(body -> level.isPositionEntityTicking(body.blockPosition()));
                 if (scene[0] != null && bodiesTick && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
                     scene[0].pod().discard();
                     bodies.forEach(Entity::discard);
