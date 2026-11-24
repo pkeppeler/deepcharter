@@ -56,3 +56,4 @@ Cause, found in #494: vanilla's hold makes each chunk of the 3x3 wait for the li
 - A neighbour that could not be sent when the hold was requested is offered to its trackers when its extended send completes: vanilla marks nothing for a player who starts tracking a chunk that cannot be sent.
 - The net still covers what a send dependency cannot: a player who held the chunk before the hold, and a light change after the send. It still waits for the tasks of its own position only.
 - The success measure is `StaleClientLightClientTest`'s CI failure rate after the merge; `LightSyncRingHoldTest` pins the mechanism (gated, so it does not depend on the engine's order).
+- Known gap: a chunk whose own first light wait ends while the ring extension is pending is sent by vanilla's hook on the original future, so players already tracking it get pre-draw light until the safety net resends.

@@ -162,7 +162,10 @@ public class LightSyncRingHoldTest {
     /** Ticks a released send may take to reach the player: the light engine runs in wall time. */
     private static final int GATED_SEND_TICKS = 400;
 
-    /** With the drawn chunk's tasks held back and the neighbours' own done, no neighbour is sendable until the gate opens. */
+    /**
+     * With the drawn chunk's tasks held back and the neighbours' own done, no neighbour is sendable until the gate
+     * opens.
+     */
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aNeighbourCannotBeSentWhileTheDrawnChunksLightTasksAreHeldBack(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -319,6 +322,71 @@ public class LightSyncRingHoldTest {
                                     "the player tracks %s and was never sent them, %d ticks after the draw's light tasks ran",
                                     unsent,
                                     GATED_SEND_TICKS);
+                        }
+                        finish.run();
+                        helper.succeed();
+                    }
+                }
+            } catch (RuntimeException e) {
+                finish.run();
+                throw e;
+            }
+        });
+    }
+
+    /** A chunk that unloads while its tasks or its offer are pending leaves nothing behind in {@link LightSync}. */
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void anUnloadedChunkLeavesNoPendingWorkInTheHold(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ChunkPos drawn = new ChunkPos(GATED.x() + 40, GATED.z());
+        ChunkPos neighbour = new ChunkPos(drawn.x() + 1, drawn.z());
+        FarChunks.Deadline deadline = FarChunks.deadline(120);
+        CompletableFuture<Void> otherHold = new CompletableFuture<>();
+        int[] phase = {0};
+        Runnable finish = () -> {
+            LightEngineGate.release(drawn);
+            otherHold.complete(null);
+        };
+        TestTicks.each(helper, () -> {
+            try {
+                switch (phase[0]) {
+                    case 0 -> {
+                        forceAround(helper, level, drawn);
+                        phase[0] = 1;
+                    }
+                    case 1 -> {
+                        if (!allSendable(level, drawn, deadline, helper)) {
+                            return;
+                        }
+                        ChunkHolder holder = Objects.requireNonNull(
+                                level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(neighbour.pack()),
+                                "the neighbour is loaded: allSendable");
+                        holder.addSendDependency(otherHold);
+                        LightEngineGate.close(drawn);
+                        LightSync.holdSendUntilLit(level, drawn);
+                        if (!LightSync.hasPending(level, drawn) || !LightSync.hasPending(level, neighbour)) {
+                            throw failure(helper, "the hold left nothing pending at %s or %s", drawn, neighbour);
+                        }
+                        for (int x = drawn.x() - GATED_REACH_X; x <= drawn.x() + GATED_REACH_X; x++) {
+                            for (int z = drawn.z() - GATED_REACH_Z; z <= drawn.z() + GATED_REACH_Z; z++) {
+                                FarChunks.release(helper, level, x, z);
+                            }
+                        }
+                        phase[0] = 2;
+                    }
+                    default -> {
+                        boolean unloaded = level.getChunkSource().getChunkNow(drawn.x(), drawn.z()) == null
+                                && level.getChunkSource().getChunkNow(neighbour.x(), neighbour.z()) == null;
+                        deadline.await(helper, level, unloaded, () -> drawn + " and " + neighbour + " did not unload");
+                        if (!unloaded) {
+                            return;
+                        }
+                        if (LightSync.hasPending(level, drawn) || LightSync.hasPending(level, neighbour)) {
+                            throw failure(
+                                    helper,
+                                    "%s and %s are unloaded but the hold still has work pending for them",
+                                    drawn,
+                                    neighbour);
                         }
                         finish.run();
                         helper.succeed();

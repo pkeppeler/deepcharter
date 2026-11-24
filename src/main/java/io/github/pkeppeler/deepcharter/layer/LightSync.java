@@ -123,6 +123,7 @@ public final class LightSync {
 
     public static void init() {
         ServerChunkEvents.CHUNK_LOAD.register((level, chunk, newlyGenerated) -> holdLoadedNeighbour(level, chunk));
+        ServerChunkEvents.CHUNK_UNLOAD.register(LightSync::forgetUnloaded);
         ServerTickEvents.END_SERVER_TICK.register(LightSync::sweep);
         ServerTickEvents.END_SERVER_TICK.register(LightSync::compareLight);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
@@ -131,6 +132,20 @@ public final class LightSync {
             OFFERS.keySet().removeIf(key -> key.level.getServer() == server);
             NET.keySet().removeIf(key -> key.level.getServer() == server);
         });
+    }
+
+    /** An unloaded chunk's holder is gone, so its send future may never complete: drop what waits on it. */
+    private static void forgetUnloaded(ServerLevel level, LevelChunk chunk) {
+        Key key = new Key(level, chunk.getPos());
+        QUEUED.remove(key);
+        OFFERS.remove(key);
+    }
+
+    /** Whether the chunk has a queued-tasks entry or an armed offer. */
+    // test-seam: the two maps are private and an unload must leave nothing in either.
+    public static boolean hasPending(ServerLevel level, ChunkPos chunk) {
+        Key key = new Key(level, chunk);
+        return QUEUED.containsKey(key) || OFFERS.containsKey(key);
     }
 
     /** Whether a hold of {@code ticksHeld} ticks is stuck. At or past the limit, so a skipped tick count cannot miss it. */
@@ -227,9 +242,11 @@ public final class LightSync {
                 .getSendSyncFuture()
                 .thenRun(() -> key.level.getServer().execute(() -> {
                     ServerLevel level = key.level;
-                    if (OFFERS.get(key) != offer
-                            || level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(key.chunk.pack())
-                                    != offer.holder()) {
+                    if (OFFERS.get(key) != offer) {
+                        return;
+                    }
+                    if (level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(key.chunk.pack()) != offer.holder()) {
+                        OFFERS.remove(key, offer); // the holder was replaced: its send is not this offer's to make
                         return;
                     }
                     if (!offer.holder().getSendSyncFuture().isDone()) {
