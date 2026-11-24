@@ -23,9 +23,13 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +55,48 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
     /** Client ticks since the first test of the class, for the timing log: the level's game time is the server's, and restarts per level. */
     private static final AtomicLong CLIENT_TICKS = new AtomicLong();
 
+    private static final Crossing CROSSING = new Crossing();
+
     private static boolean counting;
+
+    /**
+     * Watches the client's ticks for a crossing into one level: the first tick the client's level is that one is the respawn handled,
+     * and the first tick after it that the connection says the client is loaded ends the load. Written on the client thread, read by the test.
+     */
+    private static final class Crossing {
+        private volatile @Nullable ResourceKey<Level> target;
+        private volatile long crossedNanos = -1;
+        private volatile long crossedTicks = -1;
+        private volatile long loadedTicks = -1;
+
+        void arm(ResourceKey<Level> dimension) {
+            crossedNanos = -1;
+            crossedTicks = -1;
+            loadedTicks = -1;
+            target = dimension;
+        }
+
+        boolean crossed() {
+            return crossedTicks >= 0;
+        }
+
+        void tick(Minecraft client, long ticks) {
+            ResourceKey<Level> dimension = target;
+            if (dimension == null
+                    || client.level == null
+                    || !client.level.dimension().equals(dimension)) {
+                return;
+            }
+            if (crossedTicks < 0) {
+                crossedNanos = System.nanoTime();
+                crossedTicks = ticks;
+            }
+            ClientPacketListener connection = client.getConnection();
+            if (loadedTicks < 0 && connection != null && connection.hasClientLoaded()) {
+                loadedTicks = ticks;
+            }
+        }
+    }
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -59,7 +104,7 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
         if (!counting) {
             counting = true;
             // An event cannot be unregistered; it only counts.
-            ClientTickEvents.END_CLIENT_TICK.register(client -> CLIENT_TICKS.incrementAndGet());
+            ClientTickEvents.END_CLIENT_TICK.register(client -> CROSSING.tick(client, CLIENT_TICKS.incrementAndGet()));
         }
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             UUID clientId = two.server()
@@ -96,8 +141,7 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
         ClientLevel held =
                 context.computeOnClient(client -> SeamClient.background().orElseThrow());
         ChunkPacketLog.arm();
-        long started = System.nanoTime();
-        long startedTicks = CLIENT_TICKS.get();
+        CROSSING.arm(site.two().dimension());
         two.server().runOnServer(server -> player(server, clientId).setNoGravity(false));
         ClientWait.until(
                 context,
@@ -107,8 +151,9 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
         require(
                 context.computeOnClient(client -> client.level == held),
                 "the client's level after the crossing is not the background level it was sent");
+        waitCrossed(context);
         waitMeshed(context, "adopted");
-        logTiming(context, "adopted", started, startedTicks);
+        logTiming(context, "adopted");
         require(
                 context.computeOnClient(client -> {
                     ClientLevel shown = Objects.requireNonNull(client.level, "the client has no level");
@@ -162,8 +207,7 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
                 client -> client.player != null && TestLayers.isInDimensionOf(client.player, 1),
                 ClientWait::describe);
         ChunkPacketLog.arm();
-        long started = System.nanoTime();
-        long startedTicks = CLIENT_TICKS.get();
+        CROSSING.arm(site.two().dimension());
         // No lead: the client is under the floor the first tick the server sees it near it, so no area was sent.
         two.server()
                 .runOnServer(server -> player(server, clientId)
@@ -173,8 +217,9 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
                 "the client to cross into layer 2",
                 client -> client.player != null && TestLayers.isInDimensionOf(client.player, 2),
                 ClientWait::describe);
+        waitCrossed(context);
         waitMeshed(context, "fallback");
-        logTiming(context, "fallback", started, startedTicks);
+        logTiming(context, "fallback");
         ChunkPos pocket = context.computeOnClient(SeamAdoptionClientTest::pocketOf);
         // The server generates the area as it sends it (nothing was loaded at the crossing), and the corners come last:
         // the camera's
@@ -219,15 +264,26 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
                 ClientWait::describe);
     }
 
-    private static void logTiming(ClientGameTestContext context, String kind, long startedNanos, long startedTicks) {
-        long millis = (System.nanoTime() - startedNanos) / 1_000_000;
+    /** Waits until the client has ticked in the level it crossed into, so the timing's start is set. */
+    private static void waitCrossed(ClientGameTestContext context) {
+        ClientWait.until(
+                context,
+                "the client to tick in the level it crossed into",
+                client -> CROSSING.crossed(),
+                ClientWait::describe);
+    }
+
+    private static void logTiming(ClientGameTestContext context, String kind) {
+        long millis = (System.nanoTime() - CROSSING.crossedNanos) / 1_000_000;
+        long loaded = CROSSING.loadedTicks;
         long heapMb = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
         long seamBytes = context.computeOnClient(client -> SeamClient.bytesReceived());
         LOGGER.info(
-                "SEAM-TIMING {} crossing_to_meshed_ms={} client_ticks={} fade_hold_ticks={} heap_mb={} seam_bytes={}",
+                "SEAM-TIMING {} crossing_to_meshed_ms={} client_ticks={} respawn_to_loaded_ticks={} fade_hold_ticks={} heap_mb={} seam_bytes={}",
                 kind,
                 millis,
-                CLIENT_TICKS.get() - startedTicks,
+                CLIENT_TICKS.get() - CROSSING.crossedTicks,
+                loaded < 0 ? "not_loaded" : String.valueOf(loaded - CROSSING.crossedTicks),
                 context.computeOnClient(client -> BreachEffects.heldTicks()),
                 heapMb,
                 seamBytes);
