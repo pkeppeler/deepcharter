@@ -12,8 +12,8 @@ sys.path.insert(0, str(ROOT / "tools/colony"))
 import nbt  # noqa: E402
 import wrecks  # noqa: E402
 
-# A wreck is about 10 to 20 blocks across at the colony's half scale; its furrow, its spill or its track may run a little further.
-WRECK_SPAN = (10, 36)
+# A wreck is built at the colony's half scale; the train's length (and the lander's furrow) is its strongest feature, so a piece may run long.
+WRECK_SPAN = (10, 60)
 CRATES = 4
 
 
@@ -50,7 +50,7 @@ class WreckPieceTest(unittest.TestCase):
             lo, hi = p.bounds()
             for axis in (0, 2):
                 span = hi[axis] - lo[axis] + 1
-                self.assertTrue(WRECK_SPAN[0] <= span <= WRECK_SPAN[1] + 12, f"{name} spans {span} along axis {axis}")
+                self.assertTrue(WRECK_SPAN[0] <= span <= WRECK_SPAN[1], f"{name} spans {span} along axis {axis}")
             self.assertTrue(any(hi[i] - lo[i] + 1 >= WRECK_SPAN[0] for i in (0, 2)))
 
     def test_each_wreck_is_built_from_the_colony_kit_and_vanilla_blocks(self):

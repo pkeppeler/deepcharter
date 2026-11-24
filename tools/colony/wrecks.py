@@ -43,6 +43,10 @@ DIRECTIONS = {"north": (0, -1), "east": (1, 0), "south": (0, 1), "west": (-1, 0)
 # The properties a vanilla block must name in a structure file, by the end of its name: a state the file leaves incomplete loads with the
 # game's defaults, but piece.state() refuses an incomplete one, so the file never depends on that.
 VANILLA_DEFAULTS = {
+    "_stairs": {"facing": "north", "half": "bottom", "shape": "straight", "waterlogged": "false"},
+    "_slab": {"type": "bottom", "waterlogged": "false"},
+    "rail": {"shape": "north_south", "waterlogged": "false"},
+    "lantern": {"hanging": "false", "waterlogged": "false"},
     "iron_bars": {"east": "false", "north": "false", "south": "false", "west": "false", "waterlogged": "false"},
     "chain": {"axis": "y", "waterlogged": "false"},
     "_trapdoor": {"facing": "north", "half": "bottom", "open": "false", "powered": "false", "waterlogged": "false"},
@@ -60,6 +64,39 @@ def vanilla(name: str, **props: str) -> State:
     return state(f"minecraft:{name}", **props)
 
 
+OPPOSITE = {"north": "south", "south": "north", "east": "west", "west": "east"}
+# The stairs and slab that carry on the look of a plate, so a stepped edge can be cut to an angle: (stairs, slab).
+BEVELS = {
+    "deepcharter:riveted_plate": ("polished_blackstone_stairs", "polished_blackstone_slab"),
+    "minecraft:polished_blackstone": ("polished_blackstone_stairs", "polished_blackstone_slab"),
+    "deepcharter:riveted_plate_red": ("red_nether_brick_stairs", "red_nether_brick_slab"),
+    "minecraft:light_gray_concrete": ("stone_brick_stairs", "stone_brick_slab"),
+    "minecraft:blackstone": ("blackstone_stairs", "blackstone_slab"),
+}
+
+
+def bevel(sc: "Scene", chance: float = 0.9) -> None:
+    """Cuts the staircase out of the wreck's outline: a plate on top of a wall whose one side is open (and the other solid) becomes a
+    stair falling to that side, and a plate with two open sides under open sky a slab, in the stone that looks like the plate."""
+    p = sc.p
+    snapshot = dict(p.blocks)
+
+    def solid(x: int, y: int, z: int) -> bool:
+        s = snapshot.get((x, y, z))
+        return s is not None and s != AIR
+
+    for (x, y, z), s in snapshot.items():
+        family = BEVELS.get(s[0])
+        if family is None or solid(x, y + 1, z) or sc.rng.random() > chance:
+            continue
+        open_sides = [d for d, (dx, dz) in DIRECTIONS.items() if not solid(x + dx, y, z + dz) and solid(x - dx, y, z - dz)]
+        loose = [d for d, (dx, dz) in DIRECTIONS.items() if not solid(x + dx, y, z + dz)]
+        if len(open_sides) == 1:
+            p.set(x, y, z, vanilla(family[0], facing=OPPOSITE[open_sides[0]]))
+        elif len(loose) >= 2:
+            p.set(x, y, z, vanilla(family[1]))
+
+
 def crate(facing: str) -> State:
     return state("deepcharter:salvage_crate", facing=facing)
 
@@ -71,8 +108,8 @@ def crate(facing: str) -> State:
 # its right, so both are in every view of the wreck.
 VIEWS = {
     "a": {"focus": (0.0, 5.0, -5.0), "side": (0.95, 0.3), "reach": 10.0, "pod_aside": 3.5},
-    "b": {"focus": (7.0, 4.0, 2.0), "side": (0.25, 0.97), "reach": 9.0, "pod_aside": 3.5},
-    "c": {"focus": (4.0, 3.0, -1.0), "side": (0.9, 0.43), "reach": 12.0, "pod_aside": 7.5},
+    "b": {"focus": (11.0, 4.0, 1.0), "side": (0.2, 0.98), "reach": 10.0, "pod_aside": 3.5},
+    "c": {"focus": (12.0, 4.0, -18.0), "side": (-0.78, 0.62), "reach": 17.0, "pod_aside": 5.0},
 }
 PLAYER_ASIDE = 3.0
 LEVEL_MARGIN = 12
@@ -184,7 +221,7 @@ def furrow(sc: Scene, z0: int, z1: int, centre, half_width, depth) -> None:
                     p.set(x, -cut, z, vanilla(sc.rng.choice(("blackstone", "blackstone", "smooth_basalt"))))
             elif dist <= hw + 2.2 and d > 0.6:
                 p.set(x, 1, z, sc.earth())
-                if dist <= hw + 1.2 and d > 1.4 and sc.rng.random() < 0.6:
+                if dist <= hw + 1.2 and d > 1.4 and sc.rng.random() < 0.3:
                     p.set(x, 2, z, sc.earth())
 
 
@@ -226,7 +263,7 @@ def lander() -> Piece:
     """A colony drop-ship that came down nose-first: its nose in a pit at the end of a scorched furrow, its tail in the air on one good
     leg, the hull split open along its east flank, the cargo bay's crates spilled down to the ground, its canopy in rags beside it."""
     sc = Scene("a")
-    furrow(sc, -33, -3, lambda z: -3.6 * (1 - (z + 33) / 30) ** 1.4, lambda z: 2.4 + 2.6 * (z + 33) / 30, lambda z: 3.4 * (z + 33) / 30)
+    furrow(sc, -42, -3, lambda z: -4.0 * (1 - (z + 42) / 39) ** 1.4, lambda z: 2.4 + 2.4 * (z + 42) / 39, lambda z: 3.4 * (z + 42) / 39)
     pit(sc)
     hull(sc)
     legs(sc)
@@ -234,24 +271,25 @@ def lander() -> Piece:
     sc.spill_crates((3, -17, 14, 4), 11)
     sc.spill_crates((-13, -11, -6, 1), 2)
     plates(sc)
-    sc.clods((-14, -30, 14, 3), 26)
+    sc.clods((-14, -38, 14, 3), 22)
+    dangle(sc)
     sc.scatter_scrap((-14, -16, 14, 3), 14)
     return sc.finish()
 
 
 def pit(sc: Scene) -> None:
-    """The pit the nose dug, and the earth it shoved up ahead of itself."""
+    """The pit the nose dug, its floor scorched, and a low lip of earth shoved up ahead of it."""
     p = sc.p
     for x in range(-8, 9):
         for z in range(-3, 9):
             d = math.hypot(x, (z - 0.5) * 0.85)
             if d <= 3.3:
-                for k in range(3 if d < 2.2 else 1):
+                depth = 3 if d < 2.2 else 1
+                for k in range(depth):
                     p.set(x, -k, z, AIR)
-            elif d <= 5.2 and z >= -1:
-                for y in range(1, (2 if (z > 1 and d < 3.9) else 1) + 1):
-                    if sc.rng.random() < 0.95 - 0.2 * (d - 3.3) * y:
-                        p.set(x, y, z, sc.earth())
+                p.set(x, -depth, z, vanilla("blackstone"))
+            elif d <= 4.6 and z >= 1 and sc.rng.random() < 0.85:
+                p.set(x, 1, z, sc.earth())
 
 
 def hull(sc: Scene) -> None:
@@ -273,6 +311,7 @@ def hull(sc: Scene) -> None:
                     p.set(x, y, z, hull_plate(sc.rng, t, angle))
                 elif r - 2.3 < rho <= r - 1.2 and (5.0 < t < 6.0 or 8.4 < t < 9.4 or 11.8 < t < 12.8) and not in_split:
                     p.set(x, y, z, state("steel_beam", axis="y"))
+    bevel(sc)
     deck(sc)
     cockpit(p)
 
@@ -283,7 +322,9 @@ def hull_plate(rng: random.Random, t: float, angle: float) -> State:
     if t < NOSE_END:
         return state("riveted_plate_red")
     if NOSE_END < t < NOSE_END + 0.9 or BODY_END - 0.9 < t < BODY_END:
-        return state("hazard_band")
+        return state("hazard_band") if abs(angle) < 18 else vanilla("light_gray_concrete")
+    if (int(t // 1.7) + int((angle + 180) // 45)) % 3 == 0 and t > NOSE_END + 1:
+        return vanilla("light_gray_concrete")
     if abs(angle) < 6 and t > NOSE_END:
         return state("riveted_plate_red")
     if t > 12.0 and rng.random() < (t - 12.0) * 0.3:
@@ -340,6 +381,19 @@ def legs(sc: Scene) -> None:
     pad(sc.p, 0, -19)
 
 
+def dangle(sc: Scene) -> None:
+    """Chains and bars hanging from the torn tail, and a hatch flap swung open on the split's lower edge."""
+    p = sc.p
+    for (x, y, z), s in list(p.blocks.items()):
+        t, _, angle, up = lander_cell(x, y, z)
+        if 12.6 < t < 14.4 and up < -2.5 and sc.rng.random() < 0.18:
+            for k in range(1, 4):
+                if p.get(x, y - k, z) is None and y - k >= 1:
+                    p.set(x, y - k, z, vanilla("iron_chain", axis="y"))
+        if 6.5 < t < 11.5 and 118 < angle < 128 and s[0] == "deepcharter:riveted_plate" and sc.rng.random() < 0.4:
+            p.set(x + 1, y, z, vanilla("iron_trapdoor", facing="east", half="bottom", open="true"))
+
+
 def pad(p: Piece, x: int, z: int) -> None:
     for dx in range(2):
         for dz in range(2):
@@ -374,19 +428,21 @@ def plates(sc: Scene) -> None:
 
 # ------------------------------------------------------------------------------------------------------------------ B: the derrick
 
-SHED = (4, 0, 11, 5)  # x0, z0, x1, z1 of the tool shed's walls
-MAST_Z = 2
-MAST_X0, MAST_X1 = -1, 16
+SHED = (8, 1, 14, 7)  # x0, z0, x1, z1 of the tool shed's walls
+MAST_Z = 0
+MAST_X0, MAST_X1 = -1, 26
+BREAK = 16
 
 
 def mast_centre(x: int) -> int:
-    """The height of the fallen mast's axis at x: hung on its legs at the west end, down on the shed at x 7, on the ground by x 14."""
-    return max(2, round(7.5 - 0.35 * (x - MAST_X0)))
+    """The height of the fallen mast's axis at x: hung on its legs at the west end, over the shed's north edge at x 11, on the ground by x 18."""
+    return max(2, round(7.5 - 0.3 * (x - MAST_X0)))
 
 
 def derrick() -> Piece:
-    """A prospecting derrick that fell across the tool shed it crushed: the mast lies from its legs, over the caved roof, to its crown on
-    the ground; the shed's walls bulge out under it; tarps, a cable spool and a rack of drill pipe lie round it."""
+    """A prospecting derrick that fell across the tool shed it crushed: the mast lies from its legs over the shed's north edge and on, a
+    long way past it, to its crown on the ground; the shed's roof and wall are stove in under it; tarps, a cable spool and a rack of drill
+    pipe lie round it."""
     sc = Scene("b")
     footing(sc)
     shed(sc)
@@ -395,12 +451,13 @@ def derrick() -> Piece:
     spools(sc)
     pipe_rack(sc)
     winch_house(sc)
-    sc.p.beam(state("cable", axis="y"), (4.5, 8.0, 2.5), (-3.5, 1.2, 9.5), thickness=1.0, segment=2.0)
-    sc.p.beam(state("cable", axis="y"), (13.5, 3.2, 2.5), (16.5, 1.1, -5.5), thickness=1.0, segment=2.0)
-    sc.spill_crates((2, 7, 12, 11), 4)
-    sc.spill_crates((-3, -6, 3, -2), 3)
-    sc.scatter_scrap((-5, -7, 18, 12), 14)
-    sc.clods((-6, -8, 19, 13), 22)
+    sc.p.beam(state("cable", axis="y"), (4.5, 8.0, 0.5), (-3.5, 1.2, 7.5), thickness=1.0, segment=2.0)
+    sc.p.beam(state("cable", axis="y"), (20.5, 3.0, 0.5), (24.5, 1.1, -7.5), thickness=1.0, segment=2.0)
+    sc.spill_crates((9, 9, 18, 13), 4)
+    sc.spill_crates((-3, -8, 3, -4), 3)
+    sc.scatter_scrap((-5, -9, 26, 14), 14)
+    sc.clods((-6, -10, 27, 15), 22)
+    bevel(sc)
     return sc.finish()
 
 
@@ -408,82 +465,95 @@ def footing(sc: Scene) -> None:
     """The derrick's concrete footing and what is left of its legs: four lattice legs torn off at different heights, the west pair tall
     and braced across, and the drill string snapped off in the hole."""
     p = sc.p
-    p.fill(-2, 0, 0, 2, 0, 4, state("concrete_footing"))
-    for (x, z), height in zip(((-2, 0), (-2, 4), (2, 0), (2, 4)), (7, 6, 3, 4)):
+    p.fill(-2, 0, -2, 2, 0, 2, state("concrete_footing"))
+    for (x, z), height in zip(((-2, -2), (-2, 2), (2, -2), (2, 2)), (7, 6, 3, 4)):
         for y in range(1, height + 1):
             p.set(x, y, z, state("lattice_girder", axis="y"))
-        p.set(x, 1, z - 1 if z == 0 else z + 1, vanilla("iron_bars"))
+        p.set(x, 1, z - 1 if z < 0 else z + 1, vanilla("iron_bars"))
     for y in (3, 5):
-        for z in (1, 2, 3):
+        for z in (-1, 0, 1):
             p.set(-2, y, z, state("steel_beam", axis="z"))
-    p.set(-2, 4, 2, state("brace", facing="north"))
-    p.set(-2, 6, 2, state("brace", facing="south"))
-    p.set(0, 0, 2, AIR)
-    p.beam(state("pipe", axis="y"), (0.5, 0.2, 2.5), (2.6, 4.4, 3.0), thickness=1.3)
+    p.set(-2, 4, 0, state("brace", facing="north"))
+    p.set(-2, 6, 0, state("brace", facing="south"))
+    p.set(0, 0, 0, AIR)
+    p.beam(state("pipe", axis="y"), (0.5, 0.2, 0.5), (2.6, 4.4, 1.0), thickness=1.3)
+    for x, y in ((2, 4), (2, 5)):
+        p.set(x, y, -2, vanilla("iron_chain", axis="y"))
 
 
 def shed(sc: Scene) -> None:
-    """A tool shed, flat roofed, in the Company's plate: walls 3 high, a bay door on its south side, the roof and the walls under the mast
-    stove in. Inside: a bench, drums, crates."""
+    """A tool shed, flat roofed, in the Company's plate: walls 3 high, a bay door on its south side. The mast came down on its north
+    edge and stove the roof and the north wall in; the rest stands. Inside: a bench, drums, crates."""
     p, rng = sc.p, sc.rng
     x0, z0, x1, z1 = SHED
     for wall in parts.box_walls(x0, z0, x1, z1).values():
         for a in wall.cells():
             for y in range(1, 4):
-                if y == 3:
-                    s = state("hazard_band") if a % 2 == 0 else state("riveted_plate")
-                else:
-                    s = state("riveted_plate_red" if a in (wall.a0, wall.a1) else "riveted_plate")
-                p.set(*wall.cell(a, y), s)
+                p.set(*wall.cell(a, y), state("riveted_plate_red" if a in (wall.a0, wall.a1) else "riveted_plate"))
     p.fill(x0 + 1, 0, z0 + 1, x1 - 1, 0, z1 - 1, state("concrete_footing"))
     p.fill(x0, 4, z0, x1, 4, z1, state("riveted_plate"))
-    for x in range(x0, x1 + 1, 2):
-        p.set(x, 4, z0, state("grating"))
-    # The bay door, on the south wall: jambs, a lintel, and its shutter, buckled, lying out in front of it.
+    for x in range(x0 + 1, x1, 2):
+        p.set(x, 4, z1, state("grating"))
+    # The bay door, on the south wall: jambs, a lintel, and the shutter, buckled, hanging off one hinge.
     for y in (1, 2):
-        for x in (6, 7, 8):
+        for x in (x0 + 2, x0 + 3, x0 + 4):
             p.clear(x, y, z1)
-    p.set(5, 1, z1, state("riveted_plate_red"))
-    p.set(9, 1, z1, state("riveted_plate_red"))
-    for x in (6, 7, 8):
-        p.set(x, 3, z1, state("hazard_band"))
-    p.set(7, 1, z1 + 1, vanilla("iron_trapdoor", facing="south", half="bottom", open="true"))
-    # The mast stove it in: the roof gone along its line, the walls under it pushed out and down.
-    for x in range(6, 11):
-        for z in range(z0, z1 + 1):
-            if rng.random() < 0.8:
+    p.set(x0 + 1, 1, z1, state("riveted_plate_red"))
+    p.set(x0 + 5, 1, z1, state("riveted_plate_red"))
+    for x in (x0 + 2, x0 + 3, x0 + 4):
+        p.set(x, 3, z1, state("riveted_plate_red"))
+    p.set(x0 + 3, 1, z1 + 1, vanilla("iron_trapdoor", facing="south", half="bottom", open="true"))
+    p.set(x0 + 4, 2, z1 + 1, vanilla("iron_trapdoor", facing="west", half="top", open="true"))
+    # The mast stove in the north edge: the roof and the wall gone along its line, the wall's stones lying inside and out.
+    for x in range(x0 + 1, x1):
+        for z in (z0, z0 + 1):
+            if rng.random() < 0.85:
                 p.clear(x, 4, z)
-    for x in (7, 8, 9):
+    for x in range(x0 + 1, x1):
         for y in (2, 3):
             p.clear(x, y, z0)
-            p.clear(x, y, z1)
-        p.set(x, 1, z0 - 1, state("riveted_plate"))
-        p.set(x, 2, z0 - 1, state("riveted_plate_red") if x == 8 else state("riveted_plate"))
-        if x != 7:
-            p.set(x, 1, z1 + 1, state("riveted_plate"))
-    for z, y in ((z0 + 1, 3), (z0 + 2, 3), (z0 + 2, 2)):
-        p.clear(x1, y, z)
+    for x in range(x0 + 1, x1 - 1):
+        if rng.random() < 0.7:
+            p.set(x, 1, z0 - 1, state("riveted_plate"))
+        if rng.random() < 0.3:
+            p.set(x, 2, z0 - 1, state("riveted_plate_red"))
+    # The rest of it racked and holed: wall stones gone from the upper courses, the roof broken in patches, a corner down.
+    for wall in parts.box_walls(x0, z0, x1, z1).values():
+        for a in wall.cells():
+            for y in (2, 3):
+                if rng.random() < 0.3:
+                    p.clear(*wall.cell(a, y))
+    for x in range(x0, x1 + 1):
+        for z in range(z0, z1 + 1):
+            if rng.random() < 0.3:
+                p.clear(x, 4, z)
+    for x in range(x1 - 2, x1 + 1):
+        for z in range(z1 - 2, z1 + 1):
+            for y in (2, 3, 4):
+                p.clear(x, y, z)
+    for x, z in ((x1 - 1, z1 - 1), (x1 - 2, z1), (x1, z1 - 2), (x1 + 1, z1 - 1)):
+        p.set(x, 1, z, state("riveted_plate"))
     # What was inside.
-    p.set(x0 + 1, 1, z0 + 1, vanilla("anvil", facing="east"))
-    p.set(x0 + 1, 1, z1 - 1, vanilla("grindstone", face="floor", facing="east"))
-    for z in (z0 + 1, z0 + 2):
-        p.set(x1 - 1, 1, z, vanilla("barrel", facing="up"))
-    p.set(x1 - 1, 2, z0 + 1, vanilla("barrel", facing="up"))
-    for x, z in ((x0 + 1, z0 + 3), (x0 + 2, z0 + 3), (x0 + 1, z0 + 4)):
+    p.set(x0 + 1, 1, z1 - 1, vanilla("anvil", facing="east"))
+    p.set(x1 - 1, 1, z1 - 1, vanilla("grindstone", face="floor", facing="west"))
+    for z in (z1 - 1, z1 - 2):
+        p.set(x1 - 1, 1, z - 2, vanilla("barrel", facing="up"))
+    p.set(x1 - 1, 2, z1 - 3, vanilla("barrel", facing="up"))
+    for x, z in ((x0 + 1, z0 + 2), (x0 + 2, z0 + 2), (x0 + 1, z0 + 3)):
         p.set(x, 1, z, crate(rng.choice(tuple(DIRECTIONS))))
-    p.set(x0 + 1, 2, z0 + 3, crate("east"))
-    for x in (6, 7, 8, 9):
-        for z in (z0 + 1, z0 + 2, z0 + 3):
+    p.set(x0 + 1, 2, z0 + 2, crate("east"))
+    for x in range(x0 + 2, x1 - 1):
+        for z in (z0 + 1, z0 + 2):
             if rng.random() < 0.4:
-                p.set(x, 1, z, state("riveted_plate" if rng.random() < 0.6 else "hazard_band"))
+                p.set(x, 1, z, state("riveted_plate"))
 
 
 def mast(sc: Scene) -> None:
-    """The fallen mast: four corner girders round a hollow core, collars every third cell, banded in red and yellow, and a zigzag of
-    braces on its faces. East of x 11 it has broken and slid a block south and down; torn girders end in the air."""
+    """The fallen mast: four corner girders round a hollow core, collars every third cell, banded in red, and a zigzag of braces on its
+    faces. East of the break it has slid a block south and down; torn girders end in the air."""
     p, rng = sc.p, sc.rng
     for x in range(MAST_X0, MAST_X1 + 1):
-        broken = x >= 12
+        broken = x >= BREAK
         yc = mast_centre(x) - (1 if broken else 0)
         zc = MAST_Z + (1 if broken else 0)
         for dy in (-1, 0, 1):
@@ -493,46 +563,53 @@ def mast(sc: Scene) -> None:
                     continue
                 if dy != 0 and dz != 0:
                     # A corner girder missing here and there where it tore.
-                    if (x in (10, 11, 12) and rng.random() < 0.35) or (x > 13 and rng.random() < 0.12):
+                    if (x in (BREAK - 2, BREAK - 1, BREAK) and rng.random() < 0.35) or (x > BREAK + 2 and rng.random() < 0.1):
                         continue
                     p.set(*at, state("lattice_girder", axis="x"))
                 elif x % 3 == 0:
-                    p.set(*at, state("riveted_plate_red") if x % 6 == 0 else state("hazard_band"))
+                    p.set(*at, state("riveted_plate_red") if x % 6 == 0 else state("steel_beam", axis="z" if dy else "y"))
+                    if x % 12 == 0:
+                        p.set(*at, state("hazard_band"))
                 elif (x + (0 if dy else 1)) % 2 == 0 and rng.random() < 0.9:
                     p.set(*at, state("brace", facing="east" if (x // 2 + dy + dz) % 2 else "west"))
     # The mast's foot, still hinged on the two tall legs.
-    for z in (1, 3):
+    for z in (-1, 1):
         p.set(MAST_X0, mast_centre(MAST_X0) - 2, z, state("steel_beam", axis="y"))
     # The crown: its sheave, off its bearings on the ground, and a gantry stub.
-    parts.sheave(p, (MAST_X1 + 1.2, 2.3, MAST_Z + 1.9), "z", 3.6)
+    parts.sheave(p, (MAST_X1 + 1.2, 2.3, MAST_Z + 1.9), "z", 3.8)
     p.set(MAST_X1 + 1, 1, MAST_Z + 1, state("steel_beam", axis="z"))
     p.set(MAST_X1 + 1, 1, MAST_Z + 3, state("steel_beam", axis="z"))
     # Where the upper section broke off: the girders' stumps, and one flung clear.
     for dy, dz in ((1, 1), (-1, 1), (1, -1)):
-        p.set(11, mast_centre(11) + dy, MAST_Z + dz, state("lattice_girder", axis="x"))
-    p.beam(state("lattice_girder", axis="y"), (11.5, mast_centre(11) + 1.5, 0.8), (13.0, mast_centre(12) + 2.9, 0.1), thickness=0.9)
+        p.set(BREAK - 1, mast_centre(BREAK - 1) + dy, MAST_Z + dz, state("lattice_girder", axis="x"))
+    p.beam(state("lattice_girder", axis="y"), (BREAK - 0.5, mast_centre(BREAK) + 1.5, -1.8), (BREAK + 1.5, mast_centre(BREAK) + 2.6, -2.9), thickness=0.9)
 
 
 def tarps(sc: Scene) -> None:
-    """Tarpaulins that covered the derrick floor and the shed's stores, torn and hung from the mast and flung over the heap."""
+    """Tarpaulins that covered the derrick floor and the shed's stores, torn and hung from the mast, spread over the shed's broken roof
+    and flung across the ground, with chains swinging under them."""
     p, rng = sc.p, sc.rng
-    for x in range(7, 15):
-        yc = mast_centre(x) - (1 if x >= 12 else 0)
-        zc = MAST_Z + (1 if x >= 12 else 0)
+    for x in range(9, 25):
+        yc = mast_centre(x) - (1 if x >= BREAK else 0)
+        zc = MAST_Z + (1 if x >= BREAK else 0)
         for dz in (-1, 0, 1):
-            if p.get(x, yc + 2, zc + dz) is None and rng.random() < 0.42 and x not in (9, 10, 11) and dz != 0:
+            if p.get(x, yc + 2, zc + dz) is None and rng.random() < 0.62:
                 p.set(x, yc + 2, zc + dz, vanilla("white_wool" if rng.random() < 0.5 else "light_gray_wool"))
         # The south edge hangs down in rags.
         for k, y in enumerate((yc + 1, yc, yc - 1)):
-            if p.get(x, y, zc + 2) is None and rng.random() < (0.55 - 0.2 * k):
+            if p.get(x, y, zc + 2) is None and rng.random() < (0.7 - 0.2 * k):
                 p.set(x, y, zc + 2, vanilla("light_gray_wool" if y == yc + 1 else "white_wool"))
-    for x in range(8, 14):
-        for z in range(5, 8):
-            if sc.free(x, z) and rng.random() < 0.3:
-                p.set(x, 1, z, vanilla("light_gray_carpet"))
-    for z in range(-3, 0):
-        for x in range(5, 10):
-            if sc.free(x, z) and rng.random() < 0.5:
+        if x % 4 == 1 and p.get(x, yc - 1, zc + 3) is None:
+            for y in range(yc, max(yc - 3, 1), -1):
+                p.set(x, y, zc + 3, vanilla("iron_chain", axis="y"))
+    x0, z0, x1, z1 = SHED
+    for x in range(x0, x1 + 1):
+        for z in range(z0, z0 + 4):
+            if p.get(x, 4, z) is None and rng.random() < 0.55:
+                p.set(x, 4, z, vanilla("light_gray_wool" if rng.random() < 0.5 else "white_wool"))
+    for x in range(11, 22):
+        for z in range(-5, -1):
+            if sc.free(x, z) and rng.random() < 0.4:
                 p.set(x, 1, z, vanilla("white_carpet"))
 
 
@@ -556,49 +633,47 @@ def spool(p: Piece, x: int, z: int, lying: bool) -> None:
 
 
 def spools(sc: Scene) -> None:
-    spool(sc.p, -4, -6, False)
-    spool(sc.p, 4, -8, True)
+    spool(sc.p, -4, -7, False)
+    spool(sc.p, 5, -9, True)
     # Cable paid out from the standing spool, snaking away over the ground.
-    x, z = -1, -5
-    for i in range(18):
+    x, z = -1, -6
+    for i in range(20):
         if sc.free(x, z):
             sc.p.set(x, 1, z, state("cable", axis="x" if i % 5 else "z"))
         if i % 5 == 4:
             z += sc.rng.choice((-1, 1))
         x += 1 if i % 2 == 0 or sc.rng.random() < 0.6 else 0
-        if x > 12:
-            break
 
 
 def pipe_rack(sc: Scene) -> None:
-    """A rack of drill pipe north of the shed, one end of it down and the pipes slid out of their rows."""
+    """A rack of drill pipe north of the mast, one end of it down and the pipes slid out of their rows."""
     p, rng = sc.p, sc.rng
-    for x in (10, 16):
+    for x in (12, 18):
         for y in range(1, 4):
-            p.set(x, y, -8, state("steel_beam", axis="y"))
-            p.set(x, y, -11, state("steel_beam", axis="y"))
-        for z in range(-11, -7):
+            p.set(x, y, -9, state("steel_beam", axis="y"))
+            p.set(x, y, -12, state("steel_beam", axis="y"))
+        for z in range(-12, -8):
             p.set(x, 4, z, state("steel_beam", axis="z"))
-    p.fill(10, 0, -11, 16, 0, -8, state("concrete_footing"))
-    for row, (y, zs) in enumerate(((1, (-11, -10, -9, -8)), (2, (-10, -9)))):
+    p.fill(12, 0, -12, 18, 0, -9, state("concrete_footing"))
+    for row, (y, zs) in enumerate(((1, (-12, -11, -10, -9)), (2, (-11, -10)))):
         for z in zs:
-            for x in range(11, 16):
+            for x in range(13, 18):
                 if rng.random() < 0.85 or row == 0:
                     p.set(x, y, z, state("pipe", axis="x"))
     # The tumbled ones, out over the dirt on the side that fell.
-    for z in (-7, -6):
-        for x in range(9, 15 - z % 3):
+    for z in (-8, -7):
+        for x in range(11, 17 - z % 3):
             if sc.free(x, z) and rng.random() < 0.9:
                 p.set(x, 1, z, state("pipe", axis="x"))
-    for x in (12, 13, 14):
-        if sc.free(x, -5):
-            p.set(x, 1, -5, state("pipe_brass" if x == 13 else "pipe", axis="z"))
+    for x in (14, 15, 16):
+        if sc.free(x, -6):
+            p.set(x, 1, -6, state("pipe_brass" if x == 15 else "pipe", axis="z"))
 
 
 def winch_house(sc: Scene) -> None:
     """The derrick's winch engine house, a low riveted box beside the footing, its roof open and its drum hanging out."""
     p = sc.p
-    x0, z0, x1, z1 = -7, 0, -4, 4
+    x0, z0, x1, z1 = -8, -2, -5, 2
     parts.machine_house(p, x0, z0, x1, z1, 1, 2, 2)
     for x in range(x0, x1 + 1):
         for z in range(z0, z1 + 1):
@@ -617,153 +692,184 @@ def winch_house(sc: Scene) -> None:
 
 # ------------------------------------------------------------------------------------------------------------------ C: the train
 
-AXIS_OF = {(1, 0, 0): "x", (-1, 0, 0): "x", (0, 1, 0): "y", (0, -1, 0): "y", (0, 0, 1): "z", (0, 0, -1): "z"}
-FACING_OF = {(1, 0, 0): "east", (-1, 0, 0): "west", (0, 0, 1): "south", (0, 0, -1): "north"}
+ARC_CENTRE = (24.0, -34.0)
+ARC_RADIUS = 24.0
+RAILS_END = 0.85  # the track ends here, in radians round the arc
 
 
-class Frame:
-    """A machine drawn in its own axes, u along its length, v across it and w up, placed in the piece with those axes turned and rolled to
-    the three world axes given: a locomotive drawn upright, then pitched nose down into the dirt (shear: how many cells it lifts for each
-    cell back from pivot) and heeled over onto its flank (roll: how many cells each cell across it lifts), or laid on its side half sunk."""
+class Body:
+    """A machine drawn in its own axes (u forward, v across, w up) and placed at any heading, pitch and roll: each world cell is tested
+    against the machine's shape function, so no turn leaves a gap. heading is the way it points over the ground (0 is south, 90 east),
+    pitch tips its nose down, and a positive roll lowers its v side (the west side of a train heading south)."""
 
-    def __init__(self, p: Piece, origin, u, v, w, shear: float = 0.0, pivot: float = 0.0, roll: float = 0.0):
-        self.p, self.origin, self.u, self.v, self.w = p, origin, u, v, w
-        self.shear, self.pivot, self.roll = shear, pivot, roll
+    def __init__(self, origin, heading: float, pitch: float = 0.0, roll: float = 0.0):
+        t, a, b = math.radians(heading), math.radians(pitch), math.radians(roll)
+        forward, across, up = (math.sin(t), 0.0, math.cos(t)), (-math.cos(t), 0.0, math.sin(t)), (0.0, 1.0, 0.0)
+        raised = tuple(up[i] * math.cos(a) + forward[i] * math.sin(a) for i in range(3))
+        self.origin = origin
+        self.u = tuple(forward[i] * math.cos(a) - up[i] * math.sin(a) for i in range(3))
+        self.v = tuple(across[i] * math.cos(b) - raised[i] * math.sin(b) for i in range(3))
+        self.w = tuple(raised[i] * math.cos(b) + across[i] * math.sin(b) for i in range(3))
 
-    def at(self, a: int, b: int, c: int):
-        x, y, z = (self.origin[i] + self.u[i] * a + self.v[i] * b + self.w[i] * c for i in range(3))
-        return x, y + round(self.shear * (self.pivot - a) + self.roll * b), z
+    def point(self, u: float, v: float, w: float):
+        return tuple(self.origin[i] + self.u[i] * u + self.v[i] * v + self.w[i] * w for i in range(3))
 
-    def put(self, a: int, b: int, c: int, s: State) -> None:
-        self.p.set(*self.at(a, b, c), s)
-
-    def fill(self, a0, b0, c0, a1, b1, c1, s: State) -> None:
-        for a in range(a0, a1 + 1):
-            for b in range(b0, b1 + 1):
-                for c in range(c0, c1 + 1):
-                    self.put(a, b, c, s)
-
-    def pillar(self, name: str, along: str) -> State:
-        """A pillar block running along the local axis u, v or w."""
-        return state(name, axis=AXIS_OF[{"u": self.u, "v": self.v, "w": self.w}[along]])
-
-    def facing(self, name: str, towards: str) -> State:
-        """A facing block of the kit whose front looks along the local direction u, -u, v, -v, w or -w. A kit block cannot face up or down,
-        so a front that rolled to look along the vertical is plain plate."""
-        sign = -1 if towards.startswith("-") else 1
-        vector = tuple(sign * c for c in {"u": self.u, "v": self.v, "w": self.w}[towards.lstrip("-")])
-        return state(name, facing=FACING_OF[vector]) if vector in FACING_OF else state("riveted_plate")
+    def place(self, p: Piece, shape, reach: int) -> None:
+        ox, oy, oz = self.origin
+        for x in range(math.floor(ox - reach), math.ceil(ox + reach) + 1):
+            for y in range(math.floor(oy - reach), math.ceil(oy + reach) + 1):
+                for z in range(math.floor(oz - reach), math.ceil(oz + reach) + 1):
+                    d = (x + 0.5 - ox, y + 0.5 - oy, z + 0.5 - oz)
+                    local = [sum(d[i] * axis[i] for i in range(3)) for axis in (self.u, self.v, self.w)]
+                    s = shape(*local)
+                    if s is not None:
+                        p.set(x, y, z, s)
 
 
-def disc(f: Frame, uc: float, wc: float, v: int, radius: float) -> None:
-    """A wheel: a disc in the (u, w) plane at v, a dark tyre round a pale hub."""
-    for a in range(math.floor(uc - radius), math.ceil(uc + radius) + 1):
-        for c in range(math.floor(wc - radius), math.ceil(wc + radius) + 1):
-            d = math.hypot(a - uc, c - wc)
-            if d <= radius:
-                f.put(a, v, c, vanilla("iron_block") if d < 0.9 else vanilla("polished_blackstone"))
+def wheel(u: float, av: float, w: float, uc: float, wc: float, radius: float, plane: tuple[float, float]):
+    """A wheel in the plane av of plane: a dark tyre round a pale hub, or None."""
+    if plane[0] <= av <= plane[1]:
+        d = math.hypot(u - uc, w - wc)
+        if d <= radius:
+            return vanilla("iron_block") if d < 0.85 else vanilla("polished_blackstone")
+    return None
 
 
-def locomotive(f: Frame) -> None:
-    """A haul engine: a plated chassis on three axles, a long red hood, a windowed cab with a roof, a stack, a pilot and a lamp."""
-    length = 9
-    f.fill(0, 0, 0, length - 1, 3, 0, state("riveted_plate"))
-    f.fill(0, 0, 0, 0, 3, 1, state("hazard_band"))
-    f.fill(length - 1, 0, 0, length - 1, 3, 1, state("hazard_band"))
-    for uc in (1.5, 4.5, 7.0):
-        for v in (-1, 4):
-            disc(f, uc, 0, v, 1.7)
-    # The pilot, a hazard-striped wedge under the nose.
-    for b in range(0, 4):
-        f.put(length, b, 0, state("hazard_band"))
-        f.put(length + 1, b, -1, state("hazard_band"))
-    # The hood: long, red, banded, with hatches on its flanks; a hatch blown off and a hole in its roof.
-    for a in range(4, length):
-        for b in range(0, 4):
-            for c in range(1, 4):
-                if not (b in (0, 3) or c == 3 or a == length - 1):
-                    continue
-                if c == 1:
-                    s = state("hazard_band")
-                elif c == 2 and b in (0, 3) and a % 2 == 0:
-                    s = f.facing("furnace_hatch", "-v" if b == 0 else "v")
-                else:
-                    s = state("riveted_plate_red")
-                f.put(a, b, c, s)
-    for a, b, c in ((6, 3, 2), (7, 3, 2), (5, 0, 3), (6, 1, 3), (7, 1, 3), (5, 3, 3)):
-        f.put(a, b, c, AIR)
-    # The cab.
-    for a in range(0, 4):
-        for b in range(0, 4):
-            for c in range(1, 6):
-                wall = b in (0, 3) or a == 0
-                if c == 5:
-                    f.put(a, b, c, state("riveted_plate"))
-                elif wall and a in (0, 3) and b in (0, 3):
-                    f.put(a, b, c, state("riveted_plate_red"))
-                elif wall and c in (3, 4) and a in (1, 2) and b in (0, 3):
-                    f.put(a, b, c, vanilla("tinted_glass"))
-                elif wall:
-                    f.put(a, b, c, state("riveted_plate_red"))
-    f.fill(-1, -1, 5, 4, 4, 5, state("riveted_plate"))
-    f.fill(-1, -1, 5, -1, 4, 5, state("hazard_band"))
-    f.put(3, 1, 4, f.facing("gauge_panel", "-u"))
-    f.put(1, 1, 1, vanilla("anvil", facing="north"))
-    # The cab's roof stove in, a window out.
-    for a, b, c in ((1, 1, 5), (2, 1, 5), (1, 2, 5), (2, 0, 4)):
-        f.put(a, b, c, AIR)
-    # The stack and the headlamp.
-    for c in range(4, 9):
-        f.put(6, 1, c, f.pillar("pipe", "w"))
-    f.put(6, 1, 9, state("brass_trim"))
-    f.put(6, 2, 4, state("brass_trim"))
-    f.put(length, 1, 2, f.facing("floodlight", "u"))
-    f.put(length, 2, 2, f.facing("floodlight", "u"))
+def engine_shape(u: float, v: float, w: float):
+    """A haul engine, 15 long: a red boiler lying along it on a plated frame, a windowed cab at the back with a roof that overhangs it,
+    three pairs of wheels outside the frame, a stack and a brass dome, a pilot of bars under the nose."""
+    av = abs(v)
+    for uc, r in ((3.6, 1.9), (7.4, 1.9), (11.2, 1.2)):
+        s = wheel(u, av, w, uc, 1.4, r, (2.05, 3.0))
+        if s is not None:
+            return s
+        if 1.7 <= av < 2.05 and math.hypot(u - uc, w - 1.4) <= 0.7:
+            return vanilla("polished_blackstone")
+    if av <= 1.7 and 0.9 <= w <= 1.9 and 0 <= u <= 14.6:
+        return state("hazard_band") if u > 14.0 else state("riveted_plate")
+    r = math.hypot(v, w - 3.9)
+    if 3.6 <= u <= 14.0 and r <= 2.0:
+        if u >= 13.2:
+            return vanilla("iron_block") if r < 0.6 else vanilla("polished_blackstone")
+        if r > 0.7:
+            if u >= 11.8:
+                return vanilla("polished_blackstone")
+            return state("brass_trim") if (u - 3.6) % 3.6 < 0.9 else state("riveted_plate_red")
+    if math.hypot(u - 7.8, v, w - 5.7) <= 1.35 and w >= 5.4:
+        return state("brass_trim")
+    if math.hypot(u - 12.4, v) <= 0.85 and 5.6 <= w <= 8.4:
+        return vanilla("iron_block") if w > 7.8 else vanilla("polished_blackstone")
+    if 0 <= u <= 3.8 and av <= 2.0 and 1.9 <= w <= 5.2:
+        if w < 2.6:
+            return state("riveted_plate")
+        if u < 1.1:
+            return None if (av <= 0.9 and w <= 4.4) else state("riveted_plate_red")
+        if av > 0.8 and (u > 2.6 or av > 1.2) and av > 2.0 - 1.2:
+            if abs(u - 2.0) <= 0.8 and 3.2 <= w <= 4.5:
+                return vanilla("tinted_glass")
+            return state("riveted_plate_red")
+        if u > 2.6:
+            return state("riveted_plate_red")
+    if 5.2 <= w <= 6.0 and av <= 2.5 and -0.8 <= u <= 4.4:
+        if 1.0 <= u <= 2.2 and v > 0:
+            return None  # the roof stove in
+        return state("riveted_plate") if (av < 2.0 and u < 3.8) else state("riveted_plate_red")
+    if 14.6 <= u <= 17.0 and av <= 1.7 and 0.9 <= w <= 2.2 - (u - 14.6) * 0.5:
+        return vanilla("iron_bars") if (math.floor(u) + math.floor(w) + round(v)) % 2 == 0 else None
+    return None
 
 
-def skip_car(f: Frame, load: bool, rng: random.Random) -> None:
-    """A skip car: a flat chassis on two axles with a riveted tub over it, open at the top, its rim banded and its load heaped."""
-    f.fill(0, 0, 0, 5, 3, 0, state("riveted_plate"))
-    f.fill(0, 0, 0, 0, 3, 0, state("hazard_band"))
-    f.fill(5, 0, 0, 5, 3, 0, state("hazard_band"))
-    for uc in (1.0, 4.0):
-        for v in (-1, 4):
-            disc(f, uc, 0, v, 1.4)
-    for a in range(0, 6):
-        for b in range(0, 4):
-            for c in range(1, 4):
-                if a in (0, 5) or b in (0, 3) or c == 1:
-                    corner = a in (0, 5) and b in (0, 3)
-                    f.put(a, b, c, state("hazard_band") if c == 3 else state("riveted_plate_red" if corner else "riveted_plate"))
-    if load:
-        crates = {(1, 1), (3, 2), (4, 1)}
-        for a in range(1, 5):
-            for b in range(1, 3):
-                if (a, b) in crates:
-                    f.put(a, b, 2, crate(rng.choice(tuple(DIRECTIONS))))
-                    continue
-                f.put(a, b, 2, vanilla(rng.choice(("gravel", "tuff", "cobbled_deepslate", "gravel"))))
-                if rng.random() < 0.6:
-                    f.put(a, b, 3, vanilla(rng.choice(("raw_iron_block", "gravel", "raw_copper_block"))))
-        f.put(3, 2, 3, crate("east"))
+def car_chassis_shape(u: float, v: float, w: float):
+    """The frame of a skip car, 6.6 long: a plated frame on two pairs of wheels, red buffers at the ends."""
+    av = abs(v)
+    for uc in (1.5, 5.1):
+        s = wheel(u, av, w, uc, 0.7, 1.15, (1.5, 2.4))
+        if s is not None:
+            return s
+    if av <= 1.5 and 0.5 <= w <= 1.5 and -0.4 <= u <= 7.0:
+        return state("riveted_plate_red") if (u < 0.3 or u > 6.3) else state("riveted_plate")
+    return None
 
 
-def tipped_tub(p: Piece, centre, angle: float) -> None:
-    """A skip car's tub turned over its hinge by angle degrees about the Z axis (tipping toward +X), drawn from the cell test of a hollow
-    box, so no turn leaves a gap in its shell."""
-    cx, cy, cz = centre
-    half = (2.6, 1.8, 3.2)
-    c, s = math.cos(math.radians(angle)), math.sin(math.radians(angle))
-    for x in range(round(cx) - 6, round(cx) + 7):
-        for y in range(1, round(cy) + 7):
-            for z in range(round(cz) - 5, round(cz) + 6):
-                dx, dy = x - cx, y - cy
-                lx, ly = c * dx + s * dy, -s * dx + c * dy
-                lz = z - cz
-                if abs(lx) <= half[0] and abs(ly) <= half[1] and abs(lz) <= half[2]:
-                    inner = abs(lx) < half[0] - 1.0 and ly > -half[1] + 1.0 and abs(lz) < half[2] - 1.0
-                    if not inner:
-                        p.set(x, y, z, state("hazard_band") if ly > half[1] - 1.0 else state("riveted_plate_red" if abs(lz) > half[2] - 1 else "riveted_plate"))
+def tub_shape(load: str):
+    """A skip tub, 6.6 long and 2.8 deep, its sides and ends flaring out toward the top: a riveted shell, a red rim, and its load: ore
+    heaped to a ridge, or salvage crates."""
+    def shape(u: float, v: float, w: float):
+        flare = max(w, 0.0) / 2.8
+        half, u0, u1 = 1.3 + 0.55 * flare, -0.3 * flare, 6.6 + 0.3 * flare
+        if not (0.0 <= w <= 2.8 and abs(v) <= half and u0 <= u <= u1):
+            return None
+        if w < 1.0 or abs(v) > half - 1.1 or u < u0 + 1.1 or u > u1 - 1.1:
+            return state("riveted_plate_red") if w >= 2.1 else state("riveted_plate")
+        if load == "crates":
+            if w <= 2.0 and (math.floor(u) + math.floor(v + 3)) % 3 != 1:
+                return crate(("north", "east", "south", "west")[(math.floor(u) * 3 + math.floor(v + 3)) % 4])
+            return None
+        if w <= 1.0 + 1.5 * (1 - abs(v) / half) * (0.6 + 0.4 * math.sin(u * 1.7)):
+            return vanilla(("gravel", "tuff", "gravel", "cobbled_deepslate", "raw_iron_block")[(math.floor(u * 2) + math.floor(w * 3) + math.floor(v * 2)) % 5])
+        return None
+    return shape
+
+
+def arc_point(s: float, lateral: float = 0.0):
+    """The point s blocks along the track and lateral blocks out from it (to the west of the train's way): the track runs south from far
+    to the north, then curves east round ARC_CENTRE."""
+    theta = s / ARC_RADIUS
+    x = ARC_CENTRE[0] - ARC_RADIUS * math.cos(theta)
+    z = ARC_CENTRE[1] + ARC_RADIUS * math.sin(theta)
+    if s < 0:
+        x, z = 0.0, ARC_CENTRE[1] + s
+    heading = math.degrees(max(theta, 0.0))
+    t = math.radians(heading)
+    return (x - math.cos(t) * lateral, z + math.sin(t) * lateral), heading
+
+
+ENGINE_SCALE = 1.4
+CAR_SCALE = 1.25
+
+
+def scaled(shape, k: float):
+    """A shape drawn k times as large."""
+    return lambda u, v, w: shape(u / k, v / k, w / k)
+
+
+def train() -> Piece:
+    """A haul engine and skip cars derailed off a curve of broken track, strung out along it: the last car still on the rails with salvage
+    crates in its tub, the next with its tub tipped over its edge, the one behind the engine thrown on its side with its load spilling, and
+    the engine thrown off the end of the rails, nose down and heeled over, its wheels to the camera."""
+    sc = Scene("c")
+    trackbed(sc)
+    p = sc.p
+    rear = place_car(sc, 1.0, 0.8, -4.0, 0.0, 0.0, "crates", 0.0, 1.5)
+    place_car(sc, 10.75, 0.0, 0.0, 0.0, 0.0, "ore", 55.0, 1.5)
+    place_car(sc, 20.5, 5.0, -10.0, 4.0, 62.0, "ore", 0.0, 0.8)
+    (ex, ez), heading = arc_point(26.0, 5.5)
+    Body((ex, 1.0, ez), heading - 6.0, 3.0, -8.0).place(p, scaled(engine_shape, ENGINE_SCALE), 30)
+    ore_heap(sc, *arc_point(10.75, 6.5)[0], 4.2, 3.4)
+    ore_heap(sc, *arc_point(20.5, 10.5)[0], 4.4, 3.6)
+    sc.spill_crates((-8, -34, 6, -22), 3)
+    sc.spill_crates((2, -22, 14, -8), 3)
+    coupling(p, rear, arc_point(5.5)[0])
+    sc.scatter_scrap((-10, -42, 26, 4), 12)
+    sc.clods((-10, -42, 28, 6), 12)
+    return sc.finish()
+
+
+def place_car(sc: Scene, s: float, lateral: float, heading: float, pitch: float, roll: float, load: str, tip: float, lift: float) -> Body:
+    """A skip car whose middle is s blocks along the track and lateral out from it, turned by heading from the track's, with its tub
+    tipped about its west rim by tip degrees. Returns its tub."""
+    k = CAR_SCALE
+    (x, z), track_heading = arc_point(s, lateral)
+    h = track_heading + heading
+    frame = Body(Body((x, lift, z), h, pitch, roll).point(-3.3 * k, 0.0, 0.0), h, pitch, roll)
+    frame.place(sc.p, scaled(car_chassis_shape, k), 14)
+    if tip:
+        tub = Body(frame.point(0.0, 1.5 * k, 1.5 * k), h, pitch, roll + tip)
+        tub.place(sc.p, scaled(lambda u, v, w: tub_shape(load)(u, v + 1.5, w), k), 14)
+        return tub
+    tub = Body(frame.point(0.0, 0.0, 1.5 * k), h, pitch, roll)
+    tub.place(sc.p, scaled(tub_shape(load), k), 14)
+    return tub
 
 
 def ore_heap(sc: Scene, cx: float, cz: float, rx: float, rz: float) -> None:
@@ -779,68 +885,60 @@ def ore_heap(sc: Scene, cx: float, cz: float, rx: float, rz: float) -> None:
                     sc.p.set(x, y, z, vanilla(sc.rng.choice(("gravel", "gravel", "tuff", "cobbled_deepslate", "raw_iron_block" if y == h else "gravel"))))
 
 
-def train() -> Piece:
-    """A haul engine and skip cars derailed off the end of a short run of broken track: the engine off the rails and pitched nose down into
-    the dirt, the car behind it thrown on its side with its load out, the next car on the rails with its tub tipped and spilling."""
-    sc = Scene("c")
-    trackbed(sc)
-    # The engine, off the track to the east and nose down: its cab end high, its nose and two axles in the dirt.
-    locomotive(Frame(sc.p, (3, 0, -1), (0, 0, 1), (1, 0, 0), (0, 1, 0), shear=0.45, pivot=8, roll=-0.5))
-    # The car coupled behind it, thrown on its side with its open tub to the east.
-    skip_car(Frame(sc.p, (4, 2, -3), (0, 0, -1), (0, -1, 0), (1, 0, 0)), True, sc.rng)
-    # The next car: still on the rails, its tub tipped over its hinge and half its load out.
-    car_chassis(sc.p, -11)
-    tipped_tub(sc.p, (0.5, 3.8, -14.5), 38)
-    ore_heap(sc, 9.0, -6.0, 3.2, 3.2)
-    ore_heap(sc, 4.0, -16.0, 3.4, 2.6)
-    sc.spill_crates((7, -10, 12, -2), 4)
-    sc.spill_crates((1, -19, 6, -13), 3)
-    sc.spill_crates((-5, -6, -2, 0), 2)
-    sc.scatter_scrap((-5, -20, 12, 6), 14)
-    sc.clods((-5, -20, 12, 9), 24)
-    return sc.finish()
+def coupling(p: Piece, tub: Body, to) -> None:
+    """A snapped coupling chain hanging between two cars."""
+    a = tub.point(-1.0, 0.0, 0.0)
+    p.beam(state("cable", axis="y"), (a[0], 1.3, a[2]), (to[0], 0.9, to[1]), thickness=1.6, segment=1.0)
 
 
 def trackbed(sc: Scene) -> None:
-    """A gravel bed and a short run of mine track along Z at X 0, whole to the north and broken off toward the south: sleepers torn up,
-    rail ends bent up in the air, lengths of track flung off."""
+    """A gravel bed and a curve of rail along the arc, whole to the north and buckled and torn up toward its end: sleepers and rails
+    missing, rail ends bent up into the air, lengths of rail flung clear."""
     p, rng = sc.p, sc.rng
-    for z in range(-22, 3):
-        for x in (-1, 0, 1):
-            p.set(x, 0, z, vanilla("gravel"))
-    for z in range(-22, 2):
-        if z in (-1, 0) or (z > -4 and rng.random() < 0.5):
+    cells: list[tuple[int, int]] = []
+    s = -12.0
+    while s <= RAILS_END * ARC_RADIUS:
+        (x, z), heading = arc_point(s)
+        cell = (math.floor(x + 0.5), math.floor(z + 0.5))
+        if not cells or cells[-1] != cell:
+            if cells and abs(cell[0] - cells[-1][0]) + abs(cell[1] - cells[-1][1]) == 2:
+                cells.append((cell[0], cells[-1][1]))
+            cells.append(cell)
+        for lateral in (-1.5, -0.5, 0.5, 1.5):
+            (gx, gz), _ = arc_point(s, lateral)
+            if rng.random() < 0.9:
+                p.set(math.floor(gx + 0.5), 1, math.floor(gz + 0.5), vanilla("gravel"))
+        s += 0.3
+    for i, (x, z) in enumerate(cells):
+        if i > len(cells) - 14 and rng.random() < 0.45 or rng.random() < 0.05:
             continue
-        p.set(0, 1, z, state("mine_track", facing="north"))
-    # The broken end: rails curling up, as bars.
-    p.set(0, 1, 1, state("mine_track", facing="east"))
-    for x, y, z in ((1, 2, 2), (1, 3, 3), (-1, 2, 2), (-1, 2, 3), (-1, 3, 3)):
-        p.set(x, y, z, vanilla("iron_bars"))
-    # Track lifted and thrown clear.
-    for x, z, facing in ((-3, -3, "east"), (-4, -3, "east"), (-5, -8, "north"), (-3, 2, "north"), (-4, -12, "east")):
-        if sc.free(x, z):
-            p.set(x, 1, z, state("mine_track", facing=facing))
-    # The ruts the engine ploughed, and the earth it shoved up.
-    for z in range(-1, 6):
-        for x in (1, 2):
-            p.set(x, 0, z, AIR)
-    for z in range(2, 12):
-        for x in (3, 4, 5, 6, 7):
-            if z > 8 and sc.free(x, z) and rng.random() < 0.8:
-                p.set(x, 1, z, sc.earth())
-                if rng.random() < 0.5:
-                    p.set(x, 2, z, sc.earth())
-
-
-def car_chassis(p: Piece, z0: int) -> None:
-    """The second car, on its rails: its chassis, its wheels and its buffers."""
-    f = Frame(p, (-1, 1, z0), (0, 0, -1), (1, 0, 0), (0, 1, 0))
-    f.fill(0, 0, 0, 5, 3, 0, state("riveted_plate"))
-    f.fill(0, 0, 0, 0, 3, 0, state("hazard_band"))
-    f.fill(5, 0, 0, 5, 3, 0, state("hazard_band"))
-    for uc in (1.0, 4.0):
-        for v in (-1, 4):
-            disc(f, uc, 0, v, 1.4)
+        prev, nxt = cells[max(i - 1, 0)], cells[min(i + 1, len(cells) - 1)]
+        dirs = set()
+        for other in (prev, nxt):
+            dx, dz = other[0] - x, other[1] - z
+            if (dx, dz) != (0, 0):
+                dirs.add({(1, 0): "east", (-1, 0): "west", (0, 1): "south", (0, -1): "north"}.get((dx, dz), "north"))
+        shape = {frozenset({"north", "south"}): "north_south", frozenset({"east", "west"}): "east_west", frozenset({"south", "east"}): "south_east",
+                 frozenset({"south", "west"}): "south_west", frozenset({"north", "west"}): "north_west", frozenset({"north", "east"}): "north_east"}.get(
+            frozenset(dirs), "north_south" if len(dirs) < 2 and (nxt[1] != z or prev[1] != z) else "east_west")
+        p.set(x, 2, z, vanilla("rail", shape=shape))
+        if True:
+            for side in (-2, 2):
+                sx, sz = (x + side, z) if shape in ("north_south", "south_east", "north_west") else (x, z + side)
+                if p.get(sx, 2, sz) is None:
+                    p.set(sx, 2, sz, vanilla("dark_oak_slab"))
+    # The broken end: rails buckled up into the air, as bars, and a length of rail thrown aside.
+    x, z = cells[-1]
+    for k, lateral in enumerate((-0.8, 0.8)):
+        (bx, bz), _ = arc_point(RAILS_END * ARC_RADIUS, lateral)
+        bx, bz = math.floor(bx + 0.5), math.floor(bz + 0.5)
+        for y in range(2, 5 + k):
+            p.set(bx + (y > 2), y, bz + (y > 3), vanilla("iron_bars"))
+        p.set(bx + 2, 5 + k, bz + 2, vanilla("iron_chain", axis="y"))
+    for s_flung, lateral in ((8.0, 6.0), (15.0, -5.0), (22.0, 8.5)):
+        (fx, fz), _ = arc_point(s_flung, lateral)
+        for i in range(4):
+            p.set(math.floor(fx) + i, 1, math.floor(fz) + (i // 2), vanilla("rail", shape="east_west"))
 
 
 # ------------------------------------------------------------------------------------------------------------------ the files

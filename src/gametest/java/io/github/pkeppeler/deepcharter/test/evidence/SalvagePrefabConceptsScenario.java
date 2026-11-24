@@ -49,7 +49,7 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
 
     private static final int BEARINGS = 20;
     /** The most the ground may rise and fall over the box a wreck needs (between its tenth and ninetieth percentile), and how far apart two wrecks stand. */
-    private static final int MAX_RELIEF = 6;
+    private static final int MAX_RELIEF = 8;
 
     private static final int SPACING = 90;
     private static final int SAMPLE_STEP = 4;
@@ -60,7 +60,7 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
     /** The relief that counts is the ground under the wreck and this far round it. */
     private static final double RELIEF_MARGIN = 4;
     /** The share of a site's samples that must be in the yard's biome. */
-    private static final double YARD_SHARE = 0.85;
+    private static final double YARD_SHARE = 0.7;
     /** How far above the ground a wreck's clearing reaches. */
     private static final int CLEARING_HEIGHT = 34;
     /** The pod, the player and the cameras: how far past the figures the near and mid stills stand, and the aerial's and range's reach. */
