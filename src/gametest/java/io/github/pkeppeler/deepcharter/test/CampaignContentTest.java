@@ -491,7 +491,7 @@ public class CampaignContentTest {
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void caveStalksGrowInLayer1sFirstZoneOnly(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        FarChunks.whenLoaded(helper, BlockSurvey.area(level, STALK_CHUNKS), () -> {
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, STALK_CHUNKS), () -> {
             Band layer = CampaignBands.LAYER_1;
             Zones.Span zone = Zones.span(layer.minY(), layer.height(), 0);
             TreeSet<Integer> rows = new TreeSet<>();

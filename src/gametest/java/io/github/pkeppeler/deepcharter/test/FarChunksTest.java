@@ -60,7 +60,7 @@ public class FarChunksTest {
     /**
      * Forcing a chunk only takes a ticket: {@code ServerLevel.setChunkForced} would load it on the server thread before returning, and
      * that stalls every test in the batch while it generates (#1016). The chunk is not visible on the tick that forced it, and
-     * {@code awaitLoaded} then waits for it.
+     * {@code whenBlocksLoaded} then waits for it.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
     public void forcingAChunkDoesNotLoadItOnTheServerThread(GameTestHelper helper) {
@@ -70,7 +70,7 @@ public class FarChunksTest {
         if (level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null) {
             throw helper.assertionException("forcing the chunk loaded it on the server thread");
         }
-        FarChunks.whenLoaded(helper, List.of(new FarChunks.At(level, chunk.x(), chunk.z())), helper::succeed);
+        FarChunks.whenBlocksLoaded(helper, List.of(new FarChunks.At(level, chunk.x(), chunk.z())), helper::succeed);
     }
 
     /** A chunk a test forced is released when that test finishes, or the suite's heap grows with it (#569). */
