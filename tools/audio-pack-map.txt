@@ -27,6 +27,9 @@ pod.signal_lost        2006_lava.wav.mp3
 creature.approach      2006_lava.wav.mp3
 creature.hurt          1971_clink.wav.mp3
 creature.death         2006_lava.wav.mp3
+creature.drifter_hiss   2006_lava.wav.mp3
+creature.drifter_burst  2004_jettison.wav.mp3
+creature.alarm_drone    1070.mp3
 creature.tally_click   1971_clink.wav.mp3
 creature.tally_clamp   1971_clink.wav.mp3
 creature.tally_break   1971_clink.wav.mp3
