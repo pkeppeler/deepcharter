@@ -165,7 +165,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
         String prefix = switch (bone.role()) {
             case DRILL_HEAD -> "drill_head_";
             case DRILL_RING -> "drill_ring_";
-            default -> null;
+            case FIXED, DRILL_MOUNT, ROTOR, BLADE, FAN, THRUSTER, FLAME, WHEEL, LINKS, LEG, THIGH -> null;
         };
         if (prefix == null || !bone.name().startsWith(prefix)) {
             return Optional.empty();
