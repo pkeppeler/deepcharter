@@ -46,7 +46,7 @@ import net.minecraft.world.phys.AABB;
 
 /**
  * Overgrowth (#974, docs/design/mechanics.md): a bore left unvisited grows over with {@link LayerBlocks#OVERGROWTH}, in the biomes of the
- * tag {@link #HOLLOWS} only (empty in shipped data until the layer that has them, #972).
+ * tag {@link #HOLLOWS} only (the zones of layer 3, #972).
  *
  * <p>A bore is a cell that a pod drill or a hand removed from natural rock or from growth. Each chunk keeps its bore cells and the game
  * time of its last visit in the attachment {@link #BORES}, written only for a cell in a hollows biome, so the world pays nothing where
@@ -65,7 +65,7 @@ public final class Overgrowth {
 
     private static final long SPILL_SALT = 5L;
 
-    /** The biomes whose bores grow over. Empty in shipped data: the layer that has the hollows fills it (#972). */
+    /** The biomes whose bores grow over. The zones of layer 3 (#972); the test data adds a biome of its own. */
     public static final TagKey<Biome> HOLLOWS = TagKey.create(Registries.BIOME, id("fungal_hollows"));
 
     /** Blocks that hold a bore open: a lined shaft stays open for good. */

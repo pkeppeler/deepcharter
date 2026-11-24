@@ -625,37 +625,6 @@ public class OvergrowthTest {
         });
     }
 
-    @GameTest
-    public void theShippedHollowsTagIsEmpty(GameTestHelper helper) throws java.io.IOException {
-        // Every copy of the file on the class path: the mod's own, which must list nothing until the layer that has the
-        // hollows (#972) fills it, and the test data's.
-        var urls = Overgrowth.class
-                .getClassLoader()
-                .getResources("data/deepcharter/tags/worldgen/biome/fungal_hollows.json");
-        boolean shippedEmpty = false;
-        for (java.net.URL url : java.util.Collections.list(urls)) {
-            try (var in = url.openStream()) {
-                var values = com.google.gson.JsonParser.parseString(
-                                new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8))
-                        .getAsJsonObject()
-                        .getAsJsonArray("values");
-                shippedEmpty |= values.isEmpty();
-                values.forEach(value -> {
-                    if (!value.getAsString().startsWith("deepcharter-test:")) {
-                        throw failure(
-                                helper,
-                                "the tag lists %s: only biomes of the test data (deepcharter-test:) belong in it until #972 (delete this test there)",
-                                value);
-                    }
-                });
-            }
-        }
-        if (!shippedEmpty) {
-            throw failure(helper, "the mod's own fungal_hollows tag should be empty");
-        }
-        helper.succeed();
-    }
-
     /** Waits the real clock out on the real tick path: no player near, nothing passed in. Prints the line that mechanics.md quotes. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 12_000)
     public void theBoreGrowsAtTheMeasuredPace(GameTestHelper helper) {

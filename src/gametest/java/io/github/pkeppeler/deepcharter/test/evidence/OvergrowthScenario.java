@@ -1,8 +1,10 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Overgrowth;
 import io.github.pkeppeler.deepcharter.layer.OvergrowthTuning;
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -13,18 +15,23 @@ import io.github.pkeppeler.deepcharter.test.support.Hollows;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -58,6 +65,15 @@ public class OvergrowthScenario extends EvidenceScenario {
     private static final float LOOK_AHEAD = 4f;
     private static final double EYE_HEIGHT = 1.62;
     private static final OvergrowthTuning TUNING = OvergrowthTuning.DEFAULT;
+    private static final int HOLLOWS_LAYER = 3;
+    /** The real hollows are searched in the chunks this far round the site. */
+    private static final int HOLLOWS_CHUNKS = 4;
+    /** The bore in the real hollows is this deep, 3 wide and {@value #BORE_HEIGHT} high; the eye stands this far back from its mouth, and this far for the wide shot. */
+    private static final int HOLLOWS_BORE = 6;
+
+    private static final int HOLLOWS_STAND = 3;
+    private static final int HOLLOWS_WIDE = 9;
+    private static final int HOLLOWS_MAX_PASSES = 40;
 
     @Override
     protected String name() {
@@ -124,6 +140,7 @@ public class OvergrowthScenario extends EvidenceScenario {
             timeLapse(context, singleplayer, site);
             closeUps(context, singleplayer, site);
             drillThrough(context, singleplayer, scene);
+            realHollows(context, singleplayer, scene.site());
         }
     }
 
@@ -315,6 +332,183 @@ public class OvergrowthScenario extends EvidenceScenario {
         if (grown(singleplayer, site, -1) >= BORE_WIDTH * BORE_HEIGHT * TUNNEL) {
             throw new AssertionError("the drill took no growth out of the bore");
         }
+    }
+
+    /** A bore the way a drill cuts one into the wall of a cave: its open mouth, the direction it runs, and the cells of it. */
+    record Cave(BlockPos mouth, Direction run, List<BlockPos> cells, int wide) {}
+
+    /**
+     * The same growth in the real Fungal Hollows (#1133): layer 3's own caves and light, in the sample world. A bore is cut into a wall of a
+     * cave of the hollows biome tag and left unvisited; the stills are the creep ahead of the plug, the closed bore, and a wide shot of it in
+     * the cave's own light. The cave comes from a search of the layer's band round where the world puts the player, never a fixed place.
+     */
+    private void realHollows(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos site) {
+        Cave cave = singleplayer.getServer().computeOnServer(server -> {
+            ServerLevel three = TestLayers.level(server, HOLLOWS_LAYER);
+            for (int dx = -HOLLOWS_CHUNKS; dx <= HOLLOWS_CHUNKS; dx++) {
+                for (int dz = -HOLLOWS_CHUNKS; dz <= HOLLOWS_CHUNKS; dz++) {
+                    three.getChunk((site.getX() >> 4) + dx, (site.getZ() >> 4) + dz);
+                }
+            }
+            Cave found = findCave(three, site);
+            for (BlockPos cell : found.cells()) {
+                Hollows.cut(three, cell);
+            }
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.stopRiding();
+            player.setGameMode(GameType.SPECTATOR);
+            return found;
+        });
+        ClientWait.until(
+                context,
+                "the server's light engine to be idle",
+                () -> ClientLight.serverLightIdle(context, singleplayer.getServer()),
+                () -> "light work pending");
+        Vec3 mouth = Vec3.atCenterOf(cave.mouth());
+        Vec3 back = Vec3.atLowerCornerOf(cave.run().getUnitVec3i());
+        Vec3 into = mouth.add(back.scale(2.5)).add(0, 1.0, 0);
+        Vec3 eye = mouth.subtract(back.scale(HOLLOWS_STAND)).add(0, 1.0, 0);
+        lookFrom(singleplayer, eye, into);
+        ClientWait.until(
+                context,
+                "the player in layer 3",
+                client -> client.player != null && TestLayers.clientIsIn(client, HOLLOWS_LAYER));
+        context.waitTicks(60);
+        frames(context, 2);
+        screenshot(context, "overgrowth-hollows-open");
+        long[] clock = {
+            singleplayer
+                            .getServer()
+                            .computeOnServer(server ->
+                                    TestLayers.level(server, HOLLOWS_LAYER).getGameTime())
+                    + TUNING.delayTicks()
+                    + 2L * TUNING.visitStampTicks()
+        };
+        int total = cave.cells().size();
+        boolean shotCreep = false;
+        for (int pass = 0; pass < HOLLOWS_MAX_PASSES; pass++) {
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel three = TestLayers.level(server, HOLLOWS_LAYER);
+                for (ChunkPos at : chunksOf(cave)) {
+                    Overgrowth.grow(three, three.getChunk(at.x(), at.z()), clock[0]);
+                }
+                clock[0] += TUNING.passTicks();
+            });
+            context.waitTicks(TICKS_PER_FRAME);
+            frame(context);
+            int grown = hollowsGrown(singleplayer, cave);
+            if (!shotCreep && grown > 0) {
+                frames(context, 2);
+                screenshot(context, "overgrowth-hollows-creep");
+                shotCreep = true;
+            }
+            if (grown == total) {
+                break;
+            }
+        }
+        frames(context, 4);
+        screenshot(context, "overgrowth-hollows-closed");
+        if (hollowsGrown(singleplayer, cave) != total) {
+            throw new AssertionError("the bore in the hollows did not grow over: " + hollowsGrown(singleplayer, cave)
+                    + " of " + total + " cells");
+        }
+        // The cave's own light: from further back, the bore and the film round its mouth among the glow of the cave, as
+        // played.
+        singleplayer
+                .getServer()
+                .runOnServer(
+                        server -> server.getPlayerList().getPlayers().getFirst().removeEffect(MobEffects.NIGHT_VISION));
+        lookFrom(singleplayer, mouth.subtract(back.scale(cave.wide())).add(0, 1.0, 0), into);
+        context.waitTicks(60);
+        frames(context, 2);
+        screenshot(context, "overgrowth-hollows-wide");
+    }
+
+    private static Set<ChunkPos> chunksOf(Cave cave) {
+        Set<ChunkPos> chunks = new HashSet<>();
+        for (BlockPos cell : cave.cells()) {
+            chunks.add(ChunkPos.containing(cell));
+        }
+        return chunks;
+    }
+
+    private static int hollowsGrown(TestSingleplayerContext singleplayer, Cave cave) {
+        return singleplayer.getServer().computeOnServer(server -> {
+            ServerLevel three = TestLayers.level(server, HOLLOWS_LAYER);
+            return (int) cave.cells().stream()
+                    .filter(cell -> three.getBlockState(cell).is(LayerBlocks.OVERGROWTH))
+                    .count();
+        });
+    }
+
+    /**
+     * A cave's wall that a bore can be cut into: a floor cell with open air round it and room to stand back from it, and a block of natural
+     * rock {@value #HOLLOWS_BORE} deep, 3 wide and 3 high in front of it, in the hollows biome tag. Searches the layer's band over the
+     * chunks round {@code site}; throws, naming where it looked, when there is none.
+     */
+    static Cave findCave(ServerLevel level, BlockPos site) {
+        LayerChain.Band band = TestLayers.band(level, HOLLOWS_LAYER);
+        int reach = HOLLOWS_CHUNKS * 16 - HOLLOWS_BORE;
+        for (int x = site.getX() - reach; x <= site.getX() + reach; x += 2) {
+            for (int z = site.getZ() - reach; z <= site.getZ() + reach; z += 2) {
+                for (int y = band.minY() + 4; y <= band.maxY() - 6; y++) {
+                    BlockPos feet = new BlockPos(x, y, z);
+                    if (!open(level, feet)
+                            || !level.getBlockState(feet.below()).isFaceSturdy(level, feet.below(), Direction.UP)) {
+                        continue;
+                    }
+                    for (Direction run : Direction.Plane.HORIZONTAL) {
+                        Optional<Cave> cave = boreAt(level, feet, run);
+                        if (cave.isPresent()) {
+                            return cave.get();
+                        }
+                    }
+                }
+            }
+        }
+        throw new AssertionError("layer " + HOLLOWS_LAYER + " has no cave wall to cut a bore into within " + reach
+                + " blocks of " + site.getX() + ", " + site.getZ());
+    }
+
+    private static Optional<Cave> boreAt(ServerLevel level, BlockPos feet, Direction run) {
+        Direction side = run.getClockWise();
+        List<BlockPos> cells = new ArrayList<>();
+        int clear = 0;
+        while (clear < HOLLOWS_WIDE
+                && open(level, feet.relative(run, -clear - 1).above())) {
+            clear++;
+        }
+        if (clear < HOLLOWS_STAND) {
+            return Optional.empty();
+        }
+        // The cave's wall is rarely flat: the centre of the mouth must be open, the bore must be rock from the second
+        // cell in, and the
+        // first cell is cut only where it is rock.
+        if (!open(level, feet) || !open(level, feet.above())) {
+            return Optional.empty();
+        }
+        for (int across = -1; across <= 1; across++) {
+            for (int up = 0; up < BORE_HEIGHT; up++) {
+                for (int deep = 1; deep <= HOLLOWS_BORE; deep++) {
+                    BlockPos cell =
+                            feet.relative(run, deep).relative(side, across).above(up);
+                    boolean rock = level.getBlockState(cell).is(HazardBlocks.NATURAL_ROCK)
+                            && level.getNoiseBiome(cell.getX() >> 2, cell.getY() >> 2, cell.getZ() >> 2)
+                                    .is(Overgrowth.HOLLOWS);
+                    if (rock) {
+                        cells.add(cell);
+                    } else if (deep > 1 || (across == 0 && up < 2)) {
+                        return Optional.empty();
+                    }
+                }
+            }
+        }
+        return Optional.of(new Cave(feet.relative(run, 1), run, List.copyOf(cells), clear));
+    }
+
+    /** Nothing to collide with: air, a glowcap. */
+    private static boolean open(ServerLevel level, BlockPos pos) {
+        return level.getBlockState(pos).getCollisionShape(level, pos).isEmpty();
     }
 
     /** The stone block, a chamber in front of it, the two bores and the lights. */
