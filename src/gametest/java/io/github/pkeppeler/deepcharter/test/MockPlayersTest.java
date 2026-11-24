@@ -3,12 +3,12 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.ProbeInfos;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.TickLists;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -18,14 +18,12 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestInfo;
 import net.minecraft.gametest.framework.GameTestTicker;
-import net.minecraft.gametest.framework.RetryOptions;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.util.Util;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -315,7 +313,7 @@ public class MockPlayersTest {
         List<WeakReference<ServerPlayer>> weak = new ArrayList<>();
 
         // A callback scheduled for the tick after the test ends, as TestTicks.each leaves.
-        GameTestInfo each = probeInfo(owner, level);
+        GameTestInfo each = ProbeInfos.of(owner, level);
         GameTestHelper eachHelper = new GameTestHelper(each);
         MockPlayer eachMock = MockPlayers.join(level.getServer(), "retention-each", level, spawn, each::isDone);
         TestTicks.each(eachHelper, eachMock.player()::getName);
@@ -323,7 +321,7 @@ public class MockPlayersTest {
         weak.add(new WeakReference<>(eachMock.player()));
 
         // A callback far in the future, never reached.
-        GameTestInfo delayed = probeInfo(owner, level);
+        GameTestInfo delayed = ProbeInfos.of(owner, level);
         MockPlayer delayedMock =
                 MockPlayers.join(level.getServer(), "retention-delayed", level, spawn, delayed::isDone);
         new GameTestHelper(delayed)
@@ -332,7 +330,7 @@ public class MockPlayersTest {
         weak.add(new WeakReference<>(delayedMock.player()));
 
         // A mock respawned as the Respawn button does, so the sweep must disconnect the listener (#698).
-        GameTestInfo respawn = probeInfo(owner, level);
+        GameTestInfo respawn = ProbeInfos.of(owner, level);
         MockPlayer respawnMock =
                 MockPlayers.join(level.getServer(), "retention-respawn", level, spawn, respawn::isDone);
         ServerPlayer dead = respawnMock.player();
@@ -351,26 +349,10 @@ public class MockPlayersTest {
         // The ticker iterates its infos while it ticks, so they join it from an end-of-tick event, already done.
         AFTER_TICK.set(() -> {
             for (GameTestInfo info : infos) {
-                finish(info);
+                ProbeInfos.finish(info);
                 GameTestTicker.SINGLETON.add(info);
             }
         });
         return weak;
-    }
-
-    // succeed() and fail() read the test block, which a probe has not got; finish() is what marks a test done.
-    private static void finish(GameTestInfo info) {
-        try {
-            Method finish = GameTestInfo.class.getDeclaredMethod("finish");
-            finish.setAccessible(true);
-            finish.invoke(info);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Cannot call GameTestInfo.finish, likely a mapping change in Minecraft", e);
-        }
-    }
-
-    /** A test that never starts, on the owner's test and level: it has no structure, so the ticker must never tick it before it is done. */
-    private static GameTestInfo probeInfo(GameTestInfo owner, ServerLevel level) {
-        return new GameTestInfo(owner.getTestHolder(), Rotation.NONE, level, RetryOptions.noRetries());
     }
 }
