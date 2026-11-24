@@ -72,6 +72,19 @@ public final class ColumnCost {
             List<String> allWorlds,
             int rounds,
             Consumer<Map<String, List<Measurement>>> report) {
+        TestTicks.each(helper, tickBody(helper, worlds, allWorlds, rounds, report));
+    }
+
+    /**
+     * What {@link #run} does each tick, with the autosave already held for a measured run. Public so that {@code ColumnCostTest} can call
+     * the body itself and catch the throw a test's runner would turn into a failure.
+     */
+    public static Runnable tickBody(
+            GameTestHelper helper,
+            List<String> worlds,
+            List<String> allWorlds,
+            int rounds,
+            Consumer<Map<String, List<Measurement>>> report) {
         boolean smoke = rounds == 0;
         if (!smoke) {
             holdAutosave(helper);
@@ -90,7 +103,7 @@ public final class ColumnCost {
         Map<String, List<Measurement>> results = new LinkedHashMap<>();
         @Nullable Run[] current = {null};
         int[] cooldown = {0};
-        TestTicks.each(helper, () -> {
+        return () -> {
             if (cooldown[0] > 0) {
                 cooldown[0]--;
                 idle(smoke);
@@ -124,7 +137,7 @@ public final class ColumnCost {
                 }
                 helper.succeed();
             }
-        });
+        };
     }
 
     /** Pushes the server's next autosave past the end of {@code helper}'s test, until {@link #release}. */
