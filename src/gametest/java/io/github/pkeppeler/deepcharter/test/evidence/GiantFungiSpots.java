@@ -406,7 +406,8 @@ final class GiantFungiSpots {
      * A camera on the giants of zone {@code zone} the world grew round ({@code x}, {@code z}): of the floors every
      * {@link #MIX_GRID} blocks and the eight headings, the one that sees the most giants' marks (a rim, a needle, a
      * great stalk's cap) {@link #MIX_NEAR} to {@link #MIX_FAR} blocks off with nothing in the way, a giant counted
-     * once; it looks at the middle of those it sees. Empty if it sees none.
+     * once, and of those the one whose view runs furthest open; it looks at the middle of the giants it sees. Empty if
+     * it sees none.
      */
     static Optional<MixView> mix(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
         Zones.Span span = Zones.span(band.minY(), band.height(), zone);
@@ -436,8 +437,11 @@ final class GiantFungiSpots {
                                 seen.add(mark);
                             }
                         }
-                        if (seen.size() > bestSeen) {
-                            bestSeen = seen.size();
+                        // The giants it sees first, then how far the view runs open, so a wall at the eye never fills
+                        // it.
+                        int score = seen.isEmpty() ? 0 : seen.size() * 1000 + fan(level, feet, yaw);
+                        if (score > bestSeen) {
+                            bestSeen = score;
                             Vec3 middle = Vec3.ZERO;
                             for (BlockPos mark : seen) {
                                 middle = middle.add(Vec3.atCenterOf(mark).scale(1.0 / seen.size()));

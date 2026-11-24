@@ -348,6 +348,13 @@ public class GiantFungiScenario extends EvidenceScenario {
                 LightSync.holdSendUntilLit(level, parasolBase.offset(-24, 0, -24), spiresBase.offset(24, 0, 24));
             });
             awaitLight(context, server);
+            // The game keeps the debug view reduced, which leaves the chunk borders out.
+            server.runCommand("gamerule reduced_debug_info false");
+            ClientWait.until(
+                    context,
+                    "the client's debug view to be full",
+                    client -> !client.showOnlyReducedInfo(),
+                    client -> "the debug view is still reduced");
             context.runOnClient(client -> {
                 client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.ALWAYS_ON);
                 client.debugEntries.rebuildCurrentList();
@@ -362,6 +369,7 @@ public class GiantFungiScenario extends EvidenceScenario {
                 client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.NEVER);
                 client.debugEntries.rebuildCurrentList();
             });
+            server.runCommand("gamerule reduced_debug_info true");
             server.runOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 under.restore(level);
