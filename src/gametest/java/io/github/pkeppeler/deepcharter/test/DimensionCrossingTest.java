@@ -45,6 +45,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -656,12 +657,11 @@ public class DimensionCrossingTest {
             ready[0] = true;
         } else {
             ServerLevel arrivalLevel = arrival.getFirst().level();
-            int row = TestLayers.dimensionBand(arrivalLevel).minY();
             FarChunks.awaitAllEntityTicking(
                     helper,
                     arrivalLevel,
                     arrival.stream()
-                            .map(chunk -> new BlockPos(chunk.chunkX() << 4, row, chunk.chunkZ() << 4))
+                            .map(chunk -> new ChunkPos(chunk.chunkX(), chunk.chunkZ()).getWorldPosition())
                             .toList(),
                     () -> ready[0] = true);
         }
@@ -850,7 +850,7 @@ public class DimensionCrossingTest {
         return LayerTuning.DEFAULT.pocketRadius() + 3;
     }
 
-    /** Every chunk of {@code level} within {@code reach} blocks of the column, for {@link FarChunks#awaitLoaded}. */
+    /** Every chunk of {@code level} within {@code reach} blocks of the column, the arrival chunks that {@link #staged} waits on. */
     private static List<FarChunks.At> chunksAround(ServerLevel level, double x, double z, int reach) {
         int bx = Mth.floor(x);
         int bz = Mth.floor(z);
