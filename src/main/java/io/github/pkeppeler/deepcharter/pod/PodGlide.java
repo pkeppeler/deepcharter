@@ -15,8 +15,8 @@ import org.jspecify.annotations.Nullable;
  * {@link PodGlideTuning#steps()} ticks, and adds three things for a server that runs late:
  *
  * <ul>
- *   <li>With no move to follow, the pod coasts on at the speed the server last reported, for {@link PodGlideTuning#coastTicks()} ticks, so it
- *       does not freeze. The coast stops short of any block, so a pod that hit a wall or the ground is never drawn inside it.
+ *   <li>With no move to follow, the pod coasts on at the speed the server last reported, for {@link PodGlideTuning#coastTicks()} ticks (the last at
+ *       {@link PodGlideTuning#coastTailShare()} of it), so it does not freeze. The coast stops short of any block, so a pod that hit a wall or the ground is never drawn inside it.
  *   <li>When the moves arrive in a burst, the pod catches up at {@link PodGlideTuning#catchUp()} times its speed (and at no less than a
  *       share of its gap), so it does not lunge.
  *   <li>A pod that coasted past where the server put it stays there for {@link PodGlideTuning#settleDelayTicks()} ticks, in case a late move
@@ -123,7 +123,11 @@ final class PodGlide extends AbstractInterpolationHandler {
             step = distance * share;
         } else {
             double pace = Math.max(speed, PodTuning.DEFAULT.movement().horizontalSpeed()) * tuning.catchUp();
-            step = Math.min(distance * share, Math.max(pace, distance / tuning.catchUpTicks()));
+            // A coasted pod sits almost on its target, and a share of that gap would crawl: while the server reports
+            // motion, a tick covers at least the reported speed. A pod that never coasted trails by design and keeps
+            // the share.
+            double flow = moving && coastDirection != null ? speed : 0;
+            step = Math.min(Math.max(distance * share, flow), Math.max(pace, distance / tuning.catchUpTicks()));
         }
         boolean arrives = distance <= step + ARRIVED;
         entity.setPos(arrives ? target.position() : entity.position().add(gap.scale(step / distance)));
@@ -131,6 +135,12 @@ final class PodGlide extends AbstractInterpolationHandler {
         entity.setXRot((float) Mth.lerp(share, entity.getXRot(), target.xRot()));
         remaining = Math.max(0, remaining - 1);
         if (arrives) {
+            if (coastDirection != null) {
+                // The floor ran a coasted pod onto its target early: finish the turn and coast on.
+                entity.setYRot(target.yRot());
+                entity.setXRot(target.xRot());
+                remaining = 0;
+            }
             coastDirection = null;
             snapping = false;
         }
@@ -139,7 +149,12 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     /** Coasts one tick if the server reports the pod moving and the coast has ticks left; false when the pod does not coast. */
     private boolean coastOn(PodGlideTuning tuning, Vec3 reported, boolean moving) {
-        if (!moving || coasted >= tuning.coastTicks() || !coast(reported)) {
+        if (!moving || coasted >= tuning.coastTicks()) {
+            return false;
+        }
+        // The last coast tick eases off, so a late server slows the pod instead of stopping it dead.
+        boolean tail = coasted == tuning.coastTicks() - 1;
+        if (!coast(tail ? reported.scale(tuning.coastTailShare()) : reported)) {
             return false;
         }
         coasted++;
@@ -147,16 +162,15 @@ final class PodGlide extends AbstractInterpolationHandler {
     }
 
     /**
-     * Draws the pod one more tick at its reported speed, short of any block; false when it cannot move at all. The tick is swept in
+     * Draws the pod one more tick by {@code drawn}, short of any block; false when it cannot move at all. The tick is swept in
      * sub-steps no longer than the box's smallest side (at most {@link PodGlideTuning#coastSweepSteps()} of them, so a huge synced speed costs a bounded
      * number of checks), so a step bigger than the box cannot skip a thin block.
      */
-    private boolean coast(Vec3 reported) {
+    private boolean coast(Vec3 drawn) {
         AABB box = entity.getBoundingBox();
         double side = Math.min(box.getXsize(), Math.min(box.getYsize(), box.getZsize()));
-        int pieces =
-                Math.clamp((long) Math.ceil(reported.length() / side), 1, PodGlideTuning.DEFAULT.coastSweepSteps());
-        Vec3 piece = reported.scale(1.0 / pieces);
+        int pieces = Math.clamp((long) Math.ceil(drawn.length() / side), 1, PodGlideTuning.DEFAULT.coastSweepSteps());
+        Vec3 piece = drawn.scale(1.0 / pieces);
         Vec3 step = Vec3.ZERO;
         for (int i = 1; i <= pieces && entity.level().noCollision(entity, box.move(piece.scale(i))); i++) {
             step = piece.scale(i);
@@ -171,7 +185,7 @@ final class PodGlide extends AbstractInterpolationHandler {
             return false;
         }
         entity.setPos(entity.position().add(step));
-        coastDirection = reported;
+        coastDirection = drawn;
         active = true;
         return true;
     }

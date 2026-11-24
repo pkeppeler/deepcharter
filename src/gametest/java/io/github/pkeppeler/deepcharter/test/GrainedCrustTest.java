@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -588,7 +589,7 @@ public class GrainedCrustTest {
         });
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aWarningCreakComesBeforeEachPulseToWhatWouldBeSqueezed(GameTestHelper helper) {
         warningsComeBeforeEachPulse(helper, 5080, 0);
     }
@@ -604,12 +605,18 @@ public class GrainedCrustTest {
         pad(level, x);
         MockPlayer walker = MockPlayers.join(helper, "grain-warned");
         walker.player().setGameMode(GameType.SURVIVAL);
-        walker.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 0.5), 0f, 0f);
         MockPlayer bystander = MockPlayers.join(helper, "grain-bystander");
         bystander.player().setGameMode(GameType.SURVIVAL);
-        // Far out of earshot of the walker's creak, in no crust at all.
-        bystander.teleportTo(level, new Vec3(x + 200, FLOOR, Z + 0.5), 0f, 0f);
-        Arrival<Boolean> ready = ready(helper, level, x);
+        // The walker goes in once the far chunk ticks, not at the start: the grain squeezes a player in a loaded chunk,
+        // and in the tall world the chunk takes longer than a pulse to tick, so a walker put in at the start was dead
+        // before the test watched.
+        Arrival<Boolean> ready = new Arrival<>("the room", "the far chunk ticks");
+        FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            walker.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 0.5), 0f, 0f);
+            // Far out of earshot of the walker's creak, in no crust at all.
+            bystander.teleportTo(level, new Vec3(x + 200, FLOOR, Z + 0.5), 0f, 0f);
+            ready.set(true);
+        });
         int period = TUNING.grainPulseTicks();
         int warnAt = period - WARN_TICKS;
         // Mid-pulse, so a late look's own phase is never in the warning window.

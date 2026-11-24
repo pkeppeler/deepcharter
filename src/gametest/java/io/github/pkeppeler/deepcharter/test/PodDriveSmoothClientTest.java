@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * handles two. Without a slide between the server's moves the pod then stands still for a tick and lunges the next.
  *
  * <p>The late-server drives (#1041, ADR 0082) hold every move for a few client ticks and hand them over in one, as a server that runs
- * late does ({@link PacketJitter#stall}). They cover stalls of 3 ticks (the pod coasts through: steady floor and lunge bound hold),
+ * late does ({@link PacketJitter#stall}). They cover stalls of 3 and 5 ticks (the pod coasts through, the 5 on the coast's tail: steady floor and lunge bound hold),
  * 4 ticks across a key release (the pod ends past the server's stop by no more than a coast, steps back under half a frame's speed,
  * and settles on the server's), 6 ticks (the pod may stand, never lunges, keeps 80% of its progress and settles), 6 ticks across the
  * arrival at a wall, and 5 ticks across a landing from 10 blocks (never drawn inside a block, never below the ground). They do not cover
@@ -79,6 +79,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
     /** A server a few ticks late: the pod coasts through it. */
     private static final int SHORT_STALL_TICKS = 3;
+
+    /**
+     * A short stall and the server's own lateness on top of it (#1112): the tall world's server ticks run long enough to add two, and the
+     * pod's coast and its tail cover it with a tick to spare, so the drawn pod never stands.
+     */
+    private static final int LAGGED_STALL_TICKS = 5;
 
     /** A server later than the pod coasts: the pod may stand a few ticks, but never lunges when the moves arrive. */
     private static final int LONG_STALL_TICKS = 6;
@@ -262,6 +268,16 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 true,
                                 false,
                                 new Late(STALL_AT_TICK, SHORT_STALL_TICKS, -1, 0, true, true)));
+                drive(
+                        context,
+                        rig,
+                        Drive.forward(
+                                "flat drive through a lagging server stall",
+                                STALL_DRIVE_TICKS,
+                                flatSpeed,
+                                true,
+                                false,
+                                new Late(STALL_AT_TICK, LAGGED_STALL_TICKS, -1, 0, true, true)));
                 drive(
                         context,
                         rig,
@@ -458,13 +474,13 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
     /**
      * A drive that stops during a stall (the keys released, or the ground reached): the drawn pods never go past where the server put them
-     * by more than a coast ({@code coastTicks} of speed; none for a landing, since a coast stops short of the ground), each frame step
+     * by more than a coast ({@link #coastReach} of speed; none for a landing, since a coast stops short of the ground), each frame step
      * stays under the lunge bound, the way back is under {@link #MAX_BOUNCE_SHARE} of a frame's speed, and they end on the server's.
      */
     private static void expectStopped(
             Drive drive, Late late, Rig rig, ClientGameTestContext context, Subject ownPod, Subject watched) {
         boolean landing = late.dropBlocks() > 0;
-        double coast = landing ? 0 : PodGlideTuning.DEFAULT.coastTicks() * drive.speed();
+        double coast = landing ? 0 : coastReach() * drive.speed();
         double bounceBound = MAX_BOUNCE_SHARE * drive.speed() / FRAMES;
         double stepBound = STEP_MARGIN * drive.speed() / FRAMES;
         for (Subject subject : List.of(ownPod, watched)) {
@@ -501,6 +517,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     what + ": the drawn pod stepped back " + -backward + " blocks in one frame");
         }
         expectSettled(drive.name(), rig, context);
+    }
+
+    /** Ticks of its speed a whole coast draws: the full-speed ticks and the tail's share of the last. */
+    private static double coastReach() {
+        PodGlideTuning tuning = PodGlideTuning.DEFAULT;
+        return tuning.coastTicks() - 1 + tuning.coastTailShare();
     }
 
     /** Puts the pilot's pod back on its start and waits for the client to draw it there, still. */
@@ -733,8 +755,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      */
     private static void expectPinnedPodSettles(ClientGameTestContext context, Rig rig) {
         returnToStart(context, rig);
-        double coast = PodGlideTuning.DEFAULT.coastTicks()
-                * PodTuning.DEFAULT.movement().horizontalSpeed();
+        double coast = coastReach() * PodTuning.DEFAULT.movement().horizontalSpeed();
         double past = 0;
         Vec3 pin;
         Vec3 drawn;
