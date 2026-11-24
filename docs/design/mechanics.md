@@ -1886,13 +1886,13 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **The tool.** The navigator presses V (the ping key). The pod pays power, a ring goes out, and the scope on the navigator's screen (left edge, a round plan view, the pod at the middle and facing up) fills with echoes. The pilot's scanner and Ribbon are not touched; the scope is the one thing only the navigator sees past the headlights.
 - **Echoes are contacts of four kinds, drawn as four shapes** so they read without colour: ore (filled square), gas (hollow square), an empty cave (small dot), something that moved (cross). A tick over or under a shape says it is 2 or more blocks above or below the pod.
-- **Ambiguous on purpose.** A block echo is a 4-block cell of the world's grid, reported at its middle, so the navigator knows the neighbourhood and not the block. A cell with any ore in it is ore; else a cell with a gas pocket is gas; else a cell at least half air is a cave. Gas reads as gas only inside 12 blocks: farther off it reads as an empty cave, the SPEC's ambiguous echo, so the navigator has to get closer or listen for the hiss. A creature in the `deepcharter:sonar_echoes` entity tag returns an echo at its block: moved if it is faster than 1 block a second, else ore (a body standing still is a dense return). The tag ships empty: **until #924 fills it, nothing in the game returns a moved echo**, and the moved shape and its speed rule have no production source.
+- **Ambiguous on purpose.** A block echo is a 4-block cell of the world's grid, reported at its middle, so the navigator knows the neighbourhood and not the block. A cell with any ore in it is ore; else a cell with a gas pocket is gas; else a cell at least half air is a cave. Gas reads as gas only inside 12 blocks: farther off it reads as an empty cave, the SPEC's ambiguous echo, so the navigator has to get closer or listen for the hiss. A creature's signature is data: see [Sonar signatures and the lure](#sonar-signatures-and-the-lure-924-a).
 - **Cells within 6 blocks of the pod are silent**: its own cab and bore are not a cave. Chunks that are not loaded return nothing, as the scanner shows them. A ping returns at most 32 echoes: what moves first, then ore, gas and open space, nearest first.
 - **Marks.** The navigator looks toward an echo (within 12 degrees of the look) and presses G: it goes on the HUD of everyone riding the pod as a diamond in its kind's colour with its kind and distance, at the screen's edge toward it when it is off screen or behind. A mark holds a minute and outlives the echo it came from, so the pilot flies by it after the next ping. A pod holds three; a fourth drops the oldest; G toward a marked echo (even after its echo faded) takes its mark off. A pod takes a mark at most every 5 ticks; a refused one changes nothing and syncs nothing. The server checks the seat and that the echo is on the pod's picture.
 - **Costs and refusals.** Power: a ping takes 0.4 L from the tank and never takes it under the pod's urgent-fuel reserve (6%): the navigator cannot ping the pod dry. A pod without power cannot ping. The sonar rings for 4 seconds before the next ping. Each refusal says why on the action bar.
-- **Loud.** The ping plays a sound at the pod and fires `SonarEvents.PINGED`, a noise 48 blocks wide: twice what the ping sees. **The 48-block radius is a placeholder: nothing consumes it yet**, #924 makes the Sleeper's creatures answer it and adds the distance test with its first caller.
+- **Loud.** The ping plays a sound at the pod and fires `SonarEvents.PINGED`, a noise 48 blocks wide: twice what the ping sees. The Sleeper's answer it ([below](#sonar-signatures-and-the-lure-924-a)).
 
-**Ladder.** By hand: ping and read, mark what the pilot should fly to or from. A part: passive listening (silent, short range; #924) and the sonar burst (#928). Mastery: the robot navigator (`robot-crew`) pings on a fixed timer and cannot stay quiet; it calls `PodSonar.ping(pod)`, which asks nothing of a seat.
+**Ladder.** By hand: ping and read, mark what the pilot should fly to or from. A part: passive listening (silent, short range; #1028, not built) and the sonar burst (#928). Mastery: the robot navigator (`robot-crew`) pings on a fixed timer and cannot stay quiet; it calls `PodSonar.ping(pod)`, which asks nothing of a seat.
 
 **What sonar reveals against the scanner.** Ore: the scanner shows ore at every tier, as a one-block slice in the pod's facing plane; sonar's ore echoes are 3D (a 24-block radius, coarse to a 4-block cell) and need no scanner part, so they reveal no ore the scanner hides, only more of it at less precision. Gas: the scanner shows gas pockets only from tier 3 (`ScannerTuning.gasTier`), and a pocket otherwise looks like stone. Sonar does reveal gas pockets, within 12 blocks, with no scanner tier. This is chosen, not matched: SPEC section 8 names gas among the navigator's echoes, it needs a Prospector with a navigator, it is ambiguous beyond 12 blocks, and it costs power and noise. It makes the Prospector's navigator a second gas counter beside the tier 3 scanner and the seep sounder; if playtests find gas trivial on a Prospector, lower `gasResolveBlocks` or make gas resolve only from the scanner's tier.
 
@@ -1900,7 +1900,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Trade-offs.** Power from the tank the pilot also needs; noise that calls the Sleeper's once #924 lands; the navigator's eyes on the scope and not the view; a mark list of three.
 
-**Hooks for #924.** `SonarEvents.COLLECT` (a listener adds echoes with a `SonarKind` to the sink: a Sleeper creature a real echo, the hollow ones none, a Company machine ore), `SonarEvents.PINGED` (the noise: the ping carries its origin and `noiseBlocks()`; the distance test comes with its first caller), the `sonar_echoes` entity tag for the plain case, and `PodSonar.State` on the pod (synced, versioned) for anything that reads what the pod holds. Passive listening is a ping that skips the sound and `PINGED` and uses a shorter range: `SonarTuning` is the record to extend.
+**Hooks.** `SonarEvents.COLLECT` (a listener adds echoes with a `SonarKind` to the sink: a Sleeper creature a real echo, the hollow ones none, a Company machine ore), `SonarEvents.PINGED` (the noise: the ping carries its origin and `noiseBlocks()`, and `SonarPing.hears` is the distance test; `SonarLure` is its first caller), the entity tags of [the signatures](#sonar-signatures-and-the-lure-924-a) for the plain case, and `PodSonar.State` on the pod (synced, versioned) for anything that reads what the pod holds. Passive listening (#1028) is a ping that skips the sound and `PINGED` and uses a shorter range: `SonarTuning` is the record to extend. The robot navigator (#1029) calls `PodSonar.ping(pod)` on a timer.
 
 ### Pacing, in player units
 
@@ -1913,7 +1913,7 @@ Each row is asserted in `PodSonarTest`. *Measured*: read off the running game (t
 | What a ping costs in the pod's other burn | 6.3 s of idling, 2.1 s of driving, 1.3 s of drilling | modelled (0.4 L over 0.063, 0.19 and 0.32 L/s) |
 | Pings in one tank pinging as soon as the sonar clears, idling between | about 14, over about a minute | modelled (9.4 L usable over 0.1 L/s of pinging and 0.063 L/s of idling) |
 | Range | 24 blocks to the middle of a cell: the farthest echoing ore cell was 22.8 blocks off, the nearest silent one 26.6 | measured |
-| Noise radius | 48 blocks | measured (the event's radius, and a listener at 48 and at 48.01) |
+| Noise radius | 48 blocks | measured (the event's radius, and `SonarPing.hears` at 48 and at 48.01) |
 | An echo shows | 200 ticks, 10 s | measured on the world clock (the picture clears on tick 200 or 201) |
 | Sonar rings between pings | 80 ticks, 4 s | measured (refused on every tick before 80, accepted on it) |
 | A mark holds | 1200 ticks, 60 s, three at a time | measured (lapses on its tick; the fourth drops the oldest) |
@@ -1922,6 +1922,39 @@ Each row is asserted in `PodSonarTest`. *Measured*: read off the running game (t
 A default build is not harder than on main: nothing changes for a pod with no navigator, and a navigator who never pings spends nothing.
 
 **Knobs.** `SonarTuning` (range, noise, power, wait, lifetime, cell, blind zone, gas distance, moving speed, echo cap, mark life, marks, aim) and `theme/sonar.json` (the scope's look). **Open questions.** Should the ping's cost grow with depth? Should a ping light the echoes' cells for the pilot's lamps? Should marks be shared between a towed pair? None is built.
+
+## Sonar signatures and the lure (#924, A)
+
+**Problem.** The navigator's sonar is how a crew senses the Sleeper's defences, and its blind spot is what keeps Moloch's things unsettling ([CREATURES.md](../CREATURES.md#2-the-three-families)). A ping must also be a decision: it is how you see them and how you call them.
+
+**Signatures are entity tags** (`data/deepcharter/tags/entity_type/`), so a new creature joins with a line of JSON and the sonar never changes:
+- `sonar_echoes`: real things, the Sleeper's creatures and gnawers. An echo at the creature's block, **moved** when it goes faster than 1 block a second, else a still contact (an ore return: a body standing still is a dense return). A creature on the ground is judged by its horizontal speed, so gravity does not make a standing mob read as moving. It ships empty: no Sleeper creature is built yet (Drifters #918, gnawers #936); its first member is a line here.
+- `sonar_ore`: Company machines, an ore echo at any speed, as the pilot's scanner reads them. Tallies.
+- `sonar_hollow`: Moloch's things, no echo. The Retained (`lampless_figure`); masks join when built. It wins over the two tags above, so a type in a broad tag can still be silenced.
+- `sonar_cave`: things that read as an empty cave at any speed (CREATURES.md's Drifters: "sonar reads one as empty cave"). It ships empty.
+- `sonar_hears`: creatures a ping draws. It ships empty, for the same reason.
+
+The tags map to kinds in one table (`SonarTags`), the first match deciding: hollow, ore, cave, echoes. A creature that joins a tag brings the attribute the tag needs: for `sonar_hears`, a follow range of at least the noise radius (checked by a test over the shipped tag).
+
+**The lure.** On `SonarEvents.PINGED`, every creature in `sonar_hears` within the ping's noise radius (`SonarPing.hears`: a straight line of 48 blocks, through rock) gets a navigation to where the ping came from, at its own full pace. The order holds for `SonarTuning.lureTicks` (200 ticks, 10 s, CREATURES.md's ten seconds of silence): while it holds, a creature whose own goals have sent it elsewhere is sent again within 10 ticks, and a new ping refreshes the hold. After it the creature is left to its goals, and what it does on arrival is the creature's. A creature's pathfinder is also capped by its follow range, so a Sleeper's creature sets a follow range of at least the noise radius (48 blocks) in its attributes to come the whole way; one with a shorter reach comes as far as its path goes and stops (the measurement below).
+
+**Ladder and trade-offs.** By hand, ping and read, and pay for it in who comes. The listening part (#1028) is the quiet way; the sonar burst (#928) the loud one; the robot navigator (#1029) cannot choose. No new cost: the noise was already there, and now something answers it.
+
+**Pacing, in player units.** Asserted in `PodSonarTest`, with a husk (a walker with no goals, follow range 35) standing in for a Sleeper's creature. *Measured*: read off the running game. *Modelled*: worked out, not run.
+
+| Row | Value | |
+|---|---|---|
+| Who hears a ping | tagged creatures within 48 blocks, in a line through rock; a tagged one at 52 blocks stayed, an untagged one inside the noise stayed | measured |
+| The edge | 48.00 blocks hears, 48.01 does not | measured |
+| A walker from 36 blocks off at the hull | 375 ticks, 19 s: the husk's own pace, about 1.7 blocks a second over the 31 blocks it had to cover | measured (one husk in a straight 7-block-wide corridor) |
+| A walker heard from 47.5 blocks, follow range 35 | walked 34 blocks and stopped 13.9 blocks off | measured: why a Sleeper's creature sets its follow range to 48 |
+| The hold | a cow with all its own goals, taken off the ping at tick 13, was heading for it again within 10 ticks; 40 ticks after the 200-tick hold it was left alone | measured |
+| A walker at a player's walking pace (4.3 blocks a second) from the edge of the noise | 11 s to cover 48 blocks | modelled |
+| What the navigator can do with it | ping, mark, and the pilot has about the time it takes the nearest one to cross the gap | modelled |
+
+A default build is not harder than on main: no Sleeper creature is shipped, so nothing yet answers a ping. The first (#918) makes it so, and states its own pacing.
+
+**Knobs.** `SonarTuning.noiseBlocks` (48) is the radius, `lureTicks` (200) the hold; the tags are the signatures. **Open questions.** Should a ping also wake things that are not the Sleeper's? (CREATURES.md says the sonar burst does.) Neither is built.
 
 ## The first tank and the Company recovery (#963, A)
 

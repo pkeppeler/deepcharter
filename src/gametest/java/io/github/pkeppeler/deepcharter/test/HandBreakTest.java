@@ -103,6 +103,7 @@ public class HandBreakTest {
         return List.of(
                 new Kind("crust in layer 1", 1, LayerBlocks.BREACH_CRUST.defaultBlockState(), Items.DIAMOND_PICKAXE),
                 new Kind("crust in layer 2", 2, LayerBlocks.BREACH_CRUST.defaultBlockState(), Items.NETHERITE_PICKAXE),
+                new Kind("crust in layer 3", 3, LayerBlocks.BREACH_CRUST.defaultBlockState(), Items.NETHERITE_PICKAXE),
                 new Kind(
                         "Company rock in layer 1",
                         1,
@@ -290,19 +291,25 @@ public class HandBreakTest {
             ItemStack pick = enchanted(rig.level, new ItemStack(kind.bitingTool), Enchantments.UNBREAKING, 3);
             enchanted(rig.level, pick, Enchantments.MENDING, 1);
             hold(rig.player(), pick);
-            int expected = expectedCost(kind.layer, pick.getMaxDamage());
+            int max = pick.getMaxDamage();
+            int expected = expectedCost(kind.layer, max);
             if (!rig.player().gameMode.destroyBlock(pos)
                     || !rig.level.getBlockState(pos).isAir()) {
                 throw failure(helper, "%s did not break", kind.name);
             }
-            if (pick.getDamageValue() != expected) {
+            if (expected >= max) {
+                // Layer 3 and deeper cost the whole pick: it is used up, so there is no damage left to read.
+                if (!rig.player().getMainHandItem().isEmpty()) {
+                    throw failure(helper, "%s cost the whole pick, which was not used up", kind.name);
+                }
+            } else if (pick.getDamageValue() != expected) {
                 throw failure(
                         helper,
                         "%s cost %d durability, expected %d of %d",
                         kind.name,
                         pick.getDamageValue(),
                         expected,
-                        pick.getMaxDamage());
+                        max);
             }
             if (dropsAround(rig.level, pos) != 0) {
                 throw failure(helper, "%s dropped something", kind.name);

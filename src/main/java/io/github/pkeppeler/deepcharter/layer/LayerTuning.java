@@ -33,6 +33,8 @@ import java.util.Arrays;
  * @param seamRefreshTicks  ticks between two refreshes of the ticket under a vehicle that stays in the zone
  * @param seamTicketTimeout ticks the arrival ticket outlasts its last refresh
  * @param seamRecentreChunks chunks (Chebyshev) a vehicle must be from the arrival area's centre before the area moves to it: one area per vehicle
+ * @param seamBytesPerTick  estimated bytes of arrival-area chunks the server sends a rider each tick (#1185); at least one chunk goes each tick
+ * @param seamMissedWindowTicks ticks after a crossing that the server keeps the chunks it skipped, for a client that reports them missing
  * @param handBreak       what it takes to brute-force a pod-only block with a hand tool (#858, ADR 0069)
  */
 public record LayerTuning(
@@ -60,6 +62,8 @@ public record LayerTuning(
         int seamRefreshTicks,
         int seamTicketTimeout,
         int seamRecentreChunks,
+        int seamBytesPerTick,
+        int seamMissedWindowTicks,
         HandBreakTuning handBreak) {
     public static final LayerTuning DEFAULT = new LayerTuning(
             63,
@@ -86,6 +90,8 @@ public record LayerTuning(
             20,
             100,
             2,
+            49_152,
+            100,
             HandBreakTuning.DEFAULT);
 
     public LayerTuning {
@@ -95,6 +101,13 @@ public record LayerTuning(
         if (seamRefreshTicks < 1 || seamRefreshTicks >= seamTicketTimeout) {
             throw new IllegalArgumentException("seamRefreshTicks must be at least 1 and under seamTicketTimeout "
                     + seamTicketTimeout + ", or the ticket lapses between refreshes; got " + seamRefreshTicks);
+        }
+        if (seamBytesPerTick < 16_384) {
+            throw new IllegalArgumentException("seamBytesPerTick must be at least 16384, got " + seamBytesPerTick);
+        }
+        if (seamMissedWindowTicks < 20) {
+            throw new IllegalArgumentException(
+                    "seamMissedWindowTicks must be at least 20, got " + seamMissedWindowTicks);
         }
         if (seamRecentreChunks < 1) {
             throw new IllegalArgumentException("seamRecentreChunks must be at least 1, got " + seamRecentreChunks);

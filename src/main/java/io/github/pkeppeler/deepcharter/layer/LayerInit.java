@@ -12,6 +12,7 @@ public final class LayerInit {
         LayerCommands.init();
         BreachService.init();
         SeamStreaming.init();
+        SeamSender.init();
         BreachPayload.init();
         HandBreak.init();
         LayerReadouts.init();
