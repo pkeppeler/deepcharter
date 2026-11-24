@@ -286,17 +286,17 @@ public final class SeamStreaming {
                     descent,
                     loaded,
                     riders);
-        } else if (now - current.refreshedTick() >= tuning.seamRefreshTicks()) {
-            below.getChunkSource()
-                    .addTicketWithRadius(LayerRegistry.SEAM_ARRIVAL, current.centre(), tuning.seamRadius());
-            track.streaming = new Streaming(
-                    current.lower(), current.centre(), current.startedTick(), now, descent, current.loaded(), riders);
         } else {
+            boolean refresh = now - current.refreshedTick() >= tuning.seamRefreshTicks();
+            if (refresh) {
+                below.getChunkSource()
+                        .addTicketWithRadius(LayerRegistry.SEAM_ARRIVAL, current.centre(), tuning.seamRadius());
+            }
             track.streaming = new Streaming(
                     current.lower(),
                     current.centre(),
                     current.startedTick(),
-                    current.refreshedTick(),
+                    refresh ? now : current.refreshedTick(),
                     descent,
                     current.loaded(),
                     riders);
