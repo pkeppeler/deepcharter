@@ -31,10 +31,10 @@ import net.minecraft.world.phys.Vec3;
 public class PodDriveStepTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 700;
     /**
-     * Layer 1 at x 4252 to 4261 and z 3000 to 3144 is this test's own. At x 4024 it shared columns with PodDrillTest's nudge test,
-     * and in reverse order the two ran in one batch, so the other test's room cut the slabs and its pod blocked pod 0 (#1178).
+     * Layer 1 columns x 4260-4269, z 2996-3148, all in chunk column 266: no other test stages here. PodDrillTest's nudge test
+     * shared x 4024 and in reverse order ran in one batch (#1178).
      */
-    private static final int X = 4256;
+    private static final int X = 4264;
 
     private static final int Z = 3000;
     private static final int FLOOR = TestLayers.worldY(1, 60);
@@ -109,7 +109,7 @@ public class PodDriveStepTest {
             if (finished == PODS) {
                 helper.succeed();
             } else if (helper.getTick() >= MAX_TICKS - 2) {
-                throw failure(helper, "pods not done: %s", describe(arrivals, done, last));
+                throw failure(helper, "pods not done:%s", describe(arrivals, done, last));
             }
         });
     }
@@ -119,8 +119,11 @@ public class PodDriveStepTest {
         StringBuilder text = new StringBuilder();
         for (int i = 0; i < PODS; i++) {
             if (!done[i]) {
-                text.append("\n  pod %s: %s, last at %s"
-                        .formatted(i, arrivals.get(i).isPresent() ? "arrived" : "never arrived", last[i]));
+                text.append("\n  pod %s: %s, %s"
+                        .formatted(
+                                i,
+                                arrivals.get(i).isPresent() ? "arrived" : "never arrived",
+                                last[i] == null ? "no position yet" : "last at " + last[i]));
             }
         }
         return text.toString();
