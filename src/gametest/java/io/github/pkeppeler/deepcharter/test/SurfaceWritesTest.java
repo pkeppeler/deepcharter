@@ -142,10 +142,8 @@ public class SurfaceWritesTest {
         ServerLevel window = layer(server, "campaign_layer_1");
         ServerLevel campaign = layer(server, "campaign_sample");
         // The campaign world's chunk first, with the path off, then the window's with it on, watching only that
-        // position: the
-        // count is of one chunk position, so another test's worldgen cannot move it. The toggle is flipped only while
-        // this
-        // test waits on the one chunk.
+        // position: the count is of one chunk position, so another test's worldgen cannot move it. The toggle is
+        // flipped only while this test waits on the one chunk.
         LevelChunk off;
         boolean was = SurfaceWrites.setEnabled(false);
         try {
