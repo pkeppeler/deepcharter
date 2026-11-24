@@ -626,10 +626,12 @@ public class SeamDataAheadTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aMissedReportAfterTheWindowResendsNothing(GameTestHelper helper) {
         int[] reportedAt = {-1};
+        Map<ChunkPos, Integer> before = new HashMap<>();
         crossingScenario(helper, FIRST_INDEX + 11, "seam-data-late", run -> {}, (run, mock, ticks) -> {
             ResourceKey<Level> two = run.site().two().dimension();
             if (reportedAt[0] < 0) {
                 if (ticks >= LayerTuning.DEFAULT.seamMissedWindowTicks() + SETTLE_TICKS) {
+                    area(run.site().centre()).forEach(pos -> before.put(pos, mock.timesSentIn(two, pos)));
                     mock.send(new SeamMissedPayload(two));
                     reportedAt[0] = ticks;
                 }
@@ -638,10 +640,13 @@ public class SeamDataAheadTest {
             if (ticks - reportedAt[0] < SETTLE_TICKS) {
                 return;
             }
-            long resent = area(run.site().centre()).stream()
-                    .filter(pos -> mock.timesSentIn(two, pos) > 0)
-                    .count();
-            expect(helper, resent <= 9, "a report after the window sent %d chunks of the area again", resent);
+            for (ChunkPos pos : before.keySet()) {
+                expect(
+                        helper,
+                        mock.timesSentIn(two, pos) == before.get(pos),
+                        "a report after the window sent %s again",
+                        pos);
+            }
             helper.succeed();
         });
     }

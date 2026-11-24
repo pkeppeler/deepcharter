@@ -6,20 +6,25 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.CommonPlayerSpawnInfo;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -52,6 +57,10 @@ public final class SeamSender {
         final LongSet sent = new LongOpenHashSet();
         /** Positions in the area that were sent and have since changed or may have: the crossing sends them again. */
         final LongSet stale = new LongOpenHashSet();
+        /** Positions the crossing skipped, because the client holds them already. */
+        final LongSet skipped = new LongOpenHashSet();
+        /** Estimated bytes sent to this rider ahead. */
+        long bytes;
         /** Positions whose packet is over {@link #MAX_PAYLOAD_SIZE}: never sent, and not tried again while the area stays. */
         final LongSet oversize = new LongOpenHashSet();
 
@@ -63,6 +72,15 @@ public final class SeamSender {
 
     /** A chunk of one level, as a cache key. */
     private record Chunk(ResourceKey<Level> level, long pos) {}
+
+    /** The chunks a crossing skipped for a rider: kept until {@code until}, for a client that reports them missing. */
+    private record Skipped(ResourceKey<Level> level, LongSet positions, long until) {}
+
+    /** Whether a crossing's teleport is under way, so the sends of the chunks around the arrival may be skipped. Server thread only. */
+    private static boolean crossing;
+
+    /** Skipped chunks by rider UUID. Server thread only. */
+    private static final Map<UUID, Skipped> RECENT = new HashMap<>();
 
     /** Riders' seams by UUID. Server thread only. */
     private static final Map<UUID, RiderSeam> STATE = new HashMap<>();
@@ -89,9 +107,16 @@ public final class SeamSender {
         SeamDiscardPayload.init();
         SeamMissedPayload.init();
         ServerTickEvents.END_SERVER_TICK.register(SeamSender::tick);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> STATE.remove(handler.player.getUUID()));
+        ServerPlayNetworking.registerGlobalReceiver(
+                SeamMissedPayload.TYPE, (payload, context) -> missed(context.player(), payload.dimension()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            STATE.remove(handler.player.getUUID());
+            RECENT.remove(handler.player.getUUID());
+        });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             STATE.clear();
+            RECENT.clear();
+            crossing = false;
             BUILT.clear();
         });
     }
@@ -120,7 +145,117 @@ public final class SeamSender {
         return packet.chunkData().getReadBuffer().readableBytes() + LIGHT_ARRAY_BYTES * lightArrays;
     }
 
+    /**
+     * Runs {@code teleport}, a crossing of {@code vehicle} and its riders into {@code to}, as a seam crossing: while it runs,
+     * {@link #takePreSent} may skip the chunks vanilla would send each rider around its arrival, and when it ends each rider's seam into
+     * {@code to} becomes the chunks it skipped, kept for {@link LayerTuning#seamMissedWindowTicks()} ticks.
+     */
+    public static <T> T crossing(ServerLevel to, Entity vehicle, Supplier<T> teleport) {
+        Set<UUID> riders = new HashSet<>();
+        vehicle.getPassengersAndSelf().forEach(crossed -> riders.add(crossed.getUUID()));
+        crossing = true;
+        try {
+            return teleport.get();
+        } finally {
+            crossing = false;
+            endCrossing(to, riders);
+        }
+    }
+
+    private static void endCrossing(ServerLevel to, Set<UUID> riders) {
+        long until = (long) to.getServer().getTickCount() + LayerTuning.DEFAULT.seamMissedWindowTicks();
+        Iterator<Map.Entry<UUID, RiderSeam>> seams = STATE.entrySet().iterator();
+        while (seams.hasNext()) {
+            Map.Entry<UUID, RiderSeam> entry = seams.next();
+            RiderSeam seam = entry.getValue();
+            if (!seam.lower.equals(to.dimension()) || !riders.contains(entry.getKey())) {
+                continue;
+            }
+            DeepCharter.LOGGER.info(
+                    "Seam crossing of {} into {}: {} chunks sent ahead ({} bytes), {} skipped at the crossing, {} changed since",
+                    entry.getKey(),
+                    to.dimension().identifier(),
+                    seam.sent.size(),
+                    seam.bytes,
+                    seam.skipped.size(),
+                    seam.stale.size());
+            RECENT.put(entry.getKey(), new Skipped(seam.lower, seam.skipped, until));
+            seams.remove();
+        }
+    }
+
+    /**
+     * Whether vanilla's mark of {@code pos} of {@code level} as pending to send to {@code player} is skipped: during a crossing, when the
+     * rider was sent the chunk ahead, it has not changed since, and its light is not being settled.
+     */
+    public static boolean takePreSent(ServerPlayer player, ServerLevel level, ChunkPos pos) {
+        if (!crossing) {
+            return false;
+        }
+        RiderSeam seam = STATE.get(player.getUUID());
+        long packed = pos.pack();
+        if (seam == null
+                || !seam.lower.equals(level.dimension())
+                || !seam.sent.contains(packed)
+                || seam.stale.contains(packed)
+                || LightSync.watching(level, pos)) {
+            return false;
+        }
+        seam.skipped.add(packed);
+        return true;
+    }
+
+    /** A block of {@code level} changed: each rider that was sent the chunk of it, or one beside it, ahead no longer holds it right. */
+    public static void blockChanged(ServerLevel level, BlockPos pos) {
+        if (STATE.isEmpty()) {
+            return;
+        }
+        int chunkX = pos.getX() >> 4;
+        int chunkZ = pos.getZ() >> 4;
+        for (RiderSeam seam : STATE.values()) {
+            if (!seam.lower.equals(level.dimension())) {
+                continue;
+            }
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    long packed = ChunkPos.pack(chunkX + dx, chunkZ + dz);
+                    if (seam.sent.contains(packed)) {
+                        seam.stale.add(packed);
+                    }
+                }
+            }
+        }
+    }
+
+    /** A client crossed into {@code dimension} without the level it was sent: send it the chunks the crossing skipped. */
+    private static void missed(ServerPlayer player, ResourceKey<Level> dimension) {
+        Skipped skipped = RECENT.remove(player.getUUID());
+        if (skipped == null
+                || !skipped.level().equals(dimension)
+                || !player.level().dimension().equals(dimension)) {
+            return;
+        }
+        ServerLevel level = player.level();
+        int resent = 0;
+        for (long packed : skipped.positions()) {
+            LevelChunk chunk = level.getChunkSource().chunkMap.getChunkToSend(packed);
+            if (chunk != null) {
+                player.connection.chunkSender.markChunkPendingToSend(chunk);
+                resent++;
+            }
+        }
+        DeepCharter.LOGGER.warn(
+                "{} reported the seam into {} missing: {} skipped chunks sent again",
+                player.getUUID(),
+                dimension.identifier(),
+                resent);
+    }
+
     private static void tick(MinecraftServer server) {
+        if (!RECENT.isEmpty()) {
+            long now = server.getTickCount();
+            RECENT.values().removeIf(skipped -> skipped.until() <= now);
+        }
         List<SeamStreaming.Approach> approaches = SeamStreaming.approaches();
         if (approaches.isEmpty() && STATE.isEmpty()) {
             return;
@@ -237,6 +372,7 @@ public final class SeamSender {
             }
             ServerPlayNetworking.send(player, payload);
             seam.sent.add(packed);
+            seam.bytes += size;
             bytes += size;
             if (bytes >= budget) {
                 return;
