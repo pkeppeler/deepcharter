@@ -172,6 +172,8 @@ public class DesignTourScenario extends EvidenceScenario {
     private static final int HOLLOWS_LOOK = 16;
 
     private static final double HOLLOWS_DROP = 0.15;
+    /** Ticks a layer 3 air still gives a zone's ambient particles to fill the view: they appear a few a tick round the camera. */
+    private static final int HOLLOWS_AIR_TICKS = 40;
     private static final int ITEMS_PER_PAGE = 36;
     private static final long FUNDS = 5_000;
     private static final int TERMINAL_TYPING_TICKS = 140;
@@ -1538,7 +1540,8 @@ public class DesignTourScenario extends EvidenceScenario {
 
         /**
          * A cavern of each zone of layer 3, the Fungal Hollows (#972): from a floor in the zone, across the longest open run, as it is
-         * played and with night vision. In {@link Stops#LAYER_THREE} each still is a frame too, since nothing else frames that run.
+         * played and with night vision. In {@link Stops#LAYER_THREE} each still is a frame too, since nothing else frames that run, and each
+         * zone has an air still as well.
          */
         private void layerThree() {
             hud(false);
@@ -1550,10 +1553,26 @@ public class DesignTourScenario extends EvidenceScenario {
                 serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
                 view(3, spot.eye(), spot.target(), 120);
                 hollowsStill(prefix + "-as-played-no-light");
+                if (stops == Stops.LAYER_THREE) {
+                    airStill(prefix + "-air");
+                }
                 nightVision();
                 view(3, spot.eye(), spot.target(), 20);
                 hollowsStill(prefix);
             }
+        }
+
+        /**
+         * The view as played once the zone's ambient particles have had {@value #HOLLOWS_AIR_TICKS} ticks to fill it: the Spore Fields'
+         * haze (#972). Settle clears the particles before every still, so the other stills never show them. Only the layer 3 stops shoot
+         * it, so the whole tour's stills stay as they were.
+         */
+        private void airStill(String stillName) {
+            settle(stillName);
+            // tick-wait: the ambient particles appear a few a tick round the camera; nothing reports that the view is full
+            ctx.waitTicks(HOLLOWS_AIR_TICKS);
+            owner.screenshot(ctx, stillName);
+            owner.frame(ctx);
         }
 
         private void hollowsStill(String stillName) {
