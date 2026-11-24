@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
 import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
 import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
@@ -12,7 +13,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.SonarKind;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
@@ -26,6 +27,7 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityTypes;
@@ -40,7 +42,7 @@ import net.minecraft.world.phys.Vec3;
  * by (a hollow square) and one far off that reads as an empty cave (a dot), a cave (dots), and three bodies in hollows of their own. A body standing
  * still is an ore echo; so is a Tally far west, a Company machine. A Retained far east is hollow: its room is an open cave on the scope, and the
  * figure in it returns nothing. The navigator then turns toward the ore echo ahead and marks it, and the mark shows on the HUD. The echoes dim over
- * their ten seconds, and the bar under the scope fills as the sonar clears for the next ping. The stills zoom on the scope.
+ * their ten seconds, and the bar under the scope fills as the sonar clears for the next ping. The stills zoom on the scope. At the end a long step popup slides in on the right, beside the scope (#1075).
  */
 public class NavigatorSonarScenario extends EvidenceScenario {
     private static final int X = 1600;
@@ -52,6 +54,10 @@ public class NavigatorSonarScenario extends EvidenceScenario {
     private static final int FRAMES_AFTER = 24;
     private static final int TICKS_PER_FRAME = 4;
     private static final int ZOOM_MARGIN = 12;
+    private static final int TOAST_SETTLE_TICKS = 30;
+    private static final String LONG_STEP =
+            "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
+                    + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
 
     @Override
     protected String name() {
@@ -62,12 +68,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             two.server().runOnServer(server -> buildSite(server.overworld(), two));
-            ClientWait.until(
-                    context,
-                    "the stone round the pod on the client",
-                    client -> ClientLight.clientLevel(client)
-                            .getBlockState(new BlockPos(X + 20, FLOOR_Y, Z))
-                            .is(Blocks.STONE));
+            ClientWait.chunksAround(context, X, Z, REACH);
             two.server().runOnServer(server -> board(server.overworld(), two));
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ClientWait.until(
@@ -87,6 +88,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
             }
             scopeStill(context, "sonar-before-the-ping");
 
+            ClientChecks.requireNavigator(context);
             context.getInput().pressKey(SonarKeys.PING);
             ClientWait.until(
                     context,
@@ -118,7 +120,31 @@ public class NavigatorSonarScenario extends EvidenceScenario {
                 frame(context);
             }
             scopeStill(context, "sonar-echoes-fading");
+            stepPopupBesideTheScope(context);
         }
+    }
+
+    /**
+     * A long step is done while the scope is up: it fits neither above nor below the scope, so the popup slides in on the right and stays
+     * clear of it (#1075).
+     */
+    private void stepPopupBesideTheScope(ClientGameTestContext context) {
+        StepToast[] toast = {null};
+        context.runOnClient(client -> {
+            toast[0] = StepToast.of(Component.literal(LONG_STEP));
+            client.gui.toastManager().addToast(toast[0]);
+        });
+        ClientWait.until(
+                context,
+                "the long step popup placed beside the scope",
+                client -> toast[0].placement().isPresent(),
+                client -> "placement " + toast[0].placement());
+        context.waitTicks(
+                TOAST_SETTLE_TICKS); // tick-wait: the slip slides in over a few frames; nothing reports that it has
+        // stopped
+        frame(context);
+        screenshot(context, "sonar-step-popup-right-column");
+        context.runOnClient(client -> client.gui.toastManager().clear());
     }
 
     /** Turns the local player to look at the middle of the first ore echo of the pod's picture. */
@@ -145,6 +171,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
 
     /** A still of the whole screen and its zoom on the scope, as the navigator reads it. */
     private void scopeStill(ClientGameTestContext context, String name) {
+        ClientChecks.requireNavigator(context);
         clearNotices(context);
         screenshot(context, name);
         frame(context);

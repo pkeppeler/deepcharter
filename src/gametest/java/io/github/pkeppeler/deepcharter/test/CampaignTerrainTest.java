@@ -29,9 +29,11 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.CardinalLighting;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.block.Block;
@@ -39,14 +41,16 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
+import net.minecraft.world.level.dimension.DimensionType;
 
 /**
  * Server GameTests for the campaign world's terrain (#742, ADR 0059): the bands, the rock of each, the crust at the floor of each layer, and
- * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_sample}, a test data-pack dimension, as
- * {@code surface_sample} is for the surface; the shipped game does not use it yet. The band table is {@link CampaignBands}.
+ * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_full}, the test data pack's exact copy of the shipped overworld, which the GameTest server cannot use (it bakes its
+ * overworld from a flat preset). The band table is {@link CampaignBands}.
  */
 public class CampaignTerrainTest {
-    private static final String SAMPLE = "deepcharter:campaign_sample";
+    private static final String FULL = "deepcharter:campaign_full";
     private static final int MAX_TICKS = 6000;
     /** The chunks sampled: a square this many chunks on a side, away from the colony pad. */
     private static final int SAMPLE_CHUNK_X = 10;
@@ -74,7 +78,7 @@ public class CampaignTerrainTest {
     /** Air, and the lava the zone fill leaves in a layer (#743). */
     private static final Set<String> FLUIDS_AND_AIR = Set.of("minecraft:air", "minecraft:cave_air", "minecraft:lava");
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theBandsAreWhereTheDecisionPutsThem(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         expect(helper, CampaignBands.SURFACE.minY() == -64 && CampaignBands.SURFACE.maxY() == 319, "the surface band");
@@ -105,7 +109,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theFloorOfLayers1And2HoldsThreeRowsOfCrust(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int rows = CampaignBands.crustRows();
@@ -137,7 +141,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void crustIsOnlyAtTheFloorsSoNoneLiesUnderTheSurface(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<Integer> expected = new TreeSet<>();
@@ -170,7 +174,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void eachBandHoldsItsOwnRock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Map<String, Set<String>> found = new TreeMap<>();
@@ -207,7 +211,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void eachBandHasItsZoneBiome(GameTestHelper helper) throws IOException {
         ServerLevel level = helper.getLevel();
         BlockPos column = sampledColumns().getFirst();
@@ -216,6 +220,7 @@ public class CampaignTerrainTest {
                 .getAsJsonObject()
                 .getAsJsonObject("generator")
                 .getAsJsonObject("biome_source")
+                .getAsJsonObject("surface")
                 .getAsJsonArray("biomes")
                 .forEach(entry ->
                         surfaceBiomes.add(entry.getAsJsonObject().get("biome").getAsString()));
@@ -262,7 +267,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void noVanillaBlockIsGenerated(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<String> vanilla = new TreeSet<>();
@@ -285,7 +290,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theDataMatchesTheBandTable(GameTestHelper helper) throws IOException {
         int crust = CampaignBands.crustRows();
         JsonObject settings = read(helper, "/data/deepcharter/worldgen/noise_settings/campaign.json")
@@ -315,7 +320,12 @@ public class CampaignTerrainTest {
         JsonElement density = settings.getAsJsonObject("noise_router").get("final_density");
         List<String> ranges = new ArrayList<>();
         collectRanges(density, ranges);
-        List<String> expectedRanges = Collections.nCopies(3, range(CampaignBands.LAYER_1));
+        // The layers' terms are evaluated only below the surface band's floor (range_choice picks one branch), so a
+        // column of the surface
+        // band pays for none of their noise; the three after it are the layers' own.
+        List<String> expectedRanges = new ArrayList<>();
+        expectedRanges.add(CampaignBands.UNBUILT.minY() + ".." + CampaignBands.SURFACE.minY());
+        expectedRanges.addAll(Collections.nCopies(3, range(CampaignBands.LAYER_1)));
         expect(
                 helper,
                 ranges.equals(expectedRanges),
@@ -362,12 +372,12 @@ public class CampaignTerrainTest {
         expect(helper, anchors.equals(expectedAnchors), "rule anchors %s, expected %s", anchors, expectedAnchors);
 
         JsonObject dimension =
-                read(helper, "/data/deepcharter/dimension/campaign_sample.json").getAsJsonObject();
-        JsonObject type = read(helper, "/data/deepcharter/dimension_type/campaign_sample.json")
-                .getAsJsonObject();
+                read(helper, "/data/deepcharter/dimension/campaign_full.json").getAsJsonObject();
+        JsonObject type =
+                read(helper, "/data/minecraft/dimension_type/overworld.json").getAsJsonObject();
         expect(
                 helper,
-                dimension.get("type").getAsString().equals("deepcharter:campaign_sample")
+                dimension.get("type").getAsString().equals("minecraft:overworld")
                         && type.get("min_y").getAsInt() == worldMinY()
                         && type.get("height").getAsInt() == worldTopExclusive() - worldMinY(),
                 "the dimension type spans the bands");
@@ -375,7 +385,7 @@ public class CampaignTerrainTest {
         expect(
                 helper,
                 generator.get("settings").getAsString().equals("deepcharter:campaign"),
-                "campaign_sample uses the campaign noise settings");
+                "campaign_full uses the campaign noise settings");
         JsonObject source = generator.getAsJsonObject("biome_source");
         expect(
                 helper,
@@ -394,19 +404,14 @@ public class CampaignTerrainTest {
                     "the biome source's layer %d is not the band table's",
                     i + 1);
         }
-        JsonElement shippedBiomes = read(helper, "/data/minecraft/dimension/overworld.json")
-                .getAsJsonObject()
-                .getAsJsonObject("generator")
-                .getAsJsonObject("biome_source")
-                .get("biomes");
         expect(
                 helper,
-                source.getAsJsonObject("surface").get("biomes").equals(shippedBiomes),
-                "the surface biomes are not the shipped overworld's");
+                read(helper, "/data/minecraft/dimension/overworld.json").equals(dimension),
+                "campaign_full is not the shipped overworld");
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theBiomeFeaturesHaveNoOrderCycle(GameTestHelper helper) {
         ChunkGenerator generator = helper.getLevel().getChunkSource().getGenerator();
         List<Holder<Biome>> biomes = List.copyOf(generator.getBiomeSource().possibleBiomes());
@@ -433,6 +438,51 @@ public class CampaignTerrainTest {
         } catch (IllegalStateException e) {
             throw failure(helper, "the biome features have an order cycle: %s", e.getMessage());
         }
+        helper.succeed();
+    }
+
+    /**
+     * No biome carves (#214): a carver picks its biome at quart Y 0, so one on a surface biome would run through the whole 2352-tall
+     * column. Covers every {@code deepcharter} biome of the registry and every biome the campaign generator can place.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
+    public void noBiomeHasCarvers(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Map<String, Biome> biomes = new TreeMap<>();
+        level.registryAccess().lookupOrThrow(Registries.BIOME).listElements().forEach(holder -> {
+            Identifier id = holder.key().identifier();
+            if (id.getNamespace().equals("deepcharter")) {
+                biomes.put(id.toString(), holder.value());
+            }
+        });
+        level.getChunkSource()
+                .getGenerator()
+                .getBiomeSource()
+                .possibleBiomes()
+                .forEach(holder ->
+                        biomes.put(holder.unwrapKey().orElseThrow().identifier().toString(), holder.value()));
+        expect(helper, !biomes.isEmpty(), "no biomes were found to check for carvers");
+        biomes.forEach((id, biome) -> expect(
+                helper,
+                !biome.getGenerationSettings().getCarvers().iterator().hasNext(),
+                "a carver on %s would cut the whole 2352-tall column (#214: no carvers)",
+                id));
+        helper.succeed();
+    }
+
+    /** The overworld keeps vanilla's default cardinal light: the user's decision on #214. */
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
+    public void theOverworldKeepsDefaultCardinalLight(GameTestHelper helper) {
+        DimensionType overworld = helper.getLevel()
+                .registryAccess()
+                .lookupOrThrow(Registries.DIMENSION_TYPE)
+                .getOrThrow(BuiltinDimensionTypes.OVERWORLD)
+                .value();
+        expect(
+                helper,
+                overworld.cardinalLightType() == CardinalLighting.Type.DEFAULT,
+                "the overworld's cardinal light must stay vanilla's default (user decision on #214), not %s",
+                overworld.cardinalLightType().getSerializedName());
         helper.succeed();
     }
 
