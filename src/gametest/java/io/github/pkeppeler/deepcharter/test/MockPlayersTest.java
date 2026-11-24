@@ -338,7 +338,6 @@ public class MockPlayersTest {
         GameTestHelper eachHelper = new GameTestHelper(each);
         infos.add(each);
         MockPlayer eachMock = MockPlayers.join(level.getServer(), "retention-each", level, spawn, each::isDone);
-        infos.add(each);
         TestTicks.each(eachHelper, eachMock.player()::getName);
         weak.add(new WeakReference<>(eachMock.player()));
 
