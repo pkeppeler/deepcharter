@@ -19,17 +19,18 @@ addVmArgToRuns(exitOnOom)
 val gameTestHeap = "-Xmx3072m"
 addVmArgToRun("gameTest", gameTestHeap)
 
-// Client GameTest heap, 4G (the default is a quarter of RAM). The suite's live set after a full collection (CI 4 vCPU) was 1.35 GB at the last
-// of 69 classes by the per-class histogram (HeapHistogram; run 45062159956, passing), and 1985 MB after a full collection over 90 full
-// collections of the GC log, with a peak before a collection of 3070 MB at a 3G heap (client job 137471282960, head 9ba994a4): the live set
-// was two thirds of 3G and the peak at its ceiling. At 4G (client job 137518224379): peak 4092 MB, 1924 MB live after a full collection, 85 full
-// collections. The peak always reaches Xmx, because G1 grows the heap to the ceiling before it collects, so the live set after a full
-// collection is the number to watch, not the peak. The live set grew by about 20 MB a class, from the dedicated servers a test starts
-// (TwoPlayerServer, CampaignWorldClientTest), which stayed on the heap with their 6 levels until DedicatedServerRelease (#914) released them;
-// the heap is the margin. Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac (11 GB), so the
-// default two client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest action prints the peak and
+// Client GameTest heap, 3G (the default is a quarter of RAM; #841 raised it to 4G, #1131 sized it again). The suite runs as 3 shards, one JVM
+// each, and #914 released the dedicated servers a test starts, so the live set no longer grows class by class. Measured on run 45308464189
+// (client jobs 138158305188, 138158305168, 138158305428, green, merged main 9f2376a2, which includes #914) at 4G, from the GC log: the live
+// set after the full collection each class forces (the per-class histogram) peaked at 842, 831 and 803 MB, against 1924 MB for the one
+// unsharded JVM before (client job 137518224379, 85 full collections); 27, 27 and 31 full collections, all forced, none for want of heap.
+// The peak before a collection still reached 4095, 3329 and 3061 MB, because G1 grows the heap to the ceiling before it collects, so the live
+// set after a collection is the number to watch, not the peak. A mixed collection leaves old garbage, so its "after" (up to 2.1 GB, 3.6 GB
+// in shard 1) is an upper bound on the live set, not the live set. 3G keeps 3.6x over the forced-full figure. Per-class table: #1131's PR.
+// Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac, so the default two
+// client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest action prints the peak and
 // the live set from it.
-val clientGameTestHeap = "-Xmx4G"
+val clientGameTestHeap = "-Xmx3G"
 addVmArgToRun("clientGameTest", clientGameTestHeap)
 addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")
 
