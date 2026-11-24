@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.sound.AmbienceTicker;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceFragments;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTier;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTuning;
@@ -18,6 +19,7 @@ import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.Holds;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -33,13 +35,14 @@ import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.client.sounds.WeighedSoundEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for #866: in layer 2, beside a Company horn, the client's ambience ticker plays the horn's warm-up crackle and then a
- * fragment of the worn tier, both from the horn; and a hymn that is playing holds it back until the hymn has ended. The ticker's tuning is
+ * fragment of the worn tier or of the horn's own pool (#946), both from the horn; and a hymn that is playing holds it back until the hymn has ended. The ticker's tuning is
  * swapped for gaps of a few ticks ({@code AmbienceTicker.restart}), since the real ones are minutes. It runs in the campaign world's test
  * dimension, where a layer is a Y band of one level.
  */
@@ -154,7 +157,7 @@ public class AmbienceClientTest implements FabricClientGameTest {
 
                 ClientWait.until(
                         context,
-                        "the horn's warm-up and a worn fragment, after the hymn",
+                        "the horn's warm-up and a worn fragment or a horn sound, after the hymn",
                         client -> heard.ambience().size() >= 2,
                         client -> "heard "
                                 + heard.ambience().stream()
@@ -166,8 +169,8 @@ public class AmbienceClientTest implements FabricClientGameTest {
                         "the first was " + ambience.getFirst().getIdentifier() + ", not the horn's warm-up");
                 SoundInstance fragment = ambience.get(1);
                 require(
-                        fragment.getIdentifier().getPath().startsWith("ambience.worn."),
-                        "the second was " + fragment.getIdentifier() + ", not a worn fragment");
+                        hornFragments().contains(fragment.getIdentifier()),
+                        "the second was " + fragment.getIdentifier() + ", not a worn fragment or a horn sound");
                 Vec3 at = Vec3.atCenterOf(horn);
                 for (SoundInstance sound : ambience.subList(0, 2)) {
                     require(
@@ -183,5 +186,17 @@ public class AmbienceClientTest implements FabricClientGameTest {
                 AmbienceTicker.restart(AmbienceTuning.DEFAULT);
             });
         }
+    }
+
+    /** What a horn in layer 2 may follow its warm-up with: a fragment of the worn tier or one of the horn's own pool. */
+    private static Set<Identifier> hornFragments() {
+        Set<Identifier> sounds = new HashSet<>();
+        for (String name : AmbienceFragments.pools().getOrDefault(AmbienceTier.WORN, List.of())) {
+            sounds.add(AmbienceFragments.sound(AmbienceTier.WORN, name).location());
+        }
+        for (String name : AmbienceFragments.hornPool()) {
+            sounds.add(AmbienceFragments.hornSound(name).location());
+        }
+        return sounds;
     }
 }
