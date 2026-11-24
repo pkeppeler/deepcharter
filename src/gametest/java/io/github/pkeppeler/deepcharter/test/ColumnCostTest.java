@@ -63,23 +63,11 @@ public class ColumnCostTest {
         int before = server.deepcharter$ticksUntilAutosave();
         Runnable body = ColumnCost.tickBody(helper, List.of(NO_SUCH_WORLD), List.of(), 1, results -> {});
         expect(helper, isHeld(server), "the measured run did not hold the autosave: %d ticks to go", countdown(server));
-        boolean threw = false;
-        try {
-            body.run();
-        } catch (GameTestAssertException expected) {
-            // The throw a runner reports as a failed test.
-            threw = true;
-        }
+        boolean threw = throwsAssertion(body);
         expect(helper, threw, "a measured run in a world that does not exist did not throw");
         // The runner may tick the body once more before it ends the test: that tick must fail the same way, not on a
-        // level
-        // that never arrived.
-        boolean threwAgain = false;
-        try {
-            body.run();
-        } catch (GameTestAssertException expected) {
-            threwAgain = true;
-        }
+        // level that never arrived.
+        boolean threwAgain = throwsAssertion(body);
         expect(helper, threwAgain, "a second tick after the throw did not fail with the same assertion");
         expect(
                 helper,
@@ -93,6 +81,15 @@ public class ColumnCostTest {
                 countdown(server),
                 before);
         helper.succeed();
+    }
+
+    private static boolean throwsAssertion(Runnable body) {
+        try {
+            body.run();
+            return false;
+        } catch (GameTestAssertException expected) {
+            return true;
+        }
     }
 
     /** The countdown still falls by one a tick while held, so a held one is near Integer.MAX_VALUE, not at it. */
