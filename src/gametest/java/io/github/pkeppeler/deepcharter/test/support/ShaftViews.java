@@ -28,7 +28,7 @@ public final class ShaftViews {
     /** Each deep shaft is this many blocks out from its middle each way, so the middle of a picture looks past the walls' drawn ends. */
     private static final int RADIUS = 10;
     /** The eye is this far above a deep shaft's floor: past the sections drawn under the camera's, which end at most 48 blocks down. */
-    private static final int EYE_ABOVE_FLOOR = 80;
+    private static final int EYE_HEIGHT = 80;
     /** The shaft's air goes on this far above the eye. */
     private static final int HEADROOM = 4;
     /**
@@ -45,12 +45,12 @@ public final class ShaftViews {
     public record Shaft(String name, int x, int z, int floorY) {
         /** The camera's eye, over the middle of the shaft. */
         public Vec3 eye() {
-            return new Vec3(x + 0.5, floorY + EYE_ABOVE_FLOOR + 0.5, z + 0.5);
+            return new Vec3(x + 0.5, floorY + EYE_HEIGHT + 0.5, z + 0.5);
         }
 
         /** A point straight under the eye, on the floor: what the camera looks at. */
         public Vec3 below() {
-            return eye().subtract(0, EYE_ABOVE_FLOOR, 0);
+            return eye().subtract(0, EYE_HEIGHT, 0);
         }
 
         /** The faces of the two lamps that look into the shaft. */
@@ -70,7 +70,7 @@ public final class ShaftViews {
         }
 
         private List<BlockPos> lamps() {
-            int y = floorY + EYE_ABOVE_FLOOR - LAMP_BELOW_EYE;
+            int y = floorY + EYE_HEIGHT - LAMP_BELOW_EYE;
             return List.of(new BlockPos(x - RADIUS - 1, y, z), new BlockPos(x + RADIUS + 1, y, z));
         }
     }
@@ -94,7 +94,7 @@ public final class ShaftViews {
             RoomCarver.carve(
                     level,
                     new BlockPos(shaft.x() - RADIUS, shaft.floorY(), shaft.z() - RADIUS),
-                    new BlockPos(shaft.x() + RADIUS, shaft.floorY() + EYE_ABOVE_FLOOR + HEADROOM, shaft.z() + RADIUS),
+                    new BlockPos(shaft.x() + RADIUS, shaft.floorY() + EYE_HEIGHT + HEADROOM, shaft.z() + RADIUS),
                     Blocks.AIR.defaultBlockState());
             for (BlockPos lamp : shaft.lamps()) {
                 level.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);

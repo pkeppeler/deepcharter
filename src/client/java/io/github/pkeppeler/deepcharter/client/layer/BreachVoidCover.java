@@ -131,7 +131,10 @@ public final class BreachVoidCover {
      */
     private static int fogged(FogData fog, float distance) {
         float amount = linear(distance, fog.renderDistanceStart, fog.renderDistanceEnd) * fog.color.w();
-        return ARGB.colorFromFloat(1f, fog.color.x() * amount, fog.color.y() * amount, fog.color.z() * amount);
+        float red = fog.color.x() * amount;
+        float green = fog.color.y() * amount;
+        float blue = fog.color.z() * amount;
+        return ARGB.colorFromFloat(1f, red, green, blue); // colour-ok: the frame's fog colour, not a theme colour
     }
 
     private static float linear(float distance, float start, float end) {
