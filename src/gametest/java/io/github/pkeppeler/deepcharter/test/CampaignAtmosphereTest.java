@@ -319,7 +319,8 @@ public class CampaignAtmosphereTest {
      * The unbuilt depth is where nothing is built yet (#1192): its fog is darker than every layer's, and starts and ends no farther out than
      * any layer's, so at every distance it is at least as thick as any layer's, and night vision cannot lift it. The client brightens a fog colour under night vision by scaling its brightest channel to full, but leaves a colour
      * with a channel of 0 alone ({@code FogRenderer.computeFogColor} in 26.3), so the abyss stays dark under the potion where a layer's
-     * fog turns to a pale haze.
+     * fog turns to a pale haze. Its water fog is black too (#1187): unset, it would be vanilla's blue, and the camera blends it into the
+     * water within about 12 blocks of the last layer's floor; black has a 0 in every channel, so it blends with any neighbour's.
      */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theUnbuiltDepthsFogIsTheDarkestAndNearestAndNightVisionCannotLiftIt(GameTestHelper helper) {
@@ -341,6 +342,12 @@ public class CampaignAtmosphereTest {
                 fog.x() == 0f || fog.y() == 0f || fog.z() == 0f,
                 "the unbuilt depth's fog colour %s has no channel of 0, so night vision lifts it to full brightness",
                 hex(fog));
+        Vector3fc waterFog = wanted(unbuilt, EnvironmentAttributes.WATER_FOG_COLOR);
+        expect(
+                helper,
+                waterFog.x() == 0f && waterFog.y() == 0f && waterFog.z() == 0f,
+                "the unbuilt depth's water fog %s is not black, so water within the blend of the last layer's floor turns toward it",
+                hex(waterFog));
         float start = wanted(unbuilt, EnvironmentAttributes.FOG_START_DISTANCE);
         float end = wanted(unbuilt, EnvironmentAttributes.FOG_END_DISTANCE);
         for (Holder<Biome> zone : layerBiomes(level)) {
