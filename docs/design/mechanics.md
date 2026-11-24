@@ -2350,6 +2350,8 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 | Refill from empty in a powered pod seat, stock | 12 s | | measured |
 | Refill from empty, air tier 3 | 24 s | | measured |
 | A row (2,2,2) with heat 2 and pressure 2, stock capacity: the base alone | 360 s | | modelled |
+| An air canister (60 s) on a spent suit, stock | 11 s | | measured |
+| An air canister on a spent suit, all tier 3 | 24 s | | modelled |
 
 **Decisions (A).**
 - The suit's tier 1 is bought, not crafted: SPEC section 7's crafted tier 1 is the pods' and the scanner's (ADR 0048), and section 9 keeps the suit separate.
@@ -2357,9 +2359,11 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 - Prices are on the layer 2 run curve above. Payoff only below layer 2: layers 1 and 2 stay rated NONE.
 - "Toxins" is a name only until a toxin axis exists.
 - The refill rate stays flat.
-- The air canister is split out to #1194.
+- The air canister is split out to #1194 and built there (below).
 
-**Knobs.** `SuitTrack` (prices, tiers), `SuitTuning.DEFAULT.capacities`, `SuitTuning` costs per level, `theme/suit.json` (the gauge).
+**The air canister (#1194, A).** A consumable, $150, stacking to 16, sold at the repair station only (no recipe), a layer 3 item at about a third of a Mole layer 2 run ($455). It is an emergency extension, not a refill: retreating stays the default answer to an amber gauge. Used on foot with a right click, not thrown, it adds `canisterSeconds` (60) to the suit's reserve wherever the person is: below the amber line in a tunnel, breached (the suit leaves BREACHED at once, so no further breach hit lands), or from an unpowered pod seat. It never fills past the suit's own capacity, so a part-used canister wastes the rest. It is refused and kept on a full suit ("SUIT ALREADY FULL"), when the suit's log cannot be read, and where the suit already refills for nothing: a powered pod seat or a sound hall ("SUIT ALREADY REFILLING"). A canister is worth the same minute to every suit, so it buys more of a better one: from empty it lasts 11 s at the unbuilt depth on a stock suit and 24 s on an all-tier-3 one. The normal item cooldown applies. `SuitReserve.topUp` is the one place the reserve is added to from outside the suit's tick.
+
+**Knobs.** `SuitTrack` (prices, tiers), `SuitTuning.DEFAULT.capacities`, `SuitTuning` costs per level, `SuitTuning.DEFAULT.canisterSeconds`, `Consumable.AIR_CANISTER` (price), `theme/suit.json` (the gauge).
 
 **Open questions.** Whether the refill should grow with capacity once the canister exists; whether a toxin axis should join the air track or stand alone.
 

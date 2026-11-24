@@ -517,6 +517,15 @@ public class SpecSheetsTest {
                                 .value())
                         .equals(List.of("5 x 5 x 5")),
                 "plastic explosives clear 5 x 5 x 5");
+        SpecSheet canister = SpecSheets.of(RepairRegistry.item(Consumable.AIR_CANISTER));
+        SpecSheet.Rating adds = row(helper, canister, "rating.adds");
+        expect(
+                helper,
+                keyOf(adds.value()).equals("deepcharter.spec.unit.seconds")
+                        && argsOf(adds.value()).equals(List.of("60"))
+                        && argsOf(row(helper, canister, "rating.price").value()).equals(List.of("150")),
+                "the air canister adds 60 S and costs $150, got %s",
+                canister.ratings());
         SpecSheet ore = SpecSheets.of(item(OreType.GOLDIUM.itemId().getPath()));
         expect(
                 helper,
