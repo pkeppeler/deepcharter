@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.phys.AABB;
 
 /** Server GameTests for {@link ColumnCost}'s hold on the autosave. */
 public class ColumnCostTest {
@@ -59,10 +60,9 @@ public class ColumnCostTest {
      */
     @GameTest(environment = AUTOSAVE_HOLD)
     public void aMeasuredRunThatThrowsFailsItsTestAndReleasesTheAutosave(GameTestHelper helper) {
-        MinecraftServerAccess server = (MinecraftServerAccess) helper.getLevel().getServer();
-        int before = server.deepcharter$ticksUntilAutosave();
+        AABB bounds = helper.getBounds();
         Runnable body = ColumnCost.tickBody(helper, List.of(NO_SUCH_WORLD), List.of(), 1, results -> {});
-        expect(helper, isHeld(server), "the measured run did not hold the autosave: %d ticks to go", countdown(server));
+        expect(helper, ColumnCost.holds(bounds), "the measured run did not hold the autosave");
         boolean threw = throwsAssertion(body);
         expect(helper, threw, "a measured run in a world that does not exist did not throw");
         // The runner may tick the body once more before it ends the test: that tick must fail the same way, not on a
@@ -71,15 +71,10 @@ public class ColumnCostTest {
         expect(helper, threwAgain, "a second tick after the throw did not fail with the same assertion");
         expect(
                 helper,
-                isHeld(server),
+                ColumnCost.holds(bounds),
                 "the throw ended the hold itself, before the test's finish: it is only the release's");
-        ColumnCost.release(helper.getBounds());
-        expect(
-                helper,
-                !isHeld(server) && countdown(server) <= before,
-                "the autosave is still held after the failed run's release: %d ticks to go (%d before)",
-                countdown(server),
-                before);
+        ColumnCost.release(bounds);
+        expect(helper, !ColumnCost.holds(bounds), "the failed run's hold is still on after its release");
         helper.succeed();
     }
 

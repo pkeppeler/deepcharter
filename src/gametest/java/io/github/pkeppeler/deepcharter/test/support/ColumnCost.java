@@ -150,6 +150,11 @@ public final class ColumnCost {
         AUTOSAVE_HOLDERS.put(helper.getBounds(), server);
     }
 
+    /** Whether the test with these bounds holds the autosave. */
+    public static boolean holds(AABB testBounds) {
+        return AUTOSAVE_HOLDERS.containsKey(testBounds);
+    }
+
     /** Ends the autosave hold of the test with these bounds, and restores the countdown when no other test holds it. */
     public static void release(AABB testBounds) {
         MinecraftServerAccess server = AUTOSAVE_HOLDERS.remove(testBounds);
