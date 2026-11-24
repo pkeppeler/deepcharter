@@ -70,6 +70,7 @@ import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import net.minecraft.world.entity.animal.chicken.Chicken;
 import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.monster.zombie.Husk;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -163,10 +164,30 @@ public class PodSonarTest {
      */
     private static void run(
             GameTestHelper helper, int x, List<Entity> bodies, Consumer<ServerLevel> build, Predicate<Scene> perTick) {
+        run(helper, x, bodies, 0, build, perTick);
+    }
+
+    /**
+     * As {@link #run(GameTestHelper, int, List, Consumer, Predicate)}. With a {@code laterChunksTick} above 0 only the pod's chunk is forced on the
+     * first tick and the rest of the site on that tick: a loaded chunk that is not yet entity ticking, as a loaded runner leaves a neighbour of the
+     * pod's chunk for ticks after the pod's own (#1234).
+     */
+    private static void run(
+            GameTestHelper helper,
+            int x,
+            List<Entity> bodies,
+            int laterChunksTick,
+            Consumer<ServerLevel> build,
+            Predicate<Scene> perTick) {
         ServerLevel level = TestLayers.level(helper, 1);
+        List<ChunkPos> later = new ArrayList<>();
         for (int cx = (x - REACH) >> 4; cx <= (x + REACH) >> 4; cx++) {
             for (int cz = (Z - REACH) >> 4; cz <= (Z + REACH) >> 4; cz++) {
-                FarChunks.force(helper, level, cx, cz);
+                if (laterChunksTick > 0 && (cx != x >> 4 || cz != Z >> 4)) {
+                    later.add(new ChunkPos(cx, cz));
+                } else {
+                    FarChunks.force(helper, level, cx, cz);
+                }
             }
         }
         site(level, x);
@@ -191,6 +212,9 @@ public class PodSonarTest {
         });
         TestTicks.each(helper, () -> {
             try {
+                if (helper.getTick() == laterChunksTick) {
+                    later.forEach(chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
+                }
                 if (scene[0] != null && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
                     scene[0].pod().discard();
                     bodies.forEach(Entity::discard);
@@ -551,6 +575,75 @@ public class PodSonarTest {
                             !echoesAt(scene.pod(), bodies.get(2).blockPosition()),
                             "a type in both the echo and the hollow tag returns nothing: %s",
                             echoes(scene.pod()));
+                });
+    }
+
+    // ---- the creature tests wait for what they stand on, and nothing removes what they place (#1234) ----
+
+    /** Ticks after the first at which {@link #run} forces the chunks beside the pod's, in the test that stands for a runner that is slow to tick them. */
+    private static final int LATER_CHUNKS_TICK = 20;
+
+    /**
+     * The check waits until every body's chunk is entity ticking: a cow in the chunk beside the pod's, which starts ticking {@value #LATER_CHUNKS_TICK}
+     * ticks after the pod's, has landed when the check runs (it failed "the cow has settled on the floor" on tick 5).
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aCreatureInTheChunkBesideThePodsIsWaitedForUntilItTicks(GameTestHelper helper) {
+        int x = 9100;
+        List<Entity> bodies = new ArrayList<>();
+        run(
+                helper,
+                x,
+                bodies,
+                LATER_CHUNKS_TICK,
+                level -> {
+                    room(level, x + 8, FLOOR, Z, 2, 1, 4);
+                    bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR, Z + 1.5));
+                },
+                scene -> {
+                    expect(
+                            helper,
+                            bodies.get(0).onGround(),
+                            "the cow has settled on the floor, on tick %s",
+                            helper.getTick());
+                    return true;
+                });
+    }
+
+    /** What the game's despawn check can remove: a monster 32 blocks from every player, once it has done nothing for 600 ticks, one try in 800. */
+    private static final int DESPAWN_IDLE_TICKS = 600;
+
+    /** Tries that leave a creature the game would remove one in a billion times in a thousand. */
+    private static final int DESPAWN_TRIES = 20_000;
+
+    /**
+     * A creature the test places 36 blocks from the pod is never despawned however long the test waits. A husk the sonar test waits 1200 ticks for
+     * its chunks was removed by the game in 3 runs in 4, and its path stayed "in progress" for ever: "the creatures walked: arrived 375, walking true".
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aCreatureTheTestPlacesFarFromThePlayersIsNotDespawnedByTheGame(GameTestHelper helper) {
+        int x = 9164;
+        List<Entity> bodies = new ArrayList<>();
+        Husk[] husk = new Husk[1];
+        scene(
+                helper,
+                x,
+                bodies,
+                level -> {
+                    corridor(helper, level, x, 56);
+                    husk[0] = walker(level, x + 36.5, 0.5);
+                    bodies.add(husk[0]);
+                },
+                scene -> {
+                    husk[0].setNoActionTime(DESPAWN_IDLE_TICKS + 1);
+                    for (int i = 0; i < DESPAWN_TRIES && !husk[0].isRemoved(); i++) {
+                        husk[0].checkDespawn();
+                    }
+                    expect(
+                            helper,
+                            !husk[0].isRemoved(),
+                            "a placed creature far from the players was removed by the game's despawn check: %s",
+                            husk[0].getRemovalReason());
                 });
     }
 
