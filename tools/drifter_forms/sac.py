@@ -52,7 +52,7 @@ def paint_skin(t):
     if speckle > 0.8:
         colour = kit.mix(colour, (150, 160, 140), 0.45)
     alpha = 255.0
-    glow = (*COLD, 40 + 40 * lit + 30 * mottle)
+    glow = (*kit.mix(COLD, (235, 252, 240), lit), 96 + 60 * lit + 40 * mottle)
     patch = kit.fbm(t.x * 0.11 + 4, t.y * 0.11, t.z * 0.11, SEED + 8, 2)
     if patch > 0.6:
         fade = kit.smooth((patch - 0.6) / 0.05)

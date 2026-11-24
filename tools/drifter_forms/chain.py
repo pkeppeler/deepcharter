@@ -49,8 +49,8 @@ def paint_filament(_t):
 def halo_painter(strength):
     def paint(t):
         d = math.hypot(2 * t.fu - 1, 2 * t.fv - 1)
-        fall = max(0.0, 1 - d) ** 2
-        return (*COLD, 70 * fall), (*COLD, strength * fall)
+        fall = max(0.0, 1 - d) ** 1.3
+        return (*COLD, 0), (*kit.mix(COLD, CORE, fall), strength * fall)
 
     return paint
 
@@ -91,8 +91,8 @@ def add_filament(model, i):
 
 def add_halo(model, i):
     c, r = centre(i), radius(i)
-    size = 4.4 * r
-    strength = 240 - 70 * i / (BULBS - 1)
+    size = 6.0 * r
+    strength = 255 - 30 * i / (BULBS - 1)
     for turn in (0.0, 90.0):
         model.add(f"bulb_{i}", Cube.plane(c, size, size, (0.0, turn, 0.0), halo_painter(strength), 4.0))
     model.add(f"bulb_{i}", Cube.flat(c, size, size, (0.0, 0.0, 0.0), halo_painter(strength * 0.7), 4.0))

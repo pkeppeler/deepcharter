@@ -51,7 +51,7 @@ def paint_bell(t):
     haze = kit.fbm(t.x * 0.22, t.y * 0.22, t.z * 0.22, SEED)
     colour = kit.mix(SKIN, (205, 245, 240), h * 0.6 + haze * 0.3)
     alpha = TEAL_ALPHA + 26 * (haze - 0.5) + 18 * h
-    glow = (*COLD, 56 + 30 * haze)
+    glow = (*COLD, 62 + 34 * haze)
     # Sixteen canals run from the apex to the rim and fork once near it, so they are thin, faint and wander a little.
     wander = (kit.noise(h * 6, azimuth * 2, 0, SEED + 5) - 0.5) * 0.08
     for count, reach in ((16, 1.0), (32, 0.45)):
@@ -121,7 +121,7 @@ def tendril_painter(last):
         if t.fv < 0.09 or (0.46 < t.fv < 0.54):
             glow = (*COLD, 150)
             colour = kit.mix(colour, CANAL, 0.6)
-        return (*colour, 205), glow or (*COLD, 34)
+        return (*colour, 205), glow or (*COLD, 60)
 
     return paint
 
