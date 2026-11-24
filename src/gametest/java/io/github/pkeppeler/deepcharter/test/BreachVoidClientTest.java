@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -29,6 +31,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector4f;
 
 /**
  * Client GameTest for #333: looking through a hole at the bottom of a layer shows rock and darkness, never the void behind it. The
@@ -38,6 +41,11 @@ import net.minecraft.world.phys.Vec3;
  * with and without night vision. The pixels of the hole must be dark, and in the same frame a lit block must show where the
  * camera maths says it is, so a black or blank frame, a camera in rock, or a patch that missed the hole cannot pass. A pod that is
  * under the bottom of the world, as a crossing pod is for its last ticks, must still show over the hole.
+ *
+ * <p>Then, for #1188, the camera looks straight down a wide shaft deeper than the render distance, to the floor of layer 1, to the floor
+ * of layer 2, and to the bottom of the world, with and without night vision. The client draws nothing past the render distance, and the
+ * shaft's walls fade into the fog before they end there, so the open middle of the picture must be the fog colour of the frame
+ * throughout: no square of black, and no sky, with an edge against the fogged walls.
  */
 public class BreachVoidClientTest implements FabricClientGameTest {
     private static final int X = 2000;
@@ -65,6 +73,27 @@ public class BreachVoidClientTest implements FabricClientGameTest {
     private static final int WINDOW = 30;
 
     private record View(String name, Vec3 eye, boolean bothLightings) {}
+
+    /** The render distance, in chunks, for the deep shafts: the client draws the sections this many above and below the camera's. */
+    private static final int DEEP_RENDER_DISTANCE = 2;
+    /** Each deep shaft is this many blocks out from its middle each way, so the middle of a picture looks past the walls' drawn ends. */
+    private static final int DEEP_SHAFT_RADIUS = 10;
+    /** The eye is this far above a deep shaft's floor: past the sections drawn under the camera's, which end at most 48 blocks down. */
+    private static final int DEEP_EYE_ABOVE_FLOOR = 80;
+    /** The shaft's air goes on this far above the eye. */
+    private static final int DEEP_HEADROOM = 4;
+    /**
+     * A landmark block in each side wall of a deep shaft stands this far under the eye, on the screen's left and right edges: glowstone,
+     * which stands out from a dark fog, and a block of coal, which stands out from a pale one or one night vision lifts.
+     */
+    private static final int DEEP_LAMP_BELOW_EYE = 12;
+    /** Half the side of the box at the middle of a deep view that must be fog: its rays all pass the walls' drawn ends. */
+    private static final int FOG_BOX = 40;
+    /** A pixel of the box may differ from the frame's fog colour by this much on a channel (the render rounds). */
+    private static final int FOG_TOLERANCE = 6;
+
+    /** A deep shaft: its name, the X and Z of its middle, and the Y of its floor (the bottom of the world for the breach). */
+    private record Shaft(String name, int x, int z, int floorY) {}
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -100,32 +129,132 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                         new View("shallow", new Vec3(X - 6.5, minY + SHAFT_DEPTH + 1.7, Z + 0.5), true)
                     };
                     for (boolean nightVision : new boolean[] {false, true}) {
-                        singleplayer.getServer().runOnServer(server -> {
-                            ServerPlayer player =
-                                    server.getPlayerList().getPlayers().getFirst();
-                            player.removeAllEffects();
-                            if (nightVision) {
-                                player.addEffect(new MobEffectInstance(
-                                        MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-                            }
-                        });
+                        nightVision(singleplayer, nightVision);
                         for (View view : views) {
                             if (nightVision && !view.bothLightings()) {
                                 continue;
                             }
                             String name =
                                     "breach-void-world-bottom-" + view.name() + (nightVision ? "-night-vision" : "");
-                            Path shot = lookUntilLit(context, singleplayer, layer, view.eye(), hole, minY, name);
+                            Path shot = lookUntilLit(
+                                    context,
+                                    singleplayer,
+                                    layer,
+                                    view.eye(),
+                                    hole,
+                                    ClientLight.Box.around(
+                                            BlockPos.containing(hole), ROOM_RADIUS, 0, SHAFT_DEPTH + COLUMN_HEIGHT),
+                                    landmarks(minY),
+                                    false,
+                                    name);
                             holeProblem(read(shot), name).ifPresent(failures::add);
                         }
                     }
                 }
+                List<Shaft> shafts =
+                        singleplayer.getServer().computeOnServer(server -> openDeepShafts(TestLayers.level(server, 1)));
+                withRenderDistance(context, DEEP_RENDER_DISTANCE, () -> {
+                    for (boolean nightVision : new boolean[] {false, true}) {
+                        nightVision(singleplayer, nightVision);
+                        for (Shaft shaft : shafts) {
+                            Vec3 eye = new Vec3(
+                                    shaft.x() + 0.5, shaft.floorY() + DEEP_EYE_ABOVE_FLOOR + 0.5, shaft.z() + 0.5);
+                            String name = "breach-void-deep-" + shaft.name() + (nightVision ? "-night-vision" : "");
+                            Path shot = lookUntilLit(
+                                    context,
+                                    singleplayer,
+                                    LayerChain.SURFACE,
+                                    eye,
+                                    eye.subtract(0, DEEP_EYE_ABOVE_FLOOR, 0),
+                                    ClientLight.Box.around(
+                                            BlockPos.containing(eye),
+                                            DEEP_SHAFT_RADIUS + 1,
+                                            DEEP_EYE_ABOVE_FLOOR,
+                                            DEEP_HEADROOM),
+                                    deepLandmarks(shaft),
+                                    true,
+                                    name);
+                            fogProblem(read(shot), fog(context), name).ifPresent(failures::add);
+                        }
+                    }
+                });
             });
         }
         // Every view is taken first, so one run names all the views that show the void.
         if (!failures.isEmpty()) {
             throw new AssertionError(String.join("\n", failures));
         }
+    }
+
+    /** Gives the first player night vision, or takes every effect away. */
+    private static void nightVision(TestSingleplayerContext singleplayer, boolean on) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.removeAllEffects();
+            if (on) {
+                player.addEffect(new MobEffectInstance(
+                        MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
+            }
+        });
+    }
+
+    /**
+     * Runs {@code body} with the client's render distance at {@code chunks}, and puts it back in a finally: every client test shares one
+     * client. ({@code CavernSky} of #1172 has its own copy for its hall; whichever lands second may share one.)
+     */
+    private static void withRenderDistance(ClientGameTestContext context, int chunks, Runnable body) {
+        int was = context.computeOnClient(
+                client -> client.options.renderDistance().get());
+        try {
+            context.runOnClient(client -> client.options.renderDistance().set(chunks));
+            body.run();
+        } finally {
+            context.runOnClient(client -> client.options.renderDistance().set(was));
+        }
+    }
+
+    /**
+     * Carves the deep shafts, each far from the others and from the hole: one down to the floor of layer 1 (the top of its crust), one to
+     * the floor of layer 2, and one through the bottom of the world (the breach, where the cover lies). Each has a landmark in its west
+     * and east walls, under the eye.
+     */
+    private static List<Shaft> openDeepShafts(ServerLevel level) {
+        int bottom = level.getMinY(); // level-height: the breach shaft opens through the bottom of the whole world
+        List<Shaft> shafts = List.of(
+                new Shaft("layer-1-floor", X, Z + 200, TestLayers.band(level, 1).minY() + CampaignBands.crustRows()),
+                new Shaft("layer-2-floor", X, Z + 400, TestLayers.band(level, 2).minY() + CampaignBands.crustRows()),
+                new Shaft("breach", X, Z + 600, bottom));
+        for (Shaft shaft : shafts) {
+            RoomCarver.carve(
+                    level,
+                    new BlockPos(shaft.x() - DEEP_SHAFT_RADIUS, shaft.floorY(), shaft.z() - DEEP_SHAFT_RADIUS),
+                    new BlockPos(
+                            shaft.x() + DEEP_SHAFT_RADIUS,
+                            shaft.floorY() + DEEP_EYE_ABOVE_FLOOR + DEEP_HEADROOM,
+                            shaft.z() + DEEP_SHAFT_RADIUS),
+                    Blocks.AIR.defaultBlockState());
+            List<BlockPos> marks = deepMarks(shaft);
+            level.setBlock(marks.get(0), Blocks.GLOWSTONE.defaultBlockState(), 3);
+            level.setBlock(marks.get(1), Blocks.COAL_BLOCK.defaultBlockState(), 3);
+        }
+        return shafts;
+    }
+
+    private static List<BlockPos> deepMarks(Shaft shaft) {
+        int y = shaft.floorY() + DEEP_EYE_ABOVE_FLOOR - DEEP_LAMP_BELOW_EYE;
+        return List.of(
+                new BlockPos(shaft.x() - DEEP_SHAFT_RADIUS - 1, y, shaft.z()),
+                new BlockPos(shaft.x() + DEEP_SHAFT_RADIUS + 1, y, shaft.z()));
+    }
+
+    /** The faces of a deep shaft's two landmarks that look into it. */
+    private static List<Vec3> deepLandmarks(Shaft shaft) {
+        List<BlockPos> marks = deepMarks(shaft);
+        BlockPos west = marks.get(0);
+        BlockPos east = marks.get(1);
+        return List.of(
+                new Vec3(west.getX() + 1, west.getY() + 0.5, west.getZ() + 0.5),
+                new Vec3(east.getX(), east.getY() + 0.5, east.getZ() + 0.5));
     }
 
     /**
@@ -187,13 +316,17 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         return points;
     }
 
-    /** Puts the camera at {@code eye} looking at {@code target}, waits until it has arrived and the view has rendered, and takes the screenshot. */
+    /**
+     * Puts the camera at {@code eye} looking at {@code target}, waits until it has arrived, the client holds every chunk of {@code held}
+     * and the view has rendered, and takes the screenshot.
+     */
     private static Path look(
             ClientGameTestContext context,
             TestSingleplayerContext singleplayer,
             int layer,
             Vec3 eye,
             Vec3 target,
+            ClientLight.Box held,
             String name) {
         float[] angles = anglesTo(eye, target);
         singleplayer
@@ -217,7 +350,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                         && LayerChain.isCampaign(client.player.level())
                         && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                         && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - angles[0])) < 0.01f
-                        && Math.abs(ClientSession.player(client).getXRot() - angles[1]) < 0.01f);
+                        && Math.abs(ClientSession.player(client).getXRot() - angles[1]) < 0.01f
+                        && ClientLight.chunksPresent(ClientLight.clientLevel(client), held));
         ClientWait.until(
                 context,
                 "the view " + name + " rendered and lit",
@@ -248,7 +382,9 @@ public class BreachVoidClientTest implements FabricClientGameTest {
      * Takes the view until the frame is a lit picture of the room. The client reports its sections rendered and the light settled
      * before the pictures of a freshly carved room are true (the first frames can be black, from stale meshes or light), so a frame
      * with no lit landmark where the camera maths puts one is taken again, up to the wall-clock deadline of {@link ClientWait}. The
-     * hole is judged only on a frame that passed.
+     * hole is judged only on a frame that passed. With {@code againstFog}, a landmark shows when it stands out from the frame's fog
+     * colour rather than from black (a frame of fog alone, with no walls drawn, is brighter than {@link #LIT} too), and every landmark on
+     * the screen must show.
      */
     private static Path lookUntilLit(
             ClientGameTestContext context,
@@ -256,12 +392,15 @@ public class BreachVoidClientTest implements FabricClientGameTest {
             int layer,
             Vec3 eye,
             Vec3 target,
-            int minY,
+            ClientLight.Box held,
+            List<Vec3> landmarks,
+            boolean againstFog,
             String name) {
         FarChunks.Deadline deadline = FarChunks.deadline();
         while (true) {
-            Path shot = look(context, singleplayer, layer, eye, target, name);
-            Optional<String> problem = litProblem(context, read(shot), eye, target, minY, name);
+            Path shot = look(context, singleplayer, layer, eye, target, held, name);
+            Optional<Vector4f> fog = againstFog ? Optional.of(fog(context)) : Optional.empty();
+            Optional<String> problem = litProblem(context, read(shot), eye, target, landmarks, fog, name);
             if (problem.isEmpty()) {
                 return shot;
             }
@@ -279,19 +418,32 @@ public class BreachVoidClientTest implements FabricClientGameTest {
      * rock cannot pass. The window is wide because the maths is a pinhole's, and a block face has size.
      */
     private static Optional<String> litProblem(
-            ClientGameTestContext context, BufferedImage image, Vec3 eye, Vec3 target, int minY, String name) {
+            ClientGameTestContext context,
+            BufferedImage image,
+            Vec3 eye,
+            Vec3 target,
+            List<Vec3> landmarks,
+            Optional<Vector4f> fog,
+            String name) {
         float[] angles = anglesTo(eye, target);
         double fov =
                 context.computeOnClient(client -> (double) client.options.fov().get());
         boolean onScreen = false;
-        for (Vec3 landmark : landmarks(minY)) {
+        boolean anyLit = false;
+        boolean allLit = true;
+        for (Vec3 landmark : landmarks) {
             Optional<int[]> pixel = project(image, eye, angles[0], angles[1], fov, landmark);
             if (pixel.isPresent()) {
                 onScreen = true;
-                if (litNear(image, pixel.get()[0], pixel.get()[1])) {
-                    return Optional.empty();
-                }
+                boolean lit = litNear(image, pixel.get()[0], pixel.get()[1], fog);
+                anyLit |= lit;
+                allLit &= lit;
             }
+        }
+        // Against the fog every landmark must show, one in each side wall, so a frame with a wall not yet drawn is
+        // taken again.
+        if (fog.isPresent() ? onScreen && allLit : anyLit) {
+            return Optional.empty();
         }
         return Optional.of(
                 onScreen
@@ -301,10 +453,12 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                                 + ": no lamp is on the screen by the camera maths, so the frame has nothing to prove it is a picture of the room");
     }
 
-    private static boolean litNear(BufferedImage image, int px, int py) {
+    /** Whether a pixel near ({@code px}, {@code py}) is brighter than {@link #LIT}, or stands out from {@code fog} by more than it. */
+    private static boolean litNear(BufferedImage image, int px, int py, Optional<Vector4f> fog) {
         for (int y = Math.max(0, py - WINDOW); y <= Math.min(image.getHeight() - 1, py + WINDOW); y++) {
             for (int x = Math.max(0, px - WINDOW); x <= Math.min(image.getWidth() - 1, px + WINDOW); x++) {
-                if (brightest(image.getRGB(x, y)) > LIT) {
+                int rgb = image.getRGB(x, y);
+                if (fog.isPresent() ? fogDelta(rgb, fog.get()) > LIT : brightest(rgb) > LIT) {
                     return true;
                 }
             }
@@ -326,6 +480,63 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                             .formatted(name, bright, DARK, brightest));
         }
         return Optional.empty();
+    }
+
+    /**
+     * The box of {@link #FOG_BOX} pixels each way at the middle of a deep view must be the frame's fog colour: the colour the shaft's walls
+     * fade into before their drawn ends. A black square there, or a sky that is not the fog, is an edge.
+     */
+    private static Optional<String> fogProblem(BufferedImage image, Vector4f fog, String name) {
+        int off = 0;
+        int worst = 0;
+        int worstRgb = 0;
+        int total = 0;
+        for (int y = image.getHeight() / 2 - FOG_BOX; y < image.getHeight() / 2 + FOG_BOX; y++) {
+            for (int x = image.getWidth() / 2 - FOG_BOX; x < image.getWidth() / 2 + FOG_BOX; x++) {
+                int rgb = image.getRGB(x, y);
+                int delta = fogDelta(rgb, fog);
+                total++;
+                if (delta > FOG_TOLERANCE) {
+                    off++;
+                }
+                if (delta > worst) {
+                    worst = delta;
+                    worstRgb = rgb;
+                }
+            }
+        }
+        if (off > 0) {
+            return Optional.of(
+                    "%s: the bottom of the shaft has an edge: %d of %d pixels of the middle differ from the fog #%02x%02x%02x by more than %d, up to %d (#%06x)"
+                            .formatted(
+                                    name,
+                                    off,
+                                    total,
+                                    channel(fog.x()),
+                                    channel(fog.y()),
+                                    channel(fog.z()),
+                                    FOG_TOLERANCE,
+                                    worst,
+                                    worstRgb & 0xFFFFFF));
+        }
+        return Optional.empty();
+    }
+
+    /** The fog colour of the client's last frame: what terrain fades into, and what the shader mixes into it. */
+    private static Vector4f fog(ClientGameTestContext context) {
+        return context.computeOnClient(client ->
+                new Vector4f(client.gameRenderer.gameRenderState().levelRenderState.cameraRenderState.fogData.color));
+    }
+
+    /** The largest difference, over the three channels, between {@code rgb} and {@code fog}. */
+    private static int fogDelta(int rgb, Vector4f fog) {
+        return Math.max(
+                Math.abs(((rgb >> 16) & 0xFF) - channel(fog.x())),
+                Math.max(Math.abs(((rgb >> 8) & 0xFF) - channel(fog.y())), Math.abs((rgb & 0xFF) - channel(fog.z()))));
+    }
+
+    private static int channel(float value) {
+        return Math.round(Mth.clamp(value, 0f, 1f) * 255);
     }
 
     /** The pixel where {@code point} shows for a camera at {@code eye}, or empty when it is off the picture or behind the camera. */
