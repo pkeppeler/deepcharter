@@ -75,7 +75,7 @@ public final class PhonographRegistry {
             "wreck_phonograph",
             key -> new WreckPhonographBlock(BlockBehaviour.Properties.of()
                     .setId(key)
-                    .strength(-1.0F, 3_600_000.0F)
+                    .strength(-1.0F, Blocks.BEDROCK.getExplosionResistance())
                     .sound(SoundType.WOOD)
                     .noOcclusion()
                     .noLootTable()));
