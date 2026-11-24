@@ -91,10 +91,7 @@ public final class BreachService {
     }
 
     private static void cross(Entity entity, ServerLevel from, int fromLayer, int toLayer) {
-        ServerLevel to = from.getServer().getLevel(LayerChain.dimension(toLayer));
-        if (to == null) {
-            throw new IllegalStateException("Layer " + toLayer + " is in the registry but its level is not loaded");
-        }
+        ServerLevel to = LayerChain.levelOf(from.getServer(), toLayer);
         // An entity that cannot change dimension stays put, and nothing is carved for it.
         if (!entity.canUsePortal(true) || !entity.canTeleport(from, to)) {
             return;

@@ -21,6 +21,13 @@ import java.util.Arrays;
  * @param grainSqueezeHull  hull a pod that is neither moving nor drilling loses to each pulse while it touches the grained crust
  * @param grainSqueezeDamage health a player on foot loses to each pulse while touching the grained crust
  * @param grainSkateHeatPerSecond hull heat a pod takes each second its drill skates sideways across the grain, before a radiator
+ * @param seamLeadPerRow    blocks of lead before a floor per row of the world below (#1159): the lead of a 2048-tall world is 656 blocks
+ * @param seamFloorMargin   blocks above a floor inside which a vehicle always streams the area below, however slowly it moves
+ * @param seamSpeedWindow   ticks over which a vehicle's descent speed is read
+ * @param seamDesignFallSpeed blocks per tick of the fastest fall the lead is sized for (terminal speed, 78 blocks a second)
+ * @param seamRadius        chunks out from the centre that the arrival area holds
+ * @param seamRefreshTicks  ticks between two refreshes of the ticket under a vehicle that stays in the zone
+ * @param seamTicketTimeout ticks the arrival ticket outlasts its last refresh
  */
 public record LayerTuning(
         int seaLevel,
@@ -36,10 +43,25 @@ public record LayerTuning(
         int grainPulseTicks,
         float grainSqueezeHull,
         float grainSqueezeDamage,
-        float grainSkateHeatPerSecond) {
-    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f);
+        float grainSkateHeatPerSecond,
+        double seamLeadPerRow,
+        int seamFloorMargin,
+        int seamSpeedWindow,
+        double seamDesignFallSpeed,
+        int seamRadius,
+        int seamRefreshTicks,
+        int seamTicketTimeout) {
+    public static final LayerTuning DEFAULT =
+            new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 0.32, 160, 10, 3.9, 4, 20, 100);
 
     public LayerTuning {
+        if (seamRefreshTicks < 1 || seamRefreshTicks >= seamTicketTimeout) {
+            throw new IllegalArgumentException("seamRefreshTicks must be at least 1 and under seamTicketTimeout "
+                    + seamTicketTimeout + ", or the ticket lapses between refreshes; got " + seamRefreshTicks);
+        }
+        if (seamSpeedWindow < 1) {
+            throw new IllegalArgumentException("seamSpeedWindow must be at least 1, got " + seamSpeedWindow);
+        }
         if (grainPulseTicks < 2) {
             throw new IllegalArgumentException("grainPulseTicks must be at least 2, got " + grainPulseTicks);
         }

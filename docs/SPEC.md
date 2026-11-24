@@ -51,7 +51,7 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Seams and grained crust
 
-- Below the campaign world, the worlds are 2048 tall. Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
+- Below the campaign world, the worlds are up to 4,064 tall, the limit of one dimension ([ADR 0085](adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
 - The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
 - Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam cannot be told from a decoy.
 
