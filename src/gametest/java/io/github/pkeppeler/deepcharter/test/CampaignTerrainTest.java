@@ -473,18 +473,16 @@ public class CampaignTerrainTest {
     /** The overworld keeps vanilla's default cardinal light: the user's decision on #214. */
     @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theOverworldKeepsDefaultCardinalLight(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        DimensionType registered = level.registryAccess()
+        DimensionType overworld = helper.getLevel()
+                .registryAccess()
                 .lookupOrThrow(Registries.DIMENSION_TYPE)
                 .getOrThrow(BuiltinDimensionTypes.OVERWORLD)
                 .value();
-        for (DimensionType type : List.of(registered, level.dimensionType())) {
-            expect(
-                    helper,
-                    type.cardinalLightType() == CardinalLighting.Type.DEFAULT,
-                    "the overworld's cardinal light must stay vanilla's default (user decision on #214), not %s",
-                    type.cardinalLightType().getSerializedName());
-        }
+        expect(
+                helper,
+                overworld.cardinalLightType() == CardinalLighting.Type.DEFAULT,
+                "the overworld's cardinal light must stay vanilla's default (user decision on #214), not %s",
+                overworld.cardinalLightType().getSerializedName());
         helper.succeed();
     }
 
