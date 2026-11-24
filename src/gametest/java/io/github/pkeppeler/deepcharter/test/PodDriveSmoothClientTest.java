@@ -359,7 +359,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      */
     private static void drive(ClientGameTestContext context, Rig rig, Drive drive) {
         List<Integer> late = new ArrayList<>();
-        while (late.size() < DRIVE_ATTEMPTS) {
+        for (int attempt = 1; attempt <= DRIVE_ATTEMPTS; attempt++) {
             int moveless = driveOnce(context, rig, drive);
             if (!drive.steady() || moveless <= COVERED_MOVELESS_TICKS) {
                 return;
@@ -371,7 +371,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     drive.name(),
                     moveless,
                     COVERED_MOVELESS_TICKS,
-                    late.size(),
+                    attempt,
                     DRIVE_ATTEMPTS);
         }
         require(
@@ -421,7 +421,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         Subject ownPod = new Subject("the pilot's own pod");
         int[] inside = {0};
         boolean[] drilled = {false};
-        int[] moveless = {0};
+        int moveless;
         try {
             drive.keys().forEach(key -> context.getInput().holdKey(key));
             two.server().runOnServer(server -> two.mock().setInput(drive.mockInput()));
@@ -449,7 +449,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     drilled[0] |= watchedPod instanceof PodEntity pod && pod.drilling();
                 });
             }
-            moveless[0] = context.computeOnClient(client -> PacketJitter.movelessTicks());
+            moveless = context.computeOnClient(client -> PacketJitter.movelessTicks());
         } finally {
             drive.keys().forEach(key -> context.getInput().releaseKey(key));
             two.server().runOnServer(server -> two.mock().releaseInput());
@@ -457,7 +457,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             // before that would drive on from the start.
             context.waitTicks(INPUT_LAG_TICKS);
         }
-        boolean judgeFloor = moveless[0] <= COVERED_MOVELESS_TICKS;
+        boolean judgeFloor = moveless <= COVERED_MOVELESS_TICKS;
         if (drive.wall()) {
             require(drilled[0], "The watched pod never drilled, so the drilling drive was not a drilling drive");
         }
@@ -466,7 +466,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             if (late.stops()) {
                 context.waitTicks(SETTLE_AFTER_TICKS);
                 expectStopped(drive, late, rig, context, ownPod, watched);
-                return moveless[0];
+                return moveless;
             }
         }
         for (Subject subject : List.of(pilot, watched)) {
@@ -488,7 +488,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             context.waitTicks(SETTLE_AFTER_TICKS);
             expectSettled(drive.name(), rig, context);
         }
-        return moveless[0];
+        return moveless;
     }
 
     /** 1 when the pod's drawn box, shrunk by {@link #INSIDE_MARGIN}, overlaps a block at {@code partial}; else 0. */
