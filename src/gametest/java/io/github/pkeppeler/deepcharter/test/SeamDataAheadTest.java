@@ -7,6 +7,7 @@ import static io.github.pkeppeler.deepcharter.test.support.SeamSite.MAX_TICKS;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.SeamChunkPayload;
 import io.github.pkeppeler.deepcharter.layer.SeamDiscardPayload;
+import io.github.pkeppeler.deepcharter.layer.SeamMissedPayload;
 import io.github.pkeppeler.deepcharter.layer.SeamPreparePayload;
 import io.github.pkeppeler.deepcharter.layer.SeamSender;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -19,12 +20,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeManager;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 
 /**
  * Server GameTests of the data sent ahead of a crossing (#1185, ADR 0089) on the shipped layer_1 to layer_2 crossing: a rider whose
@@ -410,6 +416,234 @@ public class SeamDataAheadTest {
                             "the rider without the channels was sent seam payloads");
                     helper.succeed();
                 });
+    }
+
+    /** Chunks out from the arrival that a crossing test's mock asks the server for: the area sent ahead and a ring beyond it. */
+    private static final int CROSSING_VIEW = SeamSender.SEND_RADIUS + 2;
+
+    /**
+     * A mock held over the floor with the seam channels, sent the whole area ahead, then dropped through the floor: {@code beforeDrop}
+     * runs once the area is sent, on the tick before the drop, and {@code afterArrival} on each tick from the first one in layer 2, with
+     * the ticks since, and ends the test.
+     */
+    private static void crossingScenario(
+            GameTestHelper helper, int index, String name, Consumer<Run> beforeDrop, AfterArrival afterArrival) {
+        Run run = Run.of(helper, index);
+        MockPlayer mock = joinWithChannels(helper, name);
+        mock.setViewDistance(CROSSING_VIEW);
+        int[] phase = {0};
+        int[] arrivedAt = {-1};
+        run.stage(
+                () -> {
+                    run.site().carveShaft(run.site().x(), HOLD_HEIGHT + 2);
+                    mock.teleportTo(run.site().one(), run.site().at(HOLD_HEIGHT), 0, 0);
+                },
+                ticks -> {
+                    if (phase[0] == 0) {
+                        if (mock.payloadsOf(SeamChunkPayload.class).size() >= SENT_CHUNKS) {
+                            beforeDrop.accept(run);
+                            phase[0] = 1;
+                        }
+                        return;
+                    }
+                    if (phase[0] == 1) {
+                        mock.player()
+                                .setPos(
+                                        run.site().x(),
+                                        run.site().floorY() - 1,
+                                        run.site().z());
+                        phase[0] = 2;
+                        return;
+                    }
+                    if (!TestLayers.isInDimensionOf(mock.player(), 2)) {
+                        return;
+                    }
+                    if (arrivedAt[0] < 0) {
+                        arrivedAt[0] = ticks;
+                    }
+                    mock.confirmDimensionChange();
+                    afterArrival.on(run, mock, ticks - arrivedAt[0]);
+                });
+    }
+
+    /** What a crossing scenario checks on each tick from the arrival. */
+    @FunctionalInterface
+    private interface AfterArrival {
+        void on(Run run, MockPlayer mock, int ticksSinceArrival);
+    }
+
+    /** Ticks after the arrival at which a crossing test reads what the server sent: the vanilla sends of the new view are done. */
+    private static final int SETTLE_TICKS = 40;
+
+    /**
+     * A crossing of a rider that was sent the area ahead is followed by no forget of layer 1's chunks: a forget names a position, and
+     * layers share x and z, so one after the respawn would drop a chunk of the background level the client adopts. Vanilla sends none on
+     * a change of dimension (the player is removed from its old level when {@code dropChunk} runs, and a removed player is not alive);
+     * this guards that against a change of vanilla.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aCrossingSendsNoForgetAfterTheRespawn(GameTestHelper helper) {
+        crossingScenario(helper, FIRST_INDEX + 6, "seam-data-forget", run -> {}, (run, mock, ticks) -> {
+            if (ticks < SETTLE_TICKS) {
+                return;
+            }
+            expect(
+                    helper,
+                    mock.forgetsAfterRespawn().isEmpty(),
+                    "the crossing told the client to forget %d chunks after the respawn: %s",
+                    mock.forgetsAfterRespawn().size(),
+                    mock.forgetsAfterRespawn());
+            helper.succeed();
+        });
+    }
+
+    /**
+     * A crossing sends again only the chunks near the pocket, which the carve changed and the light of which is still settling: at least
+     * 40 of the 49 chunks sent ahead are not sent a second time, and each that is, once, within a chunk of the pocket column. (The
+     * test server's view distance is the area's radius, so no chunk outside the area is in view to check.)
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aCrossingDoesNotResendPreSentChunks(GameTestHelper helper) {
+        crossingScenario(helper, FIRST_INDEX + 8, "seam-data-skip", run -> {}, (run, mock, ticks) -> {
+            ChunkPos pocket = mock.player().chunkPosition();
+            ResourceKey<Level> two = run.site().two().dimension();
+            Set<ChunkPos> ahead = area(run.site().centre());
+            if (ticks < SETTLE_TICKS) {
+                return;
+            }
+            List<ChunkPos> resent =
+                    ahead.stream().filter(pos -> mock.timesSentIn(two, pos) > 0).toList();
+            expect(
+                    helper,
+                    ahead.size() - resent.size() >= 40,
+                    "the crossing sent %d of the %d chunks sent ahead again: %s",
+                    resent.size(),
+                    ahead.size(),
+                    resent);
+            for (ChunkPos pos : resent) {
+                expect(
+                        helper,
+                        Math.max(Math.abs(pos.x() - pocket.x()), Math.abs(pos.z() - pocket.z())) <= 1
+                                && mock.timesSentIn(two, pos) == 1,
+                        "the chunk %s, %d from the pocket column's %s, was sent %d times at the crossing",
+                        pos,
+                        Math.max(Math.abs(pos.x() - pocket.x()), Math.abs(pos.z() - pocket.z())),
+                        pocket,
+                        mock.timesSentIn(two, pos));
+            }
+            helper.succeed();
+        });
+    }
+
+    /**
+     * A chunk that changes after it was sent ahead is not skipped at the crossing, nor are its eight neighbours; a chunk three away from
+     * it is.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aChunkChangedAfterSendingIsSentAtTheCrossing(GameTestHelper helper) {
+        crossingScenario(
+                helper,
+                FIRST_INDEX + 9,
+                "seam-data-stale",
+                run -> {
+                    ChunkPos changed = changedChunk(run);
+                    BlockPos pos = new BlockPos(
+                            changed.getMinBlockX() + 8,
+                            TestLayers.dimensionBand(run.site().two()).minY() + 100,
+                            changed.getMinBlockZ() + 8);
+                    run.site().two().setBlock(pos, Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
+                },
+                (run, mock, ticks) -> {
+                    ResourceKey<Level> two = run.site().two().dimension();
+                    ChunkPos changed = changedChunk(run);
+                    if (ticks < SETTLE_TICKS || mock.timesSentIn(two, changed) == 0) {
+                        return;
+                    }
+                    ChunkPos beside = new ChunkPos(changed.x(), changed.z() + 1);
+                    ChunkPos far = new ChunkPos(
+                            run.site().centre().x() - 3, run.site().centre().z());
+                    expect(
+                            helper,
+                            mock.timesSentIn(two, changed) == 1 && mock.timesSentIn(two, beside) == 1,
+                            "the changed chunk %s was sent %d times and its neighbour %s %d",
+                            changed,
+                            mock.timesSentIn(two, changed),
+                            beside,
+                            mock.timesSentIn(two, beside));
+                    expect(
+                            helper,
+                            mock.timesSentIn(two, far) == 0,
+                            "the chunk %s, far from the change, was sent at the crossing",
+                            far);
+                    helper.succeed();
+                });
+    }
+
+    /** The chunk the stale test changes: three chunks east of the area's centre, far from the pocket. */
+    private static ChunkPos changedChunk(Run run) {
+        return new ChunkPos(run.site().centre().x() + 3, run.site().centre().z());
+    }
+
+    /**
+     * A client that reports the area missing is sent the chunks the crossing skipped, each once: the report names layer 2, and answers
+     * with the chunks of the area it was not sent the vanilla way.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aMissedReportResendsTheSkipped(GameTestHelper helper) {
+        Set<ChunkPos> skipped = new HashSet<>();
+        crossingScenario(helper, FIRST_INDEX + 10, "seam-data-missed", run -> {}, (run, mock, ticks) -> {
+            ResourceKey<Level> two = run.site().two().dimension();
+            Set<ChunkPos> ahead = area(run.site().centre());
+            if (ticks < SETTLE_TICKS) {
+                return;
+            }
+            if (skipped.isEmpty()) {
+                ahead.stream().filter(pos -> mock.timesSentIn(two, pos) == 0).forEach(skipped::add);
+                expect(
+                        helper,
+                        skipped.size() >= 40,
+                        "the crossing skipped only %d chunks, so a missed report has nothing to resend",
+                        skipped.size());
+                mock.send(new SeamMissedPayload(two));
+                return;
+            }
+            if (!skipped.stream().allMatch(pos -> mock.timesSentIn(two, pos) > 0)) {
+                return;
+            }
+            for (ChunkPos pos : skipped) {
+                expect(
+                        helper,
+                        mock.timesSentIn(two, pos) == 1,
+                        "the skipped chunk %s was sent %d times after the report",
+                        pos,
+                        mock.timesSentIn(two, pos));
+            }
+            helper.succeed();
+        });
+    }
+
+    /** A report that comes after the window the server keeps the skipped chunks for sends nothing. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aMissedReportAfterTheWindowResendsNothing(GameTestHelper helper) {
+        int[] reportedAt = {-1};
+        crossingScenario(helper, FIRST_INDEX + 11, "seam-data-late", run -> {}, (run, mock, ticks) -> {
+            ResourceKey<Level> two = run.site().two().dimension();
+            if (reportedAt[0] < 0) {
+                if (ticks >= LayerTuning.DEFAULT.seamMissedWindowTicks() + SETTLE_TICKS) {
+                    mock.send(new SeamMissedPayload(two));
+                    reportedAt[0] = ticks;
+                }
+                return;
+            }
+            if (ticks - reportedAt[0] < SETTLE_TICKS) {
+                return;
+            }
+            long resent = area(run.site().centre()).stream()
+                    .filter(pos -> mock.timesSentIn(two, pos) > 0)
+                    .count();
+            expect(helper, resent <= 9, "a report after the window sent %d chunks of the area again", resent);
+            helper.succeed();
+        });
     }
 
     /** The order the area is sent in is pure: nearest the centre first, each offset once, the same on every call. */
