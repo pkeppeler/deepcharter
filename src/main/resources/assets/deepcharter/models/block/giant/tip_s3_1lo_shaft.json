@@ -1,0 +1,168 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "tip": "deepcharter:block/spire_tip",
+    "particle": "deepcharter:block/spire_tip"
+  },
+  "elements": [
+    {
+      "from": [
+        12.1667,
+        -0.6164,
+        5.5
+      ],
+      "to": [
+        17.1667,
+        8.6164,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5.5,
+            7.6,
+            10.5,
+            16.0
+          ],
+          "texture": "#tip"
+        },
+        "south": {
+          "uv": [
+            5.5,
+            7.6,
+            10.5,
+            16.0
+          ],
+          "texture": "#tip"
+        },
+        "east": {
+          "uv": [
+            5.5,
+            7.6,
+            10.5,
+            16.0
+          ],
+          "texture": "#tip"
+        },
+        "west": {
+          "uv": [
+            5.5,
+            7.6,
+            10.5,
+            16.0
+          ],
+          "texture": "#tip"
+        },
+        "up": {
+          "uv": [
+            5.5,
+            5.5,
+            10.5,
+            10.5
+          ],
+          "texture": "#tip"
+        },
+        "down": {
+          "uv": [
+            5.5,
+            5.5,
+            10.5,
+            10.5
+          ],
+          "texture": "#tip"
+        }
+      },
+      "rotation": {
+        "origin": [
+          14.6667,
+          4.0,
+          8
+        ],
+        "x": 0,
+        "y": 0,
+        "z": -18.4349
+      },
+      "light_emission": 9
+    },
+    {
+      "from": [
+        12.1667,
+        -0.6164,
+        5.5
+      ],
+      "to": [
+        17.1667,
+        8.6164,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5.5,
+            7.6,
+            10.5,
+            16.0
+          ],
+          "texture": "#tip"
+        },
+        "south": {
+          "uv": [
+            5.5,
+            7.6,
+            10.5,
+            16.0
+          ],
+          "texture": "#tip"
+        },
+        "east": {
+          "uv": [
+            5.5,
+            7.6,
+            10.5,
+            16.0
+          ],
+          "texture": "#tip"
+        },
+        "west": {
+          "uv": [
+            5.5,
+            7.6,
+            10.5,
+            16.0
+          ],
+          "texture": "#tip"
+        },
+        "up": {
+          "uv": [
+            5.5,
+            5.5,
+            10.5,
+            10.5
+          ],
+          "texture": "#tip"
+        },
+        "down": {
+          "uv": [
+            5.5,
+            5.5,
+            10.5,
+            10.5
+          ],
+          "texture": "#tip"
+        }
+      },
+      "rotation": {
+        "origin": [
+          14.6667,
+          4.0,
+          8
+        ],
+        "x": 0,
+        "y": 45,
+        "z": -18.4349
+      },
+      "light_emission": 9
+    }
+  ],
+  "ambientocclusion": false
+}

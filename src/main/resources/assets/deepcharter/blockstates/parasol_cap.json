@@ -1,0 +1,3004 @@
+{
+  "variants": {
+    "facing=east,level=1,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_0"
+    },
+    "facing=east,level=1,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_0_umbo"
+    },
+    "facing=east,level=1,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_1"
+    },
+    "facing=east,level=1,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_1_umbo"
+    },
+    "facing=east,level=1,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_2"
+    },
+    "facing=east,level=1,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_2_umbo"
+    },
+    "facing=east,level=1,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_3"
+    },
+    "facing=east,level=1,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_3_umbo"
+    },
+    "facing=east,level=1,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_4"
+    },
+    "facing=east,level=1,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_4_umbo"
+    },
+    "facing=east,level=1,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_0"
+    },
+    "facing=east,level=1,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_0_umbo"
+    },
+    "facing=east,level=1,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_1"
+    },
+    "facing=east,level=1,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_1_umbo"
+    },
+    "facing=east,level=1,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_2"
+    },
+    "facing=east,level=1,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_2_umbo"
+    },
+    "facing=east,level=1,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_3"
+    },
+    "facing=east,level=1,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_3_umbo"
+    },
+    "facing=east,level=1,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_4"
+    },
+    "facing=east,level=1,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_4_umbo"
+    },
+    "facing=east,level=1,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_0"
+    },
+    "facing=east,level=1,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_0_umbo"
+    },
+    "facing=east,level=1,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_1"
+    },
+    "facing=east,level=1,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_1_umbo"
+    },
+    "facing=east,level=1,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_2"
+    },
+    "facing=east,level=1,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_2_umbo"
+    },
+    "facing=east,level=1,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_3"
+    },
+    "facing=east,level=1,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_3_umbo"
+    },
+    "facing=east,level=1,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_4"
+    },
+    "facing=east,level=1,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_4_umbo"
+    },
+    "facing=east,level=1,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_0"
+    },
+    "facing=east,level=1,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_0_umbo"
+    },
+    "facing=east,level=1,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_1"
+    },
+    "facing=east,level=1,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_1_umbo"
+    },
+    "facing=east,level=1,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_2"
+    },
+    "facing=east,level=1,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_2_umbo"
+    },
+    "facing=east,level=1,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_3"
+    },
+    "facing=east,level=1,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_3_umbo"
+    },
+    "facing=east,level=1,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_4"
+    },
+    "facing=east,level=1,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_4_umbo"
+    },
+    "facing=east,level=1,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_0"
+    },
+    "facing=east,level=1,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_0_umbo"
+    },
+    "facing=east,level=1,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_1"
+    },
+    "facing=east,level=1,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_1_umbo"
+    },
+    "facing=east,level=1,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_2"
+    },
+    "facing=east,level=1,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_2_umbo"
+    },
+    "facing=east,level=1,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_3"
+    },
+    "facing=east,level=1,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_3_umbo"
+    },
+    "facing=east,level=1,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_4"
+    },
+    "facing=east,level=1,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_4_umbo"
+    },
+    "facing=east,level=2,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_0"
+    },
+    "facing=east,level=2,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_0_umbo"
+    },
+    "facing=east,level=2,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_1"
+    },
+    "facing=east,level=2,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_1_umbo"
+    },
+    "facing=east,level=2,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_2"
+    },
+    "facing=east,level=2,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_2_umbo"
+    },
+    "facing=east,level=2,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_3"
+    },
+    "facing=east,level=2,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_3_umbo"
+    },
+    "facing=east,level=2,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_4"
+    },
+    "facing=east,level=2,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_4_umbo"
+    },
+    "facing=east,level=2,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_0"
+    },
+    "facing=east,level=2,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_0_umbo"
+    },
+    "facing=east,level=2,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_1"
+    },
+    "facing=east,level=2,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_1_umbo"
+    },
+    "facing=east,level=2,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_2"
+    },
+    "facing=east,level=2,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_2_umbo"
+    },
+    "facing=east,level=2,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_3"
+    },
+    "facing=east,level=2,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_3_umbo"
+    },
+    "facing=east,level=2,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_4"
+    },
+    "facing=east,level=2,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_4_umbo"
+    },
+    "facing=east,level=2,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_0"
+    },
+    "facing=east,level=2,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_0_umbo"
+    },
+    "facing=east,level=2,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_1"
+    },
+    "facing=east,level=2,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_1_umbo"
+    },
+    "facing=east,level=2,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_2"
+    },
+    "facing=east,level=2,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_2_umbo"
+    },
+    "facing=east,level=2,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_3"
+    },
+    "facing=east,level=2,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_3_umbo"
+    },
+    "facing=east,level=2,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_4"
+    },
+    "facing=east,level=2,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_4_umbo"
+    },
+    "facing=east,level=2,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_0"
+    },
+    "facing=east,level=2,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_0_umbo"
+    },
+    "facing=east,level=2,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_1"
+    },
+    "facing=east,level=2,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_1_umbo"
+    },
+    "facing=east,level=2,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_2"
+    },
+    "facing=east,level=2,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_2_umbo"
+    },
+    "facing=east,level=2,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_3"
+    },
+    "facing=east,level=2,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_3_umbo"
+    },
+    "facing=east,level=2,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_4"
+    },
+    "facing=east,level=2,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_4_umbo"
+    },
+    "facing=east,level=2,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_0"
+    },
+    "facing=east,level=2,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_0_umbo"
+    },
+    "facing=east,level=2,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_1"
+    },
+    "facing=east,level=2,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_1_umbo"
+    },
+    "facing=east,level=2,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_2"
+    },
+    "facing=east,level=2,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_2_umbo"
+    },
+    "facing=east,level=2,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_3"
+    },
+    "facing=east,level=2,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_3_umbo"
+    },
+    "facing=east,level=2,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_4"
+    },
+    "facing=east,level=2,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_4_umbo"
+    },
+    "facing=east,level=3,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_0"
+    },
+    "facing=east,level=3,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_0_umbo"
+    },
+    "facing=east,level=3,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_1"
+    },
+    "facing=east,level=3,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_1_umbo"
+    },
+    "facing=east,level=3,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_2"
+    },
+    "facing=east,level=3,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_2_umbo"
+    },
+    "facing=east,level=3,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_3"
+    },
+    "facing=east,level=3,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_3_umbo"
+    },
+    "facing=east,level=3,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_4"
+    },
+    "facing=east,level=3,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_4_umbo"
+    },
+    "facing=east,level=3,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_0"
+    },
+    "facing=east,level=3,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_0_umbo"
+    },
+    "facing=east,level=3,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_1"
+    },
+    "facing=east,level=3,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_1_umbo"
+    },
+    "facing=east,level=3,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_2"
+    },
+    "facing=east,level=3,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_2_umbo"
+    },
+    "facing=east,level=3,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_3"
+    },
+    "facing=east,level=3,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_3_umbo"
+    },
+    "facing=east,level=3,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_4"
+    },
+    "facing=east,level=3,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_4_umbo"
+    },
+    "facing=east,level=3,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_0"
+    },
+    "facing=east,level=3,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_0_umbo"
+    },
+    "facing=east,level=3,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_1"
+    },
+    "facing=east,level=3,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_1_umbo"
+    },
+    "facing=east,level=3,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_2"
+    },
+    "facing=east,level=3,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_2_umbo"
+    },
+    "facing=east,level=3,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_3"
+    },
+    "facing=east,level=3,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_3_umbo"
+    },
+    "facing=east,level=3,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_4"
+    },
+    "facing=east,level=3,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_4_umbo"
+    },
+    "facing=east,level=3,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_0"
+    },
+    "facing=east,level=3,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_0_umbo"
+    },
+    "facing=east,level=3,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_1"
+    },
+    "facing=east,level=3,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_1_umbo"
+    },
+    "facing=east,level=3,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_2"
+    },
+    "facing=east,level=3,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_2_umbo"
+    },
+    "facing=east,level=3,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_3"
+    },
+    "facing=east,level=3,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_3_umbo"
+    },
+    "facing=east,level=3,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_4"
+    },
+    "facing=east,level=3,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_4_umbo"
+    },
+    "facing=east,level=3,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_0"
+    },
+    "facing=east,level=3,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_0_umbo"
+    },
+    "facing=east,level=3,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_1"
+    },
+    "facing=east,level=3,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_1_umbo"
+    },
+    "facing=east,level=3,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_2"
+    },
+    "facing=east,level=3,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_2_umbo"
+    },
+    "facing=east,level=3,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_3"
+    },
+    "facing=east,level=3,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_3_umbo"
+    },
+    "facing=east,level=3,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_4"
+    },
+    "facing=east,level=3,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_4_umbo"
+    },
+    "facing=east,level=4,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_0"
+    },
+    "facing=east,level=4,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_0_umbo"
+    },
+    "facing=east,level=4,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_1"
+    },
+    "facing=east,level=4,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_1_umbo"
+    },
+    "facing=east,level=4,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_2"
+    },
+    "facing=east,level=4,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_2_umbo"
+    },
+    "facing=east,level=4,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_3"
+    },
+    "facing=east,level=4,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_3_umbo"
+    },
+    "facing=east,level=4,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_4"
+    },
+    "facing=east,level=4,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_4_umbo"
+    },
+    "facing=east,level=4,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_0"
+    },
+    "facing=east,level=4,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_0_umbo"
+    },
+    "facing=east,level=4,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_1"
+    },
+    "facing=east,level=4,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_1_umbo"
+    },
+    "facing=east,level=4,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_2"
+    },
+    "facing=east,level=4,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_2_umbo"
+    },
+    "facing=east,level=4,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_3"
+    },
+    "facing=east,level=4,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_3_umbo"
+    },
+    "facing=east,level=4,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_4"
+    },
+    "facing=east,level=4,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_4_umbo"
+    },
+    "facing=east,level=4,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_0"
+    },
+    "facing=east,level=4,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_0_umbo"
+    },
+    "facing=east,level=4,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_1"
+    },
+    "facing=east,level=4,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_1_umbo"
+    },
+    "facing=east,level=4,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_2"
+    },
+    "facing=east,level=4,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_2_umbo"
+    },
+    "facing=east,level=4,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_3"
+    },
+    "facing=east,level=4,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_3_umbo"
+    },
+    "facing=east,level=4,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_4"
+    },
+    "facing=east,level=4,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_4_umbo"
+    },
+    "facing=east,level=4,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_0"
+    },
+    "facing=east,level=4,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_0_umbo"
+    },
+    "facing=east,level=4,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_1"
+    },
+    "facing=east,level=4,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_1_umbo"
+    },
+    "facing=east,level=4,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_2"
+    },
+    "facing=east,level=4,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_2_umbo"
+    },
+    "facing=east,level=4,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_3"
+    },
+    "facing=east,level=4,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_3_umbo"
+    },
+    "facing=east,level=4,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_4"
+    },
+    "facing=east,level=4,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_4_umbo"
+    },
+    "facing=east,level=4,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_0"
+    },
+    "facing=east,level=4,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_0_umbo"
+    },
+    "facing=east,level=4,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_1"
+    },
+    "facing=east,level=4,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_1_umbo"
+    },
+    "facing=east,level=4,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_2"
+    },
+    "facing=east,level=4,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_2_umbo"
+    },
+    "facing=east,level=4,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_3"
+    },
+    "facing=east,level=4,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_3_umbo"
+    },
+    "facing=east,level=4,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_4"
+    },
+    "facing=east,level=4,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_4_umbo"
+    },
+    "facing=south,level=1,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_0",
+      "y": 90
+    },
+    "facing=south,level=1,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_1",
+      "y": 90
+    },
+    "facing=south,level=1,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_2",
+      "y": 90
+    },
+    "facing=south,level=1,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_3",
+      "y": 90
+    },
+    "facing=south,level=1,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_4",
+      "y": 90
+    },
+    "facing=south,level=1,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_0",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_1",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_2",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_3",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_4",
+      "y": 90
+    },
+    "facing=south,level=1,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_0",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_1",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_2",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_3",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_4",
+      "y": 90
+    },
+    "facing=south,level=1,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_0",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_1",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_2",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_3",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_4",
+      "y": 90
+    },
+    "facing=south,level=1,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_0",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_1",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_2",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_3",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_4",
+      "y": 90
+    },
+    "facing=south,level=1,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_0",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_1",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_2",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_3",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_4",
+      "y": 90
+    },
+    "facing=south,level=2,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_0",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_1",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_2",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_3",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_4",
+      "y": 90
+    },
+    "facing=south,level=2,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_0",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_1",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_2",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_3",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_4",
+      "y": 90
+    },
+    "facing=south,level=2,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_0",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_1",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_2",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_3",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_4",
+      "y": 90
+    },
+    "facing=south,level=2,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_0",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_1",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_2",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_3",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_4",
+      "y": 90
+    },
+    "facing=south,level=2,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_0",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_1",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_2",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_3",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_4",
+      "y": 90
+    },
+    "facing=south,level=3,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_0",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_1",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_2",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_3",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_4",
+      "y": 90
+    },
+    "facing=south,level=3,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_0",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_1",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_2",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_3",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_4",
+      "y": 90
+    },
+    "facing=south,level=3,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_0",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_1",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_2",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_3",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_4",
+      "y": 90
+    },
+    "facing=south,level=3,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_0",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_1",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_2",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_3",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_4",
+      "y": 90
+    },
+    "facing=south,level=3,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_0",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_1",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_2",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_3",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_4",
+      "y": 90
+    },
+    "facing=south,level=4,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_0",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_1",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_2",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_3",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_4",
+      "y": 90
+    },
+    "facing=south,level=4,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_0",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_1",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_2",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_3",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_4",
+      "y": 90
+    },
+    "facing=south,level=4,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_0",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_1",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_2",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_3",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_4",
+      "y": 90
+    },
+    "facing=south,level=4,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_4_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_0",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_0_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_1",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_1_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_2",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_2_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_3",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_3_umbo",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_4",
+      "y": 90
+    },
+    "facing=south,level=4,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_4_umbo",
+      "y": 90
+    },
+    "facing=west,level=1,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_0",
+      "y": 180
+    },
+    "facing=west,level=1,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_1",
+      "y": 180
+    },
+    "facing=west,level=1,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_2",
+      "y": 180
+    },
+    "facing=west,level=1,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_3",
+      "y": 180
+    },
+    "facing=west,level=1,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_4",
+      "y": 180
+    },
+    "facing=west,level=1,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_0",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_1",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_2",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_3",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_4",
+      "y": 180
+    },
+    "facing=west,level=1,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_0",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_1",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_2",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_3",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_4",
+      "y": 180
+    },
+    "facing=west,level=1,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_0",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_1",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_2",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_3",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_4",
+      "y": 180
+    },
+    "facing=west,level=1,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_0",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_1",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_2",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_3",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_4",
+      "y": 180
+    },
+    "facing=west,level=1,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_0",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_1",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_2",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_3",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_4",
+      "y": 180
+    },
+    "facing=west,level=2,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_0",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_1",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_2",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_3",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_4",
+      "y": 180
+    },
+    "facing=west,level=2,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_0",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_1",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_2",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_3",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_4",
+      "y": 180
+    },
+    "facing=west,level=2,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_0",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_1",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_2",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_3",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_4",
+      "y": 180
+    },
+    "facing=west,level=2,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_0",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_1",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_2",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_3",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_4",
+      "y": 180
+    },
+    "facing=west,level=2,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_0",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_1",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_2",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_3",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_4",
+      "y": 180
+    },
+    "facing=west,level=3,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_0",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_1",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_2",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_3",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_4",
+      "y": 180
+    },
+    "facing=west,level=3,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_0",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_1",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_2",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_3",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_4",
+      "y": 180
+    },
+    "facing=west,level=3,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_0",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_1",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_2",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_3",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_4",
+      "y": 180
+    },
+    "facing=west,level=3,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_0",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_1",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_2",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_3",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_4",
+      "y": 180
+    },
+    "facing=west,level=3,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_0",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_1",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_2",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_3",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_4",
+      "y": 180
+    },
+    "facing=west,level=4,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_0",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_1",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_2",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_3",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_4",
+      "y": 180
+    },
+    "facing=west,level=4,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_0",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_1",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_2",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_3",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_4",
+      "y": 180
+    },
+    "facing=west,level=4,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_0",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_1",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_2",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_3",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_4",
+      "y": 180
+    },
+    "facing=west,level=4,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_4_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_0",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_0_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_1",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_1_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_2",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_2_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_3",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_3_umbo",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_4",
+      "y": 180
+    },
+    "facing=west,level=4,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_4_umbo",
+      "y": 180
+    },
+    "facing=north,level=1,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_0",
+      "y": 270
+    },
+    "facing=north,level=1,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_1",
+      "y": 270
+    },
+    "facing=north,level=1,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_2",
+      "y": 270
+    },
+    "facing=north,level=1,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_3",
+      "y": 270
+    },
+    "facing=north,level=1,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_0_4",
+      "y": 270
+    },
+    "facing=north,level=1,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_0_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_0",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_1",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_2",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_3",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_1_4",
+      "y": 270
+    },
+    "facing=north,level=1,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_1_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_0",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_1",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_2",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_3",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_2_4",
+      "y": 270
+    },
+    "facing=north,level=1,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_2_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_0",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_1",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_2",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_3",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_3_4",
+      "y": 270
+    },
+    "facing=north,level=1,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_3_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_0",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_1",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_2",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_3",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_1_4_4",
+      "y": 270
+    },
+    "facing=north,level=1,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_1_4_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_0",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_1",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_2",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_3",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_0_4",
+      "y": 270
+    },
+    "facing=north,level=2,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_0_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_0",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_1",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_2",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_3",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_1_4",
+      "y": 270
+    },
+    "facing=north,level=2,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_1_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_0",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_1",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_2",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_3",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_2_4",
+      "y": 270
+    },
+    "facing=north,level=2,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_2_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_0",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_1",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_2",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_3",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_3_4",
+      "y": 270
+    },
+    "facing=north,level=2,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_3_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_0",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_1",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_2",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_3",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_2_4_4",
+      "y": 270
+    },
+    "facing=north,level=2,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_2_4_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_0",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_1",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_2",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_3",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_0_4",
+      "y": 270
+    },
+    "facing=north,level=3,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_0_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_0",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_1",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_2",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_3",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_1_4",
+      "y": 270
+    },
+    "facing=north,level=3,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_1_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_0",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_1",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_2",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_3",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_2_4",
+      "y": 270
+    },
+    "facing=north,level=3,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_2_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_0",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_1",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_2",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_3",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_3_4",
+      "y": 270
+    },
+    "facing=north,level=3,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_3_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_0",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_1",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_2",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_3",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_3_4_4",
+      "y": 270
+    },
+    "facing=north,level=3,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_3_4_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_0",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_1",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_2",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_3",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_0_4",
+      "y": 270
+    },
+    "facing=north,level=4,rise=0,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_0_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_0",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_1",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_2",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_3",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_1_4",
+      "y": 270
+    },
+    "facing=north,level=4,rise=1,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_1_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_0",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_1",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_2",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_3",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_2_4",
+      "y": 270
+    },
+    "facing=north,level=4,rise=2,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_2_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_0",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_1",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_2",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_3",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_3_4",
+      "y": 270
+    },
+    "facing=north,level=4,rise=3,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_3_4_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=0,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_0",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=0,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_0_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=1,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_1",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=1,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_1_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=2,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_2",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=2,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_2_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=3,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_3",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=3,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_3_umbo",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=4,umbo=false": {
+      "model": "deepcharter:block/giant/cap_4_4_4",
+      "y": 270
+    },
+    "facing=north,level=4,rise=4,side_rise=4,umbo=true": {
+      "model": "deepcharter:block/giant/cap_4_4_4_umbo",
+      "y": 270
+    }
+  }
+}

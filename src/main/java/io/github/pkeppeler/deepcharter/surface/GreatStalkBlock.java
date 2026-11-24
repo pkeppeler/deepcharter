@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
  * A block of a great stalk, its thick trunk or its cap: a full cube that drops one fungal stalk, like every stalk block. Breaking one
  * brings down the great stalk above it ({@link StalkCollapse}).
  */
-final class GreatStalkBlock extends Block {
+class GreatStalkBlock extends Block {
     private final boolean cap;
 
     /** {@code cap} is whether this is a cap block, which hangs from what it joins, rather than a trunk block, which stands. */

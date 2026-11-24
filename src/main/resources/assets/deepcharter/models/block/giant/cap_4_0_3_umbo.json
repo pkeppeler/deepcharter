@@ -1,0 +1,6 @@
+{
+  "parent": "deepcharter:block/giant/cap_4_0_3",
+  "textures": {
+    "top": "deepcharter:block/parasol_cap_umbo"
+  }
+}
