@@ -12,6 +12,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -55,7 +56,7 @@ public final class PhonographRegistry {
             key -> new PhonographBlock(
                     BlockBehaviour.Properties.of()
                             .setId(key)
-                            .strength(-1.0F, 3_600_000.0F)
+                            .strength(-1.0F, Blocks.BEDROCK.getExplosionResistance())
                             .sound(SoundType.WOOD)
                             .noOcclusion()
                             .noLootTable(),
