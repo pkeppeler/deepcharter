@@ -686,7 +686,7 @@ public class TerminalFrameworkTest {
                         "%s must be unbreakable in survival: speed %s, progress %s",
                         type.id(), state.getDestroySpeed(level, pos), state.getDestroyProgress(player, level, pos));
             }
-            if (state.getBlock().getExplosionResistance() < 3_600_000F) {
+            if (state.getBlock().getExplosionResistance() < Blocks.BEDROCK.getExplosionResistance()) {
                 throw helper.assertionException(
                         "%s must survive explosions, resistance %s",
                         type.id(), state.getBlock().getExplosionResistance());
