@@ -19,13 +19,13 @@ addVmArgToRuns(exitOnOom)
 val gameTestHeap = "-Xmx3072m"
 addVmArgToRun("gameTest", gameTestHeap)
 
-// Client GameTest heap, 3G (the default is a quarter of RAM). Run 45308464189 (3 shards, after #914): the live set after the full GC each class
-// forces peaked at 842 MB, so 3G leaves 3.5x. Watch the live set after a full collection, not the peak: G1 grows the heap to Xmx before it
-// collects hard. Mixed-pause "after" figures include old garbage and are no measure. Per-class table: PR #1148.
+// Client GameTest heap, 4G (the default is a quarter of RAM). At 4G the live set after each class's forced full GC peaked at about 0.84 GB
+// (run 45308464189, 3 shards). A 3G trial (run 45316304043) made G1 compact twice in the heaviest shard, with live up to 1.07 GB, so 4G stays.
+// Watch the live set after a full collection, not the peak: G1 grows the heap to Xmx before it collects hard. Per-class table: PR #1148.
 // Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac, so the default two
 // client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest action prints the peak and
 // the live set from it.
-val clientGameTestHeap = "-Xmx3G"
+val clientGameTestHeap = "-Xmx4G"
 addVmArgToRun("clientGameTest", clientGameTestHeap)
 addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")
 
