@@ -153,6 +153,6 @@
       ],
       "unbuilt": "deepcharter:unbuilt_depth"
     },
-    "settings": "deepcharter:campaign"
+    "settings": "deepcharter:campaign_sample"
   }
 }

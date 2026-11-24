@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
+import io.github.pkeppeler.deepcharter.client.theme.SuitLook;
 import io.github.pkeppeler.deepcharter.client.theme.TowChainLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.theme.UiTheme;
@@ -247,6 +248,11 @@ public class ThemeLooksTest {
                         9,
                         14),
                 SonarLook.of(area("sonar", null)));
+        expect(
+                helper,
+                "suit",
+                new SuitLook(6, 20, 96, 5, 16, 1, 2, 0xFF7CFC9A, 0xFFFFB000, 0xFFFF4A3A, 0xFF2E7A45, 5),
+                SuitLook.of(area("suit", null)));
         helper.succeed();
     }
 
@@ -661,7 +667,8 @@ public class ThemeLooksTest {
                 "beam",
                 "catalogue",
                 "readout",
-                "sonar")) {
+                "sonar",
+                "suit")) {
             areas.put(name, area(name, null));
         }
         return areas;
@@ -674,6 +681,16 @@ public class ThemeLooksTest {
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": 0 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": -5 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"scanlineSpacing\": 0 }")), "scanlineSpacing");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theSuitGaugeStaysWithinItsBounds(GameTestHelper helper) {
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"barWidth\": 10 }")), "barWidth");
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"segments\": 1 }")), "segments");
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"blinkTicks\": 0 }")), "blinkTicks");
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"barWidth\": 20, \"segments\": 20 }")), "segments");
+        rejected(helper, () -> SuitLook.of(area("suit", "{ \"redColor\": 5 }")), "redColor");
         helper.succeed();
     }
 

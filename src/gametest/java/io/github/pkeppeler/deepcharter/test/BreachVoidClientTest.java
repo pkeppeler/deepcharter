@@ -86,7 +86,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                 });
                 // The void is under the bottom of the whole world: in the campaign level a hole through the floor of a
                 // band shows the next
-                // band's rock. TODO(#819): the pod 1 block under the bottom, which #804 puts back.
+                // band's rock. TODO(#819): the pod 1 block under the bottom.
                 for (int layer : new int[] {LayerChain.SURFACE}) {
                     int minY = singleplayer
                             .getServer()

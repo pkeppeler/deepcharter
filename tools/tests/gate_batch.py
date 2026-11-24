@@ -23,6 +23,8 @@ class Case:
     files: Mapping[str, str] | Path
     client_tests: str | None
     gate: Literal["entity_query", "fixed_pos", "record_holder", "keep_clear", "null_marked", "null_marked_roots"] | None = None
+    client_shard: str | None = None
+    client_weights: Mapping[str, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,7 @@ def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
                     path = root / PACKAGE / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(body)
-            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "gate": case.gate})
+            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "clientShard": case.client_shard, "clientWeights": case.client_weights, "gate": case.gate})
         # Fixed paths: the properties are inputs of Gradle's configuration cache, so a new path each run would add a cache entry each run.
         cases_file = EXCHANGE / "cases.json"
         results_file = EXCHANGE / "results.json"
