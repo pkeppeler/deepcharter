@@ -65,6 +65,22 @@ public final class LayerBlocks {
                     .noLootTable()));
 
     /**
+     * The moss film round the growth (#974, {@link OvergrowthVeneerBlock}): a thin layer on the faces of rock, with no collision, no light
+     * cost and no drop, that goes before the fill, spills round a closed mouth and hangs from a roof. It has no item: only {@link Overgrowth}
+     * places it.
+     */
+    public static final Block OVERGROWTH_VENEER = registerBlockOnly(
+            id("overgrowth_veneer"),
+            key -> new OvergrowthVeneerBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .instabreak()
+                    .sound(SoundType.MOSS)
+                    .noCollision()
+                    .noOcclusion()
+                    .pushReaction(PushReaction.POPPED)
+                    .noLootTable()));
+
+    /**
      * The roof bolt (#987): set in a roof by the bolt driver, it holds the roof round it against a cave-in ({@link CaveIns}). The id is
      * permanent, since a bolt set in the roof stays in a saved world. It has no item: only the driver sets one.
      */

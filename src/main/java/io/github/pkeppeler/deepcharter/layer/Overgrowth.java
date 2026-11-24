@@ -39,6 +39,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.MultifaceBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
@@ -61,6 +62,15 @@ import net.minecraft.world.phys.AABB;
  */
 public final class Overgrowth {
     private static final int VERSION = 1;
+
+    /** Blocks round a grown cell, and round the film, that the film spills to and is held by. */
+    private static final int FILM_REACH = 2;
+
+    /** The chance in percent that an air cell next to a grown cell, and one two out, takes a film (A). */
+    private static final int SPILL_NEAR_PERCENT = 70;
+
+    private static final int SPILL_FAR_PERCENT = 35;
+    private static final long SPILL_SALT = 5L;
 
     /** The biomes whose bores grow over. Empty in shipped data: the layer that has the hollows fills it (#972). */
     public static final TagKey<Biome> HOLLOWS = TagKey.create(Registries.BIOME, id("fungal_hollows"));
@@ -282,11 +292,17 @@ public final class Overgrowth {
         for (long cell : weighed(bores.cells(), pass)) {
             BlockPos pos = BlockPos.of(cell);
             BlockState state = blocks.getBlockState(pos);
-            if (state.isAir()) {
-                if (grown < OvergrowthTuning.DEFAULT.cellsPerPass() && freeToGrow(level, blocks, pos)) {
+            if (state.isAir() || state.is(LayerBlocks.OVERGROWTH_VENEER)) {
+                if (!freeToGrow(level, blocks, pos)) {
+                    continue;
+                }
+                if (grown < OvergrowthTuning.DEFAULT.cellsPerPass()) {
                     level.setBlock(pos, LayerBlocks.OVERGROWTH.defaultBlockState(), Block.UPDATE_ALL);
                     grown++;
                     done.add(cell);
+                    spill(level, blocks, pos);
+                } else {
+                    film(level, blocks, pos, pass);
                 }
             } else if (state.is(LayerBlocks.OVERGROWTH)
                     || (!isWall(state) && state.getFluidState().isEmpty())) {
@@ -298,6 +314,67 @@ public final class Overgrowth {
             pending.removeAll(done);
             chunk.setAttached(BORES, Versioned.of(new Bores(bores.lastVisit(), Set.copyOf(pending))));
         }
+    }
+
+    /**
+     * Lays the moss film in {@code pos}, an air cell, on the faces of the rock round it, leaving about a third of the faces bare so the film is
+     * ragged. It does nothing where growth would not: outside the hollows, near a lining block, or where a chunk is not loaded. {@code salt} varies which faces.
+     */
+    private static void film(ServerLevel level, LoadedBlocks blocks, BlockPos pos, long salt) {
+        if (!blocks.getBlockState(pos).isAir()
+                || !blocks.canChange(pos)
+                || !stored(level, pos).is(HOLLOWS)
+                || heldOpen(blocks, pos)) {
+            return;
+        }
+        BlockState film = LayerBlocks.OVERGROWTH_VENEER.defaultBlockState();
+        boolean any = false;
+        for (Direction side : Direction.values()) {
+            if (isWall(blocks.getBlockState(pos.relative(side)))
+                    && Math.floorMod(scramble(pos.asLong() * 6 + side.ordinal(), salt), 3) != 0) {
+                film = film.setValue(MultifaceBlock.getFaceProperty(side), true);
+                any = true;
+            }
+        }
+        if (any) {
+            level.setBlock(pos, film, Block.UPDATE_ALL);
+        }
+    }
+
+    /**
+     * The film spills out round a cell that has just grown: each air cell within {@link #FILM_REACH} of it takes a film with a chance that
+     * falls with distance, fixed by the cell, so the edge round a closed mouth is ragged and the same every time.
+     */
+    private static void spill(ServerLevel level, LoadedBlocks blocks, BlockPos grown) {
+        for (BlockPos near : BlockPos.betweenClosed(
+                grown.offset(-FILM_REACH, -FILM_REACH, -FILM_REACH),
+                grown.offset(FILM_REACH, FILM_REACH, FILM_REACH))) {
+            int reach = Math.max(
+                    Math.abs(near.getX() - grown.getX()),
+                    Math.max(Math.abs(near.getY() - grown.getY()), Math.abs(near.getZ() - grown.getZ())));
+            int chance = reach <= 1 ? SPILL_NEAR_PERCENT : SPILL_FAR_PERCENT;
+            if (reach > 0 && Math.floorMod(scramble(near.asLong(), SPILL_SALT), 100) < chance) {
+                film(level, blocks, near.immutable(), SPILL_SALT);
+            }
+        }
+    }
+
+    /**
+     * True while something holds the film at {@code pos}: growth within {@link #FILM_REACH} of it, or the cell is a pending bore cell of a chunk
+     * that has gone unvisited for the delay (the film ahead of the fill). A visit, or a cut of the growth, lets go of it.
+     */
+    public static boolean anchored(ServerLevel level, BlockPos pos) {
+        LoadedBlocks blocks = new LoadedBlocks(level);
+        for (BlockPos near : BlockPos.betweenClosed(
+                pos.offset(-FILM_REACH, -FILM_REACH, -FILM_REACH), pos.offset(FILM_REACH, FILM_REACH, FILM_REACH))) {
+            if (blocks.getBlockState(near).is(LayerBlocks.OVERGROWTH)) {
+                return true;
+            }
+        }
+        return Versioned.readable(level.getChunkAt(pos), BORES)
+                .filter(bores -> bores.cells().contains(pos.asLong())
+                        && level.getGameTime() - bores.lastVisit() >= OvergrowthTuning.DEFAULT.delayTicks())
+                .isPresent();
     }
 
     /** The {@link OvergrowthTuning#maxLooks} cells with the smallest key this pass, smallest first, in one scan with no sort of the whole set. */
