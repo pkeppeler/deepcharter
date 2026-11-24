@@ -1,0 +1,172 @@
+package io.github.pkeppeler.deepcharter.test;
+
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.surface.SurfaceWrites;
+import java.util.List;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.ProtoChunk;
+import net.minecraft.world.level.chunk.UpgradeData;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.levelgen.Heightmap;
+
+/**
+ * The surface rule's fast column write (#1160, ADR 0090) changes nothing the slow one would: the guard says no to every pair
+ * whose bookkeeping differs, and a run of writes through {@code SurfaceWrites.set} leaves a chunk equal, in blocks, heightmaps and
+ * section flags, to the same run through {@code ProtoChunk.setBlockState}.
+ */
+public class SurfaceWritesTest {
+    private static final BlockState GREEN = LayerBlocks.GREEN_SHALE.defaultBlockState();
+    private static final BlockState PACKED = LayerBlocks.PACKED_SHALE.defaultBlockState();
+    private static final List<BlockState> PALETTE = List.of(
+            GREEN,
+            PACKED,
+            PACKED,
+            GREEN,
+            Blocks.STONE.defaultBlockState(),
+            Blocks.AIR.defaultBlockState(),
+            Blocks.WATER.defaultBlockState(),
+            Blocks.LAVA.defaultBlockState(),
+            Blocks.GLOWSTONE.defaultBlockState(),
+            Blocks.OAK_LEAVES.defaultBlockState(),
+            Blocks.GLASS.defaultBlockState(),
+            Blocks.FURNACE.defaultBlockState(),
+            Blocks.TORCH.defaultBlockState(),
+            Blocks.SOUL_SAND.defaultBlockState(),
+            Blocks.SLIME_BLOCK.defaultBlockState());
+
+    /** Rock for rock qualifies; anything the slow path would read differently does not. */
+    @GameTest
+    public void onlyAnEquivalentSwapIsNeutral(GameTestHelper helper) {
+        BlockState stone = Blocks.STONE.defaultBlockState();
+        expect(helper, SurfaceWrites.neutral(GREEN, PACKED), "shale over shale is neutral");
+        expect(helper, SurfaceWrites.neutral(stone, GREEN), "stone over a rock is neutral");
+        expect(helper, !SurfaceWrites.neutral(Blocks.AIR.defaultBlockState(), stone), "air to stone is not");
+        expect(helper, !SurfaceWrites.neutral(stone, Blocks.AIR.defaultBlockState()), "stone to air is not");
+        expect(helper, !SurfaceWrites.neutral(stone, Blocks.LAVA.defaultBlockState()), "stone to lava is not");
+        expect(helper, !SurfaceWrites.neutral(Blocks.WATER.defaultBlockState(), stone), "water over stone is not");
+        expect(helper, !SurfaceWrites.neutral(stone, Blocks.GLOWSTONE.defaultBlockState()), "a light source is not");
+        expect(helper, !SurfaceWrites.neutral(stone, Blocks.FURNACE.defaultBlockState()), "a block entity is not");
+        expect(helper, !SurfaceWrites.neutral(Blocks.FURNACE.defaultBlockState(), stone), "over a block entity is not");
+        expect(
+                helper,
+                !SurfaceWrites.neutral(stone, Blocks.OAK_LEAVES.defaultBlockState()),
+                "leaves differ in a heightmap");
+        expect(
+                helper,
+                !SurfaceWrites.neutral(stone, Blocks.GLASS.defaultBlockState()),
+                "glass differs in light and heightmap");
+        helper.succeed();
+    }
+
+    /** The same random writes through the fast and the slow path leave two chunks the same. */
+    @GameTest
+    public void theFastWriteLeavesTheChunkAsTheSlowOneDoes(GameTestHelper helper) {
+        // The surface step runs on a chunk whose status is the one before TERRAIN (BIOMES), which keeps no heightmap;
+        // TERRAIN is
+        // the first status that keeps them, so a heightmap that is kept is compared too.
+        compare(helper, ChunkStatus.BIOMES, 1_000_002);
+        compare(helper, ChunkStatus.TERRAIN, 1_000_006);
+        helper.succeed();
+    }
+
+    private static void compare(GameTestHelper helper, ChunkStatus status, int chunkX) {
+        ServerLevel level = helper.getLevel();
+        ProtoChunk fast = chunk(level, chunkX, status);
+        ProtoChunk slow = chunk(level, chunkX + 2, status);
+        int minY = level.getMinY(); // level-height: a hand-built chunk of the test level, no layer
+        // The same base in both, as the noise fill leaves it: rock below, air above.
+        for (ProtoChunk chunk : List.of(fast, slow)) {
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int y = minY; y < minY + 70; y++) {
+                        chunk.setBlockState(
+                                new BlockPos(
+                                        chunk.getPos().getBlockX(x),
+                                        y,
+                                        chunk.getPos().getBlockZ(z)),
+                                GREEN,
+                                3);
+                    }
+                }
+            }
+            Heightmap.primeHeightmaps(chunk, status.heightmapsAfter());
+        }
+        RandomSource random = RandomSource.create(1160);
+        int neutral = 0;
+        for (int i = 0; i < 20_000; i++) {
+            int[] write = {
+                random.nextInt(16), minY + random.nextInt(80), random.nextInt(16), random.nextInt(PALETTE.size())
+            };
+            BlockPos at = new BlockPos(
+                    fast.getPos().getBlockX(write[0]), write[1], fast.getPos().getBlockZ(write[2]));
+            if (SurfaceWrites.neutral(fast.getBlockState(at), PALETTE.get(write[3]))) {
+                neutral++;
+            }
+            SurfaceWrites.setEnabled(true);
+            BlockState seen = SurfaceWrites.set(fast, at, PALETTE.get(write[3]));
+            BlockPos there = new BlockPos(
+                    slow.getPos().getBlockX(write[0]), write[1], slow.getPos().getBlockZ(write[2]));
+            BlockState wasSlow = slow.setBlockState(there, PALETTE.get(write[3]), 3);
+            expect(helper, seen == wasSlow, "write %s returned %s on the fast path, %s on the slow", i, seen, wasSlow);
+        }
+        expect(
+                helper,
+                neutral > 2_000 && neutral < 18_000,
+                "%s of 20000 writes were neutral: the run tests one path",
+                neutral);
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                for (int y = minY; y < minY + 90; y++) {
+                    BlockState a = fast.getBlockState(new BlockPos(
+                            fast.getPos().getBlockX(x), y, fast.getPos().getBlockZ(z)));
+                    BlockState b = slow.getBlockState(new BlockPos(
+                            slow.getPos().getBlockX(x), y, slow.getPos().getBlockZ(z)));
+                    expect(helper, a == b, "block %s %s %s: %s fast, %s slow", x, y, z, a, b);
+                }
+                for (Heightmap.Types type : ChunkStatus.FINAL_HEIGHTMAPS) {
+                    expect(
+                            helper,
+                            fast.getHeight(type, x, z) == slow.getHeight(type, x, z),
+                            "%s at %s %s: %s fast, %s slow",
+                            type,
+                            x,
+                            z,
+                            fast.getHeight(type, x, z),
+                            slow.getHeight(type, x, z));
+                }
+            }
+        }
+        LevelChunkSection[] a = fast.getSections();
+        LevelChunkSection[] b = slow.getSections();
+        for (int i = 0; i < a.length; i++) {
+            expect(
+                    helper,
+                    a[i].hasOnlyAir() == b[i].hasOnlyAir()
+                            && a[i].isRandomlyTickingBlocks() == b[i].isRandomlyTickingBlocks()
+                            && a[i].isRandomlyTickingFluids() == b[i].isRandomlyTickingFluids(),
+                    "section %s flags differ",
+                    i);
+        }
+        expect(
+                helper,
+                java.util.Arrays.equals(fast.getPostProcessing(), slow.getPostProcessing()),
+                "post-processing marks differ");
+    }
+
+    private static ProtoChunk chunk(ServerLevel level, int chunkX, ChunkStatus status) {
+        ProtoChunk chunk = new ProtoChunk(
+                new ChunkPos(chunkX, chunkX), UpgradeData.EMPTY, level, level.palettedContainerFactory(), null);
+        chunk.setPersistedStatus(status);
+        return chunk;
+    }
+}

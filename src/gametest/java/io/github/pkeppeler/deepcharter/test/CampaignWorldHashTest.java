@@ -21,11 +21,12 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * Proves that a change to world generation leaves the world as it was (#743's cost cuts). Without {@value #OUTPUT_ENV} it does nothing
  * and passes. With {@code DEEPCHARTER_WORLD_HASH=<output file> tools/gametest.sh 'campaign_world_hash_test*'} it generates two 6 x 6
- * patches of chunks in each world where the zone fill runs, and writes one line per chunk: {@code <world> <cx> <cz> <blocks> <biomes>}.
+ * patches of chunks in each world where the zone fill runs, and writes one line per chunk: {@code <world> <cx> <cz> <blocks> <biomes> <heightmaps>}.
  * The block hash covers every block state by its string form (name and properties) and the biome hash every 4-block biome cell by its
  * registry key, never by a registry id, which shifts when a registry gains an entry. Run it on the tree before a change and on the
  * tree after, and {@code diff} the two files: no difference is the proof.
@@ -67,7 +68,7 @@ public class CampaignWorldHashTest {
                         // Generated and read in this one call, on this tick, so nothing needs forcing or waiting on.
                         LevelChunk chunk = level.getChunk(cx, cz);
                         lines.add(world + " " + cx + " " + cz + " " + Long.toHexString(blocks(chunk, stateHashes)) + " "
-                                + Long.toHexString(biomes(chunk)));
+                                + Long.toHexString(biomes(chunk)) + " " + Long.toHexString(heightmaps(chunk)));
                     }
                 }
             }
@@ -90,6 +91,19 @@ public class CampaignWorldHashTest {
                                 stateHashes.computeIfAbsent(
                                         section.getBlockState(x, y, z), CampaignWorldHashTest::text));
                     }
+                }
+            }
+        }
+        return hash;
+    }
+
+    /** Every heightmap a finished chunk keeps, over its 256 columns: the other thing a block write touches (#1160). */
+    private static long heightmaps(LevelChunk chunk) {
+        long hash = FNV_BASIS;
+        for (Heightmap.Types type : Heightmap.Types.values()) {
+            for (int z = 0; z < 16; z++) {
+                for (int x = 0; x < 16; x++) {
+                    hash = mix(hash, chunk.getHeight(type, x, z));
                 }
             }
         }
