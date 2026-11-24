@@ -61,10 +61,11 @@ import org.jspecify.annotations.Nullable;
  * as rock does, and a haul that closes less than {@link TetherTuning#stallProgress} blocks on the pod in {@link TetherTuning#stallTicks}
  * ticks (a person stuck on something the line's ray missed) counts as snagged. A line snaps too when it is stretched past
  * {@link TetherTuning#snapMargin}, and a snapped tether cannot be clipped on again for {@link TetherTuning#snapCooldownTicks}. Unhooking
- * a line that is snagged or taut, or stopping a snagged winch, costs the same cooldown, so the price of jamming a winch cannot be dodged. The pull is a velocity the client moves itself
- * by, with its own collision, so it is a push along clear air and never a teleport. A winch is loud while it hauls: it sounds a
- * decoy at the pod in {@link DrawSources}, renewed every {@link TetherTuning#noiseInterval} ticks and silenced the moment the winch stops, so a
- * creature drawn to the drill hears it.
+ * a line that is snagged or taut, or stopping a snagged winch, costs the same cooldown, so the price of jamming a winch
+ * cannot be dodged. The pull is a velocity the client moves itself by, with its own collision, so it is a push along
+ * clear air and never a teleport. A winch is loud while it hauls: it sounds a decoy at the pod in {@link DrawSources},
+ * renewed every {@link TetherTuning#noiseInterval} ticks and silenced the moment the winch stops, so a creature drawn
+ * to the drill hears it.
  *
  * <p>Using the tether on a second pod while clipped hooks that pod to the first one with the tow cable's own rules ({@link PodTowing}),
  * so a person on foot can tow a wreck.
@@ -508,7 +509,10 @@ public final class PodTether {
         person.resetFallDistance();
     }
 
-    /** Sounds the winch in {@link DrawSources} until the next clank is due. The pod may have moved, so the old decoy goes first: one entry per winch. */
+    /**
+     * Sounds the winch in {@link DrawSources} until the next clank is due. The pod may have moved, so the old decoy
+     * goes first: one entry per winch.
+     */
     private static void loud(ServerLevel level, PodEntity pod, Strain strain, TetherTuning tuning) {
         if (strain.hauled++ % tuning.noiseInterval() == 0) {
             Vec3 at = anchor(pod);
@@ -522,9 +526,10 @@ public final class PodTether {
     }
 
     /**
-     * Ends the winch's decoy, if it has one. People clipped to one pod share its anchor and {@link DrawSources#removeDecoy} removes every decoy
-     * there, so the decoy stays while another winch still hauls at it. A person who disconnects is not unclipped: their decoy lapses within
-     * {@code noiseInterval + DECOY_MARGIN} ticks.
+     * Ends the winch's decoy, if it has one. People clipped to one pod share its anchor and
+     * {@link DrawSources#removeDecoy} removes every decoy there, so the decoy stays while another winch still hauls at
+     * it. A person who disconnects is not unclipped: their decoy lapses within {@code noiseInterval + DECOY_MARGIN}
+     * ticks.
      */
     private static void silence(@Nullable Strain strain) {
         if (strain == null || strain.decoy == null) {
