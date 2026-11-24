@@ -582,16 +582,20 @@ Every band holds after the change. The matter transmitter is the one price that 
 
 **Problem.** The crust is the bottom 3 blocks of a layer, and the surface's open floor is rock down to the bottom of the world. Under that there is nothing: a hole showed the clear colour, which is the fog colour (lifted to full brightness by a night-vision potion) or the sky's, a flat bright square.
 
-**What it does.** `client/layer/BreachVoidCover` draws one black square 8 blocks under the bottom of the world (the surface and every layer). A hole in the floor shows darkness from any angle, at any distance and under night vision. The square lies 8 blocks down so it stays clear of a crossing pod: the breach fires when the pod's feet pass the bottom, a pod falls under 4 blocks a tick, and the square never cuts the pod, its particles or the fade. It draws nothing for a camera under the square. `BreachVoidClientTest` reads the pixels of a 9 x 9 hole in the surface, layer 1 and layer 2, from 46 blocks above, straight down, from high at the side and from the floor at the side, with and without night vision, and checks that a pod under the bottom shows over the hole. Each frame must also show a lit lamp where the camera maths puts one, so a black frame cannot pass.
+**What it does.** `client/layer/BreachVoidCover` draws one black cover, a disc, 8 blocks under the bottom of the world (the surface and every layer), or higher when the camera is far above it (below). A hole in the floor shows darkness from any angle, at any distance and under night vision. The cover lies 8 blocks down so it stays clear of a crossing pod: the breach fires when the pod's feet pass the bottom, a pod falls under 4 blocks a tick, and the cover never cuts the pod, its particles or the fade. It draws nothing for a camera under the cover. `BreachVoidClientTest` reads the pixels of a 9 x 9 hole in the surface, layer 1 and layer 2, from 46 blocks above, straight down, from high at the side and from the floor at the side, with and without night vision, and checks that a pod under the bottom shows over the hole. Each frame must also show a lit lamp where the camera maths puts one, so a black frame cannot pass.
 
-**The render type.** The square uses `RenderTypes.debugQuads()`, checked in the 26.3 client jar. It is not gated on any debug mode. Its pipeline is `position_color` (so no fog and no lighting), depth-tested with the normal comparison (the reversed-Z `GREATER_THAN_OR_EQUAL`) and does not write depth, has culling off (so the camera-side check above is what hides it from below), and blends as translucent (alpha 1 is opaque) in the order-independent-transparency phase, so water, particles and other translucent geometry above it sort against it. The sky is drawn before everything, and the terrain's depth hides the square wherever there is rock.
+**A deep shaft (#1188).** The client draws the sections only up to the render distance above and below the camera's (`SectionOcclusionGraph.getRelativeFrom`), and a shaft's walls fade into the fog colour at their drawn ends. Past them a straight-down view showed the sky (in a layer the zone's fog colour since #1161, [ADR 0062](../adr/0062-the-campaign-world-applies-the-biome-layer-again-after-the-timelines-and-the-weather.md)), and in it the cover, then a square, far under the camera and only the render distance wide: a small black shape with a hard edge (about 12 pixels across from layer 1 at render distance 2, and most of the view down a shaft in unbuilt depth). So the cover now lies no deeper than one section under the sections the client draws, and takes the render-distance fog that the terrain shader gives a block at the same place, set per vertex on a disc of rings round the camera. A cover that deep is past the fog's end everywhere, so it is the fog colour, as the walls' ends are, and the shaft fades into fog with no edge. A cover under a hole nearer the camera than the render-distance fog stays black. It leaves out the environmental fog: with it, the hole of `BreachVoidClientTest` seen from 46 blocks above took 40 levels of the unbuilt depth's fog, which is what the cover hides. The disc reaches 0.6 of the camera's far plane. Anything under a cover lifted this way is past the fog's end, so it would draw as the fog colour anyway. In a layer the cover now also covers the nadir past the drawn sections that #1161's sky fog and `LayerSky` cover (the dark disc, and the sun and the moon from under water); those stay the guard that holds without it, and `CavernSkyClientTest` checks them with the cover off. `BreachVoidClientTest` also looks straight down a shaft deeper than the render distance, to the floor of layer 1, the floor of layer 2 and the bottom of the world, with and without night vision, and needs the middle of the picture, out to about 12 degrees off straight down where the walls' drawn ends show, to match the walls' fogged ends in the same frame; the `nadir-cover` scenario shows the same views. Unbuilt depth takes the surface's sky-timeline fog, an orange dusk, so a shaft there now fades into that colour rather than into darkness (#1192).
 
-**Mods.** Sodium replaces the terrain renderer only, and entity, particle and custom geometry still go through the vanilla submit path, so the square should draw the same. I did not run Sodium. I cannot test Iris or any shader pack: a pack that does not draw this pipeline shows the void again.
+**The surface.** The surface's bottom is the campaign world's, far under any ordinary view, so the lift applies to every surface frame: the cover lies one section under the drawn sections there too. No drawn block is under it, so it hides only what was sky below the horizon, which was the fog colour already; the `nadir-cover` scenario's high views over open ground at render distance 6 show no change. Clouds would be the one thing it could hide, from a camera high enough over them that the drawn sections end above them, but the surface draws none: the sky timeline (`data/deepcharter/timeline/sky.json`) sets `cloud_color` clear for the whole day. If clouds come back, keep the cover under them.
+
+**The render type.** The cover uses `RenderTypes.debugQuads()`, checked in the 26.3 client jar. It is not gated on any debug mode. Its pipeline is `position_color` (so no fog of its own and no lighting: the fog is in the vertex colours), depth-tested with the normal comparison (the reversed-Z `GREATER_THAN_OR_EQUAL`) and does not write depth, has culling off (so the camera-side check above is what hides it from below), and blends as translucent (alpha 1 is opaque) in the order-independent-transparency phase, so water, particles and other translucent geometry above it sort against it. The sky is drawn before everything, and the terrain's depth hides the cover wherever there is rock.
+
+**Mods.** Sodium replaces the terrain renderer only, and entity, particle and custom geometry still go through the vanilla submit path, so the cover should draw the same. I did not run Sodium. I cannot test Iris or any shader pack: a pack that does not draw this pipeline shows the void again.
 
 **Trade-offs.**
 - It is client-only.
 - Black fog or generated rock were rejected: fog is the colour of the whole layer and cannot change on the surface's dusk, and rock below the crust would move `min_y`, which the crossing line, the depth readout and every layer test read.
-- A hole shows void only at angles steep enough to pass the 3 blocks of crust (31 degrees above the floor, in the test's 9 wide hole). A shallow view towards the edge of the render distance meets rock first, so the square needs no reach beyond what holes show. It still reaches the render distance.
+- A hole shows void only at angles steep enough to pass the 3 blocks of crust (31 degrees above the floor, in the test's 9 wide hole). A shallow view towards the edge of the render distance meets rock first, so the cover needs no reach beyond what holes show. It reaches 0.6 of the far plane, for the deep shafts.
 
 ## The breach crust (#378, A)
 
@@ -1525,7 +1529,7 @@ The heat shield's Goldium is the slow one: the sales forgone are 4.4 minutes of 
 
 ## The deepest point (#476)
 
-A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, currently means reaching the floor of layer 2 (`LayerChain.topDepth(3)`), because layer 3 does not exist yet. The threshold moves down when layer 3 lands.
+A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, means reaching the top of layer 3 (`LayerChain.topDepth(3)`, depth 575, the bottom row of layer 2's crust): a charter has drilled through the crust, or come down the Kells' shaft.
 
 ## Company Rock and the straight shaft (#509, A)
 
@@ -1737,7 +1741,7 @@ The bite is 9.6 times slower than stone and costs about a charge's price per sla
 
 **Problem.** The lava ladder (#232) ends with "abandoned lined shafts from earlier charters are something to find". The Kells drilled from the Workings toward the Hollows ([LORE](../LORE.md), CY 19 and 20), so layer 2 has one: a place that shows what lining is for, and lets a pilot meet the counter on purpose.
 
-**What it is.** One shaft at the end of every rail line in Prospector's Run (a structure of [ADR 0025](../adr/0025-layer-structures-are-drawn-from-the-seed-when-a-fresh-chunk-loads.md), `KELLS_SHAFT`). A drift with a rail runs from the line's last column to a lip. A 2 x 2 hollow, 20 to 80 blocks deep, goes from the lip to the first block above the crust. The layer 3 end is not built: the shaft stops at the crust until layer 3 has worldgen (#716 keeps that part open).
+**What it is.** One shaft at the end of every rail line in Prospector's Run (a structure of [ADR 0025](../adr/0025-layer-structures-are-drawn-from-the-seed-when-a-fresh-chunk-loads.md), `KELLS_SHAFT`). A drift with a rail runs from the line's last column to a lip. A 2 x 2 hollow, 20 to 80 blocks deep, goes from the lip to the first block above the crust, and the crust under it is broken through (#972): the shaft opens into the roof of layer 3's Garden, as the Kells drilled it (LORE, CY 19).
 - **Gaps.** 2 to 4 per shaft. A gap is a block of lava standing in the brick wall (one more behind it), with three rows of slag brick round it.
 - **Bulkhead.** At each gap the Kells sealed the hollow from below with a plug of brick. It has a hole beside the gap, and lava stands in the cell under the hole. A pod lands on the plug with the gap one row below its feet.
 - **Decay.** Timber sets every third row, a quarter of their blocks fallen. A reserve of slag bricks, 3 for each gap, stands in the walls of the drift.
@@ -1777,7 +1781,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Tuning knobs.** The `KELLS_*` constants in `StructureKind`, and `StructureKind.margin()`: the rail line's placement margin grows by the shaft's reach.
 
 **Open questions.**
-- The layer 3 end waits on layer 3 worldgen: should the shaft's crust be a breach?
+- The layer 3 end (#972, A) is a hole through the crust and nothing more: it opens into the open rows under layer 2's crust, or onto layer 3's rock where a column stands under it. A ladder or a marker of Tomas's lost lamp at the foot is not built.
 - Should a pod with the liner part (rung 2) skip the bulkheads' lava, since it lines as it drills? It lines only cells lava can reach, so it should: not measured.
 - Does a bare shaft cost enough hull (23 on average over 3 gaps) to make a shaft with no lining a real choice, or is it too cheap?
 - One of 30 lined Moles touched lava once, and why is not traced. It cost under 1 hull on average.
@@ -1940,10 +1944,10 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 ## Drifters and the alarm (#973, A)
 
-**Problem.** CREATURES.md gives the Sleeper's family its draw, the drill, and layer 3 its first creature: the Drifter, a spore bladder that drifts toward noise, and the alarm that a kill raises. This is the mechanics, built before layer 3 exists (#972 builds the worldgen). Nothing in shipped data lists the new biome tag `deepcharter:fungal_hollows`, so **nothing changes in layers 1 and 2 and the default build is no harder**; the numbers below bite only once #972 fills the tag.
+**Problem.** CREATURES.md gives the Sleeper's family its draw, the drill, and layer 3 its first creature: the Drifter, a spore bladder that drifts toward noise, and the alarm that a kill raises. This is the mechanics, built before layer 3 exists (#972 builds the worldgen). The biome tag `deepcharter:fungal_hollows` lists only layer 3's zones (#972), so **nothing changes in layers 1 and 2 and the default build is no harder**; the numbers below bite in layer 3.
 
 **The rule.**
-- **Where.** A drifter is placed (by the mod, never by the game's spawner) only where the source of the noise and the place itself are in a biome of the tag `deepcharter:fungal_hollows`. The shipped tag is empty; the gametest data pack names a test biome. In a zone with no tag biome nothing appears, whatever the noise.
+- **Where.** A drifter is placed (by the mod, never by the game's spawner) only where the source of the noise and the place itself are in a biome of the tag `deepcharter:fungal_hollows`. The shipped tag holds layer 3's three zones (#972); the gametest data pack adds a test biome. In a zone with no tag biome nothing appears, whatever the noise.
 - **What draws it.** A drifter hears a **pod drilling** 28 blocks off, a person on foot **sprinting** 20 off and **walking** 10 off. A person who sneaks or stands still is silent (a look every 5 ticks must see them cover 0.1 blocks a tick), and so is a creative player, a spectator, and anyone moved more than a block a tick (a teleport or a change of level). It drifts toward the nearest noise at 1.6 blocks a second (0.08 a tick, eased in over about 20 ticks; 1.53 measured). With no noise it wanders at 0.4 blocks a second.
 - **The tell.** Three senses come before any cost: the glow (the core and the veins are drawn at full bright, so it shows in the dark), the hiss (a sound each 2 to 4 seconds, louder while it is drawn) and a line to the person whose noise draws it (a pod's goes to its pilot, *"A pale glow drifts toward the drill, hissing. Stop drilling and it will pass."*). It cannot burst until it has heard a noise for **60 ticks (3 s) running**, and a drifter is placed at least 18 blocks from the source, which is 10 seconds of drifting.
 - **The burst.** On touch (a pod or a person within 0.2 blocks of its skin) or when a pod that is **drilling** has its hull within 2.5 blocks of it, and only while it hears the noise. Then it is a cloud of spore gas, 4.5 blocks round, hanging 8 seconds.
@@ -2168,11 +2172,12 @@ A default build is not harder than on main: nothing changes for a pod with no na
 |---|---|---|---|---|
 | Packed shale, breach crust (layer 1's own rock) | 1 | 1 | 1 | 1 |
 | Green shale (layer 2's own rock) | 2 | 2 | 2 | 2 |
+| Basalt and columnar basalt (layer 3's own rock) | 3 | 3 | 3 | 3 |
 | Slag brick (fused from spoil) | 2 | 2 | 2 | 2 |
 | Company kit (plate, concrete, beam, terminals, lamps) | 2 | 2 | 2 | 2 |
 | Window glass | 2 | 0 | 2 | 0 |
 | Grating | 2 | 0 | 0 | 2 |
-| Vanilla blocks, regolith, stalks, ore, rubble | 0 | 0 | 0 | 0 |
+| Vanilla blocks, regolith, stalks, glowcaps, ore, rubble | 0 | 0 | 0 | 0 |
 
 **The readout and the sheet.** Where a depth asks something, holding a block and aiming at a block puts a word two lines under the crosshair (`PlacementReadoutHud`, fading as the block readout does): HOLDS HERE or WILL NOT HOLD UNATTENDED, and for the last "Short on: heat, quake". A block's tooltip, its spec sheet, states "Rated: heat 2, pressure 2, flooding 2, quake 2"; a block rated nothing has no such line. Where a block holds comes with the first layer that asks.
 
@@ -2188,7 +2193,9 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Knobs.** `RatingTuning.DEFAULT` (the layer rows and the highest tag level), the tags in `data/deepcharter/tags/block/rating/`.
 
-**Open questions.** What layer 3 asks, which is its worldgen's to say.
+**Layer 3's row (#972, A).** Heat 1, pressure 2, flooding 1, quake 2: its caverns are huge and their roofs far, so pressure and quake are what it asks; it has no water and little heat. Green shale, slag brick and the Company kit hold there; layer 1's packed shale falls short on pressure and quake. Layer 3's own basalt is rated 3 on every axis, one above green shale, as each layer's rock has been one above the last's.
+
+**Open questions.** None for the row; layer 4 states its own.
 
 ## Vanilla block movers and the breach crust (#1110, A)
 
@@ -2201,6 +2208,28 @@ A default build is not harder than on main: nothing changes for a pod with no na
 **Survival TNT.** The recipe exists and crafts (nothing removes vanilla's, and unknown recipes still craft, [ADR 0070](../adr/0070-the-server-recipe-book-holds-exactly-the-known-recipes-and-the-vanilla-recipe-packets-carry-it.md)), but the gunpowder has no source in the pack: no vanilla monster spawns (#943), the vanilla structures that hold loot are emptied or unreachable, the Nether and the End have no portal, and the salvage crate drops planks, sticks, cloth and redstone. The crust is blast-proof anyway, so creative and operator `/give` change nothing.
 
 **Tests.** `BreachCrustMoversTest` runs each mover against the crust of every layer: TNT, a creeper (3), a charged creeper (6), an end crystal, a bed or anchor (5, fire), a wither's spawn blast (7), a piston push, a sticky pull, a piston lifting from under the floor, a falling block, and the wither, dragon and enderman tags.
+
+## The Fungal Hollows (#972, A)
+
+**Problem.** SPEC section 3 makes layer 3 huge caverns of glowing fungi with spore gas and the first real exploring on foot, and #504 settled its rock: columns that line only the faces open to air, cheap dark cubes behind. The band must stay cheap to generate (ADR 0029).
+
+**The band.** Y -768 to -513 (256 blocks), the three zones in equal thirds: the Garden on top, the Spore Fields, the Quiet at the bottom. The caverns are three stacked halls, each about 85 blocks: the band's density is a floor, two holed rock shelves at the zone edges, and 2D basalt columns that stand from floor to roof, fewer in the Quiet. The roof rows under layer 2's crust are open, as layer 2's top is under layer 1's. Every block of the core within `depth` (1) blocks of an open cell, straight along an axis, becomes a column (`AirFaceLiningFeature`), after the zone fill, so exposed ore keeps its basalt host.
+
+**The hazard: spore gas.** The Spore Fields' fill holds the layer's most gas pockets (12% of non-ore rock against 5 and 6), and the pockets are the existing `gas_pocket`: the same blast, sounder, scanner tier and sideways share. No new counter is needed, so the gas ladder serves layer 3 as it is; a haze of spores marks the zone: the biome's ambient particles, dust motes at 0.3 and cold `minecraft:glow` glints at 0.02 (the user's pick from the concept stills, #1147). Spore-gas clouds that drift in the open caverns belong to the Drifters (#918).
+
+**Light.** Glowcaps, a small fungus on cavern floors, give block light 6 (`LayerTuning.glowcapLight`): cold, small and scattered, so the caverns stay dark and a lamp still matters. A picked glowcap is a hand light (`hand_lights`): it keeps the Retained off a person on foot as a torch does.
+
+**Lava stays in the rock.** The lining lines lava that faces a cavern and turns lava up to two blocks further in to basalt (`AirFaceLiningFeature.SEAL_MARGIN`), because a column does not fill its cell and passes light; one block let lava light the caverns round it. Lava on the faces lit thousands of open cells and made the band cost 2.90x `tall_layer` per row; sealed, it is within ADR 0086's per-band bar (the judged pool is on #1133). Lava is still a drilling hazard inside the rock, at the table's chance per block of rock that is not near a cavern.
+
+**Ore and hazards.** The original's rows 134 to 203 in thirds, by the formula of ADR 0015: more Goldium and Platinium, Einsteinium in every zone, Cicatrium 0.08% to 0.12%. Company Rock 10% to 13% and lava 5% to 6% of non-ore rock, never less than Prospector's Run.
+
+**Steps.** Layer 3's fill, lining and growth stand in decoration steps no other biome uses, so they reseed no feature of layers 1 and 2 ([ADR 0015](../adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md)'s amendment), and its growth and lining never write outside their own chunk ([ADR 0088](../adr/0088-layer-features-never-write-outside-their-own-chunk.md)).
+
+**Tuning knobs.** The noise in `campaign.json` (column threshold 0.40, 0.62 in the Quiet; shelf thickness and holes), `line_hollows.json` (`depth`), the glowcap counts in `glowcaps_<zone>.json`, the fills in `fill_<zone>.json`, `LayerTuning.glowcapLight`.
+
+**Look calls.** The user picked from the concept stills (#1147): the shipped fog, glow, ambient light, bare Quiet and cold basalt with lava kept in the rock stay; the spore gas is the denser haze. The giant fungi are to mix stalks, parasols and spires ([#1202](https://github.com/pkeppeler/deepcharter/issues/1202)); until then only the stalks grow. Drifters and Overgrowth are #975 and #976.
+
+**Open questions.** The Garden and the Spore Fields borrow layer 2's drone and music until layer 3 has its own; the Quiet is silent on purpose.
 
 ## Suit timer and habitable outposts (#993, A)
 

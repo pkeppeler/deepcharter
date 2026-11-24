@@ -1,8 +1,10 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.layer.gen.AirFaceLiningFeature;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
 import io.github.pkeppeler.deepcharter.layer.gen.GrainedCrustPass;
+import io.github.pkeppeler.deepcharter.layer.gen.InChunkOffsetPlacement;
 import io.github.pkeppeler.deepcharter.layer.gen.LayerRowsPlacement;
 import io.github.pkeppeler.deepcharter.layer.gen.ZoneBiomeSource;
 import net.minecraft.core.Registry;
@@ -10,7 +12,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.TicketType;
 
-/** Registrations of the layer chain. The dimensions are data, so only the blocks and the biome sources register in code. */
+/** Registrations of the layer chain. The dimensions are data, so only the blocks, the biome sources and the generator's own
+ * placement and feature register in code. */
 public final class LayerRegistry {
     /**
      * The ticket that holds the arrival area of the next dimension (#1159, ADR 0089): it loads and simulates the chunks, keeps the
@@ -33,5 +36,7 @@ public final class LayerRegistry {
         BandBiomeSource.register();
         GrainedCrustPass.register();
         LayerRowsPlacement.register();
+        InChunkOffsetPlacement.register();
+        AirFaceLiningFeature.register();
     }
 }
