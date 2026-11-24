@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.outpost.RatingAxis;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.function.Function;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -87,14 +88,9 @@ public record SuitState(float reserve, boolean explained, Mode mode, float rate,
 
     /** The axes that drain the suit, a bit for each {@code RatingAxis} ordinal: those with a shortfall. */
     public int axes() {
-        return axesOf(shortfall);
-    }
-
-    /** The axes with a shortfall, a bit for each {@code RatingAxis} ordinal. */
-    static int axesOf(int shortfall) {
         int mask = 0;
         for (RatingAxis axis : RatingAxis.values()) {
-            if (shortfall(axis, shortfall) > 0) {
+            if (shortBy(axis) > 0) {
                 mask |= bit(axis);
             }
         }
@@ -117,24 +113,25 @@ public record SuitState(float reserve, boolean explained, Mode mode, float rate,
 
     /** The axes that drain the suit, in capitals, one after another with {@code separator} between: "HEAT PRESSURE". */
     public Component axesText(String separator) {
-        return Component.empty()
-                .append(Arrays.stream(RatingAxis.values())
-                        .filter(axis -> (axes() & bit(axis)) != 0)
-                        .map(axis -> (Component) Component.translatable("hud.deepcharter.suit.axis." + axis.id()))
-                        .reduce((a, b) ->
-                                Component.empty().append(a).append(separator).append(b))
-                        .orElse(Component.empty()));
+        return joined(separator, axis -> Component.translatable("hud.deepcharter.suit.axis." + axis.id()));
     }
 
     /** How short each axis is, in capitals, one after another with {@code separator} between: "HEAT -2 PRESSURE -2". */
     public Component shortText(String separator) {
+        return joined(
+                separator,
+                axis -> Component.translatable(
+                        "hud.deepcharter.suit.short",
+                        Component.translatable("hud.deepcharter.suit.axis." + axis.id()),
+                        shortBy(axis)));
+    }
+
+    /** {@code text} of each short axis, in axis order, with {@code separator} between. */
+    private Component joined(String separator, Function<RatingAxis, Component> text) {
         return Component.empty()
                 .append(Arrays.stream(RatingAxis.values())
                         .filter(axis -> shortBy(axis) > 0)
-                        .map(axis -> (Component) Component.translatable(
-                                "hud.deepcharter.suit.short",
-                                Component.translatable("hud.deepcharter.suit.axis." + axis.id()),
-                                shortBy(axis)))
+                        .map(text)
                         .reduce((a, b) ->
                                 Component.empty().append(a).append(separator).append(b))
                         .orElse(Component.empty()));
