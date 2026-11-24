@@ -74,5 +74,12 @@
   "maxQueryLength": 24,
   "nameStripPad": 3,
   "nameStripGap": 2,
-  "caretHeight": 3
+  "caretHeight": 3,
+
+  "sheetWidth": 210,
+  "sheetHeight": 212,
+  "sheetMinHeight": 90,
+  "sheetGap": 4,
+  "sheetLineGap": 1,
+  "sheetValueGap": 6
 }
