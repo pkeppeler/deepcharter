@@ -22,10 +22,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 /**
- * The giant fungi's looks as the client bakes them (#1202), which a bad model or blockstate would break with no error a server sees: every
- * state of every giant block draws a model of its own, never the missing one, from textures that loaded; the glow is drawn where the design
- * puts it (the rim's line, the gills, the spire tips) and nowhere else (a cap's top and a stem stay dark); and the rim, whose edge is
- * scalloped, is drawn cut out.
+ * The giant fungi's looks as the client bakes them (#1202), which a bad model or blockstate would break with no error a
+ * server sees: every state of every giant block draws a model of its own, never the missing one, from textures that
+ * loaded; the glow is drawn where the design puts it (the rim's line, the gills, the spire tips) and nowhere else (a
+ * cap's top and a stem stay dark); and the rim, whose edge is scalloped, is drawn cut out.
  */
 public class GiantFungiClientTest implements FabricClientGameTest {
     private static final List<String> BLOCKS = List.of(

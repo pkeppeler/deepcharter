@@ -6,18 +6,22 @@ import java.util.Locale;
 import net.minecraft.util.StringRepresentable;
 
 /**
- * One cell's piece of a round fungal rod, a parasol's stem or a spire (#1202): straight up, or a step of a lean that moves the rod one
- * cell sideways over {@code n} rows (n odd: 1, 3 or 5) toward the block's {@code facing}. A lean starts and ends at the middle of its
- * cells, so it joins a straight piece without a step. Its middle row crosses the side of the cell half-way up, and that row is split
- * between the two cells it crosses ({@code lo} in the first, {@code hi} beside it), so every cell of a rod touches the next face to face
- * and a collapse ({@link StalkCollapse}) follows it.
+ * One cell's piece of a round fungal rod, a parasol's stem or a spire (#1202): straight up, or a step of a lean that
+ * moves the rod one cell sideways over {@code n} rows (n odd: 1, 3 or 5) toward the block's {@code facing}. A lean
+ * starts and ends at the middle of its cells, so it joins a straight piece without a step. Its middle row crosses the
+ * side of the cell half-way up, and that row is split between the two cells it crosses ({@code lo} in the first, {@code
+ * hi} beside it), so every cell of a rod touches the next face to face and a collapse ({@link StalkCollapse}) follows
+ * it.
  *
- * <p>The geometry, in pixels of the cell: the rod's centre is {@link #from()} pixels off the middle of the cell at row {@link #bottom()},
- * and {@link #to()} at row {@link #top()}, toward {@code facing}. {@code tools/fungus/make.py} draws the same numbers.
+ * <p>The geometry, in pixels of the cell: the rod's centre is {@link #from()} pixels off the middle of the cell at row
+ * {@link #bottom()}, and {@link #to()} at row {@link #top()}, toward {@code facing}. {@code tools/fungus/make.py} draws
+ * the same numbers.
  */
 public enum RodPiece implements StringRepresentable {
     STRAIGHT(0, 0, false),
-    /** Straight up, with a branch springing from it toward {@code facing}: the lower half of a one-row, 45 degree lean. */
+    /**
+     * Straight up, with a branch springing from it toward {@code facing}: the lower half of a one-row, 45 degree lean.
+     */
     FORK(0, 0, false),
     S1_0LO(1, 0, true),
     S1_0HI(1, 0, false),
@@ -104,8 +108,8 @@ public enum RodPiece implements StringRepresentable {
     }
 
     /**
-     * The pieces of one lean of {@code rows} rows, in the order a rod grows them: each full row moves up a cell after it, each {@code lo}
-     * moves a cell toward {@code facing}.
+     * The pieces of one lean of {@code rows} rows, in the order a rod grows them: each full row moves up a cell after
+     * it, each {@code lo} moves a cell toward {@code facing}.
      */
     public static List<RodPiece> lean(int rows) {
         List<RodPiece> out = new ArrayList<>();

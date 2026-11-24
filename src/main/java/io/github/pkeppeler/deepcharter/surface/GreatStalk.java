@@ -41,9 +41,9 @@ public final class GreatStalk {
     }
 
     /**
-     * {@link #place(WorldGenLevel, RandomSource, BlockPos, boolean)} where a cell is room for the stalk if it is {@code open}: the giant
-     * fungus mix (#1202) grows a great stalk over the glowcaps and ordinary stalks of a floor, as its parasols and spires do
-     * ({@link GiantFungus#open}), and clears what of an ordinary stalk it grows through.
+     * {@link #place(WorldGenLevel, RandomSource, BlockPos, boolean)} where a cell is room for the stalk if it is {@code
+     * open}: the giant fungus mix (#1202) grows a great stalk over the glowcaps and ordinary stalks of a floor, as its
+     * parasols and spires do ({@link GiantFungus#open}), and clears what of an ordinary stalk it grows through.
      */
     static boolean place(
             WorldGenLevel level, RandomSource random, BlockPos origin, boolean inChunk, Predicate<BlockState> open) {

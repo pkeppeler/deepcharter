@@ -15,20 +15,25 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * The builds of the {@code giant-fungi} scenario (#1202), each made round a {@link Spot} of a generated Garden cavern: the #1149 mock-ups of
- * the parasol and the spires (copied from {@code HollowsMockups} of the #1147 concept round, on its branch, so the before still is built
- * the way the user saw it), and a giant of the game's own grown from its layout. Runs on the server thread.
+ * The builds of the {@code giant-fungi} scenario (#1202), each made round a {@link Spot} of a generated Garden cavern:
+ * the #1149 mock-ups of the parasol and the spires (copied from {@code HollowsMockups} of the #1147 concept round, on
+ * its branch, so the before still is built the way the user saw it), and a giant of the game's own grown from its
+ * layout. Runs on the server thread.
  */
 final class GiantMockups {
     private static final int SET = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
     private GiantMockups() {}
 
-    /** The block states of a box, to put back after a build: the next build is made on the cavern as it was generated. */
+    /**
+     * The block states of a box, to put back after a build: the next build is made on the cavern as it was generated.
+     */
     static final class Snapshot {
         private final Map<BlockPos, BlockState> states = new LinkedHashMap<>();
 
-        /** The box of {@code radius} blocks round {@code cell}, from {@code below} under it to {@code above} over it. */
+        /**
+         * The box of {@code radius} blocks round {@code cell}, from {@code below} under it to {@code above} over it.
+         */
         static Snapshot around(ServerLevel level, BlockPos cell, int radius, int below, int above) {
             Snapshot snapshot = new Snapshot();
             for (BlockPos pos :
@@ -51,7 +56,9 @@ final class GiantMockups {
         return BuiltInRegistries.BLOCK.getValue(Identifier.parse(id)).defaultBlockState();
     }
 
-    /** Sets {@code state} at {@code pos} if the cell is open (air or a glowcap): a build never cuts the cavern's rock. */
+    /**
+     * Sets {@code state} at {@code pos} if the cell is open (air or a glowcap): a build never cuts the cavern's rock.
+     */
     private static void put(ServerLevel level, BlockPos pos, BlockState state) {
         if (GiantFungiSpots.open(level.getBlockState(pos))) {
             level.setBlock(pos, state, SET);
@@ -59,8 +66,8 @@ final class GiantMockups {
     }
 
     /**
-     * Grows {@code layout} with its base at {@code base}: every cell that is open, as the game's placer sets it, wherever its chunk sides
-     * fall (a still, not worldgen). Returns how many cells it set.
+     * Grows {@code layout} with its base at {@code base}: every cell that is open, as the game's placer sets it,
+     * wherever its chunk sides fall (a still, not worldgen). Returns how many cells it set.
      */
     static int grow(ServerLevel level, GiantLayout layout, BlockPos base) {
         int set = 0;
@@ -76,8 +83,8 @@ final class GiantMockups {
     }
 
     /**
-     * The #1149 parasol mock-up: a 2 x 2 trunk as tall as the cavern allows (8 to 20) under a broad cap of radius 6 that droops at the
-     * rim, with a dome of radius 4 over it, all of the great stalk's own cubes.
+     * The #1149 parasol mock-up: a 2 x 2 trunk as tall as the cavern allows (8 to 20) under a broad cap of radius 6
+     * that droops at the rim, with a dome of radius 4 over it, all of the great stalk's own cubes.
      */
     static String parasol(ServerLevel level, Spot spot) {
         BlockState trunk = block("deepcharter:great_stalk");
@@ -109,8 +116,8 @@ final class GiantMockups {
     }
 
     /**
-     * The #1149 spires mock-up: five thin fungal stalks of falling heights, each with a cap knob on top and bracket shelves of cap off its
-     * sides every four blocks.
+     * The #1149 spires mock-up: five thin fungal stalks of falling heights, each with a cap knob on top and bracket
+     * shelves of cap off its sides every four blocks.
      */
     static String spires(ServerLevel level, Spot spot) {
         BlockState stalk = block("deepcharter:fungal_stalk");

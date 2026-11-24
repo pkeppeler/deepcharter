@@ -77,8 +77,8 @@ public class CampaignTerrainTest {
     /** The cave stalks of layer 1's first zone are the one thing besides rock that its biomes place. */
     private static final String STALK = "deepcharter:fungal_stalk";
     /**
-     * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the glowcaps, the surface's own
-     * stalks and great stalks, and the giant fungi's parasols and spires (#1202).
+     * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the
+     * glowcaps, the surface's own stalks and great stalks, and the giant fungi's parasols and spires (#1202).
      */
     private static final Set<String> LAYER_3_BLOCKS = Set.of(
             BASALT_CORE,

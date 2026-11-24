@@ -5,8 +5,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.StringRepresentable;
 
 /**
- * What one cell of a giant fungus is (#1202), as pure data: the block and the look it takes, with no world behind it. Each piece knows its
- * own mirror image, so a layout can be turned to fit its chunk. {@link GiantFungus} makes block states of them.
+ * What one cell of a giant fungus is (#1202), as pure data: the block and the look it takes, with no world behind it.
+ * Each piece knows its own mirror image, so a layout can be turned to fit its chunk. {@link GiantFungus} makes block
+ * states of them.
  */
 public sealed interface GiantPiece {
     /** This piece as it is seen in a mirror across {@code axis}: a face along that axis turns round, the rest stays. */
@@ -18,8 +19,8 @@ public sealed interface GiantPiece {
     }
 
     /**
-     * A corner between {@code facing} and the face clockwise of it, in a mirror across {@code axis}, named the same way: by the face whose
-     * clockwise neighbour is the other.
+     * A corner between {@code facing} and the face clockwise of it, in a mirror across {@code axis}, named the same
+     * way: by the face whose clockwise neighbour is the other.
      */
     private static Direction mirrorCorner(Direction facing, Direction.Axis axis) {
         Direction first = mirror(facing, axis);
@@ -44,8 +45,9 @@ public sealed interface GiantPiece {
     }
 
     /**
-     * The underside of a parasol's cap, a full block whose gills run away from the stem: toward {@code facing}, or with {@code diagonal}
-     * toward the corner between it and the face clockwise of it. A {@code lit} one is a gill lamp, a real light.
+     * The underside of a parasol's cap, a full block whose gills run away from the stem: toward {@code facing}, or with
+     * {@code diagonal} toward the corner between it and the face clockwise of it. A {@code lit} one is a gill lamp, a
+     * real light.
      */
     record Gills(Direction facing, boolean diagonal, boolean lit) implements GiantPiece {
         @Override
@@ -55,9 +57,10 @@ public sealed interface GiantPiece {
     }
 
     /**
-     * A cell of a parasol's cap above the gills. Its top is a plane through {@code level} pixels at the middle of the cell, rising
-     * {@code riseX} pixels across the cell toward +x and {@code riseZ} toward +z (negative falls); a cell inside the cap is {@code level}
-     * 16 and flat. {@code umbo} cells are the dark knob at the middle of the cap.
+     * A cell of a parasol's cap above the gills. Its top is a plane through {@code level} pixels at the middle of the
+     * cell, rising
+     * {@code riseX} pixels across the cell toward +x and {@code riseZ} toward +z (negative falls); a cell inside the
+     * cap is {@code level} 16 and flat. {@code umbo} cells are the dark knob at the middle of the cap.
      */
     record Cap(int level, int riseX, int riseZ, boolean umbo) implements GiantPiece {
         @Override
@@ -83,8 +86,9 @@ public sealed interface GiantPiece {
     }
 
     /**
-     * A cell of a parasol's rim, the thin edge of the cap: its surface falls from {@code level} pixels on the inside of the cell to the lip
-     * on the side open to {@code facing} (with {@code corner}, to the corner between it and the face clockwise of it).
+     * A cell of a parasol's rim, the thin edge of the cap: its surface falls from {@code level} pixels on the inside of
+     * the cell to the lip on the side open to {@code facing} (with {@code corner}, to the corner between it and the
+     * face clockwise of it).
      */
     record Rim(Direction facing, boolean corner, int level, Lip lip) implements GiantPiece {
         @Override
@@ -94,8 +98,9 @@ public sealed interface GiantPiece {
     }
 
     /**
-     * A root flare: a wedge from the floor up to the trunk on its {@code facing} side (with {@code corner}, toward the corner between it and
-     * the face clockwise of it). A {@code tall} one meets a spire's mound, a low one a parasol's stem.
+     * A root flare: a wedge from the floor up to the trunk on its {@code facing} side (with {@code corner}, toward the
+     * corner between it and the face clockwise of it). A {@code tall} one meets a spire's mound, a low one a parasol's
+     * stem.
      */
     record Flare(Direction facing, boolean corner, boolean tall) implements GiantPiece {
         @Override
@@ -104,7 +109,10 @@ public sealed interface GiantPiece {
         }
     }
 
-    /** A cell of a spire, {@code girth} 1 (thinnest) to 4; a {@code taper} cell narrows to the girth below it on its way up. */
+    /**
+     * A cell of a spire, {@code girth} 1 (thinnest) to 4; a {@code taper} cell narrows to the girth below it on its way
+     * up.
+     */
     record Spire(int girth, RodPiece piece, Direction facing, boolean taper) implements GiantPiece {
         @Override
         public Spire mirrored(Direction.Axis axis) {
@@ -113,8 +121,8 @@ public sealed interface GiantPiece {
     }
 
     /**
-     * The glowing top of a spire: the {@code needle} that ends it, or a glowing cell of girth 1 under the needle. A {@code lit} needle is a
-     * real light.
+     * The glowing top of a spire: the {@code needle} that ends it, or a glowing cell of girth 1 under the needle. A
+     * {@code lit} needle is a real light.
      */
     record Tip(RodPiece piece, Direction facing, boolean needle, boolean lit) implements GiantPiece {
         @Override

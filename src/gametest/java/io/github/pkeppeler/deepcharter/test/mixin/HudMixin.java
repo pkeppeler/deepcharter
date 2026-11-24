@@ -12,11 +12,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Leaves out of the HUD the two things in it that fade or ease on client ticks: the screen-edge vignette
- * ({@link EvidencePins#vignetteHidden}) and the name of the held item that shows for two seconds after a slot changes
- * ({@link EvidencePins#itemNameHidden}). While {@link EvidencePins#skyHidden} is on it writes {@link EvidencePins#SKY_HIDDEN_CAPTION}
- * in the bottom-left corner, hidden HUD or not, in the look of a text display's label: white text on its quarter-black backing. Test code
- * only.
+ * Leaves out of the HUD the two things in it that fade or ease on client ticks: the screen-edge vignette ({@link
+ * EvidencePins#vignetteHidden}) and the name of the held item that shows for two seconds after a slot changes ({@link
+ * EvidencePins#itemNameHidden}). While {@link EvidencePins#skyHidden} is on it writes {@link
+ * EvidencePins#SKY_HIDDEN_CAPTION} in the bottom-left corner, hidden HUD or not, in the look of a text display's label:
+ * white text on its quarter-black backing. Test code only.
  */
 @Mixin(value = Hud.class, remap = false)
 public abstract class HudMixin {

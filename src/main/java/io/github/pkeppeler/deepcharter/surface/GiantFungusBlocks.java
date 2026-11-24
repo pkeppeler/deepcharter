@@ -24,10 +24,10 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * The blocks of layer 3's giant fungi (#1202), the parasol and the spires: each a {@link GreatStalkBlock}, so breaking one brings down what
- * it holds ({@link StalkCollapse}) and it drops a fungal stalk. Their looks are generated block models ({@code tools/fungus/make.py}):
- * thin, sloped, tapered and tilted pieces wherever an outline shows, full cubes only where a cap is solid. They have no items: the world
- * grows them, and a player takes the stalks they drop.
+ * The blocks of layer 3's giant fungi (#1202), the parasol and the spires: each a {@link GreatStalkBlock}, so breaking
+ * one brings down what it holds ({@link StalkCollapse}) and it drops a fungal stalk. Their looks are generated block
+ * models ({@code tools/fungus/make.py}): thin, sloped, tapered and tilted pieces wherever an outline shows, full cubes
+ * only where a cap is solid. They have no items: the world grows them, and a player takes the stalks they drop.
  */
 public final class GiantFungusBlocks {
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
@@ -98,8 +98,9 @@ public final class GiantFungusBlocks {
     }
 
     /**
-     * A box drawn as the models are, for a block facing east ({@code x} along {@code facing}), turned to {@code facing} as the blockstates
-     * turn the models: a quarter turn clockwise, seen from above, for each step from east through south, west and north.
+     * A box drawn as the models are, for a block facing east ({@code x} along {@code facing}), turned to {@code facing}
+     * as the blockstates turn the models: a quarter turn clockwise, seen from above, for each step from east through
+     * south, west and north.
      */
     private static VoxelShape turned(
             double x0, double y0, double z0, double x1, double y1, double z1, Direction facing) {
@@ -112,8 +113,8 @@ public final class GiantFungusBlocks {
     }
 
     /**
-     * The box round a rod of {@code width} pixels in {@code piece}, as the model leans it east: the rod's middle, clipped to the cell. A
-     * leaning rod's box is its middle's, so a player walks into it about where it is drawn.
+     * The box round a rod of {@code width} pixels in {@code piece}, as the model leans it east: the rod's middle,
+     * clipped to the cell. A leaning rod's box is its middle's, so a player walks into it about where it is drawn.
      */
     static VoxelShape rod(RodPiece piece, Direction facing, double width) {
         double middle = 8 + (piece.from() + piece.to()) / 2;
@@ -143,7 +144,9 @@ public final class GiantFungusBlocks {
         }
     }
 
-    /** The ring round a parasol's stem: a straight cell of stem with a drooping skirt, which a player passes through. */
+    /**
+     * The ring round a parasol's stem: a straight cell of stem with a drooping skirt, which a player passes through.
+     */
     static final class RingBlock extends GreatStalkBlock {
         private static final VoxelShape STEM = rod(RodPiece.STRAIGHT, Direction.EAST, STEM_WIDTH);
 
@@ -157,7 +160,10 @@ public final class GiantFungusBlocks {
         }
     }
 
-    /** The underside of a parasol's cap: a full block, its gills drawn glowing on its down face. A lit one is a gill lamp. */
+    /**
+     * The underside of a parasol's cap: a full block, its gills drawn glowing on its down face. A lit one is a gill
+     * lamp.
+     */
     static final class GillsBlock extends GreatStalkBlock {
         GillsBlock(Properties properties) {
             super(properties, true);
@@ -175,8 +181,8 @@ public final class GiantFungusBlocks {
     }
 
     /**
-     * A cell of a parasol's cap above its gills: a full block inside the cap, and at its top a scale tilted to the dome's slope. Only a full
-     * cell hides the faces beside it.
+     * A cell of a parasol's cap above its gills: a full block inside the cap, and at its top a scale tilted to the
+     * dome's slope. Only a full cell hides the faces beside it.
      */
     static final class CapBlock extends GreatStalkBlock {
         CapBlock(Properties properties) {
@@ -283,7 +289,10 @@ public final class GiantFungusBlocks {
         }
     }
 
-    /** The glowing top of a spire, its needle or a glowing cell under it: no collision, and a lit needle is a real light. */
+    /**
+     * The glowing top of a spire, its needle or a glowing cell under it: no collision, and a lit needle is a real
+     * light.
+     */
     static final class TipBlock extends GreatStalkBlock {
         TipBlock(Properties properties) {
             super(properties, false);

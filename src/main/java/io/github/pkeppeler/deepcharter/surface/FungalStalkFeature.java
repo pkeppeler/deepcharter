@@ -16,14 +16,15 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.Feature;
 
 /**
- * Grows one fungal stalk at its origin: an ordinary column of two to {@link SurfaceTuning#ordinaryMaxHeight()} blocks, biased to the
- * short ones, or, with the chance {@code greatChance} and where there is room, a {@link GreatStalk}. The placed features pick the ground;
- * this decides what grows on it.
+ * Grows one fungal stalk at its origin: an ordinary column of two to {@link SurfaceTuning#ordinaryMaxHeight()} blocks,
+ * biased to the short ones, or, with the chance {@code greatChance} and where there is room, a {@link GreatStalk}. The
+ * placed features pick the ground; this decides what grows on it.
  *
- * @param inChunk     whether a great stalk must fit in its origin's chunk, so what grows does not depend on the order chunks are
- *     decorated in (layer 3, #972); the surface's stalks predate it and keep their shape without
- * @param greatChance the chance a stalk is a great stalk, {@link SurfaceTuning#greatStalkChance()} unless the feature says: layer 3's
- *     stalks say 0, since its great stalks grow from the giant fungus mix ({@link GiantFungusFeature}, #1202)
+ * @param inChunk     whether a great stalk must fit in its origin's chunk, so what grows does not depend on the order
+ *     chunks are decorated in (layer 3, #972); the surface's stalks predate it and keep their shape without
+ * @param greatChance the chance a stalk is a great stalk, {@link SurfaceTuning#greatStalkChance()} unless the feature
+ *     says: layer 3's stalks say 0, since its great stalks grow from the giant fungus mix ({@link GiantFungusFeature},
+ *     #1202)
  */
 public record FungalStalkFeature(boolean inChunk, double greatChance) implements Feature {
     public static final MapCodec<FungalStalkFeature> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(

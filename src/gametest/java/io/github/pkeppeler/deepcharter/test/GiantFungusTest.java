@@ -45,10 +45,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Server GameTests for the giant fungi of layer 3 (#1202), as pure data and in a world made of nothing but a floor: the parasol's and the
- * spires' rolls stay in their ranges and differ from seed to seed, every layout holds together and keeps its parts apart, a layout is fitted
- * whole into its chunk by moving or mirroring it and never cut, a site re-rolls a form its west or north neighbour picked, and each zone's
- * mix is its weights. {@link FungalHollowsTest} checks the giants the campaign world grows.
+ * Server GameTests for the giant fungi of layer 3 (#1202), as pure data and in a world made of nothing but a floor: the
+ * parasol's and the spires' rolls stay in their ranges and differ from seed to seed, every layout holds together and
+ * keeps its parts apart, a layout is fitted whole into its chunk by moving or mirroring it and never cut, a site
+ * re-rolls a form its west or north neighbour picked, and each zone's mix is its weights. {@link FungalHollowsTest}
+ * checks the giants the campaign world grows.
  */
 public class GiantFungusTest {
     private static final int SEEDS = 400;
@@ -243,8 +244,8 @@ public class GiantFungusTest {
     }
 
     /**
-     * Every cell a giant needs hangs together, face to face, from its feet on the floor, so nothing floats; and no two parts (stems,
-     * spires) touch above the floor, so breaking one never brings another down.
+     * Every cell a giant needs hangs together, face to face, from its feet on the floor, so nothing floats; and no two
+     * parts (stems, spires) touch above the floor, so breaking one never brings another down.
      */
     @GameTest
     public void everyLayoutHoldsTogetherAndKeepsItsPartsApart(GameTestHelper helper) {
@@ -294,7 +295,9 @@ public class GiantFungusTest {
         helper.succeed();
     }
 
-    /** A spire ends in a glowing needle, and the tallest spire's needle is lit: one real light at the top of a cluster. */
+    /**
+     * A spire ends in a glowing needle, and the tallest spire's needle is lit: one real light at the top of a cluster.
+     */
     @GameTest
     public void everySpireEndsInANeedleAndTheTallestIsLit(GameTestHelper helper) {
         for (long seed = 0; seed < SEEDS; seed++) {
@@ -322,8 +325,9 @@ public class GiantFungusTest {
     }
 
     /**
-     * A parasol's cap slopes: its top cells rise and fall across them (in every cap, a slope of 4 pixels or more somewhere, and in most a
-     * dome that falls both ways), its edge is rim, and gills are under it. An old cap's rim is turned up.
+     * A parasol's cap slopes: its top cells rise and fall across them (in every cap, a slope of 4 pixels or more
+     * somewhere, and in most a dome that falls both ways), its edge is rim, and gills are under it. An old cap's rim is
+     * turned up.
      */
     @GameTest
     public void aParasolsCapSlopesAndIsRimmed(GameTestHelper helper) {
@@ -361,8 +365,9 @@ public class GiantFungusTest {
     }
 
     /**
-     * Every layout fits whole into its chunk wherever its site wants it, even against a side or a corner: moved or mirrored, every cell in
-     * the chunk, never one cut (ADR 0088). A parasol whose stem curves toward the side it stands at curves back toward the middle.
+     * Every layout fits whole into its chunk wherever its site wants it, even against a side or a corner: moved or
+     * mirrored, every cell in the chunk, never one cut (ADR 0088). A parasol whose stem curves toward the side it
+     * stands at curves back toward the middle.
      */
     @GameTest
     public void everyGiantFitsWholeInItsChunkEvenAtItsEdge(GameTestHelper helper) {
@@ -448,8 +453,8 @@ public class GiantFungusTest {
     }
 
     /**
-     * A world that is nothing but stone up to {@link #GROUND} and air over it, which records every block set in it and keeps none: a giant
-     * placed in it reads the same world whatever it wrote.
+     * A world that is nothing but stone up to {@link #GROUND} and air over it, which records every block set in it and
+     * keeps none: a giant placed in it reads the same world whatever it wrote.
      */
     private static LevelAccessor floorWorld(Map<BlockPos, BlockState> written) {
         return (LevelAccessor) Proxy.newProxyInstance(
@@ -470,8 +475,8 @@ public class GiantFungusTest {
     }
 
     /**
-     * A giant grown at a chunk's side or corner, on a flat floor, writes every cell it needs and nothing outside its chunk: the whole of
-     * it, fitted, not the part that was in the chunk.
+     * A giant grown at a chunk's side or corner, on a flat floor, writes every cell it needs and nothing outside its
+     * chunk: the whole of it, fitted, not the part that was in the chunk.
      */
     @GameTest
     public void aGiantGrownAtAChunksEdgeIsWholeAndInItsChunk(GameTestHelper helper) {
@@ -530,7 +535,9 @@ public class GiantFungusTest {
         helper.succeed();
     }
 
-    /** How far above the test a giant is grown for a collapse, off every neighbour, and how long a collapse may take. */
+    /**
+     * How far above the test a giant is grown for a collapse, off every neighbour, and how long a collapse may take.
+     */
     private static final int SKY = 60;
 
     private static final int COLLAPSE_TICKS = 300;
@@ -558,8 +565,9 @@ public class GiantFungusTest {
     }
 
     /**
-     * A giant falls as a great stalk does ({@code StalkCollapse}): break a parasol's stem low down and its cap comes down with it, the flare
-     * and glowcaps on the floor stay; break one spire of a cluster and it falls, and the others stand.
+     * A giant falls as a great stalk does ({@code StalkCollapse}): break a parasol's stem low down and its cap comes
+     * down with it, the flare and glowcaps on the floor stay; break one spire of a cluster and it falls, and the others
+     * stand.
      */
     @GameTest(maxTicks = COLLAPSE_TICKS + 40)
     public void aGiantFallsAsAStalkDoes(GameTestHelper helper) {
@@ -615,8 +623,8 @@ public class GiantFungusTest {
     }
 
     /**
-     * A site whose west or north neighbour picked its form rolls once more, so like forms side by side are rarer than the weights alone
-     * would make them; with one form only, every site is it.
+     * A site whose west or north neighbour picked its form rolls once more, so like forms side by side are rarer than
+     * the weights alone would make them; with one form only, every site is it.
      */
     @GameTest
     public void aSiteReRollsTheFormItsNeighbourPicked(GameTestHelper helper) {
@@ -646,7 +654,10 @@ public class GiantFungusTest {
         helper.succeed();
     }
 
-    /** Each zone's sites are one chunk in its rarity, and its mix is its weights, within the re-roll's pull toward an even mix. */
+    /**
+     * Each zone's sites are one chunk in its rarity, and its mix is its weights, within the re-roll's pull toward an
+     * even mix.
+     */
     @GameTest
     public void eachZonesMixIsItsWeights(GameTestHelper helper) {
         record Zone(String name, int rarity, double great, double parasol, double spires) {}

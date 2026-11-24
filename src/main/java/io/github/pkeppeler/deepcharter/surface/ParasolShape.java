@@ -16,13 +16,14 @@ import java.util.function.IntUnaryOperator;
 import net.minecraft.core.Direction;
 
 /**
- * The shape of a parasol (#1202): a tall, slender stem, curving gently, under a broad domed cap with glowing gills underneath and a thin
- * glowing rim, like a lamp-post of the deep. The real-world model is the parasol mushroom (<i>Macrolepiota</i>). The generator rolls
- * {@link Params} from a seed and makes the blocks as a {@link GiantLayout}, pure data, so the shape can be inspected without a world.
+ * The shape of a parasol (#1202): a tall, slender stem, curving gently, under a broad domed cap with glowing gills
+ * underneath and a thin glowing rim, like a lamp-post of the deep. The real-world model is the parasol mushroom
+ * (<i>Macrolepiota</i>). The generator rolls {@link Params} from a seed and makes the blocks as a {@link GiantLayout},
+ * pure data, so the shape can be inspected without a world.
  *
- * <p>The cap is a height field: each column's top is the plane of the dome at its middle, so the cap slopes instead of stepping. Its edge
- * is a ring of rim cells, a thin lip that hangs past the gills. A cap is never wider than a chunk (ADR 0088): its radius is at most
- * {@link #MOST_RADIUS}.
+ * <p>The cap is a height field: each column's top is the plane of the dome at its middle, so the cap slopes instead of
+ * stepping. Its edge is a ring of rim cells, a thin lip that hangs past the gills. A cap is never wider than a chunk
+ * (ADR 0088): its radius is at most {@link #MOST_RADIUS}.
  */
 public final class ParasolShape {
     /** The shortest stem a parasol grows: under this much room a site grows spires instead. */
@@ -40,7 +41,10 @@ public final class ParasolShape {
     public static final int CAP_ROWS = 4;
 
     private static final int PIXELS = 16;
-    /** The lowest a cap's surface is inside its rim, in pixels over the bottom of the gills: one full cell of cap over them. */
+    /**
+     * The lowest a cap's surface is inside its rim, in pixels over the bottom of the gills: one full cell of cap over
+     * them.
+     */
     private static final double LEAST_TOP = 18;
 
     private static final double UMBO = 0.22;
@@ -87,7 +91,8 @@ public final class ParasolShape {
      * @param stage      how far it has grown
      * @param stemHeight the stem's cells, from the floor to the gills
      * @param radius     the cap's radius in cells
-     * @param drift      the cells the stem's curve moves the cap sideways, one direction for each, in the order it grows them
+     * @param drift      the cells the stem's curve moves the cap sideways, one direction for each, in the order it
+     *     grows them
      * @param leanRows   the rows each cell of drift takes: 5 for a gentle curve, 3 for a tighter one
      * @param tilt       how far the cap tips toward the curve, in degrees
      * @param dome       the dome's rise over the rim, in pixels
@@ -137,8 +142,9 @@ public final class ParasolShape {
     }
 
     /**
-     * A parasol rolled from {@code random} ({@code random.applyAsInt(n)} is from 0 up to but not including n) for a site with room for a
-     * stem of {@code mostStem} cells, in a zone whose parasols grow as {@code style}; empty where that is under {@link #LEAST_STEM}.
+     * A parasol rolled from {@code random} ({@code random.applyAsInt(n)} is from 0 up to but not including n) for a
+     * site with room for a stem of {@code mostStem} cells, in a zone whose parasols grow as {@code style}; empty where
+     * that is under {@link #LEAST_STEM}.
      */
     public static Optional<Params> roll(IntUnaryOperator random, int mostStem, Style style) {
         if (mostStem < LEAST_STEM) {
@@ -195,8 +201,9 @@ public final class ParasolShape {
     }
 
     /**
-     * The same parasol made to fit a site where its cap does not have room: a stem {@code rows} shorter (down to {@link #LEAST_STEM}, its
-     * ring kept on it) and a cap {@code narrower} cells narrower (down to {@link #LEAST_RADIUS}); empty when neither can give.
+     * The same parasol made to fit a site where its cap does not have room: a stem {@code rows} shorter (down to {@link
+     * #LEAST_STEM}, its ring kept on it) and a cap {@code narrower} cells narrower (down to {@link #LEAST_RADIUS});
+     * empty when neither can give.
      */
     public static Optional<Params> smaller(Params params, int rows, int narrower) {
         int height = Math.max(LEAST_STEM, params.stemHeight() - rows);
@@ -225,7 +232,10 @@ public final class ParasolShape {
                 params.twin()));
     }
 
-    /** The layout of a rolled parasol, with its stem's foot at the origin; {@code random} picks where its lamps and glowcaps go. */
+    /**
+     * The layout of a rolled parasol, with its stem's foot at the origin; {@code random} picks where its lamps and
+     * glowcaps go.
+     */
     public static GiantLayout layout(Params params, IntUnaryOperator random) {
         GiantLayout.Builder cells = new GiantLayout.Builder();
         Cell top = grow(cells, params, new Cell(0, 0, 0), 1);
@@ -238,7 +248,10 @@ public final class ParasolShape {
         return cells.build();
     }
 
-    /** Grows one parasol's stem and cap from {@code foot}, as part {@code owner}; returns the cell under the middle of its cap. */
+    /**
+     * Grows one parasol's stem and cap from {@code foot}, as part {@code owner}; returns the cell under the middle of
+     * its cap.
+     */
     private static Cell grow(GiantLayout.Builder cells, Params params, Cell foot, int owner) {
         Cell at = foot;
         int row = 0;
@@ -274,7 +287,10 @@ public final class ParasolShape {
         return at;
     }
 
-    /** The surface of the cap over the bottom of its gills, in pixels, at a point {@code dx}, {@code dz} cells from its middle. */
+    /**
+     * The surface of the cap over the bottom of its gills, in pixels, at a point {@code dx}, {@code dz} cells from its
+     * middle.
+     */
     static double surface(Params params, double dx, double dz) {
         double rho = Math.min(1, Math.hypot(dx, dz) / params.radius());
         double rise = switch (params.stage()) {
@@ -297,7 +313,10 @@ public final class ParasolShape {
         return LEAST_TOP + rise + tipped;
     }
 
-    /** Whether the column {@code dx}, {@code dz} cells from the cap's middle is under the cap: inside the lobed, torn outline. */
+    /**
+     * Whether the column {@code dx}, {@code dz} cells from the cap's middle is under the cap: inside the lobed, torn
+     * outline.
+     */
     static boolean inCap(Params params, int dx, int dz) {
         if (dx == 0 && dz == 0) {
             return true;
@@ -325,8 +344,8 @@ public final class ParasolShape {
     }
 
     /**
-     * The columns of the cap, relative to its middle: those inside its outline ({@link #inCap}) that join the middle side by side, so a
-     * lobe a tear cuts off falls away instead of floating.
+     * The columns of the cap, relative to its middle: those inside its outline ({@link #inCap}) that join the middle
+     * side by side, so a lobe a tear cuts off falls away instead of floating.
      */
     private static Set<Long> capColumns(Params params) {
         Set<Long> reached = new HashSet<>();
@@ -390,8 +409,9 @@ public final class ParasolShape {
     }
 
     /**
-     * The sides of a cap cell that open to the air past the cap: one for an edge, two (a face and the face clockwise of it) for a corner;
-     * empty for a cell inside the cap. A cell open on two opposite sides or on three faces the way that points most outward.
+     * The sides of a cap cell that open to the air past the cap: one for an edge, two (a face and the face clockwise of
+     * it) for a corner; empty for a cell inside the cap. A cell open on two opposite sides or on three faces the way
+     * that points most outward.
      */
     private static Optional<Direction[]> openSides(Set<Long> columns, int dx, int dz) {
         List<Direction> open = new ArrayList<>();
@@ -471,8 +491,8 @@ public final class ParasolShape {
     }
 
     /**
-     * A smaller parasol from the same flare, two cells off the stem's foot and curving away from it, 50 to 70% as tall with a cap two cells
-     * narrower. Left out where any of it would touch the first.
+     * A smaller parasol from the same flare, two cells off the stem's foot and curving away from it, 50 to 70% as tall
+     * with a cap two cells narrower. Left out where any of it would touch the first.
      */
     private static void twin(GiantLayout.Builder cells, Params params, IntUnaryOperator random) {
         if (params.radius() - 2 < 3) {

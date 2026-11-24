@@ -24,9 +24,10 @@ public final class EvidencePins {
     /** No lampless figures spawn on the rails: one that spawned between the last wait and the shot would be in the still. */
     public static volatile boolean figureSpawningOff;
     /**
-     * The sky is not drawn (no stars, sun, moon, sunrise or sunset), so where a view runs past what the client has drawn it shows the
-     * fog colour the frame is cleared to; and {@link #SKY_HIDDEN_CAPTION} is written in a corner of the frame, so no still passes the
-     * hidden sky off as the game's look. For a cavern that the overworld sky shows behind (#1161).
+     * The sky is not drawn (no stars, sun, moon, sunrise or sunset), so where a view runs past what the client has
+     * drawn it shows the fog colour the frame is cleared to; and {@link #SKY_HIDDEN_CAPTION} is written in a corner of
+     * the frame, so no still passes the hidden sky off as the game's look. For a cavern that the overworld sky shows
+     * behind (#1161).
      */
     public static volatile boolean skyHidden;
 

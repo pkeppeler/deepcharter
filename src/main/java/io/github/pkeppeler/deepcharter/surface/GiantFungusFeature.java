@@ -22,16 +22,18 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.Feature;
 
 /**
- * Grows at most one giant fungus (#1202) in a chunk of one zone of a layer: a great stalk ({@link GreatStalk}), a parasol
- * ({@link ParasolShape}) or a spire cluster ({@link SpireShape}), picked by the zone's {@code weights}, in one chunk in {@code rarity}.
+ * Grows at most one giant fungus (#1202) in a chunk of one zone of a layer: a great stalk ({@link GreatStalk}), a
+ * parasol ({@link ParasolShape}) or a spire cluster ({@link SpireShape}), picked by the zone's {@code weights}, in one
+ * chunk in {@code rarity}.
  *
- * <p>Whether a chunk has a site, and which form it grows, come from a hash of the world seed, the chunk and the zone, never from the
- * world: so a chunk knows what its west and north neighbours pick without reading them, and a chunk whose form matches either re-rolls
- * once, which gives runs of mixed forms instead of rows of one. The shape itself is rolled from the feature's own random. The giant is
- * fitted whole into its chunk (ADR 0088): moved or mirrored, never cut.
+ * <p>Whether a chunk has a site, and which form it grows, come from a hash of the world seed, the chunk and the zone,
+ * never from the world: so a chunk knows what its west and north neighbours pick without reading them, and a chunk
+ * whose form matches either re-rolls once, which gives runs of mixed forms instead of rows of one. The shape itself is
+ * rolled from the feature's own random. The giant is fitted whole into its chunk (ADR 0088): moved or mirrored, never
+ * cut.
  *
- * <p>It runs once per chunk with the zone's rows picked by its placement, and finds its own floor: it tries a few columns of the chunk,
- * and on each the floors of the zone's rows with room over them.
+ * <p>It runs once per chunk with the zone's rows picked by its placement, and finds its own floor: it tries a few
+ * columns of the chunk, and on each the floors of the zone's rows with room over them.
  *
  * @param layer   the layer, counted from 1
  * @param zone    the zone, 0 for the top third of the layer
@@ -56,7 +58,9 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
                                     .forGetter(GiantFungusFeature::parasol))
                     .apply(instance, GiantFungusFeature::new));
 
-    /** Columns of the chunk a site tries before it gives up, and how many times a shape shrinks on one before the next. */
+    /**
+     * Columns of the chunk a site tries before it gives up, and how many times a shape shrinks on one before the next.
+     */
     private static final int COLUMNS = 6;
 
     private static final int SHRINKS = 3;
@@ -66,7 +70,10 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
     private static final int GREAT_COLUMNS = 16;
     /** The rows of air a great stalk needs over its floor: its tallest trunk and its cap. */
     private static final int GREAT_ROOM = 18;
-    /** How far a great stalk's origin, the corner of its 3x3 base, keeps from the chunk's sides: its flare and shelves reach 2 out. */
+    /**
+     * How far a great stalk's origin, the corner of its 3x3 base, keeps from the chunk's sides: its flare and shelves
+     * reach 2 out.
+     */
     private static final int GREAT_MARGIN = 2;
 
     private static final long SITE = 0x5175E5L;
@@ -135,8 +142,8 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
     }
 
     /**
-     * The form the site of a chunk grows, in a world of {@code seed}: its own pick, rolled once more if the site west of it or north of it
-     * picked the same. A neighbour's pick is the hash's, so no chunk reads another (ADR 0088).
+     * The form the site of a chunk grows, in a world of {@code seed}: its own pick, rolled once more if the site west
+     * of it or north of it picked the same. A neighbour's pick is the hash's, so no chunk reads another (ADR 0088).
      */
     public Form form(long seed, int chunkX, int chunkZ) {
         Form form = first(seed, chunkX, chunkZ);
@@ -182,7 +189,10 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
             this.ints = random::nextInt;
         }
 
-        /** The floors of the column at {@code localX}, {@code localZ} in the zone's rows, with at least {@code least} rows of room. */
+        /**
+         * The floors of the column at {@code localX}, {@code localZ} in the zone's rows, with at least {@code least}
+         * rows of room.
+         */
         private List<Floor> floors(int localX, int localZ, int least) {
             List<Floor> found = new ArrayList<>();
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
@@ -218,7 +228,10 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
             return floors(localX, localZ, least).stream().max((a, b) -> Integer.compare(a.room(), b.room()));
         }
 
-        /** The floor of the column at the base of {@code fit} nearest {@code near}'s row, within 2 rows, with {@code least} rows of room. */
+        /**
+         * The floor of the column at the base of {@code fit} nearest {@code near}'s row, within 2 rows, with {@code
+         * least} rows of room.
+         */
         private Optional<Floor> floorNear(Fit fit, Floor near, int least) {
             return floors(fit.baseX(), fit.baseZ(), least).stream()
                     .filter(floor -> Math.abs(floor.pos().getY() - near.pos().getY()) <= 2)
@@ -246,7 +259,10 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
             return false;
         }
 
-        /** Whether the 3x3 round {@code middle} is open and stands on solid floor in every column: a braid's trunks need it. */
+        /**
+         * Whether the 3x3 round {@code middle} is open and stands on solid floor in every column: a braid's trunks need
+         * it.
+         */
         private boolean flat(BlockPos middle) {
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {

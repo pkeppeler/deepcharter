@@ -19,36 +19,49 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Finds where the {@code giant-fungi} scenario (#1202) stands its camera in a zone of layer 3: a generated cavern of the campaign world,
- * never a staged room. A spot is a free cell over a floor whose view, in one of eight headings, runs furthest through the cavern (a fan of
- * rays) and takes in the most glowcaps; its tall focus is the floor cell with the most free height a giant can be grown on. A view of the
- * mix ({@link #mix}) looks instead at the densest group of giants the world grew. Copied from {@code HollowsSpots} of the #1147 concept round (on its branch), which
+ * Finds where the {@code giant-fungi} scenario (#1202) stands its camera in a zone of layer 3: a generated cavern of
+ * the campaign world, never a staged room. A spot is a free cell over a floor whose view, in one of eight headings,
+ * runs furthest through the cavern (a fan of rays) and takes in the most glowcaps; its tall focus is the floor cell
+ * with the most free height a giant can be grown on. A view of the mix ({@link #mix}) looks instead at the densest
+ * group of giants the world grew. Copied from {@code HollowsSpots} of the #1147 concept round (on its branch), which
  * the before and after stills share a camera with. Runs on the server thread over chunks the scenario has forced.
  */
 final class GiantFungiSpots {
     private static final Logger LOGGER = LoggerFactory.getLogger(GiantFungiSpots.class);
     /** Candidates stand within this many blocks of the region's middle, every {@link #GRID} blocks. */
     static final int SEARCH_RADIUS = 24;
-    /** The rays of the fan reach this far, so the forced region must reach {@code SEARCH_RADIUS + RAY_REACH} round the middle. */
+    /**
+     * The rays of the fan reach this far, so the forced region must reach {@code SEARCH_RADIUS + RAY_REACH} round the
+     * middle.
+     */
     static final int RAY_REACH = 40;
 
     private static final int GRID = 3;
     /** Candidates stay this far inside their zone, so the camera's biome blend never reaches the next one. */
     private static final int ZONE_INSET = 8;
-    /** Free cells over the floor that a candidate needs: its feet stand {@link #FEET_RISE} over it, the eye 1.62 over the feet. */
+    /**
+     * Free cells over the floor that a candidate needs: its feet stand {@link #FEET_RISE} over it, the eye 1.62 over
+     * the feet.
+     */
     private static final int HEADROOM = 4;
 
     static final int FEET_RISE = 2;
     private static final int[] FAN_YAWS = {-30, -15, 0, 15, 30};
     private static final int[] FAN_PITCHES = {-15, 0, 15};
-    /** A glowcap within the view's cone, between these distances, adds this much to the score: a lit view reads, a black one does not. */
+    /**
+     * A glowcap within the view's cone, between these distances, adds this much to the score: a lit view reads, a black
+     * one does not.
+     */
     private static final int GLOW_NEAR = 4;
 
     private static final int GLOW_FAR = 32;
     private static final double GLOW_CONE = 35;
     private static final int GLOW_WEIGHT = 4;
     private static final int GLOW_CAP = 30;
-    /** The focus is a floor cell this far ahead (in blocks), within this many degrees of the heading and this far up or down from the camera's floor. */
+    /**
+     * The focus is a floor cell this far ahead (in blocks), within this many degrees of the heading and this far up or
+     * down from the camera's floor.
+     */
     private static final int FOCUS_NEAR = 7;
 
     private static final int FOCUS_FAR = 16;
@@ -66,8 +79,9 @@ final class GiantFungiSpots {
     private GiantFungiSpots() {}
 
     /**
-     * A camera: feet at {@code feet}, facing {@code yaw}; {@code floorY} is the floor under it, {@code focus} the floor cell the mock-ups
-     * stand on (the free cell over the floor), {@code tall} the one a giant fungus grows from and {@code clear} the free height over it.
+     * A camera: feet at {@code feet}, facing {@code yaw}; {@code floorY} is the floor under it, {@code focus} the floor
+     * cell the mock-ups stand on (the free cell over the floor), {@code tall} the one a giant fungus grows from and
+     * {@code clear} the free height over it.
      */
     record Spot(
             String zone, BlockPos feet, float yaw, int floorY, BlockPos focus, BlockPos tall, int clear, int score) {
@@ -95,7 +109,10 @@ final class GiantFungiSpots {
             return new Vec3(-f.z, 0, f.x);
         }
 
-        /** The cell {@code ahead} blocks along the heading and {@code across} to its right of {@code from}, {@code up} over it. */
+        /**
+         * The cell {@code ahead} blocks along the heading and {@code across} to its right of {@code from}, {@code up}
+         * over it.
+         */
         BlockPos at(BlockPos from, double ahead, double across, int up) {
             Vec3 f = forward();
             Vec3 r = right();
@@ -111,8 +128,8 @@ final class GiantFungiSpots {
     private record Candidate(BlockPos feet, int floorY, float yaw, int score) {}
 
     /**
-     * The spot of zone {@code zone} (0 is the Garden) of layer 3's {@code band} in {@code level}, round ({@code x}, {@code z}), or
-     * empty, with what it found in the log, if no candidate there has a focus.
+     * The spot of zone {@code zone} (0 is the Garden) of layer 3's {@code band} in {@code level}, round ({@code x},
+     * {@code z}), or empty, with what it found in the log, if no candidate there has a focus.
      */
     static Optional<Spot> find(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
         Zones.Span span = Zones.span(band.minY(), band.height(), zone);
@@ -259,7 +276,10 @@ final class GiantFungiSpots {
         return found;
     }
 
-    /** The floor cell under ({@code x}, {@code z}) near the camera's floor: the free cell over the highest solid one, or empty. */
+    /**
+     * The floor cell under ({@code x}, {@code z}) near the camera's floor: the free cell over the highest solid one, or
+     * empty.
+     */
     static Optional<BlockPos> floorAt(ServerLevel level, int x, int z, int nearY, int rise) {
         for (int y = nearY + rise; y >= nearY - rise; y--) {
             if (isFloor(level, new BlockPos(x, y, z), 2)) {
@@ -269,7 +289,10 @@ final class GiantFungiSpots {
         return Optional.empty();
     }
 
-    /** The brightest free cell over a floor in the camera's view {@link #FOCUS_NEAR} to {@link #FOCUS_FAR} blocks ahead, in sight of the eye. */
+    /**
+     * The brightest free cell over a floor in the camera's view {@link #FOCUS_NEAR} to {@link #FOCUS_FAR} blocks ahead,
+     * in sight of the eye.
+     */
     private static Optional<BlockPos> focus(ServerLevel level, Spot spot) {
         BlockPos best = null;
         int bestLight = -1;
@@ -297,7 +320,10 @@ final class GiantFungiSpots {
         return Optional.ofNullable(best);
     }
 
-    /** The free cell over a flat floor {@link #TALL_NEAR} to {@link #TALL_FAR} blocks ahead with the most free height over its 3 x 3, at least {@link #TALL_CLEAR_LEAST}. */
+    /**
+     * The free cell over a flat floor {@link #TALL_NEAR} to {@link #TALL_FAR} blocks ahead with the most free height
+     * over its 3 x 3, at least {@link #TALL_CLEAR_LEAST}.
+     */
     private static Optional<BlockPos> tallFocus(ServerLevel level, Spot spot) {
         BlockPos best = null;
         int bestClear = TALL_CLEAR_LEAST - 1;
@@ -322,7 +348,10 @@ final class GiantFungiSpots {
         return Optional.ofNullable(best);
     }
 
-    /** True when the 3 x 3 round {@code cell} is free and stands on solid floor in every column: a great stalk grows only there. */
+    /**
+     * True when the 3 x 3 round {@code cell} is free and stands on solid floor in every column: a great stalk grows
+     * only there.
+     */
     private static boolean flat(ServerLevel level, BlockPos cell) {
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
@@ -374,10 +403,10 @@ final class GiantFungiSpots {
     private static final int MIX_GRID = 4;
 
     /**
-     * A camera on the giants of zone {@code zone} the world grew round ({@code x}, {@code z}): of the floors every {@link #MIX_GRID} blocks
-     * and the eight headings, the one that sees the most giants' marks (a rim, a needle, a great stalk's cap) {@link #MIX_NEAR} to
-     * {@link #MIX_FAR} blocks off with nothing in the way, a giant counted once; it looks at the middle of those it sees. Empty if it sees
-     * none.
+     * A camera on the giants of zone {@code zone} the world grew round ({@code x}, {@code z}): of the floors every
+     * {@link #MIX_GRID} blocks and the eight headings, the one that sees the most giants' marks (a rim, a needle, a
+     * great stalk's cap) {@link #MIX_NEAR} to {@link #MIX_FAR} blocks off with nothing in the way, a giant counted
+     * once; it looks at the middle of those it sees. Empty if it sees none.
      */
     static Optional<MixView> mix(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
         Zones.Span span = Zones.span(band.minY(), band.height(), zone);
@@ -423,8 +452,9 @@ final class GiantFungiSpots {
     }
 
     /**
-     * The feet of a camera about {@code distance} blocks from {@code base} (2 either way) on a floor within 10 rows of it, whose eye sees
-     * both {@code target} and the cell over {@code base}, the heading nearest {@code prefer} first; empty if no heading has one.
+     * The feet of a camera about {@code distance} blocks from {@code base} (2 either way) on a floor within 10 rows of
+     * it, whose eye sees both {@code target} and the cell over {@code base}, the heading nearest {@code prefer} first;
+     * empty if no heading has one.
      */
     static Optional<BlockPos> cameraAt(ServerLevel level, BlockPos base, Vec3 target, int distance, float prefer) {
         BlockPos foot = base.above(2);

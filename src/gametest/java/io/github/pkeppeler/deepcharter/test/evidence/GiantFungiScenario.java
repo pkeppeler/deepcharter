@@ -41,18 +41,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Evidence scenario "giant-fungi" (#1202): the parasol and the spires, and the mix of them with the great stalk, in generated caverns of
- * layer 3 in the campaign world (the design tour's seed), with the sky hidden ({@link EvidencePins#skyHidden}, #1161). Each view is taken
- * as played and, named {@code -nv}, with night vision.
+ * Evidence scenario "giant-fungi" (#1202): the parasol and the spires, and the mix of them with the great stalk, in
+ * generated caverns of layer 3 in the campaign world (the design tour's seed), with the sky hidden ({@link
+ * EvidencePins#skyHidden}, #1161). Each view is taken as played and, named {@code -nv}, with night vision.
  *
  * <ol>
- *   <li>The mix the world grew: a Garden view chosen for the most giants in it, and one each of the Spore Fields and the Quiet.
- *   <li>Before and after: the #1149 mock-ups ({@link GiantMockups}) and the new forms, grown at the same place in a Garden cavern and seen
- *       from the same camera.
+ * <li>The mix the world grew: a Garden view chosen for the most giants in it, and one each of the Spore Fields and the
+ * Quiet.
+ * <li>Before and after: the #1149 mock-ups ({@link GiantMockups}) and the new forms, grown at the same place in a
+ * Garden cavern and seen from the same camera.
  *   <li>Each form close (12 blocks off) and far (30 blocks off).
  *   <li>Six seeds of each form, one still each, from the same camera.
- *   <li>Top down, with chunk borders: a parasol fitted against the east side of its chunk and a spire cluster against the west side of the
- *       next, each whole in its own chunk.
+ * <li>Top down, with chunk borders: a parasol fitted against the east side of its chunk and a spire cluster against the
+ * west side of the next, each whole in its own chunk.
  * </ol>
  *
  * Every build is put back as the world grew it before the next. The scenario ends on the title screen.
@@ -83,14 +84,17 @@ public class GiantFungiScenario extends EvidenceScenario {
     /** The top-down camera stands this high over the floor. */
     private static final int TOP_DOWN_RISE = 40;
 
-    /** The parasol and spires seeds shown close, far and in the before and after: an open parasol with a curve, a forked cluster. */
+    /**
+     * The parasol and spires seeds shown close, far and in the before and after: an open parasol with a curve, a forked
+     * cluster.
+     */
     private static final long PARASOL_SEED = 21;
 
     private static final long SPIRES_SEED = 34;
     /**
-     * The six seeds of each form's sheet, picked to show their range: an open cap, a wide tipped bell, an old torn cap on a curving stem, a
-     * twin, a small cap on a double curve and a bell with a twin; and six, seven, three, six, four and seven spires, straight, leaning and
-     * forking.
+     * The six seeds of each form's sheet, picked to show their range: an open cap, a wide tipped bell, an old torn cap
+     * on a curving stem, a twin, a small cap on a double curve and a bell with a twin; and six, seven, three, six, four
+     * and seven spires, straight, leaning and forking.
      */
     private static final long[] PARASOL_SEEDS = {21, 2, 13, 3, 4, 26};
 
@@ -242,8 +246,8 @@ public class GiantFungiScenario extends EvidenceScenario {
     }
 
     /**
-     * The #1149 mock-up and the new form, each grown at the stage's tall focus and shot from one camera, about {@value #VARIETY_DISTANCE}
-     * blocks off and aimed at the middle of the new form's height, so the pair is the same view.
+     * The #1149 mock-up and the new form, each grown at the stage's tall focus and shot from one camera, about {@value
+     * #VARIETY_DISTANCE} blocks off and aimed at the middle of the new form's height, so the pair is the same view.
      */
     private void beforeAndAfter(ClientGameTestContext context, TestServerContext server, Spot stage) {
         pair(
@@ -319,8 +323,8 @@ public class GiantFungiScenario extends EvidenceScenario {
     }
 
     /**
-     * A parasol fitted against the east side of the stage's chunk and a spire cluster against the west side of the chunk east of it, seen
-     * from straight above with the chunk borders drawn: each whole, in its own chunk.
+     * A parasol fitted against the east side of the stage's chunk and a spire cluster against the west side of the
+     * chunk east of it, seen from straight above with the chunk borders drawn: each whole, in its own chunk.
      */
     private void topDown(ClientGameTestContext context, TestServerContext server, Spot stage) {
         ChunkPos chunk = ChunkPos.containing(stage.tall());
@@ -366,8 +370,8 @@ public class GiantFungiScenario extends EvidenceScenario {
     // ---------------------------------------------------------------------------------------------- the camera
 
     /**
-     * Where the camera stands about {@code distance} blocks from the stage's tall focus, seeing {@code target} and the foot: on the side of
-     * the stage's own camera if it can, the stage's own camera if no side has one.
+     * Where the camera stands about {@code distance} blocks from the stage's tall focus, seeing {@code target} and the
+     * foot: on the side of the stage's own camera if it can, the stage's own camera if no side has one.
      */
     private static BlockPos back(ServerLevel level, Spot stage, Vec3 target, int distance) {
         return GiantFungiSpots.cameraAt(level, stage.tall(), target, distance, stage.yaw())

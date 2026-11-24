@@ -17,10 +17,10 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * Grows a giant fungus (#1202) from its {@link GiantLayout}, fitted into a chunk: every cell it needs must be open (air, or the small
- * growth a giant grows over, an ordinary stalk or a glowcap), and the foot of each stem or spire must stand on solid ground, or nothing
- * grows. A cell it can do without (the flare, the glowcaps) is left out where there is no room for it. It never writes outside the chunk
- * it was fitted to (ADR 0088), and never over another giant.
+ * Grows a giant fungus (#1202) from its {@link GiantLayout}, fitted into a chunk: every cell it needs must be open
+ * (air, or the small growth a giant grows over, an ordinary stalk or a glowcap), and the foot of each stem or spire
+ * must stand on solid ground, or nothing grows. A cell it can do without (the flare, the glowcaps) is left out where
+ * there is no room for it. It never writes outside the chunk it was fitted to (ADR 0088), and never over another giant.
  */
 public final class GiantFungus {
     private static final Block FUNGAL_STALK =
@@ -82,8 +82,8 @@ public final class GiantFungus {
     }
 
     /**
-     * A cap cell's state: the models are drawn rising east ({@code rise}) and south ({@code side_rise}), and turned a quarter at a time,
-     * so the rise is turned into the quarter where both are not negative.
+     * A cap cell's state: the models are drawn rising east ({@code rise}) and south ({@code side_rise}), and turned a
+     * quarter at a time, so the rise is turned into the quarter where both are not negative.
      */
     private static BlockState capState(GiantPiece.Cap cap) {
         int x = cap.riseX();
@@ -124,8 +124,8 @@ public final class GiantFungus {
     }
 
     /**
-     * Grows {@code fit} in {@code chunk} with its base on row {@code floorY} (the first open row over the floor), if every cell it needs is
-     * open and each foot stands on solid ground. Returns whether it grew.
+     * Grows {@code fit} in {@code chunk} with its base on row {@code floorY} (the first open row over the floor), if
+     * every cell it needs is open and each foot stands on solid ground. Returns whether it grew.
      */
     public static boolean place(LevelAccessor level, ChunkPos chunk, Fit fit, int floorY) {
         Map<Cell, GiantPiece> pieces = fit.layout().pieces();
@@ -153,8 +153,8 @@ public final class GiantFungus {
     }
 
     /**
-     * Whether a cell on the floor can hold its piece: solid ground under a foot, a flare or a mound; a glowcap where a glowcap can grow.
-     * A part above the floor hangs from the rest.
+     * Whether a cell on the floor can hold its piece: solid ground under a foot, a flare or a mound; a glowcap where a
+     * glowcap can grow. A part above the floor hangs from the rest.
      */
     private static boolean grounded(LevelAccessor level, BlockPos pos, GiantPiece piece, boolean optional) {
         BlockPos below = pos.below();
@@ -167,7 +167,9 @@ public final class GiantFungus {
         return !open(level.getBlockState(below)) && level.getBlockState(below).isFaceSturdy(level, below, Direction.UP);
     }
 
-    /** Takes away the ordinary stalk a giant grows through, and what stood on it, so none of it floats over the giant. */
+    /**
+     * Takes away the ordinary stalk a giant grows through, and what stood on it, so none of it floats over the giant.
+     */
     static void clearStalkAbove(LevelAccessor level, BlockPos pos) {
         if (!level.getBlockState(pos).is(FUNGAL_STALK)) {
             return;

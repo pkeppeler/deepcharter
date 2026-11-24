@@ -10,12 +10,14 @@ import java.util.function.IntUnaryOperator;
 import net.minecraft.core.Direction;
 
 /**
- * The shape of a spire cluster (#1202): three to seven tapering fungal points rising from one dark root mound, splaying outward and
- * forking like antlers, each tip lit like a cold candle-flame. The real-world models are candlesnuff fungus and dead man's fingers
- * (<i>Xylaria</i>). The generator rolls {@link Params} from a seed and makes the blocks as a {@link GiantLayout}, pure data.
+ * The shape of a spire cluster (#1202): three to seven tapering fungal points rising from one dark root mound, splaying
+ * outward and forking like antlers, each tip lit like a cold candle-flame. The real-world models are candlesnuff fungus
+ * and dead man's fingers (<i>Xylaria</i>). The generator rolls {@link Params} from a seed and makes the blocks as a
+ * {@link GiantLayout}, pure data.
  *
- * <p>Each spire thins from its girth at the mound to girth 1 under its tip, a cell at a time, and leans away from the middle of the
- * cluster, a cell every three or five rows. No two spires touch face to face above the mound, so breaking one leaves the others standing.
+ * <p>Each spire thins from its girth at the mound to girth 1 under its tip, a cell at a time, and leans away from the
+ * middle of the cluster, a cell every three or five rows. No two spires touch face to face above the mound, so breaking
+ * one leaves the others standing.
  */
 public final class SpireShape {
     public static final int LEAST_COUNT = 3;
@@ -54,7 +56,8 @@ public final class SpireShape {
     }
 
     /**
-     * A rolled cluster: its spires, the tallest first, how many rows of each tip glow, and how many glowcaps grow at the mound.
+     * A rolled cluster: its spires, the tallest first, how many rows of each tip glow, and how many glowcaps grow at
+     * the mound.
      *
      * @param glowRows 1 to 3
      * @param glowcaps 1 to 3
@@ -70,8 +73,8 @@ public final class SpireShape {
     }
 
     /**
-     * A cluster rolled from {@code random} for a site with {@code room} rows of air over the mound; empty under {@link #LEAST_ROOM}. Every
-     * spire stops two rows under the roof, and a low roof grows a squat cluster of three or four.
+     * A cluster rolled from {@code random} for a site with {@code room} rows of air over the mound; empty under {@link
+     * #LEAST_ROOM}. Every spire stops two rows under the roof, and a low roof grows a squat cluster of three or four.
      */
     public static Optional<Params> roll(IntUnaryOperator random, int room) {
         int most = room - 2;
@@ -144,7 +147,10 @@ public final class SpireShape {
         return true;
     }
 
-    /** The same cluster a row shorter in every spire, for a site whose air does not have room for it; empty when one would be too short. */
+    /**
+     * The same cluster a row shorter in every spire, for a site whose air does not have room for it; empty when one
+     * would be too short.
+     */
     public static Optional<Params> shorter(Params params, int rows) {
         List<Spike> spikes = new ArrayList<>();
         for (Spike spike : params.spikes()) {
@@ -253,7 +259,10 @@ public final class SpireShape {
         return cells.build();
     }
 
-    /** The steps of {@code rod} that part {@code owner} can take, up to the first that touches another part; empty if under three rows. */
+    /**
+     * The steps of {@code rod} that part {@code owner} can take, up to the first that touches another part; empty if
+     * under three rows.
+     */
     private static List<Step> fitting(GiantLayout.Builder cells, List<Step> rod, int owner) {
         int end = 0;
         while (end < rod.size() && cells.freeFor(rod.get(end).cell(), owner)) {
@@ -271,9 +280,10 @@ public final class SpireShape {
     }
 
     /**
-     * A branch forking off {@code from}: its first half in the rod's cell, its second in the cell beside, then up as a thinner spire,
-     * leaning the same way, for a third to a half of the rows above. It forks out of the cluster: the spire's own way, or a side. It keeps
-     * off the cells already {@code claimed} by its spire's rod and other branches, face to face, but where it springs from the rod.
+     * A branch forking off {@code from}: its first half in the rod's cell, its second in the cell beside, then up as a
+     * thinner spire, leaning the same way, for a third to a half of the rows above. It forks out of the cluster: the
+     * spire's own way, or a side. It keeps off the cells already {@code claimed} by its spire's rod and other branches,
+     * face to face, but where it springs from the rod.
      */
     private static Optional<List<Step>> branch(
             GiantLayout.Builder cells,
@@ -312,8 +322,8 @@ public final class SpireShape {
     }
 
     /**
-     * Whether a branch cell other than its first touches its own spire's cells face to face: a branch that grew back against its rod or
-     * another branch would join the two, so a break of either would bring both down.
+     * Whether a branch cell other than its first touches its own spire's cells face to face: a branch that grew back
+     * against its rod or another branch would join the two, so a break of either would bring both down.
      */
     private static boolean touchesRod(Cell cell, Set<Cell> rod, Cell first) {
         if (cell.equals(first)) {
@@ -328,8 +338,8 @@ public final class SpireShape {
     }
 
     /**
-     * Puts a rod's cells: its girth thinning a cell at a time from {@code girth} at its foot to 1 under its glowing rows, the last of
-     * which is its needle, lit if {@code lit}. A row in {@code forked} is a fork.
+     * Puts a rod's cells: its girth thinning a cell at a time from {@code girth} at its foot to 1 under its glowing
+     * rows, the last of which is its needle, lit if {@code lit}. A row in {@code forked} is a fork.
      */
     private static void rod(
             GiantLayout.Builder cells,
@@ -362,8 +372,8 @@ public final class SpireShape {
     }
 
     /**
-     * The root mound: a {@code spire_base} under the foot of each spire and along the line from the middle to it, the rest of it optional,
-     * with a tall flare round its edge.
+     * The root mound: a {@code spire_base} under the foot of each spire and along the line from the middle to it, the
+     * rest of it optional, with a tall flare round its edge.
      */
     private static void mound(GiantLayout.Builder cells, Params params) {
         Set<Cell> mound = new HashSet<>();

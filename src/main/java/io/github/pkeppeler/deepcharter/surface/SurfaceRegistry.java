@@ -19,7 +19,10 @@ public final class SurfaceRegistry {
 
     private SurfaceRegistry() {}
 
-    /** Loads this class, which registers the particle, the surface blocks, layer 3's giant fungi, the salvage items and the stalk and giant fungus features. The surface rules and structure removal are data. */
+    /**
+     * Loads this class, which registers the particle, the surface blocks, layer 3's giant fungi, the salvage items and
+     * the stalk and giant fungus features. The surface rules and structure removal are data.
+     */
     public static void register() {
         SurfaceBlocks.register();
         GiantFungusBlocks.register();

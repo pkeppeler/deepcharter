@@ -11,14 +11,14 @@ import java.util.Set;
 import net.minecraft.core.Direction;
 
 /**
- * The cells of one giant fungus (#1202), relative to its base (the cell at the foot of its stem or the middle of its mound, on the
- * floor), as a shape generator decided them: pure data, like {@link GreatStalkLayout}, so a shape can be inspected and fitted to its chunk
- * without a world.
+ * The cells of one giant fungus (#1202), relative to its base (the cell at the foot of its stem or the middle of its
+ * mound, on the floor), as a shape generator decided them: pure data, like {@link GreatStalkLayout}, so a shape can be
+ * inspected and fitted to its chunk without a world.
  *
  * @param pieces   what each cell is
- * @param owners   which part a cell belongs to: 0 for the mound and flare every part stands on, 1 and up for each stem or spire with what
- *                 it holds. Two cells of different parts above the floor never touch face to face, so breaking one part never brings
- *                 another down ({@link StalkCollapse})
+ * @param owners   which part a cell belongs to: 0 for the mound and flare every part stands on, 1 and up for each stem
+ *     or spire with what it holds. Two cells of different parts above the floor never touch face to face, so breaking
+ *     one part never brings another down ({@link StalkCollapse})
  * @param optional the cells a placer may leave out where the ground or the air forbids them (the flare, the glowcaps)
  */
 public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owners, Set<Cell> optional) {
@@ -78,7 +78,8 @@ public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owner
     }
 
     /**
-     * A layout fitted into a chunk: {@code layout}, which may be this one or its mirror image, with its base at {@code baseX} and
+     * A layout fitted into a chunk: {@code layout}, which may be this one or its mirror image, with its base at {@code
+     * baseX} and
      * {@code baseZ} in the chunk (0 to 15), so that every cell lies in the chunk.
      */
     public record Fit(GiantLayout layout, int baseX, int baseZ) {
@@ -94,10 +95,11 @@ public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owner
     }
 
     /**
-     * This layout fitted whole into a chunk, its base as near {@code wantX}, {@code wantZ} as it can be (ADR 0088: a layer feature never
-     * writes outside its chunk, and a giant is moved or mirrored to fit, never cut). Of the four ways it can face (as it is, mirrored
-     * across x, across z or both), the one that needs the base moved least wins, so a stem that curves toward the side of the chunk curves
-     * back toward its middle instead. Empty if the layout is wider than a chunk.
+     * This layout fitted whole into a chunk, its base as near {@code wantX}, {@code wantZ} as it can be (ADR 0088: a
+     * layer feature never writes outside its chunk, and a giant is moved or mirrored to fit, never cut). Of the four
+     * ways it can face (as it is, mirrored across x, across z or both), the one that needs the base moved least wins,
+     * so a stem that curves toward the side of the chunk curves back toward its middle instead. Empty if the layout is
+     * wider than a chunk.
      */
     public Optional<Fit> fitInChunk(int wantX, int wantZ) {
         if (maxX() - minX() >= CHUNK || maxZ() - minZ() >= CHUNK) {
@@ -153,8 +155,8 @@ public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owner
         }
 
         /**
-         * Whether {@code cell} is free for part {@code owner}: nothing is in it, and no face of it touches a cell of another part above
-         * the floor, so that each part stays its own when one breaks.
+         * Whether {@code cell} is free for part {@code owner}: nothing is in it, and no face of it touches a cell of
+         * another part above the floor, so that each part stays its own when one breaks.
          */
         boolean freeFor(Cell cell, int owner) {
             if (pieces.containsKey(cell)) {

@@ -332,8 +332,9 @@ public class FungalHollowsTest {
     }
 
     /**
-     * Each zone grows the giant fungi its mix names (#1202), over {@link #GLOWCAP_CHUNKS} chunks a side: the Garden all three forms, the Spore
-     * Fields spires, and the Quiet parasols and never a great stalk. A form is told by the blocks it is made of.
+     * Each zone grows the giant fungi its mix names (#1202), over {@link #GLOWCAP_CHUNKS} chunks a side: the Garden all
+     * three forms, the Spore Fields spires, and the Quiet parasols and never a great stalk. A form is told by the
+     * blocks it is made of.
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void eachZoneGrowsTheGiantsOfItsMix(GameTestHelper helper) {
@@ -380,8 +381,8 @@ public class FungalHollowsTest {
     }
 
     /**
-     * The giant fungus features are placed in the zones of the Fungal Hollows and in no other biome: one for each zone, every one listed
-     * last in step 8 of every zone, so none moves a feature already there (#1202).
+     * The giant fungus features are placed in the zones of the Fungal Hollows and in no other biome: one for each zone,
+     * every one listed last in step 8 of every zone, so none moves a feature already there (#1202).
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void giantFungiGrowOnlyInTheFungalHollows(GameTestHelper helper) {
@@ -410,9 +411,9 @@ public class FungalHollowsTest {
     }
 
     /**
-     * A giant fungus writes only inside the chunk it grows for (ADR 0088), whatever form it takes and wherever in the chunk its site is: each
-     * zone's feature runs on each chunk of the sample through a level that records every block it sets and keeps none, with ten seeds of
-     * its random, so the site moves about the chunk.
+     * A giant fungus writes only inside the chunk it grows for (ADR 0088), whatever form it takes and wherever in the
+     * chunk its site is: each zone's feature runs on each chunk of the sample through a level that records every block
+     * it sets and keeps none, with ten seeds of its random, so the site moves about the chunk.
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void everyGiantFungusWritesInsideItsOwnChunk(GameTestHelper helper) {
