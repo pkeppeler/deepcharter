@@ -48,9 +48,10 @@ import net.minecraft.world.level.material.PushReaction;
 /**
  * Server GameTests for the decoys of the grained crust (#216, ADR 0060): one draw for each boundary between bands, from the world seed and
  * the boundary's own Y, which the layer data can override. The draw and the chunk pass run on synthetic band lists, the way the campaign
- * generator runs on its own ({@link GrainedCrustPass#swap}), over as many bands as a test wants. The campaign world itself, with layer 3's
- * band built, draws layer 2's and layer 3's floors from the seed (#1022), and {@code deepcharter:campaign_grain_sample}, a test-preset copy
- * with layer 1's floor set to grained, proves the same through real generation, chunk by chunk.
+ * generator runs on its own ({@link GrainedCrustPass#swap}), over as many bands as a test wants. The campaign world
+ * itself, with layer 3's band built, draws layer 2's and layer 3's floors from the seed (#1022), and
+ * {@code deepcharter:campaign_grain_sample}, a test-preset copy with layer 1's floor set to grained, proves the same
+ * through real generation, chunk by chunk.
  */
 public class GrainedCrustDecoyTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -225,8 +226,9 @@ public class GrainedCrustDecoyTest {
     }
 
     /**
-     * Layer data that says nothing of a floor leaves it to the seed, and the word {@code floor_crust} reads back as the setting. The shipped
-     * campaign and the test world's copies of it say {@code normal} for layer 1's floor only, and nothing for layer 2's and layer 3's (#1022).
+     * Layer data that says nothing of a floor leaves it to the seed, and the word {@code floor_crust} reads back as the
+     * setting. The shipped campaign and the test world's copies of it say {@code normal} for layer 1's floor only, and
+     * nothing for layer 2's and layer 3's (#1022).
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void aLayerThatSaysNothingOfItsFloorIsLeftToTheSeed(GameTestHelper helper) throws IOException {
@@ -360,10 +362,11 @@ public class GrainedCrustDecoyTest {
     }
 
     /**
-     * With layer 3's band built, layer 2's floor is left to the seed like any other (#1022): its layer data says {@code draw}, the same of
-     * layer 3's, and only layer 1's, the first breach, stays {@code normal}. Through real generation of the campaign world, every column
-     * of every chunk sampled holds the kind the draw gives for the boundary. The server GameTest world's seed is fixed, and this one
-     * draws layer 2's floor as breach crust and layer 3's as grained, so both kinds are seen.
+     * With layer 3's band built, layer 2's floor is left to the seed like any other (#1022): its layer data says {@code
+     * draw}, the same of layer 3's, and only layer 1's, the first breach, stays {@code normal}. Through real generation
+     * of the campaign world, every column of every chunk sampled holds the kind the draw gives for the boundary. The
+     * server GameTest world's seed is fixed, and this one draws layer 2's floor as breach crust and layer 3's as
+     * grained, so both kinds are seen.
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void layerTwosFloorIsTheSeedsDrawInEveryChunkOfTheCampaignWorld(GameTestHelper helper) {
@@ -400,8 +403,9 @@ public class GrainedCrustDecoyTest {
     }
 
     /**
-     * Every column of every sampled chunk holds, in each layer's crust rows, the kind {@link CrustBoundaries} gives for that floor, and the
-     * grained crust is the block's default state, no flag set by the neighbours that were placed after it. Returns the kind of each floor.
+     * Every column of every sampled chunk holds, in each layer's crust rows, the kind {@link CrustBoundaries} gives for
+     * that floor, and the grained crust is the block's default state, no flag set by the neighbours that were placed
+     * after it. Returns the kind of each floor.
      */
     private static List<Boolean> expectEveryBoundaryIsTheDraw(
             GameTestHelper helper, ServerLevel level, List<Layer> layers) {

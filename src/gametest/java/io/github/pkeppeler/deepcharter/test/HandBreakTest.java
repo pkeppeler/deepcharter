@@ -50,8 +50,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Server GameTests for brute-forcing pod-only blocks with a hand tool (#858, ADR 0069): the one predicate, the constant
  * 60 s break time, the tool each layer needs, the durability a block costs (Unbreaking cannot lower it), the pick that
- * shatters, no drops, and creative players left alone. The kinds of pod-only block are the breach crust, the grained crust
- * (#1022), Company rock and {@code deep_rock} below layer 1. Every test has its own column.
+ * shatters, no drops, and creative players left alone. The kinds of pod-only block are the breach crust, the grained
+ * crust (#1022), Company rock and {@code deep_rock} below layer 1. Every test has its own column.
  *
  * <p>A test that breaks a block in one call uses {@code gameMode.destroyBlock}, which pays the whole cost at once;
  * {@link #aFullMiningRunTakesTheBreakTicksAndPaysTheShare} mines for real, tick by tick.

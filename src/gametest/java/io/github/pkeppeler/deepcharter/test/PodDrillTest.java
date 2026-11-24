@@ -617,7 +617,7 @@ public class PodDrillTest {
         lastCrustIsNotDrilled(helper, 3576, LayerBlocks.BREACH_CRUST);
     }
 
-    /** A grained floor under the last layer leads nowhere either, whatever the layer data of that floor says (#1022). */
+    /** A grained floor under the last layer leads nowhere either, whatever that floor's layer data says (#1022). */
     @GameTest(maxTicks = MAX_TICKS)
     public void theLastLayersGrainedCrustIsNotDrilled(GameTestHelper helper) {
         lastCrustIsNotDrilled(helper, 4216, LayerBlocks.GRAINED_CRUST);

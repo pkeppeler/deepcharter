@@ -280,9 +280,9 @@ public final class PodDrill {
         }
 
         /**
-         * The last layer's crust, grained or not, has nothing under it: a hole would only drop the pod into the void, so
-         * the last floor's layer data never decides it. The layer is the band at the crust's Y, so the floor crust of
-         * the last built layer in the campaign world is refused, with unbuilt depth below it.
+         * The last layer's crust, grained or not, has nothing under it: a hole would only drop the pod into the void,
+         * so the last floor's layer data never decides it. The layer is the band at the crust's Y, so the floor crust
+         * of the last built layer in the campaign world is refused, with unbuilt depth below it.
          */
         private boolean crustLeadsOn(BlockPos crust) {
             Optional<Band> band = LayerChain.layerAt(level, crust.getY());

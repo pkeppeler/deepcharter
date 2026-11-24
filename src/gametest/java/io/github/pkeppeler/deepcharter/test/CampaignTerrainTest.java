@@ -60,7 +60,10 @@ public class CampaignTerrainTest {
     /** Every column of the sample in a grid this many blocks apart. */
     private static final int SAMPLE_STEP = 3;
 
-    private static final String CRUST = "deepcharter:breach_crust";
+    private static final String BREACH_CRUST = "deepcharter:breach_crust";
+    /** A floor the seed draws grained holds this where it would hold the breach crust (#216, #1022). */
+    private static final String GRAINED_CRUST = "deepcharter:grained_crust";
+
     private static final String PACKED_SHALE = "deepcharter:packed_shale";
     private static final String GREEN_SHALE = "deepcharter:green_shale";
     private static final String BASALT_CORE = "deepcharter:basalt_core";
@@ -123,6 +126,10 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
+    private static boolean isCrust(String block) {
+        return block.equals(BREACH_CRUST) || block.equals(GRAINED_CRUST);
+    }
+
     @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theFloorOfEachLayerHoldsThreeRowsOfCrust(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -133,7 +140,7 @@ public class CampaignTerrainTest {
                     String block = idAt(level, column.atY(y));
                     expect(
                             helper,
-                            block.equals(CRUST),
+                            isCrust(block),
                             "%s: expected crust at %d %d %d, found %s",
                             layer.name(),
                             column.getX(),
@@ -144,7 +151,7 @@ public class CampaignTerrainTest {
                 String above = idAt(level, column.atY(layer.minY() + rows));
                 expect(
                         helper,
-                        !above.equals(CRUST),
+                        !isCrust(above),
                         "%s: more than %d rows of crust at %d %d",
                         layer.name(),
                         rows,
@@ -167,7 +174,7 @@ public class CampaignTerrainTest {
         Set<Integer> found = new TreeSet<>();
         for (BlockPos column : sampledColumns()) {
             for (int y = worldMinY(); y < worldTopExclusive(); y++) {
-                if (idAt(level, column.atY(y)).equals(CRUST)) {
+                if (isCrust(idAt(level, column.atY(y)))) {
                     found.add(y);
                 }
             }
@@ -177,7 +184,7 @@ public class CampaignTerrainTest {
                     y++) {
                 expect(
                         helper,
-                        !idAt(level, column.atY(y)).equals(CRUST),
+                        !isCrust(idAt(level, column.atY(y))),
                         "crust under the surface at %d %d %d",
                         column.getX(),
                         y,

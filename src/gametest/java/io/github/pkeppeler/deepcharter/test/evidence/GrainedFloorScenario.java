@@ -26,13 +26,13 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "grained-floor" (#1022): the floor of the last layer is grained crust, as the seed's draw makes it in
- * the campaign world, and a grained floor is as shut as a breach crust.
+ * Evidence scenario "grained-floor" (#1022): the floor of the last layer is grained crust, as the seed's draw makes it
+ * in the campaign world, and a grained floor is as shut as a breach crust.
  *
  * <ol>
  *   <li>A pod sits on the grained floor and the pilot holds sprint: the drill is refused and the floor stays.
- *   <li>On foot, with a netherite pick, the readout of the grained crust says that only a pod drill breaks it, and that the
- *       pick would burn out.
+ *   <li>On foot, with a netherite pick, the readout of the grained crust says that only a pod drill breaks it, and
+ *       that the pick would burn out.
  * </ol>
  */
 public class GrainedFloorScenario extends EvidenceScenario {
@@ -81,7 +81,8 @@ public class GrainedFloorScenario extends EvidenceScenario {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
             });
-            context.waitTicks(20);
+            // The directive toast of the join fades first, and the camera settles behind the pod.
+            context.waitTicks(100);
             frame(context);
             screenshot(context, "grained-floor-pod");
 
@@ -113,7 +114,7 @@ public class GrainedFloorScenario extends EvidenceScenario {
         }
     }
 
-    /** The player leaves the pod for a stone pad beside the floor and takes a netherite pick; returns a crust block to look at. */
+    /** The player leaves the pod for a stone pad with a netherite pick; returns a crust block to look at. */
     private BlockPos onFoot(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         BlockPos crust = new BlockPos(X + 2, FLOOR_Y - 1, Z + 2);
         singleplayer.getServer().runOnServer(server -> {
@@ -154,7 +155,7 @@ public class GrainedFloorScenario extends EvidenceScenario {
         }
     }
 
-    /** The floor rows of the last layer as grained crust, an open room over them, and lamps. Sealed in stone, so nothing reaches it. */
+    /** The last layer's floor rows as grained crust, an open room over them, and lamps, sealed in stone. */
     private static void build(ServerLevel level) {
         RoomCarver.carve(
                 level,
