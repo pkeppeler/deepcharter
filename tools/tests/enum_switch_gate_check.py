@@ -43,6 +43,7 @@ RED = {
     "fx/Red.java": """package fx;
 
 import java.time.DayOfWeek;
+import java.util.function.Supplier;
 
 public class Red {
     int statement(Colour colour) {
@@ -128,6 +129,33 @@ public class Red {
         };
         return first + second;
     }
+
+    int markerInATextBlockIsNotAMarker(Colour colour) {
+        return switch (colour) {
+            case RED -> 1;
+            default -> \"\"\"
+                    // enum-default: inside a text block
+                    \"\"\".length();
+        };
+    }
+
+    Supplier<Integer> inALambda(Colour colour) {
+        return () -> switch (colour) {
+            case RED -> 1;
+            default -> 0;
+        };
+    }
+
+    Object inAnAnonymousClass(Colour colour) {
+        return new Object() {
+            int run() {
+                return switch (colour) {
+                    case RED -> 1;
+                    default -> 0;
+                };
+            }
+        };
+    }
 }
 """
 }
@@ -144,6 +172,9 @@ RED_DEFAULTS = (
     ("int markerOnPreviousArm(", "default ->"),
     ("int markerSeparatedByCode(", "default ->"),
     ("int second = switch", "default ->"),
+    ("int markerInATextBlockIsNotAMarker(", "default ->"),
+    ("inALambda(", "default ->"),
+    ("inAnAnonymousClass(", "default ->"),
 )
 
 GREEN = {
@@ -253,6 +284,29 @@ public class Green {
             default -> Math.max(
                     1,
                     2); // enum-default: the vanilla enum has seven members and only the weekend differs
+        };
+    }
+
+    // Known limit, pinned so a change shows: a selector typed by a type variable is not seen as an enum switch. javac accepts no constant
+    // label for one, so the only switch it can hide anything in is a bare default.
+    <E extends Colour> int typeVariable(E colour) {
+        return switch (colour) {
+            default -> 0;
+        };
+    }
+
+    // Known limit, pinned so a change shows: nor is a sealed interface that an enum implements, switched on with qualified labels.
+    sealed interface Shade permits Tint {}
+
+    enum Tint implements Shade {
+        LIGHT,
+        DARK
+    }
+
+    int sealedInterface(Shade shade) {
+        return switch (shade) {
+            case Tint.LIGHT -> 1;
+            default -> 0;
         };
     }
 

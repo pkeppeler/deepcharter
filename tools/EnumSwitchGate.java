@@ -188,6 +188,10 @@ public final class EnumSwitchGate {
 
         private void check(ExpressionTree selector, List<? extends CaseTree> cases) {
             TypeMirror type = trees.getTypeMirror(new TreePath(getCurrentPath(), selector));
+            // Known limit: only a selector whose own type is an enum counts. A type-variable selector (E extends
+            // Enum<E>) and a sealed
+            // interface that enums implement, switched on with qualified constant labels, are skipped; the repo has
+            // neither.
             if (type == null || type.getKind() != TypeKind.DECLARED) {
                 return;
             }

@@ -96,9 +96,10 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
         switch (kind) {
             case THROWN_DECOY -> sound(level);
             case THROWN_CHARGE -> burn(level);
-            // enum-default: land() throws for every kind but the three thrown ones, so only the flare reaches this
-            // default, and a spent flare is discarded
-            default -> discard();
+            case THROWN_FLARE -> discard();
+            // enum-default: the three thrown kinds have arms; a kind that lands without one has no landed behaviour,
+            // and the throw is the refusal
+            default -> throw new IllegalStateException(kind + " has no landed behaviour");
         }
         ticksLanded++;
     }
