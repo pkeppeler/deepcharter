@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
 
 /** Entities a test builds or looks up by hand, failing loud when the game has none. */
@@ -20,6 +21,18 @@ public final class TestEntities {
     /** A new {@code type} in {@code level} for {@code reason}, not yet added to the level. */
     public static <T extends Entity> T create(EntityType<T> type, Level level, EntitySpawnReason reason) {
         return Objects.requireNonNull(type.create(level, reason), () -> "no " + type + " was created");
+    }
+
+    /**
+     * A new {@code type} in {@code level} that the game's despawn check never removes, not yet added to the level. Build every mob a test
+     * leaves standing for a while this way: a monster 32 blocks or more from every player is removed, one try in 800 a tick, once it has
+     * been idle for 600 ticks, and a test that waits on a loaded runner for its chunks idles that long (#1234). A removed mob stops
+     * ticking and keeps its path "in progress" for ever.
+     */
+    public static <T extends Mob> T mob(EntityType<T> type, Level level) {
+        T mob = create(type, level);
+        mob.setPersistenceRequired();
+        return mob;
     }
 
     /** The entity with this network id, which must be in {@code level}. */

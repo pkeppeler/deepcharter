@@ -215,7 +215,9 @@ public class PodSonarTest {
                 if (helper.getTick() == laterChunksTick) {
                     later.forEach(chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
                 }
-                if (scene[0] != null && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
+                // A body in a chunk that is not entity ticking does not move: the settle ticks count from when all of them do.
+                boolean bodiesTick = bodies.stream().allMatch(body -> level.isPositionEntityTicking(body.blockPosition()));
+                if (scene[0] != null && bodiesTick && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
                     scene[0].pod().discard();
                     bodies.forEach(Entity::discard);
                     helper.succeed();
@@ -486,7 +488,7 @@ public class PodSonarTest {
     // ---- signatures: what echoes and what does not (#924) ----
 
     private static <T extends Mob> T still(ServerLevel level, EntityType<T> type, double x, double y, double z) {
-        T mob = TestEntities.create(type, level);
+        T mob = TestEntities.mob(type, level);
         mob.removeFreeWill();
         mob.setPos(x, y, z);
         level.addFreshEntity(mob);
@@ -617,8 +619,8 @@ public class PodSonarTest {
     private static final int DESPAWN_TRIES = 20_000;
 
     /**
-     * A creature the test places 36 blocks from the pod is never despawned however long the test waits. A husk the sonar test waits 1200 ticks for
-     * its chunks was removed by the game in 3 runs in 4, and its path stayed "in progress" for ever: "the creatures walked: arrived 375, walking true".
+     * A creature the test places 36 blocks from the pod is never despawned however long the test waits. A husk the sonar test had idled 600 ticks
+     * for its chunks was removed by the game on its walk, and its path stayed "in progress" for ever: "the creatures walked: arrived 375, walking true".
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aCreatureTheTestPlacesFarFromThePlayersIsNotDespawnedByTheGame(GameTestHelper helper) {
@@ -666,7 +668,7 @@ public class PodSonarTest {
 
     /** A husk with no will of its own, the test's stand-in for a Sleeper's walker (sun-proof; its follow range is how far it can path). */
     private static Husk walker(ServerLevel level, double x, double lane) {
-        Husk husk = TestEntities.create(EntityTypes.HUSK, level);
+        Husk husk = TestEntities.mob(EntityTypes.HUSK, level);
         husk.setPos(x, FLOOR, Z + lane);
         husk.removeFreeWill();
         level.addFreshEntity(husk);
@@ -695,7 +697,7 @@ public class PodSonarTest {
                     walkers[0] = walker(level, x + 36.5, 0.5);
                     walkers[1] = walker(level, x + 47.5, -2.5);
                     walkers[2] = walker(level, x + 52.5, 2.5);
-                    chicken[0] = TestEntities.create(EntityTypes.CHICKEN, level);
+                    chicken[0] = TestEntities.mob(EntityTypes.CHICKEN, level);
                     chicken[0].setPos(x + 20.5, FLOOR, Z + 0.5);
                     chicken[0].removeFreeWill();
                     level.addFreshEntity(chicken[0]);
@@ -829,7 +831,7 @@ public class PodSonarTest {
 
     /** A cow that is in the hears tag and keeps all its own goals: the test's stand-in for a Sleeper's creature that has other things to do. */
     private static Cow busyCow(ServerLevel level, double x) {
-        Cow cow = TestEntities.create(EntityTypes.COW, level);
+        Cow cow = TestEntities.mob(EntityTypes.COW, level);
         cow.setPos(x, FLOOR, Z + 0.5);
         level.addFreshEntity(cow);
         return cow;
