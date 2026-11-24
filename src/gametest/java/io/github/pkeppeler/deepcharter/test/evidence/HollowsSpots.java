@@ -26,15 +26,8 @@ final class HollowsSpots {
     private static final Logger LOGGER = LoggerFactory.getLogger(HollowsSpots.class);
     /** Candidates stand within this many blocks of the region's middle, every {@link #GRID} blocks. */
     static final int SEARCH_RADIUS = 24;
-    /**
-     * The rays of the fan reach this far, so the forced region must reach {@code SEARCH_RADIUS + RAY_REACH} round the middle. A ray
-     * counts up to {@link #RAY_COUNTED} blocks, and one that meets no rock within its reach costs {@link #ESCAPE_COST}: past the render
-     * distance the client draws the sky, so a view that runs out of the cavern shows the sky and the moon, not rock.
-     */
-    static final int RAY_REACH = 64;
-
-    private static final int RAY_COUNTED = 48;
-    private static final int ESCAPE_COST = 40;
+    /** The rays of the fan reach this far, so the forced region must reach {@code SEARCH_RADIUS + RAY_REACH} round the middle. */
+    static final int RAY_REACH = 40;
 
     private static final int GRID = 3;
     /** Candidates stay this far inside their zone, so the camera's biome blend never reaches the next one. */
@@ -209,7 +202,7 @@ final class HollowsSpots {
                 while (t <= RAY_REACH && open(level.getBlockState(BlockPos.containing(eye.add(d.scale(t)))))) {
                     t++;
                 }
-                sum += t > RAY_REACH ? -ESCAPE_COST : Math.min(t - 1, RAY_COUNTED);
+                sum += t - 1;
             }
         }
         return sum;

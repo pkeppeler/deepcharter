@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.surface.GreatStalk;
 import io.github.pkeppeler.deepcharter.test.evidence.HollowsSpots.Spot;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -18,18 +19,21 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The test-only builds of the {@code hollows-concepts} scenario (#1147), each made in a generated cavern of layer 3 round a {@link Spot}:
- * the giant fungus forms, the Overgrowth and the Drifters, the ground-hugging gas and the Quiet's cathedral, shrine and membrane. They
- * are mock-ups of looks the game does not have yet: blocks and display entities, never game code, and each carries a {@code mock-up}
- * label in the still. Runs on the server thread.
+ * the giant fungus forms, the Overgrowth and the Drifters, the floor under the ground-hugging gas and the Quiet's cathedral, shrine and
+ * membrane. They are mock-ups of looks the game does not have yet: blocks, never game code, and each carries a {@code mock-up} label (a
+ * text display) in the still. Runs on the server thread.
  */
 final class HollowsMockups {
+    private static final Logger LOGGER = LoggerFactory.getLogger(HollowsMockups.class);
     /** Every entity a mock-up summons carries this tag, so {@link #clearEntities} takes them all away. */
     private static final String TAG = "hollows_mock";
 
@@ -38,15 +42,16 @@ final class HollowsMockups {
     private static final float DRIFTER = Chassis.PROSPECTOR.width();
     /** The seeds tried, in order, for the great stalk: one grows only where its whole trunk has room. */
     private static final int STALK_SEEDS = 12;
+    /** And the cells tried for it, this far round the tall focus each way, until one has room. */
+    private static final int STALK_SHIFT = 3;
 
     /** The Overgrowth's bore: how deep, and how far its growth spills round it. */
     private static final int BORE_DEPTH = 8;
 
     private static final int SPILL = 5;
 
-    private static final Quaternionf NONE = new Quaternionf();
-    private static final Quaternionf TURN_Y = new Quaternionf().rotateY((float) Math.toRadians(45));
-    private static final Quaternionf TURN_X = new Quaternionf().rotateX((float) Math.toRadians(45));
+    /** The membrane's own faint light, an invisible light block under each tile of it: in the Quiet's dark a pale sheet shows only lit. */
+    private static final int MEMBRANE_GLOW = 5;
 
     private HollowsMockups() {}
 
@@ -90,15 +95,24 @@ final class HollowsMockups {
     // ---------------------------------------------------------------------------------------------- giant fungus
 
     /**
-     * The fungus the game has: a great stalk on the tall focus (the first seed whose trunk has room) and three ordinary fungal stalks round
+     * The fungus the game has: a great stalk on or near the tall focus (the first cell and seed whose trunk has room) and three ordinary fungal stalks round
      * it, through the game's own feature. Returns what grew, for the log: a still with nothing in it is read from the log, not failed.
      */
     static String stalks(ServerLevel level, Spot spot) {
-        BlockPos corner = spot.tall().offset(-1, 0, -1);
-        int seed = -1;
-        for (int s = 0; s < STALK_SEEDS && seed < 0; s++) {
-            if (GreatStalk.place(level, RandomSource.create(s), corner)) {
-                seed = s;
+        String grew = "no great stalk";
+        search:
+        for (int dx = -STALK_SHIFT; dx <= STALK_SHIFT; dx++) {
+            for (int dz = -STALK_SHIFT; dz <= STALK_SHIFT; dz++) {
+                BlockPos column = spot.tall().offset(dx, 0, dz);
+                Optional<BlockPos> cell = HollowsSpots.floorAt(
+                        level, column.getX(), column.getZ(), spot.tall().getY(), 3);
+                for (int seed = 0; cell.isPresent() && seed < STALK_SEEDS; seed++) {
+                    if (GreatStalk.place(
+                            level, RandomSource.create(seed), cell.get().offset(-1, 0, -1))) {
+                        grew = "great stalk seed " + seed + " at " + cell.get().toShortString();
+                        break search;
+                    }
+                }
             }
         }
         int stalks = 0;
@@ -116,7 +130,7 @@ final class HollowsMockups {
                                         cell.get().getZ()));
             }
         }
-        return "great stalk seed " + seed + ", " + stalks + " fungal stalks";
+        return grew + ", " + stalks + " fungal stalks";
     }
 
     /**
@@ -257,7 +271,7 @@ final class HollowsMockups {
 
     /**
      * Three pod-sized Drifters (CREATURES.md: glowing spore bladders) floating in the cavern ahead of the camera, at 9, 15 and 23 blocks,
-     * each raised until it has room. Display entities lit by their own glow. Returns how many found room.
+     * each raised until it has room. Returns how many found room.
      */
     static int drifters(ServerLevel level, Spot spot, Drifter look) {
         double[][] places = {{9, -3, 0.5}, {15, 4, 2.5}, {23, -1, 4}};
@@ -300,27 +314,34 @@ final class HollowsMockups {
         return Optional.empty();
     }
 
+    /**
+     * One Drifter of blocks round {@code at}: a rough ball as wide as a pod (the cells within its radius), a shell round a glowing core
+     * whose light is real block light, and for the lantern four strands hanging under it.
+     */
     private static void drifter(ServerLevel level, Vec3 at, Drifter look) {
-        if (look == Drifter.BLADDER) {
-            for (Quaternionf turn : List.of(NONE, TURN_Y, TURN_X)) {
-                display(level, "minecraft:slime_block", at, new Vector3f(DRIFTER * 0.85f), turn, 9);
+        BlockState shell = block(look == Drifter.BLADDER ? "minecraft:slime_block" : "minecraft:white_stained_glass");
+        BlockState core = block(look == Drifter.BLADDER ? "minecraft:verdant_froglight" : "minecraft:sea_lantern");
+        BlockPos middle = BlockPos.containing(at);
+        double radius = DRIFTER / 2;
+        int reach = Mth.ceil(radius);
+        for (int dx = -reach; dx <= reach; dx++) {
+            for (int dy = -reach; dy <= reach; dy++) {
+                for (int dz = -reach; dz <= reach; dz++) {
+                    double r = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (r <= 0.5) {
+                        put(level, middle.offset(dx, dy, dz), core);
+                    } else if (r <= radius) {
+                        put(level, middle.offset(dx, dy, dz), shell);
+                    }
+                }
             }
-            display(level, "minecraft:verdant_froglight", at, new Vector3f(DRIFTER * 0.35f), NONE, 15);
-        } else {
-            for (Quaternionf turn : List.of(NONE, TURN_Y)) {
-                display(level, "minecraft:white_stained_glass", at, new Vector3f(DRIFTER * 0.85f), turn, 7);
-            }
-            display(level, "minecraft:sea_lantern", at, new Vector3f(DRIFTER * 0.38f), NONE, 15);
-            float reach = DRIFTER * 0.3f;
-            for (int corner = 0; corner < 4; corner++) {
-                Vec3 tendril = at.add(corner < 2 ? reach : -reach, -DRIFTER * 0.75, corner % 2 == 0 ? reach : -reach);
-                display(
-                        level,
-                        "minecraft:light_blue_stained_glass",
-                        tendril,
-                        new Vector3f(0.12f, DRIFTER * 0.8f, 0.12f),
-                        NONE,
-                        8);
+        }
+        if (look == Drifter.LANTERN) {
+            BlockState strand = block("minecraft:light_blue_stained_glass_pane");
+            for (int[] corner : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                for (int down = reach + 1; down <= reach + 3; down++) {
+                    put(level, middle.offset(corner[0], -down, corner[1]), strand);
+                }
             }
         }
     }
@@ -328,46 +349,27 @@ final class HollowsMockups {
     // ----------------------------------------------------------------------------------------------- ground gas
 
     /**
-     * A low gas layer that hugs the floor ahead of the camera (3 to 22 blocks ahead, 12 to each side): a tile of pale green glass half a
-     * block deep on each 2 x 2 of floor, with a fainter white one over it, lit by a dim glow of its own. A mock-up of the look: the game's
-     * gas would be particles. Returns the tiles laid.
+     * The floor ahead of the camera (3 to 22 blocks ahead, 12 to each side), every other column, where the ground-hugging gas is drawn:
+     * the scenario spawns glowing particles over these cells on the client, a mock-up of a low layer the game does not have. Labels it.
      */
-    static int groundGas(ServerLevel level, Spot spot) {
-        int tiles = 0;
-        for (int ahead = 3; ahead <= 22; ahead += 2) {
-            for (int across = -12; across <= 12; across += 2) {
+    static List<Vec3> gasFloor(ServerLevel level, Spot spot) {
+        List<Vec3> floor = new ArrayList<>();
+        for (int ahead = 3; ahead <= 22; ahead += 1) {
+            for (int across = -12; across <= 12; across += 1) {
                 BlockPos column = spot.at(spot.feet(), ahead, across, 0);
-                Optional<BlockPos> cell = HollowsSpots.floorAt(level, column.getX(), column.getZ(), spot.floorY(), 6);
-                if (cell.isEmpty()) {
-                    continue;
-                }
-                Vec3 floor = Vec3.atBottomCenterOf(cell.get());
-                display(
-                        level,
-                        "minecraft:lime_stained_glass",
-                        floor.add(0, 0.28, 0),
-                        new Vector3f(2.2f, 0.55f, 2.2f),
-                        NONE,
-                        5);
-                display(
-                        level,
-                        "minecraft:white_stained_glass",
-                        floor.add(0, 0.73, 0),
-                        new Vector3f(2.2f, 0.35f, 2.2f),
-                        NONE,
-                        3);
-                tiles++;
+                HollowsSpots.floorAt(level, column.getX(), column.getZ(), spot.floorY(), 6)
+                        .ifPresent(cell -> floor.add(Vec3.atBottomCenterOf(cell)));
             }
         }
         label(level, Vec3.atBottomCenterOf(spot.focus().above(3)), "mock-up: ground gas");
-        return tiles;
+        return floor;
     }
 
     // -------------------------------------------------------------------------------------------------- the Quiet
 
     /**
      * The Quiet as LORE.md and CREATURES.md tell it, on the tall focus: a cathedral of four pointed ribs of columnar basalt across the
-     * view, as tall as the cavern allows (8 to 18); a pale membrane spread under their apex (the Hush); and the Badger's wreck grown into
+     * view, as tall as the cavern allows (8 to 18); a pale membrane spread under their apex (the Hush), white glass lit faintly from under; and the Badger's wreck grown into
      * a shrine between them, a pod-sized hull with fungus on it, a ring of glowcaps and five kneeling shapes round it. Returns the rib
      * height.
      */
@@ -388,13 +390,19 @@ final class HollowsMockups {
                 }
             }
         }
+        BlockState membrane = block("minecraft:white_stained_glass");
+        BlockState glow = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, MEMBRANE_GLOW);
         for (int ahead = -7; ahead <= 10; ahead += 3) {
             for (int across = -6; across <= 6; across += 3) {
                 double r = Math.hypot((ahead - 1.5) / 8.5, across / 6.0);
                 double sag = 1.5 * Math.max(0, 1 - r * r);
-                Vec3 middle = Vec3.atBottomCenterOf(spot.at(centre, ahead, across, height - 2))
-                        .subtract(0, sag, 0);
-                display(level, "minecraft:white_stained_glass", middle, new Vector3f(3.4f, 0.2f, 3.4f), NONE, 4);
+                BlockPos tile = spot.at(centre, ahead, across, height - 2 - (int) Math.round(sag));
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        put(level, tile.offset(dx, 0, dz), membrane);
+                    }
+                }
+                put(level, tile.below(), glow);
             }
         }
         shrine(level, spot, centre);
@@ -477,38 +485,11 @@ final class HollowsMockups {
                         .formatted(text, TAG));
     }
 
-    /** A block display of {@code blockId} centred on {@code at}, scaled and turned, drawn at {@code brightness} block light. */
-    private static void display(
-            ServerLevel level, String blockId, Vec3 at, Vector3f scale, Quaternionf turn, int brightness) {
-        Vector3f shift =
-                new Quaternionf(turn).transform(new Vector3f(scale).mul(0.5f)).negate();
-        summon(
-                level,
-                "minecraft:block_display",
-                at,
-                ("{block_state:{Name:\"%s\"},brightness:{sky:0,block:%d},Tags:[\"%s\"],transformation:{"
-                                + "left_rotation:[%sf,%sf,%sf,%sf],right_rotation:[0f,0f,0f,1f],"
-                                + "translation:[%sf,%sf,%sf],scale:[%sf,%sf,%sf]}}")
-                        .formatted(
-                                blockId,
-                                brightness,
-                                TAG,
-                                num(turn.x),
-                                num(turn.y),
-                                num(turn.z),
-                                num(turn.w),
-                                num(shift.x),
-                                num(shift.y),
-                                num(shift.z),
-                                num(scale.x),
-                                num(scale.y),
-                                num(scale.z)));
-    }
-
+    /** Summons one {@code type} at {@code at}; one that fails is logged, not fatal: the still then shows the build without it. */
     private static void summon(ServerLevel level, String type, Vec3 at, String nbt) {
-        int made = command(level, "summon %s %s %s %s %s".formatted(type, num(at.x), num(at.y), num(at.z), nbt));
+        int made = tryCommand(level, "summon %s %s %s %s %s".formatted(type, num(at.x), num(at.y), num(at.z), nbt));
         if (made != 1) {
-            throw new AssertionError("summon " + type + " at " + at + " made " + made);
+            LOGGER.warn("[hollows-concepts] summon {} at {} made {}", type, at, made);
         }
     }
 
@@ -530,14 +511,5 @@ final class HollowsMockups {
 
     private static CommandSourceStack source(ServerLevel level) {
         return level.getServer().createCommandSourceStack().withLevel(level).withSuppressedOutput();
-    }
-
-    /** Runs {@code command} in {@code level} as the server and returns its result; a command that does not parse fails the scenario. */
-    private static int command(ServerLevel level, String command) {
-        try {
-            return level.getServer().getCommands().getDispatcher().execute(command, source(level));
-        } catch (CommandSyntaxException e) {
-            throw new AssertionError("the command '" + command + "' failed: " + e.getMessage(), e);
-        }
     }
 }

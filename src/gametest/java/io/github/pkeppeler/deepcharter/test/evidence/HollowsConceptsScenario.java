@@ -13,7 +13,6 @@ import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes;
 import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.Holds;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
-import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
@@ -23,7 +22,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -31,6 +32,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
@@ -39,7 +41,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,18 +91,22 @@ public class HollowsConceptsScenario extends EvidenceScenario {
     private static final double DRIFTER_AIM = 14;
     private static final double DRIFTER_RISE = 1.5;
     /**
-     * The client's render distance for the stills, in chunks, put back after: Fabric's test client uses 5, and past it the client draws
-     * the sky, so a long cavern showed the sky and the moon where rock is. 8 reaches past the longest fog of the options (72 blocks).
+     * The client's render distance for the stills, in chunks, put back after: Fabric's test client uses 5, and past what the client has
+     * drawn it shows the sky, so a long cavern showed the sky and the moon where rock is. 6 reaches past the longest fog of the options
+     * (72 blocks); more made each still slower than the record job's limit allows.
      */
-    private static final int RENDER_DISTANCE = 8;
-    /** Tries of the wait for the client to hold and mesh every chunk in its render distance, each {@link ClientWait}'s deadline. */
-    private static final int LOAD_TRIES = 4;
+    private static final int RENDER_DISTANCE = 6;
     /** The concept biomes are filled this far under and over the camera's feet ({@link AtmosphereScenes#MARGIN} round it). */
     private static final int FILL_BELOW = 24;
 
     private static final int FILL_ABOVE = 24;
     /** Ticks the particles have to fill the view once they are on: the ambient particles of a biome appear a few a tick. */
     private static final int PARTICLE_TICKS = 40;
+    /** The ground gas: particles spawned a tick, how high over the floor, and the seed of where. */
+    private static final int GAS_PER_TICK = 60;
+
+    private static final double GAS_RISE = 0.8;
+    private static final long GAS_SEED = 1147;
     /** The brighter option of the glowcaps' real light. */
     private static final int BRIGHTER_GLOW = 10;
     /** The glowcaps that the light options swap: within this many blocks of the camera's feet. */
@@ -109,7 +114,7 @@ public class HollowsConceptsScenario extends EvidenceScenario {
 
     private static final int GLOW_RISE = 24;
     /** The boxes the builds are put back from: round the focus, under it and over it. */
-    private static final int BUILD_RADIUS = 10;
+    private static final int BUILD_RADIUS = 14;
 
     private static final int BUILD_BELOW = 10;
     private static final int BUILD_ABOVE = 28;
@@ -153,6 +158,10 @@ public class HollowsConceptsScenario extends EvidenceScenario {
                 .create()) {
             awaitWorld(context);
             EvidenceWorld.pin(context, singleplayer);
+            // The sky at its darkest: where a cavern runs past what the client has drawn, the sky shows, and at the
+            // pinned dusk it is a
+            // salmon band in a black cave.
+            EvidenceWorld.skyPhase(context, singleplayer, EvidenceWorld.SKY_DARKEST);
             TestServerContext server = singleplayer.getServer();
             server.runOnServer(s -> s.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SPECTATOR));
             dimension = server.computeOnServer(s -> TestLayers.dimension(s, LAYER));
@@ -230,7 +239,6 @@ public class HollowsConceptsScenario extends EvidenceScenario {
     // ------------------------------------------------------------------------------------------------- the zones
 
     private void garden(ClientGameTestContext context, TestServerContext server, Holds holds, Spot spot) {
-        arrive(context, server, spot);
         int glow = LayerTuning.DEFAULT.glowcapLight();
         shoot(
                 context,
@@ -263,7 +271,6 @@ public class HollowsConceptsScenario extends EvidenceScenario {
     }
 
     private void sporeFields(ClientGameTestContext context, TestServerContext server, Holds holds, Spot spot) {
-        arrive(context, server, spot);
         shoot(
                 context,
                 server,
@@ -282,22 +289,16 @@ public class HollowsConceptsScenario extends EvidenceScenario {
                 spot,
                 ahead(spot, PITCH),
                 () -> fill(server, holds, spot, "deepcharter-test:hc_spore_fields_gas_haze"),
+                client -> {},
                 "gas-haze-spore_fields");
         restoreBiome(server, holds, spot);
-        built(
-                context,
-                server,
-                spot,
-                spot.focus(),
-                ahead(spot, GAS_PITCH),
-                "gas-ground-spore_fields",
-                (level, s) -> HollowsMockups.groundGas(level, s) + " tiles");
+        groundGas(context, server, spot);
         for (Drifter look : Drifter.values()) {
             built(
                     context,
                     server,
                     spot,
-                    spot.focus(),
+                    spot.at(spot.feet(), DRIFTER_AIM, 0, 0),
                     aim(spot, spot.eye().add(spot.forward().scale(DRIFTER_AIM)).add(0, DRIFTER_RISE, 0)),
                     "drifters-" + look.name().toLowerCase(Locale.ROOT) + "-spore_fields",
                     (level, s) -> HollowsMockups.drifters(level, s, look) + " drifters");
@@ -305,7 +306,6 @@ public class HollowsConceptsScenario extends EvidenceScenario {
     }
 
     private void quiet(ClientGameTestContext context, TestServerContext server, Holds holds, Spot spot) {
-        arrive(context, server, spot);
         int ribs = HollowsMockups.ribHeight(spot);
         View hall = aim(spot, Vec3.atBottomCenterOf(spot.tall()).add(0, ribs / 3.0, 0));
         View roof = aim(spot, Vec3.atBottomCenterOf(spot.tall()).add(0, ribs, 0));
@@ -483,6 +483,42 @@ public class HollowsConceptsScenario extends EvidenceScenario {
         }
     }
 
+    /**
+     * A low gas layer that hugs the floor ahead of the camera, a mock-up: glowing particles spawned on the client over the floor cells
+     * {@link HollowsMockups#gasFloor} finds, {@value #GAS_PER_TICK} a tick at up to {@value #GAS_RISE} over the floor, the same cells in
+     * every run.
+     */
+    private void groundGas(ClientGameTestContext context, TestServerContext server, Spot spot) {
+        List<Vec3> floor = server.computeOnServer(s -> HollowsMockups.gasFloor(TestLayers.level(s, LAYER), spot));
+        LOGGER.info("[hollows-concepts] gas-ground-spore_fields: {} floor cells", floor.size());
+        Random random = new Random(GAS_SEED);
+        try {
+            shootAfter(
+                    context,
+                    server,
+                    spot,
+                    ahead(spot, GAS_PITCH),
+                    () -> {},
+                    client -> {
+                        for (int i = 0; i < GAS_PER_TICK && !floor.isEmpty(); i++) {
+                            Vec3 cell = floor.get(random.nextInt(floor.size()));
+                            ClientLight.clientLevel(client)
+                                    .addParticle(
+                                            ParticleTypes.GLOW,
+                                            cell.x + random.nextDouble() - 0.5,
+                                            cell.y + random.nextDouble() * GAS_RISE,
+                                            cell.z + random.nextDouble() - 0.5,
+                                            0,
+                                            0,
+                                            0);
+                        }
+                    },
+                    "gas-ground-spore_fields");
+        } finally {
+            server.runOnServer(s -> HollowsMockups.clearEntities(TestLayers.level(s, LAYER)));
+        }
+    }
+
     // --------------------------------------------------------------------------------------------------- stills
 
     /** Where the camera faces: its yaw and pitch. */
@@ -500,12 +536,12 @@ public class HollowsConceptsScenario extends EvidenceScenario {
     }
 
     private void shoot(ClientGameTestContext context, TestServerContext server, Spot spot, View view, String... names) {
-        shootAfter(context, server, spot, view, () -> {}, names);
+        shootAfter(context, server, spot, view, () -> {}, client -> {}, names);
     }
 
     /**
      * Stands the camera at the spot turned to {@code view} and lets the light and fog settle (particles at their minimum, so the
-     * steady-picture check can tell), runs {@code then}, turns the particles on, gives them
+     * steady-picture check can tell), runs {@code then}, turns the particles on and runs {@code eachTick} on the client each tick for turns the particles on, gives them
      * {@value #PARTICLE_TICKS} ticks to fill the view, and takes the still under each of {@code names}, and a frame.
      */
     private void shootAfter(
@@ -514,56 +550,23 @@ public class HollowsConceptsScenario extends EvidenceScenario {
             Spot spot,
             View view,
             Runnable then,
+            Consumer<Minecraft> eachTick,
             String... names) {
         AtmosphereScenes.stand(context, server, dimension, spot.feet(), view.yaw(), view.pitch(), names[0]);
         then.run();
         ClientChecks.withHudHidden(context, ParticleStatus.ALL, () -> {
-            // tick-wait: the ambient particles appear a few a tick round the camera; nothing reports that the view is
-            // full
-            context.waitTicks(PARTICLE_TICKS);
+            for (int tick = 0; tick < PARTICLE_TICKS; tick++) {
+                context.runOnClient(eachTick::accept);
+                // tick-wait: the ambient particles appear a few a tick round the camera; nothing reports that the view
+                // is full
+                context.waitTicks(1);
+            }
             for (String name : names) {
                 screenshot(context, name);
             }
         });
         ClientLight.logStillLight(context, server, dimension, names[0], spot.feet());
         frame(context);
-    }
-
-    /**
-     * Stands the camera at the zone's spot and waits until the client holds every chunk of its render distance round it and has meshed
-     * every section, for up to {@link #LOAD_TRIES} of {@link ClientWait}'s deadlines, once before the zone's first still: the far chunks
-     * generate as the camera arrives. A still taken before that shows the sky past the last chunk, so the wait logs and goes on rather
-     * than fail the round.
-     */
-    private void arrive(ClientGameTestContext context, TestServerContext server, Spot spot) {
-        String name = "arrival in " + spot.zone();
-        AtmosphereScenes.stand(context, server, dimension, spot.feet(), spot.yaw(), PITCH, name);
-        for (int attempt = 1; attempt <= LOAD_TRIES; attempt++) {
-            try {
-                ClientWait.until(
-                        context,
-                        "every chunk in the render distance held and meshed at the " + name,
-                        HollowsConceptsScenario::meshed);
-                return;
-            } catch (AssertionError e) {
-                LOGGER.warn("[hollows-concepts] {}: not yet meshed after try {}: {}", name, attempt, e.getMessage());
-            }
-        }
-    }
-
-    private static boolean meshed(Minecraft client) {
-        int radius = client.options.getEffectiveRenderDistance();
-        int centreX = ClientSession.player(client).chunkPosition().x();
-        int centreZ = ClientSession.player(client).chunkPosition().z();
-        for (int cx = centreX - radius; cx <= centreX + radius; cx++) {
-            for (int cz = centreZ - radius; cz <= centreZ + radius; cz++) {
-                if (ClientLight.clientLevel(client).getChunkSource().getChunk(cx, cz, ChunkStatus.FULL, false)
-                        == null) {
-                    return false;
-                }
-            }
-        }
-        return client.levelRenderer.hasRenderedAllSections();
     }
 
     private static void awaitLight(ClientGameTestContext context, TestServerContext server) {
