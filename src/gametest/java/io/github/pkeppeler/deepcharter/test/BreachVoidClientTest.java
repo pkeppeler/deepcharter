@@ -87,7 +87,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
     private static final double BAND_MARGIN = 0.05;
     /**
      * A pixel of the box may differ from the band's median colour by this much on a channel: the worst measured was 1, in every view of
-     * three green runs (Linux, software GL), plus 1 to spare. The old black cover differed by 37 to 255.
+     * five green runs (Linux, software GL), plus 1 to spare. The old black cover differed by 37 to 255.
      */
     private static final int FOG_TOLERANCE = 2;
 
