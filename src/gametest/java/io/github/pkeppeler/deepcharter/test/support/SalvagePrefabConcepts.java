@@ -35,10 +35,11 @@ public final class SalvagePrefabConcepts {
     private SalvagePrefabConcepts() {}
 
     /**
-     * One wreck. Its piece's Y 0 is the ground's top block: {@link #offset()} is where the piece's own origin lies from that block. The
-     * {@code bounds} (piece X and Z) hold the wreck, and the {@code level} box round them is the ground it reshapes: flat under the wreck, blended into the plain over the margin. {@code focus} is the point the cameras look at,
-     * {@code sideX} and {@code sideZ} the way from it to the camera and {@code reach} how far along that way the pod and the player stand, at the
-     * piece's {@code pod} and {@code player} columns.
+     * One wreck. Its piece's Y 0 is the ground's top block: {@link #offset()} is where the piece's own origin lies from
+     * that block. The {@code bounds} (piece X and Z) hold the wreck, and the {@code level} box round them is the ground
+     * it reshapes: flat under the wreck, blended into the plain over the margin. {@code focus} is the point the cameras
+     * look at, {@code sideX} and {@code sideZ} the way from it to the camera and {@code reach} how far along that way
+     * the pod and the player stand, at the piece's {@code pod} and {@code player} columns.
      */
     public record Option(
             String name,

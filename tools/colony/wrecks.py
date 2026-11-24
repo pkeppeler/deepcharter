@@ -989,8 +989,8 @@ def outputs() -> dict[Path, bytes]:
     return files
 
 
-def strays(files: dict[Path, bytes]) -> list[Path]:
-    return [path for path in sorted(STRUCTURES.glob("*")) if path.is_file() and path not in files]
+def strays(files: dict[Path, bytes], directory: Path) -> list[Path]:
+    return [path for path in sorted(directory.glob("*")) if path.is_file() and path not in files]
 
 
 def main(argv=None) -> int:
@@ -999,7 +999,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     files = outputs()
     changed = [path for path, data in files.items() if not build.holds(path, data)]
-    stray = strays(files)
+    stray = strays(files, STRUCTURES)
     if args.check:
         problems = [f"differs from its source: {path.relative_to(ROOT)}" for path in changed]
         problems += [f"no source makes it: {path.relative_to(ROOT)}" for path in stray]

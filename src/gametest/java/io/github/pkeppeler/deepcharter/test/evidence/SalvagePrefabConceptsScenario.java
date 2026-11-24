@@ -77,7 +77,6 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
     private static final double ORBIT_HEIGHT = 13;
     private static final int FRAME_WAIT_TICKS = 3;
     private static final int SETTLE_TICKS = 20;
-    private static final String FIGURE_TAG = "salvage_prefab_concepts_figure";
 
     @Override
     protected String name() {
@@ -264,7 +263,6 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 pod.setYRot(yaw);
-                pod.addTag(FIGURE_TAG);
                 level.addFreshEntity(pod);
             } else {
                 server.getCommands()
@@ -272,12 +270,11 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
                                 server.createCommandSourceStack(),
                                 String.format(
                                         Locale.ROOT,
-                                        "summon minecraft:mannequin %.2f %.2f %.2f {Rotation:[%.1ff,0f],immovable:1b,hide_description:1b,Tags:[\"%s\"]}",
+                                        "summon minecraft:mannequin %.2f %.2f %.2f {Rotation:[%.1ff,0f],immovable:1b,hide_description:1b}",
                                         at.x,
                                         at.y,
                                         at.z,
-                                        yaw,
-                                        FIGURE_TAG));
+                                        yaw));
             }
         }
     }
@@ -314,7 +311,11 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
             double angle = Math.atan2(sz, sx) + 2 * Math.PI * i / ORBIT_FRAMES;
             Vec3 eye = new Vec3(
                     focus.x + Math.cos(angle) * radius, floor + ORBIT_HEIGHT, focus.z + Math.sin(angle) * radius);
-            world.view(0, clearView(world, eye, focus), focus, i == 0 ? SETTLE_TICKS : FRAME_WAIT_TICKS);
+            world.view(
+                    0,
+                    clearView(world, eye, focus, option.name() + "-orbit"),
+                    focus,
+                    i == 0 ? SETTLE_TICKS : FRAME_WAIT_TICKS);
             frame(context);
         }
     }
@@ -329,16 +330,17 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
             double eyeY,
             double aimY,
             String still) {
-        Vec3 eye = clearView(world, new Vec3(focus.x + sx * distance, eyeY, focus.z + sz * distance), focus);
+        Vec3 eye = clearView(world, new Vec3(focus.x + sx * distance, eyeY, focus.z + sz * distance), focus, still);
         world.view(0, eye, new Vec3(focus.x, aimY, focus.z), SETTLE_TICKS);
         world.still(still);
     }
 
     /**
      * The eye lifted until neither a block holds the camera nor ground that is not the wreck's stands in its sight line to the focus: a
-     * rise in the plain must not hide a wreck from the range still.
+     * rise in the plain must not hide a wreck from the range still. Throws, naming {@code what} and the eye, when 24 lifts
+     * do not clear it: a still from inside a hill is never recorded.
      */
-    private static Vec3 clearView(TextureTestWorld world, Vec3 eye, Vec3 focus) {
+    private static Vec3 clearView(TextureTestWorld world, Vec3 eye, Vec3 focus, String what) {
         return world.serverGet(server -> {
             ServerLevel level = server.overworld();
             Vec3 lifted = eye;
@@ -359,7 +361,8 @@ public class SalvagePrefabConceptsScenario extends EvidenceScenario {
                 }
                 lifted = lifted.add(0, 2, 0);
             }
-            return lifted;
+            throw new IllegalStateException(
+                    "no clear view for " + what + ": the eye is still blocked or hidden at " + lifted);
         });
     }
 }

@@ -2,8 +2,8 @@ import contextlib
 import io
 import re
 import sys
+import tempfile
 import unittest
-import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -12,8 +12,9 @@ sys.path.insert(0, str(ROOT / "tools/colony"))
 import nbt  # noqa: E402
 import wrecks  # noqa: E402
 
-# A wreck is built at the colony's half scale; the train's length (and the lander's furrow) is its strongest feature, so a piece may run long.
-WRECK_SPAN = (10, 60)
+# Each wreck's span along X and Z, as built (layout.json); a piece may drift by the margin before this says so.
+WRECK_SPAN = {"a": (33, 43), "b": (36, 27), "c": (39, 53)}
+SPAN_MARGIN = 3
 CRATES = 4
 
 
@@ -31,9 +32,16 @@ class WreckFilesTest(unittest.TestCase):
 
     def test_a_wreck_that_is_not_in_the_layout_is_a_stray(self):
         files = wrecks.outputs()
-        stray = wrecks.STRUCTURES / "z.nbt"
-        with unittest.mock.patch.object(Path, "glob", return_value=[stray]), unittest.mock.patch.object(Path, "is_file", return_value=True):
-            self.assertEqual(wrecks.strays(files), [stray])
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            stray = directory / "z.nbt"
+            stray.write_bytes(b"")
+            (directory / "sub").mkdir()
+            self.assertEqual(wrecks.strays(files, directory), [stray])
+            made = directory / next(iter(files)).name
+            made.write_bytes(b"")
+            files[made] = b""
+            self.assertEqual(wrecks.strays(files, directory), [stray])
 
 
 class WreckPieceTest(unittest.TestCase):
@@ -48,10 +56,9 @@ class WreckPieceTest(unittest.TestCase):
     def test_each_wreck_is_the_size_of_a_building_of_the_colony(self):
         for name, p in self.pieces.items():
             lo, hi = p.bounds()
-            for axis in (0, 2):
+            for axis, expected in zip((0, 2), WRECK_SPAN[name]):
                 span = hi[axis] - lo[axis] + 1
-                self.assertTrue(WRECK_SPAN[0] <= span <= WRECK_SPAN[1], f"{name} spans {span} along axis {axis}")
-            self.assertTrue(any(hi[i] - lo[i] + 1 >= WRECK_SPAN[0] for i in (0, 2)))
+                self.assertAlmostEqual(span, expected, delta=SPAN_MARGIN, msg=f"{name} spans {span} along axis {axis}")
 
     def test_each_wreck_is_built_from_the_colony_kit_and_vanilla_blocks(self):
         for name, p in self.pieces.items():
@@ -87,8 +94,8 @@ class WreckPieceTest(unittest.TestCase):
                         for y in range(-2, 8):
                             self.assertIsNone(p.get(x, y, z), f"{name}: {(x, y, z)} is in the way of a figure")
 
-    def test_no_block_hangs_over_a_hole_it_would_have_to_float_above(self):
-        # A piece may carve the ground below Y 0 but nothing of the wreck stands in the carving's air at Y 1 or more without a block under or beside it.
+    def test_no_crate_stands_over_a_carved_hole(self):
+        # A piece may carve the ground below Y 0; a crate on the ground row (Y 1) must not stand over carved air at Y 0.
         for name, p in self.pieces.items():
             for (x, y, z), s in p.blocks.items():
                 if y == 1 and s[0] in ("deepcharter:salvage_crate",):
