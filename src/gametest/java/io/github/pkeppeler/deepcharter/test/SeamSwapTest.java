@@ -886,6 +886,7 @@ public class SeamSwapTest {
 
     /** The Y a pod arrives at in layer 2: where {@code BreachService} puts the bottom of the pocket. */
     private static int arrivalY(Run run) {
+        // level-height: the crossing's own arrival is the level's top less the pocket, whatever the layer
         return run.site().two().getMaxY() - LayerTuning.DEFAULT.pocketHeight();
     }
 
@@ -897,6 +898,7 @@ public class SeamSwapTest {
         RoomCarver.carve(
                 run.site().two(),
                 at.offset(-radius, -depth, -radius),
+                // level-height: the box runs to the top of the level the arrival is measured from
                 new BlockPos(at.getX() + radius, run.site().two().getMaxY(), at.getZ() + radius),
                 fill,
                 Block.UPDATE_ALL);
