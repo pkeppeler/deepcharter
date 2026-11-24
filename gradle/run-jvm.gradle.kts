@@ -24,9 +24,11 @@ addVmArgToRun("gameTest", gameTestHeap)
 // Client GameTest heap, 4G (the default is a quarter of RAM). The suite's live set after a full collection (CI 4 vCPU) was 1.35 GB at the last
 // of 69 classes by the per-class histogram (HeapHistogram; run 45062159956, passing), and 1985 MB after a full collection over 90 full
 // collections of the GC log, with a peak before a collection of 3070 MB at a 3G heap (client job 137471282960, head 9ba994a4): the live set
-// was two thirds of 3G and the peak at its ceiling. It grows by about 20 MB a class, from the dedicated servers a test starts (TwoPlayerServer,
-// CampaignWorldClientTest), which stay on the heap with their 6 levels (#914); fixing #914 is the real cure, and the heap is the margin until
-// then. Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac (11 GB), so the
+// was two thirds of 3G and the peak at its ceiling. At 4G (client job 137518224379): peak 4092 MB, 1924 MB live after a full collection, 85 full
+// collections. The peak always reaches Xmx, because G1 grows the heap to the ceiling before it collects, so the live set after a full
+// collection is the number to watch, not the peak. The live set grew by about 20 MB a class, from the dedicated servers a test starts
+// (TwoPlayerServer, CampaignWorldClientTest), which stayed on the heap with their 6 levels until DedicatedServerRelease (#914) released them;
+// the heap is the margin. Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac (11 GB), so the
 // default two client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest action prints the peak and
 // the live set from it.
 val clientGameTestHeap = "-Xmx4G"

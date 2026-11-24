@@ -102,9 +102,16 @@ runs:
         # One shard of three runs a third of the suite: the tests took 30 minutes whole on #841's tall world (run
         # 45122099960), so a shard takes about 10 minutes of tests plus 3 of build and client start-up, all inside
         # this deadline. $SECONDS starts after the dependency resolve; the job limits (30 minutes for a shard, 60
-        # for an evidence recording) leave room for setup, the post steps and the stop. Raise only together with
+        # for a whole-suite run) leave room for setup, the post steps and the stop. Raise only together with
         # the job limits.
-        max_seconds=1200
+        # Compat shim (#1135, remove with #1116): a pre-shard workflow on a queued PR passes no client-shard and
+        # runs the whole suite (about 30 minutes) in one 60-minute job, so it keeps the pre-#1093 3000 s. So does
+        # record-evidence.yml.
+        if [ -n "$CLIENT_SHARD" ]; then
+          max_seconds=1200
+        else
+          max_seconds=3000
+        fi
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then
             stop_gradle "Minecraft could not create a graphics backend"
