@@ -58,7 +58,8 @@ import org.slf4j.LoggerFactory;
  * and its floor is the window cut to its bottom 16 rows ({@code campaign_surface_floor} and so on). A band's marginal CPU per filled
  * row is its window's pooled median over its floor's, per row of the difference; {@code tall_layer} (one layer's rock and fill in every
  * row) over {@code tall_layer_floor} is the reference. The gate: every band at most {@value BandCost#BAR}x the reference, except the
- * bands {@link #RATCHETS} holds to their own measured ratio plus 15% until their issue. The whole world, {@code campaign_full} per
+ * bands {@link #RATCHETS} holds to their own measured ratio plus 15% until their issue. A band is over when the lower bound of its
+ * runs' own ratios is over its bar ({@link BandCost#lowerBound}), not when the pooled ratio is. The whole world, {@code campaign_full} per
  * block of height against {@code tall_baseline} (vanilla stone, no fill), is printed as a tracked number and no longer gates.
  *
  * <p>{@code everyCostWorldGeneratesColumns} generates a few columns of each world and checks they exist. With the number of rounds in
@@ -452,12 +453,14 @@ public class CampaignCostTest {
         List<Ratio> ratios = BandCost.ratios(pool, WINDOWS, RATCHETS, REFERENCE, REFERENCE_FLOOR);
         for (Ratio ratio : ratios) {
             LOGGER.info(
-                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s; at most {}x{} ({})",
+                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s pooled,"
+                            + " the runs' own ratios at least {}x; at most {}x{} ({})",
                     ratio.window().band().name(),
                     String.format("%.4f", ratio.marginal()),
                     ratio.window().floor(),
                     String.format("%.3f", ratio.ratio()),
                     REFERENCE,
+                    String.format("%.3f", ratio.bound()),
                     String.format("%.3f", ratio.bar()),
                     ratio.ratchet()
                             .map(held -> ", a ratchet until #" + held.issue())
