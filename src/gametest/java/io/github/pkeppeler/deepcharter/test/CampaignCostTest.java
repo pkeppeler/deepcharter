@@ -436,7 +436,8 @@ public class CampaignCostTest {
         List<Ratio> ratios = BandCost.ratios(pool, WINDOWS, RATCHETS, REFERENCE, REFERENCE_FLOOR);
         for (Ratio ratio : ratios) {
             LOGGER.info(
-                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s pooled, the runs' own ratios at least {}x; at most {}x{} ({})",
+                    "[campaign-cost] band {}: {} CPU ms per column per row over {}, {}x {}'s pooled,"
+                            + " the runs' own ratios at least {}x; at most {}x{} ({})",
                     ratio.window().band().name(),
                     String.format("%.4f", ratio.marginal()),
                     ratio.window().floor(),

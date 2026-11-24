@@ -33,22 +33,29 @@ public final class BandCost {
     public static final int ROUNDS = 18;
 
     /**
-     * One-sided 90% Student t for 1 to 9 degrees of freedom: a pool of 3 runs has 2. Past the table the t is 1.3, near the limit, which is
-     * a little low: more runs than ten are not a thing the gate asks for.
+     * One-sided 90% Student t for 1 to 9 degrees of freedom: a pool of 3 runs has 2. From 10 degrees of freedom (11 runs) the t is that
+     * of 10, 1.372, which is a little high for more runs and so errs towards passing.
      */
     private static final double[] T90 = {3.078, 1.886, 1.638, 1.533, 1.476, 1.440, 1.415, 1.397, 1.383};
 
-    private static final double T90_LIMIT = 1.3;
+    private static final double T90_LIMIT = 1.372;
 
     private BandCost() {}
 
     /**
      * The least the runs' mean can be, with 90% confidence one-sided: the mean less the t of the runs' own scatter over the square root of
      * their number. A band is over only when this is over its bar, so a pool whose runs disagree cannot fail it, and one whose runs agree
-     * fails it as soon as they are over.
+     * fails it as soon as they are over. With 3 runs and the per-run scatter measured in ADR 0086 (a standard deviation of 7.5% of the
+     * ratio), a band whose true ratio is exactly its bar fails with probability 0.10, one 10% over it 0.69, one 20% over it 0.98 and
+     * one 35% over it all but certainly; a band 10% under it fails with probability 0.001.
      */
     public static double lowerBound(double[] perRun) {
         int n = perRun.length;
+        if (n == 0 || Arrays.stream(perRun).anyMatch(value -> !Double.isFinite(value))) {
+            throw new IllegalStateException(
+                    "a run's ratio is not a finite number (its reference marginal is zero or less?): "
+                            + Arrays.toString(perRun));
+        }
         double mean = Arrays.stream(perRun).average().orElseThrow();
         if (n < 2) {
             return mean;
@@ -259,18 +266,36 @@ public final class BandCost {
     public static List<Ratio> ratios(
             Pool pool, List<Window> windows, List<Ratchet> ratchets, String reference, String referenceFloor) {
         double perRow = pool.marginalPerRow(reference, referenceFloor);
+        if (!(perRow > 0)) {
+            throw new IllegalStateException(
+                    "the reference " + reference + " has no cost per row over " + referenceFloor + ": " + perRow);
+        }
         return windows.stream()
                 .map(window -> {
                     double marginal = pool.marginalPerRow(window.world(), window.floor());
+                    // Only a run that read all four worlds has a ratio of its own; a pool short of runs is not judged,
+                    // and its
+                    // printed bound is the pooled ratio.
                     double[] perRun = pool.runs(window.world()).stream()
-                            .mapToDouble(run -> pool.marginalPerRow(window.world(), window.floor(), run)
-                                    / pool.marginalPerRow(reference, referenceFloor, run))
+                            .filter(run -> Stream.of(window.floor(), reference, referenceFloor)
+                                    .allMatch(world -> pool.runs(world).contains(run)))
+                            .mapToDouble(run -> perRunRatio(pool, window, reference, referenceFloor, run))
                             .toArray();
                     Optional<Ratchet> ratchet = ratchets.stream()
                             .filter(held -> held.band().equals(window.band()))
                             .findFirst();
-                    return new Ratio(window, marginal, marginal / perRow, lowerBound(perRun), ratchet);
+                    double bound = perRun.length == 0 ? marginal / perRow : lowerBound(perRun);
+                    return new Ratio(window, marginal, marginal / perRow, bound, ratchet);
                 })
                 .toList();
+    }
+
+    private static double perRunRatio(Pool pool, Window window, String reference, String referenceFloor, String run) {
+        double referencePerRow = pool.marginalPerRow(reference, referenceFloor, run);
+        if (!(referencePerRow > 0)) {
+            throw new IllegalStateException("run " + run + " has no cost per row for " + reference + " over "
+                    + referenceFloor + ": " + referencePerRow);
+        }
+        return pool.marginalPerRow(window.world(), window.floor(), run) / referencePerRow;
     }
 }

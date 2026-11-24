@@ -133,6 +133,75 @@ public class BandCostTest {
         helper.succeed();
     }
 
+    /** The t comes from the table by the number of runs: 3.078 for two, 1.638 for four, and the 10-degree value from eleven. */
+    @GameTest
+    public void theLowerBoundTakesItsTFromTheNumberOfRuns(GameTestHelper helper) {
+        // Two runs: mean 1.1, standard error 0.1, t 3.078.
+        double two = BandCost.lowerBound(new double[] {1.0, 1.2});
+        expect(helper, Math.abs(two - (1.1 - 0.3078)) < 1e-9, "two runs: %s, expected 0.7922", two);
+        // Four runs: mean 1.15, standard deviation 0.1291, t 1.638.
+        double four = BandCost.lowerBound(new double[] {1.0, 1.1, 1.2, 1.3});
+        double expectedFour = 1.15 - 1.638 * Math.sqrt(0.0166666666667 / 4);
+        expect(helper, Math.abs(four - expectedFour) < 1e-6, "four runs: %s, expected %s", four, expectedFour);
+        // Eleven runs, 1.0 to 2.0 in steps of 0.1: mean 1.5, standard error 0.1, t 1.372 (the fallback).
+        double[] eleven = new double[11];
+        for (int i = 0; i < eleven.length; i++) {
+            eleven[i] = 1.0 + 0.1 * i;
+        }
+        double fallback = BandCost.lowerBound(eleven);
+        expect(helper, Math.abs(fallback - (1.5 - 0.1372)) < 1e-9, "eleven runs: %s, expected 1.3628", fallback);
+        helper.succeed();
+    }
+
+    /** Runs that all sit just over the bar fail it: the band is steadily over, not scattered around it. */
+    @GameTest
+    public void steadyRunsJustOverTheBarFail(GameTestHelper helper) {
+        Ratio ratio = onlyRatio(new Pool(gatedPoolOfRuns(1.30, 1.31, 1.29)));
+        expect(
+                helper,
+                ratio.over(),
+                "steady runs of 1.30x are not over the %s bar (bound %s)",
+                BandCost.BAR,
+                ratio.bound());
+        helper.succeed();
+    }
+
+    /** A run whose reference costs nothing per row, or a ratio that is not a number, fails loudly, never as a pass. */
+    @GameTest
+    public void aRatioThatIsNotANumberFailsLoudly(GameTestHelper helper) {
+        List<Reading> readings = new ArrayList<>(gatedPoolOfRuns(1.2, 1.2, 1.2));
+        // run1's reference reads below its floor, so its marginal is negative while the pooled one is not.
+        readings.replaceAll(reading -> reading.run().equals("run1")
+                        && reading.world().equals(REFERENCE)
+                ? new Reading(reading.run(), reading.tree(), reading.columns(), reading.world(), reading.height(), 1)
+                : reading);
+        try {
+            onlyRatio(new Pool(readings));
+            throw failure(helper, "a run with a reference of no cost per row is judged");
+        } catch (IllegalStateException e) {
+            expect(helper, String.valueOf(e.getMessage()).contains("run1"), "the failure does not name the run: %s", e);
+        }
+        try {
+            BandCost.lowerBound(new double[] {1.2, Double.NaN, 1.2});
+            throw failure(helper, "a NaN ratio gives a bound");
+        } catch (IllegalStateException e) {
+            // expected
+        }
+        helper.succeed();
+    }
+
+    /** A pool short of a world in some run (not judged) still has its ratios printed, with the pooled ratio as the bound. */
+    @GameTest
+    public void aPoolWithARunMissingAFloorStillHasRatios(GameTestHelper helper) {
+        List<Reading> readings = new ArrayList<>(gatedPoolOfRuns(1.2, 1.2, 1.2));
+        readings.removeIf(
+                reading -> reading.run().equals("run1") && reading.world().equals(WINDOW.floor()));
+        Ratio ratio = onlyRatio(new Pool(readings));
+        expect(helper, !new Pool(readings).judged(GATED), "a pool with a run short of a floor is judged");
+        expect(helper, Double.isFinite(ratio.bound()), "bound %s", ratio.bound());
+        helper.succeed();
+    }
+
     /** Runs that all read well over the bar fail it, however they scatter. */
     @GameTest
     public void aBandWhoseRunsAllReadOverTheBarFails(GameTestHelper helper) {
