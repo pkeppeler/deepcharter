@@ -283,14 +283,15 @@ public class CampaignCostTest {
         ServerLevel level = world(helper, "campaign_layer_1");
         // level-height: the top row of a window, a test world cut to a band's rows
         BlockPos top = new BlockPos(conduit.getX(), level.getMaxY(), conduit.getZ());
-        FarChunks.whenLoaded(helper, List.of(new FarChunks.At(level, conduit.getX() >> 4, conduit.getZ() >> 4)), () -> {
-            expect(
-                    helper,
-                    level.getBlockState(top).is(ColonyBlocks.CONDUIT),
-                    "no Conduit casing at campaign_layer_1's top, %s",
-                    top);
-            helper.succeed();
-        });
+        FarChunks.whenBlocksLoaded(
+                helper, List.of(new FarChunks.At(level, conduit.getX() >> 4, conduit.getZ() >> 4)), () -> {
+                    expect(
+                            helper,
+                            level.getBlockState(top).is(ColonyBlocks.CONDUIT),
+                            "no Conduit casing at campaign_layer_1's top, %s",
+                            top);
+                    helper.succeed();
+                });
     }
 
     /**
