@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.layer;
 
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 
@@ -23,6 +24,15 @@ public final class BreachEffects {
     /** Whether the running effects include the fade. */
     private static boolean fading;
 
+    /** Whether the fade is held black: the black stretch is over, and the client has not yet loaded the level it crossed into. */
+    private static boolean holdingBlack;
+
+    /** Ticks the fade has been held black. */
+    private static int heldTicks;
+
+    /** The most ticks the fade is held black, so a level that never reports itself loaded does not leave the screen black (10 s). */
+    private static final int MAX_HOLD_TICKS = 200;
+
     private BreachEffects() {}
 
     /** The whole fade, in client ticks: 20 ticks is one second. */
@@ -37,6 +47,8 @@ public final class BreachEffects {
     public static void begin(boolean fades) {
         elapsed = 0;
         fading = fades;
+        holdingBlack = false;
+        heldTicks = 0;
         Minecraft.getInstance()
                 .getSoundManager()
                 .play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EXPLODE.value(), 0.4f, 0.8f));
@@ -44,22 +56,46 @@ public final class BreachEffects {
 
     public static void reset() {
         elapsed = -1;
+        holdingBlack = false;
     }
 
     public static void tick() {
         if (elapsed < 0) {
             return;
         }
+        if (fading && shouldHoldBlack()) {
+            holdingBlack = true;
+            heldTicks++;
+            return;
+        }
+        holdingBlack = false;
         elapsed++;
         if (elapsed > fadeTicks()) {
             reset();
         }
     }
 
+    /**
+     * Whether the fade waits at the end of its black stretch: the client has not reported the level it crossed into as loaded, which
+     * it does once the section it is in is meshed (vanilla's renderer and Sodium's both answer that), so what the fade lifts on is a
+     * world that can be drawn (#1185). Never past {@link #MAX_HOLD_TICKS}.
+     */
+    private static boolean shouldHoldBlack() {
+        BreachLook look = BreachLook.current();
+        if (elapsed < look.fadeInTicks() + look.blackTicks() || heldTicks >= MAX_HOLD_TICKS) {
+            return false;
+        }
+        ClientPacketListener connection = Minecraft.getInstance().getConnection();
+        return connection != null && !connection.hasClientLoaded();
+    }
+
     /** 0 is clear, 1 is black: up, a short stretch of full black, then down, all within {@link #fadeTicks()}. */
     public static float fadeAlpha(float partialTick) {
         if (elapsed < 0 || !fading) {
             return 0f;
+        }
+        if (holdingBlack) {
+            return 1f;
         }
         BreachLook look = BreachLook.current();
         float t = elapsed + partialTick;
