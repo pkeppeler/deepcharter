@@ -4,7 +4,8 @@
 # In a checkout of the PR head: fetch origin/main now, merge it in, and check the result. Prints a `merged-main`
 # notice annotation holding the main sha (tools/merge-pr.sh reads it back) and, when $GITHUB_OUTPUT is set,
 # `main-sha=<sha>`. Fails on a merge conflict, on a checkout that is not the head, and when the merge's parents
-# are not the head and the main sha it fetched. Nothing is pushed.
+# are not the head and the main sha it fetched. The fetch retries up to 4 times with backoff; a conflict never
+# retries. Nothing is pushed.
 set -euo pipefail
 
 if [[ $# -ne 1 || ! $1 =~ ^[0-9a-f]{40}$ ]]; then
@@ -15,7 +16,21 @@ head_sha=$1
 
 [[ $(git rev-parse HEAD) == "$head_sha" ]] \
   || { echo "::error::The checkout is not the PR head $head_sha (check out github.event.pull_request.head.sha)"; exit 1; }
-git fetch --no-tags origin main
+
+# A fetch can fail on a passing network or GitHub error (#1189), so it gets 4 attempts, sleeping 5, 10 and 20 s.
+# Any failure retries; each attempt's error is printed.
+fetch_attempts=4
+delay=5
+for ((attempt = 1; attempt <= fetch_attempts; attempt++)); do
+  git fetch --no-tags origin main && break
+  if ((attempt == fetch_attempts)); then
+    echo "::error::git fetch origin main failed after $fetch_attempts attempts (the last error is above)"
+    exit 1
+  fi
+  echo "::warning::git fetch origin main failed (attempt $attempt of $fetch_attempts); retrying in ${delay}s"
+  sleep "$delay"
+  delay=$((delay * 2))
+done
 main_sha=$(git rev-parse FETCH_HEAD)
 
 git config user.name "ci-merge-main"
