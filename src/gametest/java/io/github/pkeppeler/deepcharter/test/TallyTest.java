@@ -1056,7 +1056,7 @@ public class TallyTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SETTLE_TICKS + 60)
     public void aLightInHandKeepsATallyOffAPersonOnFoot(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        BlockPos origin = slot(14);
+        BlockPos origin = slot(16);
         Arena[] made = {null};
         TestTicks.each(helper, () -> {
             Arena arena = made[0];
@@ -1093,7 +1093,7 @@ public class TallyTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CLAMP_BUDGET_TICKS + SAMPLE_BUDGET_TICKS + 60)
     public void aTorchLitAfterTheClampDoesNotFreeAPersonOnFoot(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        BlockPos origin = slot(15);
+        BlockPos origin = slot(17);
         Arena[] made = {null};
         long[] clampedAt = {-1};
         TestTicks.each(helper, () -> {
