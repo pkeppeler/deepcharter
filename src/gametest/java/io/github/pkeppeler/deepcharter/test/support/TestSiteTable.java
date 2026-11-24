@@ -92,7 +92,7 @@ final class TestSiteTable {
         claim("DimensionCrossingTest", 0, 32192, 32207, 32192, 32207);
 
         claim("DrifterSpawnTest", 1, 25007, 25057, 25008, 25024);
-        claim("DrifterSpawnTest", 1, 25892, 25911, 25892, 25911);
+        claim("DrifterSpawnTest", 1, 25888, 25908, 25888, 25908);
         claim("DrifterSpawnTest", 2, 25007, 25057, 25008, 25024);
         claim("DrifterSpawnTest", 2, 25488, 25503, 25488, 25503);
         claim("DrifterSpawnTest", 2, 25692, 25711, 25692, 25711);
