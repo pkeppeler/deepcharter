@@ -20,6 +20,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,9 +28,12 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector4f;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Client GameTest for #333: looking through a hole at the bottom of a layer shows rock and darkness, never the void behind it. The
@@ -42,10 +46,11 @@ import org.joml.Vector4f;
  *
  * <p>Then, for #1188, the camera looks straight down a wide shaft deeper than the render distance, to the floor of layer 1, to the floor
  * of layer 2, and to the bottom of the world, with and without night vision. The client draws nothing past the render distance, and the
- * shaft's walls fade into the fog before they end there, so the open middle of the picture must be the fog colour of the frame
- * throughout: no square of black, and no sky, with an edge against the fogged walls.
+ * shaft's walls fade into the fog before they end there, so the open middle of the picture must match the walls' fogged ends in the
+ * same frame: no square of black, and no sky, with an edge against them.
  */
 public class BreachVoidClientTest implements FabricClientGameTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(BreachVoidClientTest.class);
     private static final int X = 2000;
     private static final int Z = 2000;
     /** The hole is a 9 x 9 shaft three blocks deep (the crust) under a room whose floor is that many blocks above the bottom of the world. */
@@ -73,10 +78,21 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 
     /** The deep shafts of {@link ShaftViews} start this far south of the hole, out of its drawn chunks. */
     private static final int DEEP_SHAFTS_SOUTH = 200;
-    /** Half the side of the box at the middle of a deep view that must be fog: its rays all pass the walls' drawn ends. */
-    private static final int FOG_BOX = 40;
-    /** A pixel of the box may differ from the frame's fog colour by this much on a channel (the render rounds). */
-    private static final int FOG_TOLERANCE = 6;
+    /**
+     * The box at the middle of a deep view reaches this share of the way out to where the walls' drawn ends show (about 12 degrees off the
+     * nadir), so every ray in it passes them.
+     */
+    private static final double BOX_SHARE = 0.95;
+    /**
+     * The band the box is compared with starts this share past where the walls' drawn ends show, and stops this share short of where the
+     * walls first take the whole render-distance fog: the walls' fogged ends.
+     */
+    private static final double BAND_MARGIN = 0.05;
+    /**
+     * A pixel of the box may differ from the band's median colour by this much on a channel: the worst measured was 1, in every view of
+     * three green runs (Linux, software GL), plus 1 to spare. The old black cover differed by 37 to 255.
+     */
+    private static final int FOG_TOLERANCE = 2;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -103,6 +119,10 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                     int minY = singleplayer
                             .getServer()
                             .computeOnServer(server -> openHole(TestLayers.level(server, layer)));
+                    ResourceKey<Level> level = singleplayer
+                            .getServer()
+                            .computeOnServer(
+                                    server -> TestLayers.level(server, layer).dimension());
                     Vec3 hole = new Vec3(X + 0.5, minY + 0.5, Z + 0.5);
                     View[] views = {
                         new View(
@@ -122,6 +142,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                             Path shot = lookUntilLit(
                                     context,
                                     singleplayer,
+                                    level,
                                     view.eye(),
                                     hole,
                                     ClientLight.Box.around(
@@ -137,7 +158,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                         .getServer()
                         .computeOnServer(
                                 server -> ShaftViews.open(TestLayers.level(server, 1), X, Z + DEEP_SHAFTS_SOUTH));
-                ShaftViews.withShortRenderDistance(context, () -> {
+                ClientChecks.withRenderDistance(context, ShaftViews.RENDER_DISTANCE, () -> {
                     for (boolean nightVision : new boolean[] {false, true}) {
                         nightVision(singleplayer, nightVision);
                         for (ShaftViews.Shaft shaft : shafts) {
@@ -145,13 +166,14 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                             Path shot = lookUntilLit(
                                     context,
                                     singleplayer,
+                                    shaft.level(),
                                     shaft.eye(),
                                     shaft.below(),
                                     shaft.held(),
                                     shaft.landmarks(),
                                     true,
                                     name);
-                            fogProblem(read(shot), fog(context), name).ifPresent(failures::add);
+                            fogProblem(context, read(shot), shaft, name).ifPresent(failures::add);
                         }
                     }
                 });
@@ -238,11 +260,12 @@ public class BreachVoidClientTest implements FabricClientGameTest {
     private static Path look(
             ClientGameTestContext context,
             TestSingleplayerContext singleplayer,
+            ResourceKey<Level> level,
             Vec3 eye,
             Vec3 target,
             ClientLight.Box held,
             String name) {
-        ShaftViews.stand(context, singleplayer.getServer(), eye, target, held, name);
+        ShaftViews.stand(context, singleplayer.getServer(), level, eye, target, held, name);
         // tick-wait: the fog colour is computed per frame, and a few frames must pass after the last chunk section is
         // built
         context.waitTicks(10);
@@ -260,6 +283,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
     private static Path lookUntilLit(
             ClientGameTestContext context,
             TestSingleplayerContext singleplayer,
+            ResourceKey<Level> level,
             Vec3 eye,
             Vec3 target,
             ClientLight.Box held,
@@ -268,7 +292,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
             String name) {
         FarChunks.Deadline deadline = FarChunks.deadline();
         while (true) {
-            Path shot = look(context, singleplayer, eye, target, held, name);
+            Path shot = look(context, singleplayer, level, eye, target, held, name);
             Optional<Vector4f> fog = againstFog ? Optional.of(fog(context)) : Optional.empty();
             Optional<String> problem = litProblem(context, read(shot), eye, target, landmarks, fog, name);
             if (problem.isEmpty()) {
@@ -353,18 +377,49 @@ public class BreachVoidClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The box of {@link #FOG_BOX} pixels each way at the middle of a deep view must be the frame's fog colour: the colour the shaft's walls
-     * fade into before their drawn ends. A black square there, or a sky that is not the fog, is an edge.
+     * The box at the middle of a deep view must match the walls' fogged ends in the same frame. The camera looks straight down, so the walls'
+     * drawn ends show as a square round the middle, {@link ShaftViews#RADIUS} over their drop out, and the walls take the whole
+     * render-distance fog from where they are that fog's end under the eye. The band between is the walls' fogged ends: its median colour is
+     * the reference. Every pixel of the box, all inside the drawn ends, must be within {@link #FOG_TOLERANCE} of it on each channel. A black
+     * square there, or a sky that is not the fog, is an edge.
      */
-    private static Optional<String> fogProblem(BufferedImage image, Vector4f fog, String name) {
+    private static Optional<String> fogProblem(
+            ClientGameTestContext context, BufferedImage image, ShaftViews.Shaft shaft, String name) {
+        float[] frame = context.computeOnClient(client -> {
+            var camera = client.gameRenderer.gameRenderState().levelRenderState.cameraRenderState;
+            return new float[] {Math.abs(camera.projectionMatrix.m11()), camera.fogData.renderDistanceEnd};
+        });
+        // Pixels from the middle per unit of the tangent off the nadir, on either axis.
+        double scale = image.getHeight() / 2.0 * frame[0];
+        double drawnEnd = scale * ShaftViews.RADIUS / shaft.drawnEndDrop();
+        double fogged = scale * ShaftViews.RADIUS / frame[1];
+        int box = (int) Math.floor(drawnEnd * BOX_SHARE);
+        int bandIn = (int) Math.ceil(drawnEnd * (1 + BAND_MARGIN));
+        int bandOut = (int) Math.floor(fogged * (1 - BAND_MARGIN));
+        if (bandOut <= bandIn) {
+            throw new AssertionError("%s: no band of fogged wall ends between %d and %d px from the middle"
+                    .formatted(name, bandIn, bandOut));
+        }
+        int cx = image.getWidth() / 2;
+        int cy = image.getHeight() / 2;
+        List<int[]> band = new ArrayList<>();
+        for (int y = cy - bandOut; y <= cy + bandOut; y++) {
+            for (int x = cx - bandOut; x <= cx + bandOut; x++) {
+                if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) >= bandIn) {
+                    int rgb = image.getRGB(x, y);
+                    band.add(new int[] {(rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF});
+                }
+            }
+        }
+        int[] reference = {median(band, 0), median(band, 1), median(band, 2)};
         int off = 0;
         int worst = 0;
         int worstRgb = 0;
         int total = 0;
-        for (int y = image.getHeight() / 2 - FOG_BOX; y < image.getHeight() / 2 + FOG_BOX; y++) {
-            for (int x = image.getWidth() / 2 - FOG_BOX; x < image.getWidth() / 2 + FOG_BOX; x++) {
+        for (int y = cy - box; y <= cy + box; y++) {
+            for (int x = cx - box; x <= cx + box; x++) {
                 int rgb = image.getRGB(x, y);
-                int delta = fogDelta(rgb, fog);
+                int delta = delta(rgb, reference);
                 total++;
                 if (delta > FOG_TOLERANCE) {
                     off++;
@@ -375,21 +430,35 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                 }
             }
         }
+        LOGGER.info(
+                "{}: box {} px each way, band {} to {} px, walls' fogged ends #{}, worst {} (#{})",
+                name,
+                box,
+                bandIn,
+                bandOut,
+                hex(reference),
+                worst,
+                "%06x".formatted(worstRgb & 0xFFFFFF));
         if (off > 0) {
             return Optional.of(
-                    "%s: the bottom of the shaft has an edge: %d of %d pixels of the middle differ from the fog #%02x%02x%02x by more than %d, up to %d (#%06x)"
-                            .formatted(
-                                    name,
-                                    off,
-                                    total,
-                                    channel(fog.x()),
-                                    channel(fog.y()),
-                                    channel(fog.z()),
-                                    FOG_TOLERANCE,
-                                    worst,
-                                    worstRgb & 0xFFFFFF));
+                    "%s: the bottom of the shaft has an edge: %d of %d pixels of the middle differ from the walls' fogged ends #%s by more than %d, up to %d (#%06x)"
+                            .formatted(name, off, total, hex(reference), FOG_TOLERANCE, worst, worstRgb & 0xFFFFFF));
         }
         return Optional.empty();
+    }
+
+    private static int median(List<int[]> pixels, int channel) {
+        return pixels.stream().mapToInt(p -> p[channel]).sorted().toArray()[pixels.size() / 2];
+    }
+
+    private static int delta(int rgb, int[] reference) {
+        return Math.max(
+                Math.abs(((rgb >> 16) & 0xFF) - reference[0]),
+                Math.max(Math.abs(((rgb >> 8) & 0xFF) - reference[1]), Math.abs((rgb & 0xFF) - reference[2])));
+    }
+
+    private static String hex(int[] rgb) {
+        return "%02x%02x%02x".formatted(rgb[0], rgb[1], rgb[2]);
     }
 
     /** The fog colour of the client's last frame: what terrain fades into, and what the shader mixes into it. */
