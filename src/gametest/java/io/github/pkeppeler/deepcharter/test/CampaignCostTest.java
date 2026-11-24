@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Measures what the campaign generator (#742) costs a new column, per band (ADR 0086, which amends ADR 0029's bar). Each band's window
- * is the shipped campaign world cut to that band's rows ({@code campaign_surface}, {@code campaign_layer_1}, {@code campaign_layer_2}),
+ * is the shipped campaign world cut to that band's rows ({@code campaign_surface}, {@code campaign_layer_1} and so on),
  * and its floor is the window cut to its bottom 16 rows ({@code campaign_surface_floor} and so on). A band's marginal CPU per filled
  * row is its window's pooled median over its floor's, per row of the difference; {@code tall_layer} (one layer's rock and fill in every
  * row) over {@code tall_layer_floor} is the reference. The gate: every band at most {@value BandCost#BAR}x the reference, except the
@@ -94,7 +94,8 @@ public class CampaignCostTest {
     private static final List<Window> WINDOWS = List.of(
             new Window(CampaignBands.SURFACE, "campaign_surface", "campaign_surface_floor"),
             new Window(CampaignBands.LAYER_1, "campaign_layer_1", "campaign_layer_1_floor"),
-            new Window(CampaignBands.LAYER_2, "campaign_layer_2", "campaign_layer_2_floor"));
+            new Window(CampaignBands.LAYER_2, "campaign_layer_2", "campaign_layer_2_floor"),
+            new Window(CampaignBands.LAYER_3, "campaign_layer_3", "campaign_layer_3_floor"));
 
     /**
      * The bands still over the bar (ADR 0086), each at its measured ratio. Layer 1 had one until #1160 (ADR 0090) took it under.
@@ -115,7 +116,7 @@ public class CampaignCostTest {
             Stream.concat(Stream.of(BASELINE, CAMPAIGN), GATED.stream()).toList();
     /** The worlds whose zone fill has rock to work on. */
     private static final List<String> FILLED_WORLDS =
-            List.of(REFERENCE, CAMPAIGN, "campaign_layer_1", "campaign_layer_2");
+            List.of(REFERENCE, CAMPAIGN, "campaign_layer_1", "campaign_layer_2", "campaign_layer_3");
 
     private static final List<String> WORLDS =
             REQUESTED_WORLD == null ? ALL_WORLDS : List.of(REQUESTED_WORLD.split(","));
@@ -156,7 +157,7 @@ public class CampaignCostTest {
 
     /**
      * A window's rows are the campaign world's, so it costs what its band does there: in each of {@link #SAME_ROWS_CHUNKS} and, for a
-     * layer, a chunk that holds a site of that layer, every block state and every biome cell of every row of the window, both band
+     * layer with structures, a chunk that holds a site of that layer, every block state and every biome cell of every row of the window, both band
      * edges among them, are the campaign world's. It loads the chunks on the server thread, so it has a batch of its own.
      */
     @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = MAX_TICKS)
@@ -167,7 +168,9 @@ public class CampaignCostTest {
         for (Window window : WINDOWS) {
             ServerLevel level = world(helper, window.world());
             Set<ChunkPos> chunks = new LinkedHashSet<>(SAME_ROWS_CHUNKS);
-            LayerChain.campaignLayersIn(level).forEach(band -> chunks.add(siteChunk(helper, campaign, band, conduit)));
+            LayerChain.campaignLayersIn(level).stream()
+                    .filter(band -> !StructureKind.inLayer(band.layer()).isEmpty())
+                    .forEach(band -> chunks.add(siteChunk(helper, campaign, band, conduit)));
             for (ChunkPos chunk : chunks) {
                 expectSameRows(helper, campaign.getChunk(chunk.x(), chunk.z()), level, window.world());
             }

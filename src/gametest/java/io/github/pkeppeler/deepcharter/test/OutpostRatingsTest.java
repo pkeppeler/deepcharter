@@ -127,6 +127,9 @@ public class OutpostRatingsTest {
     public void aBlocksRatingsAreItsTagLevels(GameTestHelper helper) {
         expectRatings(helper, LayerBlocks.PACKED_SHALE, all(1));
         expectRatings(helper, LayerBlocks.GREEN_SHALE, all(2));
+        expectRatings(helper, LayerBlocks.BASALT_CORE, all(3));
+        expectRatings(helper, LayerBlocks.COLUMNAR_BASALT, all(3));
+        expectRatings(helper, LayerBlocks.GLOWCAP, Ratings.NONE);
         expectRatings(helper, SlagBrick.BLOCK, all(2));
         expectRatings(helper, ColonyKit.RIVETED_PLATE, all(2));
         // Glass and grating hold some axes and not others, so the axes are not one number.
