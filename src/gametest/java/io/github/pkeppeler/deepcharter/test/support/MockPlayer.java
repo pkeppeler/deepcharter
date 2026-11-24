@@ -33,6 +33,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -199,6 +200,24 @@ public final class MockPlayer {
     public void announceChannel(CustomPacketPayload.Type<?> type) {
         player.connection.handleCustomPayload(new ServerboundCustomPayloadPacket(
                 new RegistrationPayload(RegistrationPayload.REGISTER, List.of(type.id()))));
+    }
+
+    /**
+     * Sets the view distance the client asks the server for, in chunks, as its options packet would. A mock asks for 2, which is less
+     * than the arrival area of a seam: call this before it crosses to see the chunks the server sends around the arrival.
+     */
+    public void setViewDistance(int chunks) {
+        ClientInformation info = player.clientInformation();
+        player.updateOptions(new ClientInformation(
+                info.language(),
+                chunks,
+                info.chatVisibility(),
+                info.chatColors(),
+                info.modelCustomisation(),
+                info.mainHand(),
+                info.textFilteringEnabled(),
+                info.allowsListing(),
+                info.particleStatus()));
     }
 
     /** Sends the server a custom payload as the client would, for a C2S payload the server has registered. */
