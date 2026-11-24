@@ -18,10 +18,12 @@ import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
+import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookRemovePacket;
+import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
@@ -29,6 +31,7 @@ import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,6 +40,7 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -58,6 +62,9 @@ public final class MockPlayer {
     private final List<Identifier> soundsInTheWorld = new ArrayList<>();
     private final List<CustomPacketPayload> payloads = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
+    private final Map<ResourceKey<Level>, Map<ChunkPos, Integer>> chunksSentByLevel = new HashMap<>();
+    private final List<ChunkPos> forgetsAfterRespawn = new ArrayList<>();
+    private ResourceKey<Level> clientLevel;
     private final MockClientLight clientLight = new MockClientLight();
     private final Set<RecipeDisplayId> recipeDisplays = new HashSet<>();
     private final Set<RecipeDisplayId> recipeDisplaysEverSent = new HashSet<>();
@@ -75,6 +82,7 @@ public final class MockPlayer {
         this.connection = connection;
         this.channel = channel;
         this.ownerDone = ownerDone;
+        this.clientLevel = player.level().dimension();
     }
 
     /** Every action-bar message the server has sent this player so far, oldest first. */
@@ -113,6 +121,27 @@ public final class MockPlayer {
      */
     public Set<ChunkPos> chunksSent() {
         return Set.copyOf(chunksSent.keySet());
+    }
+
+    /**
+     * How many times the server sent this player the chunk while the client was in {@code level}, as the client's level changes with
+     * each respawn packet. {@link #timesSent} counts a chunk of every level together. Read on the mock's tick, so it lags by one.
+     */
+    public int timesSentIn(ResourceKey<Level> level, ChunkPos chunk) {
+        return chunksSentByLevel.getOrDefault(level, Map.of()).getOrDefault(chunk, 0);
+    }
+
+    /** Every chunk the server sent this player while the client was in {@code level}. Read on the mock's tick, so it lags by one. */
+    public Set<ChunkPos> chunksSentIn(ResourceKey<Level> level) {
+        return Set.copyOf(chunksSentByLevel.getOrDefault(level, Map.of()).keySet());
+    }
+
+    /**
+     * The chunks the server told the client to forget after the latest respawn packet: a client in its new level drops each of them
+     * (vanilla's {@code dropChunk} runs after the respawn). Empty before any respawn. Read on the mock's tick, so it lags by one.
+     */
+    public List<ChunkPos> forgetsAfterRespawn() {
+        return List.copyOf(forgetsAfterRespawn);
     }
 
     /** The light this player's client holds, from the chunk and light packets it was sent. Read on the mock's tick, so it lags by one. */
@@ -170,6 +199,11 @@ public final class MockPlayer {
     public void announceChannel(CustomPacketPayload.Type<?> type) {
         player.connection.handleCustomPayload(new ServerboundCustomPayloadPacket(
                 new RegistrationPayload(RegistrationPayload.REGISTER, List.of(type.id()))));
+    }
+
+    /** Sends the server a custom payload as the client would, for a C2S payload the server has registered. */
+    public void send(CustomPacketPayload payload) {
+        player.connection.handleCustomPayload(new ServerboundCustomPayloadPacket(payload));
     }
 
     public ServerPlayer player() {
@@ -295,8 +329,18 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);
+                    chunksSentByLevel
+                            .computeIfAbsent(clientLevel, key -> new HashMap<>())
+                            .merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);
                     clientLight.apply(
                             server.getTickCount(), "chunk", new ChunkPos(packet.x(), packet.z()), packet.lightData());
+                }
+                if (outbound instanceof ClientboundRespawnPacket packet) {
+                    clientLevel = packet.commonPlayerSpawnInfo().dimension();
+                    forgetsAfterRespawn.clear();
+                }
+                if (outbound instanceof ClientboundForgetLevelChunkPacket packet) {
+                    forgetsAfterRespawn.add(packet.pos());
                 }
                 if (outbound instanceof ClientboundLightUpdatePacket packet) {
                     clientLight.apply(
