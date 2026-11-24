@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.test.evidence.HollowsMockups.Drifter;
 import io.github.pkeppeler.deepcharter.test.evidence.HollowsMockups.Growth;
@@ -275,7 +276,12 @@ public class HollowsConceptsScenario extends EvidenceScenario {
         shoot(context, server, spot, PITCH, "fog-default-quiet", "ambient-default-quiet", "quiet-bare-quiet");
         shoot(context, server, spot, ROOF_PITCH, "quiet-bare_roof-quiet");
         atmospheres(context, server, holds, spot);
-        int height = server.computeOnServer(s -> HollowsMockups.quiet(TestLayers.level(s, LAYER), spot));
+        int height = server.computeOnServer(s -> {
+            ServerLevel level = TestLayers.level(s, LAYER);
+            int ribs = HollowsMockups.quiet(level, spot);
+            resendLight(level, spot.tall());
+            return ribs;
+        });
         LOGGER.info("[hollows-concepts] the Quiet's ribs are {} tall", height);
         awaitLight(context, server);
         shoot(context, server, spot, PITCH, "quiet-cathedral-quiet");
@@ -364,6 +370,7 @@ public class HollowsConceptsScenario extends EvidenceScenario {
         server.runOnServer(s -> {
             ServerLevel level = TestLayers.level(s, LAYER);
             glowcaps.forEach(pos -> level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS));
+            resendLight(level, glowcaps);
         });
         awaitLight(context, server);
         server.runOnServer(s -> {
@@ -374,8 +381,23 @@ public class HollowsConceptsScenario extends EvidenceScenario {
             ServerLevel level = TestLayers.level(s, LAYER);
             glowcaps.forEach(pos -> level.setBlock(
                     pos, LayerBlocks.GLOWCAP.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE));
+            resendLight(level, glowcaps);
         });
         awaitLight(context, server);
+    }
+
+    /**
+     * Holds the chunks round {@code changed} until their light is worked out and then sends it to the player, who already holds them:
+     * vanilla drops a light change for a chunk that does not tick, and a client that keeps the old light shows another option.
+     */
+    private static void resendLight(ServerLevel level, List<BlockPos> changed) {
+        changed.forEach(pos -> LightSync.holdSendUntilLit(level, pos, pos));
+    }
+
+    /** {@link #resendLight(ServerLevel, List)} for every chunk within {@link #BUILD_RADIUS} of {@code around}. */
+    private static void resendLight(ServerLevel level, BlockPos around) {
+        LightSync.holdSendUntilLit(
+                level, around.offset(-BUILD_RADIUS, 0, -BUILD_RADIUS), around.offset(BUILD_RADIUS, 0, BUILD_RADIUS));
     }
 
     private static BlockStateAccess access(BlockState state) {
@@ -404,7 +426,12 @@ public class HollowsConceptsScenario extends EvidenceScenario {
         Snapshot snapshot = server.computeOnServer(
                 s -> Snapshot.around(TestLayers.level(s, LAYER), around, BUILD_RADIUS, BUILD_BELOW, BUILD_ABOVE));
         try {
-            Object made = server.computeOnServer(s -> build.make(TestLayers.level(s, LAYER), spot));
+            Object made = server.computeOnServer(s -> {
+                ServerLevel level = TestLayers.level(s, LAYER);
+                Object result = build.make(level, spot);
+                resendLight(level, around);
+                return result;
+            });
             LOGGER.info("[hollows-concepts] {}: {}", name, made);
             awaitLight(context, server);
             shoot(context, server, spot, pitch, name);
@@ -413,6 +440,7 @@ public class HollowsConceptsScenario extends EvidenceScenario {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 HollowsMockups.clearEntities(level);
                 snapshot.restore(level);
+                resendLight(level, around);
             });
             awaitLight(context, server);
         }
