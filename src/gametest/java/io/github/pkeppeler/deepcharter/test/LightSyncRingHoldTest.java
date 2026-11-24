@@ -45,7 +45,7 @@ public class LightSyncRingHoldTest {
     private static final int HOME_X = (-40_000 >> 4) + 200;
 
     private static final int HOME_Z = 40_000 >> 4;
-    /** Chunks on a side of the area; a draw goes into every newly generated chunk of it, so most have a ring to hold. */
+    /** Chunks on a side of the area; a draw goes into every newly generated chunk of it, so most have a ring. */
     private static final int SIDE = 10;
     /** Rows the draw rewrites. */
     private static final int DRAW_ROWS = 6;
@@ -158,7 +158,7 @@ public class LightSyncRingHoldTest {
         }
     }
 
-    /** The gated cases' site: the drawn chunk, its ring and a margin that ticks. Disjoint from the other light tests. */
+    /** The gated cases' site: the drawn chunk, its ring and a margin that ticks. Disjoint from other light tests. */
     private static final ChunkPos GATED = new ChunkPos((-40_000 >> 4) + 250, 40_000 >> 4);
 
     private static final int GATED_REACH_X = 3;
