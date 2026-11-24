@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.test.support.CavernSky;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -22,10 +23,6 @@ import org.slf4j.LoggerFactory;
  */
 public class CavernSkyClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(CavernSkyClientTest.class);
-    /** Far from the colony, in the middle of a chunk, so the drawn chunks reach the same distance both ways. */
-    private static final int HALL_X = 5_000;
-
-    private static final int HALL_Z = 5_000;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -36,11 +33,12 @@ public class CavernSkyClientTest implements FabricClientGameTest {
             TestServerContext server = singleplayer.getServer();
             server.runCommand("gamerule advance_time false");
             server.runCommand("weather clear");
-            BlockPos floor = CavernSky.carve(server, HALL_X, HALL_Z);
+            BlockPos floor = CavernSky.carve(server);
             List<String> leaks = new ArrayList<>();
             CavernSky.withShortRenderDistance(context, () -> {
                 for (CavernSky.View view : CavernSky.VIEWS) {
-                    var shot = CavernSky.look(context, server, floor, view, "cavern-sky-" + view.name());
+                    CavernSky.stand(context, server, floor, view);
+                    Path shot = ClientChecks.skyShot(context, "cavern-sky-" + view.name());
                     Vector3fc fog = CavernSky.fogAtCamera(context);
                     CavernSky.Reading reading = CavernSky.read(shot, fog);
                     LOGGER.info("[cavern-sky] {}: {}", view.name(), reading.describe());

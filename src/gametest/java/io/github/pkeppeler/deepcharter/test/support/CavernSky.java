@@ -29,6 +29,10 @@ import org.joml.Vector3fc;
  * chunks, so the hall reaches past the last drawn chunk at both ends and the sky is what shows there.
  */
 public final class CavernSky {
+    /** Far from the colony, in the middle of a chunk, so the drawn chunks reach as far both ways. */
+    private static final int HALL_X = 5_000;
+
+    private static final int HALL_Z = 5_000;
     /** The render distance, in chunks, while the camera is in the hall: the hall must reach past it. */
     public static final int RENDER_DISTANCE = 2;
 
@@ -67,13 +71,13 @@ public final class CavernSky {
 
     private CavernSky() {}
 
-    /** Carves the hall in layer 1 at {@code x}, {@code z} (the middle of a chunk) and returns its floor under the camera. */
-    public static BlockPos carve(TestServerContext server, int x, int z) {
+    /** Carves the hall in layer 1 and returns its floor under the camera. */
+    public static BlockPos carve(TestServerContext server) {
         return server.computeOnServer(s -> {
             ServerLevel level = TestLayers.level(s, 1);
             LayerChain.Band band = TestLayers.band(level, 1);
             Zones.Span zone = Zones.span(band.minY(), band.height(), ZONE);
-            BlockPos floor = new BlockPos(x, zone.low() + FLOOR_ABOVE_ZONE_BOTTOM, z);
+            BlockPos floor = new BlockPos(HALL_X, zone.low() + FLOOR_ABOVE_ZONE_BOTTOM, HALL_Z);
             RoomCarver.carve(
                     level,
                     floor.offset(-HALF_LENGTH, 0, -HALF_WIDTH),
@@ -99,11 +103,10 @@ public final class CavernSky {
     }
 
     /**
-     * Sets the sky clock to the view's time, stands the first player, a spectator, on {@code floor} facing the view, waits for the drawn
-     * chunks round it, and takes a still of the sky named {@code shot}.
+     * Sets the sky clock to the view's time, and stands the first player, a spectator, on {@code floor} facing the view, until the client
+     * holds and has drawn the chunks round it.
      */
-    public static Path look(
-            ClientGameTestContext context, TestServerContext server, BlockPos floor, View view, String shot) {
+    public static void stand(ClientGameTestContext context, TestServerContext server, BlockPos floor, View view) {
         server.runCommand("time of deepcharter:sky set " + view.skyTicks());
         server.runOnServer(s -> {
             var player = s.getPlayerList().getPlayers().getFirst();
@@ -131,7 +134,6 @@ public final class CavernSky {
                         + (client.player == null
                                 ? "nowhere"
                                 : client.player.blockPosition().toShortString()));
-        return ClientChecks.skyShot(context, shot);
     }
 
     /** The fog colour the client's camera reads: what every pixel of the sampled box must be. */
