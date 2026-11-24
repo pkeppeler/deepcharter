@@ -59,6 +59,8 @@ public final class SeamSender {
         ChunkPos centre;
         /** Prepares sent to this rider: the generation of the current one (#1229). */
         int generation;
+        /** Whether the client accepted the current generation and has not refused it since. */
+        boolean accepted;
 
         final LongSet sent = new LongOpenHashSet();
         /** Positions in the area that were sent and have since changed or may have: the crossing sends them again. */
@@ -118,6 +120,12 @@ public final class SeamSender {
         ServerTickEvents.END_SERVER_TICK.register(SeamSender::tick);
         ServerPlayNetworking.registerGlobalReceiver(
                 SeamMissedPayload.TYPE, (payload, context) -> missed(context.player(), payload.dimension()));
+        ServerPlayNetworking.registerGlobalReceiver(
+                SeamAcceptPayload.TYPE,
+                (payload, context) -> answered(context.player(), payload.dimension(), payload.generation(), true));
+        ServerPlayNetworking.registerGlobalReceiver(
+                SeamRefusePayload.TYPE,
+                (payload, context) -> answered(context.player(), payload.dimension(), payload.generation(), false));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             STATE.remove(handler.player.getUUID());
             RECENT.remove(handler.player.getUUID());
@@ -249,6 +257,51 @@ public final class SeamSender {
         }
     }
 
+    /**
+     * A client answered the prepare of {@code generation} for {@code dimension}: it accepted, or it refused. An answer to another
+     * dimension or an older generation is ignored, so a late accept never makes a rider ready for a prepare it was not sent.
+     */
+    private static void answered(ServerPlayer player, ResourceKey<Level> dimension, int generation, boolean accept) {
+        RiderSeam seam = STATE.get(player.getUUID());
+        if (seam == null || !seam.lower.equals(dimension) || seam.generation != generation) {
+            return;
+        }
+        seam.accepted = accept;
+    }
+
+    /**
+     * Whether a crossing of {@code rider} into {@code to}, arriving in {@code arrivalChunk}, can be a swap: its client can receive the
+     * swap, accepted the current prepare and has not refused it since, and holds every chunk within
+     * {@link LayerTuning#seamSwapRadius()} of the arrival, which is inside the area. A vehicle swaps only if each of its riders passes:
+     * the vehicle never splits.
+     */
+    public static boolean readyToSwap(ServerPlayer rider, ServerLevel to, ChunkPos arrivalChunk) {
+        RiderSeam seam = STATE.get(rider.getUUID());
+        return seam != null
+                && seam.accepted
+                && seam.lower.equals(to.dimension())
+                && ServerPlayNetworking.canSend(rider, SeamSwapPayload.TYPE)
+                && holdsSwapArea(seam.sent, seam.centre, arrivalChunk, LayerTuning.DEFAULT.seamSwapRadius());
+    }
+
+    /**
+     * Whether {@code arrival} lies within {@code radius} chunks (Chebyshev) of {@code centre}, and every chunk within {@code radius} of
+     * it is in {@code sent}.
+     */
+    public static boolean holdsSwapArea(LongSet sent, ChunkPos centre, ChunkPos arrival, int radius) {
+        if (Math.max(Math.abs(arrival.x() - centre.x()), Math.abs(arrival.z() - centre.z())) > radius) {
+            return false;
+        }
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                if (!sent.contains(ChunkPos.pack(arrival.x() + dx, arrival.z() + dz))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     /** A client crossed into {@code dimension} without the level it was sent: send it the chunks the crossing skipped. */
     private static void missed(ServerPlayer player, ResourceKey<Level> dimension) {
         Skipped skipped = RECENT.remove(player.getUUID());
@@ -349,6 +402,7 @@ public final class SeamSender {
 
     private static void prepare(ServerPlayer player, ServerLevel below, RiderSeam seam) {
         seam.generation++;
+        seam.accepted = false;
         CommonPlayerSpawnInfo info = player.createCommonSpawnInfo(below);
         ServerPlayNetworking.send(
                 player,
