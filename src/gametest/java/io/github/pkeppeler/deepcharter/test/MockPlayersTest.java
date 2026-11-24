@@ -289,8 +289,15 @@ public class MockPlayersTest {
      */
     @GameTest(maxTicks = 200)
     public void finishedTestDoesNotRetainItsMock(GameTestHelper helper) {
-        List<WeakReference<ServerPlayer>> probes = startProbes(helper);
+        // The runner keeps every finished test to the end of the run, so these stay reachable: only dropping what they
+        // have pending
+        // frees the mocks.
+        List<GameTestInfo> finished = new ArrayList<>();
+        List<WeakReference<ServerPlayer>> probes = startProbes(helper, finished);
         helper.succeedWhen(() -> {
+            if (finished.stream().anyMatch(info -> !info.isDone())) {
+                throw helper.assertionException("waiting for the probes to end");
+            }
             for (WeakReference<ServerPlayer> probe : probes) {
                 System.gc();
                 if (probe.get() != null) {
@@ -300,12 +307,11 @@ public class MockPlayersTest {
         });
     }
 
-    /** Starts the probes and returns weak references to their mocks, so that the caller holds neither a probe nor a mock. */
-    private static List<WeakReference<ServerPlayer>> startProbes(GameTestHelper helper) {
+    /** Starts the probes, adding them to {@code infos}, and returns weak references to their mocks, so that the caller holds no mock. */
+    private static List<WeakReference<ServerPlayer>> startProbes(GameTestHelper helper, List<GameTestInfo> infos) {
         GameTestInfo owner = MockPlayers.testInfo(helper);
         ServerLevel level = helper.getLevel();
         Vec3 spawn = helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN);
-        List<GameTestInfo> infos = new ArrayList<>();
         List<WeakReference<ServerPlayer>> weak = new ArrayList<>();
 
         // A callback scheduled for the tick after the test ends, as TestTicks.each leaves.
