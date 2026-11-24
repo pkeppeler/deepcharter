@@ -238,7 +238,7 @@ public class GrainedCrustDecoyTest {
                 .toList();
         expect(
                 helper,
-                told.equals(List.of(FloorCrust.NORMAL, FloorCrust.NORMAL)),
+                told.equals(List.of(FloorCrust.NORMAL, FloorCrust.NORMAL, FloorCrust.NORMAL)),
                 "the shipped data reads as %s",
                 told);
         for (JsonElement layer : source.getAsJsonArray("layers")) {
@@ -249,7 +249,7 @@ public class GrainedCrustDecoyTest {
                 .toList();
         expect(
                 helper,
-                silent.equals(List.of(FloorCrust.DRAW, FloorCrust.DRAW)),
+                silent.equals(List.of(FloorCrust.DRAW, FloorCrust.DRAW, FloorCrust.DRAW)),
                 "layers with no floor_crust read as %s",
                 silent);
         helper.succeed();

@@ -185,7 +185,10 @@ public class FungalHollowsTest {
         helper.succeed();
     }
 
-    /** The biome tag the creatures of layer 3 key on (#918, #919) holds every zone of the layer and nothing else. */
+    /**
+     * The biome tag the creatures of layer 3 key on (#918, #919) holds every zone of the layer and no other shipped biome. The test data
+     * pack adds its own test biome to the tag (the Drifters' arenas, #973), which is left out.
+     */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theZonesAreTheFungalHollowsBiomes(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, LAYER);
@@ -195,11 +198,12 @@ public class FungalHollowsTest {
             zones.add(zoneId(band, zone).toString());
         }
         Set<String> tagged = new TreeSet<>();
-        level.registryAccess()
-                .lookupOrThrow(Registries.BIOME)
-                .getTagOrEmpty(FUNGAL_HOLLOWS)
-                .forEach(biome ->
-                        tagged.add(biome.unwrapKey().orElseThrow().identifier().toString()));
+        for (var biome : level.registryAccess().lookupOrThrow(Registries.BIOME).getTagOrEmpty(FUNGAL_HOLLOWS)) {
+            Identifier id = biome.unwrapKey().orElseThrow().identifier();
+            if (id.getNamespace().equals(DeepCharter.MOD_ID)) {
+                tagged.add(id.toString());
+            }
+        }
         expect(helper, tagged.equals(zones), "the fungal_hollows tag holds %s, the zones are %s", tagged, zones);
         helper.succeed();
     }
