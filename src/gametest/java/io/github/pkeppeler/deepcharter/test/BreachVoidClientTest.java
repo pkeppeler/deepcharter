@@ -56,8 +56,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The bottom of the world is the unbuilt depth, whose fog is black since #1192, so the void would read dark there with no cover at
  * all, and the breach shaft's box would match its walls' black ends trivially. The #333 room and column, and the air round the breach
- * shaft's eye, are given a layer's biome, whose fog is not black and which night vision lifts, so those views fail without
- * {@code BreachVoidCover}.
+ * shaft's eye, are given a layer's biome, whose fog is not black and which night vision lifts. Without {@code BreachVoidCover} the
+ * far-above and night-vision #333 views fail; the breach shaft's view checks the lifted cover's edge against that fog, not whether
+ * the cover is there.
  */
 public class BreachVoidClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(BreachVoidClientTest.class);
