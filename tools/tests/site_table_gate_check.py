@@ -51,6 +51,9 @@ public class ReadsConstantsTest {
     private static final int ROW = 4000;
     private static final int SMALL_X = 12;
     private static final double maxX = 999.5;
+    private static final int siteCount = 5000;
+    private static final int originalSize = 5000;
+    private static final long columnsWide = 6000L;
     @GameTest(maxTicks = MAX_TICKS)
     public void passes(GameTestHelper helper) {
         Thread.sleep(FarChunks.POLL_MILLIS);
@@ -80,6 +83,7 @@ VIOLATIONS = {
     "constant with an underscore number": ("        long ORIGIN = 4_264L;", "the constant ORIGIN"),
     "lower case x": ("        double x = 2400.5;", "the constant x"),
     "constant of a column": ("        double BREACH_COLUMN = 6400.5;", "the constant BREACH_COLUMN"),
+    "constant ending in Site": ("        int campSite = 4264;", "the constant campSite"),
     "constant ending in Z": ("        int roomZ = -3000;", "the constant roomZ"),
 }
 

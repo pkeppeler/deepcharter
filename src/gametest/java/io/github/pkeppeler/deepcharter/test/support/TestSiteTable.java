@@ -62,10 +62,7 @@ final class TestSiteTable {
         claim("CampaignCrossingTest", 1, 21395, 21404, 21395, 21404);
         claim("CampaignCrossingTest", 2, 21395, 21404, 21395, 21404);
 
-        row("ChassisChecks", 1, 8992, 9008, 48, 11, 8992, 9008);
-        row("ChassisChecks", 1, 9992, 10008, 48, 11, 8992, 9008);
-        row("ChassisChecks", 1, 10992, 11008, 48, 10, 8992, 9008);
-        row("ChassisChecks", 1, 11992, 12008, 48, 10, 8992, 9008);
+        claim("ColonyTest", 0, 9484, 9516, 9484, 9516);
 
         row("CompanyRecoveryTest", 1, 11997, 12003, 100, 4, 11997, 12003);
         claim("CompanyRecoveryTest", 1, 12347, 12353, 11997, 12003);
@@ -146,6 +143,8 @@ final class TestSiteTable {
 
         claim("M2SliceTest", 1, 9296, 9311, 9296, 9311);
         claim("M2SliceTest", 2, 9296, 9311, 9296, 9311);
+
+        row("OddChassisTest", 1, 8992, 9008, 48, 11, 8992, 9008);
 
         row("OreCargoTest", 1, 3195, 3206, 64, 3, 3195, 3205);
 
@@ -310,6 +309,9 @@ final class TestSiteTable {
 
         row("ShapedChargeTest", 1, 4001, 4031, 64, 6, 5385, 5415);
 
+        row("ShippedChassisTest", 1, 10992, 11008, 48, 10, 8992, 9008);
+        row("ShippedChassisTest", 1, 11992, 12008, 48, 10, 8992, 9008);
+
         claim("StructureLightBorderTest", 1, 15456, 15503, 15456, 15519);
         claim("StructureLightBorderTest", 1, 18128, 18175, 15472, 15535);
         claim("StructureLightBorderTest", 1, 16576, 16623, 15552, 15615);
@@ -326,6 +328,8 @@ final class TestSiteTable {
         claim("SurfaceBreachTest", 0, 2599, 2601, 2599, 2601);
         claim("SurfaceBreachTest", 1, 2499, 2501, 2499, 2501);
         claim("SurfaceBreachTest", 1, 2599, 2601, 2599, 2601);
+
+        row("TallChassisTest", 1, 9992, 10008, 48, 11, 8992, 9008);
 
         claim("TallyTest", 0, 6800, 6815, 6800, 6815);
         claim("TallyTest", 0, 6800, 6815, 6864, 6879);
@@ -374,7 +378,6 @@ final class TestSiteTable {
         exempt("CampaignContentTest", spawn);
         exempt("ColonyInteriorLightTest", spawn);
         exempt("ColonyPlacementTest", spawn);
-        exempt("ColonyTest", spawn);
         exempt("FoundingMoleHangarTest", spawn);
         exempt("HandbookChaptersOneToFiveTest", spawn);
         exempt("PencilPathsTest", spawn);

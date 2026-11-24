@@ -21,9 +21,10 @@ public final class TestTicks {
             throw new IllegalStateException(
                     "TestTicks.each must be called from the test method, not from a tick callback");
         }
-        helper.runAtTickTime(0, body);
+        Runnable attributed = TestSites.attributed(body);
+        helper.runAtTickTime(0, attributed);
         helper.startSequence().thenWaitUntil(() -> {
-            helper.runAtTickTime(helper.getTick() + 1, body);
+            helper.runAtTickTime(helper.getTick() + 1, attributed);
             // Never completes, so the next tick has this event again. Past the timeout the runner fails the test with
             // this message.
             throw new GameTestAssertException(

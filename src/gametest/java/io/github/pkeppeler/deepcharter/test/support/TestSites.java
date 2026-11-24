@@ -28,6 +28,8 @@ public final class TestSites {
     public static final int SPAWN_RADIUS = 512;
 
     /** The first layer past the built ones: the campaign sample's unbuilt depth, which tests carve pockets in too. */
+    private static final String TEST_PACKAGE = TestSites.class.getPackageName().replaceAll("\\.support$", "");
+
     private static final int UNBUILT = CampaignBands.lastLayer() + 1;
 
     /** One owner's inclusive block columns in one layer; layer 0 is the surface. */
@@ -56,6 +58,9 @@ public final class TestSites {
             return "%s layer %s x %s..%s z %s..%s".formatted(owner, layer, x0, x1, z0, z1);
         }
     }
+
+    /** The owner of the test whose scheduled callback is running, for a callback with no test frame under it. */
+    private static final ThreadLocal<String> SCOPED = new ThreadLocal<>();
 
     private static final List<Site> SITES = new ArrayList<>();
     private static final List<String> EXEMPT = new ArrayList<>();
@@ -123,6 +128,11 @@ public final class TestSites {
 
     /** Fails the calling test when it carves a room outside its claims. Called by {@link RoomCarver}. */
     public static void guardCarve(ServerLevel level, BlockPos min, BlockPos max) {
+        guardCarve(level, min, max, stack());
+    }
+
+    /** As {@link #guardCarve(ServerLevel, BlockPos, BlockPos)}, for the classes of a call stack, innermost first. */
+    public static void guardCarve(ServerLevel level, BlockPos min, BlockPos max, List<Class<?>> stack) {
         if (!shared(level)) {
             return;
         }
@@ -134,8 +144,15 @@ public final class TestSites {
         if (inSpawn(x0, x1, z0, z1)) {
             return;
         }
-        Optional<String> owner = caller();
-        if (owner.isEmpty() || EXEMPT.contains(owner.get())) {
+        if (ownsItsWorld(stack)) {
+            return;
+        }
+        Optional<String> owner = ownerOf(stack).or(() -> Optional.ofNullable(SCOPED.get()));
+        if (owner.isEmpty()) {
+            throw unattributed("carves layer " + layerAt((min.getY() + max.getY()) / 2) + " x " + x0 + ".." + x1 + " z "
+                    + z0 + ".." + z1);
+        }
+        if (EXEMPT.contains(owner.get())) {
             return;
         }
         int layer = layerAt((min.getY() + max.getY()) / 2);
@@ -152,6 +169,11 @@ public final class TestSites {
 
     /** Fails the calling test when it forces a chunk none of its claims touches. Called by {@link FarChunks}. */
     public static void guardChunk(ServerLevel level, int chunkX, int chunkZ) {
+        guardChunk(level, chunkX, chunkZ, stack());
+    }
+
+    /** As {@link #guardChunk(ServerLevel, int, int)}, for the classes of a call stack, innermost first. */
+    public static void guardChunk(ServerLevel level, int chunkX, int chunkZ, List<Class<?>> stack) {
         if (!shared(level)) {
             return;
         }
@@ -160,8 +182,15 @@ public final class TestSites {
         if (inSpawn(x0, x0 + 15, z0, z0 + 15)) {
             return;
         }
-        Optional<String> owner = caller();
-        if (owner.isEmpty() || EXEMPT.contains(owner.get())) {
+        if (ownsItsWorld(stack)) {
+            return;
+        }
+        Optional<String> owner = ownerOf(stack).or(() -> Optional.ofNullable(SCOPED.get()));
+        if (owner.isEmpty()) {
+            throw unattributed("forces chunk " + chunkX + ", " + chunkZ + " (x " + x0 + ".." + (x0 + 15) + ", z " + z0
+                    + ".." + (z0 + 15) + ")");
+        }
+        if (EXEMPT.contains(owner.get())) {
             return;
         }
         boolean claimed = SITES.stream()
@@ -189,17 +218,57 @@ public final class TestSites {
     }
 
     /**
-     * The server test class that is staging: the outermost class of the first frame in {@code io.github.pkeppeler.deepcharter.test}
-     * itself (not its support, mixin or evidence packages) that is not a client test (a client test runs its own world). Empty when no such frame is on the stack.
+     * Wraps a callback that a test schedules from its own stack, so that what it stages is attributed to that test when it runs later
+     * with no test frame under it. Call it where the test's frame is on the stack.
      */
-    private static Optional<String> caller() {
+    public static Runnable attributed(Runnable callback) {
+        Optional<String> owner = ownerOf(stack());
+        if (owner.isEmpty()) {
+            return callback;
+        }
+        return () -> {
+            String before = SCOPED.get();
+            SCOPED.set(owner.get());
+            try {
+                callback.run();
+            } finally {
+                SCOPED.set(before);
+            }
+        };
+    }
+
+    private static IllegalStateException unattributed(String what) {
+        return new IllegalStateException(
+                "A call " + what + " outside the spawn square could not be attributed to a test"
+                        + " class: no frame of its stack is in " + TEST_PACKAGE
+                        + " (a callback with no test on the stack?). Make"
+                        + " the call from the test's own stack, or run it where the test's frame is on it (#1182).");
+    }
+
+    private static List<Class<?>> stack() {
         return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
-                .walk(frames -> frames.map(StackWalker.StackFrame::getDeclaringClass)
-                        .filter(c -> c.getPackageName()
-                                .equals(TestSites.class.getPackageName().replaceAll("\\.support$", "")))
-                        .map(c -> outer(c).getSimpleName())
-                        .filter(name -> !name.endsWith("ClientTest"))
-                        .findFirst());
+                .walk(frames -> frames.<Class<?>>map(StackWalker.StackFrame::getDeclaringClass)
+                        .toList());
+    }
+
+    /** Whether the stack is a client test's or an evidence scenario's: each starts a world of its own, which nothing else stages in. */
+    private static boolean ownsItsWorld(List<Class<?>> stack) {
+        return stack.stream()
+                .anyMatch(c -> c.getPackageName().equals(TEST_PACKAGE + ".evidence")
+                        || (c.getPackageName().equals(TEST_PACKAGE)
+                                && outer(c).getSimpleName().endsWith("ClientTest")));
+    }
+
+    /**
+     * The server test class that is staging: the outermost class of the outermost frame in {@code io.github.pkeppeler.deepcharter.test}
+     * itself (not its support, mixin or evidence packages), so a helper in that package that a test calls is transparent and the test
+     * owns the claim. Empty when no such frame is on the stack.
+     */
+    public static Optional<String> ownerOf(List<Class<?>> stack) {
+        return stack.stream()
+                .filter(c -> c.getPackageName().equals(TEST_PACKAGE))
+                .map(c -> outer(c).getSimpleName())
+                .reduce((inner, outermost) -> outermost);
     }
 
     private static Class<?> outer(Class<?> c) {

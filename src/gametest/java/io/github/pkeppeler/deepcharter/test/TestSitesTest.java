@@ -6,6 +6,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import io.github.pkeppeler.deepcharter.test.support.TestSites;
 import io.github.pkeppeler.deepcharter.test.support.TestSites.Site;
 import java.util.List;
+import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -93,6 +94,90 @@ public class TestSitesTest {
                     "the refusal does not name the owner: %s",
                     refused.getMessage());
         }
+        helper.succeed();
+    }
+
+    /** A stack, innermost first, of a support helper called by a shared helper of this package that a test called. */
+    @GameTest
+    public void aHelperOfTheTestPackageIsTransparentAndTheOutermostTestClassOwns(GameTestHelper helper) {
+        List<Class<?>> stack = List.of(TestSites.class, ChassisChecks.class, OddChassisTest.class, Thread.class);
+        expect(
+                helper,
+                TestSites.ownerOf(stack).equals(Optional.of("OddChassisTest")),
+                "the owner of %s is %s, not the test that called the helper",
+                stack,
+                TestSites.ownerOf(stack));
+        expect(
+                helper,
+                TestSites.ownerOf(List.of(TestSites.class, Thread.class)).isEmpty(),
+                "a stack with no test frame has an owner");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aCallNoTestOwnsFailsInsteadOfPassingSilently(GameTestHelper helper) {
+        var level = helper.getLevel();
+        int far = 900_000;
+        List<Class<?>> noTest = List.of(TestSites.class, Thread.class);
+        try {
+            TestSites.guardCarve(level, new BlockPos(far, 0, far), new BlockPos(far + 2, 2, far + 2), noTest);
+            throw failure(helper, "a carve no test owns passed");
+        } catch (IllegalStateException refused) {
+            expect(
+                    helper,
+                    String.valueOf(refused.getMessage()).contains("could not be attributed to a test class")
+                            && String.valueOf(refused.getMessage()).contains(String.valueOf(far - 1)),
+                    "the refusal does not name the place and the missing test: %s",
+                    refused.getMessage());
+        }
+        try {
+            TestSites.guardChunk(level, far / 16, far / 16, noTest);
+            throw failure(helper, "a force no test owns passed");
+        } catch (IllegalStateException refused) {
+            expect(
+                    helper,
+                    String.valueOf(refused.getMessage()).contains("could not be attributed to a test class"),
+                    "the refusal does not say the call has no test: %s",
+                    refused.getMessage());
+        }
+        TestSites.guardCarve(level, new BlockPos(0, 0, 0), new BlockPos(2, 2, 2), noTest);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aCallbackAScheduledTestWrapsIsAttributedToItsTest(GameTestHelper helper) {
+        var level = helper.getLevel();
+        int far = 900_000;
+        String[] refusal = {"none"};
+        Runnable later = TestSites.attributed(() -> {
+            try {
+                TestSites.guardChunk(level, far / 16, far / 16, List.of(TestSites.class, Thread.class));
+            } catch (IllegalStateException refused) {
+                refusal[0] = String.valueOf(refused.getMessage());
+            }
+        });
+        later.run();
+        expect(
+                helper,
+                String.valueOf(refusal[0]).contains("TestSitesTest forces"),
+                "a wrapped callback with no test frame under it is not attributed to the test that wrapped it: %s",
+                refusal[0]);
+        helper.succeed();
+    }
+
+    /** {@code ColonyTest} reads the terrain at the surface column 9500, 9500, outside the spawn square, so it claims it rather than being exempt. */
+    @GameTest
+    public void colonyTestClaimsTheSurfaceColumnItReads(GameTestHelper helper) {
+        expect(
+                helper,
+                TestSites.sites().stream()
+                        .anyMatch(site -> site.owner().equals("ColonyTest")
+                                && site.layer() == 0
+                                && site.x0() <= 9500
+                                && 9500 <= site.x1()
+                                && site.z0() <= 9500
+                                && 9500 <= site.z1()),
+                "ColonyTest reads the surface at 9500, 9500 and claims no box around it in TestSiteTable");
         helper.succeed();
     }
 }

@@ -71,7 +71,7 @@ object GametestScan {
 	private const val SITE_TABLE = "TestSiteTable.java"
 	private val stagingCall = Regex("""\bFarChunks\s*\.\s*(?:force|pin|release|await\w*|whenBlocksLoaded)\s*\(|\bRoomCarver\s*\.\s*carve\w*\s*\(""")
 	private val coordinateConstant = Regex("""\b(?:int|long|float|double)\s+(\w+)\s*=\s*-?(\d[\d_]*)(?:\.\d+)?[dDfFlL]?\s*;""")
-	private val coordinateName = Regex("""(?:^|_)[xzXZ]$|[a-z][XZ]$|(?i:column|site|origin)""")
+	private val coordinateName = Regex("""^[xz]$|(?:^|_)[XZ]$|[a-z][XZ]$|(?:^|_)(?:COLUMN|SITE|ORIGIN)$|[a-z](?:Column|Site|Origin)$""")
 	private const val MIN_COORDINATE = 1000
 
 	/** What makes a server test class fixed-site, or null: the first staging call or coordinate constant of its code. */
