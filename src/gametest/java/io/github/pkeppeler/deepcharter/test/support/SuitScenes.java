@@ -135,7 +135,7 @@ public final class SuitScenes {
     /** Sets the suit of {@code player} to a clean state with {@code reserve} left. */
     public static void setReserve(ServerPlayer player, float reserve, boolean explained) {
         player.setAttached(
-                SuitRegistry.SUIT, Versioned.of(new SuitState(reserve, explained, SuitState.Mode.INERT, 0, 0f)));
+                SuitRegistry.SUIT, Versioned.of(new SuitState(reserve, explained, SuitState.Mode.INERT, 0f, 0)));
     }
 
     /** Gives {@code player} suit {@code tracks}. */

@@ -131,7 +131,6 @@ public final class SuitTicker {
                 reserve,
                 before.explained(),
                 mode,
-                mode.drains() ? SuitState.axesOf(plan.shortfall()) : 0,
                 mode.drains() ? plan.rate() : 0f,
                 mode.drains() ? plan.shortfall() : 0);
         if (mode.drains()) {
@@ -275,7 +274,9 @@ public final class SuitTicker {
         }
     }
 
-    /** A new life starts with a full suit (to its own capacity) that is doing nothing yet; what the person was told stays told. */
+    /**
+     * A new life starts with a full suit (to its own capacity) that is doing nothing yet; what the person was told stays told.
+     */
     private static void refill(ServerPlayer player) {
         Optional<SuitTracks> tracks = Versioned.readable(player, SuitRegistry.TRACKS);
         Versioned.readable(player, SuitRegistry.SUIT)
@@ -283,6 +284,6 @@ public final class SuitTicker {
                 .ifPresent(state -> player.setAttached(
                         SuitRegistry.SUIT,
                         Versioned.of(new SuitState(
-                                tracks.get().capacity(SuitTuning.DEFAULT), state.explained(), Mode.INERT, 0, 0f))));
+                                tracks.get().capacity(SuitTuning.DEFAULT), state.explained(), Mode.INERT, 0f, 0))));
     }
 }

@@ -13,6 +13,7 @@
   "hud.deepcharter.suit.track.heat": "HEAT",
   "hud.deepcharter.suit.track.pressure": "PRESSURE",
   "hud.deepcharter.suit.unreadable": "SUIT LOG UNREADABLE",
+  "message.deepcharter.suit.already_fitted": "That tier is already fitted to your suit",
   "message.deepcharter.suit.breached": "SUIT BREACHED",
   "message.deepcharter.suit.critical": "SUIT CRITICAL: %s SECONDS",
   "message.deepcharter.suit.draining": "SUIT DRAINING AT THIS DEPTH",

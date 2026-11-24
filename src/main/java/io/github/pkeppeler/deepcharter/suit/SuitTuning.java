@@ -34,7 +34,7 @@ public record SuitTuning(
         float breachDamage,
         int breachTicks) {
     /**
-     * (A) Every value. Capacities 180/240/300/360 s by air tier; at the unbuilt depth's (5,5,5) a stock suit lasts 33 s dry and 17 s wet, an unrated hall doubles
+     * (A) Every value. Capacities 180/240/300/360 s by air tier; at the unbuilt depth's (5,5,5) a stock suit lasts 33 s dry and 18 s wet, an unrated hall doubles
      * the time, a rest of 12 s fills it, and a breach kills a full-health person in about 20 s.
      */
     public static final SuitTuning DEFAULT = new SuitTuning(

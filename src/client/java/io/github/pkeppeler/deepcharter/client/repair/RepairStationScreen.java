@@ -129,13 +129,21 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 
     /**
      * One row for each suit track (#1064): the next tier and its price, from the tracks the server sent, or the track's name and "(TOP)"
-     * with nothing to press once it is fully fitted. A suit log that cannot be read sells nothing.
+     * with nothing to press once it is fully fitted. A suit log that cannot be read shows one inactive row that says so.
      */
     private static List<Row> suitRows() {
         LocalPlayer player = Minecraft.getInstance().player;
-        Optional<SuitTracks> held = player == null ? Optional.empty() : Versioned.readable(player, SuitRegistry.TRACKS);
         List<Row> rows = new ArrayList<>();
+        if (player == null) {
+            return rows;
+        }
+        Optional<SuitTracks> held = Versioned.readable(player, SuitRegistry.TRACKS);
         if (held.isEmpty()) {
+            rows.add(new Row(
+                    Component.translatable("hud.deepcharter.suit.unreadable"),
+                    SuitShop.SUIT_BUY,
+                    new CompoundTag(),
+                    false));
             return rows;
         }
         for (SuitTrack track : SuitTrack.values()) {

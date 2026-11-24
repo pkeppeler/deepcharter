@@ -43,6 +43,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.MinecraftServer;
@@ -182,12 +184,21 @@ public class SuitTracksTest {
                 "the wire body is three var ints, heat, pressure, air, it was %s bytes",
                 wire.readableBytes());
         expect(helper, SuitTracks.STREAM.decode(wire).equals(new SuitTracks(1, 2, 3)), "the wire body round-trips");
-        ByteBuf wide = Unpooled.buffer();
-        wide.writeByte(9).writeByte(0).writeByte(0);
-        expect(
-                helper,
-                SuitTracks.STREAM.decode(wide).equals(new SuitTracks(3, 0, 0)),
-                "a tier of 9 on the wire reads clamped to 3");
+        // The wire refuses what its encoder cannot produce, where the disk clamps: a tier of 9 or a negative one
+        // throws.
+        for (int bad : new int[] {9, 4, -1}) {
+            ByteBuf wide = Unpooled.buffer();
+            ByteBufCodecs.VAR_INT.encode(wide, bad);
+            wide.writeByte(0).writeByte(0);
+            boolean thrown;
+            try {
+                SuitTracks.STREAM.decode(wide);
+                thrown = false;
+            } catch (IllegalArgumentException outOfRange) {
+                thrown = true;
+            }
+            expect(helper, thrown, "a wire tier of %s must be refused, not clamped", bad);
+        }
 
         StreamCodec<ByteBuf, Versioned<SuitTracks>> sync = Versioned.streamCodec(SuitTracks.VERSION, SuitTracks.STREAM);
         ByteBuf other = Unpooled.buffer();
@@ -330,7 +341,7 @@ public class SuitTracksTest {
                 "a tier two ahead",
                 "tier 0",
                 "a negative tier",
-                "the top tier of a track already at the top",
+                "the top tier again (already fitted)",
                 "past the top tier",
                 "air tier 3 from none",
             };
@@ -394,6 +405,44 @@ public class SuitTracksTest {
                     "an unreadable suit log sells nothing and charges nothing");
             helper.succeed();
         });
+    }
+
+    /**
+     * A second click on the row just bought (the screen had not moved on) says the tier is already fitted, in the refusal's own words, and
+     * charges nothing. The refusal reaches the action bar a tick later.
+     */
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void aSecondClickOnAFittedTierSaysSoAndChargesNothing(GameTestHelper helper) {
+        MockPlayer[] buyer = new MockPlayer[1];
+        long[] account = new long[2];
+        helper.startSequence()
+                .thenExecute(() -> withStation(helper, station -> {
+                    buyer[0] = station.buyer();
+                    MinecraftServer server = helper.getLevel().getServer();
+                    expect(helper, station.act(buy("heat", 1)).isEmpty(), "heat tier 1 should sell");
+                    account[0] = station.account(server);
+                    expect(
+                            helper,
+                            station.act(buy("heat", 1)).equals(Optional.of(TerminalRefusal.ACTION_REFUSED)),
+                            "a second buy of the same tier should be refused");
+                    account[1] = station.account(server);
+                    expect(helper, SuitScenes.tracks(station.player()).heat() == 1, "the tier stays 1");
+                }))
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    expect(helper, account[0] == account[1], "the second click charged $%s", account[0] - account[1]);
+                    List<String> keys = buyer[0].actionBarMessages().stream()
+                            .map(message -> message.getContents() instanceof TranslatableContents contents
+                                    ? contents.getKey()
+                                    : "")
+                            .toList();
+                    expect(
+                            helper,
+                            keys.getLast().equals("message.deepcharter.suit.already_fitted"),
+                            "the second click says already fitted, the bar said %s",
+                            keys);
+                })
+                .thenSucceed();
     }
 
     /** An air buy fills the suit to its new capacity; a heat buy leaves the reserve as it is. */

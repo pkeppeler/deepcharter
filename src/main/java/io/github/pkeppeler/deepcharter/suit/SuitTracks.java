@@ -34,14 +34,14 @@ public record SuitTracks(int heat, int pressure, int air) {
         }
     }
 
-    /** The saved body. A tier out of range reads clamped, and one that is missing reads 0. */
+    /** The saved body. A tier out of range reads clamped (and is written back clamped), and one that is missing reads 0. */
     public static final MapCodec<SuitTracks> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     Codec.INT.optionalFieldOf("heat", 0).forGetter(SuitTracks::heat),
                     Codec.INT.optionalFieldOf("pressure", 0).forGetter(SuitTracks::pressure),
                     Codec.INT.optionalFieldOf("air", 0).forGetter(SuitTracks::air))
             .apply(instance, SuitTracks::clamped));
 
-    /** The wire body: the three tiers, clamped as they are read. */
+    /** The wire body: the three tiers. A tier its encoder cannot produce throws, which disconnects, as a version mismatch does. */
     public static final StreamCodec<ByteBuf, SuitTracks> STREAM = StreamCodec.composite(
             ByteBufCodecs.VAR_INT,
             SuitTracks::heat,
@@ -49,7 +49,7 @@ public record SuitTracks(int heat, int pressure, int air) {
             SuitTracks::pressure,
             ByteBufCodecs.VAR_INT,
             SuitTracks::air,
-            SuitTracks::clamped);
+            SuitTracks::new);
 
     private static SuitTracks clamped(int heat, int pressure, int air) {
         return new SuitTracks(

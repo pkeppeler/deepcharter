@@ -449,7 +449,7 @@ public class SuitTimerTest {
         Versioned<SuitState> loaded = disk.parse(NbtOps.INSTANCE, saved).getOrThrow();
         expect(
                 helper,
-                loaded.equals(Versioned.of(new SuitState(42.5f, true, Mode.INERT, 0, 0f))),
+                loaded.equals(Versioned.of(new SuitState(42.5f, true, Mode.INERT, 0f, 0))),
                 "a v1 save should load as a reserve and a flag, it loaded %s",
                 loaded);
         CompoundTag savedV2 = saved.copy();
@@ -463,7 +463,8 @@ public class SuitTimerTest {
                 disk.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow().equals(savedV2),
                 "a loaded v1 save is written back as v2, the same body");
 
-        Tag written = disk.encodeStart(NbtOps.INSTANCE, Versioned.of(new SuitState(10f, false, Mode.LEAKING, 3, 2.75f)))
+        Tag written = disk.encodeStart(
+                        NbtOps.INSTANCE, Versioned.of(new SuitState(10f, false, Mode.LEAKING, 2.75f, 0x11)))
                 .getOrThrow();
         CompoundTag expected = new CompoundTag();
         expected.putFloat("reserve", 10f);
@@ -474,7 +475,7 @@ public class SuitTimerTest {
                 "a mode, axes and rate are never saved, only the reserve and, once set, the flag, it wrote %s",
                 written);
         Tag explainedWritten = disk.encodeStart(
-                        NbtOps.INSTANCE, Versioned.of(new SuitState(10f, true, Mode.INERT, 0, 0f)))
+                        NbtOps.INSTANCE, Versioned.of(new SuitState(10f, true, Mode.INERT, 0f, 0)))
                 .getOrThrow();
         expected.putBoolean("explained", true);
         expect(
@@ -532,22 +533,28 @@ public class SuitTimerTest {
 
         ByteBuf wire = Unpooled.buffer();
         // heat short by 2 (bits 0 to 3), pressure by 3 (bits 4 to 7): 0x32
-        SuitState sent = new SuitState(100.25f, true, Mode.EXPOSED, 3, 0.5f, 0x32);
+        SuitState sent = new SuitState(100.25f, true, Mode.EXPOSED, 0.5f, 0x32);
         SuitState.STREAM.encode(wire, sent);
-        // reserve (float), explained (boolean), mode (var int), axes (var int), rate (float), shortfall (var int)
+        // reserve (float), explained (boolean), mode (var int), rate (float), shortfall (var int); the axes are derived
+        // from it
         byte[] bytes = new byte[wire.readableBytes()];
         wire.getBytes(0, bytes);
         expect(
                 helper,
-                bytes.length == 4 + 1 + 1 + 1 + 4 + 1
+                bytes.length == 4 + 1 + 1 + 4 + 1
                         && bytes[4] == 1
                         && bytes[5] == (byte) Mode.EXPOSED.ordinal()
-                        && bytes[6] == 3
-                        && bytes[11] == 0x32,
-                "the wire body is reserve, flag, mode, axes, rate, shortfall, it was %s bytes: %s",
+                        && bytes[10] == 0x32,
+                "the wire body is reserve, flag, mode, rate, shortfall, it was %s bytes: %s",
                 bytes.length,
                 java.util.Arrays.toString(bytes));
-        expect(helper, SuitState.STREAM.decode(wire).equals(sent), "the wire body should round-trip");
+        SuitState received = SuitState.STREAM.decode(wire);
+        expect(helper, received.equals(sent), "the wire body should round-trip");
+        expect(
+                helper,
+                received.axes() == mask(RatingAxis.HEAT, RatingAxis.PRESSURE),
+                "the axes are derived from the shortfall, heat and pressure, they read %s",
+                received.axes());
 
         // The attachment's wire form: the version, then the body. A build that reads another version throws, which
         // disconnects
@@ -563,7 +570,7 @@ public class SuitTimerTest {
         expect(helper, sync.decode(versioned).equals(Versioned.of(sent)), "the synced suit should round-trip");
         ByteBuf old = Unpooled.buffer();
         ByteBufCodecs.VAR_INT.encode(old, 1);
-        SuitState.STREAM.encode(old, new SuitState(100.25f, true, Mode.SHELTERED, 0, 0f, 0));
+        SuitState.STREAM.encode(old, new SuitState(100.25f, true, Mode.SHELTERED, 0f, 0));
         boolean refused;
         try {
             sync.decode(old);
@@ -590,15 +597,14 @@ public class SuitTimerTest {
     /** The first drain's line names the axes that are short; where none is (a row that asks only flooding, dry), it stands alone. */
     @GameTest
     public void theFirstDrainLineNamesTheShortAxesOrStandsAlone(GameTestHelper helper) {
-        Component named = new SuitState(100f, false, Mode.EXPOSED, mask(RatingAxis.HEAT, RatingAxis.PRESSURE), 1.5f)
-                .exceededLine();
+        Component named = new SuitState(100f, false, Mode.EXPOSED, 1.5f, 0x11).exceededLine();
         expect(
                 helper,
                 key(named).equals("message.deepcharter.suit.exceeded")
                         && ((TranslatableContents) named.getContents()).getArgs().length == 1,
                 "a drain on heat and pressure names them, it said %s",
                 named);
-        Component bare = new SuitState(100f, false, Mode.EXPOSED, 0, 0.5f).exceededLine();
+        Component bare = new SuitState(100f, false, Mode.EXPOSED, 0.5f, 0).exceededLine();
         expect(
                 helper,
                 key(bare).equals("message.deepcharter.suit.draining")

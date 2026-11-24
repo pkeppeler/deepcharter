@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
@@ -10,6 +11,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
 import io.github.pkeppeler.deepcharter.suit.SuitTracks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
@@ -22,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.RepairRows;
 import io.github.pkeppeler.deepcharter.test.support.ScreenScroll;
 import io.github.pkeppeler.deepcharter.test.support.SuitScenes;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -135,6 +138,30 @@ public class RepairStationClientTest implements FabricClientGameTest {
         require(
                 account(singleplayer, scene) == before - 450 - 1_100 - 2_500,
                 "the three heat tiers cost $4,050, the account is $" + account(singleplayer, scene));
+
+        // Tracks this build cannot read leave one inactive row that says so, and sell nothing.
+        singleplayer
+                .getServer()
+                .runOnServer(server -> UnreadableChecks.makeUnreadable(
+                        server.getPlayerList().getPlayers().getFirst(), SuitRegistry.TRACKS));
+        ClientWait.until(
+                context,
+                "the unreadable tracks on the client",
+                client -> client.player != null
+                        && client.player.getAttached(SuitRegistry.TRACKS) instanceof Versioned.Unreadable<SuitTracks>);
+        // The list is rebuilt by the server's next answer: a purchase elsewhere on the list asks for one.
+        clickRow(context, "BUY DYNAMITE $100");
+        ClientWait.until(
+                context,
+                "the unreadable row",
+                () -> rowActive(context, "SUIT LOG UNREADABLE").isPresent(),
+                () -> "rows not rebuilt yet");
+        require(
+                rowActive(context, "SUIT LOG UNREADABLE").equals(Optional.of(false)),
+                "the unreadable row cannot be pressed");
+        require(
+                rowActive(context, "SUIT HEAT (TOP)").isEmpty(),
+                "no track row is offered while the tracks are unreadable");
     }
 
     private static SuitTracks tracks(TestSingleplayerContext singleplayer) {

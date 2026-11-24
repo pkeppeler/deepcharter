@@ -43,6 +43,10 @@ public final class SuitShop {
             return refusal("tracks_unreadable");
         }
         int current = held.get().tier(track.get());
+        // A second click on the row just bought, before the screen moved on.
+        if (tier.get() == current && current >= 1) {
+            return refusal("already_fitted");
+        }
         if (current >= track.get().maxTier()) {
             return refusal("top_tier");
         }
