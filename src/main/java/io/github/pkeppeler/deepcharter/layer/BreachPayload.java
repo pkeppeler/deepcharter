@@ -38,7 +38,7 @@ public record BreachPayload(int fromLayer, int toLayer, boolean fades, boolean s
         BreachEvents.CROSSED.register((entity, from, to, fromLayer, toLayer) -> {
             // The event fires for the whole vehicle tree; only players have a client to tell.
             if (entity instanceof ServerPlayer player && ServerPlayNetworking.canSend(player, TYPE)) {
-                ServerPlayNetworking.send(player, of(from, to, fromLayer, toLayer));
+                ServerPlayNetworking.send(player, of(from, to, fromLayer, toLayer, SeamSwap.announcing()));
             }
         });
     }

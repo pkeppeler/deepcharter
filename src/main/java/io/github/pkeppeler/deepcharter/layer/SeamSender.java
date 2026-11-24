@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -65,6 +68,11 @@ public final class SeamSender {
         final LongSet sent = new LongOpenHashSet();
         /** Positions in the area that were sent and have since changed or may have: the crossing sends them again. */
         final LongSet stale = new LongOpenHashSet();
+        /**
+         * Positions of the carve ahead of a swap, sent again at once: the crossing skips them whatever {@link LightSync} is
+         * settling, since the client holds them right.
+         */
+        final LongSet fresh = new LongOpenHashSet();
         /** Positions the crossing skipped, because the client holds them already. */
         final LongSet skipped = new LongOpenHashSet();
         /** Estimated bytes sent to this rider ahead. */
@@ -86,6 +94,12 @@ public final class SeamSender {
 
     /** Whether a crossing's teleport is under way, so the sends of the chunks around the arrival may be skipped. Server thread only. */
     private static boolean crossing;
+
+    /** A swap of a rider into {@code level} at {@code generation}, kept until {@code until} for a client that reports it failed. */
+    private record Swapped(ResourceKey<Level> level, int generation, long until) {}
+
+    /** Swaps by rider UUID. Server thread only. */
+    private static final Map<UUID, Swapped> SWAPPED = new HashMap<>();
 
     /** Skipped chunks by rider UUID. Server thread only. */
     private static final Map<UUID, Skipped> RECENT = new HashMap<>();
@@ -129,10 +143,12 @@ public final class SeamSender {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             STATE.remove(handler.player.getUUID());
             RECENT.remove(handler.player.getUUID());
+            SWAPPED.remove(handler.player.getUUID());
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             STATE.clear();
             RECENT.clear();
+            SWAPPED.clear();
             crossing = false;
             BUILT.clear();
         });
@@ -228,11 +244,84 @@ public final class SeamSender {
                 || !seam.lower.equals(level.dimension())
                 || !seam.sent.contains(packed)
                 || seam.stale.contains(packed)
-                || LightSync.watching(level, pos)) {
+                || (!seam.fresh.contains(packed) && LightSync.watching(level, pos))) {
             return false;
         }
         seam.skipped.add(packed);
         return true;
+    }
+
+    /** Records that {@code rider} was swapped into {@code to} on the generation it last accepted. */
+    static void noteSwap(ServerPlayer rider, ServerLevel to) {
+        long until = (long) to.getServer().getTickCount() + LayerTuning.DEFAULT.seamMissedWindowTicks();
+        SWAPPED.put(rider.getUUID(), new Swapped(to.dimension(), generationOf(rider), until));
+    }
+
+    /** The generation of the prepare most recently sent to {@code rider}, or 0 when it has no seam. */
+    public static int generationOf(ServerPlayer rider) {
+        RiderSeam seam = STATE.get(rider.getUUID());
+        return seam == null ? 0 : seam.generation;
+    }
+
+    /** Sent to each of {@code riders} who has the chunk of the carve, once it is lit; see {@link #resendCarved}. */
+    private static final int RESEND_LIGHT_WAIT_MILLIS = 250;
+
+    /**
+     * Sends each of {@code riders} the chunks around {@code arrival} that changed since they were sent (the pocket a crossing
+     * carved and the shell round it), at once and over the byte budget, built after the carve and its light. They count as held
+     * for the crossing whatever {@link LightSync} is settling. Returns false if a chunk is too big to send, so the crossing must
+     * not be a swap.
+     */
+    public static boolean resendCarved(List<ServerPlayer> riders, ServerLevel to, ChunkPos arrival) {
+        for (ServerPlayer rider : riders) {
+            RiderSeam seam = STATE.get(rider.getUUID());
+            if (seam == null) {
+                return false;
+            }
+            for (ChunkPos pos : ChunkPos.rangeClosed(arrival, 1).toList()) {
+                long packed = pos.pack();
+                if (!seam.stale.contains(packed)) {
+                    continue;
+                }
+                awaitLight(to, pos);
+                LevelChunk chunk = to.getChunkSource().chunkMap.getChunkToSend(packed);
+                if (chunk == null) {
+                    return false;
+                }
+                SeamChunkPayload payload = new SeamChunkPayload(
+                        to.dimension(),
+                        new ClientboundLevelChunkWithLightPacket(chunk, to.getLightEngine(), null, null));
+                int size = estimatedBytes(payload.chunk());
+                if (!fitsPayload(size)) {
+                    return false;
+                }
+                ServerPlayNetworking.send(rider, payload);
+                seam.bytes += size;
+                seam.stale.remove(packed);
+                seam.fresh.add(packed);
+            }
+        }
+        return true;
+    }
+
+    /** Waits, on the server thread and for a moment only, for the light work queued for the chunk: the carve's. */
+    private static void awaitLight(ServerLevel level, ChunkPos pos) {
+        try {
+            level.getChunkSource()
+                    .getLightEngine()
+                    .waitForPendingTasks(pos.x(), pos.z())
+                    .get(RESEND_LIGHT_WAIT_MILLIS, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException slow) {
+            DeepCharter.LOGGER.warn(
+                    "The light of {} in {} was not settled after {} ms: the carve is sent as it is",
+                    pos,
+                    level.dimension().identifier(),
+                    RESEND_LIGHT_WAIT_MILLIS);
+        } catch (ExecutionException failed) {
+            throw new IllegalStateException("The light work of " + pos + " failed", failed);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /** A block of {@code level} changed: each rider that was sent the chunk of it, or one beside it, ahead no longer holds it right. */
@@ -272,7 +361,7 @@ public final class SeamSender {
     /**
      * Whether a crossing of {@code rider} into {@code to}, arriving in {@code arrivalChunk}, can be a swap: its client can receive the
      * swap, accepted the current prepare and has not refused it since, and holds every chunk within
-     * {@link LayerTuning#seamSwapRadius()} of the arrival, which is inside the area. A vehicle swaps only if each of its riders passes:
+     * {@link LayerTuning#seamSwapRadius()} of its area's centre, with the arrival inside it. A vehicle swaps only if each of its riders passes:
      * the vehicle never splits.
      */
     public static boolean readyToSwap(ServerPlayer rider, ServerLevel to, ChunkPos arrivalChunk) {
@@ -286,7 +375,7 @@ public final class SeamSender {
 
     /**
      * Whether {@code arrival} lies within {@code radius} chunks (Chebyshev) of {@code centre}, and every chunk within {@code radius} of
-     * it is in {@code sent}.
+     * {@code centre} is in {@code sent}: the area the rider's held level has, with the arrival inside it.
      */
     public static boolean holdsSwapArea(LongSet sent, ChunkPos centre, ChunkPos arrival, int radius) {
         if (Math.max(Math.abs(arrival.x() - centre.x()), Math.abs(arrival.z() - centre.z())) > radius) {
@@ -294,7 +383,7 @@ public final class SeamSender {
         }
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                if (!sent.contains(ChunkPos.pack(arrival.x() + dx, arrival.z() + dz))) {
+                if (!sent.contains(ChunkPos.pack(centre.x() + dx, centre.z() + dz))) {
                     return false;
                 }
             }
@@ -330,6 +419,10 @@ public final class SeamSender {
         if (!RECENT.isEmpty()) {
             long now = server.getTickCount();
             RECENT.values().removeIf(skipped -> skipped.until() <= now);
+        }
+        if (!SWAPPED.isEmpty()) {
+            long now = server.getTickCount();
+            SWAPPED.values().removeIf(swapped -> swapped.until() <= now);
         }
         List<SeamStreaming.Approach> approaches = SeamStreaming.approaches();
         if (approaches.isEmpty() && STATE.isEmpty()) {

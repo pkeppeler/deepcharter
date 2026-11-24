@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import static io.github.pkeppeler.deepcharter.test.support.SeamSite.HOLD_HEIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.SeamSite.MAX_TICKS;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.hold;
 
 import io.github.pkeppeler.deepcharter.layer.BreachPayload;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -14,23 +15,38 @@ import io.github.pkeppeler.deepcharter.layer.SeamRefusePayload;
 import io.github.pkeppeler.deepcharter.layer.SeamRefuseReason;
 import io.github.pkeppeler.deepcharter.layer.SeamSender;
 import io.github.pkeppeler.deepcharter.layer.SeamSwapPayload;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.SeamSite.Run;
+import io.github.pkeppeler.deepcharter.test.support.SecondSeat;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
+import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
@@ -166,6 +182,17 @@ public class SeamSwapTest {
         helper.succeed();
     }
 
+    /** Pods that get a second seat each time they load: the teleport recreates a pod from its data, which has no second seat. */
+    private static final Set<UUID> TWO_SEATS = ConcurrentHashMap.newKeySet();
+
+    static {
+        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+            if (entity instanceof PodEntity pod && TWO_SEATS.contains(pod.getUUID())) {
+                SecondSeat.add(pod);
+            }
+        });
+    }
+
     /** The first site index of this class: {@link SeamStreamingTest} and {@link SeamDataAheadTest} use the ones below it. */
     private static final int FIRST_INDEX = 40;
 
@@ -194,9 +221,9 @@ public class SeamSwapTest {
                 mock.player(), run.site().two(), run.site().centre());
     }
 
-    /** What the chunk check holds: every chunk within the radius of the centre sent, and the arrival chunk inside it. */
+    /** What the chunk check holds: every chunk within the radius of the area's centre sent, and the arrival chunk inside it. */
     @GameTest
-    public void theSwapAreaIsTheChunksAroundTheArrival(GameTestHelper helper) {
+    public void theSwapAreaIsTheChunksAroundTheCentre(GameTestHelper helper) {
         ChunkPos centre = new ChunkPos(10, 10);
         int radius = LayerTuning.DEFAULT.seamSwapRadius();
         LongSet sent = new LongOpenHashSet();
@@ -208,13 +235,14 @@ public class SeamSwapTest {
         expect(helper, SeamSender.holdsSwapArea(sent, centre, centre, radius), "a full area is not held");
         expect(
                 helper,
+                SeamSender.holdsSwapArea(sent, centre, new ChunkPos(11, 9), radius),
+                "an arrival a chunk off the centre is not held");
+        expect(
+                helper,
                 !SeamSender.holdsSwapArea(sent, centre, new ChunkPos(10 + radius + 1, 10), radius),
                 "an arrival chunk outside the radius is held");
         sent.remove(ChunkPos.pack(10 + radius, 10 - radius));
         expect(helper, !SeamSender.holdsSwapArea(sent, centre, centre, radius), "an area missing a corner is held");
-        sent.add(ChunkPos.pack(10 + radius, 10 - radius));
-        sent.remove(centre.pack());
-        expect(helper, !SeamSender.holdsSwapArea(sent, centre, centre, radius), "an area missing the arrival is held");
         helper.succeed();
     }
 
@@ -364,6 +392,268 @@ public class SeamSwapTest {
                     if (ticks >= 20) {
                         helper.succeed();
                     }
+                });
+    }
+
+    /** What a rider's client does before the crossing. */
+    private enum Client {
+        /** Has every channel and accepts the prepare. */
+        ACCEPTS,
+        /** Has every channel and refuses the prepare it was sent. */
+        REFUSES,
+        /** Has the channels of slice 2 and no swap channel. */
+        NO_SWAP_CHANNEL
+    }
+
+    /** A crossing of a pod with riders, once settled: the pod as it was, and the riders. */
+    private record Crossed(
+            Run run, PodEntity pod, int podId, UUID podUuid, List<MockPlayer> riders, List<Integer> respawnsBefore) {
+        /** Respawns the server sent {@code rider} since the crossing began, not those of its first teleport into layer 1. */
+        int respawnsOf(MockPlayer rider) {
+            return rider.respawns() - respawnsBefore.get(riders.indexOf(rider));
+        }
+    }
+
+    /** Ticks after the riders arrive that a crossing waits, for the mock to read what the server sent. */
+    private static final int SETTLE_TICKS = 3;
+
+    /**
+     * A pod with one rider for each of {@code clients}, held over the floor of layer 1 until each rider holds the area and has
+     * answered as its client does, then dropped across the floor. {@code verify} runs {@link #SETTLE_TICKS} ticks after every rider
+     * is in layer 2; the test passes when it returns.
+     */
+    private static void podCrossing(
+            GameTestHelper helper, int index, String name, List<Client> clients, Consumer<Crossed> verify) {
+        Run run = Run.of(helper, index);
+        List<MockPlayer> riders = new ArrayList<>();
+        for (int i = 0; i < clients.size(); i++) {
+            MockPlayer mock = MockPlayers.join(helper, name + i);
+            mock.announceChannel(SeamPreparePayload.TYPE);
+            mock.announceChannel(SeamChunkPayload.TYPE);
+            mock.announceChannel(SeamDiscardPayload.TYPE);
+            mock.announceChannel(BreachPayload.TYPE);
+            if (clients.get(i) != Client.NO_SWAP_CHANNEL) {
+                mock.announceChannel(SeamSwapPayload.TYPE);
+            }
+            mock.setViewDistance(SeamSender.SEND_RADIUS + 2);
+            riders.add(mock);
+        }
+        PodEntity[] pods = new PodEntity[1];
+        int[] phase = {0};
+        int[] arrivedAt = {-1};
+        List<Integer> respawnsBefore = new ArrayList<>();
+        run.stage(
+                () -> {
+                    run.site().carveShaft(run.site().x(), HOLD_HEIGHT + 4);
+                    PodEntity pod =
+                            TestEntities.create(PodRegistry.POD, run.site().one());
+                    SecondSeat.add(pod);
+                    TWO_SEATS.add(pod.getUUID());
+                    hold(run.site(), pod, HOLD_HEIGHT);
+                    run.site().one().addFreshEntity(pod);
+                    pods[0] = pod;
+                    for (MockPlayer mock : riders) {
+                        mock.teleportTo(run.site().one(), run.site().at(HOLD_HEIGHT), 0, 0);
+                        expect(helper, mock.player().startRiding(pod, true, false), "a mock could not board the pod");
+                    }
+                },
+                ticks -> {
+                    PodEntity pod = pods[0];
+                    if (phase[0] == 0) {
+                        hold(run.site(), pod, HOLD_HEIGHT);
+                        if (riders.stream()
+                                .anyMatch(mock ->
+                                        mock.payloadsOf(SeamChunkPayload.class).size() < SENT_CHUNKS)) {
+                            return;
+                        }
+                        for (int i = 0; i < riders.size(); i++) {
+                            MockPlayer mock = riders.get(i);
+                            ResourceKey<Level> two = run.site().two().dimension();
+                            if (clients.get(i) == Client.REFUSES) {
+                                mock.send(new SeamRefusePayload(two, generationOf(mock), SeamRefuseReason.RELEASED));
+                            } else {
+                                mock.send(new SeamAcceptPayload(two, generationOf(mock)));
+                            }
+                        }
+                        riders.forEach(mock -> respawnsBefore.add(mock.respawns()));
+                        phase[0] = 1;
+                        return;
+                    }
+                    if (phase[0] == 1) {
+                        pod.setPos(
+                                run.site().x(),
+                                run.site().floorY() - 1,
+                                run.site().z());
+                        phase[0] = 2;
+                        return;
+                    }
+                    if (!riders.stream().allMatch(mock -> TestLayers.isInDimensionOf(mock.player(), 2))) {
+                        return;
+                    }
+                    if (arrivedAt[0] < 0) {
+                        arrivedAt[0] = ticks;
+                    }
+                    riders.forEach(MockPlayer::confirmDimensionChange);
+                    if (ticks - arrivedAt[0] < SETTLE_TICKS) {
+                        return;
+                    }
+                    TWO_SEATS.remove(pod.getUUID());
+                    verify.accept(new Crossed(run, pod, pod.getId(), pod.getUUID(), riders, respawnsBefore));
+                    Entity vehicle = riders.get(0).player().getVehicle();
+                    riders.forEach(mock -> mock.player().stopRiding());
+                    if (vehicle != null) {
+                        vehicle.discard();
+                    }
+                    helper.succeed();
+                });
+    }
+
+    /** The packets that name the pod, with the position of each in what the server sent, for the order of a swap. */
+    private static int firstAfter(List<Object> sequence, int from, Predicate<Object> match) {
+        for (int i = from + 1; i < sequence.size(); i++) {
+            if (match.test(sequence.get(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Checks that the crossing was a swap for every rider: same pod, same ids, still mounted, no respawn, the swap first. */
+    private static void expectSwapped(GameTestHelper helper, Crossed crossed) {
+        UUID uuid = crossed.podUuid();
+        ServerLevel one = crossed.run().site().one();
+        ServerLevel two = crossed.run().site().two();
+        expect(
+                helper,
+                crossed.pod().level() == two,
+                "the pod is in %s, not layer 2",
+                crossed.pod().level().dimension());
+        expect(helper, crossed.pod().getId() == crossed.podId(), "the pod's id changed");
+        expect(helper, crossed.pod().getUUID().equals(uuid), "the pod's UUID changed");
+        expect(helper, one.getEntity(uuid) == null, "layer 1 still holds the pod");
+        expect(helper, two.getEntity(uuid) == crossed.pod(), "layer 2 does not hold the very same pod by UUID");
+        expect(helper, two.getEntity(crossed.podId()) == crossed.pod(), "layer 2 does not hold the pod by id");
+        for (MockPlayer mock : crossed.riders()) {
+            expect(
+                    helper,
+                    mock.player().getVehicle() == crossed.pod()
+                            && crossed.pod().getPassengers().contains(mock.player()),
+                    "a rider is not on the pod any more");
+            expect(helper, crossed.respawnsOf(mock) == 0, "a rider was sent %d respawns", crossed.respawnsOf(mock));
+            List<SeamSwapPayload> swaps = mock.payloadsOf(SeamSwapPayload.class);
+            expect(helper, swaps.size() == 1, "a rider was sent %d swaps", swaps.size());
+            expect(
+                    helper,
+                    swaps.get(0).rootId() == crossed.podId()
+                            && swaps.get(0).rootUuid().equals(uuid)
+                            && swaps.get(0).dimension().equals(two.dimension())
+                            && swaps.get(0).carried().contains(crossed.podId())
+                            && swaps.get(0).carried().contains(mock.player().getId()),
+                    "the swap does not name the pod and its riders: %s",
+                    swaps.get(0));
+            List<Object> sequence = mock.sequence();
+            int swapAt = firstAfter(sequence, -1, packet -> packet instanceof SeamSwapPayload);
+            int removedAt = firstAfter(
+                    sequence,
+                    swapAt,
+                    packet -> packet instanceof ClientboundRemoveEntitiesPacket remove
+                            && remove.entityIds().contains(crossed.podId()));
+            int addedAt = firstAfter(
+                    sequence,
+                    swapAt,
+                    packet -> packet instanceof ClientboundAddEntityPacket add && add.getId() == crossed.podId());
+            expect(
+                    helper,
+                    swapAt >= 0 && removedAt > swapAt && addedAt > swapAt,
+                    "the swap must come before the old level's remove and the new level's add of the pod: swap %d, remove %d, add %d",
+                    swapAt,
+                    removedAt,
+                    addedAt);
+            expect(
+                    helper,
+                    firstAfter(sequence, swapAt, packet -> packet instanceof ClientboundForgetLevelChunkPacket) < 0,
+                    "a chunk was forgotten after the swap");
+            List<BreachPayload> breaches = mock.payloadsOf(BreachPayload.class);
+            expect(
+                    helper,
+                    breaches.size() == 1
+                            && breaches.get(0).swapped()
+                            && !breaches.get(0).fades(),
+                    "a swap must rumble and not fade: %s",
+                    breaches);
+        }
+    }
+
+    /** Checks that the crossing was the teleport for every rider: a respawn each, a new pod with the old UUID, still mounted. */
+    private static void expectTeleported(GameTestHelper helper, Crossed crossed) {
+        Entity vehicle =
+                Objects.requireNonNull(crossed.riders().get(0).player().getVehicle(), "the rider has no vehicle");
+        expect(
+                helper,
+                vehicle != crossed.pod() && vehicle.getId() != crossed.podId(),
+                "the pod was kept: the fallback recreates it");
+        expect(helper, vehicle.getUUID().equals(crossed.podUuid()), "the recreated pod has another UUID");
+        expect(helper, vehicle.level() == crossed.run().site().two(), "the recreated pod is not in layer 2");
+        for (MockPlayer mock : crossed.riders()) {
+            expect(
+                    helper,
+                    mock.player().getVehicle() == vehicle
+                            && vehicle.getPassengers().contains(mock.player()),
+                    "a rider of the vehicle was left behind: the vehicle must never split");
+            expect(
+                    helper,
+                    crossed.respawnsOf(mock) == 1,
+                    "a rider was sent %d respawns, not 1",
+                    crossed.respawnsOf(mock));
+            expect(
+                    helper,
+                    mock.payloadsOf(SeamSwapPayload.class).isEmpty(),
+                    "a rider was sent a swap on the fallback path");
+            List<BreachPayload> breaches = mock.payloadsOf(BreachPayload.class);
+            expect(
+                    helper,
+                    breaches.size() == 1
+                            && !breaches.get(0).swapped()
+                            && breaches.get(0).fades(),
+                    "the fallback must fade: %s",
+                    breaches);
+        }
+    }
+
+    /** One ready rider: the pod keeps its object, id and UUID, moves into layer 2 and the rider stays on it, with no respawn. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aReadyRiderSwapsAndThePodKeepsItsId(GameTestHelper helper) {
+        podCrossing(helper, FIRST_INDEX + 10, "seam-swap-one", List.of(Client.ACCEPTS), crossed -> {
+            expectSwapped(helper, crossed);
+        });
+    }
+
+    /** Two ready riders of one pod swap together, each sent its own swap and neither respawned. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void twoReadyRidersSwapTogether(GameTestHelper helper) {
+        podCrossing(helper, FIRST_INDEX + 11, "seam-swap-two", List.of(Client.ACCEPTS, Client.ACCEPTS), crossed -> {
+            expectSwapped(helper, crossed);
+        });
+    }
+
+    /** One of two riders refuses: the whole pod is teleported and both riders respawn and stay mounted. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aRefusingRiderSendsTheWholePodThroughTheFallback(GameTestHelper helper) {
+        podCrossing(helper, FIRST_INDEX + 12, "seam-swap-refuse", List.of(Client.ACCEPTS, Client.REFUSES), crossed -> {
+            expectTeleported(helper, crossed);
+        });
+    }
+
+    /** One of two riders has no swap channel: the whole pod is teleported. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aRiderWithoutTheChannelFallsBack(GameTestHelper helper) {
+        podCrossing(
+                helper,
+                FIRST_INDEX + 13,
+                "seam-swap-nochannel",
+                List.of(Client.NO_SWAP_CHANNEL, Client.ACCEPTS),
+                crossed -> {
+                    expectTeleported(helper, crossed);
                 });
     }
 }

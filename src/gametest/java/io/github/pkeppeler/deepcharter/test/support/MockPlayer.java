@@ -12,11 +12,13 @@ import java.util.function.BooleanSupplier;
 import net.fabricmc.fabric.impl.networking.RegistrationPayload;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
@@ -62,6 +64,7 @@ public final class MockPlayer {
     private final List<Long> soundTicks = new ArrayList<>();
     private final List<Identifier> soundsInTheWorld = new ArrayList<>();
     private final List<CustomPacketPayload> payloads = new ArrayList<>();
+    private final List<Packet<?>> packets = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private final Map<ResourceKey<Level>, Map<ChunkPos, Integer>> chunksSentByLevel = new HashMap<>();
     private final List<ChunkPos> forgetsAfterRespawn = new ArrayList<>();
@@ -193,6 +196,31 @@ public final class MockPlayer {
     }
 
     /**
+     * Every packet of {@code type} the server has sent this player so far, oldest first, with a bundle's packets taken apart. Read on
+     * the mock's tick, so it lags by one.
+     */
+    public <T extends Packet<?>> List<T> packetsOf(Class<T> type) {
+        return packets.stream().filter(type::isInstance).map(type::cast).toList();
+    }
+
+    /**
+     * Every packet the server has sent this player so far, oldest first, a custom payload as its payload, a bundle taken apart: for a
+     * test of the order packets came in. Read on the mock's tick, so it lags by one.
+     */
+    public List<Object> sequence() {
+        List<Object> sequence = new ArrayList<>();
+        for (Packet<?> packet : packets) {
+            sequence.add(packet instanceof ClientboundCustomPayloadPacket custom ? custom.payload() : packet);
+        }
+        return sequence;
+    }
+
+    /** How many respawn packets the server has sent this player: a swap sends none. Read on the mock's tick, so it lags by one. */
+    public int respawns() {
+        return packetsOf(ClientboundRespawnPacket.class).size();
+    }
+
+    /**
      * Tell the server this client can receive {@code type}, as a real client does with Fabric's channel registration, so that
      * {@code ServerPlayNetworking.canSend} is true for the mock. It uses Fabric's impl {@code RegistrationPayload}, because no public
      * API makes {@code canSend} true for a mock: a Fabric bump that breaks it is fixed here.
@@ -300,6 +328,14 @@ public final class MockPlayer {
         return server;
     }
 
+    private void record(Object outbound) {
+        if (outbound instanceof ClientboundBundlePacket bundle) {
+            bundle.subPackets().forEach(this::record);
+        } else if (outbound instanceof Packet<?> packet) {
+            packets.add(packet);
+        }
+    }
+
     /**
      * One server tick of the fake network: tick the connection (which runs the packet listener
      * and sends keep-alives), then drain everything the server wrote to the channel, answering
@@ -317,6 +353,7 @@ public final class MockPlayer {
         Object outbound;
         while ((outbound = channel.readOutbound()) != null) {
             try {
+                record(outbound);
                 if (outbound instanceof ClientboundSystemChatPacket packet) {
                     (packet.overlay() ? actionBar : chat).add(packet.content());
                 }
