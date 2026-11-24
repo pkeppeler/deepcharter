@@ -91,6 +91,25 @@ final class TestSiteTable {
         claim("DimensionCrossingTest", 0, 31998, 32002, 31998, 32002);
         claim("DimensionCrossingTest", 0, 32192, 32207, 32192, 32207);
 
+        claim("DrifterSpawnTest", 1, 25007, 25057, 25008, 25024);
+        claim("DrifterSpawnTest", 1, 25892, 25911, 25892, 25911);
+        claim("DrifterSpawnTest", 2, 25007, 25057, 25008, 25024);
+        claim("DrifterSpawnTest", 2, 25488, 25503, 25488, 25503);
+        claim("DrifterSpawnTest", 2, 25692, 25711, 25692, 25711);
+
+        claim("DrifterTest", 0, 9216, 9232, 9216, 9232);
+        claim("DrifterTest", 0, 9216, 9232, 9280, 9296);
+        claim("DrifterTest", 0, 9216, 9232, 9344, 9360);
+        claim("DrifterTest", 0, 9216, 9232, 9408, 9424);
+        claim("DrifterTest", 0, 9216, 9232, 9472, 9488);
+        claim("DrifterTest", 0, 9216, 9232, 9536, 9552);
+        claim("DrifterTest", 0, 9216, 9232, 9600, 9616);
+        claim("DrifterTest", 0, 9216, 9232, 9664, 9680);
+        claim("DrifterTest", 0, 9216, 9232, 9728, 9744);
+        claim("DrifterTest", 0, 9216, 9232, 9792, 9808);
+        claim("DrifterTest", 0, 9216, 9232, 9856, 9872);
+        claim("DrifterTest", 1, 25992, 26015, 25992, 26015);
+
         claim("EmptySurfaceTest", 0, 24995, 25005, 24995, 25005);
         claim("EmptySurfaceTest", 1, 25027, 25037, 24995, 25005);
         claim("EmptySurfaceTest", 2, 25059, 25069, 24995, 25005);
@@ -102,6 +121,7 @@ final class TestSiteTable {
         claim("EntityQueryAuditTest", 0, 40000, 40015, 40000, 40015);
 
         claim("FarChunksTest", 0, 64000, 64015, 64000, 64015);
+        claim("FarChunksTest", 0, 64080, 64095, 64080, 64095);
         claim("FarChunksTest", 0, 64160, 64175, 64160, 64175);
         claim("FarChunksTest", 0, 64320, 64335, 64320, 64335);
 
@@ -344,6 +364,8 @@ final class TestSiteTable {
         claim("TallyTest", 0, 6800, 6815, 7504, 7519);
         claim("TallyTest", 0, 6800, 6815, 7568, 7583);
         claim("TallyTest", 0, 6800, 6815, 7632, 7647);
+        claim("TallyTest", 0, 6800, 6815, 7696, 7711);
+        claim("TallyTest", 0, 6800, 6815, 7760, 7775);
 
         row("TetherTest", 1, 16999, 17051, 64, 14, 16999, 17027);
 
