@@ -13,10 +13,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * A flooded hall in the middle zone of each layer, and a camera under its water looking east along it, past the render distance, once
- * the eyes have adjusted (#1187). There the client lifts the water's fog colour to full brightness at its brightest channel unless a
- * channel is exactly 0, so vanilla's water fog shows as a bright-blue wall. {@code UnderwaterFogClientTest} asserts the frame is dark
- * and the {@code underwater-fog} scenario shows it, so the two cannot drift.
+ * A flooded hall in the middle zone of each layer, and a camera under its water looking east along it, past the render
+ * distance, once the eyes have adjusted (#1187). There the client lifts the water's fog colour to full brightness at
+ * its brightest channel unless a channel is exactly 0, so vanilla's water fog shows as a bright-blue wall.
+ * {@code UnderwaterFogClientTest} asserts the frame is dark and the {@code underwater-fog} scenario shows it, so the
+ * two cannot drift.
  */
 public final class UnderwaterFog {
     /**
@@ -32,20 +33,23 @@ public final class UnderwaterFog {
     private static final int BEHIND = 4;
 
     /**
-     * Water east of the camera's block: past the 2 chunks drawn round the camera's chunk, so a ray of the sampled box leaves the drawn
-     * chunks before it meets a wall.
+     * Water east of the camera's block: past the 2 chunks drawn round the camera's chunk, so a ray of the sampled box
+     * leaves the drawn chunks before it meets a wall.
      */
     private static final int AHEAD = 80;
 
-    /** Water each side of the camera: a ray 16 degrees off the middle meets it about 70 blocks out, past the drawn chunks. */
+    /**
+     * Water each side of the camera: a ray 16 degrees off the middle meets it about 70 blocks out, past the drawn
+     * chunks.
+     */
     private static final int HALF_WIDTH = 20;
 
     /** Water above and below the camera's feet: a ray 10 degrees up or down meets it about 70 blocks out. */
     private static final int HALF_HEIGHT = 13;
 
     /**
-     * The brightest a channel of the box's median may be. The art direction's world stays black; vanilla's water fog, lifted as the eyes
-     * adjust, reads {@code #1919ff}.
+     * The brightest a channel of the box's median may be. The art direction's world stays black; vanilla's water fog,
+     * lifted as the eyes adjust, reads {@code #1919ff}.
      */
     private static final int DARK = 40;
 
@@ -55,8 +59,9 @@ public final class UnderwaterFog {
     private UnderwaterFog() {}
 
     /**
-     * Floods a hall in each layer, cuts the render distance, and stands the camera, a spectator, under each hall's water facing east until
-     * its eyes have adjusted (the client's water vision is full). {@code atLayer} runs at each, given the layer.
+     * Floods a hall in each layer, cuts the render distance, and stands the camera, a spectator, under each hall's
+     * water facing east until its eyes have adjusted (the client's water vision is full). {@code atLayer} runs at each,
+     * given the layer.
      */
     public static void tour(ClientGameTestContext context, TestServerContext server, IntConsumer atLayer) {
         ClientChecks.withRenderDistance(

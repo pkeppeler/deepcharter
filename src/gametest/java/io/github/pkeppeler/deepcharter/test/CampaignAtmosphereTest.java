@@ -76,9 +76,9 @@ public class CampaignAtmosphereTest {
             EnvironmentAttributes.STAR_BRIGHTNESS);
 
     /**
-     * What the biome layer must put back in a layer, with the ambient colour, the sky's fog end and the water's fog: the six values of #797,
-     * the sky of #1161 and the water of #1187. The ambient colour, the sky's fog end and the water's fog are no timeline's, so the biome's
-     * static layer already wins; they are read here to pin that it stays so.
+     * What the biome layer must put back in a layer, with the ambient colour, the sky's fog end and the water's fog:
+     * the six values of #797, the sky of #1161 and the water of #1187. The ambient colour, the sky's fog end and the
+     * water's fog are no timeline's, so the biome's static layer already wins; they are read here to pin that.
      */
     private static final List<EnvironmentAttribute<?>> LAYER_VALUES = List.of(
             EnvironmentAttributes.FOG_COLOR,
@@ -662,7 +662,10 @@ public class CampaignAtmosphereTest {
         return name(attribute).startsWith("minecraft:visual/");
     }
 
-    /** The channels (0 red, 1 green, 2 blue) of {@code colour} that are exactly 0, the only ones the client's brightening skips. */
+    /**
+     * The channels (0 red, 1 green, 2 blue) of {@code colour} that are exactly 0, the only ones the client's
+     * brightening skips.
+     */
     private static Set<Integer> zeroChannels(Vector3fc colour) {
         Set<Integer> zeros = new TreeSet<>();
         for (int c = 0; c < 3; c++) {

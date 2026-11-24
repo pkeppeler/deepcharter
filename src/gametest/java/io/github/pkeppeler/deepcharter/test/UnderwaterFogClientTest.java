@@ -14,9 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client GameTest for #1187: under the water of a flooded hall in each layer, looking past the render distance once the eyes have
- * adjusted, the frame stays dark. Vanilla's water fog, which no zone biome replaced, is lifted there to a bright-blue wall
- * ({@code #1919ff}).
+ * Client GameTest for #1187: under the water of a flooded hall in each layer, looking past the render distance once the
+ * eyes have adjusted, the frame stays dark. Vanilla's water fog, which no zone biome replaced, is lifted there to a
+ * bright-blue wall ({@code #1919ff}).
  */
 public class UnderwaterFogClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(UnderwaterFogClientTest.class);
