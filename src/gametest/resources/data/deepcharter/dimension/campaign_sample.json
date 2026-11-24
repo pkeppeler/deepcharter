@@ -1,5 +1,5 @@
 {
-  "type": "deepcharter:campaign_sample",
+  "type": "minecraft:overworld",
   "generator": {
     "type": "minecraft:noise",
     "biome_source": {
@@ -151,6 +151,6 @@
       ],
       "unbuilt": "deepcharter:unbuilt_depth"
     },
-    "settings": "deepcharter:campaign"
+    "settings": "deepcharter:campaign_sample"
   }
 }

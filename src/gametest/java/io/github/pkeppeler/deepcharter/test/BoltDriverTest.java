@@ -40,6 +40,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -48,14 +49,19 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Server GameTests for the bolt driver (#987): what it fires, what it never touches, the roof bolts it sets, and what a roof bolt does in
@@ -63,13 +69,20 @@ import net.minecraft.world.phys.Vec3;
  * over it. The cave-in's own rules (the creak before the fall, a blast that starts one) are here too, because the bolt is their answer.
  */
 public class BoltDriverTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(BoltDriverTest.class);
     private static final String ALONE = "deepcharter-test:alone";
     private static final CaveInTuning CAVE_IN = CaveInTuning.DEFAULT;
     private static final BoltDriverTuning DRIVER = BoltDriverTuning.DEFAULT;
     private static final int LENGTH = 14;
+    /** Two corridor slots no other test uses. */
+    private static final int SPARE_SLOT = 40;
+
     private static final float EAST = -90f;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
-    /** A joined player is invulnerable for its first 60 ticks. */
+    /**
+     * How long a test waits for a joined mock to settle. 26.3 has no spawn timer: a player is invulnerable only until its client has
+     * loaded or while it changes dimension, and a mock's client loads a few ticks after the join.
+     */
     private static final int SPAWN_PROTECTION_TICKS = 100;
 
     /** How long a test waits for a mock that reads as hittable to be hit. */
@@ -275,49 +288,149 @@ public class BoltDriverTest {
         });
     }
 
+    /**
+     * A test that cuts its corridor after its neighbour must not fill the neighbour's first cell, where its shooter stands: the shooter's
+     * eye would sit in rock and no bolt would fly (#1065). Two spare slots, cut in the order that clobbers. This guards the stride, not the
+     * general rule; the bed-holds-air gate of #1090 supersedes it, and then this test and {@code SPARE_SLOT} are deleted.
+     */
+    @GameTest
+    public void aCorridorCutAfterItsNeighbourLeavesTheNeighboursFirstCellOpen(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Corridor later = cut(level, LENGTH, SPARE_SLOT + 1);
+        cut(level, LENGTH, SPARE_SLOT);
+        BlockPos cell = later.floor(0).above();
+        expect(
+                helper,
+                level.getBlockState(cell).isAir(),
+                "the first cell of a corridor, at eye height, was %s after the corridor before it was cut",
+                level.getBlockState(cell));
+        helper.succeed();
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
     public void aBoltHurtsAnotherPlayerOnlyWhenPvpIsOn(GameTestHelper helper) {
         Corridor corridor = corridor(helper, LENGTH, 5);
         MockPlayer shooter = walker(helper, corridor, "bolt-pvp-shooter", 0, EAST);
         MockPlayer other = walker(helper, corridor, "bolt-pvp-other", 9, 90f);
-        // Two bolts a try.
-        arm(shooter.player(), 60);
         MinecraftServer server = helper.getLevel().getServer();
+        int[] misses = {0};
+        String[] lastTry = {"no shot yet"};
         TestTicks.each(helper, () -> {
             if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
                 return;
             }
-            // A joined player takes no damage until its client has loaded, and for its first ticks: wait it out.
-            if (other.player()
-                    .isInvulnerableTo(
-                            corridor.level(), corridor.level().damageSources().generic())) {
-                return;
+            ServerPlayer target = other.player();
+            // A joined player takes no damage until its client has loaded: wait for the target to be hittable, which
+            // includes being alive, in the corridor's level and in a chunk that ticks entities, as a bolt's sweep
+            // needs. A precondition that still fails when the retry window ends fails with the state dump.
+            boolean retrying = helper.getTick() < SPAWN_PROTECTION_TICKS + PROTECTION_RETRY_TICKS;
+            if (!hittable(target, corridor.level())) {
+                if (retrying) {
+                    return;
+                }
+                throw failure(
+                        helper,
+                        "the target was never hittable, so no bolt was tried: %s",
+                        state(target, shooter.player(), corridor.level()));
             }
+            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a pack
+            // holds.
+            arm(shooter.player(), 2);
             // A full stomach heals: keep it low, so a loss is the bolt's.
-            other.player().getFoodData().setFoodLevel(6);
+            target.getFoodData().setFoodLevel(6);
             boolean was = server.getGameRules().get(GameRules.PVP);
-            float health = other.player().getHealth();
+            float health = target.getHealth();
             try {
                 server.getGameRules().set(GameRules.PVP, false, server);
                 fire(shooter.player());
-                if (other.player().getHealth() < health) {
+                if (target.getHealth() < health) {
                     throw failure(helper, "a bolt hurt a player on a server with PvP off");
                 }
                 server.getGameRules().set(GameRules.PVP, true, server);
-                fire(shooter.player());
-                if (other.player().getHealth() >= health) {
-                    // A mock under load can still be in its first ticks of protection although it reads as hittable:
-                    // try again.
-                    if (helper.getTick() < SPAWN_PROTECTION_TICKS + PROTECTION_RETRY_TICKS) {
+                InteractionResult result = fire(shooter.player());
+                lastTry[0] = shot(shooter, target, corridor.level(), result);
+                if (target.getHealth() >= health) {
+                    // A try can miss while the target is still settling: try again, and dump the state and the ray if
+                    // none hits.
+                    if (retrying) {
+                        misses[0]++;
                         return;
                     }
-                    throw failure(helper, "a bolt spared a player on a server with PvP on");
+                    throw failure(
+                            helper,
+                            "a bolt spared a player on a server with PvP on after %s tries: %s; last shot: %s",
+                            misses[0] + 1,
+                            state(target, shooter.player(), corridor.level()),
+                            lastTry[0]);
+                }
+                if (misses[0] > 0) {
+                    LOGGER.info("a bolt hurt the player on try {}, after {} misses (#1065)", misses[0] + 1, misses[0]);
                 }
             } finally {
                 server.getGameRules().set(GameRules.PVP, was, server);
             }
             helper.succeed();
         });
+    }
+
+    /** What the last PvP-on shot did: the driver's answer and the ray it fires, so a miss names its cause (#1065). */
+    private static String shot(MockPlayer shooter, ServerPlayer target, ServerLevel level, InteractionResult result) {
+        ServerPlayer from = shooter.player();
+        Vec3 eye = from.getEyePosition();
+        Vec3 end = eye.add(from.getLookAngle().scale(DRIVER.range()));
+        HitResult block =
+                level.clip(new ClipContext(eye, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, from));
+        List<Component> said = shooter.actionBarMessages();
+        return ("driver returned %s, said %s, rest on the driver %s, eye %s pitch %s, ray hit %s at %s (%s), "
+                        + "target box %s, target health %s, target pose %s, game modes shooter %s target %s, "
+                        + "target abilities invulnerable %s, target hurt by a player's attack: invulnerable %s, "
+                        + "may be hit by a projectile %s, shooter may harm it %s, invulnerable time %s")
+                .formatted(
+                        result,
+                        said.isEmpty() ? "nothing" : said.getLast().getString(),
+                        from.getCooldowns().getCooldownPercent(from.getItemInHand(InteractionHand.MAIN_HAND), 0f),
+                        eye,
+                        from.getXRot(),
+                        block.getType(),
+                        block.getLocation(),
+                        level.getBlockState(BlockPos.containing(block.getLocation())),
+                        target.getBoundingBox(),
+                        target.getHealth(),
+                        target.getPose(),
+                        from.gameMode.getGameModeForPlayer(),
+                        target.gameMode.getGameModeForPlayer(),
+                        target.getAbilities().invulnerable,
+                        target.isInvulnerableTo(level, level.damageSources().playerAttack(from)),
+                        target.canBeHitByProjectile(),
+                        from.canHarmPlayer(target),
+                        target.getInvulnerableTime());
+    }
+
+    private static boolean hittable(ServerPlayer target, ServerLevel level) {
+        return target.isAlive()
+                && target.level() == level
+                && level.isPositionEntityTicking(target.blockPosition())
+                && !target.isInvulnerableTo(level, level.damageSources().generic());
+    }
+
+    private static String state(ServerPlayer target, ServerPlayer shooter, ServerLevel level) {
+        return "target at %s alive %s in level %s entity-ticking %s invulnerable %s loaded %s health %s hurt cooldown %s, shooter at %s facing %s with %s bolts, living entities within the driver's range box %s"
+                .formatted(
+                        target.position(),
+                        target.isAlive(),
+                        target.level() == level,
+                        level.isPositionEntityTicking(target.blockPosition()),
+                        target.isInvulnerableTo(level, level.damageSources().generic()),
+                        target.connection.hasClientLoaded(),
+                        target.getHealth(),
+                        target.damageCooldownTime,
+                        shooter.position(),
+                        shooter.getYRot(),
+                        bolts(shooter),
+                        level.getEntitiesOfClass(
+                                LivingEntity.class,
+                                shooter.getBoundingBox().inflate(DRIVER.range()),
+                                entity -> entity != shooter));
     }
 
     @GameTest(maxTicks = MAX_TICKS)
