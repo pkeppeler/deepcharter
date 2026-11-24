@@ -6,7 +6,19 @@
         "weight": 3
       },
       {
+        "model": "deepcharter:block/overgrowth_1",
+        "weight": 3
+      },
+      {
+        "model": "deepcharter:block/overgrowth_2",
+        "weight": 2
+      },
+      {
         "model": "deepcharter:block/overgrowth_mold",
+        "weight": 1
+      },
+      {
+        "model": "deepcharter:block/overgrowth_mold_1",
         "weight": 1
       }
     ]

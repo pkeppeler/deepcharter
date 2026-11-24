@@ -43,16 +43,42 @@
 
     "block/overgrowth": {"kind": "opaque", "layers": [
       {"op": "noise", "ramp": ["moss.2", "moss.3", "moss.3", "moss.4", "moss.4", "moss.5"], "seed": 9741, "cell": 4, "octaves": 3, "dither": 0.9},
-      {"op": "speckle", "colours": ["moss.1", "moss.2"], "density": 0.08, "seed": 9743},
-      {"op": "speckle", "colours": ["moss.5", "moss.6"], "density": 0.07, "seed": 9744},
-      {"op": "speckle", "colours": ["moss.0"], "density": 0.025, "seed": 9745}
+      {"op": "cracks", "colour": "moss.1", "seed": 9743, "count": 5, "length": 7, "lip": "moss.5"},
+      {"op": "speckle", "colours": ["moss.1", "moss.2"], "density": 0.06, "seed": 9744},
+      {"op": "speckle", "colours": ["moss.5", "moss.6"], "density": 0.06, "seed": 9745},
+      {"op": "speckle", "colours": ["moss.0"], "density": 0.02, "seed": 9746}
+    ]},
+
+    "block/overgrowth_1": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["moss.2", "moss.3", "moss.3", "moss.4", "moss.4", "moss.5"], "seed": 9761, "cell": 4, "octaves": 3, "dither": 0.9},
+      {"op": "cracks", "colour": "moss.1", "seed": 9763, "count": 5, "length": 7, "lip": "moss.5"},
+      {"op": "speckle", "colours": ["moss.1", "moss.2"], "density": 0.06, "seed": 9764},
+      {"op": "speckle", "colours": ["moss.5", "moss.6"], "density": 0.06, "seed": 9765},
+      {"op": "speckle", "colours": ["moss.0"], "density": 0.02, "seed": 9766}
+    ]},
+
+    "block/overgrowth_2": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["moss.2", "moss.3", "moss.3", "moss.4", "moss.4", "moss.5"], "seed": 9771, "cell": 4, "octaves": 3, "dither": 0.9},
+      {"op": "cracks", "colour": "moss.1", "seed": 9773, "count": 5, "length": 7, "lip": "moss.5"},
+      {"op": "speckle", "colours": ["moss.1", "moss.2"], "density": 0.06, "seed": 9774},
+      {"op": "speckle", "colours": ["moss.5", "moss.6"], "density": 0.06, "seed": 9775},
+      {"op": "speckle", "colours": ["moss.0"], "density": 0.02, "seed": 9776}
     ]},
 
     "block/overgrowth_mold": {"kind": "opaque", "layers": [
       {"op": "noise", "ramp": ["moss.2", "mold.1", "mold.2", "mold.2", "mold.3", "mold.3"], "seed": 9751, "cell": 4, "octaves": 3, "dither": 0.9},
-      {"op": "speckle", "colours": ["mold.4", "mold.5"], "density": 0.12, "seed": 9753},
-      {"op": "speckle", "colours": ["moss.2", "mold.0"], "density": 0.06, "seed": 9754},
-      {"op": "speckle", "colours": ["moss.5"], "density": 0.03, "seed": 9755}
+      {"op": "fibres", "ramp": ["mold.1", "mold.2", "mold.3", "mold.4", "mold.5"], "seed": 9752, "breaks": 3, "spread": 1, "rect": [0, 0, 16, 7]},
+      {"op": "speckle", "colours": ["mold.4", "mold.5"], "density": 0.12, "seed": 9754},
+      {"op": "speckle", "colours": ["moss.2", "mold.0"], "density": 0.06, "seed": 9755},
+      {"op": "speckle", "colours": ["moss.5"], "density": 0.03, "seed": 9756}
+    ]},
+
+    "block/overgrowth_mold_1": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["moss.2", "mold.1", "mold.2", "mold.2", "mold.3", "mold.3"], "seed": 9781, "cell": 4, "octaves": 3, "dither": 0.9},
+      {"op": "fibres", "ramp": ["mold.1", "mold.2", "mold.3", "mold.4", "mold.5"], "seed": 9782, "breaks": 3, "spread": 1, "rect": [0, 0, 16, 7]},
+      {"op": "speckle", "colours": ["mold.4", "mold.5"], "density": 0.12, "seed": 9784},
+      {"op": "speckle", "colours": ["moss.2", "mold.0"], "density": 0.06, "seed": 9785},
+      {"op": "speckle", "colours": ["moss.5"], "density": 0.03, "seed": 9786}
     ]},
 
     "block/terminal_side": {
