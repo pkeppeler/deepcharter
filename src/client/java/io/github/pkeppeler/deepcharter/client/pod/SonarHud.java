@@ -37,8 +37,8 @@ import net.minecraft.resources.Identifier;
 public final class SonarHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sonar");
     private static final int TITLE_GAP = 10;
-    private static final int BAR_HEIGHT = 2;
-    private static final int LINE_GAP = 2;
+    public static final int BAR_HEIGHT = 2;
+    public static final int LINE_GAP = 2;
 
     private SonarHud() {}
 
@@ -122,7 +122,7 @@ public final class SonarHud {
         return PodSonar.reading(pod).map(state -> new Frame(pod, state, level.getGameTime(), player));
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         Optional<Frame> frame = frame(client);
         if (frame.isEmpty()) {

@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSeats;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.SonarEcho;
@@ -37,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -239,6 +241,73 @@ public class PodSonarTest {
         });
     }
 
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void theSeatAssignmentFollowsBoardingOrder(GameTestHelper helper) {
+        int x = 8152;
+        boolean[] left = {false};
+        run(helper, x, level -> {}, scene -> {
+            // The assignment is written at the end of the pod's tick, so each step waits for it to catch up.
+            List<UUID> synced = Versioned.readable(scene.pod(), PodSeats.STATE)
+                    .orElseThrow()
+                    .riders();
+            UUID pilot = scene.pilot().player().getUUID();
+            UUID navigator = scene.navigator().player().getUUID();
+            if (!left[0]) {
+                if (!synced.equals(List.of(pilot, navigator))) {
+                    return false;
+                }
+                scene.pilot().player().stopRiding();
+                left[0] = true;
+                return false;
+            }
+            if (!synced.equals(List.of(navigator))) {
+                return false;
+            }
+            expect(
+                    helper,
+                    PodSeats.pilot(scene.pod()).filter(navigator::equals).isPresent(),
+                    "once the pilot gets off the navigator holds the pilot's seat");
+            return true;
+        });
+    }
+
+    @GameTest
+    public void aRiderThatIsNoPlayerDoesNotPilot(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
+        Entity stand = TestEntities.create(EntityTypes.ARMOR_STAND, level);
+        expect(helper, stand.startRiding(pod, true, false), "the armour stand boards the pod");
+        PodEvents.AFTER_TICK.invoker().afterTick(pod);
+        PodSeats.State state = Versioned.readable(pod, PodSeats.STATE).orElseThrow();
+        expect(
+                helper,
+                state.riders().equals(List.of(stand.getUUID())) && !state.pilotIsPlayer(),
+                "the stand holds seat 0 and the assignment says it is no player, got %s",
+                state);
+        expect(helper, PodSeats.pilot(pod).isEmpty(), "a pod whose first rider is no player has no pilot");
+        stand.discard();
+        pod.discard();
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aSeatAssignmentOfAnotherVersionIsKeptAndNeverThrows(GameTestHelper helper) {
+        PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, helper.getLevel());
+        UnreadableChecks.makeUnreadable(pod, PodSeats.STATE);
+        UnreadableChecks.assertNoThrow(
+                helper,
+                "pod seats",
+                Map.of(
+                        "the pilot", () -> PodSeats.pilot(pod),
+                        "the tick", () -> PodEvents.AFTER_TICK.invoker().afterTick(pod)));
+        expect(
+                helper,
+                pod.getAttached(PodSeats.STATE) instanceof Versioned.Unreadable<PodSeats.State>,
+                "an unreadable seat assignment is left as it was read");
+        pod.discard();
+        helper.succeed();
+    }
+
     // ---- what a ping returns ----
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
@@ -312,36 +381,40 @@ public class PodSonarTest {
     public void creaturesInTheEchoTagEchoAsMovedOrAsOre(GameTestHelper helper) {
         int x = 7320;
         List<Entity> bodies = new ArrayList<>();
-        scene(
-                helper,
-                x,
-                level -> {
-                    room(level, x + 8, FLOOR, Z, 2, 1, 4);
-                    for (EntityType<?> type :
-                            List.of(EntityTypes.ARMOR_STAND, EntityTypes.ARMOR_STAND, EntityTypes.MARKER)) {
-                        Entity body = TestEntities.create(type, level);
-                        body.setNoGravity(true);
-                        body.setPos(x + 9 + 4 * bodies.size(), FLOOR + 1, Z + 1);
-                        level.addFreshEntity(body);
-                        bodies.add(body);
-                    }
-                },
-                scene -> {
-                    // The server's entity tick has not run since the velocity is set, so the ping reads it as set.
-                    bodies.get(1).setDeltaMovement(TUNING.movingSpeed() * 2, 0, 0);
-                    PodSonar.ping(scene.pod());
-                    expectEcho(helper, scene.pod(), SonarKind.ORE, bodies.get(0).blockPosition());
-                    expectEcho(
-                            helper, scene.pod(), SonarKind.MOVED, bodies.get(1).blockPosition());
-                    expect(
-                            helper,
-                            echoes(scene.pod()).stream()
-                                    .noneMatch(echo ->
-                                            echo.pos().equals(bodies.get(2).blockPosition())),
-                            "a creature outside the echo tag is hollow and returns nothing: %s",
-                            echoes(scene.pod()));
-                    bodies.forEach(Entity::discard);
-                });
+        List<EntityType<?>> types = List.of(EntityTypes.ARMOR_STAND, EntityTypes.ARMOR_STAND, EntityTypes.MARKER);
+        // The bodies stand 9, 13 and 17 blocks from the pod, in chunks other than the pod's.
+        List<BlockPos> spots = IntStream.range(0, types.size())
+                .mapToObj(i -> new BlockPos(x + 9 + 4 * i, FLOOR + 1, Z + 1))
+                .toList();
+        // An entity added to a chunk that is loaded but not yet entity ticking is not found by a query (#1125).
+        ServerLevel level = TestLayers.level(helper, 1);
+        FarChunks.awaitAllEntityTicking(helper, level, spots, () -> {
+            for (int i = 0; i < types.size(); i++) {
+                Entity body = TestEntities.create(types.get(i), level);
+                body.setNoGravity(true);
+                body.setPos(Vec3.atBottomCenterOf(spots.get(i)));
+                level.addFreshEntity(body);
+                bodies.add(body);
+            }
+        });
+        run(helper, x, build -> room(build, x + 8, FLOOR, Z, 2, 1, 4), scene -> {
+            if (bodies.isEmpty()) {
+                return false;
+            }
+            // The server's entity tick has not run since the velocity is set, so the ping reads it as set.
+            bodies.get(1).setDeltaMovement(TUNING.movingSpeed() * 2, 0, 0);
+            PodSonar.ping(scene.pod());
+            expectEcho(helper, scene.pod(), SonarKind.ORE, bodies.get(0).blockPosition());
+            expectEcho(helper, scene.pod(), SonarKind.MOVED, bodies.get(1).blockPosition());
+            expect(
+                    helper,
+                    echoes(scene.pod()).stream()
+                            .noneMatch(echo -> echo.pos().equals(bodies.get(2).blockPosition())),
+                    "a creature outside the echo tag is hollow and returns nothing: %s",
+                    echoes(scene.pod()));
+            bodies.forEach(Entity::discard);
+            return true;
+        });
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
