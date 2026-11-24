@@ -30,10 +30,12 @@ touches_gradle_inputs() { # <local sha> <remote sha>; an unknown base counts as 
 }
 need_checks=0
 need_gradle=0
+pushed_shas=()
 while read -r _ local_sha remote_ref remote_sha || [[ -n ${local_sha:-} ]]; do
   [[ $local_sha =~ ^0+$ ]] && continue
   [[ $remote_ref == refs/heads/pr-media ]] && continue
   need_checks=1
+  pushed_shas+=("$local_sha")
   if touches_gradle_inputs "$local_sha" "$remote_sha"; then need_gradle=1; fi
 done
 [[ $need_checks -eq 1 ]] || exit 0
@@ -52,6 +54,12 @@ fail() {
 echo "pre-push: conflict markers" >&2
 tools/py tools/tests/conflict_markers.py \
   || fail "conflict markers"
+# Diff-scoped until #1223: each pushed tip against its merge base with a fresh origin/main (a stale one would flag main's own lines).
+echo "pre-push: comment lines over 120 columns" >&2
+for sha in "${pushed_shas[@]}"; do
+  tools/py tools/comment_length_gate.py --fetch --head "$sha" \
+    || fail "comment-length gate"
+done
 if [[ $need_gradle -eq 1 ]]; then
   echo "pre-push: compile and checkstyle (waits if another Gradle build holds the lock; Ctrl-C and push with --no-verify to skip)" >&2
   ./gradlew -q compileJava compileClientJava compileGametestJava checkstyleMain checkstyleClient checkstyleGametest \
