@@ -333,9 +333,9 @@ public class BandReadersTest {
                 }));
     }
 
-    /** A builder that dies in the rock of the hall drops its starting rations there, and the kit is refused while they lie in it. */
+    /** A builder that dies in the rock of the hall drops its starting rations there, and the kit sweeps them rather than refusing: the rations end up in the builder's inventory and none lie in the hall. */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aBuilderWhoDiesInTheHallLeavesItsRationsInTheWay(GameTestHelper helper) {
+    public void aBuilderWhoDiesInTheHallHasItsRationsSweptNotRefused(GameTestHelper helper) {
         int x = 23704;
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
@@ -348,17 +348,20 @@ public class BandReadersTest {
                 () -> WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
                     mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
                     mock.player().kill(level);
+                    // entity-query: counts what lies in the hall, in the chunk this test forced and waited on
+                    AABB hall = new AABB(floor).inflate(6, 6, 6);
+                    int lying = level.getEntitiesOfClass(ItemEntity.class, hall).size();
+                    expect(helper, lying > 0, "the dead builder should have dropped its rations in the hall");
                     Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
-                    String said = refusal.map(
-                                    message -> message.getContents() instanceof TranslatableContents translatable
-                                            ? translatable.getKey()
-                                            : message.getString())
-                            .orElse("nothing: it built");
                     expect(
                             helper,
-                            said.equals("message.deepcharter.outpost.occupied"),
-                            "the kit should be refused as occupied by the rations, it said %s",
-                            said);
+                            refusal.isEmpty(),
+                            "the rations should be swept, not refused, it said %s",
+                            refusal.map(Component::getString).orElse(""));
+                    expect(
+                            helper,
+                            level.getEntitiesOfClass(ItemEntity.class, hall).isEmpty(),
+                            "no ration should lie in the hall after the sweep");
                     helper.succeed();
                 }));
     }

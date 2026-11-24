@@ -33,10 +33,10 @@ import org.slf4j.LoggerFactory;
  */
 public class CampaignDecorationStepsTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(CampaignDecorationStepsTest.class);
-    private static final String SAMPLE = "deepcharter:campaign_sample";
+    private static final String FULL = "deepcharter:campaign_full";
     private static final String GOLDEN = "/campaign_decoration_steps.tsv";
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = FULL)
     public void noFeatureMovesInItsDecorationStep(GameTestHelper helper) throws IOException {
         Map<String, String> actual =
                 placements(helper.getLevel().getChunkSource().getGenerator(), helper);

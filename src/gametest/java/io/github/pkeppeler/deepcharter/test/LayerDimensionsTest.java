@@ -104,7 +104,7 @@ public class LayerDimensionsTest {
     public void testPresetMatchesTheShippedDimensions(GameTestHelper helper) throws IOException {
         JsonObject preset = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject();
-        for (String name : List.of("layer_1", "layer_2", "campaign_sample")) {
+        for (String name : List.of("layer_1", "layer_2", "campaign_sample", "campaign_full")) {
             String id = "deepcharter:" + name;
             JsonElement shipped = read(helper, "/data/deepcharter/dimension/" + name + ".json");
             if (!shipped.equals(preset.getAsJsonObject("dimensions").get(id))) {
