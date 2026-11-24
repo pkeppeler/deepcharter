@@ -1944,7 +1944,7 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **What it does.** A bore that nobody visits grows over with the `overgrowth` block, from the walls inward, a few cells at a time. It is a soft full block with no drop.
 
-**The look (A).** Damp moss, not a tiled cube. Clumped greens (the `moss` ramp, mid-bright so it reads in lamp light and the Hollows dark) with dark gaps between clumps, pale tufts and pits. The block is one id with a weighted blockstate over five textures picked by position: three moss (3, 3, 2) and two paler mould patches (1, 1; the `mold` ramp, grey-green with white bloom and streaks that hang from the top of the tile), so a bore's lining reads as patches, not one repeated tile. No new id, no new rule. Not built: hanging strands and a fringe over rock, which need cutout elements outside the cell and a lighting check in a client.
+**The look (A).** Damp, dark moss that sits in the layer palette, not a tiled cube. Clumped greens (the `moss` ramp, desaturated, with enough value range to read in lamp light), dark pits and pale tufts, and a ragged one-pixel border band, so neighbouring cells merge into one mat and the cube outline dissolves. The block is one id with a weighted blockstate over five textures picked by position: three moss (3, 3, 2) and two with a mould colony (1, 1): a soft, roughly round pale bloom with a fuzzy halo on the moss (the `mold` ramp). A bore's lining reads as patches, not one repeated tile. No new id, no new rule. Hanging strands and a fringe over rock are a model experiment (stage B), judged on in-game stills.
 
 | Situation | What happens | Counterplay |
 |---|---|---|
