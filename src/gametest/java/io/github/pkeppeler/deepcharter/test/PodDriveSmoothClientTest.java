@@ -702,6 +702,16 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     "the watched pod standing at its place before the wall",
                     () -> context.computeOnClient(client -> standsAt(client, rig.mockPodId(), at)),
                     () -> "watched pod on the client " + onClient(context, rig.mockPodId()) + " for " + at);
+            // The coast can only stop at a block the client knows: under load the block update trails the pod's
+            // arrival, and a coast started before it drew the pod through the wall (#1174).
+            ClientWait.until(
+                    context,
+                    "the thin wall on the client",
+                    () -> context.computeOnClient(client ->
+                            ClientLight.clientLevel(client).getBlockState(wall).is(Blocks.STONE)),
+                    () -> "block at the wall on the client "
+                            + context.computeOnClient(
+                                    client -> ClientLight.clientLevel(client).getBlockState(wall)));
             context.runOnClient(client -> {
                 Entity pod = TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId());
                 pod.setDeltaMovement(0, 0, FAST_COAST_SPEED);
