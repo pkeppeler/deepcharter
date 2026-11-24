@@ -74,6 +74,8 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
 
 Do not spell out counts of enum members or registry entries in prose ("the seven ores"): they drift. Name them, or point at the code.
 
+A per-tick hook must not throw on a missing level: look it up with `server.getLevel(...)` and handle null.
+
 A new part that needs its own `init()` and has no feature of its own gets a stub in its feature, wired into that feature's `XInit` already: `pod/PodComponents` (#65), `pod/PodTowing` (#76) and `layer/LayerStructures` (#79).
 
 ## M2 rules

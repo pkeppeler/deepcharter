@@ -4,12 +4,15 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -29,7 +32,7 @@ import org.jspecify.annotations.Nullable;
  * <p>Each tick, for every level of the chain that has a level below it, each root vehicle carrying a player is read: its height over the
  * floor, and its descent over the last {@link LayerTuning#seamSpeedWindow()} ticks. Inside the zone of {@link #shouldStream} it takes a
  * {@link LayerRegistry#SEAM_ARRIVAL} ticket of radius {@link LayerTuning#seamRadius()} on the chunk under it, refreshed every
- * {@link LayerTuning#seamRefreshTicks()} ticks and re-taken on the new chunk when the vehicle moves to another. Leaving the zone, changing
+ * {@link LayerTuning#seamRefreshTicks()} ticks and moved to the new chunk, with the old centre's ticket removed, once the vehicle is {@link LayerTuning#seamRecentreChunks()} chunks from the centre: one area per vehicle. Leaving the zone, changing
  * level, being removed or disconnecting ends the approach; the ticket is not removed but lapses on its timeout.
  *
  * <p>The state is on the server thread only, and holds no level, entity or player: a root's UUID, its riders' UUIDs, level keys and a chunk.
@@ -37,7 +40,9 @@ import org.jspecify.annotations.Nullable;
 public final class SeamStreaming {
     /**
      * One vehicle's approach to the floor of a level with a level below it, keyed by the root vehicle (the player when on foot), listing every
-     * player it carries. {@code ready} is whether the arrival area's chunks have loaded.
+     * player it carries. {@code descentPerTick} is the vehicle's descent over the last {@link LayerTuning#seamSpeedWindow()} ticks, in
+     * blocks a tick, as of the last tick it was read (0 when it sits or climbs): what the approach hands the swap. {@code ready} is
+     * whether the arrival area's chunks have loaded.
      */
     public record Approach(
             UUID root,
@@ -46,6 +51,7 @@ public final class SeamStreaming {
             ResourceKey<Level> lower,
             ChunkPos centre,
             long startedTick,
+            double descentPerTick,
             boolean ready) {}
 
     /** What a root vehicle is holding open under it: the ticket's chunk and when it was last taken. */
@@ -54,6 +60,7 @@ public final class SeamStreaming {
             ChunkPos centre,
             long startedTick,
             long refreshedTick,
+            double descentPerTick,
             CompletableFuture<Void> loaded,
             List<UUID> riders) {}
 
@@ -72,11 +79,17 @@ public final class SeamStreaming {
     /** The tracks by root vehicle UUID. Server thread only. */
     private static final Map<UUID, Track> TRACKS = new HashMap<>();
 
+    /** Level keys already warned about as missing, so the warning is once per key and not once per tick. Server thread only. */
+    private static final Set<ResourceKey<Level>> MISSING_WARNED = new HashSet<>();
+
     private SeamStreaming() {}
 
     public static void init() {
         ServerTickEvents.END_LEVEL_TICK.register(SeamStreaming::tick);
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> TRACKS.clear());
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            TRACKS.clear();
+            MISSING_WARNED.clear();
+        });
     }
 
     /** Blocks above a floor at which a vehicle that falls at the design speed starts to stream the {@code lowerHeight} rows below. */
@@ -102,6 +115,22 @@ public final class SeamStreaming {
         return depthAboveFloor <= Math.min(1.0, descentPerTick / tuning.seamDesignFallSpeed()) * lead;
     }
 
+    /**
+     * Blocks a tick that a vehicle has fallen over {@code heights}, its heights on the last ticks, oldest first: the drop from the first
+     * to the last over the ticks between them, 0 for a vehicle that sits or climbs and for fewer than two heights.
+     */
+    public static double descentPerTick(Collection<Double> heights) {
+        if (heights.size() < 2) {
+            return 0;
+        }
+        double first = heights.iterator().next();
+        double last = first;
+        for (double height : heights) {
+            last = height;
+        }
+        return Math.max(0, (first - last) / (heights.size() - 1));
+    }
+
     /** The approach of the root vehicle with this UUID, if it is streaming a level below now. */
     public static Optional<Approach> approachOf(UUID root) {
         Track track = TRACKS.get(root);
@@ -116,6 +145,7 @@ public final class SeamStreaming {
                 streaming.lower(),
                 streaming.centre(),
                 streaming.startedTick(),
+                streaming.descentPerTick(),
                 streaming.loaded().isDone() && !streaming.loaded().isCompletedExceptionally()));
     }
 
@@ -175,13 +205,24 @@ public final class SeamStreaming {
         TRACKS.values().removeIf(track -> track.upper.equals(key) && !track.seen);
     }
 
-    /** The level under {@code level} in the chain, empty for the surface, the last level and a level outside the chain. */
+    /**
+     * The level under {@code level} in the chain, empty for the surface, the last level, a level outside the chain and a registered layer
+     * whose level is not loaded: that last is warned about once per level key, and never thrown, since this runs every tick.
+     */
     private static Optional<ServerLevel> levelBelow(ServerLevel level) {
         Optional<Band> band = LayerChain.layerAt(level, level.getMinY());
         if (band.isEmpty() || band.get().layer() >= LayerChain.count(level.registryAccess())) {
             return Optional.empty();
         }
-        return Optional.of(LayerChain.levelOf(level.getServer(), band.get().layer() + 1));
+        ResourceKey<Level> key = LayerChain.dimension(band.get().layer() + 1);
+        ServerLevel below = level.getServer().getLevel(key);
+        if (below == null && MISSING_WARNED.add(key)) {
+            DeepCharter.LOGGER.warn(
+                    "No arrival area is streamed from {}: the level below it, {}, is registered but not loaded",
+                    level.dimension().identifier(),
+                    key.identifier());
+        }
+        return Optional.ofNullable(below);
     }
 
     private static void follow(ServerLevel level, ServerLevel below) {
@@ -212,27 +253,53 @@ public final class SeamStreaming {
         while (track.heights.size() > tuning.seamSpeedWindow() + 1) {
             track.heights.removeFirst();
         }
-        double descent = Math.max(0, (track.heights.getFirst() - y) / Math.max(1, track.heights.size() - 1));
+        double descent = descentPerTick(track.heights);
         if (!shouldStream(y - level.getMinY(), descent, below.getHeight(), tuning)) {
             track.streaming = null;
             return;
         }
         long now = level.getServer().getTickCount();
-        ChunkPos centre = ChunkPos.containing(root.blockPosition());
+        ChunkPos here = ChunkPos.containing(root.blockPosition());
         Streaming current = track.streaming;
-        if (current == null || !current.centre().equals(centre)) {
+        if (current == null || current.centre().getChessboardDistance(here) >= tuning.seamRecentreChunks()) {
+            if (current != null) {
+                below.getChunkSource()
+                        .removeTicketWithRadius(LayerRegistry.SEAM_ARRIVAL, current.centre(), tuning.seamRadius());
+            }
             CompletableFuture<Void> loaded = below.getChunkSource()
-                    .addTicketAndLoadWithRadius(LayerRegistry.SEAM_ARRIVAL, centre, tuning.seamRadius())
-                    .thenAccept(chunk -> {});
+                    .addTicketAndLoadWithRadius(LayerRegistry.SEAM_ARRIVAL, here, tuning.seamRadius())
+                    .thenAccept(chunk -> {})
+                    .whenComplete((nothing, cause) -> {
+                        if (cause != null) {
+                            DeepCharter.LOGGER.warn(
+                                    "The arrival area of {} around {} failed to load",
+                                    below.dimension().identifier(),
+                                    here,
+                                    cause);
+                        }
+                    });
             track.streaming = new Streaming(
-                    below.dimension(), centre, current == null ? now : current.startedTick(), now, loaded, riders);
+                    below.dimension(),
+                    here,
+                    current == null ? now : current.startedTick(),
+                    now,
+                    descent,
+                    loaded,
+                    riders);
         } else if (now - current.refreshedTick() >= tuning.seamRefreshTicks()) {
-            below.getChunkSource().addTicketWithRadius(LayerRegistry.SEAM_ARRIVAL, centre, tuning.seamRadius());
-            track.streaming =
-                    new Streaming(current.lower(), centre, current.startedTick(), now, current.loaded(), riders);
+            below.getChunkSource()
+                    .addTicketWithRadius(LayerRegistry.SEAM_ARRIVAL, current.centre(), tuning.seamRadius());
+            track.streaming = new Streaming(
+                    current.lower(), current.centre(), current.startedTick(), now, descent, current.loaded(), riders);
         } else {
             track.streaming = new Streaming(
-                    current.lower(), centre, current.startedTick(), current.refreshedTick(), current.loaded(), riders);
+                    current.lower(),
+                    current.centre(),
+                    current.startedTick(),
+                    current.refreshedTick(),
+                    descent,
+                    current.loaded(),
+                    riders);
         }
     }
 }

@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.IntConsumer;
@@ -627,30 +628,67 @@ public class SeamStreamingTest {
                 });
     }
 
-    /** The arrival area follows its vehicle: two chunks to the side, the ticket and the loaded area are on the new centre. */
+    /**
+     * One area per root: a move of one chunk leaves the centre and its ticket where they are; a move of two chunks takes the area to the
+     * new chunk and removes the old centre's ticket at once, so the root holds one arrival area and not one per chunk it crossed.
+     */
     @GameTest(maxTicks = MAX_TICKS)
     public void theCentreFollowsTheRootTwoChunksSideways(GameTestHelper helper) {
         Run run = Run.of(helper, 10);
+        double nearX = run.site().x() + 16;
         double movedX = run.site().x() + 32;
+        ChunkPos origin = run.site().centre();
+        ChunkPos near =
+                ChunkPos.containing(BlockPos.containing(nearX, 0, run.site().z()));
         ChunkPos moved =
                 ChunkPos.containing(BlockPos.containing(movedX, 0, run.site().z()));
         MockPlayer mock = MockPlayers.join(helper, "seam-sideways");
+        int[] oneChunkAt = {-1};
         boolean[] sideways = {false};
         run.stage(
                 List.of(
                         BlockPos.containing(run.site().at(HOLD_HEIGHT)),
+                        BlockPos.containing(
+                                nearX,
+                                run.site().floorY() + HOLD_HEIGHT,
+                                run.site().z()),
                         BlockPos.containing(
                                 movedX,
                                 run.site().floorY() + HOLD_HEIGHT,
                                 run.site().z())),
                 () -> {
                     run.site().carveShaft(run.site().x(), HOLD_HEIGHT + 2);
+                    run.site().carveShaft(nearX, HOLD_HEIGHT + 2);
                     run.site().carveShaft(movedX, HOLD_HEIGHT + 2);
                     mock.teleportTo(run.site().one(), run.site().at(HOLD_HEIGHT), 0, 0);
                 },
                 ticks -> {
-                    if (!sideways[0]) {
+                    if (oneChunkAt[0] < 0) {
                         if (run.arrivalReady()) {
+                            mock.player()
+                                    .setPos(
+                                            nearX,
+                                            run.site().floorY() + HOLD_HEIGHT,
+                                            run.site().z());
+                            oneChunkAt[0] = ticks;
+                        }
+                        return;
+                    }
+                    if (!sideways[0]) {
+                        boolean recentred = SeamStreaming.approachOf(
+                                        mock.player().getUUID())
+                                .filter(approach -> !approach.centre().equals(origin))
+                                .isPresent();
+                        expect(
+                                helper,
+                                !recentred
+                                        && !arrivalTickets(run.site().two(), origin)
+                                                .isEmpty()
+                                        && arrivalTickets(run.site().two(), near)
+                                                .isEmpty(),
+                                "a move of one chunk re-centred the area or moved its ticket (centre moved %s)",
+                                recentred);
+                        if (ticks - oneChunkAt[0] >= WATCH_TICKS) {
                             mock.player()
                                     .setPos(
                                             movedX,
@@ -665,17 +703,98 @@ public class SeamStreamingTest {
                     boolean followed = SeamStreaming.approachOf(mock.player().getUUID())
                             .filter(approach -> approach.centre().equals(moved))
                             .isPresent();
+                    boolean oldReleased =
+                            arrivalTickets(run.site().two(), origin).isEmpty();
                     run.deadline()
                             .await(
                                     helper,
                                     run.site().two(),
-                                    loaded == AREA_CHUNKS && ticketed && followed,
+                                    loaded == AREA_CHUNKS && ticketed && followed && oldReleased,
                                     () -> "the area did not follow to " + moved + ": " + loaded + " of " + AREA_CHUNKS
-                                            + " chunks, ticketed " + ticketed + ", approach follows " + followed);
-                    if (loaded == AREA_CHUNKS && ticketed && followed) {
+                                            + " chunks, ticketed " + ticketed + ", approach follows " + followed
+                                            + ", old centre " + origin + " still holds "
+                                            + arrivalTickets(run.site().two(), origin));
+                    if (loaded == AREA_CHUNKS && ticketed && followed && oldReleased) {
                         helper.succeed();
                     }
                 });
+    }
+
+    /**
+     * A mock that falls a block a tick from above the floor margin into it has an approach whose recorded descent is its real fall rate:
+     * the figure the swap of slice 2 reads, and the one the speed branch of the trigger is fed.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theApproachRecordsTheDescentOfAFallingVehicle(GameTestHelper helper) {
+        Run run = Run.of(helper, 11);
+        int start = LayerTuning.DEFAULT.seamFloorMargin() + 15;
+        expect(
+                helper,
+                TestLayers.dimensionBand(run.site().one()).height() > start + 2,
+                "layer 1 is %d tall, too short to start a fall %d above its floor",
+                TestLayers.dimensionBand(run.site().one()).height(),
+                start);
+        double fallPerTick = 1.0;
+        MockPlayer mock = MockPlayers.join(helper, "seam-descent");
+        List<BlockPos> shaft = List.of(
+                BlockPos.containing(run.site().at(start)),
+                BlockPos.containing(run.site().at(LayerTuning.DEFAULT.seamFloorMargin() / 2)));
+        run.stage(
+                shaft,
+                () -> {
+                    run.site().carveShaft(run.site().x(), start + 2);
+                    mock.teleportTo(run.site().one(), run.site().at(start), 0, 0);
+                },
+                ticks -> {
+                    ServerPlayer player = mock.player();
+                    double height = player.getY() - run.site().floorY();
+                    if (height > LayerTuning.DEFAULT.seamFloorMargin() / 2.0) {
+                        fall(run.site(), player);
+                        return;
+                    }
+                    Optional<SeamStreaming.Approach> approach = SeamStreaming.approachOf(player.getUUID());
+                    expect(helper, approach.isPresent(), "no approach %.0f blocks above the floor", height);
+                    double descent =
+                            approach.map(SeamStreaming.Approach::descentPerTick).orElse(0.0);
+                    expect(
+                            helper,
+                            Math.abs(descent - fallPerTick) < 0.05,
+                            "the approach records a descent of %s blocks a tick for a fall of %s",
+                            descent,
+                            fallPerTick);
+                    helper.succeed();
+                });
+    }
+
+    /**
+     * The descent over the recorded heights, pure: a fall is the drop over the ticks between the first and the last height, a rise or a
+     * steady height is 0, and fewer than two heights have no speed to read.
+     */
+    @GameTest
+    public void theDescentIsTheDropOverTheRecordedWindow(GameTestHelper helper) {
+        expect(
+                helper,
+                SeamStreaming.descentPerTick(List.of(100.0, 98.0, 96.0, 94.0)) == 2.0,
+                "a steady fall of 2 a tick");
+        expect(
+                helper,
+                SeamStreaming.descentPerTick(List.of(10.0, 10.0, 10.0)) == 0.0,
+                "a steady height has no descent");
+        expect(
+                helper,
+                SeamStreaming.descentPerTick(List.of(10.0, 12.0, 14.0)) == 0.0,
+                "a rise clamps to 0, not a negative descent");
+        expect(
+                helper,
+                SeamStreaming.descentPerTick(List.of(100.0, 100.0, 90.0)) == 5.0,
+                "the drop over the whole window, not the last step: 10 over 2 ticks");
+        expect(
+                helper,
+                SeamStreaming.descentPerTick(List.of(100.0, 97.0)) == 3.0,
+                "a window of two heights is one tick");
+        expect(helper, SeamStreaming.descentPerTick(List.of(100.0)) == 0.0, "one height has no speed");
+        expect(helper, SeamStreaming.descentPerTick(List.of()) == 0.0, "no heights have no speed");
+        helper.succeed();
     }
 
     /**
