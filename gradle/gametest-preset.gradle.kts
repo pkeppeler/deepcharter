@@ -10,10 +10,11 @@ object PresetDerive {
 	private val derivedNames = Regex("deepcharter:campaign_(full|surface|layer_\\d+)(_floor)?")
 	private const val FROM = "\$from"
 
-	fun derive(template: Map<*, *>, dimensionsDir: (String, String) -> File): String {
-		val out = LinkedHashMap<String, Any?>()
+	fun derive(template: Map<*, *>, templatePath: File, dimensionsDir: (String, String) -> File): String {
 		val dimensions = LinkedHashMap<String, Any?>()
-		(template["dimensions"] as Map<*, *>).forEach { (rawId, rawEntry) ->
+		val templateDimensions = template["dimensions"] as? Map<*, *>
+			?: throw GradleException("Preset template $templatePath needs a top-level \"dimensions\" object of dimension id to entry")
+		templateDimensions.forEach { (rawId, rawEntry) ->
 			val id = rawId as String
 			val entry = rawEntry as Map<*, *>
 			if (!entry.containsKey(FROM)) {
@@ -34,8 +35,7 @@ object PresetDerive {
 			entry.forEach { (k, v) -> if (k != FROM) derived[k as String] = v }
 			dimensions[id] = derived
 		}
-		out["dimensions"] = dimensions
-		return JsonOutput.prettyPrint(JsonOutput.toJson(out)) + "\n"
+		return JsonOutput.prettyPrint(JsonOutput.toJson(mapOf("dimensions" to dimensions))) + "\n"
 	}
 }
 
@@ -55,7 +55,8 @@ abstract class GeneratePreset : DefaultTask() {
 	fun run() {
 		val out = outputDir.get().asFile
 		out.deleteRecursively()
-		val text = PresetDerive.derive(JsonSlurper().parse(template.get().asFile, "UTF-8") as Map<*, *>) { ns, name ->
+		val templateFile = template.get().asFile
+		val text = PresetDerive.derive(JsonSlurper().parse(templateFile, "UTF-8") as Map<*, *>, templateFile) { ns, name ->
 			File(shippedData.get().asFile, "$ns/dimension/$name.json")
 		}
 		val target = File(out, "data/minecraft/worldgen/world_preset/flat_all_dimensions.json")

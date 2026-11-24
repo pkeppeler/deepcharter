@@ -342,10 +342,7 @@ public class CampaignCostTest {
         helper.succeed();
     }
 
-    /**
-     * A window's preset entry is the shipped overworld with its own type and nothing else (the build derives it from
-     * {@code overworld.json}; this keeps a stray key, or a hand-written copy that went stale, from passing).
-     */
+    // A stray key or a stale hand copy must not pass.
     private static void expectFromShipped(
             GameTestHelper helper, JsonObject dimensions, String world, JsonObject shipped) {
         JsonObject expected = shipped.deepCopy();
