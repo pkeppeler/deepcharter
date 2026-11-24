@@ -21,6 +21,8 @@ import java.util.Arrays;
  * @param grainSqueezeHull  hull a pod that is neither moving nor drilling loses to each pulse while it touches the grained crust
  * @param grainSqueezeDamage health a player on foot loses to each pulse while touching the grained crust
  * @param grainSkateHeatPerSecond hull heat a pod takes each second its drill skates sideways across the grain, before a radiator
+ * @param grainDecoyChance the chance that a boundary's crust is grained when its layer data leaves it to the seed (#216): about a third, so a
+ *                         grained crust is a seam only about a third of the time
  * @param seamLeadPerRow    blocks of lead before a floor per row of the world below (#1159): the lead of a 2048-tall world is 656 blocks
  * @param seamFloorMargin   blocks above a floor inside which a vehicle always streams the area below, however slowly it moves
  * @param seamSpeedWindow   ticks over which a vehicle's descent speed is read
@@ -45,6 +47,7 @@ public record LayerTuning(
         float grainSqueezeHull,
         float grainSqueezeDamage,
         float grainSkateHeatPerSecond,
+        double grainDecoyChance,
         double seamLeadPerRow,
         int seamFloorMargin,
         int seamSpeedWindow,
@@ -54,7 +57,7 @@ public record LayerTuning(
         int seamTicketTimeout,
         int seamRecentreChunks) {
     public static final LayerTuning DEFAULT = new LayerTuning(
-            63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 0.32, 160, 10, 3.9, 4, 20, 100, 2);
+            63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 1.0 / 3, 0.32, 160, 10, 3.9, 4, 20, 100, 2);
 
     public LayerTuning {
         if (seamRefreshTicks < 1 || seamRefreshTicks >= seamTicketTimeout) {
@@ -69,6 +72,9 @@ public record LayerTuning(
         }
         if (grainPulseTicks < 2) {
             throw new IllegalArgumentException("grainPulseTicks must be at least 2, got " + grainPulseTicks);
+        }
+        if (!(grainDecoyChance >= 0 && grainDecoyChance <= 1)) {
+            throw new IllegalArgumentException("grainDecoyChance must be from 0 to 1, got " + grainDecoyChance);
         }
         if (structureSpacing <= 0 || structureSpacing % 16 != 0) {
             throw new IllegalArgumentException(
