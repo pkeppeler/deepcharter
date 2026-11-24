@@ -9,9 +9,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Makes the future of {@code waitForPendingTasks} for a position that {@link LightEngineGate} lists complete only when
- * the gate is released as well: the light tasks queued there read as not run. The case of {@code
- * LightSyncRingHoldTest}. Inert otherwise. Test code only.
+ * Makes {@code waitForPendingTasks} for a position {@link LightEngineGate} lists complete only once the gate is
+ * released. Inert otherwise. Test code only.
  */
 @Mixin(value = ThreadedLevelLightEngine.class, remap = false)
 public abstract class LightEngineGateMixin {

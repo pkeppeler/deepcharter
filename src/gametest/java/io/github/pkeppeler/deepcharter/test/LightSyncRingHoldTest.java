@@ -27,17 +27,12 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A hold on a chunk keeps its neighbours unsent until the light tasks of the blocks just placed have run (#494).
- * Vanilla's hold makes each neighbour wait only for the light tasks queued at its own position, and the light engine
- * runs the queues of different positions in no fixed order, so a neighbour could be sent the light it had before a
- * draw. The order is not the test's to set: it draws into many chunks as each becomes sendable, while the rest of the
- * area is still being generated, and checks every tick that no neighbour of a drawn chunk is sendable while the light
- * tasks queued by the draw are waiting. That sampled case is statistical: it can pass on a run where the engine happens
- * to run the drawn chunk's queue first. The two cases with a gate ({@link LightEngineGate}) are not: the drawn chunk's
- * wait for its light tasks is held back by the test, so the state "the draw's tasks have not run, the neighbours' own
- * have" is set, not waited for, and a neighbour that is sendable in it fails. A third case adds a player who comes into
- * view of a neighbour while its send is extended: vanilla marks nothing for a player who tracks a chunk that cannot be
- * sent, so the chunk has to be offered to them when it can be.
+ * A hold on a chunk keeps its neighbours unsent until the light tasks of the blocks just placed have run (#494). The
+ * sampled case draws into many chunks as each becomes sendable and checks every tick that no neighbour of a drawn chunk
+ * is sendable while the draw's tasks are waiting; it can pass when the engine happens to run the drawn chunk's queue
+ * first. The two cases with a {@link LightEngineGate} set the state "the draw's tasks have not run, the neighbours' own
+ * have" instead. The player case brings a player into view of a neighbour while its send is extended: the chunk has to
+ * be offered to them when it can be sent.
  */
 public class LightSyncRingHoldTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -77,8 +72,7 @@ public class LightSyncRingHoldTest {
 
     static {
         // Fabric events cannot be unregistered: the callback acts only while a case runs (it ends by its tick limit if
-        // its test
-        // times out), in its level and area.
+        // its test times out), in its level and area.
         ServerChunkEvents.CHUNK_LOAD.register((level, chunk, newlyGenerated) -> {
             Case current = running;
             ChunkPos pos = chunk.getPos();
@@ -168,10 +162,7 @@ public class LightSyncRingHoldTest {
     /** Ticks a released send may take to reach the player: the light engine runs in wall time. */
     private static final int GATED_SEND_TICKS = 400;
 
-    /**
-     * The drawn chunk's light tasks are held back by {@link LightEngineGate}. The neighbours' own waits (all vanilla
-     * adds) are done, and none of them can be sent until the gate opens; then all can.
-     */
+    /** With the drawn chunk's tasks held back and the neighbours' own done, no neighbour is sendable until the gate opens. */
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aNeighbourCannotBeSentWhileTheDrawnChunksLightTasksAreHeldBack(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -180,12 +171,11 @@ public class LightSyncRingHoldTest {
         List<CompletableFuture<?>> own = new ArrayList<>();
         int[] phase = {0};
         int[] waited = {0};
-        Runnable finish = () -> LightEngineGate.release(GATED);
         TestTicks.each(helper, () -> {
             try {
                 switch (phase[0]) {
                     case 0 -> {
-                        forceAround(helper, level);
+                        forceAround(helper, level, GATED);
                         phase[0] = 1;
                     }
                     case 1 -> {
@@ -224,24 +214,19 @@ public class LightSyncRingHoldTest {
                     default -> {
                         boolean sendable = allSendable(level, GATED, deadline, helper);
                         if (sendable) {
-                            finish.run();
+                            LightEngineGate.release(GATED);
                             helper.succeed();
                         }
                     }
                 }
             } catch (RuntimeException e) {
-                finish.run();
+                LightEngineGate.release(GATED);
                 throw e;
             }
         });
     }
 
-    /**
-     * A neighbour whose send is already held by something else when a draw's hold is requested is not in the hold's own
-     * list, and a player who comes into view of it afterwards is marked for nothing, because it cannot be sent. When
-     * the extended send completes, the chunk must be offered to that player: they are sent it, once the other hold and
-     * the draw's tasks are done.
-     */
+    /** A player who comes into view of a neighbour whose send another hold extends is sent it once it can be. */
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aPlayerWhoComesIntoViewWhileTheSendIsExtendedIsSentTheChunk(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -306,8 +291,7 @@ public class LightSyncRingHoldTest {
                         if (level.getChunkSource().chunkMap.getChunkToSend(neighbour.pack()) != null) {
                             throw failure(helper, "%s can be sent, so the case proves nothing", neighbour);
                         }
-                        // The other hold ends first, as a vanilla light wait does; the draw's tasks are the last to
-                        // run.
+                        // The other hold ends first, as a vanilla light wait does; the draw's tasks run last.
                         otherHold.complete(null);
                         waited[0] = 0;
                         phase[0] = 4;
@@ -353,10 +337,6 @@ public class LightSyncRingHoldTest {
                 .toList();
     }
 
-    private static void forceAround(GameTestHelper helper, ServerLevel level) {
-        forceAround(helper, level, GATED);
-    }
-
     /** Forces the chunks round {@code chunk}, so that its 3x3 loads and ticks. */
     private static void forceAround(GameTestHelper helper, ServerLevel level, ChunkPos chunk) {
         for (int x = chunk.x() - GATED_REACH_X; x <= chunk.x() + GATED_REACH_X; x++) {
@@ -380,8 +360,7 @@ public class LightSyncRingHoldTest {
     private static void draw(LevelChunk chunk) {
         ChunkPos at = chunk.getPos();
         // level-height: the sample dimension is one test world, not a layer of the campaign. The draw needs rows inside
-        // the
-        // chunk's own height; a layer-relative Y would assume a layer this test never stages.
+        // the chunk's own height; a layer-relative Y would assume a layer this test never stages.
         int y = chunk.getMinY() + 8;
         for (int dy = 0; dy < DRAW_ROWS; dy++) {
             for (int dx = 0; dx < 16; dx++) {

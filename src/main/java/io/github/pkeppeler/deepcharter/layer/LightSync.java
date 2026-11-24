@@ -78,11 +78,7 @@ public final class LightSync {
     private static final Map<Key, RingOffer> OFFERS = new ConcurrentHashMap<>();
 
     /** An armed offer: the holder it follows and the players sent the chunk since. */
-    private record RingOffer(ChunkHolder holder, Set<UUID> sentSince) {
-        RingOffer(ChunkHolder holder) {
-            this(holder, ConcurrentHashMap.newKeySet());
-        }
-    }
+    private record RingOffer(ChunkHolder holder, Set<UUID> sentSince) {}
 
     /** Server ticks a chunk's published light is compared after the chunk can be sent (5 s). */
     private static final int NET_WINDOW_TICKS = 100;
@@ -186,12 +182,8 @@ public final class LightSync {
     }
 
     /**
-     * Vanilla's hold makes each chunk of the 3x3 wait for the light tasks queued at <em>its own</em> position. The
-     * tasks of the blocks just placed are queued at {@code chunk}, and the light engine runs the queues of different
-     * positions in no fixed order, so a neighbour's wait can end before they have run: the neighbour is then sent the
-     * light it had before the draw (#494). Each neighbour also waits for the tasks queued at {@code chunk}, after the
-     * draw's. A neighbour that has no holder yet, or loads later, waits for them when it loads ({@link
-     * #holdLoadedNeighbour}).
+     * Each neighbour also waits for the tasks queued at {@code chunk} by the draw (#494); one that loads later waits
+     * when it loads ({@link #holdLoadedNeighbour}).
      */
     private static void holdRingUntilTasksRun(ServerLevel level, ChunkPos chunk, List<ChunkPos> sendable) {
         CompletableFuture<?> drawn = level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x(), chunk.z());
@@ -215,11 +207,9 @@ public final class LightSync {
     }
 
     /**
-     * Offers a chunk that could not be sent when its send was extended to the players who track it once it can be.
-     * Vanilla offers a chunk to its trackers once, when the send future it read at the chunk's tick promotion
-     * completes, and marks nothing for a player who starts tracking while {@code getChunkToSend} is null: a player who
-     * came into view after that future completed and before the extension did would never be sent the chunk. Players
-     * sent the chunk meanwhile, and those already queued for it, are left out.
+     * Offers a chunk that could not be sent when its send was extended to its trackers once it can be: vanilla marks
+     * nothing for a player who starts tracking while {@code getChunkToSend} is null. Players sent the chunk meanwhile,
+     * and those already queued for it, are left out.
      */
     private static void offerWhenSendable(ServerLevel level, ChunkPos chunk, ChunkHolder holder) {
         Key key = new Key(level, chunk);
@@ -227,7 +217,7 @@ public final class LightSync {
         if (open != null && open.holder == holder) {
             return; // armed already: it follows the holder's send future as it is extended
         }
-        RingOffer offer = new RingOffer(holder);
+        RingOffer offer = new RingOffer(holder, ConcurrentHashMap.newKeySet());
         OFFERS.put(key, offer);
         armOffer(key, offer);
     }
@@ -261,19 +251,18 @@ public final class LightSync {
                 }));
     }
 
-    /** A chunk that loads while a neighbour's draw still has light tasks queued waits for them before it is sent. */
+    /** A chunk that loads while a neighbour's draw still has light tasks queued waits for them. */
     private static void holdLoadedNeighbour(ServerLevel level, LevelChunk chunk) {
         if (QUEUED.isEmpty()) {
             return;
         }
-        ChunkPos.rangeClosed(chunk.getPos(), 1)
-                .filter(near -> !near.equals(chunk.getPos()))
-                .forEach(near -> {
-                    CompletableFuture<?> tasks = QUEUED.get(new Key(level, near));
-                    if (tasks != null && !tasks.isDone()) {
-                        dependOn(level, chunk.getPos(), tasks);
-                    }
-                });
+        ChunkPos loaded = chunk.getPos();
+        ChunkPos.rangeClosed(loaded, 1).filter(near -> !near.equals(loaded)).forEach(near -> {
+            CompletableFuture<?> tasks = QUEUED.get(new Key(level, near));
+            if (tasks != null && !tasks.isDone()) {
+                dependOn(level, loaded, tasks);
+            }
+        });
     }
 
     private static Set<UUID> trackers(ServerLevel level, ChunkPos chunk) {
