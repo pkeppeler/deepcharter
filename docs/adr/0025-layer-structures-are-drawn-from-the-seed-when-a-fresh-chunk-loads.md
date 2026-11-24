@@ -48,3 +48,13 @@ The rule that a chunk which generates before the colony is built is not drawn is
 - **Held before it.** A fresh chunk of a level that holds layers, loaded while no pad is chosen (the build reads the ground of candidate pads first, and the spawn chunks generate before the server starts), is remembered by level and position in memory. `ColonyEvents.BEGUN`, fired when `ColonyBuilder` has recorded the pad, draws each one once. A chunk that was saved and unloaded in between is read from disk and drawn then, once; a crash between the two leaves it undrawn, as a crash always could.
 - **Unreadable colony data** draws nothing and holds nothing (logged once): a held chunk would never be drawn.
 - Layer dimensions are unaffected: no chunk of a layer generates before the colony begins.
+
+## Amended, 2026-11-23 (#913): the held chunks are saved
+
+The held chunks of #799 were in memory, so a server stop before the pad was chosen lost them: the chunk was saved undrawn, reloaded with `newlyGenerated` false and was never drawn.
+
+- **A saved set.** `PendingStructures` (its own `SavedData`, version 1, `Unreadable` for another version) holds the level and position of each chunk. It is its own record and not a part of `ColonySite`, so a test that swaps the colony's record cannot hide a chunk added meanwhile.
+- **Drained three ways.** `LayerStructures.drawPending` runs on `ColonyEvents.BEGUN`, on server start (`SERVER_STARTED`, for a pad chosen in an earlier run) and at the end of a tick in which a chunk load found chunks held while a pad is chosen (a test that swaps the colony's record parks chunks the real colony would draw, and no event follows). The load only queues the drain: loading chunks inside a chunk load is not safe. It does nothing while no pad is chosen.
+- **Once, and never twice.** A chunk's own load may draw it (it generated again because its first save never happened): `draw` then releases it first, and the drain draws only a chunk it still finds held after loading it. A chunk that cannot be loaded stays held, as nothing was drawn. One that fails to draw is released and logged, as a half-drawn chunk would draw twice.
+- **Draw once still holds.** Only a chunk that was never drawn is held; a drawn chunk is never added, so a block a player took out stays out.
+- Unreadable pending data holds and draws nothing (logged once).
