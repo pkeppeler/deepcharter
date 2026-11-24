@@ -6,6 +6,8 @@ status: accepted
 
 Supersedes [ADR 0003](0003-depth-as-chained-layer-dimensions.md). Amends [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md). Measurements: issue #185 and draft PR #187.
 
+Amended 2026-11-23 (#1127) by [ADR 0086](0086-each-campaign-band-is-held-to-one-layers-cost-per-row-and-the-whole-worlds-ratio-is-only-tracked.md): the 1.15x bar holds each band to one layer's CPU per filled row; the whole world's ratio against `tall_baseline` below is tracked, no longer a gate.
+
 Amended 2026-11-23 (#1111) by [ADR 0085](0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md): the campaign world is the first dimension of a stack, and depth continues in deep dimensions below it.
 
 Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md): the band Ys, `min_y` and `max_y` are fixed.
