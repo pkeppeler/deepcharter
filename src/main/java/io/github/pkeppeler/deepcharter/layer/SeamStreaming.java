@@ -27,7 +27,8 @@ public final class SeamStreaming {
         return 0;
     }
 
-    public static boolean shouldStream(double depthAboveFloor, double descentPerTick, int lowerHeight, LayerTuning tuning) {
+    public static boolean shouldStream(
+            double depthAboveFloor, double descentPerTick, int lowerHeight, LayerTuning tuning) {
         return false;
     }
 
