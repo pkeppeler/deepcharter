@@ -1,7 +1,9 @@
 {
+  "block.deepcharter.salvage_heap": "Salvage Heap",
   "deepcharter.wreck.report.layer": "Wreck report: a pod was lost in layer %s at %s, %s, %s.",
   "deepcharter.wreck.report.surface": "Wreck report: a pod was lost on the surface at %s, %s, %s.",
   "deepcharter.wreck.salvage.empty": "The wreck has no cargo to salvage.",
   "deepcharter.wreck.salvage.success": "You salvaged %s ore from the wreck.",
-  "deepcharter.wreck.salvage.unreadable": "The cargo of this wreck is damaged and cannot be read."
+  "deepcharter.wreck.salvage.unreadable": "The cargo of this wreck is damaged and cannot be read.",
+  "hint.deepcharter.right_click_salvage": "Right-click to salvage"
 }

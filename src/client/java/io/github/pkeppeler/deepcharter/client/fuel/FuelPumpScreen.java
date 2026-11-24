@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterView;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalNoticeLine;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
@@ -80,6 +81,11 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
     @Override
     public Typewriter typewriter() {
         return typewriter;
+    }
+
+    /** The room the view's risk line takes under the header, which the text below it moves down by. */
+    private int noticeHeight() {
+        return TerminalNoticeLine.height(font, view, contentWidth(MARGIN));
     }
 
     @Override
@@ -164,11 +170,12 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
                 contentLeft(MARGIN),
                 contentTop(MARGIN),
                 contentRight(MARGIN));
+        TerminalNoticeLine.draw(graphics, font, view, contentLeft(MARGIN), contentTop(MARGIN), contentWidth(MARGIN));
         int below = drawTypewriter(
                 graphics,
                 typewriter,
                 contentLeft(MARGIN),
-                contentTop(MARGIN) + font.lineHeight + 14,
+                contentTop(MARGIN) + font.lineHeight + 14 + noticeHeight(),
                 contentWidth(MARGIN));
         Optional<PodEntity> pod = pod();
         int y = below + GAP;

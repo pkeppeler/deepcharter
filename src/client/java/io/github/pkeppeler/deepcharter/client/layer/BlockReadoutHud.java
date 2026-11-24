@@ -27,7 +27,7 @@ import net.minecraft.resources.Identifier;
  */
 public final class BlockReadoutHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "block_readout");
-    private static final ReadoutFade FADE = new ReadoutFade();
+    private static final ReadoutFade<Readout> FADE = new ReadoutFade<>();
     /** Vanilla text with an alpha of 3 or less is drawn opaque, so a fade ends one step above it. */
     private static final int MIN_ALPHA = 4;
 

@@ -45,6 +45,12 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param nameStripPad pixels between the border of the strip that names the hovered item and its text
  * @param nameStripGap pixels between the hovered cell and that strip
  * @param caretHeight the thickness of the search field's caret, the underline after the text; at least the scanline spacing, so a scanline never takes it
+ * @param sheetWidth the width of a spec sheet's console; a window narrower than it gets the window's width
+ * @param sheetHeight the tallest a spec sheet's console gets; a window shorter than it gets the window's height
+ * @param sheetMinHeight the shortest a spec sheet's console is: it is as tall as its content, and no shorter than this
+ * @param sheetGap pixels between the blocks of a spec sheet: the item cell, what it is, and its ratings
+ * @param sheetLineGap pixels between two lines of a spec sheet's text
+ * @param sheetValueGap the least pixels between a rating's name and its figure
  */
 public record CatalogueLook(
         int maxPanelWidth,
@@ -84,7 +90,13 @@ public record CatalogueLook(
         int maxQueryLength,
         int nameStripPad,
         int nameStripGap,
-        int caretHeight) {
+        int caretHeight,
+        int sheetWidth,
+        int sheetHeight,
+        int sheetMinHeight,
+        int sheetGap,
+        int sheetLineGap,
+        int sheetValueGap) {
     /**
      * The casing round a glass and the hardware on it, drawn in the pack's metal greens.
      *
@@ -262,9 +274,18 @@ public record CatalogueLook(
                 d.integer("maxQueryLength", 1, 256),
                 d.integer("nameStripPad", 0, 16),
                 d.integer("nameStripGap", 0, 16),
-                d.integer("caretHeight", 1, 8));
+                d.integer("caretHeight", 1, 8),
+                d.integer("sheetWidth", 40, 400),
+                d.integer("sheetHeight", 40, 400),
+                d.integer("sheetMinHeight", 40, 400),
+                d.integer("sheetGap", 0, 32),
+                d.integer("sheetLineGap", 0, 8),
+                d.integer("sheetValueGap", 0, 32));
         if (look.minPanelWidth() > look.maxPanelWidth()) {
             throw d.conflict("minPanelWidth must not exceed maxPanelWidth", "minPanelWidth", "maxPanelWidth");
+        }
+        if (look.sheetMinHeight() > look.sheetHeight()) {
+            throw d.conflict("sheetMinHeight must not exceed sheetHeight", "sheetMinHeight", "sheetHeight");
         }
         return look;
     }
