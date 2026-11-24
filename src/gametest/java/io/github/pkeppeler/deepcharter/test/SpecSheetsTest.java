@@ -50,6 +50,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.locale.Language;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
@@ -541,6 +542,13 @@ public class SpecSheetsTest {
                     "%s has its own blurb, got %s",
                     id,
                     sheet.blurb());
+            // The spec sheet is client-only; this catches a missing blurb without a client test.
+            expect(
+                    helper,
+                    Language.getInstance().has(keyOf(sheet.blurb())),
+                    "%s's blurb %s is in the lang file",
+                    id,
+                    keyOf(sheet.blurb()));
             expect(helper, keyOf(sheet.kind()).equals("deepcharter.spec.kind.company"), "%s is Company issue", id);
             expect(
                     helper,
