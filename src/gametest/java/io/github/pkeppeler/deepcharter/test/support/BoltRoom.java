@@ -11,7 +11,9 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -38,6 +40,18 @@ public final class BoltRoom {
     private static final int Z = 7400;
     private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int FIRST_X = 3200;
+    /** Blocks of stone bed before a corridor's first cell, and after its last. */
+    private static final int BED_MARGIN = 3;
+    /**
+     * How far apart the corridors of two tests lie. A bed reaches {@link #BED_MARGIN} blocks past each end of its corridor, so at stride 32
+     * a 14-long corridor's bed ends 12 blocks short of the next corridor's bed. At 16 a neighbour's bed filled the first cell of the next
+     * corridor with stone, and a shooter there fired from inside rock (#1065). A corridor longer than that spans the slots after its own:
+     * {@link #cut} refuses a slot whose bed meets another's.
+     */
+    private static final int STRIDE = 32;
+
+    /** The bed of each slot cut so far, as {first x, last x}; a slot cut again replaces its own. */
+    private static final Map<Integer, int[]> BEDS = new ConcurrentHashMap<>();
 
     private BoltRoom() {}
 
@@ -61,14 +75,14 @@ public final class BoltRoom {
     }
 
     /**
-     * Cuts the corridor of chunk column {@code k} of the tests, and waits for its chunk to tick entities ({@code ready}). Its x is one past a
+     * Cuts the corridor of slot {@code k} of the tests, and waits for its chunk to tick entities ({@code ready}). Its x is one past a
      * chunk edge, so a corridor up to 14 long lies in one chunk. Call it from the test method.
      */
     public static Corridor corridor(GameTestHelper helper, int length, int k) {
         Corridor corridor = cut(TestLayers.level(helper, 1), length, k);
         // Every chunk the carved bed covers, not the first alone: a test works along the whole corridor (#1083).
         List<BlockPos> chunks = new ArrayList<>();
-        for (int chunkX = (corridor.x() - 3) >> 4; chunkX <= (corridor.x() + length + 2) >> 4; chunkX++) {
+        for (int chunkX = bedStart(corridor.x()) >> 4; chunkX <= bedEnd(corridor.x(), length) >> 4; chunkX++) {
             chunks.add(new BlockPos(chunkX << 4, FLOOR, Z));
         }
         FarChunks.awaitAllEntityTicking(
@@ -78,10 +92,28 @@ public final class BoltRoom {
 
     /** As {@link #corridor}, for a test that manages its own chunk loading: {@code ready} never arrives. */
     public static Corridor cut(ServerLevel level, int length, int k) {
-        int x = FIRST_X + 16 * k + 1;
-        RoomCarver.carve(level, x - 3, x + length + 2, FLOOR - 3, FLOOR + 6, Z - 3, Z + 3, Blocks.STONE);
+        int x = FIRST_X + STRIDE * k + 1;
+        int bedStart = bedStart(x);
+        int bedEnd = bedEnd(x, length);
+        for (Map.Entry<Integer, int[]> other : BEDS.entrySet()) {
+            int[] bed = other.getValue();
+            if (other.getKey() != k && bed[0] <= bedEnd && bedStart <= bed[1]) {
+                throw new IllegalArgumentException("slot %d's bed (x %d to %d) meets slot %d's bed (x %d to %d)"
+                        .formatted(k, bedStart, bedEnd, other.getKey(), bed[0], bed[1]));
+            }
+        }
+        BEDS.put(k, new int[] {bedStart, bedEnd});
+        RoomCarver.carve(level, bedStart, bedEnd, FLOOR - 3, FLOOR + 6, Z - 3, Z + 3, Blocks.STONE);
         RoomCarver.carve(level, x, x + length - 1, FLOOR, FLOOR + 1, Z, Z, Blocks.AIR);
         return new Corridor(level, x, length, new Arrival<>("the corridor", "the far chunk ticks"));
+    }
+
+    private static int bedStart(int x) {
+        return x - BED_MARGIN;
+    }
+
+    private static int bedEnd(int x, int length) {
+        return x + length - 1 + BED_MARGIN;
     }
 
     /** A survival player on foot in the corridor, {@code along} blocks from its start, facing {@code yaw}. */

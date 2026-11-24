@@ -19,7 +19,7 @@
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
-# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and client-gametest, when it ran) runs
+# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each client-gametest-shard, when they ran) runs
 # each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
 # from it only by docs/ROADMAP.md or .papercuts.jsonl.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
@@ -107,7 +107,11 @@ fi
 # Per name, the deciding run is the newest one that is not skipped: only a
 # `success` passes, anything else (running, failed, cancelled, ...) refuses. A name
 # whose runs were all skipped is "skipping". Output lines are "verdict<TAB>name<TAB>id" (the id of the deciding run).
-checks_full=$(grep $'\t' <<<"$run_lines" | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n | awk -F'\t' '
+# A matrix job that never started (skipped, or cancelled by a newer run's concurrency group) is reported under its
+# unexpanded template name, `client-gametest-shard ${{ matrix.shard }}`: no real shard run ever supersedes it, so only
+# that name is dropped, not read as a failed check (any other check keeps its verdict). The aggregate `client-gametest` still has to pass.
+# shellcheck disable=SC2016 # a literal template, not an expansion
+checks_full=$(grep $'\t' <<<"$run_lines" | grep -vF 'client-gametest-shard ${{' | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n | awk -F'\t' '
   function flush() {
     if (name == "") return
     print (state == "" ? "skipping" : state == "success" ? "pass" : state) "\t" name "\t" id
@@ -135,7 +139,7 @@ done
 
 # CI merges the PR head with origin/main fetched at run time and records that main sha in a `merged-main` notice
 # annotation on its check run (.github/actions/merge-main; REST reads it, a job summary it cannot). The gate refuses
-# unless every deciding run of a required job (and of client-gametest, when it has a passing run) merged exactly
+# unless every deciding run of a required job (and of each passing client-gametest-shard) merged exactly
 # the current origin/main: a time test cannot see that GitHub served a stale refs/pull/N/merge (#979). A run with
 # no record (one from before this check) is refused as stale. The merge is invisible to a path no job reads, so a
 # main that differs from the recorded sha only by docs/ROADMAP.md and .papercuts.jsonl (the roadmap and papercut commits that land
@@ -143,9 +147,28 @@ done
 git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
 main_sha=$(git rev-parse origin/main 2>/dev/null) || main_sha=
 [[ $main_sha =~ ^[0-9a-f]{40}$ ]] || refuse "could not read the sha of origin/main"
-stale_fix="re-run CI on the current main by closing and reopening the PR [stale-base] (the head sha is unchanged, so the review pass stays valid)"
+stale_fix="record the current main by re-running the whole runs holding the head's newest non-skipped build, tool-tests and client-gametest jobs [stale-base] (the head sha is unchanged, so the review pass stays valid)"
 based_names=("${REQUIRED_CHECKS[@]}")
-grep -qxF "pass"$'\t'"client-gametest" <<<"$checks" && based_names+=(client-gametest) # pipe-grep-q: fail-closed
+# The suite runs as `client-gametest-shard <i>` jobs, and `client-gametest` is the aggregate that passes only when
+# every shard did (#1079). Each passing shard is the run that must have merged the current main; the aggregate's own
+# notice (tools/ci-shard-main.sh, for the gate on main) is never read. An aggregate pass with no passing shard is not
+# trusted.
+shard_names=$(awk -F'\t' '$1 == "pass" && $2 ~ /^client-gametest-shard / { print $2 }' <<<"$checks")
+if grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then # pipe-grep-q: fail-closed
+  # TEMPORARY legacy path (delete with #1116): CI from before #1079 ran one `client-gametest` job that recorded the
+  # merged-main notice itself, and a stale-base re-run reuses that workflow. Legacy only when the head has no
+  # client-gametest-shard run of any kind (even a never-started template one), so the sharded aggregate's notice
+  # never stands in for shards that did not pass.
+  if [[ -z $shard_names ]]; then
+    if grep -q '^client-gametest-shard ' <<<"$run_lines"; then
+      refuse "client-gametest passed but no client-gametest-shard run did, so nothing shows what the suite ran"
+    fi
+    based_names+=(client-gametest)
+  fi
+fi
+while IFS= read -r shard; do
+  [[ -z $shard ]] || based_names+=("$shard")
+done <<<"$shard_names"
 for based in "${based_names[@]}"; do
   run_id=$(awk -F'\t' -v n="$based" '$2 == n { print $3 }' <<<"$checks_full")
   [[ $run_id =~ ^[0-9]+$ ]] || refuse "has no deciding run id for $based"
@@ -228,7 +251,7 @@ has_label gameplay && gameplay_flag=1
 client_needed=$(cut -f2,3 <<<"$pr_files" | tr '\t' '\n' | tools/ci-client-needed.sh "$gameplay_flag") \
   || refuse "could not decide whether the client suite is needed"
 if [[ $client_needed == true ]] && ! grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then
-  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push, or close and reopen the PR" # pipe-grep-q: fail-closed
+  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push, or re-run the whole run holding the head's newest non-skipped client-gametest job (never the job alone: its copied jobs lose their merged-main annotation)" # pipe-grep-q: fail-closed
 fi
 
 # Read the closing set again: a body edit may have reached GitHub's parse after the first read.
