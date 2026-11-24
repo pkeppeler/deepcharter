@@ -341,14 +341,7 @@ public class StalkCollapseTest {
         BlockPos here = helper.absolutePos(new BlockPos(0, BASE_ROW, 0)).above(SKY);
         BlockPos origin = new BlockPos(((here.getX() >> 4) << 4) + 15, here.getY(), here.getZ());
         GreatStalkLayout layout = layoutOf(BRAID_SEED);
-        for (int x = -BRAID_MAX_REACH; x <= BRAID_MAX_REACH; x++) {
-            for (int z = -BRAID_MAX_REACH; z <= BRAID_MAX_REACH; z++) {
-                level.setBlock(origin.offset(x, -1, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-                for (int y = 0; y <= GREAT_CLEAR_HEIGHT; y++) {
-                    level.setBlock(origin.offset(x, y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
-                }
-            }
-        }
+        clearGreatArea(level, origin);
         if (!GreatStalk.place(level, RandomSource.create(BRAID_SEED), origin, false)) {
             throw failure(helper, "the placer would not grow a great stalk on a chunk border");
         }

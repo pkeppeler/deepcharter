@@ -106,8 +106,7 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         int firstX = chunk.getPos().getMinBlockX();
         int firstZ = chunk.getPos().getMinBlockZ();
         // A level cut to part of a band (the cost test's floors, ADR 0086) holds only some of its rows. Every shipped
-        // level
-        // holds whole bands, so this changes nothing there.
+        // level holds whole bands, so this changes nothing there.
         int low = Math.max(band.minY(), chunk.getMinY());
         int high = Math.min(band.minY() + band.height() - 1, chunk.getMinY() + chunk.getHeight() - 1);
         if (low > high) {

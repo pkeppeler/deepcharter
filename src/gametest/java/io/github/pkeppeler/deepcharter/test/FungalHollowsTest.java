@@ -192,11 +192,7 @@ public class FungalHollowsTest {
         LayerChain.Band band = TestLayers.band(level, LAYER);
         Set<String> zones = new TreeSet<>();
         for (int zone = 0; zone < Zones.COUNT; zone++) {
-            Zones.Span span = Zones.span(band.minY(), band.height(), zone);
-            zones.add(Zones.of(LAYER, band.minY(), band.height(), span.low())
-                    .orElseThrow()
-                    .id()
-                    .toString());
+            zones.add(zoneId(band, zone).toString());
         }
         Set<String> tagged = new TreeSet<>();
         level.registryAccess()
@@ -440,12 +436,15 @@ public class FungalHollowsTest {
 
     /** The fill of one zone of layer 3, from the same JSON the generator reads. */
     private static JsonObject fill(LayerChain.Band band, int zone) {
+        return json(
+                "/data/deepcharter/worldgen/feature/fill_" + zoneId(band, zone).getPath() + ".json");
+    }
+
+    private static Identifier zoneId(LayerChain.Band band, int zone) {
         Zones.Span span = Zones.span(band.minY(), band.height(), zone);
-        String name = Zones.of(LAYER, band.minY(), band.height(), span.low())
+        return Zones.of(LAYER, band.minY(), band.height(), span.low())
                 .orElseThrow()
-                .id()
-                .getPath();
-        return json("/data/deepcharter/worldgen/feature/fill_" + name + ".json");
+                .id();
     }
 
     private static double hazard(JsonObject fill, String block) {

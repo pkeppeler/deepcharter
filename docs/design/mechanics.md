@@ -1525,7 +1525,7 @@ The heat shield's Goldium is the slow one: the sales forgone are 4.4 minutes of 
 
 ## The deepest point (#476)
 
-A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, means reaching the top of layer 3 (`LayerChain.topDepth(3)`, depth 575, the bottom row of layer 2's crust): a charter has drilled through the crust, or come down the Kells' shaft. Since layer 3 was built (#972) the number is the top of a real band; it was the same number before, as the floor of layer 2.
+A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, means reaching the top of layer 3 (`LayerChain.topDepth(3)`, depth 575, the bottom row of layer 2's crust): a charter has drilled through the crust, or come down the Kells' shaft.
 
 ## Company Rock and the straight shaft (#509, A)
 
@@ -2113,7 +2113,7 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Ore and hazards.** The original's rows 134 to 203 in thirds, by the formula of ADR 0015: more Goldium and Platinium, Einsteinium in every zone, Cicatrium 0.08% to 0.12%. Company Rock 10% to 13% and lava 5% to 6% of non-ore rock, never less than Prospector's Run.
 
-**Steps.** Layer 3's fill, lining and growth stand in decoration steps no other biome uses (5, 7 and 8, not the fill's usual 6 and growth's 9): a feature's random is seeded by its index in its step across all the generator's biomes, and new features in steps 6 and 9 shifted the seeds of layers 1 and 2's fills and changed their ore and lava. `CampaignWorldHashTest` shows the world above layer 3 unchanged, and `CampaignDecorationStepsTest` fails when a feature moves in its step (ADR 0015's amendment). Growth stays in its own chunk: a glowcap or stalk patch spreads with `deepcharter:in_chunk_offset`, vanilla's offset mirrored back in at the chunk's edge, and a great stalk grows only where it fits in its chunk, so what grows does not depend on which of two neighbours is decorated first ([ADR 0088](../adr/0088-layer-features-never-write-outside-their-own-chunk.md), `FungalHollowsTest.everyFeaturePlacesInsideItsOwnChunk`).
+**Steps.** Layer 3's fill, lining and growth stand in decoration steps no other biome uses, so they reseed no feature of layers 1 and 2 ([ADR 0015](../adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md)'s amendment), and its growth and lining never write outside their own chunk ([ADR 0088](../adr/0088-layer-features-never-write-outside-their-own-chunk.md)).
 
 **Tuning knobs.** The noise in `campaign.json` (column threshold 0.40, 0.62 in the Quiet; shelf thickness and holes), `line_hollows.json` (`depth`), the glowcap counts in `glowcaps_<zone>.json`, the fills in `fill_<zone>.json`, `LayerTuning.glowcapLight`.
 
