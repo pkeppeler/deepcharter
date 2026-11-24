@@ -1,16 +1,11 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.pod.PodEntity;
-import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
-import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -89,10 +84,13 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                     player.getAbilities().flying = true;
                     player.onUpdateAbilities();
                 });
-                for (int layer : new int[] {LayerChain.SURFACE, 1, 2}) {
+                // The void is under the bottom of the whole world: in the campaign level a hole through the floor of a
+                // band shows the next
+                // band's rock. TODO(#819): the pod 1 block under the bottom.
+                for (int layer : new int[] {LayerChain.SURFACE}) {
                     int minY = singleplayer
                             .getServer()
-                            .computeOnServer(server -> openHole(TestLayers.level(server, layer), layer));
+                            .computeOnServer(server -> openHole(TestLayers.level(server, layer)));
                     Vec3 hole = new Vec3(X + 0.5, minY + 0.5, Z + 0.5);
                     View[] views = {
                         new View(
@@ -115,14 +113,11 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                             if (nightVision && !view.bothLightings()) {
                                 continue;
                             }
-                            String name = "breach-void-layer-" + layer + "-" + view.name()
-                                    + (nightVision ? "-night-vision" : "");
+                            String name =
+                                    "breach-void-world-bottom-" + view.name() + (nightVision ? "-night-vision" : "");
                             Path shot = lookUntilLit(context, singleplayer, layer, view.eye(), hole, minY, name);
                             holeProblem(read(shot), name).ifPresent(failures::add);
                         }
-                    }
-                    if (layer == 1) {
-                        podUnderTheBottom(context, singleplayer, layer, minY).ifPresent(failures::add);
                     }
                 }
             });
@@ -137,8 +132,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
      * Carves a lit room, and a column over its middle, with a 9 x 9 hole through the floor to the void. Four glowstone lamps stand on the
      * floor round it. Returns the bottom Y.
      */
-    private static int openHole(ServerLevel level, int layer) {
-        int minY = TestLayers.band(level, layer).minY();
+    private static int openHole(ServerLevel level) {
+        int minY = level.getMinY(); // level-height: the void is under the bottom of the whole world, not of a layer
         RoomCarver.carve(
                 level,
                 new BlockPos(X - ROOM_RADIUS, minY + SHAFT_DEPTH, Z - ROOM_RADIUS),
@@ -151,17 +146,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                 Blocks.AIR.defaultBlockState());
         BlockPos low = new BlockPos(X - HOLE_RADIUS, minY, Z - HOLE_RADIUS);
         BlockPos high = new BlockPos(X + HOLE_RADIUS, minY + SHAFT_DEPTH - 1, Z + HOLE_RADIUS);
-        if (TestLayers.isIn(level, low, LayerChain.SURFACE)) {
-            // The surface has no crust: its floor is open, and the hole is a shaft bored to the bottom.
-            RoomCarver.carve(level, low, high, Blocks.AIR.defaultBlockState());
-        } else {
-            for (BlockPos pos : BlockPos.betweenClosed(low, high)) {
-                if (!BreachService.breakCrust(level, pos)) {
-                    throw new AssertionError(
-                            "The floor of " + level.dimension().identifier() + " at " + pos + " holds no breach crust");
-                }
-            }
-        }
+        // The bottom of the world is unbuilt rock with no crust: the hole is a shaft bored to the bottom.
+        RoomCarver.carve(level, low, high, Blocks.AIR.defaultBlockState());
         for (BlockPos lamp : lamps(minY)) {
             level.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);
         }
@@ -227,7 +213,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the camera at " + name,
-                client -> TestLayers.clientIsIn(client, layer)
+                client -> client.player != null
+                        && LayerChain.isCampaign(client.player.level())
                         && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                         && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - angles[0])) < 0.01f
                         && Math.abs(ClientSession.player(client).getXRot() - angles[1]) < 0.01f);
@@ -365,53 +352,6 @@ public class BreachVoidClientTest implements FabricClientGameTest {
             return Optional.empty();
         }
         return Optional.of(new int[] {x, y});
-    }
-
-    /**
-     * A pod 1 block under the bottom of the world, where a crossing pod is for its last ticks, seen from over the hole. The cover must
-     * lie under it, not through it, so the pod's top shows lit and is not black.
-     */
-    private static Optional<String> podUnderTheBottom(
-            ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer, int minY) {
-        singleplayer
-                .getServer()
-                .runOnServer(server -> server.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .addEffect(new MobEffectInstance(
-                                MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
-        int[] podId = new int[1];
-        singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = TestLayers.level(server, layer);
-            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
-            pod.setNoGravity(true);
-            pod.setPos(X + 0.5, minY - 1.0, Z + 0.5);
-            level.addFreshEntity(pod);
-            podId[0] = pod.getId();
-        });
-        try {
-            Vec3 eye = new Vec3(X + 0.5, minY + SHAFT_DEPTH + 6, Z + 0.5);
-            Vec3 podTop = new Vec3(X + 0.5, minY + 0.5, Z + 0.5);
-            String name = "breach-void-layer-" + layer + "-pod-under-the-bottom";
-            ClientWait.until(
-                    context,
-                    "the pod under the bottom on the client",
-                    client -> ClientLight.clientLevel(client).getEntity(podId[0]) != null);
-            Path shot = look(context, singleplayer, layer, eye, podTop, name);
-            BufferedImage image = read(shot);
-            List<Integer> patch = centrePatch(image);
-            int lit = (int) patch.stream().filter(channel -> channel > DARK).count();
-            int pixels = patch.size();
-            return lit * 2 < pixels
-                    ? Optional.of(name + ": the pod under the bottom is hidden: only " + lit + " of " + pixels
-                            + " pixels where it is are brighter than " + DARK)
-                    : Optional.empty();
-        } finally {
-            singleplayer
-                    .getServer()
-                    .runOnServer(server -> TestEntities.require(TestLayers.level(server, layer), podId[0])
-                            .discard());
-        }
     }
 
     /** The brightest channel of each pixel of the {@link #PATCH} square at the middle of the picture. */

@@ -40,7 +40,7 @@ import org.jspecify.annotations.Nullable;
 public class CompanyRockBiteTest {
     private static final PodRockBiteTuning TUNING = PodRockBiteTuning.DEFAULT;
     private static final int Z = 5600;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int ROOM = 8;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 900;
 

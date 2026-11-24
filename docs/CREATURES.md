@@ -83,7 +83,7 @@ Moloch's, drawn to the dark. Built ([ADR 0046](adr/0046-the-retained-are-a-monst
 
 - **Sensed:** a tiny dim lamp in the helmet, seen from far off in the dark. No echo on sonar. A low rumble as one sets off toward you.
 - **Pod:** clings to a dark pod and drains fuel down to 5 per cent until it is killed.
-- **On foot** (new): comes to a person in the dark (no light in either hand and block light under 3 where they stand; later, a suit lamp that is off). It clings, slows them to a crawl as if they carried ore, and drains hunger down to a floor until struck off. It never deals damage.
+- **On foot** (built, [#916](https://github.com/pkeppeler/deepcharter/issues/916), [mechanics.md](design/mechanics.md#the-retained-on-foot-916-a)): comes to a person in the dark (no light in either hand and block light under 3 where they stand; later, a suit lamp that is off). It clings, slows them to a crawl as if they carried ore, and drains hunger down to a floor until struck off. It never deals damage.
 - **Counters:** lights (pod) and a light in hand (on foot) keep one away, but never free a pod or person already held. The cutter or any blow ends a grip.
 
 #### Tallies
@@ -371,7 +371,7 @@ A few in-game weeks away from a camp built of colony materials is a ruin. A clos
 ## 11. Open questions
 
 - **Numbers:** encounter cadence per zone, alarm strength and decay, boss health per pod and per person on foot, Head Office's floor and ceiling, the visit rate and how much each visit takes while nobody is near.
-- **Dependencies:** the sonar signatures need the navigator's sonar; the on-foot costs of Limpets and masks need the suit timer and suit lamp; the shell rule needs outpost ratings.
+- **Dependencies:** the sonar signatures need the navigator's sonar; the on-foot costs of Limpets and masks need the suit timer (built, [#993](https://github.com/pkeppeler/deepcharter/issues/993)) and suit lamp; the shell rule needs outpost ratings (built, #989) and the shell's exposure (#926).
 - **The Continuity tag** (principle 7): whether a Retained leaves one, and how often.
 - **The smelter**, a Super Motherload idea (a Company terminal that trades ore for charges): parked for the tech-tree ideas pass, because bought charges already give blast shapes and make fighting cost money.
 - **Homage check:** player-facing lines here (the receipt, the spec sheet, the alert) go through `tools/check-homage.py` against the original's reference ([homage-check.md](tooling/homage-check.md)).

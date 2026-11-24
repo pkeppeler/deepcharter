@@ -38,6 +38,8 @@ public class ColonyInteriorLightTest {
      * (tools/colony/parts.py GLOW_LEVEL), so a lamp inside, which gives 14, fails the test. Light that leaks in through the door
      * from the lamp outside is not a block of the room and is not counted.
      */
+    // fixed-pos: a block-light level (tools/colony/parts.py GLOW_LEVEL, not in layout.json), not a world Y; the gate
+    // matches "CEILING" by name
     private static final int DIM_CEILING = 5;
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
@@ -48,6 +50,7 @@ public class ColonyInteriorLightTest {
                 .orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
         List<BlockPos> chunks = ColonyChunks.of(colony);
         int[] ticking = {0};
+        FarChunks.Deadline deadline = FarChunks.deadline();
         FarChunks.awaitEntityTicking(helper, level, chunks, index -> ticking[0]++);
         helper.succeedWhen(() -> {
             if (ticking[0] < chunks.size()) {
@@ -74,12 +77,11 @@ public class ColonyInteriorLightTest {
                 throw failure(helper, "no room of the layout holds a cell a block does not fill");
             }
             if (!problems.isEmpty()) {
-                throw failure(
-                        helper,
+                String message = String.format(
                         "%s problem(s) in %s interior cell(s):\n  %s",
-                        problems.size(),
-                        cells,
-                        String.join("\n  ", problems));
+                        problems.size(), cells, String.join("\n  ", problems));
+                deadline.await(helper, level, false, () -> message);
+                throw failure(helper, "%s", message);
             }
         });
     }

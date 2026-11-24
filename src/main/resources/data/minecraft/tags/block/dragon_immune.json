@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "#deepcharter:terminals"
+    "#deepcharter:terminals",
+    "deepcharter:breach_crust"
   ]
 }

@@ -55,14 +55,15 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param itemCountTop distance from the top of an item icon to its count's text
  * @param stampLeft distance from the text column's left edge to the centre of the COMPLETE or COMING SOON stamp
  * @param stampTop distance from the sheet's first line to the centre of that stamp
- * @param zoomMin smallest zoom of a flowchart
- * @param zoomMax largest zoom of a flowchart
- * @param zoomStep zoom factor of one scroll notch
- * @param panMargin how much of the flowchart must stay in view when it is dragged away
  * @param toastWidth width of the step-done popup
- * @param toastHeight height of the step-done popup
+ * @param toastHeight least height of the step-done popup; it grows to fit a step that wraps to more lines
  * @param toastMillis how long the step-done popup shows
  * @param toastInset space between the step-done popup's edge and its text
+ * @param toastMargin space between the step-done popup and the left, right, top and bottom edges of the screen
+ * @param toastGap the least space between the step-done popup and any part of the HUD it keeps clear of
+ * @param toastStaleMillis how long after its last frame a step-done popup still counts as on screen, to the popups placed under it
+ * @param toastWaitMillis how long a step-done popup waits for room before it gives up: on a GUI with no clear place for it, it
+ *     waits, and its {@code toastMillis} do not run while it does
  * @param barsNoteGap space between the redaction bars and the margin note under them
  * @param chapterLinkTop space between the last step's bottom edge and the dashed link to the next chapter
  * @param dropLinkPercent where the black link from the row above drops to the bars, in percent of a step box's width
@@ -131,14 +132,14 @@ public record QuestMapTuning(
         int itemCountTop,
         int stampLeft,
         int stampTop,
-        double zoomMin,
-        double zoomMax,
-        double zoomStep,
-        int panMargin,
         int toastWidth,
         int toastHeight,
         int toastMillis,
         int toastInset,
+        int toastMargin,
+        int toastGap,
+        int toastStaleMillis,
+        int toastWaitMillis,
         int barsNoteGap,
         int chapterLinkTop,
         int dropLinkPercent,
@@ -211,14 +212,14 @@ public record QuestMapTuning(
                 d.integer("itemCountTop", 0),
                 d.integer("stampLeft", 0),
                 d.integer("stampTop", 0),
-                d.decimal("zoomMin", 0.1, 10),
-                d.decimal("zoomMax", 0.1, 10),
-                d.decimal("zoomStep", 0.1, 10),
-                d.integer("panMargin", 0),
                 d.integer("toastWidth", 1),
                 d.integer("toastHeight", 1),
                 d.integer("toastMillis", 1),
                 d.integer("toastInset", 0),
+                d.integer("toastMargin", 0),
+                d.integer("toastGap", 0),
+                d.integer("toastStaleMillis", 1),
+                d.integer("toastWaitMillis", 1),
                 d.integer("barsNoteGap", 0),
                 d.integer("chapterLinkTop", 0),
                 d.integer("dropLinkPercent", 0),

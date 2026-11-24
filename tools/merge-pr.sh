@@ -19,10 +19,13 @@
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
-# Refuses if origin/main commits made since the PR's latest successful CI run was created (minus a
-# 2-minute margin) changed anything outside docs (`docs/**`, `*.md`, `.papercuts.jsonl`).
+# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each client-gametest-shard, when they ran) runs
+# each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
+# from it only by docs/ROADMAP.md or .papercuts.jsonl.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
-# and regenerates docs/ROADMAP.md. GitHub is read through REST only (tools/lib/gh-rest.sh).
+# and regenerates docs/ROADMAP.md. The commit title and message go through tools/merge_message.py first: the merge proxy
+# refuses a long URL there, so it is shortened in the commit only, never in the PR body (#1007); --check warns when it will.
+# On a failed merge request the API's error text is printed. GitHub is read through REST only (tools/lib/gh-rest.sh).
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
@@ -103,15 +106,20 @@ if ! grep -q $'\t' <<<"$run_lines"; then
 fi
 # Per name, the deciding run is the newest one that is not skipped: only a
 # `success` passes, anything else (running, failed, cancelled, ...) refuses. A name
-# whose runs were all skipped is "skipping". Output lines are "verdict<TAB>name".
-checks=$(grep $'\t' <<<"$run_lines" | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n | awk -F'\t' '
+# whose runs were all skipped is "skipping". Output lines are "verdict<TAB>name<TAB>id" (the id of the deciding run).
+# A matrix job that never started (skipped, or cancelled by a newer run's concurrency group) is reported under its
+# unexpanded template name, `client-gametest-shard ${{ matrix.shard }}`: no real shard run ever supersedes it, so only
+# that name is dropped, not read as a failed check (any other check keeps its verdict). The aggregate `client-gametest` still has to pass.
+# shellcheck disable=SC2016 # a literal template, not an expansion
+checks_full=$(grep $'\t' <<<"$run_lines" | grep -vF 'client-gametest-shard ${{' | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n | awk -F'\t' '
   function flush() {
     if (name == "") return
-    print (state == "" ? "skipping" : state == "success" ? "pass" : state) "\t" name
+    print (state == "" ? "skipping" : state == "success" ? "pass" : state) "\t" name "\t" id
   }
-  $1 != name { flush(); name = $1; state = "" }
-  { s = ($4 == "completed") ? $5 : $4; if (s != "skipped") state = s }
+  $1 != name { flush(); name = $1; state = ""; id = "" }
+  { s = ($4 == "completed") ? $5 : $4; if (s != "skipped") { state = s; id = $3 } }
   END { flush() }')
+checks=$(cut -f1,2 <<<"$checks_full")
 if [[ $gate_only -eq 1 ]]; then
   while IFS=$'\t' read -r bucket name; do echo "check $name: $bucket"; done <<<"$checks"
 fi
@@ -129,47 +137,70 @@ for required in "${REQUIRED_CHECKS[@]}"; do
   refuse "lacks required check: $required"
 done
 
-# The CI run above tested the merge ref against main as it was then. If main has
-# since changed code, a PR with no textual conflict can still break main once
-# squashed. The PR's latest successful `CI` run for this head sha gives a creation
-# time; every origin/main commit since then (minus a margin) is a change the run may
-# not have seen. Cancelled or failed runs are skipped so they cannot narrow the window.
-# A "Re-run jobs" keeps `created_at`, so it can only cause a conservative refusal, which
-# a close and reopen fixes. The run's pull_requests[].base.sha reports the PR's current
-# base, not the tested one, so it is no use. Fail closed on any unreadable step.
-# Docs-only commits are allowed (the roadmap regen commits after every merge).
+# CI merges the PR head with origin/main fetched at run time and records that main sha in a `merged-main` notice
+# annotation on its check run (.github/actions/merge-main; REST reads it, a job summary it cannot). The gate refuses
+# unless every deciding run of a required job (and of each passing client-gametest-shard) merged exactly
+# the current origin/main: a time test cannot see that GitHub served a stale refs/pull/N/merge (#979). A run with
+# no record (one from before this check) is refused as stale. The merge is invisible to a path no job reads, so a
+# main that differs from the recorded sha only by docs/ROADMAP.md and .papercuts.jsonl (the roadmap and papercut commits that land
+# after each merge) still counts. Fail closed on any unreadable step.
 git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
-ci_run=$(gh api "repos/$repo/actions/runs?head_sha=$sha&event=pull_request&per_page=100" --paginate \
-  --jq '.workflow_runs[] | select(.name == "CI" and .status == "completed" and .conclusion == "success") | .id' 2>/dev/null \
-  | sort -n | tail -1) || ci_run=
-[[ $ci_run =~ ^[0-9]+$ ]] || refuse "has no successful CI run for $sha (cannot tell what main it was tested against)" # pipe-tail: an unreadable list leaves ci_run empty and refuses
-ci_created=$(gh api "repos/$repo/actions/runs/$ci_run" --jq .created_at 2>/dev/null) || ci_created=
-ts_re='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
-[[ $ci_created =~ $ts_re ]] || refuse "has no readable creation time on its CI run $ci_run (cannot tell what main it was tested against)"
-# Two minutes of margin before the run was created, so a merge racing it is
-# counted (a false refusal only costs a close and reopen). GNU date first, then BSD.
-ci_since=$(date -u -d "$ci_created - 2 minutes" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
-  || date -u -j -v-2M -f %Y-%m-%dT%H:%M:%SZ "$ci_created" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) \
-  || refuse "could not compute the margin before its CI run creation time $ci_created"
-main_commits=$(git log --format=%H --since="$ci_since" origin/main) \
-  || refuse "could not list the commits on origin/main since $ci_since"
-code_moved=()
-for commit in $main_commits; do
-  files=$(git show --name-only --format= --no-renames "$commit") \
-    || refuse "could not read the files changed by origin/main commit $commit"
+main_sha=$(git rev-parse origin/main 2>/dev/null) || main_sha=
+[[ $main_sha =~ ^[0-9a-f]{40}$ ]] || refuse "could not read the sha of origin/main"
+stale_fix="record the current main by re-running the whole runs holding the head's newest non-skipped build, tool-tests and client-gametest jobs [stale-base] (the head sha is unchanged, so the review pass stays valid)"
+based_names=("${REQUIRED_CHECKS[@]}")
+# The suite runs as `client-gametest-shard <i>` jobs, and `client-gametest` is the aggregate that passes only when
+# every shard did (#1079). Each passing shard is the run that must have merged the current main; the aggregate's own
+# notice (tools/ci-shard-main.sh, for the gate on main) is never read. An aggregate pass with no passing shard is not
+# trusted.
+shard_names=$(awk -F'\t' '$1 == "pass" && $2 ~ /^client-gametest-shard / { print $2 }' <<<"$checks")
+if grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then # pipe-grep-q: fail-closed
+  # TEMPORARY legacy path (delete with #1116): CI from before #1079 ran one `client-gametest` job that recorded the
+  # merged-main notice itself, and a stale-base re-run reuses that workflow. Legacy only when the head has no
+  # client-gametest-shard run of any kind (even a never-started template one), so the sharded aggregate's notice
+  # never stands in for shards that did not pass.
+  if [[ -z $shard_names ]]; then
+    if grep -q '^client-gametest-shard ' <<<"$run_lines"; then
+      refuse "client-gametest passed but no client-gametest-shard run did, so nothing shows what the suite ran"
+    fi
+    based_names+=(client-gametest)
+  fi
+fi
+while IFS= read -r shard; do
+  [[ -z $shard ]] || based_names+=("$shard")
+done <<<"$shard_names"
+for based in "${based_names[@]}"; do
+  run_id=$(awk -F'\t' -v n="$based" '$2 == n { print $3 }' <<<"$checks_full")
+  [[ $run_id =~ ^[0-9]+$ ]] || refuse "has no deciding run id for $based"
+  recorded=$(gh api "repos/$repo/check-runs/$run_id/annotations?per_page=100" --paginate \
+    --jq '.[] | select(.title == "merged-main") | .message' 2>/dev/null) \
+    || refuse "could not read the annotations of $based run $run_id"
+  recorded=${recorded%%$'\n'*}
+  [[ $gate_only -eq 0 ]] || echo "merged main $based (run $run_id): ${recorded:-none}"
+  [[ $recorded =~ ^[0-9a-f]{40}$ ]] \
+    || refuse "$based run $run_id recorded no merged main sha (a run from before CI recorded it): $stale_fix"
+  [[ $recorded != "$main_sha" ]] || continue
+  # Main moved: only a change confined to those two paths may differ. A recorded sha that is not an ancestor of
+  # origin/main (or whose object is missing) cannot be compared and is stale.
+  git merge-base --is-ancestor "$recorded" "$main_sha" >/dev/null 2>&1 \
+    || refuse "$based run $run_id merged main ${recorded:0:9}, which is not on origin/main ${main_sha:0:9}: $stale_fix"
+  moved=$(git diff --name-only --no-renames "$recorded" "$main_sha") \
+    || refuse "could not list the files changed on origin/main since ${recorded:0:9}"
+  code_moved=()
   while IFS= read -r path; do
     case $path in
-      '' | docs/* | *.md | .papercuts.jsonl) ;;
+      '') ;;
+      docs/ROADMAP.md | .papercuts.jsonl) ;;
       *) code_moved+=("$path") ;;
     esac
-  done <<<"$files"
+  done <<<"$moved"
+  if [[ ${#code_moved[@]} -gt 0 ]]; then
+    shown=${code_moved[*]:0:5}
+    more=
+    [[ ${#code_moved[@]} -le 5 ]] || more=" (+$((${#code_moved[@]} - 5)) more)"
+    refuse "$based run $run_id merged main ${recorded:0:9} but origin/main is ${main_sha:0:9}: ${shown// /, }$more changed since: $stale_fix"
+  fi
 done
-if [[ ${#code_moved[@]} -gt 0 ]]; then
-  shown=${code_moved[*]:0:5}
-  more=
-  [[ ${#code_moved[@]} -le 5 ]] || more=" (+$((${#code_moved[@]} - 5)) more)"
-  refuse "main changed since its CI run (CI run $ci_run created $ci_created): ${shown// /, }$more; re-run CI on a fresh merge ref by closing and reopening the PR [stale-base] (the head sha is unchanged, so the review pass stays valid)"
-fi
 
 # A PR may not ADD docs/adr/NNNN-*.md when NNNN is already on origin/main (parallel
 # PRs pick numbers on their own), or twice among its own added ADRs. A path the PR
@@ -220,7 +251,7 @@ has_label gameplay && gameplay_flag=1
 client_needed=$(cut -f2,3 <<<"$pr_files" | tr '\t' '\n' | tools/ci-client-needed.sh "$gameplay_flag") \
   || refuse "could not decide whether the client suite is needed"
 if [[ $client_needed == true ]] && ! grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then
-  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push, or close and reopen the PR" # pipe-grep-q: fail-closed
+  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push, or re-run the whole run holding the head's newest non-skipped client-gametest job (never the job alone: its copied jobs lose their merged-main annotation)" # pipe-grep-q: fail-closed
 fi
 
 # Read the closing set again: a body edit may have reached GitHub's parse after the first read.
@@ -230,6 +261,12 @@ closing_set
   || refuse "closing set changed during the gate (was ${checked_closes:-empty}, now ${closes:-empty}); re-run"
 
 if [[ $gate_only -eq 1 ]]; then
+  # Not a refusal: the merge rewrites these URLs in the commit message, so the author can see it (#1007).
+  long_urls=$(tools/py tools/merge_message.py --list <<<"$(pr_field .title)
+$body") || refuse "could not check the title and body for long URLs"
+  if [[ -n $long_urls ]]; then
+    echo "WARNING: the title or body holds $(wc -l <<<"$long_urls" | tr -d ' ') URL(s) the merge proxy refuses (150+ characters, or an 80-character run); the merge rewrites them in the commit message and leaves the PR body as it is: $(head -1 <<<"$long_urls" | cut -c1-100)"
+  fi
   pending=
   [[ $is_draft == false ]] || pending="draft"
   [[ -z $review_pass_refusal ]] || pending="${pending:+$pending, }no review pass"
@@ -257,14 +294,18 @@ done
 # (a timeout), so a nonzero exit is judged by the PR's real state.
 title=$(pr_field .title) || refuse "has no readable title"
 message=$(pr_field '.body // ""') || refuse "has no readable body"
-if ! gh api -X PUT "repos/$repo/pulls/$pr/merge" -f merge_method=squash -f sha="$sha" \
-  -f commit_title="$title (#$pr)" -f commit_message="$message" >/dev/null; then
+# The proxy refuses a title or message holding a long URL (#1007): send the text with those URLs shortened. The PR
+# body is not changed.
+title=$(tools/py tools/merge_message.py <<<"$title") || refuse "could not rewrite the title's long URLs"
+message=$(tools/py tools/merge_message.py <<<"$message") || refuse "could not rewrite the body's long URLs"
+if ! merge_out=$(gh api -X PUT "repos/$repo/pulls/$pr/merge" -f merge_method=squash -f sha="$sha" \
+  -f commit_title="$title (#$pr)" -f commit_message="$message" 2>&1); then
   state=$(pr_state_of "$pr") || state=unknown
   if [[ $state != MERGED ]]; then
-    echo "ERROR: the merge request failed and PR #$pr is not merged (state: $state)" >&2
+    echo "ERROR: the merge request failed and PR #$pr is not merged (state: $state): $merge_out" >&2
     exit 1
   fi
-  echo "WARNING: the merge request failed but PR #$pr is MERGED; continuing" >&2
+  echo "WARNING: the merge request failed but PR #$pr is MERGED; continuing: $merge_out" >&2
 fi
 echo "Merged PR #$pr at $sha"
 

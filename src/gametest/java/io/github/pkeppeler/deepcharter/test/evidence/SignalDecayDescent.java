@@ -36,11 +36,12 @@ final class SignalDecayDescent {
     static final int X = 5300;
     static final int Z = 5000;
     private static final int ROOM_RADIUS = 5;
-    private static final int ROOM_TOP = 46;
+    private static final int ROOM_TOP = TestLayers.worldY(1, 46);
     /** The pod's feet start this high over the floor of layer 1 and are lowered to the bottom, above the breach crust. */
-    private static final int START_Y = SignalDecayTuning.DEFAULT.band(1).onset() + 4;
+    private static final int START_Y =
+            TestLayers.worldY(1, SignalDecayTuning.DEFAULT.band(1).onset() + 4);
 
-    private static final int BOTTOM_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    private static final int BOTTOM_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
     private static final double DOWN_PER_FRAME = 0.4;
     private static final double UP_PER_FRAME = 0.5;
     private static final int HOLD_FRAMES = 30;
