@@ -9,20 +9,17 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A breach through the floor of the last layer into the unbuilt depth below it (#1192), and the views of it: from layer 2 down through
+ * A breach through the floor of the last layer into the unbuilt depth below it (#1192), and the views of it: from the last layer down through
  * the broken crust, from under the crust straight down a shaft past the render distance and level along a hall past the fog, with and
  * without night vision, and from under the water of the flooded shaft straight down. {@code UnbuiltDepthClientTest} asserts them and the
  * {@code unbuilt-depth} scenario shows them, so the two cannot drift.
  *
  * <p>The camera reads the biome it stands in, so the views in the unbuilt depth stand far enough under the crust that the camera's blend
- * of biomes is the unbuilt depth's alone. The client's render distance is cut to two chunks ({@link CavernSky#withShortRenderDistance}),
+ * of biomes is the unbuilt depth's alone. The client's render distance is cut to two chunks ({@link ShaftViews#RENDER_DISTANCE}, {@link ClientChecks#withRenderDistance}),
  * so the shaft drops past the last drawn section and the sky the client draws below the horizon shows at its bottom. The sky clock is at
  * dusk, where the surface's fog is brightest.
  */
@@ -34,13 +31,13 @@ public final class UnbuiltDepthViews {
     private static final int Z = 6_008;
 
     /**
-     * The shaft runs from the room in layer 2 to its bottom in the unbuilt depth, this many blocks either side of its middle: wide enough
+     * The shaft runs from the room in the last layer to its bottom in the unbuilt depth, this many blocks either side of its middle: wide enough
      * that past the last drawn section it fills the sampled box of a view straight down, so the box shows what the client draws there and
      * no wall.
      */
     private static final int SHAFT_RADIUS = 20;
 
-    /** The room in layer 2, on the crust, reaches this far either side of the shaft's middle. */
+    /** The room in the last layer, on the crust, reaches this far either side of the shaft's middle. */
     private static final int ROOM_RADIUS = 24;
 
     private static final int ROOM_HEIGHT = 8;
@@ -85,7 +82,7 @@ public final class UnbuiltDepthViews {
     private static final float DOWN = 90f;
     private static final float LEVEL = 0f;
 
-    /** Where a view stands: in layer 2 over the breach, in the unbuilt depth, or under the water of the flooded shaft. */
+    /** Where a view stands: in the last layer over the breach, in the unbuilt depth, or under the water of the flooded shaft. */
     public enum Place {
         BREACH,
         UNBUILT,
@@ -128,7 +125,7 @@ public final class UnbuiltDepthViews {
             AtLook atLook,
             Runnable beforeFlood) {
         server.runOnServer(UnbuiltDepthViews::carve);
-        CavernSky.withShortRenderDistance(context, () -> {
+        ClientChecks.withRenderDistance(context, ShaftViews.RENDER_DISTANCE, () -> {
             boolean flooded = false;
             try {
                 for (Look look : LOOKS) {
@@ -136,12 +133,12 @@ public final class UnbuiltDepthViews {
                         continue;
                     }
                     if (look.place() == Place.UNDERWATER && !flooded) {
-                        nightVision(server, false);
+                        ShaftViews.nightVision(server, false);
                         beforeFlood.run();
                         server.runOnServer(UnbuiltDepthViews::flood);
                         flooded = true;
                     }
-                    nightVision(server, look.nightVision());
+                    ShaftViews.nightVision(server, look.nightVision());
                     BlockPos feet = server.computeOnServer(s -> feet(level(s), look.place()));
                     CavernSky.stand(context, server, UnbuiltDepthViews::level, feet, look.view());
                     if (look.place() == Place.UNDERWATER) {
@@ -153,12 +150,12 @@ public final class UnbuiltDepthViews {
                     atLook.at(look);
                 }
             } finally {
-                nightVision(server, false);
+                ShaftViews.nightVision(server, false);
             }
         });
     }
 
-    /** The campaign level, which holds layer 2 and the unbuilt depth under it. */
+    /** The campaign level, which holds the last layer and the unbuilt depth under it. */
     public static ServerLevel level(MinecraftServer server) {
         return TestLayers.level(server, CampaignBands.lastLayer());
     }
@@ -194,7 +191,7 @@ public final class UnbuiltDepthViews {
         return TestLayers.band(level, CampaignBands.lastLayer()).minY() - 1;
     }
 
-    /** The row of the room in layer 2 that stands on the crust. */
+    /** The row of the room in the last layer that stands on the crust. */
     private static int roomFloor(ServerLevel level) {
         return TestLayers.band(level, CampaignBands.lastLayer()).minY() + CampaignBands.crustRows();
     }
@@ -234,16 +231,5 @@ public final class UnbuiltDepthViews {
                 new BlockPos(X - SHAFT_RADIUS, camera.getY() - SHAFT_DROP, Z - SHAFT_RADIUS),
                 new BlockPos(X + SHAFT_RADIUS, camera.getY() - WATER_DROP, Z + SHAFT_RADIUS),
                 Blocks.WATER.defaultBlockState());
-    }
-
-    private static void nightVision(TestServerContext server, boolean on) {
-        server.runOnServer(s -> {
-            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
-            player.removeEffect(MobEffects.NIGHT_VISION);
-            if (on) {
-                player.addEffect(new MobEffectInstance(
-                        MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-            }
-        });
     }
 }

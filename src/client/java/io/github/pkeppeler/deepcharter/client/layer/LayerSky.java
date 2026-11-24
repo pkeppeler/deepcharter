@@ -12,6 +12,9 @@ import net.minecraft.util.Mth;
  * fog that disc. Under water the client draws no dark disc, and the sun and the moon are drawn without fog, so from under water a line of
  * sight past the drawn sections showed them. The sky's state is extracted before {@link LevelExtractionEvents#END_EXTRACTION}, and its
  * rain brightness is the alpha both are drawn with, so a rain brightness of 0 draws them clear.
+ *
+ * <p>In play {@link BreachVoidCover} now also covers the nadir past the drawn sections (#1188). This and the underground biomes' sky fog are the
+ * guard that holds without it, which {@code CavernSkyClientTest} checks with the cover off.
  */
 public final class LayerSky {
     private LayerSky() {}

@@ -15,9 +15,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
 
 /**
- * Evidence for #1192: the breach of {@code UnbuiltDepthClientTest} at dusk, seen from layer 2 down through the broken crust, then from
+ * Evidence for #1192: the breach of {@code UnbuiltDepthClientTest} at dusk, seen from the last layer (layer 3) down through the broken crust, then from
  * the unbuilt depth under it straight down the shaft and level along the hall, with and without night vision, and straight down from
- * under the water of the flooded shaft. The recording is a fall from layer 2 through the breach and down the shaft.
+ * under the water of the flooded shaft. The recording is a fall from the last layer through the breach and down the shaft.
  */
 public class UnbuiltDepthScenario extends EvidenceScenario {
     /** The fall looks nearly straight down, facing east. */
@@ -62,7 +62,7 @@ public class UnbuiltDepthScenario extends EvidenceScenario {
         });
     }
 
-    /** Drops the player, in survival and unhurt, from the room in layer 2 through the breach, a frame a tick. */
+    /** Drops the player, in survival and unhurt, from the room in the last layer through the breach, a frame a tick. */
     private void fall(ClientGameTestContext context, TestServerContext server) {
         BlockPos start = server.computeOnServer(s -> {
             ServerLevel level = UnbuiltDepthViews.level(s);

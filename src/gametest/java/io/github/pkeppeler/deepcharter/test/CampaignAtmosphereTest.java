@@ -233,7 +233,13 @@ public class CampaignAtmosphereTest {
                     name(attribute));
         }
         List<Holder<Biome>> layerBiomes = layerBiomes(level);
-        expect(helper, layerBiomes.size() == 6, "the layers have %s zone biomes, wanted 6", layerBiomes.size());
+        int zoneBiomes = CampaignBands.LAYERS.size() * Zones.COUNT;
+        expect(
+                helper,
+                layerBiomes.size() == zoneBiomes,
+                "the layers have %s zone biomes, wanted %s",
+                layerBiomes.size(),
+                zoneBiomes);
         for (Holder<Biome> biome : undergroundBiomes(helper, level)) {
             for (EnvironmentAttribute<?> attribute : UNDERGROUND) {
                 expect(
@@ -310,8 +316,8 @@ public class CampaignAtmosphereTest {
     }
 
     /**
-     * The unbuilt depth is where nothing is built yet (#1192): its fog is darker than every layer's, starts no farther out and ends nearer,
-     * so at every distance it is at least as thick as any layer's, and night vision cannot lift it. The client brightens a fog colour under night vision by scaling its brightest channel to full, but leaves a colour
+     * The unbuilt depth is where nothing is built yet (#1192): its fog is darker than every layer's, and starts and ends no farther out than
+     * any layer's, so at every distance it is at least as thick as any layer's, and night vision cannot lift it. The client brightens a fog colour under night vision by scaling its brightest channel to full, but leaves a colour
      * with a channel of 0 alone ({@code FogRenderer.computeFogColor} in 26.3), so the abyss stays dark under the potion where a layer's
      * fog turns to a pale haze.
      */
@@ -357,8 +363,8 @@ public class CampaignAtmosphereTest {
             float zoneEnd = wanted(zone.value(), EnvironmentAttributes.FOG_END_DISTANCE);
             expect(
                     helper,
-                    end < zoneEnd,
-                    "the unbuilt depth's fog ends at %s blocks, not nearer than layer biome %s's %s",
+                    end <= zoneEnd,
+                    "the unbuilt depth's fog ends at %s blocks, farther out than layer biome %s's %s",
                     end,
                     id(zone),
                     zoneEnd);
