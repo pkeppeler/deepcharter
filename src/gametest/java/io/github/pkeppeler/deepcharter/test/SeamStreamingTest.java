@@ -338,7 +338,7 @@ public class SeamStreamingTest {
                         return;
                     }
                     // A few ticks in layer 2, so what the arrival does after the teleport is in the record too.
-                    if (ticks - crossedAt[0] < 10) {
+                    if (ticks - crossedAt[0] < 10 || BlockingLoads.disarmed()) {
                         return;
                     }
                     List<BlockingLoads.Load> loads = BlockingLoads.disarm();
@@ -378,14 +378,19 @@ public class SeamStreamingTest {
                                     run.site().z());
                 },
                 ticks -> {
-                    if (!TestLayers.isInDimensionOf(mock.player(), 2)) {
+                    if (!TestLayers.isInDimensionOf(mock.player(), 2) || BlockingLoads.disarmed()) {
                         return;
                     }
-                    List<BlockingLoads.Load> inArea = BlockingLoads.disarm().stream()
+                    List<BlockingLoads.Load> loads = BlockingLoads.disarm();
+                    List<BlockingLoads.Load> inArea = loads.stream()
                             .filter(load -> load.level().equals(run.site().two().dimension()))
                             .filter(load -> inArea(run.site(), load))
                             .toList();
-                    expect(helper, !inArea.isEmpty(), "a crossing with no lead waited for no chunk of the area");
+                    expect(
+                            helper,
+                            !inArea.isEmpty(),
+                            "a crossing with no lead waited for no chunk of the area; every wait it saw: %s",
+                            loads);
                     expect(
                             helper,
                             log.warnings().size() == 1,

@@ -39,6 +39,11 @@ public final class BlockingLoads {
         return loads;
     }
 
+    /** Whether nothing is armed: a step that disarms and fails is run again, and must not read the record twice. */
+    public static boolean disarmed() {
+        return owner == null;
+    }
+
     /** Disarms when {@code testBounds} armed it; called when a test finishes. */
     public static void release(AABB testBounds) {
         if (owner != null && owner.equals(testBounds)) {
