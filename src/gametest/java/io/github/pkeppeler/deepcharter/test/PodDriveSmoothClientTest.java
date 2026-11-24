@@ -28,6 +28,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -707,11 +708,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the thin wall on the client",
-                    () -> context.computeOnClient(client ->
-                            ClientLight.clientLevel(client).getBlockState(wall).is(Blocks.STONE)),
-                    () -> "block at the wall on the client "
-                            + context.computeOnClient(
-                                    client -> ClientLight.clientLevel(client).getBlockState(wall)));
+                    () -> blockOnClient(context, wall).is(Blocks.STONE),
+                    () -> "block at the wall on the client " + blockOnClient(context, wall));
             context.runOnClient(client -> {
                 Entity pod = TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId());
                 pod.setDeltaMovement(0, 0, FAST_COAST_SPEED);
@@ -799,6 +797,10 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         require(
                 drawn.distanceTo(pin) <= SETTLE_TOLERANCE,
                 "the drawn pod is " + drawn.distanceTo(pin) + " blocks from where the server pinned it");
+    }
+
+    private static BlockState blockOnClient(ClientGameTestContext context, BlockPos pos) {
+        return context.computeOnClient(client -> ClientLight.clientLevel(client).getBlockState(pos));
     }
 
     private static Vec3 onClient(ClientGameTestContext context, int podId) {
