@@ -508,7 +508,10 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 - 9 by 9 inside and 5 high, plated walls and ceiling, a concrete floor, corner posts, six wall lamps (the same sodium lamps as the colony).
 - The colony's own **fuel pump** and **ore processor** (the sell terminal) stand against the north wall. They are the same blocks, so they work once the colony's are repaired (the repair state is world-wide) and a pod parked in the hall is served as it is at the colony.
 - The middle 3 by 3 of the floor is left as it was, ringed with a hazard band: a pod drills down to layer 2 from the hall. It is the breach crust when the kit is used on the crust top, and plain rock when it is used higher (up to the floor band), which the drill still bores. The middle 5 by 5 of the ceiling is left as it was too, so a shaft that ends over the hall stays open and a pod drops in. A pod that climbs out of layer 2 arrives in the hall (the crossing keeps the column).
-- A charter has one outpost a layer. The kit is refused off the layer 1 floor, on a side face, without a charter, with a block entity (a terminal) in the way, with any entity but the builder in the hall (`occupied`), within 10 blocks of another outpost's middle (`overlaps`: the halls would cut into each other), and a second time. A refusal is made before the first block and keeps the kit, so the cut never deletes a build or buries an entity. A refused kit stays in the hand. The hall's blocks are Company property, unbreakable in survival like the colony's, so an outpost is never destroyed (SPEC section 11).
+- A charter has one outpost a layer. The kit is refused off the layer 1 floor, on a side face, without a charter, with a block entity (a terminal) in the way, with anything but a loose item or orb (and the builder) in the hall (`occupied`, which names the first: a mob, another player, a pod; `occupied_items` names the player whose items they are, see below), within 10 blocks of another outpost's middle (`overlaps`: the halls would cut into each other), and a second time. A refusal is made before the first block and keeps the kit, so the cut never deletes a build or buries an entity. A refused kit stays in the hand. The hall's blocks are Company property, unbreakable in survival like the colony's, so an outpost is never destroyed (SPEC section 11).
+- **Loose items and XP orbs are swept, not refused (#1055, A).** A dropped stack or an orb in the hall's volume does not block the kit: once every check has passed and before the cut, each item goes into the builder's inventory and each orb pays all the experience it holds (a merged orb is touched once for each orb it merged, as vanilla pickup does, so mending repairs gear as it does at a pickup; an orb loaded holding none is discarded unpaid), and the entity is discarded as its contents move, so nothing is duplicated, lost or entombed. A refused kit sweeps nothing. A dropped stack is hard to see once the outline is up, and a mob or a crewmate is a fair reason to wait.
+- **Overflow lies outside the shell (#1055, A).** What does not fit the inventory lies at the builder when the builder stands outside the shell. Else, after the cut, it lies on the first of: the cell just outside the wall on the builder's side if that is air; an air cell with a sturdy top under it, up to 4 cells further out on that line and in no other outpost's hall; a cell inside the new hall that the cut leaves as air (not entombed, and not lootable, as the hall is sealed). No block is ever set, so a neighbour's wall, a placed block or a fluid is never carved.
+- **Another charter's items are not swept (#1055, A).** An item thrown by a player who is not on the builder's charter refuses the kit (`occupied_items`, naming that player), so a build never loots another crew's death pile and never buries it. The builder's charter's items, and items nobody threw, are swept. An item whose thrower is offline or unloaded counts as nobody's.
 - **The terminals are the owner's, unless the owner shares (#752, A).** A pump or a sell terminal at depth serves the charter whose hall it stands in (`OutpostAccess`, wrapped round every pump and processor action). Another charter is served only while the owner's Director has opened the charter's outposts to others; a terminal that stands in no hall (one placed by hand) serves no one (`not_yours`).
 - **Sharing is one charter setting, default off** (`Charter.outpostsShared`, charter data version 3; older saves read as closed). SPEC section 6 gives the toggle to the charter, not to each outpost. Only the Director may flip it, as only the Director answers applications; crew see its state. It is on the contract terminal: the Director's `SHARE OUTPOSTS: OFF/ON` button, and for crew a status line ending `OUTPOSTS SHARED.` or `OUTPOSTS PRIVATE.`. A guest at a closed hall is told `message.deepcharter.outpost.closed`.
 - **A dormant charter's outposts are closed to guests.** A charter with no Director cannot close its outposts, so `OutpostAccess` refuses a guest while the owner is dormant. The flag is kept: a revived charter is open again as it was left.
@@ -1960,6 +1963,33 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Open questions.** Whether the scanner should mark growth (it reads as rock to sonar at present); whether the liner part should ring a shaft with a brick even without lava, so the part that "keeps it open for good" does so with no pilot; the lore name and the Sleeper's reason (the lore session, #12).
 
+## Away settling (#1004, A)
+
+**Problem.** A dread that stops when you look away is not dread. [ADR 0072](../adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md) wants the dark to keep working on an outpost nobody is near, and a Minecraft world only runs what is loaded. This builds the part that needs no creature: the ledger, the roll and what a visit takes. Rule: [ADR 0079](../adr/0079-away-settling-rolls-visits-in-fixed-windows-of-game-time-from-draws-surveyed-while-loaded-and-applies-them-when-the-zone-is-loaded.md).
+
+**The loop.** The server sweeps every outpost every 5 seconds. For the time since it last looked it rolls visits in one-minute windows of game time, from what the outpost had to lose the last time it was loaded. While a player is within 48 blocks (a spectator does not count) the time passes unrolled. When the whole zone is loaded the pending visits are met in the world: the Retained take a quarter of the pod fuel stored in the zone's barrels and chests (1 to 16 items a visit). The online members of the charter hear "Disturbance reported at Outpost 1." when a visit is rolled; the first of them to open one of the hall's terminals on return gets a typed incident report. Nothing is ever force-loaded, and a hall nobody loads keeps its visits until someone does.
+
+**The ladder** (hand, then automated, then mastery).
+1. **By hand: light.** The Retained come to dark places only. Keep the hall lit (the kit's lamps are, and a lamp is cheap) and nothing comes.
+2. **Automated: carry your fuel.** A pod's tank is not storage. Fuel in the pod, or in a pod's reserve tank, is never taken; only fuel left in a barrel is.
+3. **Mastery (later, #926 and #1005):** rated, damped, closed shells keep the Sleeper's and the Recovery out as well.
+
+**Trade-offs.** Stored fuel is convenient (a full barrel at the outpost saves the trip down) and is what the dark takes. The lamp costs nothing but the kit's own, so the real cost is a hall left dark and stocked: an outpost you build, stock, and abandon.
+
+**Pacing** (`AwaySettlingPacingTest`, median of 101 outposts, days of game time, 20 minutes each, for a dark hall that is never visited by a player):
+
+| Fuel items stored | Layer 1 (2 visits a day) | Layer 2 (6 visits a day) |
+|---|---|---|
+| 64 (one stack) | 7 days | 3 days |
+| 512 | 20 days | 7 days |
+| 1,728 (a full barrel) | 59 days | 20 days |
+
+**Harder or easier.** Harder than main for one case only: fuel left in a dark hall's storage, which nothing took before. A lit hall, a pod's tank, and a hall a player stays near are as they were. The early game is unchanged (the kit's lamps keep the first hall lit).
+
+**Knobs.** `SettlingTuning`: `windowTicks` 1200, `sweepIntervalTicks` 100, `nearBlocks` 48, the reach (8 out, 8 up, 2 down), `maxWindowsPerSweep` 2000, `pendingCap` 10000, `fuelShare` 0.25, `maxFuelItemsPerVisit` 16, `maxOrePerVisit` 4, `maxBlocksPerVisit` 3, and the per-layer rates (Retained 2 and 6 a day; the Sleeper's and the Recovery 0 until #1005 and #1006).
+
+**Open questions.** Whether "dark" should count the whole hall rather than any dark corner (a hall with one dead lamp is dark enough now). Whether outposts should have numbers of their own, so the alert does not name a layer. The incident report is read by the first member to return, so the rest of the charter never sees it; a shared log may be better. The salvage heap's art is the crate's.
+
 ## The bolt driver and the cave-in (#987, A)
 
 **Problem.** CREATURES section 8 gives on-foot play a bolt driver, a mining roof-bolter that fires bolts and sets roof bolts "against cave-ins". No cave-in existed: SPEC section 11 lists them as a hazard (blocking a stretch of shaft rather than erasing it) and nothing in the game dropped a roof. So the driver's second half had nothing to answer. Both halves are built here: the hazard, small and readable, and the counter.
@@ -2035,13 +2065,13 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 | Item | Lands, then | Reads as | Costs |
 |---|---|---|---|
-| Flare | stands a burning light block for 90 s | real block light, so every rule that reads block light sees it (the natural spawn, the Retained on foot at block light under 3); and a pod within 10 blocks counts as lit while the block stands, so it draws no Retained. A flare that finds no footing (water, a solid cell) goes out and comes back to the thrower | $12 |
+| Flare | stands a burning light block for 90 s | real block light, so every rule that reads block light sees it (the natural spawn, the Retained on foot at block light under 3); and a pod or a person on foot within 10 blocks counts as lit from the tick the flare lands, while the block stands, so neither draws a Retained: the light engine publishes the block's light a tick or more later, and the person is not left open till then (#1073). A flare that finds no footing (water, a solid cell) goes out and comes back to the thrower | $12 |
 | Decoy | rings a bell every second for 45 s | a noise source: `DrawSources.noiseTarget` hands a creature within 40 blocks the decoy instead of the drill. Not sold yet: its pull goes live, and it goes on sale, with the first creature drawn to the drill (Drifters, #918) | $25 |
 | Charge | burns a 3 second fuse, then blasts | the pod's blasting charge, through `PodCharge.detonate`: the 3 x 3 column under it, 2 rows deep, clears Company rock and natural rock only where the column holds Company rock, spares what is built, bedrock and fluids, hurts a pod in reach by distance | $55 |
 
 **Ladder.** By hand: the kit is the hand stage of the operator's flare rounds, decoy rounds and charge launcher (layer 4 and the Badger), which fire the same three from a seat at range. A crew with the operator throws less; a solo player on foot throws more.
 
-**Counterplay and its limits.** A flare keeps a Retained off a dark pod, and frees no one already held: the cutter or a blow still ends a grip (CREATURES section 3). A charge hurts a person at the blast, but never kills: it leaves half a heart at worst, so the cost of a bad throw is health and a lesson, not a run. Who is hurt is a rule (below). A decoy does nothing to Moloch's things: they are drawn to the dark.
+**Counterplay and its limits.** A flare keeps a Retained off a dark pod or a person on foot, and frees no one already held: the cutter or a blow still ends a grip (CREATURES section 3). A charge hurts a person at the blast, but never kills: it leaves half a heart at worst, so the cost of a bad throw is health and a lesson, not a run. Who is hurt is a rule (below). A decoy does nothing to Moloch's things: they are drawn to the dark.
 
 **Measured and modelled** (`ThrownKitPacingTest`, quoted by the PR). Measured from real runs: the throw ranges, the flare's burn, the decoy's lifetime and the charge's fuse, each from landing to its end; prices are read from `Consumable` and a run's net from `EarlyRunModel`, the economy test's own model ($124 in layer 1, $455 in layer 2). Modelled: how long each fight lasts, how fast a person walks (4.3 blocks a second) and the Listeners' patience (10 s).
 
@@ -2119,3 +2149,65 @@ A default build is not harder than on main: nothing changes for a pod with no na
 **Knobs.** `RatingTuning.DEFAULT` (the layer rows and the highest tag level), the tags in `data/deepcharter/tags/block/rating/`.
 
 **Open questions.** What layer 3 asks, which is its worldgen's to say.
+
+## Vanilla block movers and the breach crust (#1110, A)
+
+**Problem.** The crust at each layer's floor is the one gate the pod's drill, a creative hand and nothing else may open ([ADR 0059](../adr/0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md), [ADR 0061](../adr/0061-a-crossing-in-the-campaign-world-is-an-event-in-place-found-by-the-root-vehicles-y-with-the-crust-rows-as-hysteresis.md)). It had stone's blast resistance (6) and vanilla's default push reaction, so any explosion of power 3 or more broke part of it, and a piston pushed it, pulled it (sticky) or lifted it. A broken crust skips the breach gating: no crossing event, no hull cost, no transmission.
+
+**Rule.** Every crust block (the crust rows of every layer's floor, found from `CampaignBands`, not only the last) has bedrock's blast resistance (3,600,000) and `PushReaction.IMMOVEABLE`, and is in `minecraft:wither_immune` and `minecraft:dragon_immune`. Its hardness stays 5, so the drill's refusal, the hand-break guard and `PodCharge`'s spare of crust are unchanged. An enderman cannot hold it (it is not in `enderman_holdable`), and a falling block lands on it and leaves it alone.
+
+**Decision.** Blast-proof and immovable, with no tell: a blast that meets crust is a blast that meets a wall, which is what a player expects of a floor. A visible or audible tell (a thud, a spark) was left out because no hook catches "an explosion reached this block" without a mixin on `Explosion`, and the crust's job is to be a floor, not a puzzle.
+
+**Survival TNT.** The recipe exists and crafts (nothing removes vanilla's, and unknown recipes still craft, [ADR 0070](../adr/0070-the-server-recipe-book-holds-exactly-the-known-recipes-and-the-vanilla-recipe-packets-carry-it.md)), but the gunpowder has no source in the pack: no vanilla monster spawns (#943), the vanilla structures that hold loot are emptied or unreachable, the Nether and the End have no portal, and the salvage crate drops planks, sticks, cloth and redstone. The crust is blast-proof anyway, so creative and operator `/give` change nothing.
+
+**Tests.** `BreachCrustMoversTest` runs each mover against the crust of every layer: TNT, a creeper (3), a charged creeper (6), an end crystal, a bed or anchor (5, fire), a wither's spawn blast (7), a piston push, a sticky pull, a piston lifting from under the floor, a falling block, and the wither, dragon and enderman tags.
+
+## Suit timer and habitable outposts (#993, A)
+
+**Problem.** SPEC section 9 gives a person on foot a suit timer and section 11 says an outpost below its depth's rating is uninhabitable: "heat leaks in, water seeps in, the suit timer keeps running inside". Until now nothing on foot read the depth and no outpost said whether its shell held. The model is ADR 0083 (`docs/adr/0083-*.md`).
+
+**Ladder.**
+1. **By hand.** Time every trip, retreat before the amber line, patch a hall's open pit and hatch with slag brick, and read the placement readout and the risk line to see what is short.
+2. **A suit track and an air canister** raise what the suit holds and top the reserve up in the field ([#1064](https://github.com/pkeppeler/deepcharter/issues/1064), not in this change). The stock suit is rated (0,0,0), as a block is, so a track is a step in every row.
+3. **Mastery.** Rated halls at every depth, and the top suit tiers: the timer stops being a trip's limit. The deeper-floor kit ([#1063](https://github.com/pkeppeler/deepcharter/issues/1063)) is the answer to a hall that does not hold.
+
+**The suit.** A reserve of 180 suit-seconds, kept for each player across logins, levels and crossings (a versioned attachment, `deepcharter:suit`). It pays only on foot (alive, not creative or spectator, not seated in a pod), and only where the depth's row asks something (`DepthRatings.requiredAt`). A depth with no row, the campaign's unbuilt depth, reads as (5,5,5). The surface, layers 1 and 2 and any level outside the chain ask nothing, so the suit is inert there: **the default build is no harder than before**, in the unpacked and the early game alike. A second on foot costs `0.5 + 0.5 * (heat the depth asks over the suit's) + 0.5 * (pressure over) + [submerged] 1.0 * (flooding over)`, summed so that every suit-track step shows. Quake is ignored. Submerged, or seeping inside a hall that is short on flooding, is wet.
+
+**Rest.** A powered pod seat or a habitable hall gives back 15 a second (full in 12 s). A pod with no power holds the reserve. Under water with reserve left the air holds at full; at zero vanilla drowning resumes.
+
+**Warnings and harm.** An amber line at 30 s left with a beep every 5 s, a red, blinking line at 10 s with a beep every second, "SUIT BREACHED" at zero. A breach hurts 2 hit points every 40 ticks, about 20 s from zero to death at full health, with a new damage type (`deepcharter:suit_exposure`, which armour does not cut and difficulty does not scale, so it runs on Peaceful too) where the depth still asks something. The first drain says once, for each player and across deaths, what is short: "SUIT RATING EXCEEDED: HEAT, PRESSURE", or "SUIT DRAINING AT THIS DEPTH" where no axis is short (a row that asks only flooding, while dry, costs the base alone). A respawn refills the suit.
+
+**The gauge.** Top left, under the altimeter's row, where it is clear of vanilla's action bar, title, hotbar and potion effects on every GUI size: "SUIT 1:42" (the time left at the current rate), a segmented bar and the axes that drain it, in phosphor, then amber, then red and blinking. It is hidden where the suit is inert, while seated in a pod, for a creative player or a spectator, and in a sound hall once the suit is full, so a layer-1 hall shows nothing. A suit log this build cannot read shows "SUIT LOG UNREADABLE" in red, and the suit neither drains nor hurts.
+
+**Outposts.** `OutpostHabitability.of(level, outpost)` reads the hall's shell, its 442 cells less the 405 inside, against the row at the hall's middle: habitable when a row exists and every block of the shell meets it on the suit's axes, heat, pressure and flooding. Quake is not judged: a shortfall there does not leak air, it is a structural risk. A gap (air or a fluid) is not judged; it is the creature rule's exposure ([#926](https://github.com/pkeppeler/deepcharter/issues/926)), which later replaces the box with its flood fill. Inside a hall that holds, the suit refills. Inside one that does not it runs at `leakShare` (0.5), half the outside rate however many blocks fall short, so an unrated hall doubles a person's time, and dripping water shows the seep. No fluid is placed and nothing is destroyed. The kit's hall leaves its crust pit and rock hatch open, so against a row of heat 2 it holds only once they are patched with slag brick.
+
+**The risk line.** One line under the header of the outpost's fuel pump and sell terminal: "SHELL HOLDS: SUIT REFILLS HERE" in phosphor, "SHELL LEAKS: heat, pressure (14 blocks): SUIT RUNS AT 50%" in amber (the share is `leakShare`, so it follows the tuning, and the axes are never quake), or "NOTHING IS RATED AT THIS DEPTH". Hidden where the depth asks nothing, so today it shows only in the unbuilt depth. A guest sees the line the owner does.
+
+**Pacing in player units (`SuitPacingTest` prints `[suit-pacing]` lines; whole seconds until the reserve is spent).**
+
+| Case | Result | Measured or modelled |
+|---|---|---|
+| Unbuilt depth, on foot, dry (5.5 a second) | 33 s | measured |
+| Unbuilt depth, submerged (10.5 a second) | 18 s | measured |
+| Unbuilt depth, inside an unrated hall (2.75 a second) | 66 s | measured |
+| Refill from empty in a powered pod seat | 12 s | measured |
+| Zero to death, full health (10 hits, 40 ticks apart) | about 20 s: up to 3 s to the first hit, then 18 s | measured |
+| A row (1,1,1), dry | 120 s | modelled |
+| A row (2,2,2), dry | 72 s | modelled |
+| A row (2,3,3), submerged | 30 s | modelled |
+| A row (5,3,0), dry | 40 s | modelled |
+
+The test fails if a built row that asks something (from layer 3 on) leaves a stock suit under 60 s dry, and it shows the check refusing a row that does (the unbuilt depth's).
+
+**Decisions (A).**
+- The environment is the depth's row, and the suit is rated like a block: one table for what a block and a person must hold.
+- Costs are summed, not maxed; a hall leaks at half, whatever the number of bad blocks; the capacity is 180 s.
+- A hall is judged for the suit on heat, pressure and flooding only. A hall short on quake alone shelters the suit and its risk line says it holds: quake is a structural risk, not a leak, and is left to a later change.
+- The suit is inert in layers 1 and 2 and on the surface, and its breach is harmless where the depth asks nothing. The only place this is harder than before is the unbuilt depth below layer 2, which no early run reaches: the unpacked and the early-game columns are unchanged.
+- "Water seeps in" is particles and the drain, with no real water: placing fluid would delete a player's blocks.
+- Flooding is answered by the oxygen and toxins track (#1064), so the SPEC's four suit tracks stay four.
+- The air holds only where the suit is active, so a swim at the surface is as it was.
+
+**Knobs.** `SuitTuning.DEFAULT` (capacity, base and per-level costs, the stock suit's ratings, the uncharted row, `leakShare`, refill, warning times, breach damage and cadence), `RatingTuning.DEFAULT` (the rows), `theme/suit.json` (the gauge).
+
+**Open questions.** What layer 3 asks (its worldgen's to say, and this test holds it to a minute); whether a hall's leak should grow with its worst axis rather than stay a flat share.

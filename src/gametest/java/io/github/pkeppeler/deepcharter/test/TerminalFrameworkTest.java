@@ -106,7 +106,7 @@ public class TerminalFrameworkTest {
 
     static {
         TerminalEvents.REPAIRED.register((server, type, charter, player) -> REPAIRED_LOG.add(type.id()));
-        TerminalEvents.OPENED.register((server, type, player) ->
+        TerminalEvents.OPENED.register((server, type, player, pos) ->
                 OPENED_LOG.add(type.id() + "/" + player.getGameProfile().name()));
     }
 

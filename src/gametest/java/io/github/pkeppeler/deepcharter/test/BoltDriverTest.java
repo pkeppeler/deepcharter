@@ -40,6 +40,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -51,11 +52,13 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +74,9 @@ public class BoltDriverTest {
     private static final CaveInTuning CAVE_IN = CaveInTuning.DEFAULT;
     private static final BoltDriverTuning DRIVER = BoltDriverTuning.DEFAULT;
     private static final int LENGTH = 14;
+    /** Two corridor slots no other test uses. */
+    private static final int SPARE_SLOT = 40;
+
     private static final float EAST = -90f;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
     /**
@@ -282,6 +288,25 @@ public class BoltDriverTest {
         });
     }
 
+    /**
+     * A test that cuts its corridor after its neighbour must not fill the neighbour's first cell, where its shooter stands: the shooter's
+     * eye would sit in rock and no bolt would fly (#1065). Two spare slots, cut in the order that clobbers. This guards the stride, not the
+     * general rule; the bed-holds-air gate of #1090 supersedes it, and then this test and {@code SPARE_SLOT} are deleted.
+     */
+    @GameTest
+    public void aCorridorCutAfterItsNeighbourLeavesTheNeighboursFirstCellOpen(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Corridor later = cut(level, LENGTH, SPARE_SLOT + 1);
+        cut(level, LENGTH, SPARE_SLOT);
+        BlockPos cell = later.floor(0).above();
+        expect(
+                helper,
+                level.getBlockState(cell).isAir(),
+                "the first cell of a corridor, at eye height, was %s after the corridor before it was cut",
+                level.getBlockState(cell));
+        helper.succeed();
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
     public void aBoltHurtsAnotherPlayerOnlyWhenPvpIsOn(GameTestHelper helper) {
         Corridor corridor = corridor(helper, LENGTH, 5);
@@ -289,6 +314,7 @@ public class BoltDriverTest {
         MockPlayer other = walker(helper, corridor, "bolt-pvp-other", 9, 90f);
         MinecraftServer server = helper.getLevel().getServer();
         int[] misses = {0};
+        String[] lastTry = {"no shot yet"};
         TestTicks.each(helper, () -> {
             if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
                 return;
@@ -321,19 +347,21 @@ public class BoltDriverTest {
                     throw failure(helper, "a bolt hurt a player on a server with PvP off");
                 }
                 server.getGameRules().set(GameRules.PVP, true, server);
-                fire(shooter.player());
+                InteractionResult result = fire(shooter.player());
+                lastTry[0] = shot(shooter, target, corridor.level(), result);
                 if (target.getHealth() >= health) {
-                    // Some tries miss although the target reads as hittable (cause unknown, see #1065): try again, and
-                    // dump the state if none hits.
+                    // A try can miss while the target is still settling: try again, and dump the state and the ray if
+                    // none hits.
                     if (retrying) {
                         misses[0]++;
                         return;
                     }
                     throw failure(
                             helper,
-                            "a bolt spared a player on a server with PvP on after %s tries: %s",
+                            "a bolt spared a player on a server with PvP on after %s tries: %s; last shot: %s",
                             misses[0] + 1,
-                            state(target, shooter.player(), corridor.level()));
+                            state(target, shooter.player(), corridor.level()),
+                            lastTry[0]);
                 }
                 if (misses[0] > 0) {
                     LOGGER.info("a bolt hurt the player on try {}, after {} misses (#1065)", misses[0] + 1, misses[0]);
@@ -343,6 +371,39 @@ public class BoltDriverTest {
             }
             helper.succeed();
         });
+    }
+
+    /** What the last PvP-on shot did: the driver's answer and the ray it fires, so a miss names its cause (#1065). */
+    private static String shot(MockPlayer shooter, ServerPlayer target, ServerLevel level, InteractionResult result) {
+        ServerPlayer from = shooter.player();
+        Vec3 eye = from.getEyePosition();
+        Vec3 end = eye.add(from.getLookAngle().scale(DRIVER.range()));
+        HitResult block =
+                level.clip(new ClipContext(eye, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, from));
+        List<Component> said = shooter.actionBarMessages();
+        return ("driver returned %s, said %s, rest on the driver %s, eye %s pitch %s, ray hit %s at %s (%s), "
+                        + "target box %s, target health %s, target pose %s, game modes shooter %s target %s, "
+                        + "target abilities invulnerable %s, target hurt by a player's attack: invulnerable %s, "
+                        + "may be hit by a projectile %s, shooter may harm it %s, invulnerable time %s")
+                .formatted(
+                        result,
+                        said.isEmpty() ? "nothing" : said.getLast().getString(),
+                        from.getCooldowns().getCooldownPercent(from.getItemInHand(InteractionHand.MAIN_HAND), 0f),
+                        eye,
+                        from.getXRot(),
+                        block.getType(),
+                        block.getLocation(),
+                        level.getBlockState(BlockPos.containing(block.getLocation())),
+                        target.getBoundingBox(),
+                        target.getHealth(),
+                        target.getPose(),
+                        from.gameMode.getGameModeForPlayer(),
+                        target.gameMode.getGameModeForPlayer(),
+                        target.getAbilities().invulnerable,
+                        target.isInvulnerableTo(level, level.damageSources().playerAttack(from)),
+                        target.canBeHitByProjectile(),
+                        from.canHarmPlayer(target),
+                        target.getInvulnerableTime());
     }
 
     private static boolean hittable(ServerPlayer target, ServerLevel level) {
