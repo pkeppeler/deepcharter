@@ -88,8 +88,9 @@ public class FungalHollowsTest {
 
     /**
      * Every column stands within the lining's depth of an open cell, straight along an axis, and every block of the core does not (#504): both
-     * sides of the knob, so a lining one block too deep or too shallow fails. No lava stands within one block more than that either: the lining seals
-     * it, so its light stays in the rock and never shines through a column.
+     * sides of the knob, so a lining one block too deep or too shallow fails. No lava stands within
+     * {@link AirFaceLiningFeature#SEAL_MARGIN} blocks more than that either: the lining seals it, so its light stays in the rock and
+     * never shines through a column.
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void onlyTheFacesOpenToTheCavernsAreLined(GameTestHelper helper) {
@@ -108,7 +109,7 @@ public class FungalHollowsTest {
                 } else if (state.is(Blocks.LAVA)) {
                     expect(
                             helper,
-                            !nearOpen(level, pos, depth + 1),
+                            !nearOpen(level, pos, depth + AirFaceLiningFeature.SEAL_MARGIN),
                             "the lava at %s lights a cavern",
                             pos.toShortString());
                 } else if (state.is(LayerBlocks.BASALT_CORE)) {
