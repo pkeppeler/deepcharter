@@ -775,7 +775,7 @@ public class OrePlacementTest {
         int[][] candidates = new int[2][3];
         int[] next = {0};
         long[] start = {0};
-        FarChunks.whenLoaded(helper, chunks, () -> {
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> {
             start[0] = System.nanoTime();
             helper.startSequence()
                     .thenWaitUntil(() -> {

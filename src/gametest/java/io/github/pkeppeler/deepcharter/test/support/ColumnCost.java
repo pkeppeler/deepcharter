@@ -72,6 +72,16 @@ public final class ColumnCost {
             List<String> allWorlds,
             int rounds,
             Consumer<Map<String, List<Measurement>>> report) {
+        TestTicks.each(helper, tickBody(helper, worlds, allWorlds, rounds, report));
+    }
+
+    /** {@link #run}'s tick body, so a test can call it where a throw is catchable. */
+    public static Runnable tickBody(
+            GameTestHelper helper,
+            List<String> worlds,
+            List<String> allWorlds,
+            int rounds,
+            Consumer<Map<String, List<Measurement>>> report) {
         boolean smoke = rounds == 0;
         if (!smoke) {
             holdAutosave(helper);
@@ -90,7 +100,7 @@ public final class ColumnCost {
         Map<String, List<Measurement>> results = new LinkedHashMap<>();
         @Nullable Run[] current = {null};
         int[] cooldown = {0};
-        TestTicks.each(helper, () -> {
+        return () -> {
             if (cooldown[0] > 0) {
                 cooldown[0]--;
                 idle(smoke);
@@ -105,9 +115,10 @@ public final class ColumnCost {
                 if (queue.isEmpty()) {
                     return;
                 }
+                // Only a run that began is current: after a begin() that throws, the next tick must not read its level.
                 active = queue.remove();
-                current[0] = active;
                 active.begin(helper);
+                current[0] = active;
             }
             if (!active.isGenerated()) {
                 idle(smoke);
@@ -126,7 +137,7 @@ public final class ColumnCost {
                 }
                 helper.succeed();
             }
-        });
+        };
     }
 
     /** Pushes the server's next autosave past the end of {@code helper}'s test, until {@link #release}. */
@@ -137,6 +148,11 @@ public final class ColumnCost {
             server.deepcharter$setTicksUntilAutosave(Integer.MAX_VALUE);
         }
         AUTOSAVE_HOLDERS.put(helper.getBounds(), server);
+    }
+
+    /** Whether the test with these bounds holds the autosave. */
+    public static boolean holds(AABB testBounds) {
+        return AUTOSAVE_HOLDERS.containsKey(testBounds);
     }
 
     /** Ends the autosave hold of the test with these bounds, and restores the countdown when no other test holds it. */
