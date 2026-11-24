@@ -345,7 +345,7 @@ public class StalkCollapseTest {
                 }
             }
         }
-        if (!GreatStalk.place(level, RandomSource.create(BRAID_SEED), origin)) {
+        if (!GreatStalk.place(level, RandomSource.create(BRAID_SEED), origin, false)) {
             throw failure(helper, "the placer would not grow a great stalk on a chunk border");
         }
         Map<Cell, Part> grown = new HashMap<>();
@@ -384,7 +384,7 @@ public class StalkCollapseTest {
                 .orElseThrow();
         clearBraidArea(helper);
         level.setBlock(at(braidOrigin(helper), high), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-        if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))
+        if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper), false)
                 || !standing(helper).isEmpty()) {
             throw failure(helper, "a great stalk grew under a roof lower than its trunks");
         }
@@ -542,7 +542,7 @@ public class StalkCollapseTest {
 
     private static boolean growBraid(GameTestHelper helper, long seed) {
         clearBraidArea(helper);
-        return GreatStalk.place(helper.getLevel(), RandomSource.create(seed), braidOrigin(helper));
+        return GreatStalk.place(helper.getLevel(), RandomSource.create(seed), braidOrigin(helper), false);
     }
 
     private static boolean rotationallySymmetric(Set<Cell> cells) {
@@ -659,7 +659,7 @@ public class StalkCollapseTest {
             Cell base = new Cell(trunk.x(), 0, trunk.z());
             clearBraidArea(helper);
             level.setBlock(at(braidOrigin(helper), trunk), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-            if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))
+            if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper), false)
                     || !standing(helper).isEmpty()) {
                 throw failure(helper, "the braid grew over a block in its trunk");
             }
@@ -667,7 +667,7 @@ public class StalkCollapseTest {
             level.setBlock(at(braidOrigin(helper), base).below(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
             if (layout.parts().containsKey(base)
                     && !layout.optional().contains(base)
-                    && (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))
+                    && (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper), false)
                             || !standing(helper).isEmpty())) {
                 throw failure(helper, "the braid grew a trunk over a hole in the ground");
             }
@@ -678,7 +678,7 @@ public class StalkCollapseTest {
                     .orElseThrow();
             clearBraidArea(helper);
             level.setBlock(at(braidOrigin(helper), cap), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-            if (!GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))) {
+            if (!GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper), false)) {
                 throw failure(helper, "the braid would not grow with a block in the way of one cap");
             }
             Set<Cell> expected =
