@@ -230,7 +230,7 @@ public class PodSonarTest {
                         level,
                         idle.isEmpty(),
                         () -> idle.get() + " in chunk "
-                                + new ChunkPos(idle.get().blockPosition()) + " was not entity-ticking");
+                                + ChunkPos.containing(idle.get().blockPosition()) + " was not entity-ticking");
                 if (idle.isEmpty() && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
                     scene[0].pod().discard();
                     bodies.forEach(Entity::discard);
