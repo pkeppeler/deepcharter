@@ -8,13 +8,13 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.List;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -22,6 +22,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.feature.Feature;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Lines the faces of a layer's rock that are open to its caverns (#504): every block of {@code rock} in the band of {@code layer} within
@@ -37,9 +38,10 @@ import net.minecraft.world.level.levelgen.feature.Feature;
  * neighbours have already grown: a stalk a neighbour grew into a cave still leaves the cave open. A chunk changes only its own blocks and
  * reads its neighbours' across its sides.
  *
- * <p>Like the zone fill it runs once per chunk, placed in each zone biome of the layer with no placement modifiers. It reads the chunk's
- * sections and skips those that hold no rock; inside a section with no open cell, and none within {@code depth} rows above or below, only
- * the columns at the chunk's sides can be lined, by an open cell next door.
+ * <p>Like the zone fill it runs once per chunk, placed in each zone biome of the layer with no placement modifiers. It first reads which
+ * cells are open, in the chunk and as far into its neighbours as a seal reaches, a section at a time and skipping sections with nothing
+ * open, then lines the rock of the chunk's sections from those cells. Reading each rock block's neighbours one at a time through the
+ * level cost more than the rest of the layer's features together (#972).
  *
  * @param layer  the layer whose band it lines, counted from 1
  * @param rock   the rock it lines
@@ -106,40 +108,28 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         BlockState lined = lining.defaultBlockState();
         int sealReach = depth + SEAL_MARGIN;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
+        OpenCells open = OpenCells.read(level, chunk, low, high, sealReach);
         boolean placed = false;
         for (int index = chunk.getSectionIndex(low); index <= chunk.getSectionIndex(high); index++) {
             LevelChunkSection section = chunk.getSection(index);
             if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(rock) || seals(state))) {
                 continue;
             }
-            // A lining reads at most MAX_DEPTH + SEAL_MARGIN blocks out (a seal, further in), less than a section, so
-            // it
-            // reaches no further than the sections next to its own.
-            boolean sidesOnly =
-                    !mayBeOpen(chunk, index - 1) && !mayBeOpen(chunk, index) && !mayBeOpen(chunk, index + 1);
             int sectionY = chunk.getSectionYFromSectionIndex(index) << 4;
             for (int y = Math.max(low, sectionY); y <= Math.min(high, sectionY + 15); y++) {
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
-                        if (sidesOnly
-                                && x >= sealReach
-                                && x <= 15 - sealReach
-                                && z >= sealReach
-                                && z <= 15 - sealReach) {
-                            continue;
-                        }
                         BlockState state = section.getBlockState(x, y & 15, z);
                         boolean seal = seals(state);
                         if (!seal && !state.is(rock)) {
                             continue;
                         }
-                        pos.set(firstX + x, y, firstZ + z);
-                        if (nearOpen(level, chunk, pos, probe, depth)) {
-                            chunk.setBlockState(pos, lined, Block.UPDATE_CLIENTS);
+                        if (open.near(x, y, z, depth)) {
+                            chunk.setBlockState(pos.set(firstX + x, y, firstZ + z), lined, Block.UPDATE_CLIENTS);
                             placed = true;
-                        } else if (seal && nearOpen(level, chunk, pos, probe, sealReach)) {
-                            chunk.setBlockState(pos, rock.defaultBlockState(), Block.UPDATE_CLIENTS);
+                        } else if (seal && open.near(x, y, z, sealReach)) {
+                            chunk.setBlockState(
+                                    pos.set(firstX + x, y, firstZ + z), rock.defaultBlockState(), Block.UPDATE_CLIENTS);
                             placed = true;
                         }
                     }
@@ -159,35 +149,114 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
         return false;
     }
 
-    /** Whether an open cell lies within {@code reach} blocks of {@code pos} straight along an axis. */
-    private static boolean nearOpen(
-            WorldGenLevel level, ChunkAccess chunk, BlockPos pos, BlockPos.MutableBlockPos probe, int reach) {
-        for (Direction direction : Direction.values()) {
-            for (int step = 1; step <= reach; step++) {
-                probe.setWithOffset(
-                        pos, direction.getStepX() * step, direction.getStepY() * step, direction.getStepZ() * step);
-                if (isOpen(stateAt(level, chunk, probe))) {
-                    return true;
+    /**
+     * Which cells around a chunk's band are open, read once before the chunk is lined: the chunk's columns and {@code reach} columns of
+     * its neighbours, from {@code reach} rows below the band to {@code reach} rows above it. A cell outside the level is open, as the
+     * level reads it (void air). Lining never opens or closes a cell (neither the lining nor the rock is open), so the cells read before
+     * it are the cells it would see.
+     */
+    private static final class OpenCells {
+        private final int reach;
+        private final int low;
+        private final int width;
+        private final int rows;
+        private final boolean[] open;
+        private @Nullable BlockState lastState;
+        private boolean lastOpen;
+
+        private OpenCells(int reach, int low, int rows) {
+            this.reach = reach;
+            this.low = low;
+            this.width = 16 + 2 * reach;
+            this.rows = rows;
+            this.open = new boolean[width * width * rows];
+        }
+
+        static OpenCells read(WorldGenLevel level, ChunkAccess chunk, int low, int high, int reach) {
+            OpenCells cells = new OpenCells(reach, low - reach, high - low + 1 + 2 * reach);
+            ChunkPos home = chunk.getPos();
+            for (int chunkX = home.x() - 1; chunkX <= home.x() + 1; chunkX++) {
+                for (int chunkZ = home.z() - 1; chunkZ <= home.z() + 1; chunkZ++) {
+                    ChunkAccess source =
+                            chunkX == home.x() && chunkZ == home.z() ? chunk : level.getChunk(chunkX, chunkZ);
+                    cells.readFrom(source, (chunkX - home.x()) * 16, (chunkZ - home.z()) * 16);
+                }
+            }
+            return cells;
+        }
+
+        /** Reads the cells of {@code source}, whose first column is {@code offsetX}, {@code offsetZ} from the home chunk's. */
+        private void readFrom(ChunkAccess source, int offsetX, int offsetZ) {
+            int fromX = Math.max(-reach, offsetX);
+            int toX = Math.min(15 + reach, offsetX + 15);
+            int fromZ = Math.max(-reach, offsetZ);
+            int toZ = Math.min(15 + reach, offsetZ + 15);
+            if (fromX > toX || fromZ > toZ) {
+                return;
+            }
+            int top = low + rows - 1;
+            int y = low;
+            while (y <= top) {
+                int sectionTop = Math.min(top, ((y >> 4) << 4) + 15);
+                int index = source.getSectionIndex(y);
+                boolean outside = index < 0 || index >= source.getSectionsCount();
+                LevelChunkSection section = outside ? null : source.getSection(index);
+                if (section == null || section.hasOnlyAir()) {
+                    fill(fromX, toX, fromZ, toZ, y, sectionTop);
+                } else if (section.maybeHas(AirFaceLiningFeature::isOpen)) {
+                    for (int row = y; row <= sectionTop; row++) {
+                        for (int x = fromX; x <= toX; x++) {
+                            for (int z = fromZ; z <= toZ; z++) {
+                                if (isOpenCached(section.getBlockState(x - offsetX, row & 15, z - offsetZ))) {
+                                    open[index(x, row, z)] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                y = sectionTop + 1;
+            }
+        }
+
+        private void fill(int fromX, int toX, int fromZ, int toZ, int fromY, int toY) {
+            for (int row = fromY; row <= toY; row++) {
+                for (int x = fromX; x <= toX; x++) {
+                    for (int z = fromZ; z <= toZ; z++) {
+                        open[index(x, row, z)] = true;
+                    }
                 }
             }
         }
-        return false;
-    }
 
-    /** The block at {@code pos}: from the chunk's own sections when it is in the chunk, through the region next door. */
-    private static BlockState stateAt(WorldGenLevel level, ChunkAccess chunk, BlockPos pos) {
-        if (pos.getX() >> 4 == chunk.getPos().x()
-                && pos.getZ() >> 4 == chunk.getPos().z()) {
-            return chunk.getBlockState(pos);
+        /** {@link #isOpen}, remembering the last state that is not air: most cells read are air or the same rock. */
+        private boolean isOpenCached(BlockState state) {
+            if (state.isAir()) {
+                return true;
+            }
+            if (state != lastState) {
+                lastState = state;
+                lastOpen = isOpen(state);
+            }
+            return lastOpen;
         }
-        return level.getBlockState(pos);
-    }
 
-    /** Whether section {@code index} of {@code chunk} may hold an open cell; a section outside the chunk may. */
-    private static boolean mayBeOpen(ChunkAccess chunk, int index) {
-        if (index < 0 || index >= chunk.getSectionsCount()) {
-            return true;
+        /** Whether an open cell lies within {@code distance} blocks of chunk cell {@code x}, {@code y}, {@code z} along an axis. */
+        boolean near(int x, int y, int z, int distance) {
+            for (int step = 1; step <= distance; step++) {
+                if (open[index(x + step, y, z)]
+                        || open[index(x - step, y, z)]
+                        || open[index(x, y + step, z)]
+                        || open[index(x, y - step, z)]
+                        || open[index(x, y, z + step)]
+                        || open[index(x, y, z - step)]) {
+                    return true;
+                }
+            }
+            return false;
         }
-        return chunk.getSection(index).maybeHas(AirFaceLiningFeature::isOpen);
+
+        private int index(int x, int y, int z) {
+            return ((y - low) * width + x + reach) * width + z + reach;
+        }
     }
 }

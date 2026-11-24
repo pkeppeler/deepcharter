@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -19,6 +20,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UncheckedIOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +35,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -125,6 +129,40 @@ public class FungalHollowsTest {
         }
         LOGGER.info("[fungal-hollows] {} columns and {} core blocks in the sample", columns, cores);
         expect(helper, columns > 0 && cores > 0, "the sample has %s columns and %s core blocks", columns, cores);
+        helper.succeed();
+    }
+
+    /**
+     * Lining a chunk reads its neighbours a chunk at a time, never block by block through the level (#972): reading every rock block's
+     * neighbours one at a time made the lining the most costly part of layer 3 to generate. The sample is lined already, so lining a chunk
+     * of it again changes nothing.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void theLiningReadsItsNeighboursAChunkAtATime(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        AirFaceLiningFeature feature = AirFaceLiningFeature.CODEC
+                .codec()
+                .parse(JsonOps.INSTANCE, lining())
+                .getOrThrow();
+        int[] blockReads = {0};
+        WorldGenLevel counting = (WorldGenLevel) Proxy.newProxyInstance(
+                WorldGenLevel.class.getClassLoader(), new Class<?>[] {WorldGenLevel.class}, (proxy, method, args) -> {
+                    if (method.getName().equals("getBlockState")) {
+                        blockReads[0]++;
+                    }
+                    try {
+                        return method.invoke(level, args);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
+        BlockPos origin = new BlockPos((SAMPLE_CHUNK + 1) << 4, 0, (SAMPLE_CHUNK + 1) << 4);
+        feature.place(counting, level.getChunkSource().getGenerator(), level.getRandom(), origin);
+        expect(
+                helper,
+                blockReads[0] == 0,
+                "lining one chunk read %s blocks one at a time through the level",
+                blockReads[0]);
         helper.succeed();
     }
 
