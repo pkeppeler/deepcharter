@@ -210,15 +210,29 @@ public class PodSonarTest {
             }
             scene[0] = new Scene(pod, pilot, navigator);
         });
+        FarChunks.Deadline bodiesDeadline = FarChunks.deadline();
         TestTicks.each(helper, () -> {
             try {
                 if (helper.getTick() == laterChunksTick) {
                     later.forEach(chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
                 }
                 // A body in a chunk that is not entity ticking does not move: the settle ticks count from when all of
-                // them do.
+                // them do, and the wait fails naming the chunk.
                 boolean bodiesTick =
                         bodies.stream().allMatch(body -> level.isPositionEntityTicking(body.blockPosition()));
+                if (scene[0] != null) {
+                    bodiesDeadline.await(
+                            helper,
+                            level,
+                            bodiesTick,
+                            () -> bodies.stream()
+                                    .filter(body -> !level.isPositionEntityTicking(body.blockPosition()))
+                                    .findFirst()
+                                    .map(body -> body + " in chunk "
+                                            + new ChunkPos(body.getBlockX() >> 4, body.getBlockZ() >> 4)
+                                            + " was not entity-ticking")
+                                    .orElse("a body was not entity-ticking"));
+                }
                 if (scene[0] != null && bodiesTick && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
                     scene[0].pod().discard();
                     bodies.forEach(Entity::discard);
@@ -584,12 +598,12 @@ public class PodSonarTest {
 
     // ---- the creature tests wait for what they stand on, and nothing removes what they place (#1234) ----
 
-    /** Ticks after the first at which {@link #run} forces the chunks beside the pod's, in the test that stands for a runner that is slow to tick them. */
+    /** The tick on which the late-chunk test lets {@link #run} force the chunks beside the pod's. */
     private static final int LATER_CHUNKS_TICK = 20;
 
     /**
-     * The check waits until every body's chunk is entity ticking: a cow in the chunk beside the pod's, which starts ticking {@value #LATER_CHUNKS_TICK}
-     * ticks after the pod's, has landed when the check runs (it failed "the cow has settled on the floor" on tick 5).
+     * The check waits until every body's chunk is entity ticking: a cow in the chunk beside the pod's, forced on tick {@value #LATER_CHUNKS_TICK},
+     * has landed when it runs. The later chunks stay loaded through the carve, so the cow survives until the force without a ticket.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aCreatureInTheChunkBesideThePodsIsWaitedForUntilItTicks(GameTestHelper helper) {
@@ -614,16 +628,13 @@ public class PodSonarTest {
                 });
     }
 
-    /** What the game's despawn check can remove: a monster 32 blocks from every player, once it has done nothing for 600 ticks, one try in 800. */
+    /** Idle ticks after which {@code Mob.checkDespawn} may remove a monster 32 or more blocks from every player. */
     private static final int DESPAWN_IDLE_TICKS = 600;
 
-    /** Tries that leave a creature the game would remove one in a billion times in a thousand. */
+    /** Tries at 1 in 800 each: a mob the game may remove survives them with a chance near e^-25. */
     private static final int DESPAWN_TRIES = 20_000;
 
-    /**
-     * A creature the test places 36 blocks from the pod is never despawned however long the test waits. A husk the sonar test had idled 600 ticks
-     * for its chunks was removed by the game on its walk, and its path stayed "in progress" for ever: "the creatures walked: arrived 375, walking true".
-     */
+    /** A creature the test places 36 blocks from the pod is never despawned, however long the test waits. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aCreatureTheTestPlacesFarFromThePlayersIsNotDespawnedByTheGame(GameTestHelper helper) {
         int x = 9164;

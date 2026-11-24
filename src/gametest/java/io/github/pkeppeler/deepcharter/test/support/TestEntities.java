@@ -23,12 +23,7 @@ public final class TestEntities {
         return Objects.requireNonNull(type.create(level, reason), () -> "no " + type + " was created");
     }
 
-    /**
-     * A new {@code type} in {@code level} that the game's despawn check never removes, not yet added to the level. Build every mob a test
-     * leaves standing for a while this way: a monster 32 blocks or more from every player is removed, one try in 800 a tick, once it has
-     * been idle for 600 ticks, and a test that waits on a loaded runner for its chunks idles that long (#1234). A removed mob stops
-     * ticking and keeps its path "in progress" for ever.
-     */
+    /** As {@link #create}, for a mob that {@code Mob.checkDespawn} never removes however long a test idles (#1234). */
     public static <T extends Mob> T mob(EntityType<T> type, Level level) {
         T mob = create(type, level);
         mob.setPersistenceRequired();
