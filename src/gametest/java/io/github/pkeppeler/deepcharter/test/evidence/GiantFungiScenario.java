@@ -347,7 +347,9 @@ public class GiantFungiScenario extends EvidenceScenario {
             context.runOnClient(client ->
                     client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.ALWAYS_ON));
             nightVision(server, true);
-            shootOne(context, server, eye, new float[] {0f, 90f}, "top-down-chunks");
+            // The chunk borders are a debug renderer, which the hidden HUD hides too.
+            ClientChecks.withHudShown(
+                    context, () -> shootOne(context, server, eye, new float[] {0f, 90f}, "top-down-chunks"));
         } finally {
             nightVision(server, false);
             context.runOnClient(client ->

@@ -366,16 +366,18 @@ final class GiantFungiSpots {
     /** A view of the mix the world grew: the camera's feet, and the point among the giants it looks at. */
     record MixView(String zone, BlockPos feet, Vec3 target, int giants) {}
 
-    /** How far the mix's camera stands from the middle of the giants it looks at, and how far round them a giant counts. */
-    private static final int MIX_NEAR = 16;
+    /** The mix's camera sees a giant's mark from this near to this far, within {@link #GLOW_CONE} of its heading. */
+    private static final int MIX_NEAR = 8;
 
-    private static final int MIX_FAR = 28;
-    private static final int MIX_GROUP = 26;
+    private static final int MIX_FAR = 34;
+    /** Candidate cameras for the mix stand every this many blocks. */
+    private static final int MIX_GRID = 4;
 
     /**
-     * A camera on the giants of zone {@code zone} the world grew round ({@code x}, {@code z}): the foot of the giant with the most others
-     * near it, and a floor {@link #MIX_NEAR} to {@link #MIX_FAR} blocks off from which the most of them are in the camera's cone and its
-     * middle is in sight. Empty if the zone grew no giant there.
+     * A camera on the giants of zone {@code zone} the world grew round ({@code x}, {@code z}): of the floors every {@link #MIX_GRID} blocks
+     * and the eight headings, the one that sees the most giants' marks (a rim, a needle, a great stalk's cap) {@link #MIX_NEAR} to
+     * {@link #MIX_FAR} blocks off with nothing in the way, a giant counted once; it looks at the middle of those it sees. Empty if it sees
+     * none.
      */
     static Optional<MixView> mix(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
         Zones.Span span = Zones.span(band.minY(), band.height(), zone);
@@ -383,71 +385,41 @@ final class GiantFungiSpots {
                 .orElseThrow()
                 .id()
                 .getPath();
-        List<BlockPos> feet = scan(level, x, z, span, GiantFungiSpots::foot);
-        feet.removeIf(pos -> foot(level.getBlockState(pos.below())));
         List<BlockPos> marks = scan(level, x, z, span, GiantFungiSpots::landmark);
-        BlockPos middle = null;
-        int most = 0;
-        for (BlockPos a : feet) {
-            int near = 0;
-            for (BlockPos b : feet) {
-                if (a.distSqr(b) < MIX_GROUP * MIX_GROUP) {
-                    near++;
-                }
-            }
-            if (near > most) {
-                most = near;
-                middle = a;
-            }
-        }
-        LOGGER.info(
-                "[giant-fungi] {}: {} giant feet round {}, {}; the most in one group {}",
-                name,
-                feet.size(),
-                x,
-                z,
-                most);
-        if (middle == null) {
-            return Optional.empty();
-        }
-        Vec3 target = Vec3.atBottomCenterOf(middle).add(0, 9, 0);
+        LOGGER.info("[giant-fungi] {}: {} giant marks round {}, {}", name, marks.size(), x, z);
         MixView best = null;
-        int bestSeen = -1;
-        for (int heading = 0; heading < 16; heading++) {
-            double angle = Math.toRadians(heading * 22.5);
-            for (int d = MIX_FAR; d >= MIX_NEAR; d -= 2) {
-                int cx = (int) Math.floor(middle.getX() + 0.5 + Math.cos(angle) * d);
-                int cz = (int) Math.floor(middle.getZ() + 0.5 + Math.sin(angle) * d);
-                Optional<BlockPos> floor = floorAt(level, cx, cz, middle.getY(), 8);
-                if (floor.isEmpty()) {
-                    continue;
-                }
-                BlockPos at = floor.get().above(FEET_RISE - 1);
-                Vec3 eye = new Vec3(at.getX() + 0.5, at.getY() + EYE, at.getZ() + 0.5);
-                if (!inSight(level, eye, BlockPos.containing(target))) {
-                    continue;
-                }
-                float yaw = (float) Math.toDegrees(Math.atan2(-(target.x - eye.x), target.z - eye.z));
-                int seen = 0;
-                for (BlockPos mark : marks) {
-                    if (inCone(at, yaw, mark, 2, MIX_FAR + MIX_GROUP, GLOW_CONE)) {
-                        seen++;
+        int bestSeen = 0;
+        for (int cx = x - SEARCH_RADIUS; cx <= x + SEARCH_RADIUS; cx += MIX_GRID) {
+            for (int cz = z - SEARCH_RADIUS; cz <= z + SEARCH_RADIUS; cz += MIX_GRID) {
+                for (int y = span.high() - ZONE_INSET; y >= span.low() + ZONE_INSET; y--) {
+                    if (!isFloor(level, new BlockPos(cx, y, cz), HEADROOM)) {
+                        continue;
+                    }
+                    BlockPos feet = new BlockPos(cx, y + FEET_RISE, cz);
+                    Vec3 eye = new Vec3(cx + 0.5, feet.getY() + EYE, cz + 0.5);
+                    for (int heading = 0; heading < 8; heading++) {
+                        float yaw = heading * 45f;
+                        List<BlockPos> seen = new ArrayList<>();
+                        for (BlockPos mark : marks) {
+                            if (inCone(feet, yaw, mark, MIX_NEAR, MIX_FAR, GLOW_CONE)
+                                    && seen.stream().noneMatch(other -> other.distSqr(mark) < 25)
+                                    && inSight(level, eye, mark)) {
+                                seen.add(mark);
+                            }
+                        }
+                        if (seen.size() > bestSeen) {
+                            bestSeen = seen.size();
+                            Vec3 middle = Vec3.ZERO;
+                            for (BlockPos mark : seen) {
+                                middle = middle.add(Vec3.atCenterOf(mark).scale(1.0 / seen.size()));
+                            }
+                            best = new MixView(name, feet, middle, seen.size());
+                        }
                     }
                 }
-                if (seen > bestSeen) {
-                    bestSeen = seen;
-                    best = new MixView(name, at, target, seen);
-                }
-                break;
             }
         }
         return Optional.ofNullable(best);
-    }
-
-    /** The bottom block of a giant: a parasol's stem, a spire's mound or a great stalk's trunk. */
-    private static boolean foot(BlockState state) {
-        String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
-        return path.equals("parasol_stem") || path.equals("spire_base") || path.equals("great_stalk");
     }
 
     /**
