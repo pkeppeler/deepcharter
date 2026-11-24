@@ -109,9 +109,6 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                 new CompoundTag()));
         rows.addAll(suitRows());
         for (Consumable consumable : Consumable.values()) {
-            if (!consumable.sold()) {
-                continue;
-            }
             CompoundTag args = new CompoundTag();
             args.putString(RepairStation.ITEM_KEY, consumable.itemId().toString());
             String name = new ItemStack(RepairRegistry.item(consumable))
