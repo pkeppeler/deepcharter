@@ -1107,6 +1107,760 @@
           ]
         }
       ]
+    },
+    "block/columnar_basalt_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "ddccccbbbbccdddd",
+            "ccbbddcbbbcdccdc",
+            "cbbbcddccdcdcbcc",
+            "bbbbcdddddddcbbb",
+            "bbbacdddcddddcbb",
+            "bbccccddcbcdddbb",
+            "cddccbddcbbbdcbb",
+            "cdddccddcbbbbcbc",
+            "dddddcbbbabbbbbc",
+            "ccddccbbccccbabb",
+            "bcdddcbbdddccbbb",
+            "cccddbbcdddccbbb",
+            "dddcbbbbddcccddd",
+            "dccbbbbcdddbcddd",
+            "dcccbbbcccbbcddd",
+            "ddcccbbbcbcccddd"
+          ]
+        }
+      ]
+    },
+    "block/columnar_basalt_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "bcdddcbcdcbbcddc",
+            "bbcdddcdddbbcccb",
+            "bbbccddddddbccbb",
+            "bbbbddddddddcbbb",
+            "cbabcddccddccccc",
+            "dcccddcbbcbbbbcd",
+            "ddddcdcbbbbbbbcc",
+            "ddddddcbbbbcccbc",
+            "cddcbccbbbccccbb",
+            "ccdcabdddcdcabbc",
+            "ccccbbcddddcbbbc",
+            "cdcbbbccddddcbbc",
+            "ddcdbbbbccddddcd",
+            "dcccbbbbbbdddddd",
+            "cccccbbbbbccdddd",
+            "ccdccbbbcccccddd"
+          ]
+        }
+      ]
+    },
+    "block/columnar_basalt_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "cddddcbbddcbccbc",
+            "bbddddcdddcbbcbb",
+            "bbcddcdddddbbbbb",
+            "bbaccdcddddcccbb",
+            "cbbccccdddcdcccc",
+            "dccdddcccbbabcdd",
+            "dccbdddcbbbbbcdd",
+            "cccdddcbbbbcddcc",
+            "cccddccbbbcdddbc",
+            "ccccbbcdccddcbbc",
+            "cdcbbcddccddcbbc",
+            "cdcbbcccccdddcbb",
+            "cdbbbbbbbcdddddc",
+            "dccbabbbbbbdddcd",
+            "ddcabbbbbbccdddd",
+            "dddccbbbccdccccd"
+          ]
+        }
+      ]
+    },
+    "block/columnar_basalt_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "bcddcbbcddccdccc",
+            "bbcdddccccccdccb",
+            "bbcdddddcbbbcccb",
+            "bbbbddddbbbbcccb",
+            "cdccdddbbbcbcdcc",
+            "dddccdbbbbaccdcc",
+            "ddbcbbbbbbbcdddd",
+            "ddcbbbbbbbbcdddd",
+            "dcbbbbcbbbbcdddd",
+            "cbcbbbdccccddccd",
+            "bbccbccccdddccbb",
+            "bcccccccddddbbbb",
+            "bcdcdccddddcbbbb",
+            "cddccbcdddcabbbc",
+            "cdbbbbccddcccccd",
+            "ccccbbbcddddccdd"
+          ]
+        }
+      ]
+    },
+    "block/columnar_basalt_4": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "dcbcccbbbbcddddd",
+            "bbabcddcbbcccbcc",
+            "bbccdddddcbbbbbb",
+            "bbcddddddcbcbbbb",
+            "bcbdccccdcdccccb",
+            "bbccbcccdddcbccb",
+            "bccbbddddddcbbbb",
+            "cddbbccdddcccbbb",
+            "cdddcbbbdccdddbb",
+            "bcddcbbbbbcddddc",
+            "bbddbbbbbcdddddc",
+            "ccddcbbbcddbbccc",
+            "ddccbcccddcbbbbc",
+            "dccbccddcbabccdd",
+            "ddbbbccccbbbcddd",
+            "ddbbbbbbcbccccdd"
+          ]
+        }
+      ]
+    },
+    "block/columnar_basalt_5": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "dcbbbcbccddcdddc",
+            "ccbbcddddccbbcdc",
+            "bbbbcddddcbbbbcc",
+            "cbccdddddcbbbbbc",
+            "ccddccccdbbbbccc",
+            "ccddcbbcabbccdcc",
+            "ccddcbbbbbbbdddc",
+            "ccddcbbbbbbbdddc",
+            "ccddcbbbbbbcdddd",
+            "dcccdcbbbcccccdd",
+            "ccbbccbccdddcbcc",
+            "ccbbccccddddcbbb",
+            "ccccdcccddddcbbb",
+            "cccddccbccddbabc",
+            "cccccbbbcccccddc",
+            "cccbbbbbcddddddc"
+          ]
+        }
+      ]
+    },
+    "block/columnar_basalt_end_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "cbcddddbcccbbbcd",
+            "ccccccccddcbbbcc",
+            "cccbbbbdddddcbbb",
+            "cdcbbbbcddddcbbb",
+            "ddccbbcbdddccdcc",
+            "dddccbabccbbcddc",
+            "ddddbbbbbbbcddbc",
+            "ddddbbbbbbbcddcc",
+            "ddddcbbbbbcddccd",
+            "ddccccccbbdddccd",
+            "bcbbcdddcccccbcc",
+            "bbbcdddddccbbbcb",
+            "bbbcdddddccbcccb",
+            "bbabddcbcbcccddb",
+            "bbcdddcbbcccccbc",
+            "bbcdddcbbbccbbcd"
+          ]
+        }
+      ]
+    },
+    "block/columnar_basalt_end_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "ccdddcdccdcbbbcc",
+            "ccbdcccddddcbbcc",
+            "cbbbbbcddddcbbbc",
+            "cbbbbbcdddddbccc",
+            "cccbbcbcccccdddc",
+            "dddccabbbbccddcc",
+            "ddddbbbbbbbcdccc",
+            "ddddbbbbbbbcddcc",
+            "ddddcbbbbbbcdddc",
+            "ddcccccbbcccccdd",
+            "dcbcdddccbccbbcd",
+            "bbbcddddccccbbcc",
+            "bbbcddddcccdbccb",
+            "babccddcccbddccb",
+            "bbcdddccbccdcabc",
+            "bcdddccbbcccbbcc"
+          ]
+        }
+      ]
+    },
+    "block/columnar_basalt_end_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "bcccccdbccddddbb",
+            "bbdddcbbcddddcbb",
+            "bbbddcbbbddddbbb",
+            "bbbdcbbbcddddbcc",
+            "ccccdbbbcccdcccc",
+            "dddcbbbbbbbddcdd",
+            "ddddcbbbbbbbacdd",
+            "ddddbbbbbbbbbcdd",
+            "dddcbbbccbbbbcdd",
+            "cddccccddcbbcccc",
+            "bbccdddddccccccb",
+            "bbbbdddddccccccb",
+            "bbbbcddddccccbcc",
+            "babbccdddccbcccc",
+            "dcccccccccccbbcd",
+            "cdccccccccccccbc"
+          ]
+        }
+      ]
+    },
+    "block/columnar_basalt_end_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.2",
+            "b": "basalt3.3",
+            "c": "basalt3.4",
+            "d": "basalt3.5"
+          },
+          "rows": [
+            "bbcddcdcccccdcbb",
+            "bbcdccbcdddddcbb",
+            "bbccbcbcdddddcbb",
+            "bcccbbbbddddcbbb",
+            "cddcbbbbbdddcccc",
+            "dddccbbbbbccbddd",
+            "ddddcbcbbbbcccdd",
+            "ddddcbbbbbbbbcdd",
+            "dddccbbbbcbbbbdd",
+            "ddcddccdccbbbccd",
+            "ccccdddccccbcccc",
+            "bbbbddddcccbcccb",
+            "bbbbcddddccdddcb",
+            "bbabbcdddccdcdcb",
+            "cbbccccdddcbbccc",
+            "bccddccccccbcccc"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "aabbbbbbbbbaaaaa",
+            "bbbbbbbbbbbaaaab",
+            "bbbbbbbbbbbaaabb",
+            "ccbbbbbbbbbaaabb",
+            "ccbbbbbbbbaaaabc",
+            "ccbbbbbbbbbaaabc",
+            "ccbbbbbbbbbaaabb",
+            "bbbbbbbbbbbaaabb",
+            "bbbbbbbccbbaaabb",
+            "bbbbbbbbbbbaaabb",
+            "ccbbbbbbbbbbbbbb",
+            "ccbbbbbbbbbbbbcc",
+            "ccbbbbbbbbbccccc",
+            "ccbbbbbbbbbbbbcc",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbaabb"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "aabbbbbbbbbaaaaa",
+            "aabbbbbbbbbbbbaa",
+            "aabbbbbbbbbbbbba",
+            "aabbbbbbbbbccbba",
+            "aaabbbbbbbbcccba",
+            "aabbbbbbbbbcccba",
+            "aabbbbbbbbbccbba",
+            "aabbbbbbbbbbbbba",
+            "aabbccbbbbbbbbba",
+            "aabbbbbbbbbbbbba",
+            "bbbbbbbbbbbccbbb",
+            "bbbbbbbbbbbccccb",
+            "ccbbbbbbbbbccccc",
+            "bbbbbbbbbbbccccb",
+            "bbbbbbbbbbbbbbbb",
+            "abbbbbbbbbbbbbba"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "bbbaaaaaaabbbbbb",
+            "bbbaaaabbbbbbbbb",
+            "bbbaaabbbbbbbbbb",
+            "bbbaaabbccbbbbbb",
+            "bbaaaabcccbbbbbb",
+            "bbbaaabcccbbbbbb",
+            "bbbaaabbccbbbbbb",
+            "bbbaaabbbbbbbbbb",
+            "cbbaaabbbbbbbbbc",
+            "bbbaaabbbbbbbbbb",
+            "bbbbbbbbccbbbbbb",
+            "bbbbbbccccbbbbbb",
+            "bbbcccccccbbbbbb",
+            "bbbbbbccccbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbaabbbbbbbbbb"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "bbbbbbbaaaaaaabb",
+            "bbbbbbbbaaaaaabb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbabbbbbbbbbbb",
+            "bbbaaabbbbbccbbb",
+            "bbbaaabbbbbbbbbb",
+            "bbaaaabbbbbbbbbb",
+            "aaaaaabbbbbbaaaa",
+            "aaaaaabbbbbaaaaa",
+            "aaaaaabbbbbaaaaa",
+            "aaaaaaabbbbaaaaa",
+            "baaaaaabbbaaaaab",
+            "bbaaaaabbbaaaaab",
+            "bbaaaaabbbaaaaab",
+            "bbbbaaabbaaaaabb",
+            "bbbbbbbaaaaaaabb"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_4": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "bbbbbbbaaaaaaabb",
+            "bbbbbbbaaaaaabbb",
+            "bbbbbbbbbbbbbbbb",
+            "abbbbbbbbbbbbbbb",
+            "aabbbbbbccbbbbba",
+            "aabbbbbbbbbbbbba",
+            "aaabbbbbbbbbbbba",
+            "aaaaaaaaabbbbbba",
+            "aaaaaaaaaabbbbba",
+            "aaaaaaaaaabbbbba",
+            "aaaaaaaaaabbbbaa",
+            "aaaabbaaaaabbbaa",
+            "aaabbbaaaaabbbaa",
+            "aaabbbaaaaabbbaa",
+            "abbbbbbaaaaabbaa",
+            "bbbbbbbaaaaaaabb"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_5": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "aaaaaabbbbbbbbba",
+            "aaaaaabbbbbbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbabbb",
+            "bbbccbbbbbbaaabb",
+            "bbbbbbbbbbbaaabb",
+            "bbbbbbbbbbaaaabb",
+            "bbbbaaaaaaaaaabb",
+            "bbbaaaaaaaaaaabb",
+            "bbbaaaaaaaaaaabb",
+            "bbbaaaaaaaaaaaab",
+            "bbaaaaabbaaaaaab",
+            "bbaaaaabbbaaaaab",
+            "bbaaaaabbbaaaaab",
+            "baaaaabbbbbbaaab",
+            "aaaaaabbbbbbbbba"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_6": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "aaaaaabbbbbbbbba",
+            "aaaaabbbbbbbbbba",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbabbbbbbb",
+            "ccbbbbbaaabbbbbb",
+            "bbbbbbbaaabbbbbb",
+            "bbbbbbbaaaabbbbb",
+            "abbbbbbaaaaaaaaa",
+            "aabbbbbaaaaaaaaa",
+            "aabbbbbaaaaaaaaa",
+            "aabbbbaaaaaaaaaa",
+            "aaabbbaaaaaabbaa",
+            "aaabbbaaaaabbbaa",
+            "aaabbbaaaaabbbaa",
+            "aaaabbaaabbbbbba",
+            "aaaaaabbbbbbbbba"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_7": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "bbbaaaaaaabbbbbb",
+            "bbbaaaaaaabbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbcbbbbbbbaabb",
+            "bbbccccccbbaaaaa",
+            "bbbbccbbbbbaaaaa",
+            "abbbbbbbbbaaaaaa",
+            "aabbbbaaaaaaaaaa",
+            "aabbbaaaaaaaaaaa",
+            "aabbbbaaaaaaaaaa",
+            "aabbbbbbaaaaaaaa",
+            "aabbbbbbbbaaaaaa",
+            "aabbbbbbbbaaaaaa",
+            "abbbbbbbbbaaaaaa",
+            "bbbbbbbaaaabbbbb",
+            "bbbaaaaaaabbbbbb"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_8": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "aabbbbbbbbbaaaaa",
+            "aabbbbbbbbbaaaaa",
+            "bbbbbbbbbbbbbbbb",
+            "cbbbbbbaabbbbbbb",
+            "ccbbbaaaaabbcccc",
+            "cbbbbaaaaabbbbbc",
+            "bbbbaaaaaaabbbbb",
+            "bbbaaaaaaaaaaaab",
+            "bbbaaaaaaaaaaaaa",
+            "bbbaaaaaaaaaaaab",
+            "bbbaaaaaaaaaabbb",
+            "bbbaaaaaaaabbbbb",
+            "bbbaaaaaaaabbbbb",
+            "bbbbaaaaaaabbbbb",
+            "bbbbbbbbbbaaaabb",
+            "aabbbbbbbbbaaaaa"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_9": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "aabbbbbbbbbaaaaa",
+            "aabbbbbbbbbaaaaa",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbaabbbbbbcbbb",
+            "cbbaaaaabbbccccc",
+            "bbbaaaaabbbbccbb",
+            "bbaaaaaaabbbbbbb",
+            "aaaaaaaaaabbbbaa",
+            "aaaaaaaaaabbbaaa",
+            "aaaaaaaaaabbbbaa",
+            "aaaaaaaaaabbbbbb",
+            "bbaaaaaaaabbbbbb",
+            "bbaaaaaaaabbbbbb",
+            "bbaaaaaaabbbbbbb",
+            "aaabbbbbbbbbbbba",
+            "aabbbbbbbbbaaaaa"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_end_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "bbbaaaaaaabbbbbb",
+            "bbbaaaaaaabbbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "abbbbbbbcbbbbbba",
+            "aabbccccccbbbaaa",
+            "aabbbbbccbbbbaaa",
+            "aaabbbbbbbbbaaaa",
+            "aaaaaaabbbbaaaaa",
+            "aaaaaaaabbbaaaaa",
+            "aaaaaaabbbbaaaaa",
+            "aaaaabbbbbbaaaaa",
+            "aaabbbbbbbbaaaaa",
+            "aaabbbbbbbbaaaaa",
+            "aaabbbbbbbbbaaaa",
+            "bbaaaabbbbbbbbbb",
+            "bbbaaaaaaabbbbbb"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_end_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "bbbbbbaaaaaaabbb",
+            "bbbbbbaaaaabbbbb",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbcccbb",
+            "bbbccbbbbbbccccb",
+            "bbbbbbbbbbbcccbb",
+            "bbbbbbbbbbbccbbb",
+            "aaaaabbbccbbbbbb",
+            "aaaaaabbccbbbbba",
+            "aaaaaabbbbbbbbba",
+            "aaaaaabbbbbbbbba",
+            "aaaaabbbbbbbbbaa",
+            "aaaaabbbbbbbbbaa",
+            "aaaaabbbbbbbbbaa",
+            "bbbbbbaaaaabbbbb",
+            "bbbbbbaaaaaaabbb"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_end_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "bbbbbbbbaaaaaaab",
+            "bbbbbbbbbbaaaaab",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbcccbbbbbb",
+            "ccbbbbccccbbbbbb",
+            "bbbbbbbcccbbbbbb",
+            "bbbbbbbbccbbbbbb",
+            "aaaaabbbbbbccbbb",
+            "aaaaaabbbbbccbba",
+            "aaaaaabbbbbbbbba",
+            "aaaaaabbbbbbbbba",
+            "aaaaaaabbbbbbbbb",
+            "aaaaaaabbbbbbbbb",
+            "aaaaaaabbbbbbbbb",
+            "bbbbbbbbbbaaaaab",
+            "bbbbbbbbaaaaaaab"
+          ]
+        }
+      ]
+    },
+    "block/basalt_core_end_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "aaaaabbbbbbbbbaa",
+            "aaabbbbbbbbbbbaa",
+            "bbbbbbbbbbbbbbbb",
+            "bbbcccbbbbbbbbbb",
+            "bbbccccbbbbccbbb",
+            "bbbcccbbbbbbbbbb",
+            "bbbccbbbbbbbbbbb",
+            "ccbbbbbbaaaaabbb",
+            "ccbbbbbaaaaaaabb",
+            "bbbbbbbaaaaaaabb",
+            "bbbbbbbaaaaaaabb",
+            "bbbbbbaaaaaaabbb",
+            "bbbbbbaaaaaaabbb",
+            "bbbbbbaaaaaaabbb",
+            "aaabbbbbbbbbbbaa",
+            "aaaaabbbbbbbbbaa"
+          ]
+        }
+      ]
     }
   }
 }

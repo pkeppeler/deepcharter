@@ -269,6 +269,20 @@ public final class LayerStructures {
     }
 
     /**
+     * The site of {@code kind} nearest {@code pos} on the map, when {@code pos} is inside the band of the layer {@code kind} belongs to
+     * in {@code level}. Empty for a level that does not hold that layer, a Y outside its band, and before the colony's pad is chosen
+     * or while its data is unreadable. Pure position arithmetic, so it asks no chunk and no entity.
+     */
+    public static Optional<StructureSite> siteNear(ServerLevel level, StructureKind kind, BlockPos pos) {
+        return Colony.plannedAnchor(level.getServer(), ColonyAnchor.CONDUIT)
+                .flatMap(conduit -> layerBands(level).stream()
+                        .filter(band ->
+                                band.layer() == kind.layer() && pos.getY() >= band.minY() && pos.getY() <= band.maxY())
+                        .findFirst()
+                        .map(band -> nearest(level.getSeed(), kind, band.minY(), band.height(), pos, conduit)));
+    }
+
+    /**
      * The wreck site that is PROSPECTOR-0002's: the one nearest the Conduit in the wreck's layer of {@code level}, with a lamp burning and
      * Note N10 ({@link ProspectorWrecks}). Empty before the colony's pad is chosen or when its data is unreadable, and for a level that does
      * not hold that layer. It is known from the choice of the pad, not the end of the build, so a bay in a chunk that loads during the
