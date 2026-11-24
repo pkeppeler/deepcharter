@@ -171,7 +171,7 @@ public final class ParasolShape {
         double dome = switch (stage) {
             case BELL -> between(random, 30, 44);
             case OPEN -> between(random, 16, 28);
-            case OLD -> between(random, 16, 24);
+            case OLD -> between(random, 18, 24);
         };
         int lobes = 3 + random.applyAsInt(4);
         double lobeDepth = between(random, 0, 1);
@@ -296,7 +296,7 @@ public final class ParasolShape {
         double rise = switch (params.stage()) {
             case BELL -> params.dome() * Math.pow(1 - rho * rho, 0.7);
             case OPEN -> params.dome() * (1 - rho * rho) + (rho < UMBO ? 5 * (1 - rho / UMBO) : 0);
-            case OLD -> params.dome() * (1 - rho * rho) + 16 * Math.pow(rho, 6);
+            case OLD -> params.dome() * (1 - rho * rho);
         };
         double tipped = 0;
         if (!params.drift().isEmpty()) {

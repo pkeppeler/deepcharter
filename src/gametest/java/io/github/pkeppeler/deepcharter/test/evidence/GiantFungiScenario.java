@@ -348,16 +348,20 @@ public class GiantFungiScenario extends EvidenceScenario {
                 LightSync.holdSendUntilLit(level, parasolBase.offset(-24, 0, -24), spiresBase.offset(24, 0, 24));
             });
             awaitLight(context, server);
-            context.runOnClient(client ->
-                    client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.ALWAYS_ON));
+            context.runOnClient(client -> {
+                client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.ALWAYS_ON);
+                client.debugEntries.rebuildCurrentList();
+            });
             nightVision(server, true);
             // The chunk borders are a debug renderer, which the hidden HUD hides too.
             ClientChecks.withHudShown(
                     context, () -> shootOne(context, server, eye, new float[] {0f, 90f}, "top-down-chunks"));
         } finally {
             nightVision(server, false);
-            context.runOnClient(client ->
-                    client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.NEVER));
+            context.runOnClient(client -> {
+                client.debugEntries.setStatus(DebugScreenEntries.CHUNK_BORDERS, DebugScreenEntryStatus.NEVER);
+                client.debugEntries.rebuildCurrentList();
+            });
             server.runOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 under.restore(level);

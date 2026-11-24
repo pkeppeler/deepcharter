@@ -398,7 +398,7 @@ final class GiantFungiSpots {
     /** The mix's camera sees a giant's mark from this near to this far, within {@link #GLOW_CONE} of its heading. */
     private static final int MIX_NEAR = 8;
 
-    private static final int MIX_FAR = 34;
+    private static final int MIX_FAR = 26;
     /** Candidate cameras for the mix stand every this many blocks. */
     private static final int MIX_GRID = 4;
 
