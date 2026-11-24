@@ -17,7 +17,7 @@ public final class ContractTerminalRegistry {
     public static void register() {
         ContractTerminal.register();
         ContractStatePayload.register();
-        TerminalEvents.OPENED.register((server, type, player) -> {
+        TerminalEvents.OPENED.register((server, type, player, pos) -> {
             if (type == ContractTerminal.TYPE) {
                 ContractTerminal.refresh(server, player.getUUID());
             }

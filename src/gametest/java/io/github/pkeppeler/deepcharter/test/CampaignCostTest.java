@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
  * and its floor is the window cut to its bottom 16 rows ({@code campaign_surface_floor} and so on). A band's marginal CPU per filled
  * row is its window's pooled median over its floor's, per row of the difference; {@code tall_layer} (one layer's rock and fill in every
  * row) over {@code tall_layer_floor} is the reference. The gate: every band at most {@value BandCost#BAR}x the reference, except the
- * bands {@link #RATCHETS} holds to their own measured ratio plus 15% until their issue. The whole world, {@code campaign_sample} per
+ * bands {@link #RATCHETS} holds to their own measured ratio plus 15% until their issue. The whole world, {@code campaign_full} per
  * block of height against {@code tall_baseline} (vanilla stone, no fill), is printed as a tracked number and no longer gates.
  *
  * <p>{@code everyCostWorldGeneratesColumns} generates a few columns of each world and checks they exist. With the number of rounds in
@@ -80,7 +80,7 @@ public class CampaignCostTest {
     /** This JVM's run, which a pool tells apart from the others. */
     private static final String RUN = UUID.randomUUID().toString();
 
-    private static final String CAMPAIGN = "campaign_sample";
+    private static final String CAMPAIGN = "campaign_full";
     /** Vanilla stone, no zone fill: the whole world's tracked ratio. */
     private static final String BASELINE = "tall_baseline";
     /** One layer's own rock with the fill in every row: the per-row cost a band is held to. */
@@ -284,14 +284,15 @@ public class CampaignCostTest {
         ServerLevel level = world(helper, "campaign_layer_1");
         // level-height: the top row of a window, a test world cut to a band's rows
         BlockPos top = new BlockPos(conduit.getX(), level.getMaxY(), conduit.getZ());
-        FarChunks.whenLoaded(helper, List.of(new FarChunks.At(level, conduit.getX() >> 4, conduit.getZ() >> 4)), () -> {
-            expect(
-                    helper,
-                    level.getBlockState(top).is(ColonyBlocks.CONDUIT),
-                    "no Conduit casing at campaign_layer_1's top, %s",
-                    top);
-            helper.succeed();
-        });
+        FarChunks.whenBlocksLoaded(
+                helper, List.of(new FarChunks.At(level, conduit.getX() >> 4, conduit.getZ() >> 4)), () -> {
+                    expect(
+                            helper,
+                            level.getBlockState(top).is(ColonyBlocks.CONDUIT),
+                            "no Conduit casing at campaign_layer_1's top, %s",
+                            top);
+                    helper.succeed();
+                });
     }
 
     /**

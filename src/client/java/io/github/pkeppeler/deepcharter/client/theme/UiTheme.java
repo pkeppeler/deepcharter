@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
  * @param catalogue the size and place of the parts catalogue and its recipe panel, beside the inventory
  * @param readout the block name and hint under the crosshair
  * @param sonar the navigator's sonar scope
+ * @param suit the suit gauge: the timer of a person on foot
  */
 public record UiTheme(
         CrtTuning crt,
@@ -47,7 +48,8 @@ public record UiTheme(
         BeamLook beam,
         CatalogueLook catalogue,
         ReadoutLook readout,
-        SonarLook sonar) {
+        SonarLook sonar,
+        SuitLook suit) {
     /** The areas, each one a file {@code theme/<name>.json}. */
     static final Set<String> AREAS = Set.of(
             "crt",
@@ -64,7 +66,8 @@ public record UiTheme(
             "beam",
             "catalogue",
             "readout",
-            "sonar");
+            "sonar",
+            "suit");
 
     private static volatile @Nullable UiTheme current;
 
@@ -111,7 +114,8 @@ public record UiTheme(
                 BeamLook.of(area(areas, "beam")),
                 CatalogueLook.of(area(areas, "catalogue")),
                 ReadoutLook.of(area(areas, "readout")),
-                SonarLook.of(area(areas, "sonar")));
+                SonarLook.of(area(areas, "sonar")),
+                SuitLook.of(area(areas, "suit")));
         if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
             throw new IllegalArgumentException(area(areas, "transmission")
                             .conflict(
