@@ -829,6 +829,22 @@
       "..hllllllllmmd",
       "..hlmmmmmmmmmd",
       "...ddddddddddd"]}},
+    "item/air_canister": {"template": "sprite", "args": {"legend": {
+      "h": "steel.5", "l": "steel.4", "m": "steel.3", "d": "steel.2", "k": "steel.1", "g": "glass.2", "e": "cold.2", "E": "cold.4", "F": "cold.5", "b": "brass.4", "c": "brass.2"}, "rows": [
+      "",
+      "......bbbb",
+      ".......bcc",
+      "...hlllllllk",
+      "...hmmmmmmmk",
+      "...hkkkkkkkk",
+      "...hkgggggdk",
+      "...hgeEFEegk",
+      "...hgeFEFegk",
+      "...hkgggggdk",
+      "...hkkkkkkkk",
+      "...hmmmmmmmk",
+      "...hddddddkk",
+      "....kkkkkkk"]}},
     "item/hull_nanobots": {"template": "sprite", "args": {"legend": {
       "h": "steel.5", "l": "steel.4", "m": "steel.3", "k": "steel.1", "g": "glass.2", "e": "cold.2", "E": "cold.4", "F": "cold.5", "b": "brass.4", "c": "brass.2"}, "rows": [
       "",

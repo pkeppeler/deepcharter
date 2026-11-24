@@ -166,6 +166,11 @@ public record SuitState(float reserve, boolean explained, Mode mode, float rate,
         return new SuitState(reserve, explained, mode, rate, shortfall);
     }
 
+    /** This state with {@code mode} in place of its own. */
+    SuitState withMode(Mode mode) {
+        return new SuitState(reserve, explained, mode, rate, shortfall);
+    }
+
     /** This state with the first drain's line marked shown. */
     SuitState told() {
         return new SuitState(reserve, true, mode, rate, shortfall);
