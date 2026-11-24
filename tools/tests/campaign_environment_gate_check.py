@@ -93,6 +93,12 @@ BAD = {
     "another environment": ("@GameTest(environment = ALONE, dimension = SAMPLE)", 5),
     "an environment CampaignEnvironments does not define": ("@GameTest(environment = CampaignEnvironments.E, dimension = SAMPLE)", 5),
 }
+# A dimension spelled as a literal hides the world from the scan, so the gate refuses the literal itself.
+LITERAL = {
+    "literal campaign dimension": '@GameTest(dimension = "deepcharter:campaign_sample")',
+    "literal dimension with an environment": '@GameTest(environment = CampaignEnvironments.A, dimension = "deepcharter:campaign_sample", maxTicks = 100)',
+    "literal other dimension": '@GameTest(dimension = "deepcharter:surface_sample")',
+}
 
 
 def violating(annotation: str) -> str:
@@ -125,6 +131,7 @@ CASES = {
         None,
     ),
     **{label: Case(fixture({"CampaignTest.java": violating(annotation)}), None) for label, (annotation, _) in BAD.items()},
+    **{label: Case(fixture({"CampaignTest.java": violating(annotation)}), None) for label, annotation in LITERAL.items()},
 }
 
 
@@ -142,6 +149,14 @@ class CampaignEnvironmentGateTest(unittest.TestCase):
                 self.assertIn("CampaignEnvironments.<one of A, B, C, D>", result.message)
                 for clean in ("CampaignEnvironments.java", "NamedTest", "SurfaceTest", "NoDimensionTest", "MentionsTest"):
                     self.assertNotIn(clean, result.message)
+
+    def test_a_dimension_spelled_as_a_literal_fails(self):
+        for label in LITERAL:
+            with self.subTest(label):
+                result = gate_batch.result(f"{__name__}/{label}")
+                self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+                self.assertIn("CampaignTest:5 names its dimension as a string literal", result.message)
+                self.assertIn("private static final String constant", result.message)
 
     def test_a_missing_or_empty_environments_file_fails_closed(self):
         for label in ("environments file missing", "environments file without constants"):

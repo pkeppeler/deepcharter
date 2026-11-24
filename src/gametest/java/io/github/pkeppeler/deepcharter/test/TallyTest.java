@@ -68,6 +68,9 @@ public class TallyTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(TallyTest.class);
     private static final TallyTuning TUNING = TallyTuning.DEFAULT;
     private static final int HALF = 6;
+    /** Blocks beyond which vanilla removes a mob at once for want of a player. */
+    private static final int DESPAWN_BLOCKS = 128;
+
     private static final int ARENA_HEIGHT = 14;
     private static final int BORE_DEPTH = -12;
     private static final int FIRST_SLOT_X = 6808;
@@ -87,7 +90,6 @@ public class TallyTest {
     private static final int SETTLE_TICKS = 10;
 
     private static final int SEND_ATTEMPT_TICKS = 100;
-    private static final int LIGHT_BUDGET_TICKS = 200;
     private static final String APPROACH_KEY = "creature.deepcharter.tally_approach";
     private static final String CLAMP_POD_KEY = "creature.deepcharter.tally_clamp_pod";
     private static final String CLAMP_FOOT_KEY = "creature.deepcharter.tally_clamp_foot";
@@ -508,13 +510,13 @@ public class TallyTest {
     }
 
     /** (#917) What draws a Tally: a person aboard a pod that holds ore, or on foot with ore in the dark; never one with nothing to sample. */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + LIGHT_BUDGET_TICKS + 60)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 60)
     public void onlyOreInTheDarkDrawsATally(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos origin = slot(5);
         Arena[] made = {null};
         int[] phase = {0};
-        long[] litAt = {-1};
+        FarChunks.Deadline[] lit = {null};
         TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
@@ -557,7 +559,7 @@ public class TallyTest {
                 person.setGameMode(GameType.SURVIVAL);
                 // room-carver: a light block in this test's own arena
                 level.setBlock(person.blockPosition(), Blocks.LIGHT.defaultBlockState(), 3);
-                litAt[0] = arena.age(helper);
+                lit[0] = FarChunks.deadline();
                 phase[0] = 1;
             } else if (level.getBrightness(LightLayer.BLOCK, person.blockPosition())
                     >= CreatureTuning.DEFAULT.litBlockLight()) {
@@ -566,8 +568,8 @@ public class TallyTest {
                 }
                 arena.clear();
                 helper.succeed();
-            } else if (arena.age(helper) - litAt[0] > LIGHT_BUDGET_TICKS) {
-                throw failure(helper, "the light did not reach the person in %s ticks", LIGHT_BUDGET_TICKS);
+            } else {
+                lit[0].await(helper, level, false, () -> "the light did not reach the person");
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
@@ -824,6 +826,9 @@ public class TallyTest {
                 }
                 return;
             }
+            if (arena.tally.isRemoved()) {
+                throw failure(helper, "the Tally was removed when its person left, not let go");
+            }
             if (!arena.tally.isClamped()) {
                 if (!arena.tally.isAlive()) {
                     throw failure(helper, "the Tally died when its person left");
@@ -835,7 +840,22 @@ public class TallyTest {
                 throw failure(helper, "the Tally still clamped a person who left 10 ticks ago");
             }
         });
-        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Arena.build(helper, level, origin, false);
+            // A Tally with no player within 128 blocks is removed at once (vanilla despawn), clamped or not. The near
+            // bystander, creative so it draws no Tally, keeps a player beside the arena, so the release is the only way
+            // out (#1138). The far one is another test's player, as in a full run: it makes a regression in the near
+            // one fail every time, with "removed, not let go", instead of only in some runs.
+            MockPlayer far = MockPlayers.join(helper, "far-bystander");
+            double apart = far.player().position().distanceTo(Vec3.atCenterOf(origin));
+            if (apart <= DESPAWN_BLOCKS) {
+                throw failure(helper, "the far bystander is only %s blocks from the arena", apart);
+            }
+            LOGGER.info("[tally] far bystander {} blocks from the arena", apart);
+            MockPlayer near = MockPlayers.join(helper, "near-bystander");
+            near.player().setGameMode(GameType.CREATIVE);
+            near.teleportTo(level, Vec3.atBottomCenterOf(origin.north(HALF - 1)), 0f, 0f);
+        });
     }
 
     /**
