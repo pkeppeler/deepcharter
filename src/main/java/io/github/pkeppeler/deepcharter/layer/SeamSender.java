@@ -138,6 +138,11 @@ public final class SeamSender {
         return List.copyOf(offsets);
     }
 
+    /** Whether a chunk packet estimated at {@code estimatedBytes} is sent: under the payload limit by the margin of what the estimate leaves out. */
+    public static boolean fitsPayload(int estimatedBytes) {
+        return true;
+    }
+
     /** The bytes a chunk packet is estimated to take on the wire: its block data and heightmaps, and 2048 for each light array. */
     public static int estimatedBytes(ClientboundLevelChunkWithLightPacket packet) {
         int lightArrays = packet.lightData().skyUpdates().size()

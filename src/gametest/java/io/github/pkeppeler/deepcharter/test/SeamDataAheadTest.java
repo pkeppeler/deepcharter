@@ -651,6 +651,20 @@ public class SeamDataAheadTest {
         });
     }
 
+    /**
+     * A chunk packet over what a payload may take is never sent, as vanilla's codec would refuse it and drop the client. The estimate
+     * leaves out heightmaps and block entities, so the limit is a margin under the codec's megabyte.
+     */
+    @GameTest
+    public void aChunkOverThePayloadLimitIsNotSent(GameTestHelper helper) {
+        int codecLimit = 1_048_576;
+        expect(helper, SeamSender.fitsPayload(1), "a tiny chunk does not fit");
+        expect(helper, SeamSender.fitsPayload(codecLimit - 64 * 1024), "a chunk at the limit does not fit");
+        expect(helper, !SeamSender.fitsPayload(codecLimit - 64 * 1024 + 1), "a chunk a byte over the limit fits");
+        expect(helper, !SeamSender.fitsPayload(codecLimit), "a chunk at the codec's limit fits, with no margin");
+        helper.succeed();
+    }
+
     /** The order the area is sent in is pure: nearest the centre first, each offset once, the same on every call. */
     @GameTest
     public void theOrderIsNearestFirst(GameTestHelper helper) {

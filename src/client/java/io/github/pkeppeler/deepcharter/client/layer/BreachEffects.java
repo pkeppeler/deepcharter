@@ -31,7 +31,7 @@ public final class BreachEffects {
     private static int heldTicks;
 
     /** The most ticks the fade is held black, so a level that never reports itself loaded does not leave the screen black (10 s). */
-    private static final int MAX_HOLD_TICKS = 200;
+    public static final int MAX_HOLD_TICKS = 200;
 
     private BreachEffects() {}
 
@@ -52,6 +52,22 @@ public final class BreachEffects {
         Minecraft.getInstance()
                 .getSoundManager()
                 .play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EXPLODE.value(), 0.4f, 0.8f));
+    }
+
+    /** The client has handled a respawn. */
+    public static void respawned() {}
+
+    /** Ticks the latest fade was held black, kept after it ends for the timing log of a test. */
+    // test-seam: BreachFadeHoldClientTest and SeamAdoptionClientTest read how long the hold lasted
+    public static int heldTicks() {
+        return heldTicks;
+    }
+
+    /** One tick of the fade with the client's answer to "loaded" given, so a test can stage a slow load. */
+    // test-seam: BreachFadeHoldClientTest steps the fade with a chosen loaded answer, which a real client cannot be
+    // made to give on demand
+    public static void advance(boolean clientLoaded) {
+        tick();
     }
 
     public static void reset() {
