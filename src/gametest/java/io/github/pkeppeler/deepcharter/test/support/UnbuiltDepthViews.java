@@ -19,9 +19,9 @@ import net.minecraft.world.phys.Vec3;
  * {@code unbuilt-depth} scenario shows them, so the two cannot drift.
  *
  * <p>The camera reads the biome it stands in, so the views in the unbuilt depth stand far enough under the crust that the camera's blend
- * of biomes is the unbuilt depth's alone. The client's render distance is cut to two chunks ({@link ShaftViews#RENDER_DISTANCE}, {@link ClientChecks#withRenderDistance}),
- * so the shaft drops past the last drawn section and the sky the client draws below the horizon shows at its bottom. The sky clock is at
- * dusk, where the surface's fog is brightest.
+ * of biomes is the unbuilt depth's alone. The client's render distance is cut to two chunks ({@link ShaftViews#RENDER_DISTANCE},
+ * {@link ClientChecks#withRenderDistance}), so the shaft drops past the last drawn section and the sky the client draws below the
+ * horizon shows at its bottom. The sky clock is at dusk, where the surface's fog is brightest.
  */
 public final class UnbuiltDepthViews {
     /** Far from the colony and the other client tests' sites, in the middle of a chunk. */
@@ -89,8 +89,12 @@ public final class UnbuiltDepthViews {
         UNDERWATER
     }
 
-    /** A view: its still's name, where it stands, the sky time and the facing, and whether the camera has night vision. */
-    public record Look(String name, Place place, CavernSky.View view, boolean nightVision) {}
+    /** A view: where it stands, its still's name, the sky time and the facing, and whether the camera has night vision. */
+    public record Look(Place place, CavernSky.View view, boolean nightVision) {
+        public String name() {
+            return view.name();
+        }
+    }
 
     /** The views in the order they are taken: every dry one first, then the one from under the water of the shaft once it is flooded. */
     private static final List<Look> LOOKS = List.of(
@@ -110,7 +114,7 @@ public final class UnbuiltDepthViews {
     private UnbuiltDepthViews() {}
 
     private static Look look(String name, Place place, float pitch, boolean nightVision) {
-        return new Look(name, place, new CavernSky.View(name, DUSK, EAST, pitch), nightVision);
+        return new Look(place, new CavernSky.View(name, DUSK, EAST, pitch), nightVision);
     }
 
     /**

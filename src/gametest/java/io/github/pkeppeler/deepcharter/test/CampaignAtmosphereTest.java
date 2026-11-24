@@ -316,11 +316,10 @@ public class CampaignAtmosphereTest {
     }
 
     /**
-     * The unbuilt depth is where nothing is built yet (#1192): its fog is darker than every layer's, and starts and ends no farther out than
-     * any layer's, so at every distance it is at least as thick as any layer's, and night vision cannot lift it. The client brightens a fog colour under night vision by scaling its brightest channel to full, but leaves a colour
-     * with a channel of 0 alone ({@code FogRenderer.computeFogColor} in 26.3), so the abyss stays dark under the potion where a layer's
-     * fog turns to a pale haze. Its water fog is black too (#1187): unset, it would be vanilla's blue, and the camera blends it into the
-     * water within about 12 blocks of the last layer's floor; black has a 0 in every channel, so it blends with any neighbour's.
+     * The unbuilt depth's fog (#1192) is darker than every layer's and starts and ends no farther out, so it is at least as thick at every
+     * distance. Night vision scales a fog colour's brightest channel to full but leaves one with a channel of 0 alone
+     * ({@code FogRenderer.computeFogColor} in 26.3), so the abyss stays dark under the potion. Its water fog is black (#1187): unset, it
+     * would be vanilla's blue, which the camera blends into the water within about 12 blocks of the last layer's floor.
      */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theUnbuiltDepthsFogIsTheDarkestAndNearestAndNightVisionCannotLiftIt(GameTestHelper helper) {

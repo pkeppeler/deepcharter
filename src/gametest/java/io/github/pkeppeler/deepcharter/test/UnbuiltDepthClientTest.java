@@ -28,9 +28,9 @@ import org.slf4j.LoggerFactory;
  * Client GameTest for #1192: under the floor of the last layer, in the unbuilt depth, a view straight down a shaft past the render
  * distance and a view level along a hall past the fog read as darkness, with and without night vision. Before #1192 the unbuilt depth
  * had no fog of its own and took the surface's sky timeline, orange at dusk, so both views faded into an orange haze. Each frame must
- * also show a lamp near the camera where the camera maths puts it, so a black frame (a camera in rock, a frame not drawn) cannot pass. From under the water of the
- * flooded shaft, where the client draws no dark disc over the sun and the moon, the view straight down must show neither
- * ({@code LayerSky}).
+ * also show a lamp near the camera where the camera maths puts it, so a black frame (a camera in rock, a frame not drawn) cannot pass.
+ * From under the water of the flooded shaft, where the client draws no dark disc over the sun and the moon, the view straight down must
+ * show neither ({@code LayerSky}).
  */
 public class UnbuiltDepthClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(UnbuiltDepthClientTest.class);

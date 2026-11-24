@@ -173,10 +173,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                     ServerLevel campaign = TestLayers.level(server, 1);
                     List<ShaftViews.Shaft> opened = ShaftViews.open(campaign, X, Z + DEEP_SHAFTS_SOUTH);
                     for (ShaftViews.Shaft shaft : opened) {
-                        if (shaft.floorY()
-                                == campaign
-                                        .getMinY()) { // level-height: the breach shaft is the one at the bottom of the
-                            // world
+                        // level-height: the breach shaft is the one at the bottom of the world
+                        if (shaft.floorY() == campaign.getMinY()) {
                             giveAFogThatIsNotBlack(campaign, shaft.held());
                         }
                     }
