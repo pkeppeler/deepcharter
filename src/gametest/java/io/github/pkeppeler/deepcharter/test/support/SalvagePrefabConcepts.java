@@ -43,7 +43,6 @@ public final class SalvagePrefabConcepts {
      */
     public record Option(
             String name,
-            String title,
             Identifier structure,
             BlockPos offset,
             int blocks,
@@ -83,7 +82,6 @@ public final class SalvagePrefabConcepts {
         JsonArray player = json.getAsJsonArray("player");
         return new Option(
                 json.get("name").getAsString(),
-                json.get("title").getAsString(),
                 Identifier.parse(json.get("structure").getAsString()),
                 new BlockPos(
                         offset.get(0).getAsInt(),
