@@ -68,10 +68,11 @@ public class OvergrowthScenario extends EvidenceScenario {
     private static final int HOLLOWS_LAYER = 3;
     /** The real hollows are searched in the chunks this far round the site. */
     private static final int HOLLOWS_CHUNKS = 4;
-    /** The bore in the real hollows is this deep, 3 wide and {@value #BORE_HEIGHT} high; the eye stands this far back from its mouth, and this far for the wide shot. */
+    /** The bore in the real hollows is this deep, 3 wide and {@value #BORE_HEIGHT} high. */
     private static final int HOLLOWS_BORE = 6;
-
+    /** The eye stands this far back from the mouth, and up to {@link #HOLLOWS_WIDE} for the wide shot. */
     private static final int HOLLOWS_STAND = 3;
+
     private static final int HOLLOWS_WIDE = 9;
     private static final int HOLLOWS_MAX_PASSES = 40;
 
@@ -335,7 +336,7 @@ public class OvergrowthScenario extends EvidenceScenario {
     }
 
     /** A bore the way a drill cuts one into the wall of a cave: its open mouth, the direction it runs, and the cells of it. */
-    record Cave(BlockPos mouth, Direction run, List<BlockPos> cells, int wide) {}
+    private record Cave(BlockPos mouth, Direction run, List<BlockPos> cells, int wide) {}
 
     /**
      * The same growth in the real Fungal Hollows (#1133): layer 3's own caves and light, in the sample world. A bore is cut into a wall of a
@@ -446,7 +447,7 @@ public class OvergrowthScenario extends EvidenceScenario {
      * rock {@value #HOLLOWS_BORE} deep, 3 wide and 3 high in front of it, in the hollows biome tag. Searches the layer's band over the
      * chunks round {@code site}; throws, naming where it looked, when there is none.
      */
-    static Cave findCave(ServerLevel level, BlockPos site) {
+    private static Cave findCave(ServerLevel level, BlockPos site) {
         LayerChain.Band band = TestLayers.band(level, HOLLOWS_LAYER);
         int reach = HOLLOWS_CHUNKS * 16 - HOLLOWS_BORE;
         for (int x = site.getX() - reach; x <= site.getX() + reach; x += 2) {
@@ -482,8 +483,7 @@ public class OvergrowthScenario extends EvidenceScenario {
             return Optional.empty();
         }
         // The cave's wall is rarely flat: the centre of the mouth must be open, the bore must be rock from the second
-        // cell in, and the
-        // first cell is cut only where it is rock.
+        // cell in, and the first cell is cut only where it is rock.
         if (!open(level, feet) || !open(level, feet.above())) {
             return Optional.empty();
         }
