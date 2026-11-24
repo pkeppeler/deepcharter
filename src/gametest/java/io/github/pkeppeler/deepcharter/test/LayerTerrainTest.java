@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -188,7 +189,9 @@ public class LayerTerrainTest {
     /** A layer past the named ones has no zone, and never throws: callers pass any player Y every tick. */
     @GameTest
     public void anUnnamedLayerHasNoZone(GameTestHelper helper) {
-        if (Zones.of(3, 0, 192, 100).isPresent() || Zones.of(0, 0, 192, 100).isPresent()) {
+        int unnamed = CampaignBands.lastLayer() + 1;
+        if (Zones.of(unnamed, 0, 192, 100).isPresent()
+                || Zones.of(0, 0, 192, 100).isPresent()) {
             throw failure(helper, "a layer without names has a zone");
         }
         if (Zones.of(1, 0, 192, 100).isEmpty()) {
@@ -197,12 +200,12 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** The names must cover every layer in the chain; this is the start-up check, run here as well. */
+    /** The names must cover every layer in the chain, as the campaign world lays it out; this is the start-up check, run here as well. */
     @GameTest
     public void zoneNamesCoverEveryLayerInTheChain(GameTestHelper helper) {
-        Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()));
+        Zones.requireNamesFor(CampaignBands.lastLayer());
         try {
-            Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()) + 1);
+            Zones.requireNamesFor(CampaignBands.lastLayer() + 1);
         } catch (IllegalStateException expected) {
             helper.succeed();
             return;

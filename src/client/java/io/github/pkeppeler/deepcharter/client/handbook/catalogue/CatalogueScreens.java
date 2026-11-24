@@ -42,6 +42,7 @@ public final class CatalogueScreens {
 
     public static void register() {
         CatalogueKeys.register();
+        SpecSheetOpener.register();
         ClientTickEvents.END_CLIENT_TICK.register(CatalogueScreens::reopenReturnScreen);
         ScreenEvents.BEFORE_INIT.register((client, screen, width, height) -> {
             if (hasCatalogue(screen) && fits(width, height)) {

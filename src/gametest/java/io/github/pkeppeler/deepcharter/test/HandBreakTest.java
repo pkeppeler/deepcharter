@@ -562,7 +562,7 @@ public class HandBreakTest {
         });
     }
 
-    /** Layer 3 and deeper cost a whole pick: the campaign world's unbuilt depth is the first of them. */
+    /** Layer 3 and deeper cost a whole pick: the campaign world's unbuilt depth counts as the layer below the last built. */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE)
     public void deeperThanLayerTwoACrustCostsAWholeNetheritePick(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -573,17 +573,19 @@ public class HandBreakTest {
         ServerPlayer player = mock.player();
         player.setNoGravity(true);
         level.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), 3);
-        if (HandBreak.layerOf(level, pos) != 3) {
-            throw failure(helper, "unbuilt depth counts as layer %d, expected 3", HandBreak.layerOf(level, pos));
+        int unbuilt = CampaignBands.lastLayer() + 1;
+        if (HandBreak.layerOf(level, pos) != unbuilt) {
+            throw failure(
+                    helper, "unbuilt depth counts as layer %d, expected %d", HandBreak.layerOf(level, pos), unbuilt);
         }
         player.setGameMode(GameType.SURVIVAL);
         hold(player, new ItemStack(Items.DIAMOND_PICKAXE));
         if (player.gameMode.destroyBlock(pos) || !level.getBlockState(pos).is(LayerBlocks.BREACH_CRUST)) {
-            throw failure(helper, "a diamond pick broke the crust of layer 3");
+            throw failure(helper, "a diamond pick broke the crust of unbuilt depth");
         }
         hold(player, new ItemStack(Items.NETHERITE_PICKAXE));
         if (!player.gameMode.destroyBlock(pos) || !level.getBlockState(pos).isAir()) {
-            throw failure(helper, "a fresh netherite pick could not break the crust of layer 3");
+            throw failure(helper, "a fresh netherite pick could not break the crust of unbuilt depth");
         }
         if (!player.getMainHandItem().isEmpty()) {
             throw failure(helper, "the block did not cost the whole pick: %s", player.getMainHandItem());

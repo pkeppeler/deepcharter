@@ -52,7 +52,7 @@ public class BoltDriverPacingTest {
     private static final float EAST = -90f;
     private static final int SPAWN_PROTECTION_TICKS = 100;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
-    /** The chunk column of {@code BoltRoom} the tunnel starts at; it spans this and the next two. */
+    /** The slot of {@code BoltRoom} the tunnel starts at; it spans this and the next. */
     private static final int TUNNEL_COLUMN = 21;
     /**
      * Blocks of tunnel. No other corridor may have air within a cave-in's stretch radius ({@link CaveInTuning#stretchRadius()}) of either
@@ -230,6 +230,7 @@ public class BoltDriverPacingTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aTunnelNeedsARoofBoltEveryFewBlocks(GameTestHelper helper) {
+        // Slot 22 stays unused: this tunnel's bed reaches into it, and BoltRoom.cut refuses it.
         Corridor corridor = corridor(helper, TUNNEL, TUNNEL_COLUMN);
         TestTicks.each(helper, () -> {
             if (!corridor.ready().isPresent()) {

@@ -17,5 +17,6 @@ public final class LayerClientRegistry {
         BlockReadoutHud.init();
         BreachVoidCover.init();
         HandBreakClient.init();
+        LayerSky.init();
     }
 }

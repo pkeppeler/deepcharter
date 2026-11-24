@@ -1,9 +1,11 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.test.mixin.MinecraftServerAccess;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -36,6 +39,15 @@ public final class ColumnCost {
     private static final int COOL_DOWN_TICKS = 100;
     /** A region counts as unloaded when this few chunks of a world are left, such as those around a spawn. */
     private static final int UNLOADED_CHUNKS = 30;
+
+    /**
+     * The tests whose measured run holds the autosave off, by their bounds, and the countdown from before the first of them. The hold
+     * ends with the last of them, on any exit of the test, through {@link #release} from {@code GameTestInfoMixin}'s {@code finish}.
+     * Server thread only.
+     */
+    private static final Map<AABB, MinecraftServerAccess> AUTOSAVE_HOLDERS = new HashMap<>();
+
+    private static int countdownBeforeHold;
 
     private ColumnCost() {}
 
@@ -60,7 +72,20 @@ public final class ColumnCost {
             List<String> allWorlds,
             int rounds,
             Consumer<Map<String, List<Measurement>>> report) {
+        TestTicks.each(helper, tickBody(helper, worlds, allWorlds, rounds, report));
+    }
+
+    /** {@link #run}'s tick body, so a test can call it where a throw is catchable. */
+    public static Runnable tickBody(
+            GameTestHelper helper,
+            List<String> worlds,
+            List<String> allWorlds,
+            int rounds,
+            Consumer<Map<String, List<Measurement>>> report) {
         boolean smoke = rounds == 0;
+        if (!smoke) {
+            holdAutosave(helper);
+        }
         ArrayDeque<Run> queue = new ArrayDeque<>();
         if (smoke) {
             worlds.forEach(world -> queue.add(new Run(world, SMOKE_RADIUS, 0, false, true)));
@@ -75,27 +100,33 @@ public final class ColumnCost {
         Map<String, List<Measurement>> results = new LinkedHashMap<>();
         @Nullable Run[] current = {null};
         int[] cooldown = {0};
-        TestTicks.each(helper, () -> {
+        return () -> {
             if (cooldown[0] > 0) {
                 cooldown[0]--;
+                idle(smoke);
                 return;
             }
             if (current[0] == null && !smoke && !everyWorldIsUnloaded(helper, allWorlds)) {
+                idle(smoke);
                 return;
             }
-            if (current[0] == null) {
+            Run active = current[0];
+            if (active == null) {
                 if (queue.isEmpty()) {
                     return;
                 }
-                current[0] = queue.poll();
-                current[0].begin(helper);
+                // Only a run that began is current: after a begin() that throws, the next tick must not read its level.
+                active = queue.poll();
+                active.begin(helper);
+                current[0] = active;
             }
-            if (!current[0].isGenerated()) {
+            if (!active.isGenerated()) {
+                idle(smoke);
                 return;
             }
-            Measurement measurement = current[0].finish(helper);
-            if (current[0].measured) {
-                results.computeIfAbsent(current[0].world, world -> new ArrayList<>())
+            Measurement measurement = active.finish(helper);
+            if (active.measured) {
+                results.computeIfAbsent(active.world, world -> new ArrayList<>())
                         .add(measurement);
             }
             current[0] = null;
@@ -106,7 +137,30 @@ public final class ColumnCost {
                 }
                 helper.succeed();
             }
-        });
+        };
+    }
+
+    /** Pushes the server's next autosave past the end of {@code helper}'s test, until {@link #release}. */
+    private static void holdAutosave(GameTestHelper helper) {
+        MinecraftServerAccess server = (MinecraftServerAccess) helper.getLevel().getServer();
+        if (AUTOSAVE_HOLDERS.isEmpty()) {
+            countdownBeforeHold = server.deepcharter$ticksUntilAutosave();
+            server.deepcharter$setTicksUntilAutosave(Integer.MAX_VALUE);
+        }
+        AUTOSAVE_HOLDERS.put(helper.getBounds(), server);
+    }
+
+    /** Whether the test with these bounds holds the autosave. */
+    public static boolean holds(AABB testBounds) {
+        return AUTOSAVE_HOLDERS.containsKey(testBounds);
+    }
+
+    /** Ends the autosave hold of the test with these bounds, and restores the countdown when no other test holds it. */
+    public static void release(AABB testBounds) {
+        MinecraftServerAccess server = AUTOSAVE_HOLDERS.remove(testBounds);
+        if (server != null && AUTOSAVE_HOLDERS.isEmpty()) {
+            server.deepcharter$setTicksUntilAutosave(countdownBeforeHold);
+        }
     }
 
     /** The median of each reading over {@code all}. */
@@ -127,6 +181,19 @@ public final class ColumnCost {
         return columnsOf(MEASURED_RADIUS);
     }
 
+    /** A sleeping thread accrues no CPU; without the sleep the server spun empty ticks the reading counted (ADR 0086). */
+    private static void idle(boolean smoke) {
+        if (smoke) {
+            return;
+        }
+        try {
+            Thread.sleep(FarChunks.POLL_MILLIS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while waiting for columns", e);
+        }
+    }
+
     private static boolean everyWorldIsUnloaded(GameTestHelper helper, List<String> allWorlds) {
         for (String world : allWorlds) {
             ServerLevel level = helper.getLevel()
@@ -140,7 +207,7 @@ public final class ColumnCost {
         return true;
     }
 
-    private static double medianOf(double[] values) {
+    static double medianOf(double[] values) {
         double[] sorted = values.clone();
         Arrays.sort(sorted);
         int middle = sorted.length / 2;
@@ -151,6 +218,7 @@ public final class ColumnCost {
         return (2 * radius + 1) * (2 * radius + 1);
     }
 
+    /** CPU time of every thread of this JVM, not of the generation workers alone. */
     private static long processCpuNanos() {
         return ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean())
                 .getProcessCpuTime();

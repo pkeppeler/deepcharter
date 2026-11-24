@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -159,8 +160,8 @@ public class BreachCrossingTest {
 
     @GameTest(maxTicks = 40)
     public void theLastLayersFloorHasNoCrossing(GameTestHelper helper) {
-        ServerLevel two = TestLayers.level(helper, 2);
-        LayerChain.Band twoBand = TestLayers.band(two, 2);
+        ServerLevel two = TestLayers.level(helper, CampaignBands.lastLayer());
+        LayerChain.Band twoBand = TestLayers.band(two, CampaignBands.lastLayer());
         MockPlayer mock = MockPlayers.join(helper, "breach-last-floor");
         mock.player().setNoGravity(true);
         mock.teleportTo(two, new Vec3(1500.5, twoBand.minY() + 10, 1500.5), 0, 0);
@@ -173,7 +174,7 @@ public class BreachCrossingTest {
             if (mock.player().level() != two || mock.player().getY() >= twoBand.minY()) {
                 throw failure(
                         helper,
-                        "the player is at y=%s in %s, expected under the floor %s of layer 2",
+                        "the player is at y=%s in %s, expected under the floor %s of the last layer",
                         mock.player().getY(),
                         mock.player().level().dimension(),
                         twoBand.minY());

@@ -12,7 +12,12 @@
     "GameTestInfoMixin",
     "GameTestTickerMixin",
     "LightSyncSendMixin",
-    "ServerLevelForcedMixin"
+    "MainShutdownHookMixin",
+    "MinecraftServerAccess",
+    "ServerChunkCacheAccess",
+    "ServerChunkCacheBlockingLoadMixin",
+    "ServerLevelForcedMixin",
+    "TicketAccess"
   ],
   "client": [
     "CardinalLightingMixin",

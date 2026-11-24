@@ -80,7 +80,7 @@ Two new ops draw them: `fibres` (runs of the ramp down a stem, wrapping on both 
 
 ## Feature cost
 
-ADR 0029 bars the surface at 1.15 times the layers-only world per new column. The feature cost is measured by `SurfaceCostTest`, one world to a JVM so that each heap reading is the first of its JVM.
+ADR 0029 barred the surface at 1.15 times the layers-only world per new column; since [ADR 0086](../adr/0086-each-campaign-band-is-held-to-one-layers-cost-per-row-and-the-whole-worlds-ratio-is-only-tracked.md) that ratio is tracked, and the bar holds each band per row. The feature cost is measured by `SurfaceCostTest`, one world to a JVM so that each heap reading is the first of its JVM.
 
 `SurfaceCostTest` with `DEEPCHARTER_SURFACE_COST=5` and `DEEPCHARTER_SURFACE_COST_ONLY=<world>`: **before the cut:** two passes of five rounds each, so ten rounds of 289 columns (a 17 x 17 chunk square) per world, one JVM per world and pass. The Mac was not quiet: the load average was 2 to 8 for the first three runs and 15 to 65 after, because other sessions were running (an earlier run of four passes of three rounds, at a load of 5 to 23, gave the same picture). CPU is the process time per new column, in ms.
 
