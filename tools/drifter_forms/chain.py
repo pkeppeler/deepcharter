@@ -34,7 +34,7 @@ def radius(i):
 def paint_skin(t):
     swirl = kit.fbm(t.x * 0.3, t.y * 0.3, t.z * 0.3, SEED)
     colour = kit.mix(SKIN, (190, 225, 250), swirl * 0.6 + 0.2 * t.ny)
-    return (*colour, 120 + 40 * swirl), (*COLD, 30)
+    return (*colour, 0), (*COLD, 62 + 40 * swirl)
 
 
 def paint_core(t):
@@ -42,7 +42,7 @@ def paint_core(t):
     return (*kit.mix((150, 200, 255), CORE, glint), 255), (*kit.mix((150, 200, 255), (230, 245, 255), glint), 255)
 
 
-def paint_filament(t):
+def paint_filament(_t):
     return (150, 200, 245, 255), (*COLD, 220)
 
 
@@ -56,12 +56,12 @@ def halo_painter(strength):
 
 
 def paint_veil(t):
-    ripple = 0.5 + 0.2 * math.sin(t.fv * 18 + t.fu * 4)
+    ripple = 0.5 + 0.12 * math.sin(t.fv * 7 + t.fu * 3)
     reach = ripple * (0.35 + 0.65 * t.fv)
     if abs(t.fu - 0.5) > reach or t.fv > 0.98:
         return (0, 0, 0, 0), None
     edge = abs(t.fu - 0.5) > reach - 0.1
-    return (*kit.mix(SKIN, CORE, 0.4), 46 if not edge else 90), ((*COLD, 110) if edge else (*COLD, 14))
+    return (*kit.mix(SKIN, CORE, 0.4), 0), ((*COLD, 120) if edge else (*COLD, 36))
 
 
 def add_bulb(model, i):
@@ -69,7 +69,7 @@ def add_bulb(model, i):
     c, r = centre(i), radius(i)
     model.bone(name, f"bulb_{i - 1}" if i else "root", c)
     for turn in (0.0, 45.0):
-        model.add(name, Cube((c[0] - r * 0.42, c[1] - r * 0.42, c[2] - r * 0.42), (r * 0.84,) * 3, paint_core, (0.0, turn, 0.0), density=3.0))
+        model.add(name, Cube((c[0] - r * 0.5, c[1] - r * 0.5, c[2] - r * 0.5), (r,) * 3, paint_core, (0.0, turn, 0.0), density=3.0))
     return name
 
 
@@ -86,13 +86,13 @@ def add_filament(model, i):
     axis = kit.sub(b, a)
     run = kit.length(axis)
     mid = kit.scale(kit.add(a, b), 0.5)
-    model.add(f"bulb_{i}", Cube((mid[0] - 0.45, mid[1] - run / 2, mid[2] - 0.45), (0.9, run, 0.9), paint_filament, kit.aim(axis), mid, 3.0))
+    model.add(f"bulb_{i}", Cube((mid[0] - 0.55, mid[1] - run / 2, mid[2] - 0.55), (1.1, run, 1.1), paint_filament, kit.aim(axis), mid, 3.0))
 
 
 def add_halo(model, i):
     c, r = centre(i), radius(i)
-    size = 3.6 * r
-    strength = 120 - 40 * i / (BULBS - 1)
+    size = 4.4 * r
+    strength = 240 - 70 * i / (BULBS - 1)
     for turn in (0.0, 90.0):
         model.add(f"bulb_{i}", Cube.plane(c, size, size, (0.0, turn, 0.0), halo_painter(strength), 4.0))
     model.add(f"bulb_{i}", Cube.flat(c, size, size, (0.0, 0.0, 0.0), halo_painter(strength * 0.7), 4.0))

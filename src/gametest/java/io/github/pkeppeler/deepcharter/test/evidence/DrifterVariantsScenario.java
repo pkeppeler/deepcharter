@@ -76,6 +76,10 @@ public class DrifterVariantsScenario extends EvidenceScenario {
     @Override
     protected void run(ClientGameTestContext context) {
         EvidencePins.drifterAnimationAge = 0f;
+        EvidencePins.handsHidden = true;
+        EvidencePins.itemNameHidden = true;
+        EvidencePins.vignetteHidden = true;
+        EvidencePins.lightFlickerOff = true;
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40); // tick-wait: the world settles before the hall is built
             singleplayer.getServer().runOnServer(server -> {
@@ -87,6 +91,7 @@ public class DrifterVariantsScenario extends EvidenceScenario {
                 player.setNoGravity(true);
                 player.teleportTo(level, X + 0.5, FLOOR_Y + 1, Z + 0.5, Set.of(), 0f, 0f, true);
             });
+            ClientWait.chunksAround(context, X, Z, HALF_LENGTH + 2);
             ClientWait.until(
                     context,
                     "the player in layer 1 with the hall meshed",
@@ -114,6 +119,7 @@ public class DrifterVariantsScenario extends EvidenceScenario {
         for (Angle angle : ANGLES) {
             look(context, singleplayer, around(focus, frame.distance(), angle), focus);
             screenshot(context, "drifter-variants-" + variant.id() + "-" + angle.name());
+            frame(context);
             if (angle.name().equals("34")) {
                 ClientChecks.withHudHidden(
                         context, () -> screenshot(context, "drifter-variants-" + variant.id() + "-nohud"));
@@ -132,6 +138,7 @@ public class DrifterVariantsScenario extends EvidenceScenario {
                 place(singleplayer, DrifterVariant.CHAIN, eye.add(16, -1.5 - 1.5, 5)));
         look(context, singleplayer, eye, eye.add(14, -1.0, 0));
         screenshot(context, "drifter-variants-range");
+        frame(context);
         ClientChecks.withHudHidden(context, () -> screenshot(context, "drifter-variants-range-nohud"));
         made.forEach(id -> remove(singleplayer, id));
     }

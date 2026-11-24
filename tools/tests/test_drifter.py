@@ -25,6 +25,11 @@ def form(ident):
     return drifter.form(ident)
 
 
+def bell_panels(held):
+    """The membranes of the dome: its planes, not the lobes of its rim, which are drawn finer."""
+    return [cube for cube in held["bell"]["cubes"] if cube.size[2] == 0 and cube.density == 3.0]
+
+
 def reach(cubes, axis):
     """How far the cubes reach along an axis, from the lowest to the highest corner, once turned."""
     values = []
@@ -67,7 +72,7 @@ class Look(unittest.TestCase):
     def test_the_jellyfish_is_what_the_brief_names(self):
         held = bones("jellyfish")
         bell = held["bell"]["cubes"]
-        panels = [cube for cube in bell if cube.size[2] == 0 and cube.size[0] < 10]
+        panels = bell_panels(held)
         self.assertAlmostEqual(1.6 * BLOCK, reach(panels, 0), delta=2.0, msg="the bell is about 1.6 blocks across")
         self.assertLess(reach(bell, 0), 1.9 * BLOCK, "with the lobes flared at its rim")
         domed = [cube for cube in bell if cube.size[1] > 0]
@@ -75,23 +80,23 @@ class Look(unittest.TestCase):
         self.assertEqual(6, sum(1 for name in held if name.endswith("_a") and name.startswith("tendril_")))
         self.assertEqual(18, sum(1 for name in held if name.startswith("tendril_")), "six tendrils of three segments")
         self.assertEqual(4, sum(1 for name in held if name.startswith("arm_")), "four oral arms")
-        lobes = [cube for cube in bell if cube.size[2] == 0 and cube.size[0] > 10]
+        lobes = [cube for cube in bell if cube.density == 4.0]
         self.assertEqual(8, len(lobes), "eight lobes round the rim")
         for i in range(6):
             run = sum(held[f"tendril_{i}_{k}"]["cubes"][0].size[1] for k in "abc")
             self.assertTrue(2.5 * BLOCK - 1 <= run <= 3.0 * BLOCK + 1, f"tendril {i} is {run / BLOCK} blocks")
 
-    def test_the_jellyfish_skin_is_about_a_third_opaque(self):
-        _, skin, _, _ = form("jellyfish")
-        model = form("jellyfish")[0]
+    def test_the_jellyfish_bell_is_a_faint_translucent_sheet(self):
+        # The membrane is drawn by the glowmask, which adds light: a skin that writes depth hid the core and the tendrils behind it (#1204).
+        model, skin, glow, _ = form("jellyfish")
         alphas = []
-        for cube in model.bones["bell"]["cubes"]:
-            if cube.size[2] == 0 and cube.size[0] < 10 and cube.size[1] > 3:
-                x, y, w, h = cube.uv["north"]
-                for j in range(y, y + h):
-                    alphas.extend(skin.pixels[(j * skin.size + i) * 4 + 3] for i in range(x, x + w))
+        for cube in bell_panels(model.bones):
+            x, y, w, h = cube.uv["north"]
+            for j in range(y, y + h):
+                alphas.extend(glow.pixels[(j * glow.size + i) * 4 + 3] for i in range(x, x + w))
+                self.assertTrue(all(skin.pixels[(j * skin.size + i) * 4 + 3] == 0 for i in range(x, x + w)))
         mean = sum(alphas) / len(alphas) / 255
-        self.assertTrue(0.28 <= mean <= 0.5, f"the bell's skin is {mean:.2f} opaque, not about 0.35")
+        self.assertTrue(0.15 <= mean <= 0.4, f"the bell's membrane glows at {mean:.2f}, not a faint third")
 
     def test_the_sac_is_what_the_brief_names(self):
         held = bones("sac")
@@ -118,12 +123,15 @@ class Look(unittest.TestCase):
                 self.assertGreater(bright, 0, "something glows")
                 self.assertLess(bright / len(alphas), BRIGHT_SHARE, "the bright texels are the lights, not the sheet")
 
-    def test_the_skin_is_not_a_plain_box_texture(self):
+    def test_the_textures_are_painted_not_flat_boxes(self):
         for ident in FORMS:
             with self.subTest(form=ident):
-                skin = pngio.decode(drifter.build()[drifter.paths(ident)["texture"]])
-                painted = {skin.pixels[i:i + 4] for i in range(0, len(skin.pixels), 4)}
-                self.assertGreater(len(painted), 250, "gradients, veins and speckle, not a few flat colours")
+                built = drifter.build()
+                painted = set()
+                for key in ("texture", "glowmask"):
+                    image = pngio.decode(built[drifter.paths(ident)[key]])
+                    painted |= {image.pixels[i:i + 4] for i in range(0, len(image.pixels), 4)}
+                self.assertGreater(len(painted), 300, "gradients, veins and speckle, not a few flat colours")
 
 
 def chain_centre(i):

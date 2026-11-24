@@ -15,18 +15,21 @@ SIZE = 512
 SEED = 1204
 RIM = 22.0
 HEIGHT = 16.0
-APOTHEM = 12.6
+APOTHEM = 12.4
 PANELS = 8
 RING_HEIGHTS = (0.0, 2.0, 4.4, 7.0, 9.8, 12.4, 14.6, 16.0)
 ARMS = 4
 TENDRILS = 6
 TENDRIL_LENGTHS = (40.0, 46.0, 43.0, 48.0, 41.0, 45.0)
-TENDRIL_WIDTHS = (2.2, 1.8, 1.4)
+TENDRIL_WIDTHS = (1.9, 1.6, 1.3)
 SKIN = (150, 226, 216)
 CANAL = (196, 252, 246)
 COLD = (150, 255, 235)
 CORE_LIGHT = (170, 250, 255)
-CORE_LAYERS = ((21.5, 1.8, 1.5), (23.0, 2.6, 2.7), (25.4, 2.8, 3.4), (28.0, 2.8, 3.2), (30.6, 2.6, 2.5), (32.9, 2.0, 1.6))
+CORE_CENTRE = 28.2
+CORE_AXIAL = 5.8
+CORE_EQUATOR = 4.0
+CORE_SLAB = 1.9
 LOBE_WIDTH = 10.6
 LOBE_HEIGHT = 7.0
 TEAL_ALPHA = 92
@@ -48,7 +51,7 @@ def paint_bell(t):
     haze = kit.fbm(t.x * 0.22, t.y * 0.22, t.z * 0.22, SEED)
     colour = kit.mix(SKIN, (205, 245, 240), h * 0.6 + haze * 0.3)
     alpha = TEAL_ALPHA + 26 * (haze - 0.5) + 18 * h
-    glow = None
+    glow = (*COLD, 56 + 30 * haze)
     # Sixteen canals run from the apex to the rim and fork once near it, so they are thin, faint and wander a little.
     wander = (kit.noise(h * 6, azimuth * 2, 0, SEED + 5) - 0.5) * 0.08
     for count, reach in ((16, 1.0), (32, 0.45)):
@@ -64,11 +67,11 @@ def paint_bell(t):
         colour = kit.mix(colour, (70, 190, 190), 0.5)
         alpha += 55
         glow = (*COLD, 62)
-    return (*colour, alpha), glow
+    return (*colour, 0), glow
 
 
-def paint_cap(t):
-    return (*SKIN, 150), (*COLD, 40)
+def paint_cap(_t):
+    return (*SKIN, 0), (*COLD, 70)
 
 
 def lobe_painter():
@@ -78,7 +81,7 @@ def lobe_painter():
             return (0, 0, 0, 0), None
         colour = kit.mix(SKIN, (205, 245, 240), 0.3 + 0.3 * t.fv)
         alpha = TEAL_ALPHA + 40 * t.fv
-        glow = (*COLD, 30)
+        glow = (*COLD, 44)
         if edge - t.fv < 0.1:
             colour = kit.mix(colour, CANAL, 0.7)
             alpha = 190
@@ -87,16 +90,17 @@ def lobe_painter():
             cv = lobe_edge(cu) - 0.12
             if math.hypot((t.fu - cu) * LOBE_WIDTH, (t.fv - cv) * LOBE_HEIGHT) < (0.55 if cu == 0.5 else 0.38):
                 return (210, 255, 255, 255), (200, 255, 255, 255)
-        return (*colour, alpha), glow
+        return (*colour, 0), glow
 
     return paint
 
 
 def paint_core(t):
+    nx, ny, nz = kit.unit((t.x / CORE_EQUATOR**2, (t.y - CORE_CENTRE) / CORE_AXIAL**2, t.z / CORE_EQUATOR**2))
     swirl = kit.fbm(t.x * 0.35, t.y * 0.3, t.z * 0.35, SEED + 9)
-    shade = 0.35 + 0.5 * swirl + 0.2 * t.ny
-    colour = kit.mix((30, 150, 225), (150, 235, 255), shade - 0.2)
-    return (*colour, 255), (*kit.mix((40, 190, 240), CORE_LIGHT, shade - 0.1), 255)
+    lit = 0.45 + 0.3 * ny + 0.25 * swirl
+    colour = kit.mix((30, 150, 225), (150, 235, 255), lit - 0.1)
+    return (*colour, 255), (*kit.mix((40, 185, 240), CORE_LIGHT, lit - 0.1), 255)
 
 
 def paint_arm(t):
@@ -105,7 +109,7 @@ def paint_arm(t):
         return (0, 0, 0, 0), None
     edge = abs(t.fu - 0.5) > frill * (1 - 0.35 * t.fv) - 0.09
     colour = kit.mix(SKIN, CANAL, 0.5 if edge else 0.2)
-    return (*colour, 150 if edge else 82), (*COLD, 120 if edge else 22)
+    return (*colour, 0), (*COLD, 120 if edge else 50)
 
 
 def tendril_painter(last):
@@ -117,7 +121,7 @@ def tendril_painter(last):
         if t.fv < 0.09 or (0.46 < t.fv < 0.54):
             glow = (*COLD, 150)
             colour = kit.mix(colour, CANAL, 0.6)
-        return (*colour, 205), glow
+        return (*colour, 205), glow or (*COLD, 34)
 
     return paint
 
@@ -127,7 +131,7 @@ def paint_ribbon(t):
     if abs(t.fu - 0.5) > ripple * 0.9:
         return (0, 0, 0, 0), None
     edge = abs(t.fu - 0.5) > ripple * 0.9 - 0.12
-    return (*kit.mix(SKIN, CANAL, 0.5), 120 if edge else 50), ((*COLD, 70) if edge else None)
+    return (*kit.mix(SKIN, CANAL, 0.5), 0), (*COLD, 90 if edge else 34)
 
 
 def build():
@@ -135,9 +139,13 @@ def build():
     model.bone("root", None, (0, 0, 0))
     model.bone("body", "root", (0, RIM, 0))
     model.bone("core", "body", (0, 28.0, 0))
-    for y0, height, radius in CORE_LAYERS:
-        for cube in kit.disc((0.0, 0.0), y0, height, radius, 4, paint_core):
+    y = CORE_CENTRE - CORE_AXIAL + 0.2
+    while y < CORE_CENTRE + CORE_AXIAL - 0.8:
+        mid = y + CORE_SLAB / 2
+        radius = CORE_EQUATOR * math.sqrt(max(0.05, 1 - ((mid - CORE_CENTRE) / CORE_AXIAL) ** 2))
+        for cube in kit.disc((0.0, 0.0), y, CORE_SLAB, radius, 4, paint_core, 3.0, 1.0):
             model.add("core", cube)
+        y += CORE_SLAB
     model.add("core", Cube((-0.9, 34.6, -0.9), (1.8, 3.4, 1.8), paint_core, density=2.0))
     for i in range(ARMS):
         add_arm(model, i)
@@ -169,7 +177,7 @@ def add_bell(model):
         model.add("bell", Cube.flat((0, RIM + HEIGHT, 0), top, top, (0.0, turn, 0.0), paint_cap))
     for i in range(PANELS):
         heading = math.radians(360.0 / PANELS * i)
-        flare = math.radians(24)
+        flare = math.radians(16)
         reach = ring_apothem(0) + LOBE_HEIGHT / 2 * math.sin(flare)
         centre = (reach * math.sin(heading), RIM + 0.4 - LOBE_HEIGHT / 2 * math.cos(flare), reach * math.cos(heading))
         normal = (math.cos(flare) * math.sin(heading), math.sin(flare), math.cos(flare) * math.cos(heading))

@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 import pngio
 
 # The signs between this file's rotations and the numbers in the model file.
-EMIT = (-1, -1, 1)
+EMIT = (-1, 1, 1)
 FACES = ("north", "south", "east", "west", "up", "down")
 PAD = 1
 

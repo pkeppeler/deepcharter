@@ -18,13 +18,13 @@ CENTRE = 22.0
 TOP_REACH = 14.2
 BOTTOM_REACH = 17.0
 FLOOR = 9.6
-SLAB = 1.8
-SHOULDER = 11.0
+SLAB = 1.5
+SHOULDER = 13.0
 BONE = (236, 231, 214)
 SHADE = (132, 150, 148)
 VEIN = (196, 240, 212)
 COLD = (200, 255, 225)
-MERIDIANS = 8
+MERIDIANS = 6
 GILLS = 16
 INNER_GILLS = 8
 THREADS = 3
@@ -52,7 +52,7 @@ def paint_skin(t):
     if speckle > 0.8:
         colour = kit.mix(colour, (150, 160, 140), 0.45)
     alpha = 255.0
-    glow = None
+    glow = (*COLD, 40 + 40 * lit + 30 * mottle)
     patch = kit.fbm(t.x * 0.11 + 4, t.y * 0.11, t.z * 0.11, SEED + 8, 2)
     if patch > 0.6:
         fade = kit.smooth((patch - 0.6) / 0.05)
@@ -63,7 +63,7 @@ def paint_skin(t):
     if web < 0.07:
         colour = kit.mix(colour, VEIN, 0.85)
         alpha = max(alpha, 235)
-        glow = (*COLD, 190 if web < 0.04 else 80)
+        glow = (*COLD, 235 if web < 0.04 else 110)
     elif web < 0.12:
         colour = kit.mix(colour, (176, 206, 186), 0.4)
     if t.y < FLOOR + 0.3 and t.ny < -0.5:
@@ -83,7 +83,7 @@ def paint_dimple(t):
 
 def paint_ridge(t):
     glint = 0.5 + 0.5 * kit.noise(t.x * 0.4, t.y * 0.4, t.z * 0.4, SEED + 21)
-    return (*kit.mix((170, 214, 188), VEIN, glint), 255), (*COLD, 70 + 60 * glint)
+    return (*kit.mix((170, 214, 188), VEIN, glint), 255), (*COLD, 50 + 50 * glint)
 
 
 def paint_nucleus(t):
@@ -125,18 +125,17 @@ def add_slabs(model):
     top = CENTRE + SHOULDER
     for i in range(8):
         heading = 45.0 * i
-        centre = (7.0 * math.sin(math.radians(heading)), top + 1.0, 7.0 * math.cos(math.radians(heading)))
+        centre = (4.7 * math.sin(math.radians(heading)), top + 0.9, 4.7 * math.cos(math.radians(heading)))
         model.add(
             "body",
-            Cube((centre[0] - 3.2, centre[1] - 1.3, centre[2] - 1.5), (6.4, 2.6, 3.0), paint_skin, (0.0, heading, 0.0), centre, 2.0, 0.5),
+            Cube((centre[0] - 2.0, centre[1] - 1.1, centre[2] - 1.1), (4.0, 2.2, 2.2), paint_skin, (0.0, heading, 0.0), centre, 2.0, 0.5),
         )
-    floor_apothem = 6.4
-    model.add("body", Cube((-floor_apothem, top - 0.3, -floor_apothem), (2 * floor_apothem, 0.6, 2 * floor_apothem), paint_dimple, density=2.0, cap_density=2.0))
-    model.add("body", Cube((-floor_apothem, top - 0.3, -floor_apothem), (2 * floor_apothem, 0.6, 2 * floor_apothem), paint_dimple, (0.0, 45.0, 0.0), density=2.0))
+    for cube in kit.disc((0.0, 0.0), top - 0.5, 0.9, 3.9, 4, paint_dimple, 2.0, 2.0):
+        model.add("body", cube)
 
 
 def add_veins(model):
-    """Raised veins that wander: meridians that drift a few degrees at every step and break off now and then, and two rings that do the same."""
+    """Raised veins that wander: meridians that drift a few degrees at every step and break off now and then."""
     heights = [FLOOR + 1.6 + k * (CENTRE + SHOULDER - FLOOR - 2.4) / 6 for k in range(7)]
     for m in range(MERIDIANS):
         for k in range(6):
@@ -152,19 +151,7 @@ def add_veins(model):
             run = kit.length(axis)
             model.add(
                 "body",
-                Cube((centre[0] - 0.7, centre[1] - run / 2, centre[2] - 0.5), (1.4, run, 1.0), paint_ridge, kit.aim(axis), centre, 2.0),
-            )
-    for ring, y in enumerate((CENTRE - 4.0, CENTRE + 4.5)):
-        for i in range(16):
-            if kit.noise(i * 1.9, ring * 5.0, 0, SEED + 47) > 0.7:
-                continue
-            r = profile(y) + 0.4
-            chord = 2 * r * math.tan(math.pi / 16) * 1.08
-            heading = math.radians(22.5 * i)
-            centre = (r * math.sin(heading), y + 0.8 * math.sin(i * 0.9 + ring), r * math.cos(heading))
-            model.add(
-                "body",
-                Cube((centre[0] - chord / 2, centre[1] - 0.5, centre[2] - 0.5), (chord, 1.0, 1.0), paint_ridge, (0.0, 22.5 * i, 0.0), centre, 2.0),
+                Cube((centre[0] - 0.5, centre[1] - run / 2, centre[2] - 0.4), (1.0, run, 0.8), paint_ridge, kit.aim(axis), centre, 2.0),
             )
 
 
