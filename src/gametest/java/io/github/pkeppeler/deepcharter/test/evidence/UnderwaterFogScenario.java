@@ -27,7 +27,7 @@ public class UnderwaterFogScenario extends EvidenceScenario {
                     context,
                     server,
                     layer -> ClientChecks.withHudHidden(context, ParticleStatus.MINIMAL, () -> {
-                        // tick-wait: the camera's attribute probe eases over a few ticks, and nothing reports when it has
+                        // tick-wait: the camera's attribute probe eases over ticks, and nothing reports it done
                         context.waitTicks(40);
                         screenshot(context, "underwater-layer-" + layer);
                         frame(context);

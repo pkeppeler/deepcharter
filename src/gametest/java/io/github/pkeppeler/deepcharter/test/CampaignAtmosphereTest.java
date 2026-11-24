@@ -356,7 +356,8 @@ public class CampaignAtmosphereTest {
                     hex(water),
                     hex(new Vector3f(DARKEST_WATER)));
             if (above != null) {
-                Set<Integer> shared = new TreeSet<>(zeroChannels(wanted(above.value(), EnvironmentAttributes.WATER_FOG_COLOR)));
+                Set<Integer> shared =
+                        new TreeSet<>(zeroChannels(wanted(above.value(), EnvironmentAttributes.WATER_FOG_COLOR)));
                 shared.retainAll(zeroChannels(water));
                 expect(
                         helper,
