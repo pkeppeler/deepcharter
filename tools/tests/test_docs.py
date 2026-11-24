@@ -1,4 +1,5 @@
-"""Docs gate: no docs/**/*.md file repeats a heading under the same parent, and no markdown link points at a file that is gone.
+"""Docs gate: no docs/**/*.md file repeats a heading under the same parent, no markdown link points at a file that is gone,
+and every version the README and docs/PLAYING.md quote matches the build.
 
 A heading is a duplicate when the same text appears at the same level with the same chain of ancestor headings, so a repeated
 sub-heading such as "Knobs" under two different sections is fine, and a section pasted twice (the corruption this guards against)
@@ -116,6 +117,71 @@ class DocLinks(unittest.TestCase):
                 "`[code](nope.md)`\n```\n[fenced](nope.md)\n```\n"
             )
             self.assertEqual([(1, "../gradle/gone.gradle"), (1, "/gradle/gone.kts")], dangling(page, root))
+
+
+# What a doc may quote, and where the build sets it: gradle/libs.versions.toml, and the Java release in build.gradle.kts.
+QUOTED_VERSIONS = (
+    ("Fabric Loader", re.compile(r"Fabric Loader (\d+(?:\.\d+)+)"), "fabricLoader"),
+    ("Fabric API", re.compile(r"Fabric API (\d+(?:\.\d+)+(?:\+[\w.]+)?)"), "fabricApi"),
+    ("Minecraft", re.compile(r"Minecraft (\d+(?:\.\d+)+)"), "minecraft"),
+    ("Java", re.compile(r"\b(?:Java|JDK) (\d+)\b"), "javaRelease"),
+)
+VERSION_DOCS = ("README.md", "docs/PLAYING.md")
+CURRENT_FIXTURE = {"fabricLoader": "0.19.5", "fabricApi": "0.164.0+26.3", "minecraft": "26.3", "javaRelease": "25"}
+
+
+def build_versions(root):
+    """The versions the build sets: the [versions] table of libs.versions.toml, plus javaRelease."""
+    found = dict(re.findall(r'^(\w+)\s*=\s*"([^"]*)"', (root / "gradle/libs.versions.toml").read_text(), re.M))
+    release = re.search(r"options\.release\s*=\s*(\d+)", (root / "build.gradle.kts").read_text())
+    found["javaRelease"] = release.group(1) if release else ""
+    return found
+
+
+def stale_versions(text, name, current):
+    """One message for each version `text` quotes that the build does not set.
+
+    A Fabric API quote may leave off the "+<minecraft>" suffix, so 0.164.0 matches 0.164.0+26.3.
+    """
+    problems = []
+    for number, line in enumerate(text.splitlines(), 1):
+        for label, pattern, key in QUOTED_VERSIONS:
+            for match in pattern.finditer(INLINE_CODE.sub("", line)):
+                want = current[key]
+                if match.group(1) not in (want, want.split("+")[0]):
+                    where = "build.gradle.kts" if key == "javaRelease" else "gradle/libs.versions.toml"
+                    problems.append(f"{name}:{number}: stale '{match.group(0)}', the build has {label} {want} ({where})")
+    return problems
+
+
+class DocVersions(unittest.TestCase):
+    def test_the_versions_the_docs_quote_are_the_builds(self):
+        current = build_versions(ROOT)
+        problems = []
+        for name in VERSION_DOCS:
+            problems += stale_versions((ROOT / name).read_text(encoding="utf-8"), name, current)
+        self.assertEqual([], problems, "a doc quotes a version the build no longer uses")
+
+    def test_a_stale_version_fails_and_names_the_right_one(self):
+        text = "Fabric Loader 0.19.4, Fabric API 0.162.0, Minecraft 26.2, Java 21.\n"
+        self.assertEqual(
+            [
+                "d.md:1: stale 'Fabric Loader 0.19.4', the build has Fabric Loader 0.19.5 (gradle/libs.versions.toml)",
+                "d.md:1: stale 'Fabric API 0.162.0', the build has Fabric API 0.164.0+26.3 (gradle/libs.versions.toml)",
+                "d.md:1: stale 'Minecraft 26.2', the build has Minecraft 26.3 (gradle/libs.versions.toml)",
+                "d.md:1: stale 'Java 21', the build has Java 25 (build.gradle.kts)",
+            ],
+            stale_versions(text, "d.md", CURRENT_FIXTURE),
+        )
+
+    def test_current_versions_pass(self):
+        text = "Fabric Loader 0.19.5, Fabric API 0.164.0 or Fabric API 0.164.0+26.3, Minecraft 26.3, JDK 25.\nMinecraft Java Edition\n"
+        self.assertEqual([], stale_versions(text, "d.md", CURRENT_FIXTURE))
+
+    def test_the_build_files_still_say_where_the_versions_are(self):
+        current = build_versions(ROOT)
+        for key in CURRENT_FIXTURE:
+            self.assertTrue(current.get(key), f"{key} not found in the build files; the docs gate cannot read it")
 
 
 class DocHeadings(unittest.TestCase):
