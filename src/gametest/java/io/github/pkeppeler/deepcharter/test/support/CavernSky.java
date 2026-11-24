@@ -122,7 +122,7 @@ public final class CavernSky {
      */
     public static void tour(ClientGameTestContext context, TestServerContext server, AtView atView) {
         BlockPos floor = carve(server);
-        withShortRenderDistance(context, () -> {
+        ClientChecks.withRenderDistance(context, RENDER_DISTANCE, () -> {
             for (View view : VIEWS) {
                 stand(context, server, CavernSky::layer, floor, view);
                 atView.at(view, false);
@@ -172,21 +172,6 @@ public final class CavernSky {
                 floor.offset(PIT_START, -PIT_DEPTH, -HALF_WIDTH),
                 floor.offset(HALF_LENGTH, -1, HALF_WIDTH),
                 fill.defaultBlockState());
-    }
-
-    /**
-     * Runs {@code body} with the client's render distance at {@link #RENDER_DISTANCE}, and puts it back in a finally: every client test
-     * shares one client.
-     */
-    private static void withShortRenderDistance(ClientGameTestContext context, Runnable body) {
-        int was = context.computeOnClient(
-                client -> client.options.renderDistance().get());
-        try {
-            context.runOnClient(client -> client.options.renderDistance().set(RENDER_DISTANCE));
-            body.run();
-        } finally {
-            context.runOnClient(client -> client.options.renderDistance().set(was));
-        }
     }
 
     /**
