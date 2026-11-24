@@ -34,3 +34,9 @@ Amended 2026-11-22 (#915): the guard on surface biomes covers visual and audio a
 
 The user approved the look on 2026-11-21 (#214): the default `cardinal_light`, `ambient_light` 0.0, and the soft fade at the surface floor. The two provisional values are final. The type now ships as `minecraft:overworld` (`data/minecraft/dimension_type/overworld.json`), and a campaign level is one whose type is `minecraft:overworld`. The test pack's `campaign_sample` uses it; the flat test overworld uses `deepcharter:test_overworld`, so it is not a campaign level. The darkening with depth comes from each zone biome's ambient colour; the dimension's own ambient light is 0.
 
+
+## Note, 2026-11-24 (#1161)
+
+The sky is seen underground: the shared type draws it, and a cavern shows it wherever a line of sight runs past the render distance. Each layer zone biome now also sets `sky_color` (its fog colour), `sunrise_sunset_color` (alpha 0), `star_brightness` (0), and `sun_angle` and `moon_angle` (180, under the horizon, where the client draws its dark disc over them below y 63), plus `sky_fog_end_distance` (0, which no timeline sets, so the sky dome and the dark disc are all fog). `CampaignAtmosphereTest.everyLayerBiomeTurnsTheSkyIntoItsFog` names what a new zone biome must add.
+
+Under water the client draws no dark disc, and the sun and the moon are drawn without fog, so from under water a line of sight past the drawn sections still showed them at 180 degrees; no biome value reaches that. `client/layer/LayerSky` sets the sky's rain brightness, the alpha both are drawn with, to 0 while the camera is in a layer of the campaign world. It listens to Fabric's `LevelExtractionEvents.END_EXTRACTION`, which fires after the sky's state is extracted, so it needs no mixin.

@@ -930,7 +930,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -939,7 +940,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -948,7 +950,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -1095,7 +1098,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -1104,7 +1108,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -1113,7 +1118,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -1136,6 +1142,164 @@
           ]
         },
         "settings": "deepcharter:tall_layer"
+      }
+    },
+    "deepcharter:campaign_grain_sample": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:bands",
+          "surface_min_y": -64,
+          "surface": {
+            "biomes": [
+              {
+                "biome": "deepcharter:regolith_plains",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    0.22
+                  ],
+                  "erosion": [
+                    -2.0,
+                    0.5
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:mesa_country",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    0.22,
+                    2.0
+                  ],
+                  "erosion": [
+                    -1.0,
+                    1.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:basalt_field",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    0.22
+                  ],
+                  "erosion": [
+                    0.5,
+                    2.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:salvage_yard",
+                "parameters": {
+                  "temperature": [
+                    0.5,
+                    1.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    2.0
+                  ],
+                  "erosion": [
+                    -1.0,
+                    1.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              }
+            ]
+          },
+          "layers": [
+            {
+              "min_y": -256,
+              "height": 192,
+              "biomes": [
+                "deepcharter:topsoil_claims",
+                "deepcharter:stone_benches",
+                "deepcharter:deep_claim"
+              ],
+              "floor_crust": "grained"
+            },
+            {
+              "min_y": -512,
+              "height": 256,
+              "biomes": [
+                "deepcharter:upper_levels",
+                "deepcharter:shift_change",
+                "deepcharter:prospectors_run"
+              ],
+              "floor_crust": "draw"
+            }
+          ],
+          "unbuilt": "deepcharter:unbuilt_depth"
+        },
+        "settings": "deepcharter:campaign"
       }
     },
     "deepcharter:surface_sample": {
@@ -1409,7 +1573,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -1418,7 +1583,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -1427,7 +1593,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -1574,7 +1741,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -1583,7 +1751,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -1592,7 +1761,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -1739,7 +1909,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -1748,7 +1919,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -1757,7 +1929,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -1904,7 +2077,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -1913,7 +2087,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -1922,7 +2097,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -2069,7 +2245,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -2078,7 +2255,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -2087,7 +2265,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -2234,7 +2413,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -2243,7 +2423,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -2252,7 +2433,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -2399,7 +2581,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -2408,7 +2591,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -2417,7 +2601,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -2564,7 +2749,8 @@
                 "deepcharter:topsoil_claims",
                 "deepcharter:stone_benches",
                 "deepcharter:deep_claim"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -512,
@@ -2573,7 +2759,8 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ]
+              ],
+              "floor_crust": "normal"
             },
             {
               "min_y": -768,
@@ -2582,7 +2769,8 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ]
+              ],
+              "floor_crust": "normal"
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"

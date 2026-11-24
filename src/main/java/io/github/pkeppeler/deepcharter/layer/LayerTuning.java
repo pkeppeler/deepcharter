@@ -21,6 +21,8 @@ import java.util.Arrays;
  * @param grainSqueezeHull  hull a pod that is neither moving nor drilling loses to each pulse while it touches the grained crust
  * @param grainSqueezeDamage health a player on foot loses to each pulse while touching the grained crust
  * @param grainSkateHeatPerSecond hull heat a pod takes each second its drill skates sideways across the grain, before a radiator
+ * @param grainDecoyChance the chance that a boundary's crust is grained when its layer data leaves it to the seed (#216): about a third, so a
+ *                         grained crust is a seam only about a third of the time
  * @param glowcapLight      the block light of a glowcap, layer 3's glowing fungus (#972), read once when the block is registered: a small
  *                          light, so the fungus glows and the caverns stay dark (art direction: small things glow)
  */
@@ -39,9 +41,10 @@ public record LayerTuning(
         float grainSqueezeHull,
         float grainSqueezeDamage,
         float grainSkateHeatPerSecond,
+        double grainDecoyChance,
         int glowcapLight) {
     public static final LayerTuning DEFAULT =
-            new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 6);
+            new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 1.0 / 3, 6);
 
     public LayerTuning {
         if (glowcapLight < 0 || glowcapLight > 15) {
@@ -49,6 +52,9 @@ public record LayerTuning(
         }
         if (grainPulseTicks < 2) {
             throw new IllegalArgumentException("grainPulseTicks must be at least 2, got " + grainPulseTicks);
+        }
+        if (!(grainDecoyChance >= 0 && grainDecoyChance <= 1)) {
+            throw new IllegalArgumentException("grainDecoyChance must be from 0 to 1, got " + grainDecoyChance);
         }
         if (structureSpacing <= 0 || structureSpacing % 16 != 0) {
             throw new IllegalArgumentException(

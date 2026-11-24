@@ -94,6 +94,9 @@ public class CampaignContentTest {
     /** The test data pack's campaign sample dimension. */
     private static final String DIMENSION = "/data/deepcharter/dimension/campaign_sample.json";
 
+    /** The one feature unbuilt depth carries: its biome is in every column of the campaign world, so the pass runs once for each chunk. */
+    private static final String CRUST_PASS = "deepcharter:grained_crust_pass";
+
     private static final String UNBUILT_BIOME = "deepcharter:unbuilt_depth";
     /** The layers whose zones spawn the lampless figure: the Claim and the Old Workings (CREATURES section 5). */
     private static final int FIGURE_LAYERS = 2;
@@ -418,8 +421,9 @@ public class CampaignContentTest {
                         .getAsJsonArray("features")
                         .asList()
                         .stream()
-                        .allMatch(step -> step.getAsJsonArray().isEmpty()),
-                "unbuilt depth places features");
+                        .flatMap(step -> step.getAsJsonArray().asList().stream())
+                        .allMatch(feature -> feature.getAsString().equals(CRUST_PASS)),
+                "unbuilt depth places a feature besides the grained crust pass (#216), which every column runs once");
         helper.succeed();
     }
 
@@ -495,7 +499,7 @@ public class CampaignContentTest {
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void caveStalksGrowInTheFirstZoneOfLayers1And3Only(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        FarChunks.whenLoaded(helper, BlockSurvey.area(level, STALK_CHUNKS), () -> {
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, STALK_CHUNKS), () -> {
             Band layer = CampaignBands.LAYER_1;
             Zones.Span zone = Zones.span(layer.minY(), layer.height(), 0);
             Zones.Span garden = Zones.span(CampaignBands.LAYER_3.minY(), CampaignBands.LAYER_3.height(), 0);

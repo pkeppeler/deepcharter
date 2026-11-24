@@ -40,14 +40,16 @@ public final class LayerBlocks {
                     .noLootTable()));
 
     /**
-     * The grained crust (#746, ADR 0060): crust with a vertical grain that flexes on a slow pulse. The id is permanent. Its name and the
+     * The grained crust (#746, ADR 0060): crust with a vertical grain that flexes on a slow pulse. It takes the place of the breach crust at a
+     * seam or a decoy (#216), so it is as blast-proof and immovable as the breach crust (#1110). The id is permanent. Its name and the
      * messages that explain it are placeholders until the lore session (#12) names them.
      */
     public static final Block GRAINED_CRUST = registerBlock(
             id("grained_crust"),
             key -> new GrainedCrustBlock(BlockBehaviour.Properties.of()
                     .setId(key)
-                    .strength(5.0F, 6.0F)
+                    .strength(5.0F, Blocks.BEDROCK.getExplosionResistance())
+                    .pushReaction(PushReaction.IMMOVEABLE)
                     .sound(SoundType.STONE)
                     .noLootTable()));
 

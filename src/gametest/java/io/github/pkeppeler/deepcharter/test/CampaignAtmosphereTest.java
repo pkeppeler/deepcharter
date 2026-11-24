@@ -38,6 +38,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
 
 /**
  * Server GameTests for #797 (campaign world plan, #214; ADR 0062): in a campaign level the layers' zone biomes are applied after the
@@ -54,17 +55,26 @@ public class CampaignAtmosphereTest {
     /** A standing player's eye above the feet. */
     private static final double EYE_HEIGHT = 1.62;
 
-    /** What a player sees or hears underground, and that a timeline of the type drives: the biome must set each. */
+    /**
+     * What a player sees or hears underground, and that a timeline of the type drives: the biome must set each. The sky is among them: the
+     * shared type draws it, and a cavern shows it wherever a line of sight runs past the render distance (#1161).
+     */
     private static final List<EnvironmentAttribute<?>> UNDERGROUND = List.of(
             EnvironmentAttributes.FOG_COLOR,
             EnvironmentAttributes.FOG_START_DISTANCE,
             EnvironmentAttributes.FOG_END_DISTANCE,
             EnvironmentAttributes.SKY_LIGHT_FACTOR,
-            EnvironmentAttributes.AMBIENT_PARTICLES);
+            EnvironmentAttributes.AMBIENT_PARTICLES,
+            EnvironmentAttributes.SKY_COLOR,
+            EnvironmentAttributes.SUNRISE_SUNSET_COLOR,
+            EnvironmentAttributes.SUN_ANGLE,
+            EnvironmentAttributes.MOON_ANGLE,
+            EnvironmentAttributes.STAR_BRIGHTNESS);
 
     /**
-     * What the biome layer must put back in a layer, with the ambient colour: the six values of #797. The ambient colour is no timeline's, so
-     * the biome's static layer already wins; it is read here to pin that it stays so.
+     * What the biome layer must put back in a layer, with the ambient colour and the sky's fog end: the six values of #797 and the sky of
+     * #1161. The ambient colour and the sky's fog end are no timeline's, so the biome's static layer already wins; they are read here to pin
+     * that it stays so.
      */
     private static final List<EnvironmentAttribute<?>> LAYER_VALUES = List.of(
             EnvironmentAttributes.FOG_COLOR,
@@ -72,21 +82,28 @@ public class CampaignAtmosphereTest {
             EnvironmentAttributes.FOG_END_DISTANCE,
             EnvironmentAttributes.SKY_LIGHT_FACTOR,
             EnvironmentAttributes.AMBIENT_LIGHT_COLOR,
-            EnvironmentAttributes.AMBIENT_PARTICLES);
+            EnvironmentAttributes.AMBIENT_PARTICLES,
+            EnvironmentAttributes.SKY_COLOR,
+            EnvironmentAttributes.SUNRISE_SUNSET_COLOR,
+            EnvironmentAttributes.SUN_ANGLE,
+            EnvironmentAttributes.MOON_ANGLE,
+            EnvironmentAttributes.STAR_BRIGHTNESS,
+            EnvironmentAttributes.SKY_FOG_END_DISTANCE);
+
+    /**
+     * The angle that puts the sun and the moon straight down. Below the horizon the client draws a dark disc over them (vanilla's
+     * {@code SkyRenderer.renderDarkDisc}, under y 63 in a level that is not flat), which a sky fog end of 0 turns to the fog colour.
+     */
+    private static final float NADIR = 180f;
 
     /**
      * The visual and audio attributes a timeline of the type drives that no underground player can see or hear, each with why. A new
      * one in a timeline fails {@link #everyTimelineAttributeIsSeenOrAcknowledged} until it is listed here or in {@link #UNDERGROUND}.
      */
     private static final Map<EnvironmentAttribute<?>, String> NOT_UNDERGROUND = Map.ofEntries(
-            Map.entry(EnvironmentAttributes.SKY_COLOR, "the sky is not drawn underground"),
-            Map.entry(EnvironmentAttributes.CLOUD_COLOR, "clouds are not drawn underground"),
-            Map.entry(EnvironmentAttributes.SUNRISE_SUNSET_COLOR, "the sky is not drawn underground"),
-            Map.entry(EnvironmentAttributes.SUN_ANGLE, "the sky is not drawn underground"),
-            Map.entry(EnvironmentAttributes.MOON_ANGLE, "the sky is not drawn underground"),
-            Map.entry(EnvironmentAttributes.STAR_ANGLE, "the sky is not drawn underground"),
-            Map.entry(EnvironmentAttributes.STAR_BRIGHTNESS, "the sky is not drawn underground"),
-            Map.entry(EnvironmentAttributes.MOON_PHASE, "the sky is not drawn underground"),
+            Map.entry(EnvironmentAttributes.CLOUD_COLOR, "the timeline's clouds are clear, and far above every layer"),
+            Map.entry(EnvironmentAttributes.STAR_ANGLE, "a layer biome's star brightness of 0 draws no star"),
+            Map.entry(EnvironmentAttributes.MOON_PHASE, "a layer biome's moon angle puts the moon under the horizon"),
             Map.entry(EnvironmentAttributes.SKY_LIGHT_COLOR, "a layer's sky light factor of 0 hides it"),
             Map.entry(EnvironmentAttributes.FIREFLY_BUSH_SOUNDS, "no layer grows a firefly bush"));
 
@@ -236,6 +253,61 @@ public class CampaignAtmosphereTest {
                         "layer biome %s sets %s with a modifier other than override",
                         id(biome),
                         name(attribute));
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A cavern shows the sky wherever a line of sight runs past the render distance, so each layer biome turns the sky into its fog
+     * (#1161): the sky's colour is the fog colour, the sky dome is all fog, no sunset glow, no stars, and the sun and the moon straight down.
+     */
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
+    public void everyLayerBiomeTurnsTheSkyIntoItsFog(GameTestHelper helper) {
+        List<Holder<Biome>> layerBiomes = layerBiomes(helper.getLevel());
+        expect(helper, !layerBiomes.isEmpty(), "the sample level places no layer biome");
+        for (Holder<Biome> holder : layerBiomes) {
+            Biome biome = holder.value();
+            Identifier id = id(holder);
+            Vector3fc fog = wanted(biome, EnvironmentAttributes.FOG_COLOR);
+            expect(
+                    helper,
+                    biome.getAttributes().contains(EnvironmentAttributes.SKY_COLOR)
+                            && wanted(biome, EnvironmentAttributes.SKY_COLOR).equals(fog),
+                    "layer biome %s: set minecraft:visual/sky_color to its fog colour %s, or the fog takes on the sky's colour",
+                    id,
+                    hex(fog));
+            expect(
+                    helper,
+                    biome.getAttributes().contains(EnvironmentAttributes.SKY_FOG_END_DISTANCE)
+                            && wanted(biome, EnvironmentAttributes.SKY_FOG_END_DISTANCE) == 0f,
+                    "layer biome %s: set minecraft:visual/sky_fog_end_distance to 0.0, so the sky dome and the dark disc under the horizon"
+                            + " are all fog, read %s",
+                    id,
+                    wanted(biome, EnvironmentAttributes.SKY_FOG_END_DISTANCE));
+            expect(
+                    helper,
+                    biome.getAttributes().contains(EnvironmentAttributes.SUNRISE_SUNSET_COLOR)
+                            && wanted(biome, EnvironmentAttributes.SUNRISE_SUNSET_COLOR)
+                                            .w()
+                                    == 0f,
+                    "layer biome %s: set minecraft:visual/sunrise_sunset_color to \"#00000000\" (alpha 0), or the dusk glow shows",
+                    id);
+            expect(
+                    helper,
+                    biome.getAttributes().contains(EnvironmentAttributes.STAR_BRIGHTNESS)
+                            && wanted(biome, EnvironmentAttributes.STAR_BRIGHTNESS) == 0f,
+                    "layer biome %s: set minecraft:visual/star_brightness to 0.0, or the stars show",
+                    id);
+            for (EnvironmentAttribute<Float> body :
+                    List.of(EnvironmentAttributes.SUN_ANGLE, EnvironmentAttributes.MOON_ANGLE)) {
+                expect(
+                        helper,
+                        biome.getAttributes().contains(body) && wanted(biome, body) == NADIR,
+                        "layer biome %s: set %s to %s, so it stands under the horizon, behind the dark disc",
+                        id,
+                        name(body),
+                        NADIR);
             }
         }
         helper.succeed();
@@ -413,6 +485,11 @@ public class CampaignAtmosphereTest {
     /** The audio is not compared: the flat overworld's biome has its own music and sounds. {@link #noSurfaceBiomeSetsWhatATimelineSets} covers audio. */
     private static boolean isVisual(EnvironmentAttribute<?> attribute) {
         return name(attribute).startsWith("minecraft:visual/");
+    }
+
+    private static String hex(Vector3fc colour) {
+        return "#%02x%02x%02x"
+                .formatted(Math.round(colour.x() * 255), Math.round(colour.y() * 255), Math.round(colour.z() * 255));
     }
 
     private static String name(EnvironmentAttribute<?> attribute) {
