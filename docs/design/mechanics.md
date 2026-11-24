@@ -1800,6 +1800,20 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open questions.** Whether a decoy should squeeze less than a seam (it must not: a seam cannot be told from a decoy); whether the pulse should be heard from a distance (the warning creak is positional, so a player near a squeezed pod hears it too).
 
+## Grained crust decoys (#216, A)
+
+**Problem.** If only seams were grained, the first grained crust a player met would show them where a seam is. A seam then needs decoys among the other crusts that follow the same four rules.
+
+**The draw.** Each layer's floor is a boundary. One hash of the world seed and the boundary's own Y (the lowest row of its crust) decides it, and about a third come out grained (`grainDecoyChance`). The Y is the identity, not the band's place in the list: the bands are fixed in Y, so a band added anywhere redraws no other boundary, and no chunk is asked: every chunk reaches the same answer. A chunk pass (`GrainedCrustPass`, a placed feature of the unbuilt-depth biome, which every column of the campaign world holds) swaps the breach crust that the material rule lays for the grained crust where the draw says so. The grained crust takes the breach crust's place in the floor rows, so it carries the same hardening (#1110 below): bedrock's blast resistance, immovable, and wither- and dragon-immune.
+
+**Layer data.** A `deepcharter:bands` layer takes `floor_crust`: `draw` (the default), `normal` or `grained`. A seam's layer sets `grained`; the first breach (layer 1 to 2) sets `normal`, because handbook chapter 8 teaches it. Layer 2's floor is `normal` until layer 3's band gives it a boundary to draw for (#1022, waits on #972), so nothing in the live game is a decoy yet.
+
+**Ladder.** None: a decoy is the same block with the same rules as a seam, so no counterplay tells them apart. A decoy that squeezes less would give the seam away.
+
+**Trade-offs.** A decoy costs the player nothing they would not pay at a seam, but it is a crust that the drill must bore straight down through, and one a pod cannot park on. The drill takes no crust hull damage through a grained crust (that is the breach crust's), only the squeeze if the pod stops. A generated grained crust next to fluid already in the world is not flagged changed (worldgen sends no neighbour update), so it absorbs only once that fluid flows; crust rows are rock-sealed in practice.
+
+**Knobs.** `grainDecoyChance` (1/3). **Open questions.** Whether the crust of the last layer (nothing below it) should be refused to the drill as the breach crust is: a grained one is not, today.
+
 
 ## Company rations (#838, A)
 
@@ -2115,7 +2129,7 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Problem.** The crust at each layer's floor is the one gate the pod's drill, a creative hand and nothing else may open ([ADR 0059](../adr/0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md), [ADR 0061](../adr/0061-a-crossing-in-the-campaign-world-is-an-event-in-place-found-by-the-root-vehicles-y-with-the-crust-rows-as-hysteresis.md)). It had stone's blast resistance (6) and vanilla's default push reaction, so any explosion of power 3 or more broke part of it, and a piston pushed it, pulled it (sticky) or lifted it. A broken crust skips the breach gating: no crossing event, no hull cost, no transmission.
 
-**Rule.** Every crust block (the crust rows of every layer's floor, found from `CampaignBands`, not only the last) has bedrock's blast resistance (3,600,000) and `PushReaction.IMMOVEABLE`, and is in `minecraft:wither_immune` and `minecraft:dragon_immune`. Its hardness stays 5, so the drill's refusal, the hand-break guard and `PodCharge`'s spare of crust are unchanged. An enderman cannot hold it (it is not in `enderman_holdable`), and a falling block lands on it and leaves it alone.
+**Rule.** Every crust block (the crust rows of every layer's floor, found from `CampaignBands`, not only the last) has bedrock's blast resistance (3,600,000) and `PushReaction.IMMOVEABLE`, and is in `minecraft:wither_immune` and `minecraft:dragon_immune`. The grained crust that replaces it at a seam or decoy (#216) holds the same. Its hardness stays 5, so the drill's refusal, the hand-break guard and `PodCharge`'s spare of crust are unchanged. An enderman cannot hold it (it is not in `enderman_holdable`), and a falling block lands on it and leaves it alone.
 
 **Decision.** Blast-proof and immovable, with no tell: a blast that meets crust is a blast that meets a wall, which is what a player expects of a floor. A visible or audible tell (a thud, a spark) was left out because no hook catches "an explosion reached this block" without a mixin on `Explosion`, and the crust's job is to be a floor, not a puzzle.
 
