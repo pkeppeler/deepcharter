@@ -13,7 +13,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
  * server and the client in lockstep, so it never does by itself. Inert until {@link #start} and ended by {@link #stop}, which a test
  * calls in a {@code finally}. Read by {@code ClientPacketListenerMixin}. Client thread only.
  *
- * <p>It also counts the client ticks in a row that handled no move ({@link #resetMoveless}, {@link #movelessTicks}), because the test
+ * <p>It also counts the client ticks in a row that handled no move of any entity ({@link #resetMoveless}, {@link #movelessTicks}), because the test
  * server is a real one behind a real socket: on a loaded machine it can deliver late on its own, on top of the stall a test injects, and
  * a test that judges a pod against the stall it asked for would be judging it against a longer one.
  */
@@ -68,7 +68,7 @@ public final class PacketJitter {
         stallUntil = level.getGameTime() + ticks;
     }
 
-    /** Starts counting the longest stretch of client ticks with no entity move handled from now. */
+    /** Starts counting the longest stretch of client ticks with no move of any entity handled from now. */
     public static void resetMoveless() {
         movelessTicks = 0;
         lastMoveTick = clientTick;
