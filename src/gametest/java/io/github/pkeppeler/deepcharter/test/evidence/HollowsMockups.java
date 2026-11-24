@@ -107,8 +107,9 @@ final class HollowsMockups {
                 Optional<BlockPos> cell = HollowsSpots.floorAt(
                         level, column.getX(), column.getZ(), spot.tall().getY(), 3);
                 for (int seed = 0; cell.isPresent() && seed < STALK_SEEDS; seed++) {
+                    // Not in worldgen: the stalk may reach into a neighbouring chunk.
                     if (GreatStalk.place(
-                            level, RandomSource.create(seed), cell.get().offset(-1, 0, -1))) {
+                            level, RandomSource.create(seed), cell.get().offset(-1, 0, -1), false)) {
                         grew = "great stalk seed " + seed + " at " + cell.get().toShortString();
                         break search;
                     }
