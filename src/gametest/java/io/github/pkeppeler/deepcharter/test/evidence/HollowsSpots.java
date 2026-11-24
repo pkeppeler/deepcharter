@@ -29,10 +29,10 @@ final class HollowsSpots {
     private static final int GRID = 3;
     /** Candidates stay this far inside their zone, so the camera's biome blend never reaches the next one. */
     private static final int ZONE_INSET = 12;
-    /** Free cells over the floor that a candidate needs: its feet stand {@link #FEET_OVER_FLOOR} over it, the eye 1.62 over the feet. */
+    /** Free cells over the floor that a candidate needs: its feet stand {@link #FEET_RISE} over it, the eye 1.62 over the feet. */
     private static final int HEADROOM = 5;
 
-    static final int FEET_OVER_FLOOR = 2;
+    static final int FEET_RISE = 2;
     private static final int[] FAN_YAWS = {-30, -15, 0, 15, 30};
     private static final int[] FAN_PITCHES = {-15, 0, 15};
     /** A glowcap within the view's cone, between these distances, adds this much to the score: a lit view reads, a black one does not. */
@@ -113,7 +113,7 @@ final class HollowsSpots {
                     if (!isFloor(level, new BlockPos(cx, y, cz), HEADROOM)) {
                         continue;
                     }
-                    BlockPos feet = new BlockPos(cx, y + FEET_OVER_FLOOR, cz);
+                    BlockPos feet = new BlockPos(cx, y + FEET_RISE, cz);
                     for (int heading = 0; heading < 8; heading++) {
                         float yaw = heading * 45f;
                         int score = fan(level, feet, yaw) + glowScore(glowcaps, feet, yaw);
