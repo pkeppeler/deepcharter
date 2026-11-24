@@ -35,7 +35,13 @@
         "particle": {
           "type": "deepcharter:dust_mote"
         },
-        "probability": 0.06
+        "probability": 0.3
+      },
+      {
+        "particle": {
+          "type": "minecraft:glow"
+        },
+        "probability": 0.02
       }
     ],
     "minecraft:visual/fog_color": "#0c1416",
