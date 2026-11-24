@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostData.Outpost;
 import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
 import io.github.pkeppeler.deepcharter.suit.SuitState;
 import io.github.pkeppeler.deepcharter.suit.SuitTicker;
+import io.github.pkeppeler.deepcharter.suit.SuitTracks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import java.util.List;
@@ -134,7 +135,17 @@ public final class SuitScenes {
     /** Sets the suit of {@code player} to a clean state with {@code reserve} left. */
     public static void setReserve(ServerPlayer player, float reserve, boolean explained) {
         player.setAttached(
-                SuitRegistry.SUIT, Versioned.of(new SuitState(reserve, explained, SuitState.Mode.INERT, 0, 0f)));
+                SuitRegistry.SUIT, Versioned.of(new SuitState(reserve, explained, SuitState.Mode.INERT, 0f, 0)));
+    }
+
+    /** Gives {@code player} suit {@code tracks}. */
+    public static void setTracks(ServerPlayer player, SuitTracks tracks) {
+        player.setAttached(SuitRegistry.TRACKS, Versioned.of(tracks));
+    }
+
+    /** The suit tracks of {@code player}, which must be readable. */
+    public static SuitTracks tracks(ServerPlayer player) {
+        return Versioned.readable(player, SuitRegistry.TRACKS).orElseThrow();
     }
 
     /** Runs {@code count} seconds of {@code player}'s suit. */
