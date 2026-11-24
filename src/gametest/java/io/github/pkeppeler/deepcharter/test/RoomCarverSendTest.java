@@ -79,8 +79,8 @@ public class RoomCarverSendTest {
         carveThenArrive(
                 helper,
                 1,
-                new BlockPos(6400 + 4, TestLayers.worldY(1, LOCAL_FLOOR), 6400 + 4),
-                new BlockPos(6400 + 10, TestLayers.worldY(1, LOCAL_FLOOR) + 4, 6400 + 10));
+                new BlockPos(26400 + 4, TestLayers.worldY(1, LOCAL_FLOOR), 26400 + 4),
+                new BlockPos(26400 + 10, TestLayers.worldY(1, LOCAL_FLOOR) + 4, 26400 + 10));
     }
 
     @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
@@ -88,16 +88,16 @@ public class RoomCarverSendTest {
         carveThenArrive(
                 helper,
                 2,
-                new BlockPos(6600 - 6, TestLayers.worldY(2, LOCAL_FLOOR), 6600 - 6),
-                new BlockPos(6600 + 6, TestLayers.worldY(2, LOCAL_FLOOR) + 4, 6600 + 6));
+                new BlockPos(26600 - 6, TestLayers.worldY(2, LOCAL_FLOOR), 26600 - 6),
+                new BlockPos(26600 + 6, TestLayers.worldY(2, LOCAL_FLOOR) + 4, 26600 + 6));
     }
 
     /** A player who has the chunk before the carve gets block updates, not the chunk again: a resend to everyone would pass the tests above. */
     @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aPlayerWhoHadTheChunkBeforeTheCarveIsNotSentItAgain(GameTestHelper helper) {
         int layer = 1;
-        BlockPos min = new BlockPos(6800 + 4, TestLayers.worldY(1, LOCAL_FLOOR), 6800 + 4);
-        BlockPos max = new BlockPos(6800 + 10, TestLayers.worldY(1, LOCAL_FLOOR) + 4, 6800 + 10);
+        BlockPos min = new BlockPos(26800 + 4, TestLayers.worldY(1, LOCAL_FLOOR), 26800 + 4);
+        BlockPos max = new BlockPos(26800 + 10, TestLayers.worldY(1, LOCAL_FLOOR) + 4, 26800 + 10);
         ServerLevel level = TestLayers.level(helper.getLevel().getServer(), layer);
         MockPlayer player = MockPlayers.join(helper, "had-" + min.getX());
         ChunkPos room = ChunkPos.containing(min);

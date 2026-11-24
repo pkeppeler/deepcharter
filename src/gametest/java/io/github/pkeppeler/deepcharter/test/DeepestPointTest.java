@@ -29,7 +29,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for #476: a charter's deepest point rises through play and nothing else, and the layer-gated work orders open from it.
- * No test here writes the record by hand. Columns 9100 to 9300 are this class's.
+ * No test here writes the record by hand.
  */
 public class DeepestPointTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1000;

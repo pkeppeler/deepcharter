@@ -12,7 +12,7 @@ import net.minecraft.server.level.ServerLevel;
  * waits until it is not loaded (which saves it with its entities), and a force loads it again.
  *
  * <p>The test method calls {@link #cycle} and gives itself {@code 2 * FarChunks.AWAIT_BUDGET_TICKS} ticks, plus the test's own work.
- * Pick a column no other test uses: the chunk is left forced.
+ * Claim the column in {@code TestSiteTable}: the chunk is left forced.
  */
 public final class UnloadedChunk {
     private UnloadedChunk() {}

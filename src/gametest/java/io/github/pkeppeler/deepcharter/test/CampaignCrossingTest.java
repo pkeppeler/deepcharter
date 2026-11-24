@@ -52,8 +52,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for breach crossing inside the campaign world (#745, ADR 0061), in {@code deepcharter:campaign_sample}: the layers
- * are Y bands of one level, so a crossing is noticed as the root vehicle passes a band boundary and moves nobody. Columns 21000 to
- * 21999 are this class's.
+ * are Y bands of one level, so a crossing is noticed as the root vehicle passes a band boundary and moves nobody.
  */
 public class CampaignCrossingTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";

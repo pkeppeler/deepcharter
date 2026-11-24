@@ -30,7 +30,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class PodDriveStepTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 700;
-    private static final int X = 4024;
+    private static final int X = 4264;
     private static final int Z = 3000;
     private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final float EAST = -90f;

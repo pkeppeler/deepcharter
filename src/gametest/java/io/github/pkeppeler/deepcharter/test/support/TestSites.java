@@ -1,0 +1,208 @@
+package io.github.pkeppeler.deepcharter.test.support;
+
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
+
+/**
+ * Who stages where. Layer tests share one world and stage at fixed columns far from the spawn, so two tests that pick the same column
+ * of a layer corrupt each other, and only when they run in one batch (#1178). Every such test has its columns claimed in
+ * {@link TestSiteTable}, one box of block columns per room (room, shell and the pod's travel), and {@code TestSitesTest} fails the
+ * build's GameTest run when two owners' boxes overlap in one layer, whatever order or batch the tests run in.
+ *
+ * <p>The claims cannot go stale unnoticed: {@link RoomCarver#carve} and {@link FarChunks#force} call {@link #guardCarve} and
+ * {@link #guardChunk}, which fail the calling test when it stages outside its own claims. A test that stages and has no claim at all
+ * fails there too, and the build fails on a server test that uses {@code FarChunks} or {@code RoomCarver} and is named nowhere in the
+ * table ({@code gradle/gametest.gradle.kts}). To add a site, add a line to the table and run {@code TestSitesTest}.
+ *
+ * <p>The spawn square ({@link #SPAWN_RADIUS}) is every world's own: the colony, the content surveys. Nothing claims it and nothing
+ * there is checked. Dimensions other than the overworld and the campaign sample level are one test's own and are not checked.
+ */
+public final class TestSites {
+    /** Blocks around the origin that every test world shares and that no test claims. */
+    public static final int SPAWN_RADIUS = 512;
+
+    /** The first layer past the built ones: the campaign sample's unbuilt depth, which tests carve pockets in too. */
+    private static final int UNBUILT = CampaignBands.lastLayer() + 1;
+
+    /** One owner's inclusive block columns in one layer; layer 0 is the surface. */
+    public record Site(String owner, int layer, int x0, int x1, int z0, int z1) {
+        public Site {
+            if (x1 < x0 || z1 < z0) {
+                throw new IllegalArgumentException(
+                        owner + " claims an empty box " + x0 + ".." + x1 + ", " + z0 + ".." + z1);
+            }
+        }
+
+        boolean overlaps(Site other) {
+            return layer == other.layer && x0 <= other.x1 && other.x0 <= x1 && z0 <= other.z1 && other.z0 <= z1;
+        }
+
+        boolean contains(int fromX, int toX, int fromZ, int toZ) {
+            return x0 <= fromX && toX <= x1 && z0 <= fromZ && toZ <= z1;
+        }
+
+        boolean touches(int fromX, int toX, int fromZ, int toZ) {
+            return x0 <= toX && fromX <= x1 && z0 <= toZ && fromZ <= z1;
+        }
+
+        @Override
+        public String toString() {
+            return "%s layer %s x %s..%s z %s..%s".formatted(owner, layer, x0, x1, z0, z1);
+        }
+    }
+
+    private static final List<Site> SITES = new ArrayList<>();
+    private static final List<String> EXEMPT = new ArrayList<>();
+
+    static {
+        TestSiteTable.fill();
+    }
+
+    private TestSites() {}
+
+    /**
+     * Claims the block columns {@code x0..x1}, {@code z0..z1} (inclusive) of {@code layer} for the test class named {@code owner} (its
+     * simple name; a nested class counts as its outer class).
+     */
+    static void claim(String owner, int layer, int x0, int x1, int z0, int z1) {
+        SITES.add(new Site(owner, layer, x0, x1, z0, z1));
+    }
+
+    /** Claims {@code count} boxes, each {@code step} columns east of the one before, the first at {@code x0..x1}. */
+    static void row(String owner, int layer, int x0, int x1, int step, int count, int z0, int z1) {
+        for (int i = 0; i < count; i++) {
+            claim(owner, layer, x0 + i * step, x1 + i * step, z0, z1);
+        }
+    }
+
+    /** Names a test class that stages only where no claim can say: it is checked by nothing. Say why. */
+    static void exempt(String owner, String reason) {
+        if (reason.isBlank()) {
+            throw new IllegalArgumentException(owner + " is exempt for no reason");
+        }
+        EXEMPT.add(owner);
+    }
+
+    /** Every claim. */
+    public static List<Site> sites() {
+        return List.copyOf(SITES);
+    }
+
+    /** Every owner the table names, claiming or exempt. */
+    public static List<String> owners() {
+        List<String> owners = new ArrayList<>(EXEMPT);
+        SITES.forEach(site -> owners.add(site.owner()));
+        return owners.stream().distinct().sorted().toList();
+    }
+
+    /** Each pair of boxes of two different owners that share a column of one layer, as one line each. */
+    public static List<String> overlaps() {
+        return overlapsIn(SITES);
+    }
+
+    /** As {@link #overlaps}, for any list of boxes. */
+    public static List<String> overlapsIn(List<Site> sites) {
+        List<String> found = new ArrayList<>();
+        for (int i = 0; i < sites.size(); i++) {
+            for (int j = i + 1; j < sites.size(); j++) {
+                Site a = sites.get(i);
+                Site b = sites.get(j);
+                if (!a.owner().equals(b.owner()) && a.overlaps(b)) {
+                    found.add(a + " overlaps " + b);
+                }
+            }
+        }
+        return found;
+    }
+
+    /** Fails the calling test when it carves a room outside its claims. Called by {@link RoomCarver}. */
+    public static void guardCarve(ServerLevel level, BlockPos min, BlockPos max) {
+        if (!shared(level)) {
+            return;
+        }
+        // The shell RoomSeal writes is one block outside the room.
+        int x0 = min.getX() - 1;
+        int x1 = max.getX() + 1;
+        int z0 = min.getZ() - 1;
+        int z1 = max.getZ() + 1;
+        if (inSpawn(x0, x1, z0, z1)) {
+            return;
+        }
+        Optional<String> owner = caller();
+        if (owner.isEmpty() || EXEMPT.contains(owner.get())) {
+            return;
+        }
+        int layer = layerAt((min.getY() + max.getY()) / 2);
+        boolean claimed = SITES.stream()
+                .anyMatch(site ->
+                        site.owner().equals(owner.get()) && site.layer() == layer && site.contains(x0, x1, z0, z1));
+        if (!claimed) {
+            throw new IllegalStateException(owner.get() + " carves layer " + layer + " x " + x0 + ".." + x1 + " z " + z0
+                    + ".." + z1
+                    + " (the room and its shell), outside its claims. Claim the site in TestSiteTable: a test that"
+                    + " stages where another stages fails only when they share a batch (#1182).");
+        }
+    }
+
+    /** Fails the calling test when it forces a chunk none of its claims touches. Called by {@link FarChunks}. */
+    public static void guardChunk(ServerLevel level, int chunkX, int chunkZ) {
+        if (!shared(level)) {
+            return;
+        }
+        int x0 = chunkX * 16;
+        int z0 = chunkZ * 16;
+        if (inSpawn(x0, x0 + 15, z0, z0 + 15)) {
+            return;
+        }
+        Optional<String> owner = caller();
+        if (owner.isEmpty() || EXEMPT.contains(owner.get())) {
+            return;
+        }
+        boolean claimed = SITES.stream()
+                .anyMatch(site -> site.owner().equals(owner.get()) && site.touches(x0, x0 + 15, z0, z0 + 15));
+        if (!claimed) {
+            throw new IllegalStateException(owner.get() + " forces chunk " + chunkX + ", " + chunkZ + " (x " + x0 + ".."
+                    + (x0 + 15) + ", z " + z0 + ".." + (z0 + 15)
+                    + "), which none of its claims touches. Claim the site in TestSiteTable (#1182).");
+        }
+    }
+
+    private static boolean shared(ServerLevel level) {
+        return level.dimension().equals(Level.OVERWORLD)
+                || level.dimension()
+                        .identifier()
+                        .equals(Identifier.fromNamespaceAndPath("deepcharter", "campaign_sample"));
+    }
+
+    private static boolean inSpawn(int x0, int x1, int z0, int z1) {
+        return x0 >= -SPAWN_RADIUS && x1 <= SPAWN_RADIUS && z0 >= -SPAWN_RADIUS && z1 <= SPAWN_RADIUS;
+    }
+
+    private static int layerAt(int y) {
+        return CampaignBands.bandAt(y).map(band -> band.layer()).orElse(UNBUILT);
+    }
+
+    /**
+     * The server test class that is staging: the outermost class of the first frame in {@code io.github.pkeppeler.deepcharter.test}
+     * itself (not its support, mixin or evidence packages) that is not a client test (a client test runs its own world). Empty when no such frame is on the stack.
+     */
+    private static Optional<String> caller() {
+        return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+                .walk(frames -> frames.map(StackWalker.StackFrame::getDeclaringClass)
+                        .filter(c -> c.getPackageName()
+                                .equals(TestSites.class.getPackageName().replaceAll("\\.support$", "")))
+                        .map(c -> outer(c).getSimpleName())
+                        .filter(name -> !name.endsWith("ClientTest"))
+                        .findFirst());
+    }
+
+    private static Class<?> outer(Class<?> c) {
+        return c.getEnclosingClass() == null ? c : outer(c.getEnclosingClass());
+    }
+}
