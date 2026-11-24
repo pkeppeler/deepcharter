@@ -230,7 +230,13 @@ public class CampaignAtmosphereTest {
                     name(attribute));
         }
         List<Holder<Biome>> layerBiomes = layerBiomes(level);
-        expect(helper, layerBiomes.size() == 6, "the layers have %s zone biomes, wanted 6", layerBiomes.size());
+        int zoneBiomes = CampaignBands.LAYERS.size() * Zones.COUNT;
+        expect(
+                helper,
+                layerBiomes.size() == zoneBiomes,
+                "the layers have %s zone biomes, wanted %s",
+                layerBiomes.size(),
+                zoneBiomes);
         for (Holder<Biome> biome : layerBiomes) {
             for (EnvironmentAttribute<?> attribute : UNDERGROUND) {
                 expect(
