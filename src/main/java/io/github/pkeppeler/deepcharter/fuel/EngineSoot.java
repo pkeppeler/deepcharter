@@ -242,12 +242,62 @@ public final class EngineSoot {
     }
 
     /**
+     * What a service paid from {@code account} dollars does: all the soot for {@link #serviceCost} when the account
+     * pays for that ({@code all}), or else as many whole litres as it pays for at the tuned price.
+     */
+    public record ServiceQuote(int litres, long cost, boolean all) {}
+
+    /**
+     * The service {@code account} dollars buy now: empty for a clean engine, or when the account cannot pay for a
+     * litre. Either side: the repair screen shows it from the synced soot and the charter's balance.
+     */
+    public static Optional<ServiceQuote> quote(PodEntity pod, long account) {
+        float soot = soot(pod);
+        if (!(soot > 0f)) {
+            return Optional.empty();
+        }
+        long full = serviceCost(pod);
+        if (account >= full) {
+            return Optional.of(new ServiceQuote(Math.round(soot), full, true));
+        }
+        long price = FuelTuning.DEFAULT.soot().servicePerLitre();
+        int litres = (int) Math.min((long) soot, Math.max(0L, account) / price);
+        return litres < 1 ? Optional.empty() : Optional.of(new ServiceQuote(litres, litres * price, false));
+    }
+
+    /**
      * Server only: clears the engine's soot. What the tank's fuel will still leave is kept. Throws on an unreadable
      * state.
      */
     public static void service(PodEntity pod) {
         flush(pod);
         Versioned.modifyOrThrow(pod, STATE, state -> new State(0f, state.tankLitres(), state.tankSoot()));
+    }
+
+    /** Server only: clears {@code litres} of the engine's soot, a part service. Throws on an unreadable state. */
+    public static void service(PodEntity pod, int litres) {
+        flush(pod);
+        Versioned.modifyOrThrow(
+                pod,
+                STATE,
+                state -> new State(Math.max(0f, state.soot() - litres), state.tankLitres(), state.tankSoot()));
+    }
+
+    /**
+     * Server only, when a flue scrape at the colony ends: brings the soot down to {@link
+     * FuelTuning.Soot#scrapeLeavesLitres}, never up. A tick path, so an unreadable state is left as it is and the
+     * answer is false.
+     */
+    public static boolean scrape(PodEntity pod) {
+        flush(pod);
+        Optional<State> read = Versioned.readable(pod, STATE);
+        if (read.isEmpty()) {
+            return false;
+        }
+        State state = read.get();
+        float left = Math.min(state.soot(), FuelTuning.DEFAULT.soot().scrapeLeavesLitres());
+        pod.setAttached(STATE, Versioned.of(new State(left, state.tankLitres(), state.tankSoot())));
+        return true;
     }
 
     /**

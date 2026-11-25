@@ -14,8 +14,10 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.FlueScrape;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
@@ -69,6 +71,9 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     public record TextLine(String text, int x, int y, boolean dim) {}
 
     private TerminalView view;
+    /** The labels of the rows as the list was last built, so {@link #tick} rebuilds it only when one changes. */
+    private List<Component> builtLabels = List.of();
+
     private final ScrollList scroll =
             new ScrollList("screen.deepcharter.repair.scroll", this::rowCount, this::visibleRows, this::rebuildWidgets);
     private final Typewriter typewriter;
@@ -95,6 +100,19 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
         return typewriter;
     }
 
+    /**
+     * The soot rows change with no answer from the server (the soot, the balance and the scrape's countdown are
+     * synced), so the list is rebuilt when a label it shows has changed.
+     */
+    @Override
+    public void tick() {
+        super.tick();
+        List<Component> labels = rows().stream().map(Row::label).toList();
+        if (!labels.equals(builtLabels)) {
+            rebuildWidgets();
+        }
+    }
+
     private List<Row> rows() {
         List<Row> rows = new ArrayList<>();
         for (int hp : REPAIR_STEPS) {
@@ -108,7 +126,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                 Component.translatable("screen.deepcharter.repair.total"),
                 RepairStation.REPAIR_TOTAL,
                 new CompoundTag()));
-        serviceRow().ifPresent(rows::add);
+        rows.addAll(sootRows());
         rows.addAll(suitRows());
         for (Consumable consumable : Consumable.values()) {
             CompoundTag args = new CompoundTag();
@@ -127,19 +145,48 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     }
 
     /**
-     * The row that clears the engine's soot (#1280): shown only once the nearest pod has a litre or more, with its soot
-     * and its price from the synced attachment, so there is no row for a clean engine.
+     * The rows of the engine's soot (#1280), from the synced attachments and the charter's balance. The service row
+     * shows once the nearest pod has a litre or more: what the account's money clears and costs, or, short of a litre's
+     * price, the price and nothing to press. The scrape row shows only while the pod is in limp mode at the colony,
+     * counting down while a scrape runs.
      */
-    private Optional<Row> serviceRow() {
-        return nearbyPod()
-                .filter(pod -> Math.round(EngineSoot.soot(pod)) >= 1)
-                .map(pod -> new Row(
-                        Component.translatable(
-                                "screen.deepcharter.repair.service",
-                                Math.round(EngineSoot.soot(pod)),
-                                EngineSoot.serviceCost(pod)),
+    private List<Row> sootRows() {
+        List<Row> rows = new ArrayList<>();
+        Optional<PodEntity> shown = nearbyPod();
+        if (shown.isEmpty() || Math.round(EngineSoot.soot(shown.get())) < 1) {
+            return rows;
+        }
+        PodEntity pod = shown.get();
+        long account = ClientCharter.view().map(charter -> charter.balance()).orElse(0L);
+        long soot = Math.round(EngineSoot.soot(pod));
+        rows.add(EngineSoot.quote(pod, account)
+                .map(quote -> new Row(
+                        quote.all()
+                                ? Component.translatable("screen.deepcharter.repair.service", soot, quote.cost())
+                                : Component.translatable(
+                                        "screen.deepcharter.repair.service_part", quote.litres(), soot, quote.cost()),
                         RepairStation.SERVICE_ENGINE,
-                        new CompoundTag()));
+                        new CompoundTag()))
+                .orElseGet(() -> new Row(
+                        Component.translatable(
+                                "screen.deepcharter.repair.service_unpaid",
+                                FuelTuning.DEFAULT.soot().servicePerLitre()),
+                        RepairStation.SERVICE_ENGINE,
+                        new CompoundTag(),
+                        false)));
+        if (EngineSoot.launchRefused(pod)) {
+            rows.add(FlueScrape.secondsLeft(pod)
+                    .map(seconds -> new Row(
+                            Component.translatable("screen.deepcharter.repair.scraping", seconds),
+                            RepairStation.SCRAPE_FLUE,
+                            new CompoundTag(),
+                            false))
+                    .orElseGet(() -> new Row(
+                            Component.translatable("screen.deepcharter.repair.scrape"),
+                            RepairStation.SCRAPE_FLUE,
+                            new CompoundTag())));
+        }
+        return rows;
     }
 
     /**
@@ -244,6 +291,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     @Override
     protected void layout() {
         List<Row> rows = rows();
+        builtLabels = rows.stream().map(Row::label).toList();
         int visible = visibleRows();
         scroll.beginLayout();
         int firstRow = scroll.first();

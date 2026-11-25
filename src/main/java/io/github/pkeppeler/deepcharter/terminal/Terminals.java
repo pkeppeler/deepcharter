@@ -89,15 +89,27 @@ public final class Terminals {
         // entity-query: 8 blocks round a terminal the player stands within reach of (and the client's own world), so
         // the chunks are entity-ticking
         return level
-                .getEntitiesOfClass(
-                        PodEntity.class,
-                        new AABB(pos).inflate(radius),
-                        pod -> !pod.flying()
-                                && !pod.drilling()
-                                && pod.position().distanceToSqr(centre) <= radius * radius)
+                .getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius), pod -> isParkedAt(pod, pos))
                 .stream()
                 .sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(centre)))
                 .toList();
+    }
+
+    /**
+     * Whether {@code pod} is parked at the terminal at {@code pos}: within {@link TerminalTuning#parkedRadius()}
+     * blocks of its middle, and neither flying nor drilling.
+     */
+    public static boolean isParkedAt(PodEntity pod, BlockPos pos) {
+        double radius = TerminalTuning.DEFAULT.parkedRadius();
+        return !pod.flying()
+                && !pod.drilling()
+                && pod.position().distanceToSqr(Vec3.atCenterOf(pos)) <= radius * radius;
+    }
+
+    /** Whether {@code player} is within reach of the terminal at {@code pos}: the distance a request is served from. */
+    public static boolean inReach(ServerPlayer player, BlockPos pos) {
+        double range = TerminalTuning.DEFAULT.maxDistance();
+        return player.getEyePosition().distanceToSqr(Vec3.atCenterOf(pos)) <= range * range;
     }
 
     /**
@@ -120,8 +132,7 @@ public final class Terminals {
     }
 
     private static Access access(ServerPlayer player, BlockPos pos) {
-        double range = TerminalTuning.DEFAULT.maxDistance();
-        if (player.getEyePosition().distanceToSqr(Vec3.atCenterOf(pos)) > range * range) {
+        if (!inReach(player, pos)) {
             return new Access.Denied(TerminalRefusal.TOO_FAR);
         }
         if (!(player.level().getBlockEntity(pos) instanceof TerminalBlockEntity terminal)) {

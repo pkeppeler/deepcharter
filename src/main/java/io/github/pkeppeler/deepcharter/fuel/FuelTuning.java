@@ -23,7 +23,12 @@ public record FuelTuning(
         Weight weight,
         Soot soot) {
     public static final FuelTuning DEFAULT = new FuelTuning(
-            1, List.of(1, 5, 10), 25f, 16, new Weight(0.6f, 0.4f, 0.5f), new Soot(3f, 12f, 0.5f, 0.5f, 0.3f, 2f, 10));
+            1,
+            List.of(1, 5, 10),
+            25f,
+            16,
+            new Weight(0.6f, 0.4f, 0.5f),
+            new Soot(3f, 12f, 0.5f, 0.5f, 0.3f, 2f, 10, 1200, 11f));
 
     /** Mass of one item of each solid fuel. */
     public record Weight(float coal, float charcoal, float biofuel) {
@@ -48,6 +53,10 @@ public record FuelTuning(
      * @param limpOutput       the share of top speed and climb speed left in limp mode
      * @param limpBurn         how many times the clean burn the engine burns in limp mode
      * @param servicePerLitre  dollars the repair station charges to clear a litre of soot
+     * @param scrapeTicks      ticks the free flue scrape at the colony's repair station takes (a minute, as long as
+     *                         the Company's recovery makes a stranded pilot wait)
+     * @param scrapeLeavesLitres the soot a flue scrape leaves: under the limp limit, so the pod launches, and over the
+     *                         grace, so it is still slow until it is serviced
      */
     public record Soot(
             float graceLitres,
@@ -56,7 +65,9 @@ public record FuelTuning(
             float extraBurnAtLimit,
             float limpOutput,
             float limpBurn,
-            long servicePerLitre) {
+            long servicePerLitre,
+            int scrapeTicks,
+            float scrapeLeavesLitres) {
         public Soot {
             if (!(graceLitres >= 0 && limpLitres > graceLitres)) {
                 throw new IllegalArgumentException(
@@ -71,6 +82,11 @@ public record FuelTuning(
             }
             if (servicePerLitre < 1) {
                 throw new IllegalArgumentException("a litre of soot must cost at least $1, got " + servicePerLitre);
+            }
+            if (scrapeTicks < 1 || !(scrapeLeavesLitres > graceLitres && scrapeLeavesLitres < limpLitres)) {
+                throw new IllegalArgumentException(
+                        "a flue scrape takes time and leaves the engine between the grace and" + " the limit, got "
+                                + scrapeTicks + " ticks, " + scrapeLeavesLitres + " L");
             }
         }
     }
