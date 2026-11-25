@@ -163,7 +163,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                             + " before the tether) for a real client on foot in a carved bore, and " + setup
                             + " in the setup");
 
-            context.waitTicks(LINE_COOLDOWN_TICKS); // tick-wait: past vanilla's cooldown for any earlier line
+            // No line since the count began, and a setup line was waited out before it, so vanilla's cooldown is clear.
             Patch stone = PATCHES.getLast();
             server.runOnServer(s -> s.overworld()
                     .setBlock(
