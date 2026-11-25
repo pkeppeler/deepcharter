@@ -31,8 +31,9 @@ public final class DeathMockupHornScenario extends EvidenceScenario {
     private static final float NORTH = 180f;
     private static final float START_TURN = 70f;
     private static final float START_PITCH = -14f;
-    private static final int TURN_TICKS = 70;
-    private static final int HOLD_TICKS = 50;
+    private static final int LEAD_TICKS = 40;
+    private static final int TURN_TICKS = 90;
+    private static final int HOLD_TICKS = 40;
 
     private final DeathFootage footage = new DeathFootage(this);
 
@@ -71,11 +72,12 @@ public final class DeathMockupHornScenario extends EvidenceScenario {
             });
             awaitWorld(context);
             ClientWait.until(context, "the player in layer 1", client -> TestLayers.clientIsIn(client, 1));
+            ClientWait.chunksAround(context, X, Z, 1);
             context.waitTicks(60);
             ClientChecks.withHudHidden(context, () -> {
-                for (int i = 0; i <= TURN_TICKS + HOLD_TICKS; i++) {
-                    double t = Math.min(1.0, i / (double) TURN_TICKS);
-                    double eased = 1 - Math.pow(1 - t, 3);
+                for (int i = -LEAD_TICKS; i <= TURN_TICKS + HOLD_TICKS; i++) {
+                    double t = Math.clamp(i / (double) TURN_TICKS, 0.0, 1.0);
+                    double eased = t * t * (3 - 2 * t);
                     float yaw = (float) (NORTH + START_TURN * (1 - eased));
                     float pitch = (float) (START_PITCH * (1 - eased));
                     context.runOnClient(client -> {

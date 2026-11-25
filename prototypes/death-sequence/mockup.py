@@ -380,12 +380,15 @@ class Phonautogram:
         return np.roll(out, shake, axis=(0, 1)) if shake != (0, 0) else out
 
 
-def soot_grade(src, zoom=1.0):
+def soot_grade(src, zoom=1.0, centre=(0.5, 0.5)):
     """A frame gone to soot and sepia, lit from below: scratched, flickering, weaving in the gate."""
     img = Image.fromarray(src)
     if zoom > 1:
-        w, h = int(W / zoom), int(H / zoom)
-        img = img.crop(((W - w) // 2, (H - h) // 2, (W + w) // 2, (H + h) // 2)).resize((W, H), Image.LANCZOS)
+        w, h = W / zoom, H / zoom
+        cx = min(max(centre[0] * W, w / 2), W - w / 2)
+        cy = min(max(centre[1] * H, h / 2), H - h / 2)
+        box = tuple(int(v) for v in (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2))
+        img = img.crop(box).resize((W, H), Image.LANCZOS)
     g = np.asarray(img.convert("L")).astype(np.float32) / 255
     g = np.clip((g - 0.04) * 1.6, 0, 1) ** 1.1
     g *= np.linspace(0.55, 1.25, H)[:, None]
@@ -494,7 +497,8 @@ class Death:
         frames = frame_files(footage)[:death]
         self.game = game_audio(self.events, len(frames), mc)
         self.end_s = len(frames) * TICK
-        self.start = max(0.0, self.end_s - gameplay_seconds)
+        # The first frames can still show the world before the teleport has rendered.
+        self.start = max(3 * TICK, self.end_s - gameplay_seconds)
         self.imgs = [fit(Image.open(f)) for f in frames[int(self.start / TICK) :]]
 
     def last_seconds(self, seconds):
@@ -555,12 +559,15 @@ def l2_horn(death, laugh_src, horn_frames, label, args):
     write_trace(cut, Phonautogram(replay), replay)
     # The replay stops dead, and in the dark a horn turns to face you. The laugh comes out of it.
     cut.add(0.6, lambda *_: BLACK)
-    horn = [fit(Image.open(f)) for f in horn_frames]
+    horn = [fit(Image.open(f)) for f in horn_frames[args.horn_skip :]]
     voice = horn_voice(resample(laugh_src, 0.86, wow=0.004, flutter=0.002))
     hs = max(len(horn) * TICK, 5.5)
     cut.mix(crackle(int(0.6 * SR), 30, 0.3), cut.t, -6)
     cut.mix(voice, cut.t + 0.9, 0)
-    cut.add(hs, lambda t, i, n: soot_grade(horn[min(int(t / TICK), len(horn) - 1)], 1.0 + 0.12 * min(1, t / hs)))
+    cut.add(
+        hs,
+        lambda t, i, n: soot_grade(horn[min(int(t / TICK), len(horn) - 1)], 1.3 + 0.45 * min(1, t / hs), (0.5, 0.42)),
+    )
     still = cut.t - 1.0
     cut.add(1.0, lambda *_: BLACK)
     button(cut, label)
@@ -643,6 +650,7 @@ def main():
     p.add_argument("--gameplay-seconds", type=float, default=4.5)
     p.add_argument("--replay-seconds", type=float, default=2.3)
     p.add_argument("--skip-seconds", type=float, default=0.42)
+    p.add_argument("--horn-skip", type=int, default=24, help="horn frames still loading the world")
     p.add_argument("--only", default="l1,l2,l3,l4")
     p.add_argument("--labels", default="RESPAWN,RETURN TO WORK,RESPAWN,RETURN TO WORK")
     p.add_argument("--prefix", default="")
