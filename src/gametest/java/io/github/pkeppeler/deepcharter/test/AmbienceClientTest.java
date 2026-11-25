@@ -131,8 +131,8 @@ public class AmbienceClientTest implements FabricClientGameTest {
                 require(layer == 2, "the room is in layer " + layer + ", not 2");
 
                 context.runOnClient(client -> AmbienceTicker.restart(QUICK));
-                // tick-wait: the ticker builds its sound tracker on its first tick after the restart, and nothing
-                // reports it
+                // tick-wait: the ticker builds its sound tracker on its first tick after the restart, and
+                // nothing reports it
                 context.waitTicks(5);
                 SoundInstance[] hymn = new SoundInstance[1];
                 context.runOnClient(client -> {
