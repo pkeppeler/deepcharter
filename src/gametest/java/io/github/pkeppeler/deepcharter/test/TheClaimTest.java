@@ -82,9 +82,9 @@ public class TheClaimTest {
     private static final List<String> FEATURES = List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches");
 
     /**
-     * Caves open up with depth. The surface band's underground has none (its pockets cost the surface about a fifth
-     * more a row, #1300); the share of open blocks under each column's rock top grows from Topsoil Claims to the Deep
-     * Claim and stays small everywhere: pockets, fissures and passages, nothing like layer 3's halls.
+     * Caves open up with depth. The surface band's underground has none (a cost call, #1300); the share of open
+     * blocks under each column's rock top grows from Topsoil Claims to the Deep Claim and stays small everywhere:
+     * pockets, fissures and passages, nothing like layer 3's halls.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void cavesOpenUpWithDepth(GameTestHelper helper) {
