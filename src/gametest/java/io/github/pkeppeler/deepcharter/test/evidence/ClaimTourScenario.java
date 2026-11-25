@@ -40,9 +40,10 @@ import org.jspecify.annotations.Nullable;
  * a default world. Each view is shot twice: lamp-lit, as a miner's lamp lights it (light blocks round the camera, in
  * the game's own fog and ambient light), and with night vision, which shows the shapes. The views:
  *
- * <ul> <li>the longest open run in a cave of each zone of layer 1; <li>a cut face across each contact between two strata: Topsoil Claims' hardpan
- * over Stone Benches' packed shale, and that over Deep Claim's black shale; <li>the abandoned shaft nearest the start
- * that has a candle niche: up from its foot, at the niche, and down it from part way up.
+ * <ul> <li>the longest open run in a cave of each zone of layer 1; <li>a cut face across each contact between two
+ * strata: Topsoil Claims' hardpan over Stone Benches' packed shale, and that over Deep Claim's black shale; <li>the
+ * abandoned shaft nearest the start that has a candle niche: up from its foot, at the niche, and down it from part way
+ * up.
  * </ul>
  *
  * The player is a spectator. Places are found in the generated world near the start column, so nothing is staged but
@@ -353,7 +354,9 @@ public class ClaimTourScenario extends EvidenceScenario {
         throw new AssertionError("no ladder by the pail at " + pail.toShortString());
     }
 
-    /** A candle niche of the shaft: a prayer card if one is there, else a candle stub, the lowest first; null if none. */
+    /**
+     * A candle niche of the shaft: a prayer card if one is there, else a candle stub, the lowest first; null if none.
+     */
     private static @Nullable BlockPos niche(ServerLevel level, BlockPos axis, BlockPos pail) {
         @Nullable BlockPos candle = null;
         for (int y = pail.getY() + 2; y < pail.getY() + 40; y++) {

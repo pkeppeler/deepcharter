@@ -197,8 +197,8 @@ public final class LayerBlocks {
     /**
      * The rock at height {@code y} of {@code band} in the campaign world: in layer 1 Topsoil Claims' hardpan, Stone
      * Benches' packed shale or Deep Claim's black shale, split at the strata's contacts before the noise moves them
-     * (#1277); in every other layer {@link #layerGround(int)}. The rule moves a contact up to a dozen rows, so within that
-     * of a contact this names the rock most of the wall is, not always the block there.
+     * (#1277); in every other layer {@link #layerGround(int)}. The rule moves a contact up to a dozen rows, so within
+     * that of a contact this names the rock most of the wall is, not always the block there.
      */
     public static Block stratum(LayerChain.Band band, int y) {
         if (band.layer() != 1) {

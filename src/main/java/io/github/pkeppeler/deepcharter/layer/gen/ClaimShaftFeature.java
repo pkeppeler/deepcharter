@@ -250,8 +250,8 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
         }
 
         /**
-         * Seals the shell: lava and gas in {@code bounds} become the layer rock found in the same row of the bounds, so a
-         * seal near a strata contact is the rock of the wall round it; a row with none takes the layer's own rock.
+         * Seals the shell: lava and gas in {@code bounds} become the layer rock found in the same row of the bounds, so
+         * a seal near a strata contact is the rock of the wall round it; a row with none takes the layer's own rock.
          */
         void seal(BoundingBox bounds) {
             for (int y = bounds.minY(); y <= bounds.maxY(); y++) {

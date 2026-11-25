@@ -42,10 +42,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * What the Claim's features write (#1277), read from the blocks they change and not from where they plan to: a shaft writes
- * nothing outside its plan's bounds, a cave ore seam turns only layer rock on a cave face into an ore of its zone's table, and
- * the generated claim holds seams on cave faces and salvage caches on cave floors. Each placement test runs the real feature
- * into a generated chunk of {@code campaign_full} and compares every block of layer 1's band before and after.
+ * What the Claim's features write (#1277), read from the blocks they change and not from where they plan to: a shaft
+ * writes nothing outside its plan's bounds, a cave ore seam turns only layer rock on a cave face into an ore of its
+ * zone's table, and the generated claim holds seams on cave faces and salvage caches on cave floors. Each placement
+ * test runs the real feature into a generated chunk of {@code campaign_full} and compares every block of layer 1's band
+ * before and after.
  */
 public class ClaimFeaturesTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClaimFeaturesTest.class);
@@ -60,7 +61,10 @@ public class ClaimFeaturesTest {
     private static final int SEAM_CHUNKS = 24;
     private static final int SEAM_TRIES_PER_CHUNK = 12;
 
-    /** The sample of generated claim that the seams and caches are counted in, and the pail's reach that marks a shaft's crate. */
+    /**
+     * The sample of generated claim that the seams and caches are counted in, and the pail's reach that marks a shaft's
+     * crate.
+     */
     private static final int SAMPLE_CHUNK = 60;
 
     private static final int SAMPLE_CHUNKS = 10;
@@ -112,9 +116,9 @@ public class ClaimFeaturesTest {
     }
 
     /**
-     * Every block a shaft changes lies inside its plan's bounds across and under its top (the top may move down to the rock, never
-     * sideways), so a
-     * shaft never writes past its shell, and never onto the far side of its own chunk, which a write past the chunk's edge lands on.
+     * Every block a shaft changes lies inside its plan's bounds across and under its top (the top may move down to the
+     * rock, never sideways), so a shaft never writes past its shell, and never onto the far side of its own chunk,
+     * which a write past the chunk's edge lands on.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void aShaftWritesOnlyInsideItsBounds(GameTestHelper helper) {
@@ -154,8 +158,9 @@ public class ClaimFeaturesTest {
     }
 
     /**
-     * A seam turns only the layer's rock into ore, each block on a cave face (open on a side, in its chunk), in the rock it replaced, and
-     * of an ore of the zone's table: the zone fill's ores, with the richer ones weighted up against Ironium.
+     * A seam turns only the layer's rock into ore, each block on a cave face (open on a side, in its chunk), in the
+     * rock it replaced, and of an ore of the zone's table: the zone fill's ores, with the richer ones weighted up
+     * against Ironium.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void aCaveOreSeamLiesOnACaveFaceInItsZonesOre(GameTestHelper helper) {
@@ -240,8 +245,9 @@ public class ClaimFeaturesTest {
     }
 
     /**
-     * The generated claim holds the hooks: seams (three or more blocks of one ore touching, each on a cave face, which the zone fill's
-     * one roll a block almost never makes) and salvage crates on cave floors away from the shafts' drifts.
+     * The generated claim holds the hooks: seams (three or more blocks of one ore touching, each on a cave face, which
+     * the zone fill's one roll a block almost never makes) and salvage crates on cave floors away from the shafts'
+     * drifts.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void theClaimHasSeamsOnCaveFacesAndCachesOnCaveFloors(GameTestHelper helper) {
@@ -302,9 +308,10 @@ public class ClaimFeaturesTest {
     }
 
     /**
-     * The strata have one truth: the material rule's contacts sit {@link LayerBlocks#CLAIM_CONTACT_UNDER_EDGE} under each of
-     * layer 1's zone edges and lay the rocks {@link LayerBlocks#stratum} names either side, and in the generated wall every
-     * block of layer rock further than the noise and the surface depth can move a contact is the rock {@code stratum} names.
+     * The strata have one truth: the material rule's contacts sit {@link LayerBlocks#CLAIM_CONTACT_UNDER_EDGE} under
+     * each of layer 1's zone edges and lay the rocks {@link LayerBlocks#stratum} names either side, and in the
+     * generated wall every block of layer rock further than the noise and the surface depth can move a contact is the
+     * rock {@code stratum} names.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void theStrataRuleAndLayerBlocksAgree(GameTestHelper helper) {
@@ -361,8 +368,9 @@ public class ClaimFeaturesTest {
     }
 
     /**
-     * The surface rule's fast path keeps a table of the block pairs it has judged, capped at 64 (ADR 0090, amended): the pairs that
-     * generating the campaign world writes, layer 1's strata among them, are far fewer, so the table never fills and starts again.
+     * The surface rule's fast path keeps a table of the block pairs it has judged, capped at 64 (ADR 0090, amended):
+     * the pairs that generating the campaign world writes, layer 1's strata among them, are far fewer, so the table
+     * never fills and starts again.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void worldgenJudgesFarFewerPairsThanTheFastPathKeeps(GameTestHelper helper) {

@@ -73,8 +73,8 @@ public class OreHostTest {
     }
 
     /**
-     * A saved ore or Company rock names its host by this name, so the names are permanent: a renamed value would load as the
-     * default host (packed shale) in every world saved before.
+     * A saved ore or Company rock names its host by this name, so the names are permanent: a renamed value would load
+     * as the default host (packed shale) in every world saved before.
      */
     @GameTest
     public void theHostNamesArePermanent(GameTestHelper helper) {

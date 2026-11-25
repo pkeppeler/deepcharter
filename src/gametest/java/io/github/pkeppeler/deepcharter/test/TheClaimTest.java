@@ -37,11 +37,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The dig from the colony through layer 1, The Claim (#1277): natural caves that open up with depth, from Topsoil
- * Claims down to the Deep Claim, under a surface band's underground that stays solid; a rock of its own for each zone (Topsoil Claims' hardpan, Stone Benches'
- * packed shale, Deep Claim's black shale) with a contact that waves either side of the zone's edge; first-generation
- * shafts dressed as the lore has them (LORE section 11); and every one of these features writing inside its own chunk
- * (ADR 0088). The world is {@code deepcharter:campaign_full}, the shipped overworld, sampled in a square of chunks far
- * from the colony and the structure sites.
+ * Claims down to the Deep Claim, under a surface band's underground that stays solid; a rock of its own for each zone
+ * (Topsoil Claims' hardpan, Stone Benches' packed shale, Deep Claim's black shale) with a contact that waves either
+ * side of the zone's edge; first-generation shafts dressed as the lore has them (LORE section 11); and every one of
+ * these features writing inside its own chunk (ADR 0088). The world is {@code deepcharter:campaign_full}, the shipped
+ * overworld, sampled in a square of chunks far from the colony and the structure sites.
  */
 public class TheClaimTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(TheClaimTest.class);
