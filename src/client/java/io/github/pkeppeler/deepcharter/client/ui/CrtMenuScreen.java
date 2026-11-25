@@ -28,11 +28,20 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
     /** Pixels from the top of the content to the first line of the intro: the title and its rule. */
     private static final int INTRO_Y = 23;
 
-    private final Typewriter intro;
+    private final Typewriter.LetterHook hook;
+    private Typewriter intro;
 
     protected CrtMenuScreen(M menu, Inventory inventory, Component title, Component intro, Typewriter.LetterHook hook) {
         super(menu, inventory, title, SlottedMenu.INVENTORY_WIDTH, SlottedMenu.INVENTORY_HEIGHT);
+        this.hook = hook;
         this.intro = new Typewriter(intro.getString(), hook);
+    }
+
+    /** Types {@code text} afresh in place of the intro, when it says something else. */
+    protected final void retype(Component text) {
+        if (!text.getString().equals(intro.text())) {
+            intro = new Typewriter(text.getString(), hook);
+        }
     }
 
     /** The intro's typewriter, which types on each tick. */

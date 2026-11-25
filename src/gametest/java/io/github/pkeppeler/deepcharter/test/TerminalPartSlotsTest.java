@@ -4,16 +4,21 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.menu.MenuRefusalPayload;
+import io.github.pkeppeler.deepcharter.menu.MirrorContainer;
+import io.github.pkeppeler.deepcharter.menu.SlotRule;
 import io.github.pkeppeler.deepcharter.menu.SlottedMenu;
 import io.github.pkeppeler.deepcharter.terminal.RepairMenu;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,19 +34,24 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.ContainerListener;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for #1265: an unrepaired terminal opens a menu of part slots. A part goes in by shift-click or by a
- * slot click, a wrong item is refused with a reason, a part in a slot never comes out, closing keeps what went in with
- * nothing duped or lost, the last part repairs the terminal, and the right-click shortcut still works.
+ * slot click or a drag, a wrong item is refused with a reason the client is sent, a part in a slot never comes out,
+ * closing keeps what went in with nothing duped or lost, the last part repairs the terminal, the right-click shortcut
+ * still works, the client learns when the terminal unlocks, and walking away or losing the terminal closes the menu.
  *
  * <p>Each test swaps in a fresh {@link RepairState} and does all its work inside its first tick, as in
  * {@link TerminalFrameworkTest}. The clicks are the server menu's own {@code clicked}, which the click packet runs.
@@ -103,16 +113,6 @@ public class TerminalPartSlotsTest {
         return menu;
     }
 
-    /** The menu index of the player's inventory slot that holds {@code item}. */
-    private static int inventorySlotOf(GameTestHelper helper, RepairMenu menu, ServerPlayer player, Item item) {
-        for (Slot slot : menu.slots) {
-            if (slot.container == player.getInventory() && slot.getItem().is(item)) {
-                return slot.index;
-            }
-        }
-        throw failure(helper, "the player holds no %s", item);
-    }
-
     private static int count(ServerPlayer player, Item item) {
         Inventory inventory = player.getInventory();
         int total = 0;
@@ -142,7 +142,7 @@ public class TerminalPartSlotsTest {
             player.getInventory().add(new ItemStack(VALVE, 3));
             RepairMenu menu = open(helper, player, pump);
 
-            click(menu, player, inventorySlotOf(helper, menu, player, VALVE), ContainerInput.QUICK_MOVE);
+            click(menu, player, SlotClicks.inventorySlot(menu, VALVE).index, ContainerInput.QUICK_MOVE);
 
             expect(
                     helper,
@@ -165,7 +165,7 @@ public class TerminalPartSlotsTest {
             player.getInventory().add(new ItemStack(MOTOR, 2));
             RepairMenu menu = open(helper, player, pump);
 
-            click(menu, player, inventorySlotOf(helper, menu, player, MOTOR), ContainerInput.PICKUP);
+            click(menu, player, SlotClicks.inventorySlot(menu, MOTOR).index, ContainerInput.PICKUP);
             expect(helper, menu.getCarried().is(MOTOR), "picking up the motors, carried %s", menu.getCarried());
             click(menu, player, menu.ruleSlots().get(0).index, ContainerInput.PICKUP);
 
@@ -194,19 +194,19 @@ public class TerminalPartSlotsTest {
             RepairMenu menu = open(helper, player, pump);
             int motorSlot = menu.ruleSlots().get(0).index;
 
-            click(menu, player, inventorySlotOf(helper, menu, player, Items.STICK), ContainerInput.PICKUP);
+            click(menu, player, SlotClicks.inventorySlot(menu, Items.STICK).index, ContainerInput.PICKUP);
             click(menu, player, motorSlot, ContainerInput.PICKUP);
             expectRefusal(helper, menu, TerminalRefusal.NOT_A_PART, "a stick on the motor's slot");
             expect(helper, menu.getCarried().is(Items.STICK), "the refused stick stays on the cursor");
             putBack(menu, player);
 
-            click(menu, player, inventorySlotOf(helper, menu, player, VALVE), ContainerInput.PICKUP);
+            click(menu, player, SlotClicks.inventorySlot(menu, VALVE).index, ContainerInput.PICKUP);
             click(menu, player, motorSlot, ContainerInput.PICKUP);
             expectRefusal(helper, menu, TerminalRefusal.WRONG_SLOT, "the valve on the motor's slot");
             expect(helper, menu.getCarried().is(VALVE), "the refused valve stays on the cursor");
             putBack(menu, player);
 
-            click(menu, player, inventorySlotOf(helper, menu, player, Items.STICK), ContainerInput.QUICK_MOVE);
+            click(menu, player, SlotClicks.inventorySlot(menu, Items.STICK).index, ContainerInput.QUICK_MOVE);
             expectRefusal(helper, menu, TerminalRefusal.NOT_A_PART, "a shift-clicked stick");
             expect(helper, count(player, Items.STICK) == 1, "the shift-clicked stick stays in the inventory");
             expect(
@@ -245,7 +245,7 @@ public class TerminalPartSlotsTest {
                 throw failure(helper, "a locked terminal still opens its repair menu, got %s", player.containerMenu);
             }
             expect(helper, !menu.opening().unlocked(), "the processor is locked while the pump is broken");
-            click(menu, player, inventorySlotOf(helper, menu, player, coil), ContainerInput.QUICK_MOVE);
+            click(menu, player, SlotClicks.inventorySlot(menu, coil).index, ContainerInput.QUICK_MOVE);
             expectRefusal(helper, menu, TerminalRefusal.PREREQUISITE_UNREPAIRED, "a part of a locked terminal");
             expect(helper, count(player, coil) == 1, "the refused part stays with the player");
         });
@@ -259,7 +259,7 @@ public class TerminalPartSlotsTest {
             ServerPlayer player = standBy(helper, "Taker", pump, false).player();
             player.getInventory().add(new ItemStack(MOTOR));
             RepairMenu menu = open(helper, player, pump);
-            click(menu, player, inventorySlotOf(helper, menu, player, MOTOR), ContainerInput.QUICK_MOVE);
+            click(menu, player, SlotClicks.inventorySlot(menu, MOTOR).index, ContainerInput.QUICK_MOVE);
             expect(helper, shown(menu, 0).is(MOTOR), "the motor went in");
             int motorSlot = menu.ruleSlots().get(0).index;
 
@@ -314,9 +314,9 @@ public class TerminalPartSlotsTest {
             player.getInventory().add(new ItemStack(MOTOR, 2));
             player.getInventory().add(new ItemStack(VALVE));
             RepairMenu menu = open(helper, player, pump);
-            click(menu, player, inventorySlotOf(helper, menu, player, MOTOR), ContainerInput.PICKUP);
+            click(menu, player, SlotClicks.inventorySlot(menu, MOTOR).index, ContainerInput.PICKUP);
             click(menu, player, menu.ruleSlots().get(0).index, ContainerInput.PICKUP);
-            click(menu, player, inventorySlotOf(helper, menu, player, VALVE), ContainerInput.PICKUP);
+            click(menu, player, SlotClicks.inventorySlot(menu, VALVE).index, ContainerInput.PICKUP);
             // The spare motor on the cursor swapped places with the valve, which rides the cursor when the screen
             // closes.
             expect(helper, menu.getCarried().is(VALVE), "the valve rides the cursor, carried %s", menu.getCarried());
@@ -358,9 +358,9 @@ public class TerminalPartSlotsTest {
             OPENED_LOG.clear();
             RepairMenu menu = open(helper, player, pump);
 
-            click(menu, player, inventorySlotOf(helper, menu, player, MOTOR), ContainerInput.QUICK_MOVE);
+            click(menu, player, SlotClicks.inventorySlot(menu, MOTOR).index, ContainerInput.QUICK_MOVE);
             expect(helper, REPAIRED_LOG.isEmpty() && menu.stillValid(player), "one part of two repairs nothing");
-            click(menu, player, inventorySlotOf(helper, menu, player, VALVE), ContainerInput.QUICK_MOVE);
+            click(menu, player, SlotClicks.inventorySlot(menu, VALVE).index, ContainerInput.QUICK_MOVE);
 
             String who = PUMP.id() + "/Finisher";
             expect(helper, state.repaired(PUMP), "both parts in repair the pump");
@@ -407,5 +407,189 @@ public class TerminalPartSlotsTest {
             }
         });
         helper.succeed();
+    }
+
+    @GameTest
+    public void aPrerequisiteRepairedWhileOpenUnlocksTheClientsSlots(GameTestHelper helper) {
+        withFreshState(helper, state -> {
+            BlockPos relative = new BlockPos(0, 1, 0);
+            helper.setBlock(relative, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState());
+            BlockPos processor = helper.absolutePos(relative);
+            ServerPlayer player = standBy(helper, "Patient", processor, false).player();
+            Item coil = TerminalTypes.ORE_PROCESSOR.parts().getFirst();
+            Terminals.open(player, processor);
+            if (!(player.containerMenu instanceof RepairMenu server)) {
+                throw failure(helper, "a locked terminal still opens its repair menu, got %s", player.containerMenu);
+            }
+            RepairMenu client = new RepairMenu(server.containerId, player.getInventory(), server.opening());
+            server.addSlotListener(new ContainerListener() {
+                @Override
+                public void slotChanged(AbstractContainerMenu menu, int slot, ItemStack stack) {}
+
+                @Override
+                public void dataChanged(AbstractContainerMenu menu, int id, int value) {
+                    client.setData(id, value);
+                }
+            });
+            expect(
+                    helper,
+                    !client.unlocked() && !client.ruleSlots().getFirst().mayPlace(new ItemStack(coil)),
+                    "the client's menu refuses the coil while the pump is broken");
+
+            // Someone else repairs the pump while the menu is open.
+            PUMP.parts().forEach(part -> state.insert(PUMP, part));
+            server.broadcastChanges();
+
+            expect(helper, server.unlocked() && client.unlocked(), "the server tells the client the pump is repaired");
+            expect(
+                    helper,
+                    client.ruleSlots()
+                            .getFirst()
+                            .rule()
+                            .refusal(new ItemStack(coil))
+                            .isEmpty(),
+                    "the client's menu now predicts the coil goes in, refusal %s",
+                    client.ruleSlots().getFirst().rule().refusal(new ItemStack(coil)));
+        });
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aRefusalIsSentToTheClientsMenu(GameTestHelper helper) {
+        int[] container = new int[1];
+        MockPlayer[] mock = new MockPlayer[1];
+        withFreshState(helper, state -> {
+            BlockPos pump = placePump(helper);
+            mock[0] = standBy(helper, "Told", pump, false);
+            mock[0].announceChannel(MenuRefusalPayload.TYPE);
+            ServerPlayer player = mock[0].player();
+            player.getInventory().add(new ItemStack(Items.STICK));
+            RepairMenu menu = open(helper, player, pump);
+            container[0] = menu.containerId;
+            click(menu, player, SlotClicks.inventorySlot(menu, Items.STICK).index, ContainerInput.QUICK_MOVE);
+            expectRefusal(helper, menu, TerminalRefusal.NOT_A_PART, "a shift-clicked stick");
+        });
+        helper.succeedWhen(() -> expect(
+                helper,
+                mock[0].payloadsOf(MenuRefusalPayload.class)
+                        .equals(List.of(new MenuRefusalPayload(container[0], TerminalRefusal.NOT_A_PART.message()))),
+                "the server sends its refusal to the client's menu, sent %s",
+                mock[0].payloadsOf(MenuRefusalPayload.class)));
+    }
+
+    @GameTest
+    public void aDragAcrossSlotsPutsOnePartInItsOwnSlot(GameTestHelper helper) {
+        withFreshState(helper, state -> {
+            BlockPos pump = placePump(helper);
+            ServerPlayer player = standBy(helper, "Spreader", pump, false).player();
+            player.getInventory().add(new ItemStack(MOTOR, 2));
+            RepairMenu menu = open(helper, player, pump);
+            Slot empty = SlotClicks.inventorySlot(menu, Items.AIR);
+            click(menu, player, SlotClicks.inventorySlot(menu, MOTOR).index, ContainerInput.PICKUP);
+            expect(helper, menu.getCarried().getCount() == 2, "carrying both motors, carried %s", menu.getCarried());
+
+            // A left-button drag: start, one pass over each slot, end.
+            int charitable = 0;
+            menu.clicked(
+                    AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+                    AbstractContainerMenu.getQuickcraftMask(AbstractContainerMenu.QUICKCRAFT_HEADER_START, charitable),
+                    ContainerInput.QUICK_CRAFT,
+                    player);
+            for (int index :
+                    new int[] {menu.ruleSlots().get(0).index, menu.ruleSlots().get(1).index, empty.index}) {
+                menu.clicked(
+                        index,
+                        AbstractContainerMenu.getQuickcraftMask(
+                                AbstractContainerMenu.QUICKCRAFT_HEADER_CONTINUE, charitable),
+                        ContainerInput.QUICK_CRAFT,
+                        player);
+            }
+            menu.clicked(
+                    AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+                    AbstractContainerMenu.getQuickcraftMask(AbstractContainerMenu.QUICKCRAFT_HEADER_END, charitable),
+                    ContainerInput.QUICK_CRAFT,
+                    player);
+
+            expect(
+                    helper,
+                    state.inserted(PUMP).equals(List.of(MOTOR)),
+                    "the drag puts one motor in, inserted %s",
+                    state.inserted(PUMP));
+            expect(helper, shown(menu, 0).is(MOTOR), "the motor's slot shows it, got %s", shown(menu, 0));
+            expect(helper, shown(menu, 1).isEmpty(), "the valve's slot stays empty, got %s", shown(menu, 1));
+            int held = count(player, MOTOR) + menu.getCarried().getCount();
+            expect(
+                    helper,
+                    held + state.inserted(PUMP).size() == 2,
+                    "no motor is made or lost: %s held or carried, %s in",
+                    held,
+                    state.inserted(PUMP).size());
+        });
+        helper.succeed();
+    }
+
+    @GameTest
+    public void walkingAwayClosesTheMenu(GameTestHelper helper) {
+        MockPlayer[] mock = new MockPlayer[1];
+        withFreshState(helper, state -> {
+            BlockPos pump = placePump(helper);
+            mock[0] = standBy(helper, "Wanderer", pump, false);
+            ServerPlayer player = mock[0].player();
+            RepairMenu menu = open(helper, player, pump);
+            expect(helper, menu.stillValid(player), "the menu is valid beside the terminal");
+            Vec3 far = Vec3.atCenterOf(pump).add(TerminalTuning.DEFAULT.maxDistance() + 4, 0, 0);
+            mock[0].teleportTo(helper.getLevel(), far, 0, 0);
+            expect(helper, !menu.stillValid(player), "out of reach, the menu is no longer valid");
+        });
+        helper.succeedWhen(() -> expect(
+                helper,
+                mock[0].player().containerMenu == mock[0].player().inventoryMenu,
+                "the player's next tick closes it, open %s",
+                mock[0].player().containerMenu));
+    }
+
+    @GameTest
+    public void aRemovedTerminalClosesTheMenu(GameTestHelper helper) {
+        MockPlayer[] mock = new MockPlayer[1];
+        withFreshState(helper, state -> {
+            BlockPos pump = placePump(helper);
+            mock[0] = standBy(helper, "Bystander", pump, false);
+            ServerPlayer player = mock[0].player();
+            RepairMenu menu = open(helper, player, pump);
+            expect(helper, menu.stillValid(player), "the menu is valid while the terminal stands");
+            helper.setBlock(helper.relativePos(pump), Blocks.AIR.defaultBlockState());
+            expect(helper, !menu.stillValid(player), "with the terminal gone, the menu is no longer valid");
+        });
+        helper.succeedWhen(() -> expect(
+                helper,
+                mock[0].player().containerMenu == mock[0].player().inventoryMenu,
+                "the player's next tick closes it, open %s",
+                mock[0].player().containerMenu));
+    }
+
+    @GameTest
+    public void aSlotThatMirrorsSavedStateMustLock(GameTestHelper helper) {
+        boolean refused = false;
+        try {
+            new MirrorMenu(SlotRule.of(stack -> true, stack -> Component.empty()));
+        } catch (IllegalArgumentException expected) {
+            refused = true;
+        }
+        expect(helper, refused, "a non-locking slot over a mirror container must be refused");
+        new MirrorMenu(SlotRule.of(stack -> true, stack -> Component.empty()).locking());
+        helper.succeed();
+    }
+
+    /** A menu with one typed slot over a {@link MirrorContainer}. */
+    private static final class MirrorMenu extends SlottedMenu {
+        MirrorMenu(SlotRule rule) {
+            super(RepairMenu.TYPE, 0);
+            addRuleSlot(new MirrorContainer(1), 0, 0, 0, rule);
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            return true;
+        }
     }
 }

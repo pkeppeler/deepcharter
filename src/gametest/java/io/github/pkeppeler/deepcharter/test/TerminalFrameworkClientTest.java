@@ -10,18 +10,22 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
+import io.github.pkeppeler.deepcharter.terminal.RepairMenu;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -29,27 +33,31 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.HashedStack;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for #59 and #1265: an offline terminal opens its repair screen, with a ghost in each part slot; a
  * part dragged into its slot, then one shift-clicked, go in through the server, and the online screen opens when the
- * last is in; a locked terminal's slots refuse its parts with the reason on screen; and the server refuses an open
- * request from too far.
+ * last is in; a locked terminal's slots refuse its parts with the reason on screen, and take them once the terminal
+ * before it is repaired while the screen is open; a refusal only the server makes shows on screen; and the server
+ * refuses an open request from too far.
  */
 public class TerminalFrameworkClientTest implements FabricClientGameTest {
     private static final int FAR_BLOCKS = 20;
     private static final int REFUSAL_TICKS = 20;
 
-    /** The three terminals the test places, as absolute positions. */
-    private record Scene(BlockPos pump, BlockPos processor, BlockPos farPump, BlockPos open) {}
+    /** The terminals the test places, as absolute positions. */
+    private record Scene(BlockPos pump, BlockPos processor, BlockPos upgrade, BlockPos farPump, BlockPos open) {}
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -62,6 +70,8 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
             lockedTerminalRefusesItsParts(context, singleplayer, scene);
             partsGoInByDragAndShiftClick(context, singleplayer, scene);
             onlineScreenOpensOnceRepaired(context, scene);
+            aRepairWhileOpenUnlocksTheSlots(context, singleplayer, scene);
+            aServerOnlyRefusalShowsOnScreen(context, singleplayer);
             customScreenUpdatesInPlace(context, scene);
         }
     }
@@ -77,12 +87,16 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         Scene scene = new Scene(
                 here.relative(Direction.EAST, 2),
                 here.relative(Direction.SOUTH, 2),
+                here.relative(Direction.NORTH, 2),
                 here.relative(Direction.EAST, FAR_BLOCKS),
                 here.relative(Direction.WEST, 2));
         server.overworld()
                 .setBlock(scene.pump(), TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
         server.overworld()
                 .setBlock(scene.processor(), TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+        server.overworld()
+                .setBlock(
+                        scene.upgrade(), TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
         server.overworld().setBlock(scene.open(), TerminalTestTypes.OPEN.block().defaultBlockState(), 3);
         server.overworld()
                 .setBlock(scene.farPump(), TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
@@ -208,11 +222,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 
     /** The slot of the player's inventory in {@code screen} that holds {@code item}. */
     private static Slot inventorySlot(ClientGameTestContext context, RepairScreen screen, Item item) {
-        return context.computeOnClient(client -> screen.getMenu().slots.stream()
-                .filter(slot ->
-                        slot.container instanceof Inventory && slot.getItem().is(item))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("the player carries no " + item)));
+        return context.computeOnClient(client -> SlotClicks.inventorySlot(screen.getMenu(), item));
     }
 
     private static void onlineScreenOpensOnceRepaired(ClientGameTestContext context, Scene scene) {
@@ -241,6 +251,91 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
                 processor.typewriter().text().contains("INSERT EVERY PART"),
                 "with the pump repaired the processor's parts can go in, got '"
                         + processor.typewriter().text() + "'");
+        context.setScreen(() -> null);
+    }
+
+    /**
+     * The upgrade terminal opens locked behind the processor; the processor is repaired by the right-click shortcut
+     * while its screen is open, as another player would; the screen's text and its prediction follow the server, and a
+     * board shift-clicked in goes in with no refusal.
+     */
+    private static void aRepairWhileOpenUnlocksTheSlots(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
+        request(context, scene.upgrade());
+        RepairScreen screen = awaitRepairScreen(context);
+        require(
+                !context.computeOnClient(client -> screen.getMenu().unlocked())
+                        && screen.typewriter().text().contains("FIRST"),
+                "the upgrade terminal opens locked behind the processor, got '"
+                        + screen.typewriter().text() + "'");
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            for (Item part : TerminalTypes.ORE_PROCESSOR.parts()) {
+                require(Terminals.insert(player, scene.processor(), part).isEmpty(), "the processor takes its " + part);
+            }
+        });
+        ClientWait.until(
+                context,
+                "the screen unlocked, its text retyped",
+                client -> screen.getMenu().unlocked()
+                        && screen.typewriter().text().contains("INSERT EVERY PART")
+                        && screen.typewriter().done(),
+                client -> "unlocked " + screen.getMenu().unlocked() + ", text '"
+                        + screen.typewriter().text() + "'");
+        Item board = TerminalTypes.UPGRADE_TERMINAL.parts().getFirst();
+        SlotClicks.shiftClick(context, screen, inventorySlot(context, screen, board));
+        ClientWait.until(
+                context,
+                "the board in, on the server",
+                () -> singleplayer
+                        .getServer()
+                        .computeOnServer(server -> RepairState.get(server).inserted(TerminalTypes.UPGRADE_TERMINAL))
+                        .contains(board),
+                () -> context.computeOnClient(
+                        client -> "refusal " + screen.getMenu().refusal()));
+        require(
+                context.computeOnClient(client -> screen.getMenu().refusal().isEmpty()
+                        && screen.getMenu().ruleSlots().getFirst().getItem().is(board)),
+                "the client predicted the board goes in, with no refusal on screen");
+    }
+
+    /**
+     * With the upgrade terminal's screen still open, a shift-click on a stick goes to the server alone, with no
+     * prediction on the client: the server's refusal shows on screen.
+     */
+    private static void aServerOnlyRefusalShowsOnScreen(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        RepairScreen screen = context.computeOnClient(client -> ClientSession.screen(client, RepairScreen.class));
+        singleplayer
+                .getServer()
+                .runOnServer(server -> server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .getInventory()
+                        .add(new ItemStack(Items.STICK)));
+        ClientWait.until(
+                context,
+                "the stick in the client's inventory",
+                client -> screen.getMenu().slots.stream()
+                        .anyMatch(slot -> slot.getItem().is(Items.STICK)));
+        context.runOnClient(client -> {
+            RepairMenu menu = screen.getMenu();
+            Slot stick = SlotClicks.inventorySlot(menu, Items.STICK);
+            ClientSession.connection(client)
+                    .send(new ServerboundContainerClickPacket(
+                            menu.containerId,
+                            menu.getStateId(),
+                            (short) stick.index,
+                            (byte) 0,
+                            ContainerInput.QUICK_MOVE,
+                            Int2ObjectMaps.emptyMap(),
+                            HashedStack.EMPTY));
+        });
+        ClientWait.until(
+                context,
+                "the server's refusal on screen",
+                client -> screen.getMenu().refusal().equals(Optional.of(TerminalRefusal.NOT_A_PART.message())),
+                client -> "refusal " + screen.getMenu().refusal());
         context.setScreen(() -> null);
     }
 

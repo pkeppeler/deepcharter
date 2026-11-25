@@ -203,7 +203,7 @@ public final class Terminals {
     }
 
     /** Parts can go into {@code type}: its prerequisite, if any, is repaired. */
-    private static boolean unlocked(RepairState state, TerminalType type) {
+    static boolean unlocked(RepairState state, TerminalType type) {
         return type.prerequisite().map(state::repaired).orElse(true);
     }
 

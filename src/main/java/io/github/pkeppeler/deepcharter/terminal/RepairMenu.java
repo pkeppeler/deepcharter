@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.terminal;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.menu.MirrorContainer;
 import io.github.pkeppeler.deepcharter.menu.SlotRule;
 import io.github.pkeppeler.deepcharter.menu.SlottedMenu;
 import io.netty.buffer.ByteBuf;
@@ -16,10 +17,10 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
@@ -32,19 +33,20 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The slots show the repair state and are never a store of their own: the server refreshes them from it on every
  * broadcast, and a part in one cannot be taken out. The server checks every placement with the rules of {@link
- * Terminals#insert} (distance, charter, readable data, the repair order); the client predicts with what it was sent.
+ * Terminals#insert} (distance, charter, readable data, the repair order); the client predicts with what it was sent:
+ * the slots, and whether the type is {@link #unlocked()}, which the server keeps in step.
  */
 public final class RepairMenu extends SlottedMenu {
     /** Where the first part slot sits in the screen's image: below the title and two lines of the terminal's text. */
-    public static final int PARTS_Y = 50;
+    private static final int PARTS_Y = 50;
     /** Pixels from one column of part slots to the next, room for the part's name beside its slot. */
-    public static final int PART_COLUMN = 140;
+    private static final int PART_COLUMN = 140;
 
-    public static final int PART_COLUMNS = 2;
+    private static final int PART_COLUMNS = 2;
     /** Pixels from one row of part slots to the next. */
-    public static final int PART_ROW = 20;
+    private static final int PART_ROW = 20;
     /** Pixels between the part slots and the inventory, which hold the refusal line. */
-    public static final int REFUSAL_GAP = 14;
+    private static final int REFUSAL_GAP = 14;
 
     public static final ExtendedMenuType<RepairMenu, Opening> TYPE = Registry.register(
             BuiltInRegistries.MENU,
@@ -54,7 +56,8 @@ public final class RepairMenu extends SlottedMenu {
     /**
      * What the client needs to build the menu.
      *
-     * @param unlocked the type's prerequisite, if any, is repaired, so its parts can go in
+     * @param unlocked the type's prerequisite, if any, was repaired when the menu opened; {@link #unlocked()} follows
+     *     it after that
      */
     public record Opening(BlockPos pos, Identifier type, boolean unlocked) {
         public static final StreamCodec<ByteBuf, Opening> STREAM_CODEC = StreamCodec.composite(
@@ -72,7 +75,9 @@ public final class RepairMenu extends SlottedMenu {
     /** The player the server's menu acts for; null on the client, which only predicts. */
     private final @Nullable ServerPlayer player;
 
-    private final SimpleContainer view;
+    private final MirrorContainer view;
+    /** 1 while the type's prerequisite, if any, is repaired: the server sets it on each broadcast, the client reads it. */
+    private final DataSlot unlocked = DataSlot.standalone();
     /** This menu put the last part in: once it closes (it is no longer valid), the terminal opens online. */
     private boolean repairedHere;
 
@@ -88,7 +93,9 @@ public final class RepairMenu extends SlottedMenu {
                 .orElseThrow(() -> new IllegalStateException("unknown terminal type " + opening.type()));
         this.player = player;
         List<Item> parts = type.parts();
-        this.view = new SimpleContainer(parts.size());
+        this.view = new MirrorContainer(parts.size());
+        unlocked.set(opening.unlocked() ? 1 : 0);
+        addDataSlot(unlocked);
         for (int i = 0; i < parts.size(); i++) {
             Item part = parts.get(i);
             int slot = i;
@@ -128,7 +135,7 @@ public final class RepairMenu extends SlottedMenu {
     }
 
     /** The y of the player's inventory below {@code parts} part slots. */
-    public static int inventoryY(int parts) {
+    private static int inventoryY(int parts) {
         int rows = (parts + PART_COLUMNS - 1) / PART_COLUMNS;
         return PARTS_Y + rows * PART_ROW + REFUSAL_GAP;
     }
@@ -139,6 +146,11 @@ public final class RepairMenu extends SlottedMenu {
 
     public TerminalType type() {
         return type;
+    }
+
+    /** The type's prerequisite, if any, is repaired, so its parts can go in: on the client, as the server last said. */
+    public boolean unlocked() {
+        return unlocked.get() != 0;
     }
 
     private Component unfit(ItemStack stack) {
@@ -155,7 +167,7 @@ public final class RepairMenu extends SlottedMenu {
         if (!view.getItem(slot).isEmpty()) {
             return Optional.of(TerminalRefusal.ALREADY_INSERTED);
         }
-        return opening.unlocked() ? Optional.empty() : Optional.of(TerminalRefusal.PREREQUISITE_UNREPAIRED);
+        return unlocked() ? Optional.empty() : Optional.of(TerminalRefusal.PREREQUISITE_UNREPAIRED);
     }
 
     @Override
@@ -172,7 +184,7 @@ public final class RepairMenu extends SlottedMenu {
         super.broadcastChanges();
     }
 
-    /** Fills each slot whose part is in, from the repair state. Server only. */
+    /** Fills each slot whose part is in, and the unlocked flag, from the repair state. Server only. */
     private void refresh() {
         if (player == null) {
             return;
@@ -181,6 +193,7 @@ public final class RepairMenu extends SlottedMenu {
         if (!state.isReadable()) {
             return;
         }
+        unlocked.set(Terminals.unlocked(state, type) ? 1 : 0);
         List<Item> inserted = state.inserted(type);
         List<Item> parts = type.parts();
         for (int i = 0; i < parts.size(); i++) {

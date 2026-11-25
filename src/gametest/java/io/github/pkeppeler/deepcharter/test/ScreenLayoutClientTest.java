@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetScreen
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.outpost.IncidentReportScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtMenuScreen;
@@ -42,6 +43,7 @@ import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.RepairMenu;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeatureProbe;
+import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -66,6 +68,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -76,6 +79,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -751,7 +755,45 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         require(
                 fixtures.size() == cases.size(),
                 "a fixture names a menu the mod did not register: " + fixtures.keySet());
+        TerminalType locked = TerminalTypes.all().stream()
+                .filter(type -> type.id().getNamespace().equals(DeepCharter.MOD_ID))
+                .filter(type -> type.prerequisite().isPresent())
+                .max(Comparator.comparingInt(type -> type.parts().size()))
+                .orElseThrow();
+        cases.add(new Case("menu terminal_repair, " + locked.id().getPath() + " locked, longest refusal", () -> {
+            RepairMenu menu = new RepairMenu(
+                    1,
+                    ClientSession.player(Minecraft.getInstance()).getInventory(),
+                    new RepairMenu.Opening(POS, locked.id(), false));
+            menu.refusedByServer(longestRefusal());
+            return menuScreen(
+                    Objects.requireNonNull(constructors.get(RepairMenu.TYPE), "the repair menu's screen"),
+                    menu,
+                    Component.translatable(locked.block().getDescriptionId()));
+        }));
         return cases;
+    }
+
+    /**
+     * The terminal refusal that draws widest, upper-cased as the screen draws it. It must fit the panel's content width
+     * on one line, since the menu screen draws it unwrapped between the part slots and the inventory.
+     */
+    private static Component longestRefusal() {
+        Font font = Minecraft.getInstance().font;
+        Component longest = Arrays.stream(TerminalRefusal.values())
+                .map(TerminalRefusal::message)
+                .max(Comparator.comparingInt(
+                        message -> font.width(message.getString().toUpperCase(Locale.ROOT))))
+                .orElseThrow();
+        PanelLook.Insets content = PanelLook.current().content();
+        int room = WIDTH - content.left() - content.right();
+        int wide = font.width(longest.getString().toUpperCase(Locale.ROOT));
+        System.out.println("[screen-layout] longest refusal " + wide + " px of " + room + ": " + longest.getString());
+        require(
+                PanelLook.current().fits(WIDTH, HEIGHT) && wide <= room,
+                "the refusal '" + longest.getString() + "' is " + wide + " px, wider than the panel's " + room
+                        + " px of content");
+        return longest;
     }
 
     /** A menu at its largest, and the title the server opens it with. */

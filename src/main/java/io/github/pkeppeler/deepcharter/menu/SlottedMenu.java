@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -20,13 +21,15 @@ import net.minecraft.world.item.ItemStack;
  * authority: vanilla runs every click on the client first to predict it, then on the server, which corrects the client.
  *
  * <p>A click that drops or swaps a stack into a typed slot, or shift-clicks one out of the inventory, is checked
- * against the slot's rule first. A refused click moves nothing; the menu keeps the reason ({@link #refusal()}, which
- * the screen draws) and the server also tells the player. Shift-click routes an inventory stack to the first typed slot
+ * against the slot's rule first. A refused click moves nothing, and the menu keeps the reason ({@link #refusal()},
+ * which the screen draws). The server's menu sends its reason to the client's ({@link MenuRefusalPayload}), so a
+ * refusal the client did not predict shows too. Shift-click routes an inventory stack to the first typed slot
  * it fits that takes it, and a typed slot's stack back to the inventory. A locked slot that holds something gives
  * nothing back by any click.
  *
  * <p>A subclass adds its typed slots with {@link #addRuleSlot}, then the inventory with {@link #addPlayerInventory},
- * and reacts to a stack put into a typed slot in {@link #placed}.
+ * and reacts to a stack put into a typed slot in {@link #placed}. A slot that shows saved state sits over a {@link
+ * MirrorContainer} and must lock.
  */
 public abstract class SlottedMenu extends AbstractContainerMenu {
     /** The player's inventory: three rows and the hotbar. */
@@ -34,7 +37,7 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
 
     public static final int INVENTORY_HEIGHT = 4 * SLOT_SIZE + 4;
     /** Pixels the frame round a slot reaches past it: a menu puts its slots at least this far into its image. */
-    public static final int FRAME = 1;
+    protected static final int FRAME = 1;
 
     private final List<RuleSlot> ruleSlots = new ArrayList<>();
     private int inventoryStart = -1;
@@ -44,10 +47,16 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         super(type, containerId);
     }
 
-    /** Adds a typed slot over {@code index} of {@code container}, at {@code x}, {@code y} in the screen's image. */
+    /**
+     * Adds a typed slot over {@code index} of {@code container}, at {@code x}, {@code y} in the screen's image. A slot
+     * over a {@link MirrorContainer} must lock.
+     */
     protected final RuleSlot addRuleSlot(Container container, int index, int x, int y, SlotRule rule) {
         if (inventoryStart >= 0) {
             throw new IllegalStateException("typed slots go before the player's inventory");
+        }
+        if (container instanceof MirrorContainer && !rule.locks()) {
+            throw new IllegalArgumentException("a slot that mirrors saved state must lock, or a stack taken out dupes");
         }
         RuleSlot slot = new RuleSlot(container, index, x, y, rule);
         addSlot(slot);
@@ -66,9 +75,14 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         return Collections.unmodifiableList(ruleSlots);
     }
 
-    /** Why this side refused the last click, or empty when it did not. */
+    /** Why the last click was refused, by this side or, on the client, by the server; empty when it was not. */
     public final Optional<Component> refusal() {
         return refusal;
+    }
+
+    /** Client only: the server refused a click for {@code reason} ({@link MenuRefusalPayload}). */
+    public final void refusedByServer(Component reason) {
+        refusal = Optional.of(reason);
     }
 
     /** Called on both sides once {@code stack} is in {@code slot}. The server's menu commits it here. */
@@ -80,8 +94,9 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         Optional<Component> why = refusalOf(index, button, input, player);
         if (why.isPresent()) {
             refusal = why;
-            if (player instanceof ServerPlayer server) {
-                server.sendOverlayMessage(why.get());
+            if (player instanceof ServerPlayer server
+                    && ServerPlayNetworking.canSend(server, MenuRefusalPayload.TYPE)) {
+                ServerPlayNetworking.send(server, new MenuRefusalPayload(containerId, why.get()));
             }
             return;
         }
