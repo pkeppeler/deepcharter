@@ -20,6 +20,7 @@ import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
+import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
@@ -42,6 +43,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.level.ChunkPos;
@@ -66,6 +68,7 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final List<ItemStack> slotUpdates = new ArrayList<>();
     private final List<PlacedSound> soundsAtPlaces = new ArrayList<>();
     private final List<Identifier> soundsStopped = new ArrayList<>();
     private final Map<Integer, List<Identifier>> soundsByEntity = new HashMap<>();
@@ -103,6 +106,11 @@ public final class MockPlayer {
         this.channel = channel;
         this.ownerDone = ownerDone;
         this.clientLevel = player.level().dimension();
+    }
+
+    /** Every item stack the server has sent this player for a container slot so far, oldest first, as copies. */
+    public List<ItemStack> slotUpdates() {
+        return List.copyOf(slotUpdates);
     }
 
     /** Every action-bar message the server has sent this player so far, oldest first. */
@@ -443,6 +451,9 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundCustomPayloadPacket packet) {
                     payloads.add(packet.payload());
+                }
+                if (outbound instanceof ClientboundContainerSetSlotPacket packet) {
+                    slotUpdates.add(packet.getItem().copy());
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());

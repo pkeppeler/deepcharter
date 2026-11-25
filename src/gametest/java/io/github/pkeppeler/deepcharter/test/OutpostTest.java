@@ -930,7 +930,7 @@ public class OutpostTest {
     public void aMobInTheHallRefusesTheKitAndTheRefusalNamesIt(GameTestHelper helper) {
         Stage stage = stage(helper, 9900, true);
         whenReady(helper, stage, () -> {
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, stage.level());
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, stage.level());
             tally.setPos(Vec3.atBottomCenterOf(stage.floor().offset(2, 2, 2)));
             stage.level().addFreshEntity(tally);
             ItemEntity stack = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
