@@ -39,8 +39,10 @@ import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Client GameTest for #59 and #1265: an offline terminal opens its repair screen, with a ghost in each part slot; a part dragged
- * into its slot, then one shift-clicked, go in through the server, and the online screen opens when the last is in; a locked
+ * Client GameTest for #59 and #1265: an offline terminal opens its repair screen, with a ghost in each part slot; a
+ * part dragged
+ * into its slot, then one shift-clicked, go in through the server, and the online screen opens when the last is in; a
+ * locked
  * terminal's slots refuse its parts with the reason on screen; and the server refuses an open request from too far.
  */
 public class TerminalFrameworkClientTest implements FabricClientGameTest {

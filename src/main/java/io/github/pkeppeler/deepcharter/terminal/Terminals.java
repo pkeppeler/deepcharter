@@ -34,8 +34,10 @@ public final class Terminals {
     private Terminals() {}
 
     /**
-     * Opens the terminal at {@code pos} for {@code player}. A working terminal sends the client its {@link TerminalView}; an
-     * unrepaired one opens its {@link RepairMenu}, where the parts go in. The upper half of a terminal opens its lower half.
+     * Opens the terminal at {@code pos} for {@code player}. A working terminal sends the client its {@link
+     * TerminalView}; an
+     * unrepaired one opens its {@link RepairMenu}, where the parts go in. The upper half of a terminal opens its lower
+     * half.
      */
     public static Optional<TerminalRefusal> open(ServerPlayer player, BlockPos clicked) {
         BlockPos pos = TerminalBlock.lowerHalf(player.level(), clicked);
@@ -54,7 +56,10 @@ public final class Terminals {
         };
     }
 
-    /** Runs {@code action} at the terminal at {@code pos} for {@code player}: it needs a repaired terminal and a handler from {@link TerminalActions#register}. */
+    /**
+     * Runs {@code action} at the terminal at {@code pos} for {@code player}: it needs a repaired terminal and a handler
+     * from {@link TerminalActions#register}.
+     */
     public static Optional<TerminalRefusal> act(
             ServerPlayer player, BlockPos pos, Identifier action, CompoundTag args) {
         return switch (access(player, pos)) {
@@ -137,7 +142,8 @@ public final class Terminals {
     }
 
     /**
-     * Puts one {@code part} from the player's inventory into the unrepaired terminal at {@code pos}: the right-click shortcut
+     * Puts one {@code part} from the player's inventory into the unrepaired terminal at {@code pos}: the right-click
+     * shortcut
      * of the {@link RepairMenu}, which holds the same rules. A refusal takes nothing, and the player is told why.
      */
     public static Optional<TerminalRefusal> insert(ServerPlayer player, BlockPos clicked, Item part) {
@@ -153,7 +159,10 @@ public final class Terminals {
         return Optional.empty();
     }
 
-    /** Why {@code player} cannot put {@code part} into the terminal at {@code pos} now, or empty when they can. Changes nothing. */
+    /**
+     * Why {@code player} cannot put {@code part} into the terminal at {@code pos} now, or empty when they can. Changes
+     * nothing.
+     */
     static Optional<TerminalRefusal> insertRefusal(ServerPlayer player, BlockPos pos, Item part) {
         return switch (access(player, pos)) {
             case Access.Denied denied -> Optional.of(denied.refusal());
@@ -166,7 +175,8 @@ public final class Terminals {
 
     /**
      * Records {@code part}, already taken from the player, as in the terminal at {@code pos}, and fires
-     * {@link TerminalEvents#REPAIRED} if it was the last. Call only after {@link #insertRefusal} found nothing on this tick.
+     * {@link TerminalEvents#REPAIRED} if it was the last. Call only after {@link #insertRefusal} found nothing on this
+     * tick.
      */
     static void commit(ServerPlayer player, BlockPos pos, Item part) {
         if (!(access(player, pos) instanceof Access.Granted access)) {
@@ -184,7 +194,10 @@ public final class Terminals {
         }
     }
 
-    /** True while {@code player} may still use the repair menu of {@code type} at {@code pos}: access holds and it is still unrepaired. */
+    /**
+     * True while {@code player} may still use the repair menu of {@code type} at {@code pos}: access holds and it is
+     * still unrepaired.
+     */
     static boolean stillOpen(ServerPlayer player, BlockPos pos, TerminalType type) {
         return access(player, pos) instanceof Access.Granted granted
                 && granted.type() == type

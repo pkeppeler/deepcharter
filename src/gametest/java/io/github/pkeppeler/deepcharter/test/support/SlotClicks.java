@@ -6,7 +6,8 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.Slot;
 
 /**
- * Clicks the slots of the open container screen with the real cursor and mouse, as a player drags and shift-clicks items.
+ * Clicks the slots of the open container screen with the real cursor and mouse, as a player drags and shift-clicks
+ * items.
  * The caller waits for what the click changes.
  */
 public final class SlotClicks {

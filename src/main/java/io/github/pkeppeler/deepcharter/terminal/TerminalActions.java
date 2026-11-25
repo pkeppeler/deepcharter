@@ -5,7 +5,9 @@ import java.util.Map;
 import java.util.Optional;
 import net.minecraft.resources.Identifier;
 
-/** The actions of each terminal type. They run only on a repaired terminal; parts go in through its {@link RepairMenu}. */
+/**
+ * The actions of each terminal type. They run only on a repaired terminal; parts go in through its {@link RepairMenu}.
+ */
 public final class TerminalActions {
     private static final Map<TerminalType, Map<Identifier, TerminalAction>> ACTIONS = new HashMap<>();
 

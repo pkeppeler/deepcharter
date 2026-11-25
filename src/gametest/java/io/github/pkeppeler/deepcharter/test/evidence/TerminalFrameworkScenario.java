@@ -20,7 +20,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Evidence scenario "m2-terminal-framework" for #59: a charter opens the offline fuel pump terminal, shift-clicks its two parts
+ * Evidence scenario "m2-terminal-framework" for #59: a charter opens the offline fuel pump terminal, shift-clicks its
+ * two parts
  * into their slots one by one (#1265), and the terminal comes online. Stills of the offline and the online screen.
  */
 public class TerminalFrameworkScenario extends EvidenceScenario {

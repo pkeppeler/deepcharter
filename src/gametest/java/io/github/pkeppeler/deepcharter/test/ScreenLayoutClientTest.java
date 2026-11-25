@@ -97,8 +97,10 @@ import net.minecraft.world.inventory.Slot;
  * content. Each widget lies inside the screen and no two widgets overlap; a failure names the screen, the widget and the overflow in pixels.
  *
  * <p>The screens are found, not listed. The terminal screens come from {@link TerminalTypes#all()} through {@link TerminalScreens#create},
- * so a new terminal is built the way the game builds it (the generic {@code TerminalScreen} is the online one of a type that registers none; an
- * unrepaired terminal opens the repair menu, a container screen); the container screens come from the menu types the mod registered and the screen
+ * so a new terminal is built the way the game builds it (the generic {@code TerminalScreen} is the online one of a type
+ * that registers none; an
+ * unrepaired terminal opens the repair menu, a container screen); the container screens come from the menu types the
+ * mod registered and the screen
  * each registered with {@code MenuScreens}. A terminal type that adds a feature, or a menu type, with no fixture below fails the test and
  * says so, so a new one cannot be skipped. Only the screens nothing registers are named by hand ({@link #standalone}), and
  * {@code tools/tests/test_screen_layout_gate.py} fails when a screen class is neither registered nor named in this file.

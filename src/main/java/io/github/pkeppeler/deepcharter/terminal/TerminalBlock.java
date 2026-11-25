@@ -196,7 +196,8 @@ public final class TerminalBlock extends BaseEntityBlock {
 
     /**
      * The shortcut of the repair menu: using one of an unrepaired terminal's own parts on it puts the part in
-     * ({@link Terminals#insert}) and opens the terminal. Any other item, or any item on a working terminal, uses the terminal
+     * ({@link Terminals#insert}) and opens the terminal. Any other item, or any item on a working terminal, uses the
+     * terminal
      * as an empty hand does.
      */
     @Override

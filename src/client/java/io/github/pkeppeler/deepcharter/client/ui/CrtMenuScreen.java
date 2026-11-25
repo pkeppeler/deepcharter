@@ -135,7 +135,10 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {}
 
-    /** The glass and the scanlines go over the slots and their items; the carried item and the tooltip stay clear of them. */
+    /**
+     * The glass and the scanlines go over the slots and their items; the carried item and the tooltip stay clear of
+     * them.
+     */
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractContents(graphics, mouseX, mouseY, partialTick);

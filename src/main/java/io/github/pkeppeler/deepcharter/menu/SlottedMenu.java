@@ -19,12 +19,16 @@ import net.minecraft.world.item.ItemStack;
  * A container menu of typed slots ({@link SlotRule}) above the player's inventory (ADR 0099). The server's menu is the
  * authority: vanilla runs every click on the client first to predict it, then on the server, which corrects the client.
  *
- * <p>A click that drops or swaps a stack into a typed slot, or shift-clicks one out of the inventory, is checked against the
- * slot's rule first. A refused click moves nothing; the menu keeps the reason ({@link #refusal()}, which the screen draws)
- * and the server also tells the player. Shift-click routes an inventory stack to the first typed slot it fits that takes it,
+ * <p>A click that drops or swaps a stack into a typed slot, or shift-clicks one out of the inventory, is checked
+ * against the
+ * slot's rule first. A refused click moves nothing; the menu keeps the reason ({@link #refusal()}, which the screen
+ * draws)
+ * and the server also tells the player. Shift-click routes an inventory stack to the first typed slot it fits that
+ * takes it,
  * and a typed slot's stack back to the inventory. A locked slot that holds something gives nothing back by any click.
  *
- * <p>A subclass adds its typed slots with {@link #addRuleSlot}, then the inventory with {@link #addPlayerInventory}, and
+ * <p>A subclass adds its typed slots with {@link #addRuleSlot}, then the inventory with {@link #addPlayerInventory},
+ * and
  * reacts to a stack put into a typed slot in {@link #placed}.
  */
 public abstract class SlottedMenu extends AbstractContainerMenu {

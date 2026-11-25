@@ -14,7 +14,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 /**
- * The generic online terminal screen: it greets the charter and shows its account. A terminal feature replaces it with its own
+ * The generic online terminal screen: it greets the charter and shows its account. A terminal feature replaces it with
+ * its own
  * through {@link TerminalScreens#register}. An unrepaired terminal opens its {@link RepairScreen} instead.
  */
 public final class TerminalScreen extends CrtScreen implements TerminalViewScreen {
