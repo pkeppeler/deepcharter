@@ -390,7 +390,8 @@ def soot_grade(src, zoom=1.0, centre=(0.5, 0.5)):
         box = tuple(int(v) for v in (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2))
         img = img.crop(box).resize((W, H), Image.LANCZOS)
     g = np.asarray(img.convert("L")).astype(np.float32) / 255
-    g = np.clip((g - 0.04) * 1.6, 0, 1) ** 1.1
+    lo, hi = np.percentile(g, 2), np.percentile(g, 99.7)  # the chamber is nearly unlit: stretch what light there is
+    g = np.clip((g - lo) / max(hi - lo, 1e-3), 0, 1) ** 1.25
     g *= np.linspace(0.55, 1.25, H)[:, None]
     tint = np.stack([g * 235 + 10, g * 200 + 6, g * 150 + 3], -1) * (1 + RNG.uniform(-0.1, 0.05))
     yy, xx = np.mgrid[0:H, 0:W]
