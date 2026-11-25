@@ -51,6 +51,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             String sounds,
             double msptMillis,
             int forceSends,
+            String serverChunks,
             long heapMb) {}
 
     @Override
@@ -70,7 +71,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                             new Site(TestLayers.layerDimension(server, 1), TestLayers.layerDimension(server, 2), X, Z));
             for (int trip = 1; trip <= TRIPS; trip++) {
                 trip(context, two, clientId, site);
-                Tripped held = sample(context, two, trip);
+                Tripped held = sample(context, two, trip, site);
                 trips.add(held);
                 LOGGER.info("BORE-TRIP {}", held);
             }
@@ -93,24 +94,39 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                         && client.getConnection().hasClientLoaded(),
                 ClientWait::describe);
         context.waitTicks(20);
-        // The climb: the pod, wherever it now is, rises through layer 2's ceiling.
+        // The climb: the mock steps off (a Mole has one seat, and the crossing recreates the pod with that one), then
+        // the pod
+        // rises through layer 2's ceiling.
         two.server().runOnServer(server -> {
+            two.mock().player().stopRiding();
             ServerPlayer real = SeamPodScene.player(server, clientId);
             real.getRootVehicle().setPos(site.x(), site.two().getMaxY() + 1.5, site.z());
         });
         ClientWait.until(
                 context,
                 "the client back in layer 1 on the pod",
-                client -> SeamPodScene.inLayer(client, 1)
+                () -> context.computeOnClient(client -> SeamPodScene.inLayer(client, 1)
                         && SeamPodScene.vehicleOf(client) != null
                         && client.getConnection() != null
-                        && client.getConnection().hasClientLoaded(),
-                ClientWait::describe);
+                        && client.getConnection().hasClientLoaded()),
+                () -> context.computeOnClient(ClientWait::describe)
+                        + "; server: "
+                        + two.server().computeOnServer(server -> {
+                            ServerPlayer real = SeamPodScene.player(server, clientId);
+                            return "real in " + real.level().dimension().identifier() + " at " + real.position()
+                                    + " vehicle " + real.getVehicle() + " mock vehicle "
+                                    + two.mock().player().getVehicle();
+                        }));
         context.waitTicks(20);
         SeamPodScene.finish(two, pod);
     }
 
-    private static Tripped sample(ClientGameTestContext context, TwoPlayerServer two, int trip) {
+    private static Tripped sample(ClientGameTestContext context, TwoPlayerServer two, int trip, Site site) {
+        String chunks = two.server()
+                .computeOnServer(
+                        server -> "layer1 " + site.one().getChunkSource().getLoadedChunksCount() + " layer2 "
+                                + site.two().getChunkSource().getLoadedChunksCount() + " overworld "
+                                + server.overworld().getChunkSource().getLoadedChunksCount());
         Map<String, Long> live = HeapHistogram.liveCounts(TRACKED);
         long heapMb = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
         double mspt = two.server().computeOnServer(MinecraftServer::getAverageTickTimeNanos) / 1_000_000.0;
@@ -125,6 +141,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                 client.getSoundManager().getChannelDebugString(),
                 mspt,
                 ForceSends.total(),
+                chunks,
                 heapMb));
     }
 }

@@ -9,7 +9,8 @@
     "EnvironmentAttributeSystemInvoker",
     "PlayerChunkSenderMixin",
     "ServerChunkCacheMixin",
-    "ServerPlayerSeamAccess"
+    "ServerPlayerSeamAccess",
+    "TrackedEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
