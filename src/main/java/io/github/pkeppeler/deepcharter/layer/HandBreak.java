@@ -82,7 +82,7 @@ public final class HandBreak {
      * reads only the level, so it works on the client.
      */
     public static boolean isPodOnly(Level level, BlockPos pos, BlockState state) {
-        // Picking through a grained floor would skip the breach as surely as through a breach crust one.
+        // Picking through a grained floor would skip the breach as surely as picking through breach crust.
         if (state.is(LayerBlocks.BREACH_CRUST)
                 || state.is(LayerBlocks.GRAINED_CRUST)
                 || state.is(HazardBlocks.UNDIGGABLE)) {

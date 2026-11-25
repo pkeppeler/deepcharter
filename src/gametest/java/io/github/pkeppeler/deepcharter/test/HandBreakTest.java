@@ -241,7 +241,7 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** One predicate for all three kinds: each is governed, each is slow for any tool and zero for a bare hand. */
+    /** One predicate for all four kinds: each is governed, each is slow for any tool and zero for a bare hand. */
     @GameTest
     public void eachKindOfPodOnlyBlockFollowsTheSameRule(GameTestHelper helper) {
         List<Kind> kinds = kinds();
