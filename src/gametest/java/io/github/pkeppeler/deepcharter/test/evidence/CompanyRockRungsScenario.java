@@ -82,6 +82,10 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
             for (BlockPos stays : stays()) {
                 one.setBlock(stays, HazardBlocks.COMPANY_ROCK.defaultBlockState(), 3);
             }
+        });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 13);
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
@@ -208,6 +212,10 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
                             3);
                 }
             }
+        });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, BITE_X, Z, 13);
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, BITE_X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), 0, LOOK_DOWN, true);

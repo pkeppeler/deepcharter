@@ -72,7 +72,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
                     context,
                     "the player in layer 1",
                     client -> client.player != null && TestLayers.clientIsIn(client, 1));
-            context.waitTicks(30);
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 2);
 
             // Braked: the pilot taps the rotor whenever the sink passes BRAKE_ABOVE_SINK.
             boardNewPod(singleplayer);

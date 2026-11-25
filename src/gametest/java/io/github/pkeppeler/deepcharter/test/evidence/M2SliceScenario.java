@@ -578,7 +578,7 @@ public class M2SliceScenario extends EvidenceScenario {
 
         /** Sets the Mole in a sealed pocket in the rock {@link #BORE_RESUMED_ABOVE_FLOOR} blocks above the floor of the campaign level's surface band, under where it is. */
         private void skipTheBoreToTheFloor() {
-            onServer(server -> {
+            BlockPos pocket = onServer(server -> {
                 // The descent resumes in the surface band of the campaign level, where the layers are bands of one
                 // level, so
                 // the drill carries the Mole across each floor in place.
@@ -594,6 +594,15 @@ public class M2SliceScenario extends EvidenceScenario {
                         new BlockPos(x + 2, low + 4, z + 2),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
+                return new BlockPos(x, low, z);
+            });
+            ClientWait.lightSettled(ctx, two.server(), 1, pocket.getX(), pocket.getZ(), 2);
+            onServer(server -> {
+                ServerLevel campaign = TestLayers.level(server, 1);
+                PodEntity pod = pod(server, mole.get());
+                int x = pocket.getX();
+                int z = pocket.getZ();
+                int low = pocket.getY();
                 Entity arrived = pod.teleport(new TeleportTransition(
                         campaign,
                         new Vec3(x + 0.5, low, z + 0.5),
@@ -726,6 +735,8 @@ public class M2SliceScenario extends EvidenceScenario {
                 buildRoom(one);
                 return null;
             });
+            ClientWait.lightSettled(
+                    ctx, two.server(), 1, X + (ROOM_EAST - ROOM_WEST) / 2, Z, (ROOM_EAST + ROOM_WEST) / 2 + 1);
             board(mole.get());
             onServer(server -> {
                 real(server)
@@ -833,8 +844,14 @@ public class M2SliceScenario extends EvidenceScenario {
             LamplessFigure[] figure = {null};
             dismount();
             onServer(server -> {
+                cutDrift(TestLayers.level(server, 2), site);
+                return null;
+            });
+            Vec3 driftMiddle = at(site, -(DRIFT_LENGTH + 7) / 2.0, 0, 0);
+            ClientWait.lightSettled(
+                    ctx, two.server(), 2, (int) driftMiddle.x, (int) driftMiddle.z, (DRIFT_LENGTH - 7) / 2 + 2);
+            onServer(server -> {
                 ServerLevel level = TestLayers.level(server, 2);
-                cutDrift(level, site);
                 pod(server, mole.get())
                         .teleportTo(
                                 level,

@@ -147,7 +147,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         Vec3 floorPosition = two.server().computeOnServer(server -> cutShaft(server, rig.realPod()));
         ClientWait.lightSettled(
                 context, two.server(), 1, Mth.floor(floorPosition.x), Mth.floor(floorPosition.z), SHAFT_RADIUS + 1);
-        two.server().runOnServer(server -> lift(server, rig.realPod()));
+        two.server().runOnServer(server -> lift(server, rig.realPod(), floorPosition));
         Vec3 liftedPosition =
                 two.server().computeOnServer(server -> rig.realPod().position());
         awaitScannerAt(context, rig.realPod().getId(), liftedPosition, true);
@@ -303,10 +303,10 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         return floorPosition;
     }
 
-    /** Holds the pod at the top of the shaft {@link #cutShaft} cut, with no gravity. */
-    private static void lift(MinecraftServer server, PodEntity pod) {
+    /** Holds the pod at the top of the shaft {@link #cutShaft} cut over {@code floorPosition}, with no gravity. */
+    private static void lift(MinecraftServer server, PodEntity pod, Vec3 floorPosition) {
         pod.setNoGravity(true);
-        pod.setPos(pod.getX(), clearY(TestLayers.level(server, 1)), pod.getZ());
+        pod.setPos(floorPosition.x, clearY(TestLayers.level(server, 1)), floorPosition.z);
         pod.setDeltaMovement(Vec3.ZERO);
     }
 

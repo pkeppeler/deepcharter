@@ -54,6 +54,10 @@ public class MoleBoreScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 buildRoom(one);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, ROOM);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, X - 6, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);

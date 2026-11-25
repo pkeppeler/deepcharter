@@ -45,6 +45,10 @@ public class PodDrillScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 buildShaftRoom(one);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 5);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
