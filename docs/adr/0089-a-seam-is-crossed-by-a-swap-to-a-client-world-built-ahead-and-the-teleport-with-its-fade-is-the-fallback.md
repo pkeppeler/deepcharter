@@ -6,6 +6,8 @@ status: accepted
 
 Issue [#217](https://github.com/pkeppeler/deepcharter/issues/217), slice 1 in [#1159](https://github.com/pkeppeler/deepcharter/issues/1159). Settles what [ADR 0085](0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md) left open ("how seamless the seam must be, and whether the fade and the arrival pocket stay"). Builds on the seam of [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md), whose rejection of a fade as the plan still holds.
 
+Amended 2026-11-25 (#1254): a mid-layer seam sits in a plain slab (see the last Decision bullet).
+
 ## Decision
 
 - **The target is a seamless swap.** The server streams the next world's arrival area ahead of the crossing, the client builds a second world from it, and at the seam it switches to that world without vanilla's respawn path. Position, velocity, rotation and interpolation carry over.
