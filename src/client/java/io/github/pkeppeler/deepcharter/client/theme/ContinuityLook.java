@@ -30,6 +30,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param bloomLayers         layers of the soft glow under the letters; 0 draws none
  * @param bloomSpread         each layer of the glow reaches this much further out than the one inside it
  * @param bloomColor          one layer of the glow; the layers add up where they overlap
+ * @param haloPixels          the halo of the crt glow colour round each letter reaches this far out, in GUI pixels (a fraction draws
+ *                            finer on a scaled GUI)
  * @param tearRows            rows torn sideways at the loudest
  * @param tearPixels          how far a row is torn at the loudest
  * @param shuffleLoudness     above this loudness the letters shuffle each frame
@@ -71,6 +73,7 @@ public record ContinuityLook(
         int bloomLayers,
         int bloomSpread,
         int bloomColor,
+        double haloPixels,
         int tearRows,
         int tearPixels,
         double shuffleLoudness,
@@ -121,6 +124,7 @@ public record ContinuityLook(
                 d.integer("bloomLayers", 0, 8),
                 d.integer("bloomSpread", 0, 16),
                 d.color("bloomColor"),
+                d.decimal("haloPixels", 0.0, 3.0),
                 d.integer("tearRows", 0, 40),
                 d.integer("tearPixels", 0, 60),
                 d.decimal("shuffleLoudness", 0.0, 1.0),

@@ -70,6 +70,7 @@ final class SkullArt {
         int glow = dimmed(crt.glowColor(), brightness);
         int outline = dimmed(look.outlineColor(), brightness);
         int bloom = dimmed(look.bloomColor(), brightness);
+        float halo = (float) look.haloPixels();
         double arrival = look.arrivalSeconds() <= 0 ? 1 : Math.min(1, since / look.arrivalSeconds());
 
         dots(graphics, grid.skullOutline(), left, top, outline);
@@ -113,7 +114,8 @@ final class SkullArt {
                         scaleX,
                         scaleY,
                         dimmed(look.staticColor(), random.nextDouble()),
-                        0);
+                        0,
+                        0f);
                 continue;
             }
             boolean any = false;
@@ -126,8 +128,8 @@ final class SkullArt {
                 any |= cell != SkullShape.NONE;
             }
             if (any) {
-                row(graphics, font, new String(boneRow), left + tear[row], y, scaleX, scaleY, bone, glow);
-                row(graphics, font, new String(skullRow), left + tear[row], y, scaleX, scaleY, skull, glow);
+                row(graphics, font, new String(boneRow), left + tear[row], y, scaleX, scaleY, bone, glow, halo);
+                row(graphics, font, new String(skullRow), left + tear[row], y, scaleX, scaleY, skull, glow, halo);
             }
         }
         band(graphics, width, height, since, look);
@@ -170,7 +172,7 @@ final class SkullArt {
         }
     }
 
-    /** A row of letters at ({@code x}, {@code y}), scaled, with a halo one pixel out in each direction when {@code glow} is not 0. */
+    /** A row of letters at ({@code x}, {@code y}), scaled, with a halo {@code halo} pixels out in each direction when {@code glow} is not 0. */
     private static void row(
             GuiGraphicsExtractor graphics,
             Font font,
@@ -180,11 +182,12 @@ final class SkullArt {
             float scaleX,
             float scaleY,
             int color,
-            int glow) {
+            int glow,
+            float halo) {
         Component styled = CrtText.terminal(letters);
         if (glow != 0) {
             for (int[] offset : new int[][] {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
-                at(graphics, font, styled, x + offset[0], y + offset[1], scaleX, scaleY, glow);
+                at(graphics, font, styled, x + offset[0] * halo, y + offset[1] * halo, scaleX, scaleY, glow);
             }
         }
         at(graphics, font, styled, x, y, scaleX, scaleY, color);

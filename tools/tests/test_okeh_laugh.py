@@ -48,12 +48,13 @@ class CommittedTest(unittest.TestCase):
         self.assertEqual("The Okeh Laughing Record", source["tags"]["title"])
         self.assertIn("George Blood", source["tags"]["comment"])
 
-    def test_the_credit_states_no_licence_and_the_public_domain_note(self):
+    def test_the_credit_states_only_what_the_item_says(self):
+        # A credit states only what the file's tag or page says: no licence, and no reading of the law of our own.
         credits = (ROOT / "CREDITS.md").read_text()
         self.assertIn("The Okeh Laughing Record", credits)
         self.assertIn(okeh_laugh.PAGE_URL, credits)
         self.assertIn("none stated", credits)
-        self.assertIn("Music Modernization Act", credits)
+        self.assertNotIn("public domain", credits.lower())
 
     def test_the_envelope_is_as_long_as_the_laugh_and_within_zero_to_one(self):
         envelope = json.loads(okeh_laugh.ENVELOPE.read_text())
