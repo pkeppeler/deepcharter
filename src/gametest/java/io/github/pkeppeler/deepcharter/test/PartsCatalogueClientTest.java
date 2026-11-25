@@ -1409,7 +1409,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 List.of(new HandbookChapter.Entry(
                         directive,
                         Component.literal("Make a drill head."),
-                        List.of(new HandbookChapter.Need(BuiltInRegistries.ITEM.getKey(DRILL), 1)))));
+                        List.of(new HandbookChapter.Target(BuiltInRegistries.ITEM.getKey(DRILL), 1)))));
         List<HandbookPage> pages = HandbookPages.of(Map.of(chapterId, chapter), Set.of());
         HandbookScreen[] opened = new HandbookScreen[1];
         context.setScreen(() -> {

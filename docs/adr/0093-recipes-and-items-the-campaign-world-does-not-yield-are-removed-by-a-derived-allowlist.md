@@ -31,4 +31,3 @@ Issue [#1263](https://github.com/pkeppeler/deepcharter/issues/1263), a user deci
 - The creative tabs are rebuilt when the creative screen's parameters change; after a `/reload` that edits the tag, a client may show the old tabs until it rejoins.
 - `FabricRecipeManager.getSynchronizedRecipes()` (Fabric's recipe API) still holds the left-out recipes, as it copies the map before the filter. Nothing in this mod reads it, and the client's recipe sync reads the live map. Refreshing it would mean building Fabric's internal `SynchronizedRecipesImpl`, so it is left as is.
 - `/reload` with a pack that edits the tag reloads the recipes against the new list, since the recipe manager is built anew.
-- Biofuel's recipe is not loaded: its crops never grow in the campaign world. It was never craftable there; [#1288](https://github.com/pkeppeler/deepcharter/issues/1288) gives it an ingredient the world yields or removes it, and deletes the test's exemption for it.

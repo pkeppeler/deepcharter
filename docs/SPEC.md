@@ -141,7 +141,7 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - **Voice:** the employer's cheerful corporate voice. Previous miners' handwritten margin notes tell a different story. The handbook is "revised" five times as the story turns. Revisions change its tone, never its rules. Text, margin notes and revisions: [lore/handbook.md](lore/handbook.md).
 - **Visibility:** show only the road just ahead, and never spoil.
   - The current Directives are explicit.
-  - The next chapter shows its title and Directive list.
+  - The next chapter shows its title and Directive list on its own tab. The current chapter's map does not preview it.
   - Anything further ahead is a redacted shape with a CLASSIFIED stamp.
 
 ### After layer 2
@@ -158,7 +158,8 @@ The **Employee Handbook** is a company-issued onboarding manual.
 ### Directives and progress
 
 - **Directives** are the handbook's objectives, shown as a **quest map**: a tab down the side for the intro and one for each chapter on every page, and each chapter a fixed flowchart sheet: nothing on it drags, pans or zooms (playtest 3, #962). They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
-- A step shows its instruction, the items it needs with counts and progress, a link to its chapter page and each item's recipe one click away. The chapter text pages stay as the manual.
+- A step's card shows its instruction, a link to its chapter page and, when the step asks for an item (obtained or crafted), that item with its count and progress. It never lists the item's ingredients. A click on the item opens its recipe, as in the GregTech: New Horizons questbook (BetterQuesting). The chapter text pages stay as the manual.
+- The handbook has a controls page after the contents: how to use the handbook, the parts catalogue, the pod and the scanner, with each key read live from the player's bindings, so a rebind shows.
 - A completed step shows a themed popup. Nothing is pinned on screen. The book opens where the player left it, and L opens it as well as H.
 - Directives give no rewards. The employer's transmission bonuses still exist separately.
 - Progress is shared by the charter, with personal read marks for each player.

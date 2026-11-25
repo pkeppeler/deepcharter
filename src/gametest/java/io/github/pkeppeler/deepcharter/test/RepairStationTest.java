@@ -6,6 +6,8 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -164,6 +166,10 @@ public class RepairStationTest {
         return args;
     }
 
+    private static Optional<TerminalRefusal> serviceEngine(Station station) {
+        return Terminals.act(station.pilot().player(), station.pos(), RepairStation.SERVICE_ENGINE, new CompoundTag());
+    }
+
     private static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
         if (refusal.isPresent()) {
             throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
@@ -249,6 +255,63 @@ public class RepairStationTest {
             expectAccount(helper, station, 1_000 - 40 * PER_HP, "a full hull costs nothing");
             if (RepairTuning.DEFAULT.repairCostPerHp() != PER_HP) {
                 throw helper.assertionException("the tuned price should be $%d/HP", PER_HP);
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void serviceEngineClearsTheSootForDollarsPerLitreAndRefusesACleanEngineOrAShortAccount(
+            GameTestHelper helper) {
+        withStation(helper, station -> {
+            PodEntity pod = station.pod();
+            expectRefused(helper, serviceEngine(station), "servicing a clean engine");
+
+            EngineSoot.refuelled(pod, 12f, 1f);
+            EngineSoot.burned(pod, 8f);
+            EngineSoot.flush(pod);
+            long cost = EngineSoot.serviceCost(pod);
+            long expected = 8 * FuelTuning.DEFAULT.soot().servicePerLitre();
+            if (cost != expected) {
+                throw helper.assertionException(
+                        "8 L of soot should cost $%d at the tuned price, got $%d", expected, cost);
+            }
+            expectRefused(helper, serviceEngine(station), "servicing from an empty account");
+            if (EngineSoot.soot(pod) != 8f) {
+                throw helper.assertionException(
+                        "a refused service should leave the soot, got %s L", EngineSoot.soot(pod));
+            }
+            expectAccount(helper, station, 0, "after the refusal");
+
+            fund(helper, station, 1_000);
+            expectDone(helper, serviceEngine(station), "servicing a sooty engine");
+            expectAccount(helper, station, 1_000 - cost, "after the service");
+            if (EngineSoot.soot(pod) != 0f) {
+                throw helper.assertionException("a service should clear the soot, got %s L", EngineSoot.soot(pod));
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void serviceEngineClearsTheWholeLitresTheAccountPaysForAndRefusesWhenItPaysForNone(GameTestHelper helper) {
+        withStation(helper, station -> {
+            PodEntity pod = station.pod();
+            pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(13f, 0f, 0f)));
+            fund(helper, station, 35);
+            expectDone(helper, serviceEngine(station), "a part service from $35");
+            expectAccount(helper, station, 5, "$35 buys 3 L at $10");
+            if (EngineSoot.soot(pod) != 10f) {
+                throw helper.assertionException("$35 should clear 3 L of 13, left %s L", EngineSoot.soot(pod));
+            }
+            expectRefused(helper, serviceEngine(station), "a service from $5, under a litre's price");
+            expectAccount(helper, station, 5, "a refused service charges nothing");
+            fund(helper, station, 995);
+            expectDone(helper, serviceEngine(station), "the rest from $1,000");
+            expectAccount(helper, station, 900, "the last 10 L cost $100");
+            if (EngineSoot.soot(pod) != 0f) {
+                throw helper.assertionException(
+                        "a full service should clear the soot, left %s L", EngineSoot.soot(pod));
             }
             helper.succeed();
         });

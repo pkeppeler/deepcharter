@@ -215,12 +215,6 @@ public class ObtainableItemsTest {
         helper.succeed();
     }
 
-    /**
-     * Recipes of ours the campaign world cannot feed: biofuel takes crops that never grow there. #1288 gives it an
-     * ingredient the world yields, or removes it, and deletes this entry.
-     */
-    private static final Set<String> UNFED = Set.of("deepcharter:biofuel");
-
     @GameTest
     public void everyRecipeOfOursIsLoaded(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
@@ -231,11 +225,8 @@ public class ObtainableItemsTest {
                 .filter(key -> key.identifier().getNamespace().equals(DeepCharter.MOD_ID))
                 .filter(key -> server.getRecipeManager().byKey(key).isEmpty())
                 .map(key -> key.identifier().toString())
-                .filter(id -> !UNFED.contains(id))
                 .sorted()
                 .toList();
-        UNFED.forEach(id -> expect(
-                helper, !loaded(server, Identifier.parse(id)), "%s is loaded now: delete it from UNFED (#1288)", id));
         expect(
                 helper,
                 missing.isEmpty(),

@@ -1,10 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
-
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.ColonyRations;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.fuel.FuelRegistry;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
@@ -64,8 +63,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses,
- * biofuel refuels (its crops are not in the campaign world, so its recipe is not loaded, ADR 0093 and #1288), and a
- * reserve tank adds 25 litres of capacity and clears Stranded.
+ * biofuel crafts from three stalk mash and refuels, and a reserve tank adds 25 litres of capacity and clears Stranded.
  */
 public class FuelPumpTest {
     private static final float EPSILON = 0.001f;
@@ -405,19 +403,23 @@ public class FuelPumpTest {
         }
     }
 
-    /**
-     * The crops biofuel takes never grow in the campaign world, so its recipe is not loaded (ADR 0093) and four of them
-     * craft nothing. If #1288 gives it an ingredient the world yields, this becomes a crafting test again, with the
-     * three-crop and four-stick cases it had.
-     */
     @GameTest
-    public void biofuelIsNotCraftedFromCropsTheWorldLacksAndRefuels(GameTestHelper helper) {
+    public void biofuelIsCraftedFromThreeStalkMashAndRefuels(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        for (Item crop : List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT)) {
-            ItemStack made = craft(
-                    helper,
-                    List.of(new ItemStack(crop), new ItemStack(crop), new ItemStack(crop), new ItemStack(crop)));
-            expect(helper, made.isEmpty(), "four %s should craft nothing, the world has no crops; got %s", crop, made);
+        Item mash = ColonyRations.STALK_MEAL;
+        ItemStack made = craft(helper, List.of(new ItemStack(mash), new ItemStack(mash), new ItemStack(mash)));
+        if (!made.is(FuelRegistry.BIOFUEL) || made.getCount() != 1) {
+            throw helper.assertionException("three stalk mash should craft one biofuel, got %s", made);
+        }
+        ItemStack two = craft(helper, List.of(new ItemStack(mash), new ItemStack(mash)));
+        if (!two.isEmpty()) {
+            throw helper.assertionException("two stalk mash should craft nothing, got %s", two);
+        }
+        ItemStack wheat = craft(
+                helper, List.of(new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT)));
+        if (!wheat.isEmpty()) {
+            throw helper.assertionException(
+                    "the campaign world has no crops: wheat should craft nothing, got %s", wheat);
         }
 
         var litres = PodFuelItems.litresOf(new ItemStack(FuelRegistry.BIOFUEL));
