@@ -41,9 +41,9 @@ import org.jspecify.annotations.Nullable;
  * the game's own fog and ambient light), and with night vision, which shows the shapes. The views:
  *
  * <ul> <li>a cave pocket in the surface band's underground, the first caves on the way down; <li>the longest open run
- * in a cave of each zone of layer 1; <li>a cut face across each contact between two strata: Topsoil Claims' hardpan over Stone Benches' packed shale, and that over Deep Claim's black shale; <li>the
- * abandoned shaft nearest the start that has a candle niche: up from its foot, at the niche, and down it from part way
- * up.
+ * in a cave of each zone of layer 1; <li>a cut face across each contact between two strata: Topsoil Claims' hardpan
+ * over Stone Benches' packed shale, and that over Deep Claim's black shale; <li>the abandoned shaft nearest the start
+ * that has a candle niche: up from its foot, at the niche, and down it from part way up.
  * </ul>
  *
  * The player is a spectator. Places are found in the generated world near the start column, so nothing is staged but

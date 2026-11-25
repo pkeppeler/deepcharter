@@ -49,12 +49,13 @@ final class StructurePlan {
     }
 
     /**
-     * Replaces every fluid and gas pocket in the structure's bounds and the one-block shell round them (the part in this chunk)
-     * with stone, before the carve: the walls, roof and floor are rock that the zone fill (ADR 0015) may have left lava or gas
-     * in, and lava has no fluid tick until a neighbour changes. The neighbour chunk seals its own part of the shell. The flags
-     * wake nothing, so no lava beside the shell is told that its neighbour changed. See {@link RoomSeal}. A row is sealed with
-     * the layer rock found in the same row of the shell, so in layer 1's strata (#1277) a seal is the rock of the wall round
-     * it; a row with none takes the rock {@link LayerBlocks#layerGroundOf} names there.
+     * Replaces every fluid and gas pocket in the structure's bounds and the one-block shell round them (the part in
+     * this chunk) with stone, before the carve: the walls, roof and floor are rock that the zone fill (ADR 0015) may
+     * have left lava or gas in, and lava has no fluid tick until a neighbour changes. The neighbour chunk seals its own
+     * part of the shell. The flags wake nothing, so no lava beside the shell is told that its neighbour changed. See
+     * {@link RoomSeal}. A row is sealed with the layer rock found in the same row of the shell, so in layer 1's strata
+     * (#1277) a seal is the rock of the wall round it; a row with none takes the rock {@link LayerBlocks#layerGroundOf}
+     * names there.
      */
     void seal() {
         BoundingBox bounds = site.bounds();
