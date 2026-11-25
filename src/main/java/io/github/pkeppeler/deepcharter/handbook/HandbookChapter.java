@@ -85,7 +85,7 @@ public record HandbookChapter(int order, Component title, List<Entry> directives
     public record Target(Identifier item, int count) implements TargetSlot {
         @Override
         public List<Item> items() {
-            return BuiltInRegistries.ITEM.getOptional(item).map(List::of).orElse(List.of());
+            return new Choice(item, false).items();
         }
     }
 

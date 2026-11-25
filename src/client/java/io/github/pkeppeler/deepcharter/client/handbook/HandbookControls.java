@@ -21,7 +21,12 @@ public final class HandbookControls {
     /**
      * One line of a sheet: its language key under the sheet's, and the bindings its {@code %s} slots show, in order.
      */
-    record Row(String name, List<Function<Options, KeyMapping>> keys) {}
+    record Row(String name, List<Function<Options, KeyMapping>> keys) {
+        /** A line that names no key. */
+        Row(String name) {
+            this(name, List.of());
+        }
+    }
 
     /** One page of controls: its name, which keys its language keys, and its lines. */
     record Sheet(String name, List<Row> rows) {}
@@ -31,17 +36,16 @@ public final class HandbookControls {
                     "handbook",
                     List.of(
                             new Row("open", List.of(options -> HandbookKeys.OPEN, options -> options.keyAdvancements)),
-                            new Row("turn", List.of()))),
-            new Sheet("cards", List.of(new Row("card", List.of()), new Row("any", List.of()))),
+                            new Row("turn"))),
+            new Sheet("cards", List.of(new Row("card"), new Row("any"))),
             new Sheet(
-                    "catalogue",
-                    List.of(new Row("open", List.of(options -> options.keyInventory)), new Row("search", List.of()))),
+                    "catalogue", List.of(new Row("open", List.of(options -> options.keyInventory)), new Row("search"))),
             new Sheet(
                     "lookup",
                     List.of(
                             new Row("look", List.of(options -> CatalogueKeys.RECIPES, options -> CatalogueKeys.USES)),
                             new Row("star", List.of(options -> CatalogueKeys.FAVOURITE)))),
-            new Sheet("shelf", List.of(new Row("craftable", List.of()))),
+            new Sheet("shelf", List.of(new Row("craftable"))),
             new Sheet(
                     "board",
                     List.of(
@@ -58,14 +62,13 @@ public final class HandbookControls {
                                             options -> options.keyDown,
                                             options -> options.keyRight)),
                             new Row("climb", List.of(options -> options.keyJump)))),
-            new Sheet(
-                    "dig", List.of(new Row("down", List.of(options -> options.keySprint)), new Row("side", List.of()))),
+            new Sheet("dig", List.of(new Row("down", List.of(options -> options.keySprint)), new Row("side"))),
             new Sheet(
                     "crew",
                     List.of(
                             new Row("line", List.of(options -> LiningKeys.LINE)),
                             new Row("sonar", List.of(options -> SonarKeys.PING, options -> SonarKeys.MARK)))),
-            new Sheet("scanner", List.of(new Row("map", List.of()), new Row("reach", List.of()))));
+            new Sheet("scanner", List.of(new Row("map"), new Row("reach"))));
 
     private HandbookControls() {}
 

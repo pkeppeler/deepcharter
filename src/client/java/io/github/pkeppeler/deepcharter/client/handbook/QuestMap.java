@@ -384,10 +384,10 @@ final class QuestMap {
         int perRow = Math.max(1, (w - q.cardItemInset() + q.cardItemPitch() / 2) / q.cardItemPitch());
         int itemsTop = y + q.cardTextTop() + lines * (font.lineHeight + 1) + q.cardItemsGap();
         for (HandbookChapter.TargetSlot target : step.targets()) {
-            if (target.items().isEmpty()) {
+            List<Item> slotItems = target.items();
+            if (slotItems.isEmpty()) {
                 continue;
             }
-            List<Item> slotItems = target.items();
             int index = items.size();
             items.add(new CardItem(
                     slotItems,
