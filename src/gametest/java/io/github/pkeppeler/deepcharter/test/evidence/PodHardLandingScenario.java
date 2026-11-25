@@ -64,15 +64,27 @@ public class PodHardLandingScenario extends EvidenceScenario {
                 for (int y = FLOOR_Y + 6; y < FLOOR_Y + SHAFT_BLOCKS; y += 12) {
                     one.setBlock(new BlockPos(X + 2, y, Z), Blocks.GLOWSTONE.defaultBlockState(), 3);
                 }
+            });
+            // Before the pilot arrives: a survival pilot falls down the shaft while it waits.
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 2);
+            singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                player.teleportTo(one, X + 0.5, FLOOR_Y + SHAFT_BLOCKS - 2, Z + 0.5, Set.of(), 0, 0, true);
+                player.teleportTo(
+                        TestLayers.level(server, 1),
+                        X + 0.5,
+                        FLOOR_Y + SHAFT_BLOCKS - 2,
+                        Z + 0.5,
+                        Set.of(),
+                        0,
+                        0,
+                        true);
             });
             ClientWait.until(
                     context,
                     "the player in layer 1",
                     client -> client.player != null && TestLayers.clientIsIn(client, 1));
-            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 2);
+            context.waitTicks(30);
 
             // Braked: the pilot taps the rotor whenever the sink passes BRAKE_ABOVE_SINK.
             boardNewPod(singleplayer);
