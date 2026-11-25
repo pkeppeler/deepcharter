@@ -25,7 +25,6 @@ import argparse
 import hashlib
 import json
 import re
-import shutil
 import subprocess
 import sys
 from array import array
@@ -194,9 +193,7 @@ def owned(manifest):
 
 def build(mp3, out, manifest):
     """Cuts every file from the mp3 and writes the manifest. A source that is not the one the manifest credits is refused."""
-    if not shutil.which("ffmpeg") or " libvorbis " not in subprocess.run(
-        ["ffmpeg", "-hide_banner", "-encoders"], check=True, capture_output=True, text=True
-    ).stdout:
+    if not first_sounds.has_libvorbis():
         raise SystemExit("lambert_clock: an ffmpeg with libvorbis is needed, to write mono Vorbis")
     digest = first_sounds.sha256(mp3)
     before = first_sounds._load(manifest).get("source")
