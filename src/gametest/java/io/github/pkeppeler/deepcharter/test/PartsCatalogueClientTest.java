@@ -67,6 +67,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
+import org.jspecify.annotations.Nullable;
+import org.lwjgl.sdl.SDLKeyboard;
 
 /**
  * Client GameTest for #846, the parts catalogue. The model (what is known, the search, craftable now, the lookup, the favourites file)
@@ -547,6 +549,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         theRecipePanelCanBePutAway(context, screen, panel);
         theSpecSheetButtonCallsItsHook(context, panel);
         theSearchFiltersAndKeepsItsKeys(context, screen, panel);
+        theSearchTakesWhatSdlDelivers(context, screen, panel, "on the inventory screen");
         favouritesStarAndPersist(context, screen, panel);
         craftableNowFiltersByWhatIsHeld(context, singleplayer, screen, panel);
         thePanelsFollowTheWindowSize(context, screen);
@@ -1208,6 +1211,99 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.waitTicks(1);
     }
 
+    /** The field under SDL's rules: the other typing assertions inject {@code textInput} themselves, so only these prove #1269. */
+    private static void theSearchTakesWhatSdlDelivers(
+            ClientGameTestContext context, AbstractContainerScreen<?> screen, CataloguePanel panel, String where) {
+        UUID player =
+                context.computeOnClient(client -> ClientSession.player(client).getUUID());
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        CatalogueScene.hover(context, layout.shelf().search());
+        require(!sdlTextInputOn(context), "SDL text input is off before the field is clicked " + where);
+        context.getInput().pressMouse(LEFT_MOUSE);
+        context.waitTicks(1);
+        require(context.computeOnClient(client -> panel.searchFocused()), "a click focuses the field " + where);
+        require(sdlTextInputOn(context), "the focused field turns SDL text input on, or no text arrives " + where);
+        for (char letter : "rotor".toCharArray()) {
+            sdlKeystroke(context, Character.toUpperCase(letter), String.valueOf(letter));
+        }
+        context.waitTicks(1);
+        require(
+                context.computeOnClient(client -> panel.state().query()).equals("rotor"),
+                "keys and text as SDL delivers them fill the field " + where);
+        sdlKeystroke(context, InputConstants.KEY_LEFT, null);
+        sdlKeystroke(context, InputConstants.KEY_RIGHT, null);
+        sdlKeystroke(context, InputConstants.KEY_BACKSPACE, null);
+        context.waitTicks(1);
+        require(
+                context.computeOnClient(client -> panel.state().query()).equals("roto"),
+                "backspace works after the arrow keys " + where);
+        require(context.computeOnClient(client -> panel.searchFocused()), "the arrow keys keep the focus " + where);
+        sdlKeystroke(context, InputConstants.KEY_ESCAPE, null);
+        context.waitTicks(1);
+        require(!context.computeOnClient(client -> panel.searchFocused()), "escape unfocuses the field " + where);
+        require(!sdlTextInputOn(context), "an unfocused field gives SDL text input back " + where);
+        require(context.computeOnClient(client -> client.gui.screen()) == screen, "escape keeps the screen " + where);
+        context.runOnClient(client -> panel.state().setQuery(""));
+        context.waitTicks(1);
+
+        // The catalogue's own keys stay out of a focused field: over an item, R, U, A and E would each act.
+        CatalogueState.Lookup lookup =
+                context.computeOnClient(client -> panel.state().lookup());
+        Set<Item> starred = Set.copyOf(CatalogueFavourites.shared().items(player));
+        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, DRILL)));
+        require(context.computeOnClient(client -> panel.hoveredItem()) == DRILL, "the cursor is over an item " + where);
+        sdlKeystroke(context, InputConstants.KEY_F, null, true);
+        require(context.computeOnClient(client -> panel.searchFocused()), "Ctrl+F focuses the field " + where);
+        // The text a key types clears a lookup, so R and U are checked as bare presses, before the typing.
+        sdlKeystroke(context, InputConstants.KEY_R, null);
+        sdlKeystroke(context, InputConstants.KEY_U, null);
+        require(
+                context.computeOnClient(client -> panel.state().lookup()) == lookup,
+                "R and U over an item look nothing up while the field is focused " + where);
+        for (char letter : "aruE".toCharArray()) {
+            sdlKeystroke(context, Character.toUpperCase(letter), String.valueOf(letter));
+        }
+        context.waitTicks(1);
+        require(
+                context.computeOnClient(client -> panel.state().query()).equals("aruE"),
+                "A, R, U and E are typed into the field " + where);
+        require(
+                Set.copyOf(CatalogueFavourites.shared().items(player)).equals(starred),
+                "A over an item stars nothing while the field is focused " + where);
+        require(
+                context.computeOnClient(client -> client.gui.screen()) == screen,
+                "E in the field does not close the screen " + where);
+        sdlKeystroke(context, InputConstants.KEY_ESCAPE, null);
+        context.runOnClient(client -> panel.state().setQuery(""));
+        context.waitTicks(1);
+    }
+
+    private static boolean sdlTextInputOn(ClientGameTestContext context) {
+        return context.computeOnClient(
+                client -> SDLKeyboard.SDL_TextInputActive(client.getWindow().handle()));
+    }
+
+    private static void sdlKeystroke(ClientGameTestContext context, int key, @Nullable String text) {
+        sdlKeystroke(context, key, text, false);
+    }
+
+    /** One key as SDL delivers it: the press, the text it types (none for a control key) and the release. */
+    private static void sdlKeystroke(ClientGameTestContext context, int key, @Nullable String text, boolean shortcut) {
+        context.runOnClient(client -> {
+            long window = client.getWindow().handle();
+            // The runner's holdControl does not reach the key event's modifiers, so the shortcut key is set on it.
+            KeyEvent event = new KeyEvent(
+                    key,
+                    SDLKeyboard.SDL_GetKeyFromScancode(key, (short) 0, false),
+                    shortcut ? InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER : 0);
+            client.keyboardHandler.keyPress(window, InputConstants.PRESS, event);
+            if (text != null) {
+                client.keyboardHandler.textInput(window, text);
+            }
+            client.keyboardHandler.keyPress(window, InputConstants.RELEASE, event);
+        });
+    }
+
     private static void favouritesStarAndPersist(
             ClientGameTestContext context, AbstractContainerScreen<?> screen, CataloguePanel panel) {
         UUID player =
@@ -1288,10 +1384,15 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.runOnClient(client -> screen.resize(NARROWEST, shortest()));
         context.waitTicks(2);
         nothingIsCutByTheGlassCorners(context, screen, NARROWEST, shortest());
+        sdlKeystroke(context, InputConstants.KEY_F, null, true);
+        require(sdlTextInputOn(context), "the field has SDL text input before the window shrinks");
         for (int width : new int[] {NARROWEST - 1, 320}) {
             context.runOnClient(client -> screen.resize(width, HEIGHT));
             context.waitTicks(2);
             require(context.computeOnClient(client -> panel.layout() == null), "the panels are hidden at " + width);
+            require(
+                    !context.computeOnClient(client -> panel.searchFocused()) && !sdlTextInputOn(context),
+                    "a hidden catalogue holds no focus and no SDL text input at " + width);
             require(
                     context.computeOnClient(
                             client -> bookButtons(screen).stream().allMatch(button -> button.visible && button.active)),
@@ -1337,6 +1438,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(context.computeOnClient(client -> panel.layout() != null), "the crafting table has the panels");
         aRealLeftAndRightClickOpenRecipesAndUses(context, panel, "on the crafting table");
         everyStringIsInsideItsGlass(context, table, "on the crafting table");
+        theSearchTakesWhatSdlDelivers(context, table, panel, "on the crafting table");
         require(
                 context.computeOnClient(client -> leftPos(table)) == (WIDTH - CatalogueLayout.IMAGE_WIDTH) / 2,
                 "the crafting table stands where the layout assumes");
