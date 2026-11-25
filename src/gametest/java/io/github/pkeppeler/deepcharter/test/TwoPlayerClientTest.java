@@ -270,7 +270,9 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
     /** The Y the pod is lifted to: one slab past the layer 1 onset of the decay, so a retuned curve moves the test with it. */
     private static int clearY(ServerLevel one) {
-        return TestLayers.band(one, 1).minY() + SignalDecayTuning.DEFAULT.band(1).onset() + 1;
+        return TestLayers.band(one, 1).minY()
+                + SignalDecayTuning.DEFAULT.band(1).onset()
+                + 1;
     }
 
     /**
