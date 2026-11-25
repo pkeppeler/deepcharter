@@ -145,6 +145,7 @@ public class TheClaimTest {
         long[] matching = new long[Zones.COUNT];
         long[] rock = new long[Zones.COUNT];
         List<String> strays = new ArrayList<>();
+        int edge = Zones.span(LAYER.minY(), LAYER.height(), 0).low();
         int lowestContact = Integer.MAX_VALUE;
         int highestContact = Integer.MIN_VALUE;
         for (BlockPos column : columns(SAMPLE_CHUNKS)) {
@@ -155,7 +156,10 @@ public class TheClaimTest {
                 if (stratum == null) {
                     continue;
                 }
-                if (stratum.equals(STRATA.getFirst())) {
+                // A contact: hardpan straight on packed shale, near the edge (a cave can cut one away).
+                if (stratum.equals(STRATA.getFirst())
+                        && Math.abs(y - edge) <= CONTACT_ABOVE + CONTACT_BELOW
+                        && STRATA.get(1).equals(stratumOf(chunk.getBlockState(column.atY(y - 1))))) {
                     lowestHardpan = Math.min(lowestHardpan, y);
                 }
                 Optional<Integer> zone = interiorZone(y);
@@ -192,7 +196,6 @@ public class TheClaimTest {
                     rock[zone],
                     strays);
         }
-        int edge = Zones.span(LAYER.minY(), LAYER.height(), 0).low();
         LOGGER.info("[the-claim] the hardpan's contact lies from y={} to y={}", lowestContact, highestContact);
         expect(
                 helper,
