@@ -1,0 +1,28 @@
+{
+  "files": {
+    "continuity/laugh": {
+      "duration_seconds": 3.68,
+      "envelope_sha256": "d4ff75ebb5edecc3d1bfce9d84e630e8dfa7fddbecc230159897d16f570e5595",
+      "ogg_sha256": "5f66386b1bc94ba5dc5622f5fa41ed7bd86a786b8895bc42600560b27be325b0",
+      "pcm_sha256": "6cd275f9880bcc032226aac23d13446e06880468f50f77b3e790ce1ef45078f9",
+      "treatment_sha256": "7989a3fca4ed5487cd490e62f5eb30f624313727e8870e76732950fe3c4a4893"
+    }
+  },
+  "source": {
+    "md5": "9be38f135a87941abab9feb4372757f6",
+    "page": "https://archive.org/details/78_the-okeh-laughing-record_gbia0046783a",
+    "sha256": "7269f885ba50b690df52391605e97995204f81bd72f6c8bbb2c29e747eb2d885",
+    "tags": {
+      "album": "The Okeh Laughing Record",
+      "comment": "https://archive.org/details/78_the-okeh-laughing-record_gbia0046783a/The+Okeh+Laughing+Record.flac\nThis file was digitized at George Blood, L.P. using a 3.8mil truncated conical stylus, and equalized with Turnover: 250.0.",
+      "encoded_by": "REAPER;Internet Archive, digitized by George Blood, L.P.",
+      "encoder": "Lavf57.71.100",
+      "genre": "Comedy",
+      "organization": "Okeh",
+      "time_reference": "0",
+      "title": "The Okeh Laughing Record",
+      "track": "01"
+    },
+    "url": "https://archive.org/download/78_the-okeh-laughing-record_gbia0046783a/The%20Okeh%20Laughing%20Record.flac"
+  }
+}

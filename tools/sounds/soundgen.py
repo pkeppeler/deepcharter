@@ -20,6 +20,8 @@ from downloaded sources and owned by tools/sounds/first_sounds.json, which has t
 those OGGs and asks `first_sounds.check` about them. The ambience's fragments (the ambience folder) are the same kind of thing, made by
 tools/sounds/ambience.py and owned by tools/sounds/ambience.json, and `--check` asks `ambience.check` about them. The punch clock's hours and
 fragments (the clock folder, #938) are cuts of one recording, made by tools/sounds/lambert_clock.py and owned by tools/sounds/lambert_clock.json.
+The Continuity Event's laugh (continuity/laugh, #1337) is a treated cut of the Okeh Laughing Record, made by tools/sounds/okeh_laugh.py and
+owned by tools/sounds/okeh_laugh.json.
 
 Standard library and ffmpeg only; this Mac's ffmpeg has the native Vorbis encoder alone, which writes stereo.
 """
@@ -39,6 +41,7 @@ sys.path.insert(0, str(HERE))
 import ambience  # noqa: E402
 import first_sounds  # noqa: E402
 import lambert_clock  # noqa: E402
+import okeh_laugh  # noqa: E402
 import recipes  # noqa: E402
 
 ROOT = HERE.parent.parent
@@ -115,6 +118,8 @@ def check(names, out, manifest):
     recordings |= ambience.owned(fragments_manifest)
     lambert_manifest = manifest.with_name(lambert_clock.MANIFEST.name)
     recordings |= lambert_clock.owned(lambert_manifest)
+    laugh_manifest = manifest.with_name(okeh_laugh.MANIFEST.name)
+    recordings |= okeh_laugh.owned(laugh_manifest)
     for stray in sorted(out.rglob("*.ogg")):
         name = stray.relative_to(out).with_suffix("").as_posix()
         if name not in recipes.RECIPES and name not in recordings:
@@ -127,6 +132,8 @@ def check(names, out, manifest):
         problems += ambience.check(out, fragments_manifest)
     if lambert_manifest.is_file():
         problems += lambert_clock.check(out, lambert_manifest)
+    if laugh_manifest.is_file():
+        problems += okeh_laugh.check(out, laugh_manifest)
     if problems:
         print("\n".join(problems), file=sys.stderr)
         return 1

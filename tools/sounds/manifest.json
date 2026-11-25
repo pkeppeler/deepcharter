@@ -31,6 +31,14 @@
     "ogg_sha256": "d990d0a403c128fc6219aa3b71d4aa50b76c5a180d8be0c2c99d1417f449a4f0",
     "pcm_sha256": "50828ccfcb42f8738b36da6e0b80d6904eb35b00294bbe588e6b4a7eba92b44e"
   },
+  "continuity/lamp_out": {
+    "ogg_sha256": "c377a3c896478871567746ea2bb663c4b9b06583d561de78e1e476ba82d062cb",
+    "pcm_sha256": "64611132dc91af9440a888904461024b45e1ca8330fe04068f9bd525860f64c3"
+  },
+  "continuity/needle": {
+    "ogg_sha256": "8c099e50f00b575ca4b47acb0187381d5c37ee2797692a849ef10272897a221b",
+    "pcm_sha256": "f8d85fa56167ce63c18fd101d1ef1884bce8e3d42327eb9af8f4bfcfcf3e4f24"
+  },
   "drill/blocked": {
     "ogg_sha256": "e5f7226dc08b5da5ed91695f7ecc0dbdf4914c97a4a34c3bf9d3b17aca764553",
     "pcm_sha256": "61a2da2ee2cb107a2936482fa55176c8f3117cd272871abe26a843bc509b2f5a"
