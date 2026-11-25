@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.test.mixin.ServerChunkCacheAccess;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -37,7 +38,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.TicketStorage;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.Vec3;
 
@@ -60,10 +60,8 @@ public class TeleportArrivalTest {
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "teleport_arrival");
 
     /**
-     * Ticks from the teleport to the client's answer to it, which is what moves the pilot's own chunk tickets to the
-     * arrival: a 250 ms round trip, or a server running behind. Without an arrival ticket, any answer later than the
-     * one-tick ticket of the landing look-up let the chunk drop with no ticket at all (#1353: answers 2, 3, 5 and 20
-     * ticks late all did, 1 tick late did not).
+     * Ticks from the teleport to the client's answer, which moves the pilot's own chunk tickets to the arrival: a 250 ms
+     * round trip. Without the arrival ticket, any answer more than 1 tick late let the chunk drop (#1353).
      */
     private static final int ANSWER_DELAY = 5;
 
@@ -98,7 +96,6 @@ public class TeleportArrivalTest {
         expect(helper, pilot.player().startRiding(pod, true, false), "the pilot could not board the pod");
         int podId = pod.getId();
         long[] sent = {-1};
-        String[] last = {""};
         boolean[] everLoaded = {false};
         boolean[] everHeld = {false};
         long[] released = {-1};
@@ -132,27 +129,14 @@ public class TeleportArrivalTest {
             long key = arrival.pack();
             int level = overworld.getChunkSource().chunkMap.getDistanceManager().getChunkLevel(key, false);
             boolean loaded = overworld.areEntitiesLoaded(key);
-            List<Ticket> tickets = overworld
-                    .getDataStorage()
-                    .computeIfAbsent(TicketStorage.TYPE)
+            List<Ticket> tickets = ((ServerChunkCacheAccess) overworld.getChunkSource())
+                    .deepcharter$ticketStorage()
                     .getTickets(key);
             boolean held = tickets.stream()
                     .anyMatch(ticket -> ARRIVAL_TICKET.equals(BuiltInRegistries.TICKET_TYPE.getKey(ticket.getType())));
             everHeld[0] |= held;
             if (everHeld[0] && !held && released[0] < 0) {
                 released[0] = tick;
-            }
-            String state = String.format(
-                    "level=%d tickets=%s entitiesLoaded=%s entityTicking=%s clientHoldsPod=%s podRemoved=%s",
-                    level,
-                    tickets,
-                    loaded,
-                    overworld.isPositionEntityTicking(pod.blockPosition()),
-                    clientHolds(pilot, podId),
-                    pod.isRemoved());
-            if (!state.equals(last[0])) {
-                DeepCharter.LOGGER.info("[teleport-arrival] tick={} {}", tick, state);
-                last[0] = state;
             }
             everLoaded[0] |= loaded;
             if (level > ChunkLevel.byStatus(FullChunkStatus.FULL) || (everLoaded[0] && !loaded)) {

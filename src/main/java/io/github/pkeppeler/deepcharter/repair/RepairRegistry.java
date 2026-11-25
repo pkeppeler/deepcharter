@@ -69,9 +69,7 @@ public final class RepairRegistry {
      * Holds a teleporter's landing chunk (#1353, {@link Teleports}) until the pilot's own chunk tickets arrive: it
      * loads and simulates the chunks, keeps the dimension active, and is not saved. It lapses
      * {@link RepairTuning#arrivalTicketTicks()} ticks after its chunk is ready to save ({@code ChunkHolder.saveSync}
-     * settles): vanilla counts a timed ticket down only from then, which came well after the chunk ticked entities
-     * (tick 148 against 67, and 183 against 93, in two runs). Its own type reads clearly in a ticket dump, and its
-     * timeout is tuned apart from vanilla's.
+     * settles): vanilla counts a timed ticket down only from then, well after the chunk ticks entities.
      */
     static final TicketType TELEPORT_ARRIVAL = Registry.register(
             BuiltInRegistries.TICKET_TYPE,
