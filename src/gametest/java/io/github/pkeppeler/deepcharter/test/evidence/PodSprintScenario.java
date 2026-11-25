@@ -95,7 +95,11 @@ public class PodSprintScenario extends EvidenceScenario {
                 race(context, singleplayer, pilot, podId, FORWARD, "cruise");
                 race(context, singleplayer, pilot, podId, FORWARD_SPRINT, "sprint");
             } finally {
-                singleplayer.getServer().runOnServer(server -> pilot.leave());
+                // Off the seat first: a player who leaves the game takes the vehicle they ride with them.
+                singleplayer.getServer().runOnServer(server -> {
+                    pilot.player().stopRiding();
+                    pilot.leave();
+                });
             }
             seatAndSprint(context, singleplayer, podId);
         }
@@ -110,9 +114,7 @@ public class PodSprintScenario extends EvidenceScenario {
             Input input,
             String what) {
         toTheStartLine(context, singleplayer, podId);
-        Vec3 runnerFrom =
-                context.computeOnClient(client -> ClientSession.player(client).position());
-        Vec3 podFrom = podPosition(singleplayer, podId);
+        Vec3[] from = positions(singleplayer, podId);
         context.getInput().holdKey(options -> options.keySprint);
         context.getInput().holdKey(options -> options.keyUp);
         singleplayer.getServer().runOnServer(server -> pilot.setInput(input));
@@ -120,20 +122,17 @@ public class PodSprintScenario extends EvidenceScenario {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
         }
-        Vec3 runnerTo =
-                context.computeOnClient(client -> ClientSession.player(client).position());
-        Vec3 podTo = podPosition(singleplayer, podId);
+        Vec3[] to = positions(singleplayer, podId);
         context.getInput().releaseKey(options -> options.keyUp);
         context.getInput().releaseKey(options -> options.keySprint);
         singleplayer.getServer().runOnServer(server -> pilot.releaseInput());
         screenshot(context, "pod-sprint-" + what + "-race");
         LOGGER.info(
-                "[pod-sprint] {} race over {} ticks: the running player covered {} blocks, the pod {}",
+                "[pod-sprint] {} race: the running player covered {} blocks, the pod {}",
                 what,
-                RACE_TICKS,
-                runnerTo.z - runnerFrom.z,
-                podTo.z - podFrom.z);
-        if (podTo.z - podFrom.z <= runnerTo.z - runnerFrom.z) {
+                to[0].z - from[0].z,
+                to[1].z - from[1].z);
+        if (to[1].z - from[1].z <= to[0].z - from[0].z) {
             throw new AssertionError("the pod should outrun the sprinting player in the " + what + " race");
         }
         context.waitTicks(20);
@@ -158,11 +157,12 @@ public class PodSprintScenario extends EvidenceScenario {
         context.runOnClient(client -> client.gui.toastManager().clear());
     }
 
-    private static Vec3 podPosition(TestSingleplayerContext singleplayer, int podId) {
-        return singleplayer
-                .getServer()
-                .computeOnServer(
-                        server -> pod(TestLayers.level(server, 1), podId).position());
+    /** The running player's and the pod's positions on the server, read on one tick so a race compares like with like. */
+    private static Vec3[] positions(TestSingleplayerContext singleplayer, int podId) {
+        return singleplayer.getServer().computeOnServer(server -> new Vec3[] {
+            server.getPlayerList().getPlayers().getFirst().position(),
+            pod(TestLayers.level(server, 1), podId).position()
+        });
     }
 
     private static PodEntity pod(ServerLevel level, int podId) {
