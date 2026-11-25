@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
+import it.unimi.dsi.fastutil.HashCommon;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -22,6 +23,7 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.block.BlockStateModelSet;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -40,6 +42,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>A cell drawn in fewer screen pixels than {@link ScannerLook#oreMarkBelowPixels()} cannot show a texture. There an ore cell is one flat mark of its
  * ore's colour (see {@link #oreMark}), which stays easy to spot, and rock takes the darker small-cell shade; every other cell keeps its texture.
+ * Two quadrants of a rock cell are lightened and two darkened by a pattern its block's place picks ({@link #grain}), so uniform rock is not
+ * one repeated tile.
  *
  * <p>A cell's pixels are read from the active resource pack's texture file for the sprite that {@link ScannerSprites} names, because the block
  * atlas lives on the graphics card and cannot be read back. The first frame of an animated texture is the cell's. Each texture is
@@ -55,6 +59,12 @@ final class ScannerMap {
     private static final int OPAQUE = 255 << 24;
 
     private static final int SUPERSAMPLE = 2;
+
+    /**
+     * The ways to lighten two quadrants of a cell and darken the other two, for {@link #grain}: bit {@code q} lightens quadrant {@code q}
+     * (0 top left, 1 top right, 2 bottom left, 3 bottom right).
+     */
+    private static final int[] GRAIN_PATTERNS = {0b0011, 0b1100, 0b0101, 0b1010, 0b1001, 0b0110};
 
     /** The picture; null before the first scan is drawn and after {@link #release}. */
     private static @Nullable DynamicTexture texture;
@@ -166,9 +176,12 @@ final class ScannerMap {
                 } else if (small && found instanceof Cell.Ore ore) {
                     fillTile(image, x, y, pixels, oreMark(look, ore));
                 } else {
+                    int grain = found instanceof Cell.Rock ? grain(look, slice.pos(ahead, up), pixels) : 0;
                     Optional<int[]> tile = tile(ScannerSprites.of(slice, found, ahead, up), pixels, look.airColor());
                     if (tile.isEmpty()) {
-                        fillTile(image, x, y, pixels, flatColour(look, found));
+                        int[] flat = new int[pixels * pixels];
+                        Arrays.fill(flat, flatColour(look, found));
+                        copyTile(image, x, y, pixels, flat, 0, 0, grain, look.rockGrainLevels());
                     } else {
                         copyTile(
                                 image,
@@ -177,7 +190,9 @@ final class ScannerMap {
                                 pixels,
                                 tile.get(),
                                 overlay(look, found, small),
-                                pixels >= look.oreOutlineMinPixels() ? outline(look, found) : 0);
+                                pixels >= look.oreOutlineMinPixels() ? outline(look, found) : 0,
+                                grain,
+                                look.rockGrainLevels());
                     }
                 }
             }
@@ -193,15 +208,53 @@ final class ScannerMap {
         }
     }
 
-    /** The tile with {@code overlay} laid over it, and a one-pixel frame of {@code outline} round its edge ({@code 0}: none). */
-    private static void copyTile(NativeImage image, int x, int y, int pixels, int[] tile, int overlay, int outline) {
+    /**
+     * The tile with {@code overlay} laid over it, a one-pixel frame of {@code outline} round its edge ({@code 0}: none), and the quadrants
+     * of {@code grain} moved {@code levels} up or down ({@link #grain}).
+     */
+    private static void copyTile(
+            NativeImage image, int x, int y, int pixels, int[] tile, int overlay, int outline, int grain, int levels) {
         for (int dy = 0; dy < pixels; dy++) {
             for (int dx = 0; dx < pixels; dx++) {
-                int argb = over(overlay, tile[dy * pixels + dx]);
+                int argb = shift(over(overlay, tile[dy * pixels + dx]), grainLevels(grain, levels, dx, dy, pixels));
                 boolean edge = dx == 0 || dy == 0 || dx == pixels - 1 || dy == pixels - 1;
                 image.setPixel(x + dx, y + dy, edge ? over(outline, argb) : argb);
             }
         }
+    }
+
+    /**
+     * The rock grain of the block at {@code pos} (#1272), for a cell {@code pixels} square: which two quadrants of the cell are lightened by
+     * {@link ScannerLook#rockGrainLevels()} and which two darkened, picked by a hash of the block's place; {@code 0} for none. Uniform rock
+     * then shows a texture that moves past as the pod digs, and a block looks the same in every frame and from wherever the pod is. Half
+     * goes up and half down, so the cell's mean colour, which the eye reads a band of rock or an ore against, does not move.
+     */
+    private static int grain(ScannerLook look, BlockPos pos, int pixels) {
+        if (look.rockGrainLevels() == 0 || pixels < 2) {
+            return 0;
+        }
+        return GRAIN_PATTERNS[Math.floorMod(HashCommon.murmurHash3(pos.asLong()), GRAIN_PATTERNS.length)];
+    }
+
+    /** The levels that {@code grain} moves the pixel ({@code dx}, {@code dy}) of a cell {@code pixels} square by. */
+    private static int grainLevels(int grain, int levels, int dx, int dy, int pixels) {
+        if (grain == 0) {
+            return 0;
+        }
+        int quadrant = 2 * (2 * dy / pixels) + 2 * dx / pixels;
+        return ((grain >> quadrant) & 1) == 1 ? levels : -levels;
+    }
+
+    /** {@code argb} with each colour channel moved by {@code levels}, held to 0 to 255; the alpha is kept. */
+    private static int shift(int argb, int levels) {
+        if (levels == 0) {
+            return argb;
+        }
+        int result = argb & OPAQUE;
+        for (int bits = 0; bits <= 16; bits += 8) {
+            result |= Math.clamp(((argb >> bits) & 0xFF) + levels, 0, 255) << bits;
+        }
+        return result;
     }
 
     /** The colour laid over a cell's texture, {@code small} when cells are too small to read a texture ({@link ScannerLook#oreMarkBelowPixels()}); transparent for a cell that has none. */

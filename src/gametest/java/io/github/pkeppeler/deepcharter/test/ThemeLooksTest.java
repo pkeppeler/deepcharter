@@ -182,7 +182,17 @@ public class ThemeLooksTest {
                                 OreType.EINSTEINIUM,
                                 0xFFDCCCFF,
                                 OreType.CICATRIUM,
-                                0xFFFFC8E4)),
+                                0xFFFFC8E4),
+                        5,
+                        10,
+                        2,
+                        4,
+                        5,
+                        0xC0C8D4E0,
+                        0xFFE0E8F0,
+                        0xC0101820,
+                        0xFF38F06E,
+                        6),
                 ScannerLook.of(area("scanner", null)));
         expect(
                 helper,

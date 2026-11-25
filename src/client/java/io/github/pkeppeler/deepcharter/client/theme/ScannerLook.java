@@ -34,6 +34,18 @@ import java.util.Map;
  * @param oreMarkBelowPixels a cell drawn in fewer screen pixels than this cannot show a texture: an ore cell is then one flat mark of its ore's colour, and rock takes {@code smallRockShadeColor}
  * @param smallRockShadeColor laid over rock in place of {@code rockShadeColor} when cells are smaller than {@code oreMarkBelowPixels}, so the marks stand out of it
  * @param oreMarkColors the mark of each of the mod's ores in a small cell: bright, and told apart by hue
+ * @param rulerTickBlocks blocks of depth between the ticks of the depth ruler down the map's left edge
+ * @param rulerLabelBlocks blocks of depth between its labelled ticks; a multiple of it where cells are too small for labels this close
+ * @param rulerTickPixels GUI pixels a tick reaches in from the edge
+ * @param rulerLabelTickPixels GUI pixels a labelled tick reaches in; its label starts just past it
+ * @param rulerPodMarkPixels GUI pixels the mark on the player's row reaches in
+ * @param rulerTickColor the ruler's ticks
+ * @param rulerLabelColor the ruler's labels: the altimeter's number of feet for the row
+ * @param rulerLabelBackColor the backing under a label, so that it reads over the rock
+ * @param rulerPodMarkColor the mark on the player's row
+ * @param rockGrainLevels how many levels (of 255) two quadrants of a rock cell are lightened, and the other two darkened, in a pattern its
+ *     block's place picks, so uniform rock shows a grain that moves past as the pod digs. The cell's mean colour does not move, so bands of
+ *     rock and ore marks keep their contrast; kept small so the grain reads as texture, not as a mark; {@code 0} turns it off
  */
 public record ScannerLook(
         int cellPixels,
@@ -59,7 +71,17 @@ public record ScannerLook(
         int frameColor,
         int oreMarkBelowPixels,
         int smallRockShadeColor,
-        Map<OreType, Integer> oreMarkColors) {
+        Map<OreType, Integer> oreMarkColors,
+        int rulerTickBlocks,
+        int rulerLabelBlocks,
+        int rulerTickPixels,
+        int rulerLabelTickPixels,
+        int rulerPodMarkPixels,
+        int rulerTickColor,
+        int rulerLabelColor,
+        int rulerLabelBackColor,
+        int rulerPodMarkColor,
+        int rockGrainLevels) {
     public static ScannerLook current() {
         return UiTheme.current().scanner();
     }
@@ -93,6 +115,16 @@ public record ScannerLook(
                 d.color("frameColor"),
                 d.integer("oreMarkBelowPixels", 4),
                 d.color("smallRockShadeColor"),
-                marks);
+                marks,
+                d.integer("rulerTickBlocks", 1),
+                d.integer("rulerLabelBlocks", 1),
+                d.integer("rulerTickPixels", 0),
+                d.integer("rulerLabelTickPixels", 0),
+                d.integer("rulerPodMarkPixels", 0),
+                d.color("rulerTickColor"),
+                d.color("rulerLabelColor"),
+                d.color("rulerLabelBackColor"),
+                d.color("rulerPodMarkColor"),
+                d.integer("rockGrainLevels", 0, 32));
     }
 }

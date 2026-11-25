@@ -59,6 +59,10 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
     private static final int FILL_BELOW = AREA.down() + 3;
     /** The first column ahead that is rock: right of the 3-wide shaft, and on the side away from the ruler. */
     private static final int ROCK_FROM = 2;
+    /** Cells this far from the map's edge are compared cell by cell; the cockpit bezel's rounded corners cover the map's corners. */
+    private static final int EDGE = 2;
+    /** How far (levels of 255) the mean brightness of two stone cells may differ: the grain moves none, rounding a little. */
+    private static final double MEAN_SPREAD = 1;
 
     private static final Pattern DEPTH_LABEL = Pattern.compile("-?[0-9][0-9,]*");
 
@@ -108,7 +112,9 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
                     at.relative(facing, -(AREA.halfWidth() + 1))
                             .relative(across, -2)
                             .below(FILL_BELOW),
-                    at.relative(facing, AREA.halfWidth() + 1).relative(across, 2).above(FILL_ABOVE),
+                    at.relative(facing, AREA.halfWidth() + 1)
+                            .relative(across, 2)
+                            .above(FILL_ABOVE),
                     Blocks.STONE.defaultBlockState());
             RoomCarver.carve(
                     level,
@@ -156,16 +162,19 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the client's pod at " + feet.toShortString(),
-                client -> TestEntities.vehicle(ClientSession.player(client))
-                        .blockPosition()
-                        .equals(feet));
+                // A long move can drop the pod from the client and add it back, its rider seated again a moment later.
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
+                        && pod.blockPosition().equals(feet));
         context.waitTicks(2 * TUNING.rescanTicks() + 2);
         return HudShot.take(context, name, AREA);
     }
 
-    /** Whether the cell at ({@code ahead}, {@code up}) is stone in both pictures: right of the shaft, and inside the area. */
+    /** Whether the cell at ({@code ahead}, {@code up}) is stone, right of the shaft and clear of the map's edge. */
     private static boolean rock(int ahead, int up) {
-        return ahead >= ROCK_FROM && ahead <= AREA.halfWidth() && up >= -AREA.down() && up <= AREA.up();
+        return ahead >= ROCK_FROM
+                && ahead <= AREA.halfWidth() - EDGE
+                && up >= -AREA.down() + EDGE
+                && up <= AREA.up() - EDGE;
     }
 
     private static void expectMapChanged(HudShot before, HudShot after) {
@@ -192,8 +201,8 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
      * {@code up} is drawn, one row up, as it was.
      */
     private static void expectGrainStable(HudShot before, HudShot again, HudShot after) {
-        for (int up = -AREA.down(); up < AREA.up(); up++) {
-            for (int ahead = ROCK_FROM; ahead <= AREA.halfWidth(); ahead++) {
+        for (int up = -AREA.down() + EDGE; up <= AREA.up() - EDGE; up++) {
+            for (int ahead = ROCK_FROM; ahead <= AREA.halfWidth() - EDGE; ahead++) {
                 require(
                         Arrays.equals(before.cellPixels(ahead, up), again.cellPixels(ahead, up)),
                         "the rock cell (ahead %d, up %d) should look the same in two frames at one depth"
@@ -208,17 +217,29 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
         }
     }
 
-    /** Uniform rock shows a grain: its cells are not all drawn alike, so the picture has something to move. */
+    /**
+     * Uniform rock shows a grain: its cells are not all drawn alike, so the picture has something to move. The grain leaves each cell's
+     * mean where it was, so a band of rock keeps its contrast with the next and an ore mark with the rock round it.
+     */
     private static void expectGrain(HudShot shot) {
         Set<List<Integer>> looks = new HashSet<>();
-        for (int up = -AREA.down(); up <= AREA.up(); up++) {
-            for (int ahead = ROCK_FROM; ahead <= AREA.halfWidth(); ahead++) {
+        double darkest = Double.MAX_VALUE;
+        double lightest = -Double.MAX_VALUE;
+        for (int up = -AREA.down() + EDGE; up <= AREA.up() - EDGE; up++) {
+            for (int ahead = ROCK_FROM; ahead <= AREA.halfWidth() - EDGE; ahead++) {
                 looks.add(Arrays.stream(shot.cellPixels(ahead, up)).boxed().toList());
+                double brightness = shot.brightness(ahead, up);
+                darkest = Math.min(darkest, brightness);
+                lightest = Math.max(lightest, brightness);
             }
         }
         require(
                 looks.size() > 1,
                 "every stone cell of the scanner is drawn the same: uniform rock has no grain to show it moving past");
+        require(
+                lightest - darkest <= MEAN_SPREAD,
+                "the stone cells' mean brightness runs from %.2f to %.2f: the grain should move no cell's mean by more than %.0f"
+                        .formatted(darkest, lightest, MEAN_SPREAD));
     }
 
     /**
@@ -242,9 +263,8 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
                     .filter(text -> DEPTH_LABEL.matcher(text.text()).matches())
                     .toList();
             if (labels.size() < 2) {
-                return List.of("the scanner should draw at least two depth labels, it drew " + drawn.stream()
-                        .map(DrawnText.Drawn::text)
-                        .toList());
+                return List.of("the scanner should draw at least two depth labels, it drew "
+                        + drawn.stream().map(DrawnText.Drawn::text).toList());
             }
             return labels.stream()
                     .flatMap(label -> {
