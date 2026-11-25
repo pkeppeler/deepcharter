@@ -122,7 +122,9 @@ public class SalvageClothScenario extends EvidenceScenario {
         }
     }
 
+    /** The mod's item {@code path}; an unknown id fails here, not as a wait that times out later. */
     private static Item item(String path) {
-        return BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
+        Identifier id = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
+        return BuiltInRegistries.ITEM.getOptional(id).orElseThrow(() -> new AssertionError("no item " + id));
     }
 }
