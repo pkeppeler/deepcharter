@@ -120,9 +120,15 @@ public final class ScanSlice {
         return origin;
     }
 
-    /** The world position of the cell ({@code ahead}, {@code up}). */
-    public BlockPos pos(int ahead, int up) {
-        return origin.relative(facing, ahead).above(up);
+    /**
+     * The world position of the cell ({@code ahead}, {@code up}), as {@link BlockPos#asLong}: the client's rock grain
+     * reads it for every cell on every rescan, so it allocates no position.
+     */
+    public long posLong(int ahead, int up) {
+        return BlockPos.asLong(
+                origin.getX() + facing.getStepX() * ahead,
+                origin.getY() + up,
+                origin.getZ() + facing.getStepZ() * ahead);
     }
 
     public Cell cell(int ahead, int up) {
