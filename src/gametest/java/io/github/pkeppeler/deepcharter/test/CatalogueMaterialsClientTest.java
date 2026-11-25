@@ -33,6 +33,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
 
 /**
  * Client GameTest for #1378: the recipe console's total materials. The switch first: M shows them for the recipe shown, and any other
@@ -67,24 +68,27 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
     private static void theSwitchFollowsTheLookup() {
         PartsCatalogue catalogue = PartsCatalogue.of(CatalogueFixtures.book(), ContextMap.EMPTY);
         CatalogueState state = new CatalogueState();
-        state.toggleMaterials();
+        state.toggleMaterials(catalogue);
         require(!state.materials(), "with nothing looked up there is nothing to switch");
         state.look(catalogue, DRILL, Mode.RECIPES);
-        state.toggleMaterials();
+        state.toggleMaterials(catalogue);
         require(state.materials(), "M shows the total materials");
         state.look(catalogue, DRILL, Mode.RECIPES);
         require(state.materials(), "R again on the item shown steps to its next recipe and keeps the materials shown");
         state.look(catalogue, HUB, Mode.RECIPES);
         require(!state.materials(), "another item shows its recipe");
-        state.toggleMaterials();
+        state.toggleMaterials(catalogue);
         require(state.back() && !state.materials(), "back shows the recipe gone back to");
-        state.toggleMaterials();
+        state.toggleMaterials(catalogue);
         state.clear();
         require(!state.materials(), "putting the console away shows the recipe next time");
         state.look(catalogue, DRILL, Mode.RECIPES);
-        state.toggleMaterials();
-        state.toggleMaterials();
+        state.toggleMaterials(catalogue);
+        state.toggleMaterials(catalogue);
         require(!state.materials(), "M again shows the recipe");
+        state.look(catalogue, Items.REDSTONE, Mode.RECIPES);
+        state.toggleMaterials(catalogue);
+        require(!state.materials(), "with no known recipe shown there is nothing to switch");
     }
 
     // ---------------------------------------------------------------- the real game
@@ -151,6 +155,23 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
         require(requireDrawn(drawn, "2/2", "the iron").color() == dim, "what is held is dim");
         require(find(drawn, "-0").isEmpty(), "nothing held is drawn short");
 
+        // The drill head has two recipes; the wheel scrolls its materials and does not step to the other recipe.
+        int index = context.computeOnClient(
+                client -> Objects.requireNonNull(panel.state().lookup()).index());
+        require(
+                context.computeOnClient(
+                                client -> panel.state().found(panel.catalogue()).size())
+                        > 1,
+                "the drill head has more than one recipe to step to");
+        // On the console's glass, by the heading: no row and no control.
+        CatalogueScene.hover(
+                context, new Rect(layout.card().right() - 4, layout.card().stationY(), 2, 2));
+        RealInput.scroll(context, -1);
+        require(
+                context.computeOnClient(client -> panel.state().materials()
+                        && Objects.requireNonNull(panel.state().lookup()).index() == index),
+                "the wheel scrolls the materials, not the recipes");
+
         // A row is an item: its name on hover, and R on it looks it up and shows its recipe.
         Rect firstRow = new Rect(
                 layout.card().left(),
@@ -198,6 +219,7 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
         List<Drawn> drawn = drawn(context, screen);
         requireDrawn(drawn, "NO KNOWN RECIPE", "redstone has no known recipe");
         require(find(drawn, "TOTAL MATERIALS").isEmpty(), "so there are no materials to show");
+        require(!context.computeOnClient(client -> panel.state().materials()), "and M switches nothing");
     }
 
     private static void aLongListScrolls(ClientGameTestContext context, CataloguePanel panel) {
@@ -210,12 +232,13 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
         RealInput.key(context, InputConstants.KEY_M, 0);
         int rows = (layout.card().needBottom() - layout.card().gridY())
                 / CatalogueLook.current().needRow();
-        int total = 7;
-        require(rows < total, "the console has room for fewer rows than the ladder's seven materials, " + rows);
+        int total = ((ShapelessCraftingRecipeDisplay)
+                        CatalogueFixtures.sundries().display())
+                .ingredients()
+                .size();
+        require(rows < total, "the console has room for fewer rows than the ladder's " + total + " materials, " + rows);
         requireDrawn(drawn(context, screen), "+" + (total - rows + 1) + " MORE", "the last row says how many more");
 
-        int index = context.computeOnClient(
-                client -> Objects.requireNonNull(panel.state().lookup()).index());
         for (int i = 0; i < total - rows; i++) {
             RealInput.scroll(context, -1);
         }
@@ -225,10 +248,6 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
                 end.stream().filter(line -> line.text().equals("0/1")).count() == rows,
                 "every row fits and is drawn, got "
                         + end.stream().map(Drawn::text).toList());
-        require(
-                context.computeOnClient(client -> panel.state().materials()
-                        && Objects.requireNonNull(panel.state().lookup()).index() == index),
-                "the wheel scrolls the materials, not the recipes");
         RealInput.scroll(context, 1);
         requireDrawn(drawn(context, screen), "+2 MORE", "a turn up hides the last two under the last row again");
     }

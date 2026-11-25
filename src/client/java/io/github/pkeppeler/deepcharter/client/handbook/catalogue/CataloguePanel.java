@@ -697,7 +697,7 @@ public final class CataloguePanel {
             return true;
         }
         if (CatalogueKeys.MATERIALS.matches(event) && showsRecipePanel()) {
-            state.toggleMaterials();
+            state.toggleMaterials(catalogue());
             return true;
         }
         Item item = hoveredItem();

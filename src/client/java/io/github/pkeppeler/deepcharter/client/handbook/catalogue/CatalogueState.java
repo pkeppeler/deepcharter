@@ -132,9 +132,12 @@ public final class CatalogueState {
         return materials;
     }
 
-    /** Switches the console between the recipe and its total materials; with nothing looked up there is nothing to switch. */
-    public void toggleMaterials() {
-        if (lookup != null) {
+    /**
+     * Switches the console between the recipe and its total materials; with no recipe shown ({@code catalogue} knows none for the
+     * lookup, or nothing is looked up) there is nothing to switch.
+     */
+    public void toggleMaterials(PartsCatalogue catalogue) {
+        if (shownRecipe(catalogue) != null) {
             materials = !materials;
             materialsOffset = 0;
         }

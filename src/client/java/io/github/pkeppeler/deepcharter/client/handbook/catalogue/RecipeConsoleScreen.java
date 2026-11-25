@@ -113,7 +113,7 @@ public final class RecipeConsoleScreen extends Screen {
             return true;
         }
         if (CatalogueKeys.MATERIALS.matches(event)) {
-            state.toggleMaterials();
+            state.toggleMaterials(console.catalogue());
             return true;
         }
         CatalogueLayout.Console now = layout;

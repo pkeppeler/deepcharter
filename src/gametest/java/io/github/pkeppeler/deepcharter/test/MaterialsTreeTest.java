@@ -45,7 +45,8 @@ public class MaterialsTreeTest {
     private static final SlotDisplay STICK = item(Items.STICK);
     private static final SlotDisplay LOG = item(Items.OAK_LOG);
     // Items.COPPER_BLOCK is the weathering family, not one item.
-    private static final Item COPPER_BLOCK = BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace("copper_block"));
+    private static final Item COPPER_BLOCK =
+            BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace("copper_block"));
 
     private static SlotDisplay item(Item item) {
         return new SlotDisplay.ItemSlotDisplay(item);
@@ -345,9 +346,11 @@ public class MaterialsTreeTest {
         expectMaterials(helper, tree, "ladders held do not make another", Items.STICK, 6, 0);
         helper.succeed();
     }
+
     @GameTest
     public void aStorageBlockAsAnIngredientIsUnpacked(GameTestHelper helper) {
-        // The anvil takes iron blocks. Ingots come from nuggets too, so the block is not the only thing they come from: packing
+        // The anvil takes iron blocks. Ingots come from nuggets too, so the block is not the only thing they come from:
+        // packing
         // ingots into a block is followed, and only unpacking a block or nuggets into ingots is the undoing.
         KnownRecipe anvil = shipped(helper, "minecraft:anvil");
         KnownRecipe block = shipped(helper, "minecraft:iron_block");
@@ -359,7 +362,10 @@ public class MaterialsTreeTest {
         MaterialsTree unsmelted =
                 MaterialsTree.of(anvil, known(anvil, block, nuggets, ingotFromBlock, ingotFromNuggets), stock());
         expectMaterials(helper, unsmelted, "three blocks of nine and four ingots", Items.IRON_INGOT, 31, 0);
-        expect(helper, node(helper, unsmelted, Items.IRON_BLOCK).recipe() == block, "the blocks are packed from ingots");
+        expect(
+                helper,
+                node(helper, unsmelted, Items.IRON_BLOCK).recipe() == block,
+                "the blocks are packed from ingots");
 
         MaterialsTree smelting = MaterialsTree.of(
                 anvil, known(anvil, block, nuggets, ingotFromBlock, ingotFromNuggets, smelted), stock());
@@ -376,14 +382,14 @@ public class MaterialsTreeTest {
         KnownRecipe ingotFromNuggets = shipped(helper, "minecraft:iron_ingot_from_nuggets");
         MaterialsTree tree =
                 MaterialsTree.of(lantern, known(lantern, block, nuggets, ingotFromBlock, ingotFromNuggets), stock());
-        expectMaterials(
-                helper, tree, "eight nuggets are one ingot cut", Items.IRON_INGOT, 1, 0, Items.TORCH, 1, 0);
+        expectMaterials(helper, tree, "eight nuggets are one ingot cut", Items.IRON_INGOT, 1, 0, Items.TORCH, 1, 0);
         helper.succeed();
     }
 
     @GameTest
     public void theRadiatorUnitsCopperBlockCountsHeldIngots(GameTestHelper helper) {
-        // The radiator unit takes a copper block and seven ingots; holding copper teaches the block, the nuggets and both
+        // The radiator unit takes a copper block and seven ingots; holding copper teaches the block, the nuggets and
+        // both
         // ways back to ingots.
         KnownRecipe radiator = shipped(helper, "deepcharter:radiator_unit");
         KnownRecipe block = shipped(helper, "minecraft:copper_block");
@@ -434,7 +440,8 @@ public class MaterialsTreeTest {
 
     @GameTest
     public void theShownRecipeTakesItselfFromStock(GameTestHelper helper) {
-        // A recipe that copies its own result, the way a smithing template does (no template is obtainable here): a stick and
+        // A recipe that copies its own result, the way a smithing template does (no template is obtainable here): a
+        // stick and
         // a plank make two sticks.
         KnownRecipe copy = recipe(helper, Items.STICK, 2, STICK, PLANKS);
         MaterialsTree tree = MaterialsTree.of(copy, known(copy), stock(Items.STICK, 1, Items.OAK_PLANKS, 1));

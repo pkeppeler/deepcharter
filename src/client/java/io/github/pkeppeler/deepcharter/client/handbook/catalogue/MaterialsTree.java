@@ -153,7 +153,8 @@ public record MaterialsTree(Node root, List<Material> materials) {
             for (KnownRecipe.Need need : recipe.needs()) {
                 Item choice = choose(need);
                 int count = need.count() * crafts;
-                // A cell that takes only an item being made (the shown recipe copying itself) is never crafted: the loop ends.
+                // A cell that takes only an item being made (the shown recipe copying itself) is never crafted: the
+                // loop ends.
                 children.add(node(choice, count, !branch.contains(choice)));
             }
             branch.remove(item);
@@ -183,10 +184,13 @@ public record MaterialsTree(Node root, List<Material> materials) {
          * the block and the nuggets are made only from ingots).
          */
         private boolean undoes(KnownRecipe recipe, Item item) {
-            return recipe.needs().stream().anyMatch(need -> need.choices().stream().allMatch(choice -> {
-                List<KnownRecipe> backs = known.apply(choice.getItem());
-                return !backs.isEmpty() && backs.stream().allMatch(back -> back.ingredientItems().contains(item));
-            }));
+            return recipe.needs().stream()
+                    .anyMatch(need -> need.choices().stream().allMatch(choice -> {
+                        List<KnownRecipe> backs = known.apply(choice.getItem());
+                        return !backs.isEmpty()
+                                && backs.stream()
+                                        .allMatch(back -> back.ingredientItems().contains(item));
+                    }));
         }
 
         /**

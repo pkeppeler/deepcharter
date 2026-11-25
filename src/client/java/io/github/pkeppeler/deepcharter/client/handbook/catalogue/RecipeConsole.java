@@ -70,6 +70,13 @@ final class RecipeConsole {
 
     private List<Item> favourites = List.of();
 
+    // The last tree built, and what it was built from: hit tests and the draw each ask for it every frame.
+    private @Nullable MaterialsTree tree;
+    private @Nullable KnownRecipe treeRecipe;
+    private @Nullable PartsCatalogue treeCatalogue;
+    private @Nullable Inventory treeInventory;
+    private int treeInventoryChanged;
+
     RecipeConsole(CatalogueState state, Font font) {
         this.state = state;
         this.font = font;
@@ -352,16 +359,14 @@ final class RecipeConsole {
             dim(graphics, font, counter, card.right() - termWidth(font, counter), card.gridY() + look.counterY());
         }
 
-        Inventory inventory = Minecraft.getInstance().player == null
-                ? null
-                : Minecraft.getInstance().player.getInventory();
+        Map<Item, Integer> stock = stock();
         List<KnownRecipe.Need> needs = recipe.needs();
         int rows = Math.min(needs.size(), card.needRows());
         for (int i = 0; i < rows; i++) {
             KnownRecipe.Need need = needs.get(i);
             int y = card.needTop() + i * look.needRow();
             graphics.item(cycled(need.choices()), card.left(), y);
-            int have = inventory == null ? 0 : held(inventory, need);
+            int have = held(stock, need);
             String figures = have + "/" + need.count();
             int x = card.left() + look.needTextX();
             if (have < need.count()) {
@@ -377,17 +382,38 @@ final class RecipeConsole {
         }
     }
 
-    /** The total materials of one craft of {@code recipe}, less what the player holds. */
+    /**
+     * The total materials of one craft of {@code recipe}, less what the player holds: built again only when the recipe, what the charter
+     * knows or the inventory changed.
+     */
     private MaterialsTree materials(KnownRecipe recipe) {
         LocalPlayer player = Minecraft.getInstance().player;
-        return MaterialsTree.of(
-                recipe, catalogue::recipesFor, player == null ? Map.of() : stock(player.getInventory()));
+        Inventory inventory = player == null ? null : player.getInventory();
+        int changed = inventory == null ? 0 : inventory.getTimesChanged();
+        MaterialsTree built = tree;
+        if (built == null
+                || recipe != treeRecipe
+                || catalogue != treeCatalogue
+                || inventory != treeInventory
+                || changed != treeInventoryChanged) {
+            built = MaterialsTree.of(recipe, catalogue::recipesFor, stock());
+            tree = built;
+            treeRecipe = recipe;
+            treeCatalogue = catalogue;
+            treeInventory = inventory;
+            treeInventoryChanged = changed;
+        }
+        return built;
     }
 
     /** What the player holds, by item, as the have/need rows count it: the armour and the offhand left out. */
-    private static Map<Item, Integer> stock(Inventory inventory) {
+    private static Map<Item, Integer> stock() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return Map.of();
+        }
         Map<Item, Integer> stock = new HashMap<>();
-        for (ItemStack stack : inventory.getNonEquipmentItems()) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (!stack.isEmpty()) {
                 stock.merge(stack.getItem(), stack.getCount(), Integer::sum);
             }
@@ -463,18 +489,13 @@ final class RecipeConsole {
         }
     }
 
-    /** How many of what {@code need} takes the player holds, any of a tag counted. */
-    private static int held(Inventory inventory, KnownRecipe.Need need) {
-        int have = 0;
-        for (ItemStack stack : inventory.getNonEquipmentItems()) {
-            for (ItemStack choice : need.choices()) {
-                if (stack.is(choice.getItem())) {
-                    have += stack.getCount();
-                    break;
-                }
-            }
-        }
-        return have;
+    /** How many of what {@code need} takes the player holds, by {@link #stock}, any of a tag counted. */
+    private static int held(Map<Item, Integer> stock, KnownRecipe.Need need) {
+        return need.choices().stream()
+                .map(ItemStack::getItem)
+                .distinct()
+                .mapToInt(item -> stock.getOrDefault(item, 0))
+                .sum();
     }
 
     private static Rect recipeCell(Card card, CatalogueLook look, KnownRecipe recipe, int index) {
