@@ -115,9 +115,11 @@ object GametestScan {
 	private val notMethodNames = setOf("if", "for", "while", "switch", "catch", "synchronized", "try", "return", "new", "throw", "super", "this")
 	private val notBeforeMethodName = setOf("new", "return", "throw", "else", "case", "yield", "record", "assert")
 
-	// One step of a method for the light-settled gate: 'C' a carve, 'W' a wait, 'S' a seat, at [at] in the method read; [call] when a call of a
-	// same-file method brought it in, so two steps of one call share [at].
-	private class SettleStep(val kind: Char, val at: Int, val call: Boolean)
+	private enum class SettleKind { CARVE, WAIT, SEAT }
+
+	// One step of a method for the light-settled gate, at [at] in the method read; [call] when a call of a same-file method brought it in, so
+	// two steps of one call share [at].
+	private class SettleStep(val kind: SettleKind, val at: Int, val call: Boolean)
 
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
@@ -273,8 +275,8 @@ object GametestScan {
 			fun inBody(regex: Regex) = regex.findAll(text, range.first).takeWhile { it.range.first < range.last }
 			val own = { at: Int -> owner(at) == body }
 			val found = mutableListOf<SettleStep>()
-			for ((kind, regex) in listOf('C' to roomCarve, 'W' to lightSettledWait, 'S' to podSeat)) {
-				inBody(regex).map { it.range.first }.filter { own(it) && !(kind == 'S' && isMarked(it)) }
+			for ((kind, regex) in listOf(SettleKind.CARVE to roomCarve, SettleKind.WAIT to lightSettledWait, SettleKind.SEAT to podSeat)) {
+				inBody(regex).map { it.range.first }.filter { own(it) && !(kind == SettleKind.SEAT && isMarked(it)) }
 					.forEach { found.add(SettleStep(kind, it, false)) }
 			}
 			val calls = inBody(namedCall).map { Triple(it.range.first, it.groupValues[1], false) } +
@@ -283,7 +285,7 @@ object GametestScan {
 				if (!own(at) || name in stack || !sameFileCall(at, name, reference)) continue
 				val marked = isMarked(at)
 				val inner = memo.getOrPut(name) { byName.getValue(name).flatMap { steps(it, stack + name) } }
-				inner.filter { !(marked && it.kind == 'S') }.forEach { found.add(SettleStep(it.kind, at, true)) }
+				inner.filter { !(marked && it.kind == SettleKind.SEAT) }.forEach { found.add(SettleStep(it.kind, at, true)) }
 			}
 			return found.sortedBy { it.at }
 		}
@@ -293,9 +295,9 @@ object GametestScan {
 			var carve: SettleStep? = null
 			for (step in steps(method, setOf(namedCall.find(text, method.first)!!.groupValues[1]))) {
 				when (step.kind) {
-					'C' -> carve = step
-					'W' -> carve = null
-					'S' -> {
+					SettleKind.CARVE -> carve = step
+					SettleKind.WAIT -> carve = null
+					SettleKind.SEAT -> {
 						val pending = carve ?: continue
 						val line = lineOf(text, step.at)
 						if ((pending.call && step.call && pending.at == step.at) || !reported.add(line)) continue
