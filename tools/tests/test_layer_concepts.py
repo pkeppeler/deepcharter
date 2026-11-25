@@ -315,7 +315,7 @@ class LayerConceptsTest(unittest.TestCase):
         """The mod's rock is its own blocks (no vanilla file is redrawn), layer 3's included (#972); the scenes' stand-ins for layer 3 are vanilla
         andesite and diorite, and stone and deepslate, which the hall of each scene shows untouched, are never redrawn."""
         shipped = {p.relative_to(make.MOD_ASSETS).as_posix() for p in self.files if p.is_relative_to(make.MOD_ASSETS) and "/blockstates/" in p.as_posix()}
-        blocks = {block for pair in make.BLOCKS.values() for block in pair} | {make.COLUMNS, make.CORE}
+        blocks = {block for pair in make.BLOCKS.values() for block in pair} | {make.COLUMNS, make.CORE} | set(make.STRATA)
         self.assertEqual({f"deepcharter/blockstates/{block}.json" for block in blocks}, shipped)
         redrawn_by_grain = {f"minecraft/blockstates/{n}.json" for n in make.LAYER_3}
         pack = make.pack_dir(make.GRAIN) / "assets"
