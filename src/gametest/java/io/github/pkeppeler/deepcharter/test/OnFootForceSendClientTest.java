@@ -153,7 +153,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                 context.getInput().holdKeyFor(options -> options.keyDown, LAP_TICKS);
                 context.getInput().holdKeyFor(options -> options.keyRight, LAP_TICKS);
             }
-            phase(phases, "laps", mark);
+            mark = phase(phases, "laps", mark);
             int onTheBlocks = ForceSends.total() - before;
 
             UUID podId = server.computeOnServer(s -> addPodOnALedge(s.overworld(), floor));
@@ -171,6 +171,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                         "the person on the bore floor",
                         client -> client.player != null && client.player.onGround() && client.player.getY() < floor + 2,
                         client -> "client player at " + (client.player == null ? "none" : client.player.position()));
+                mark = phase(phases, "tether drop " + (trip + 1), mark);
                 server.runOnServer(s -> PodTether.setWinching(player(s), true));
                 ClientWait.until(
                         context,
@@ -179,14 +180,15 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                         () -> "winching, at "
                                 + server.computeOnServer(s -> player(s).position()));
                 server.runOnServer(s -> PodTether.unclip(player(s), PodTether.Unclipped.UNHOOKED));
+                mark = phase(phases, "haul " + (trip + 1), mark);
             }
             context.waitTicks(SETTLE_TICKS); // tick-wait: any last packet
+            phase(phases, "settle", mark);
             int total = ForceSends.total() - before;
             require(
                     total == 0,
-                    total + " force-send lines (" + onTheBlocks
-                            + " before the tether: " + phases + ") for a real client on foot in a carved bore, and "
-                            + setup + " in the setup");
+                    total + " force-send lines (" + onTheBlocks + " before the tether; " + phases
+                            + ") for a real client on foot in a carved bore, and " + setup + " in the setup");
 
             // No line since the count began, and a setup line was waited out before it, so vanilla's cooldown is clear.
             Patch stone = PATCHES.getLast();
