@@ -51,9 +51,9 @@ public record ReadoutLook(
     }
 
     /**
-     * The y of the block readout's name line, for a font {@code lineHeight} high: the top of the room of two lines above
-     * {@link #blockBottom}, whether or not there is a hint under the name, so the name never moves between blocks. Never
-     * above the screen.
+     * The y of the block readout's name line, for a font {@code lineHeight} high: the top of the room of two lines
+     * above {@link #blockBottom}, whether or not there is a hint under the name, so the name never moves between
+     * blocks. Never above the screen.
      */
     public int blockTop(int guiHeight, int lineHeight) {
         return Math.max(0, blockBottom(guiHeight) - (int) Math.ceil((2 * lineHeight + lineGap) * scale));
@@ -67,7 +67,10 @@ public record ReadoutLook(
         return blockBottom(guiHeight) - (int) Math.ceil((2 * lineHeight + 2 * lineGap) * scale);
     }
 
-    /** The y of the top of the placement readout's box {@code boxHeight} high, growing up from {@link #placementBottom}; never above the screen. */
+    /**
+     * The y of the top of the placement readout's box {@code boxHeight} high, growing up from {@link #placementBottom};
+     * never above the screen.
+     */
     public int placementTop(int guiHeight, int lineHeight, int boxHeight) {
         return Math.max(0, placementBottom(guiHeight, lineHeight) - boxHeight);
     }
