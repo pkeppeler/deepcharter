@@ -10,7 +10,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Clientbound: show the spec sheet of this item, because the player crafted or bought it for the first time
+ * Clientbound: tell the client a spec sheet is new for this item, because the player crafted or bought it for the first time
  * ({@link SpecSheetPopups}). The sheet itself is not sent: the client builds it from the same tunings.
  */
 public record SpecSheetPayload(Identifier item) implements CustomPacketPayload {
@@ -29,7 +29,7 @@ public record SpecSheetPayload(Identifier item) implements CustomPacketPayload {
         return ServerPlayNetworking.canSend(player, TYPE);
     }
 
-    /** Tells {@code player}, whom {@link #canSend} allows, to show the sheet. */
+    /** Tells {@code player}, whom {@link #canSend} allows, of the sheet. */
     static void send(ServerPlayer player, SpecSheetPayload payload) {
         ServerPlayNetworking.send(player, payload);
     }
