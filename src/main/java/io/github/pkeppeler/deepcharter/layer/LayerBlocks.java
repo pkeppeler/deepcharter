@@ -68,9 +68,9 @@ public final class LayerBlocks {
     /**
      * The moss film round the growth (#974, {@link OvergrowthVeneerBlock}): a thin layer on the faces of rock, with no
      * collision, no light cost and no drop, that goes before the fill, spills round a closed mouth and hangs from a
-     * roof. It has no item: only {@link Overgrowth} places it. It glows faintly in the dark as a
-     * warning: its models set a face {@code light_emission} (the rock does the same), which draws the film brighter
-     * while the block's light level stays 0, so it lights nothing.
+     * roof. It has no item: only {@link Overgrowth} places it. It glows faintly in the dark as a warning: its models
+     * set a face {@code light_emission} (the rock does the same), which draws the film brighter while the block's light
+     * level stays 0, so it lights nothing.
      */
     public static final Block OVERGROWTH_VENEER = registerBlockOnly(
             id("overgrowth_veneer"),

@@ -286,9 +286,10 @@ public final class CaveIns {
     }
 
     /**
-     * A falling block settles in the cell of any entity under it, so rock that landed on a person would leave them inside it. Rock about to
-     * reach a person on foot shatters on them instead: it hurts by the blocks it fell to their feet, up to {@link
-     * CaveInTuning#fallDamageMax()}, never to their last health, and leaves no block. Returns whether it shattered.
+     * A falling block settles in the cell of any entity under it, so rock that landed on a person would leave them
+     * inside it. Rock about to reach a person on foot shatters on them instead: it hurts by the blocks it fell to their
+     * feet, up to {@link CaveInTuning#fallDamageMax()}, never to their last health, and leaves no block. Returns
+     * whether it shattered.
      */
     private static boolean shatterOnPerson(ServerLevel level, FallingBlockEntity rock) {
         AABB reach = rock.getBoundingBox().expandTowards(0, rock.getDeltaMovement().y - STEP_DOWN, 0);

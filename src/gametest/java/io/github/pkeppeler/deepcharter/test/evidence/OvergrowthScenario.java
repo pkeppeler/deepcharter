@@ -91,11 +91,11 @@ public class OvergrowthScenario extends EvidenceScenario {
                 BlockPos middle = new BlockPos(player.getBlockX(), FLOOR_Y, player.getBlockZ());
                 ServerLevel one = TestLayers.level(server, 1);
                 build(one, middle);
-                // The growth stills are taken from a spectator's eye in the chamber, with the pod parked behind the
-                // camera.
+                // The growth stills are taken from a spectator's eye in
+                // the chamber, with the pod parked behind the camera.
                 player.setGameMode(GameType.SPECTATOR);
-                // The layer's lightmap is near black: night vision lifts it for the stills without touching the world's
-                // light.
+                // The layer's lightmap is near black: night vision lifts
+                // it for the stills without touching the world's light.
                 player.addEffect(new MobEffectInstance(
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
@@ -223,8 +223,8 @@ public class OvergrowthScenario extends EvidenceScenario {
     }
 
     /**
-     * The eye sits inside the half-grown bare bore and looks up at the growth on its ceiling, then goes back to the
-     * chamber.
+     * The eye sits inside the half-grown bare bore and looks up at
+     * the growth on its ceiling, then goes back to the chamber.
      */
     private void underside(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos site) {
         double x = site.getX() - OFFSET + 0.5;
@@ -291,8 +291,8 @@ public class OvergrowthScenario extends EvidenceScenario {
     }
 
     /**
-     * The pod is set at the mouth of the bare bore and drilled into the growth: the slabs go at extra fuel and the bore
-     * opens.
+     * The pod is set at the mouth of the bare bore and drilled into
+     * the growth: the slabs go at extra fuel and the bore opens.
      */
     private void drillThrough(ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
         BlockPos site = scene.site();
@@ -352,8 +352,8 @@ public class OvergrowthScenario extends EvidenceScenario {
     }
 
     /**
-     * A bore the way a drill cuts one into the wall of a cave: its open mouth, the direction it runs, and the cells of
-     * it.
+     * A bore the way a drill cuts one into the wall of a cave:
+     * its open mouth, the direction it runs, and the cells of it.
      */
     private record Cave(BlockPos mouth, Direction run, List<BlockPos> cells, int wide) {}
 
@@ -433,8 +433,8 @@ public class OvergrowthScenario extends EvidenceScenario {
             throw new AssertionError("the bore in the hollows did not grow over: " + hollowsGrown(singleplayer, cave)
                     + " of " + total + " cells");
         }
-        // The cave's own light: from further back, the bore and the film round its mouth among the glow of the cave, as
-        // played.
+        // The cave's own light: from further back, the bore and the
+        // film round its mouth among the glow of the cave, as played.
         singleplayer
                 .getServer()
                 .runOnServer(
@@ -463,10 +463,10 @@ public class OvergrowthScenario extends EvidenceScenario {
     }
 
     /**
-     * A cave's wall that a bore can be cut into: a floor cell with open air round it and room to stand back from it,
-     * and a block of natural rock {@value #HOLLOWS_BORE} deep, 3 wide and 3 high in front of it, in the hollows biome
-     * tag. Searches the layer's band over the chunks round {@code site}; throws, naming where it looked, when there is
-     * none.
+     * A cave's wall that a bore can be cut into: a floor cell with open air round it and room
+     * to stand back from it, and a block of natural rock {@value #HOLLOWS_BORE} deep, 3 wide
+     * and 3 high in front of it, in the hollows biome tag. Searches the layer's band over the
+     * chunks round {@code site}; throws, naming where it looked, when there is none.
      */
     private static Cave findCave(ServerLevel level, BlockPos site) {
         LayerChain.Band band = TestLayers.band(level, HOLLOWS_LAYER);

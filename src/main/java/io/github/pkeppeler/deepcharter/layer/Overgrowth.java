@@ -50,11 +50,11 @@ import net.minecraft.world.phys.AABB;
  *
  * <p>A bore is a cell that a pod drill or a hand removed from natural rock or from growth. Each chunk keeps its bore
  * cells and the game time of its last visit in the attachment {@link #BORES}, written only for a cell in a hollows
- * biome, so the world pays nothing where the tag is empty. A visit is a player (not a spectator) within {@link
- * OvergrowthTuning#visitRadius} blocks of a bore cell of the chunk; a pod counts through its pilot, which is how a
- * drill is driven. Past {@link OvergrowthTuning#delayTicks} without a visit, each pass ({@link
- * OvergrowthTuning#passTicks}) fills up to {@link OvergrowthTuning#cellsPerPass} of the chunk's bore cells. Only chunks
- * that are loaded and ticking grow, as random ticks do.
+ * biome, so the world pays nothing where the tag is empty. A visit is a player (not a spectator) within
+ * {@link OvergrowthTuning#visitRadius} blocks of a bore cell of the chunk; a pod counts through its pilot, which is how
+ * a drill is driven. Past {@link OvergrowthTuning#delayTicks} without a visit, each pass
+ * ({@link OvergrowthTuning#passTicks}) fills up to {@link OvergrowthTuning#cellsPerPass} of the chunk's bore cells.
+ * Only chunks that are loaded and ticking grow, as random ticks do.
  *
  * <p>Growth only ever fills an air cell, so a placed block is never replaced and never deleted (SPEC section 10). A
  * cell grows only when it touches natural rock or growth, so it closes from the walls inward, and never when a lining
@@ -126,8 +126,8 @@ public final class Overgrowth {
         ServerPlayerEvents.JOIN.register(Overgrowth::freePlayer);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> TRACKED.clear());
         ServerTickEvents.END_LEVEL_TICK.register(Overgrowth::tick);
-        // A hand cut is a bore too (rock below layer 1 is out of reach of hands, so this is layer 1 and the growth
-        // itself).
+        // A hand cut is a bore too (rock below layer 1 is out of
+        // reach of hands, so this is layer 1 and the growth itself).
         PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, blockEntity) -> {
             if (level instanceof ServerLevel server && cutsBore(state)) {
                 markBore(server, pos);
@@ -323,10 +323,10 @@ public final class Overgrowth {
     }
 
     /**
-     * Lays the moss film in {@code pos}, an air cell, on the faces of the rock round it, leaving {@link
-     * OvergrowthTuning#filmBarePercent} of the faces bare so the film is ragged. It does nothing where growth would
-     * not: outside the hollows, within reach of one of {@code lining} (the lining blocks near the cell), or where a
-     * chunk is not loaded. {@code salt} varies which faces.
+     * Lays the moss film in {@code pos}, an air cell, on the faces of the rock round it, leaving
+     * {@link OvergrowthTuning#filmBarePercent} of the faces bare so the film is ragged. It does nothing where growth
+     * would not: outside the hollows, within reach of one of {@code lining} (the lining blocks near the cell), or where
+     * a chunk is not loaded. {@code salt} varies which faces.
      */
     private static void film(ServerLevel level, LoadedBlocks blocks, BlockPos pos, long salt, List<BlockPos> lining) {
         if (!blocks.getBlockState(pos).isAir()
@@ -358,8 +358,8 @@ public final class Overgrowth {
     }
 
     /**
-     * The lining blocks within {@code reach} of {@code centre}, read once for a cell or for all the cells a spill
-     * reaches.
+     * The lining blocks within {@code reach} of {@code centre},
+     * read once for a cell or for all the cells a spill reaches.
      */
     private static List<BlockPos> liningNear(LoadedBlocks blocks, BlockPos centre, int reach) {
         List<BlockPos> found = new ArrayList<>();
@@ -395,9 +395,9 @@ public final class Overgrowth {
 
     /**
      * True while something holds the film at {@code pos} at game time {@code now}: the cell is a pending bore cell of a
-     * chunk that has gone unvisited for the delay (the film ahead of the fill), or growth stands within {@link
-     * OvergrowthTuning#filmReach} of it. A visit, or a cut of the growth, lets go of it. A film never lets go because
-     * of a chunk it cannot see: an unloaded cell in reach counts as held.
+     * chunk that has gone unvisited for the delay (the film ahead of the fill), or growth stands within
+     * {@link OvergrowthTuning#filmReach} of it. A visit, or a cut of the growth, lets go of it. A film never lets go
+     * because of a chunk it cannot see: an unloaded cell in reach counts as held.
      */
     public static boolean anchored(ServerLevel level, BlockPos pos, long now) {
         boolean pending = Versioned.readable(level.getChunkAt(pos), BORES)

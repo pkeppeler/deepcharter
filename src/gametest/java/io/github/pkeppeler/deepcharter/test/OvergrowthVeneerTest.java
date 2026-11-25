@@ -38,8 +38,8 @@ import net.minecraft.world.phys.Vec3;
  * Server GameTests for the overgrowth veneer (#974): the thin moss film that creeps ahead of the fill along a bore's
  * walls, spills round a closed mouth in ragged patches, hangs from ceilings, never blocks movement or the drill, and
  * goes when the growth it belongs to is cut or the bore is visited. A test has a column of its own: a stone box in
- * layer 1 with a 3 x 3 bore cut in it and a one-block-high cave over the bore's end, in the test biome {@code
- * deepcharter-test:hollows}.
+ * layer 1 with a 3 x 3 bore cut in it and a one-block-high cave over
+ * the bore's end, in the test biome {@code deepcharter-test:hollows}.
  */
 public class OvergrowthVeneerTest {
     private static final OvergrowthTuning TUNING = OvergrowthTuning.DEFAULT;
@@ -97,8 +97,8 @@ public class OvergrowthVeneerTest {
                     throw failure(helper, "veneer at %s has no face", cell);
                 }
             }
-            // The film never holds the fill back: the cells it is on still close, and no veneer is left in a closed
-            // bore.
+            // The film never holds the fill back: the cells it is on
+            // still close, and no veneer is left in a closed bore.
             long now = lastVisit(level, x) + TUNING.delayTicks();
             for (int pass = 0; pass < PASSES; pass++) {
                 now += TUNING.passTicks();
