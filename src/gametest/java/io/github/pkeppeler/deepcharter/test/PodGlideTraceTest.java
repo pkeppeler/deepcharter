@@ -18,7 +18,7 @@ import net.minecraft.world.phys.Vec3;
  * Server GameTest for #1112: two late-server drives replayed move by move through the client's {@code PodGlide}, on a pod held out of
  * the world high above the test, so nothing but the glide moves it. Each drive is a pattern of extra lateness that the 1-D model of
  * {@code PodGlide} under {@code PacketJitter} (ADR 0082) found, and a client test meets it only when CI's server happens to run that
- * late. Every tick past the settle is held to half the speed, measured as {@code PodDriveSmoothClientTest} measures it; the pod never
+ * late. Every tick past the settle is held to half the speed, measured as the drive tests ({@code PodDrives}) measure it; the pod never
  * reaches the coast's reach in either, so no tick is left out.
  *
  * <p>A move {@code n} is the server's position {@code n} ticks into the drive at the stock speed, rounded to the network's position
