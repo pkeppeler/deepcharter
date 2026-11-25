@@ -121,6 +121,7 @@ What it explains:
   - Convoy Nine's lamps are still lit under the water.
   - Moloch's glow is counterfeit light.
   - Renunciation gives every crew member a lamp that never goes out. Signing puts the Director's out forever.
+- **Wax.** The oldest voices ever caught on a surface, a scale, a girl's song and a few lines of a play, turn on wax cylinders. The label gives a title and a year and nothing more, and nobody says whose voices they are. A cylinder turns up now and then among a wreck's scrap. Sometimes the Lamp and Pick's phonograph plays at night, and nobody was there to start it.
 - **Hands.** The Founder's open bronze hands hold nothing. The Company needs your hands because it has none. At the end, you open your hand and let go.
 - **Rest.** The Company promises retirement and never pays it. Hal is always retiring on Friday. Renunciation ends in rest.
 - **Hidden names.** H. COLOM is one. The catalysts are another (a proposal; the numbers pass decides which materials are catalysts): they sound like Motherload ores and decode to Latin anatomy. Cicatrium (layer 2, scar), Mycium (3, fungus), Lymphium (4), Nervium (5), Haemium (6, blood), Ossium (7, bone), Cordium (8, heart).

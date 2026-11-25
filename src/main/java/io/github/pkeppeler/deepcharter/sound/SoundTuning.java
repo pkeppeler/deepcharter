@@ -14,12 +14,18 @@ import java.util.List;
  *                                  stops at full volume, so a change of engine state is a crossfade, not a cut
  * @param hymnTicks                 how long each version of the Lamp Hymn plays, in ticks, the colony first (the length of its file, rounded up);
  *                                  a player is not given a hymn while their last one is still playing
+ * @param phonographRange           a phonograph's playback starts for the players within this many blocks of it (the sound's own
+ *                                  {@code attenuation_distance} in sounds.json is the same number)
+ * @param phonographListenTicks     while a phonograph plays it looks this often for a player who has come into range, and starts the
+ *                                  recording again for them from the top
  */
 public record SoundTuning(
         int typewriterLettersPerClick,
         double movingSpeed,
         int movingHoldTicks,
         int engineFadeTicks,
-        List<Integer> hymnTicks) {
-    public static final SoundTuning DEFAULT = new SoundTuning(2, 0.02, 10, 10, List.of(218, 322, 468));
+        List<Integer> hymnTicks,
+        int phonographRange,
+        int phonographListenTicks) {
+    public static final SoundTuning DEFAULT = new SoundTuning(2, 0.02, 10, 10, List.of(218, 322, 468), 24, 20);
 }
