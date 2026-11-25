@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -63,13 +65,13 @@ public class VersionedCodecTest {
         try {
             decoded = decode(codec, saved);
         } catch (RuntimeException e) {
-            throw helper.assertionException(what + " must not throw, got " + e);
+            throw failure(helper, "%s must not throw, got %s", what, e);
         }
         if (!(decoded instanceof Unreadable<Thing> unreadable) || !saved.equals(unreadable.raw())) {
-            throw helper.assertionException(what + " must be Unreadable with the raw data kept, got " + decoded);
+            throw failure(helper, "%s must be Unreadable with the raw data kept, got %s", what, decoded);
         }
         if (!saved.equals(encode(codec, decoded))) {
-            throw helper.assertionException(what + " must be written back unchanged");
+            throw failure(helper, "%s must be written back unchanged", what);
         }
     }
 
@@ -77,7 +79,7 @@ public class VersionedCodecTest {
     public void aPreviousVersionDecodesThroughItsOwnCodecAndWritesAtTheCurrentVersion(GameTestHelper helper) {
         Versioned<Thing> decoded = decode(WITH_PREVIOUS, compound(OLD, "label", "old"));
         if (!(decoded instanceof Readable<Thing> readable) || !new Thing("old", 1).equals(readable.value())) {
-            throw helper.assertionException("a version 1 body must decode through the version 1 codec, got " + decoded);
+            throw failure(helper, "a version 1 body must decode through the version 1 codec, got %s", decoded);
         }
         Tag written = encode(WITH_PREVIOUS, decoded);
         if (!(written instanceof CompoundTag compound)
@@ -85,14 +87,16 @@ public class VersionedCodecTest {
                 || !"old".equals(compound.getStringOr("name", ""))
                 || compound.getIntOr("size", -1) != 1
                 || compound.contains("label")) {
-            throw helper.assertionException(
-                    "a migrated value must be written in the current shape at version " + CURRENT + ", got " + written);
+            throw failure(
+                    helper,
+                    "a migrated value must be written in the current shape at version %s, got %s",
+                    CURRENT,
+                    written);
         }
         Versioned<Thing> current = decode(WITH_PREVIOUS, encode(WITH_PREVIOUS, Versioned.of(new Thing("new", 7))));
         if (!(current instanceof Readable<Thing> currentReadable)
                 || !new Thing("new", 7).equals(currentReadable.value())) {
-            throw helper.assertionException(
-                    "a current body must still decode through the current codec, got " + current);
+            throw failure(helper, "a current body must still decode through the current codec, got %s", current);
         }
         helper.succeed();
     }
@@ -121,11 +125,11 @@ public class VersionedCodecTest {
         Codec<Versioned<Thing>> plain = Versioned.codec(CURRENT, Thing.BODY);
         Tag written = encode(plain, Versioned.of(new Thing("a", 3)));
         if (!(written instanceof CompoundTag compound) || compound.getIntOr(Versioned.VERSION_KEY, -1) != CURRENT) {
-            throw helper.assertionException("the two-argument codec must write the current version, got " + written);
+            throw failure(helper, "the two-argument codec must write the current version, got %s", written);
         }
         if (!(decode(plain, written) instanceof Readable<Thing> readable)
                 || !new Thing("a", 3).equals(readable.value())) {
-            throw helper.assertionException("the two-argument codec must round-trip a current value");
+            throw failure(helper, "the two-argument codec must round-trip a current value");
         }
         expectUnreadable(helper, plain, currentShaped(OLD), "an older version with no previous codecs");
         expectUnreadable(helper, plain, compound(CURRENT, "label", "wrong"), "a malformed current body");

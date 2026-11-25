@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.layer;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
+import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
 import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalInt;
@@ -81,7 +82,10 @@ public enum StructureKind {
     },
     /**
      * The colony's underground rail hub in Shift Change: two tracks, a wall of shelves for the time cards, the punch clock that
-     * is still lit and the Note (N09) on the table before the shelves.
+     * is still lit and the Note (N09) on the table before the shelves. A Company horn hangs over the middle of the hall on a chain from the ceiling
+     * ({@link StructurePlan#companyHorn}; on a beam and post from the floor where the roof is out of reach): a player near it hears the
+     * ambience's fragments from it ({@code AmbienceTicker}). A Company punch clock stands before the lit one and rarely calls an hour,
+     * sometimes the wrong one (#938).
      */
     PUNCH_CLOCK(2, 1, 8, 8, OptionalInt.of(5)) {
         @Override
@@ -105,6 +109,8 @@ public enum StructureKind {
             p.set(-7, 2, 0, Blocks.SEA_LANTERN.defaultBlockState());
             p.set(5, 0, 0, Blocks.SPRUCE_PLANKS.defaultBlockState());
             p.set(5, 1, 0, NoteBlock.stateOf(9));
+            p.companyHorn(0, HORN_HEIGHT, 0, 0);
+            p.set(-6, 0, 0, AmbienceRegistry.COMPANY_CLOCK.defaultBlockState());
         }
     },
     /** The rail line of Prospector's Run: a long timbered drift with a single track, broken in places, and nothing at the end of it but the Kells' shaft. */
@@ -148,7 +154,8 @@ public enum StructureKind {
     },
     /**
      * A wreck site in Prospector's Run: a bay with a scorched floor, a rail that ends in it, and debris at the edges. The middle
-     * is clear for a pod, which a later issue sets there (the site is {@code origin}). A barrel in the corner is the crew's locker.
+     * is clear for a pod, which a later issue sets there (the site is {@code origin}). A barrel in the corner is the crew's locker. PROSPECTOR-0002's bay
+     * alone also holds the cabin's phonograph ({@link ProspectorWrecks#light}).
      */
     WRECK(2, 2, 6, 6, OptionalInt.of(5)) {
         @Override
@@ -177,6 +184,12 @@ public enum StructureKind {
     /** The crew's locker in a wreck bay: scrap, and rarely a wax cylinder ({@code loot_table/chests/wreck_locker.json}). */
     private static final ResourceKey<LootTable> WRECK_LOCKER = ResourceKey.create(
             Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "chests/wreck_locker"));
+
+    /** The Company horn's height over the hall floor. */
+    public static final int HORN_HEIGHT = 4;
+
+    /** Blocks above the horn that {@link StructurePlan#companyHorn} looks for a ceiling. */
+    public static final int HORN_REACH = 24;
 
     /** Blocks from the centre of the rail line to the centre of the Kells' shaft, along the line: 4 past the end the line stops at. */
     public static final int KELLS_OFFSET = 36;

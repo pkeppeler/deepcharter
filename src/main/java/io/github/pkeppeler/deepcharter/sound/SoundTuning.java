@@ -18,6 +18,12 @@ import java.util.List;
  *                                  {@code attenuation_distance} in sounds.json is the same number)
  * @param phonographListenTicks     while a phonograph plays it looks this often for a player who has come into range, and starts the
  *                                  recording again for them from the top
+ * @param wreckSongRange            a wreck's phonograph sends its song to the players within this many blocks (the sound's own
+ *                                  {@code attenuation_distance} in sounds.json is the same number)
+ * @param wreckSongTriggerRange     a player this close to a wreck's phonograph, while it is armed, starts the song
+ * @param wreckSongTicks            how long the song lasts, in ticks (the length of its file, rounded up)
+ * @param wreckSongRearmTicks       a wreck's phonograph that has played or been switched off plays for the next visitor once no
+ *                                  player has been within the trigger range for this long
  */
 public record SoundTuning(
         int typewriterLettersPerClick,
@@ -26,6 +32,11 @@ public record SoundTuning(
         int engineFadeTicks,
         List<Integer> hymnTicks,
         int phonographRange,
-        int phonographListenTicks) {
-    public static final SoundTuning DEFAULT = new SoundTuning(2, 0.02, 10, 10, List.of(218, 322, 468), 24, 20);
+        int phonographListenTicks,
+        int wreckSongRange,
+        int wreckSongTriggerRange,
+        int wreckSongTicks,
+        int wreckSongRearmTicks) {
+    public static final SoundTuning DEFAULT =
+            new SoundTuning(2, 0.02, 10, 10, List.of(218, 322, 468), 24, 20, 16, 14, 435, 6_000);
 }
