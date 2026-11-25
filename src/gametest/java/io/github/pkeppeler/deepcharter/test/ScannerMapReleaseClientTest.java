@@ -9,8 +9,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 /**
- * #1250: leaving a world frees the scanner map's texture on the render thread. The disconnect event can fire on a network
- * thread, and freeing a GPU texture there logs "Rendersystem called from wrong thread" and may leak it.
+ * #1250: leaving a world frees the scanner map's texture on the render thread. The disconnect event can fire on a
+ * network thread, and freeing a GPU texture there logs "Rendersystem called from wrong thread" and may leak it.
  */
 public class ScannerMapReleaseClientTest implements FabricClientGameTest {
     @Override
