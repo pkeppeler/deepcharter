@@ -96,6 +96,7 @@ public class ServerGameTest {
 VIOLATIONS = {
     "startRiding": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            player.startRiding(pod);", 6),
     "pod setPos": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            pod.setPos(0, 0, 0);", 6),
+    "a pod accessor": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            rig.realPod().setPos(0, 0, 0);", 6),
     "pod teleportTo": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            realPod.teleportTo(0, 0, 0);", 6),
     "a carve past other statements": (
         "RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            lamps(one);\n            player.teleportTo(one, 0, 0, 0);\n            player.startRiding(pod);",

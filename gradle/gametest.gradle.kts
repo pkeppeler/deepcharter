@@ -102,13 +102,13 @@ object GametestScan {
 
 	// A carve makes LightSync queue a ring re-send, and while it is pending a pod added or moved for its rider is untracked, so the client pilot
 	// ends up on foot (#1249, #1303). A client GameTest or scenario that carves and then seats a pilot (`startRiding`) or places a pod
-	// (`<pod>.setPos`, `<pod>.teleportTo`) in one runOnServer or computeOnServer block has no wait between them: carve in one block, call
+	// (`pod.setPos`, `pod.teleportTo`, `realPod().setPos`) in one runOnServer or computeOnServer block has no wait between them: carve in one block, call
 	// ClientWait.lightSettled, then seat in the next. A seat the carve cannot affect carries the marker below, with a reason, on its statement or the comment line above it.
 	// Heuristic: a carve and a seat in different methods are not seen.
 	private const val LIGHT_SETTLED_MARKER = "// light-settled-ok:"
 	private val serverBlockCall = Regex("""\b(?:runOnServer|computeOnServer)\s*\(""")
 	private val roomCarve = Regex("""\bRoomCarver\s*\.\s*carve\w*\s*\(""")
-	private val podSeat = Regex("""\bstartRiding\s*\(|\b\w*[pP]od\w*\s*\.\s*(?:setPos|teleportTo)\s*\(""")
+	private val podSeat = Regex("""\bstartRiding\s*\(|\b\w*[pP]od\w*\s*(?:\(\s*\)\s*)?\.\s*(?:setPos|teleportTo)\s*\(""")
 
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
