@@ -80,7 +80,7 @@ public final class LayerBlocks {
                     .noCollision()
                     .noOcclusion()
                     .replaceable()
-                    .emissiveRendering((state, level, pos) -> true)
+                    .emissiveRendering(state -> true)
                     .pushReaction(PushReaction.POPPED)
                     .noLootTable()));
 
