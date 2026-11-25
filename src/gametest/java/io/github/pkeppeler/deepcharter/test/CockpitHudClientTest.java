@@ -249,7 +249,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "lava_above",
                         "glaze_holding",
                         "glaze_spent",
-                        "drifter_alarm")
+                        "drifter_alarm",
+                        "soot_limp")
                 .map(name -> "hud.deepcharter.pod." + name)
                 .collect(Collectors.toSet());
         if (!alerts.equals(expected)) {
@@ -916,9 +917,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("lava_above", 6),
                 line("glaze_holding", 12),
                 line("glaze_spent"),
-                line("drifter_alarm", 30));
+                line("drifter_alarm", 30),
+                line("soot_limp"));
         List<PodStatusHud.Line> notes = List.of(
-                line("slag", 12, 8), line("slag_only", 12), line("liner", 3), line("lining", 5), line("brace_working"));
+                line("slag", 12, 8),
+                line("slag_only", 12),
+                line("liner", 3),
+                line("lining", 5),
+                line("brace_working"),
+                line("soot", 11, 44, 44));
         PodStatusHud.Line tally = line("tally_hull", 100, 100);
         List<CockpitHud.Row> head = List.of(
                 new CockpitHud.Row(
