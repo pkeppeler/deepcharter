@@ -23,8 +23,8 @@ import org.jspecify.annotations.Nullable;
  * never over anything else, so a sheet waits for a terminal to close and never takes its session away. A sheet being
  * shown is never replaced: the next waits until it is put away.
  *
- * <p>The queue and the latest offer are memory only, and a disconnect drops both: the player can look a sheet up in the catalogue
- * any time.
+ * <p>The queue and the latest offer are memory only, and a disconnect drops both: the player can look a sheet up in the
+ * catalogue any time.
  */
 public final class SpecSheetOpener {
     /** Sheets asked for and not yet shown, in the order they came. */

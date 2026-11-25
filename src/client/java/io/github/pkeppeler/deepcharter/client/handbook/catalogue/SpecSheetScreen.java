@@ -19,7 +19,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * An item's spec sheet on a screen of its own, in the recipe console's look: where a sheet opens when no inventory with
  * the parts catalogue is open to hold it (nothing open, or a window too small for the catalogue's consoles, once the
- * screen over it has closed). Any click or any key closes it, so the next sheet waiting ({@link SpecSheetOpener}) can follow.
+ * screen over it has closed). Any click or any key closes it, so the next sheet waiting ({@link SpecSheetOpener}) can
+ * follow.
  */
 public final class SpecSheetScreen extends Screen {
     private final SpecSheet sheet;

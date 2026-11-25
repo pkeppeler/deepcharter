@@ -21,15 +21,16 @@ import net.minecraft.world.item.Item;
 
 /**
  * Offers a player the spec sheet of a Company item the first time they craft or buy it ({@link SpecSheets}); the client
- * answers with a corner slip and a key, not a screen. First time is per player, not per charter: a sheet is read by the one who holds the part, and a crewmate's first craft teaches you nothing. The mark is one
- * entry in the player's {@link ReadMarks}, so it is versioned, kept on death and sent to its owner like every other one-time line, and
- * data of another version shows no sheet and never throws.
+ * answers with a corner slip and a key, not a screen. First time is per player, not per charter: a sheet is read by
+ * the one who holds the part, and a crewmate's first craft teaches you nothing. The mark is one entry in the player's
+ * {@link ReadMarks}, so it is versioned, kept on death and sent to its owner like every other one-time line, and data of
+ * another version shows no sheet and never throws.
  *
  * <p>A buy is the repair station's shop ({@link RepairEvents#BOUGHT}) and a part bought at the upgrade terminal
- * ({@link UpgradeEvents#BOUGHT}), the two places that hand out or fit an item for money. A craft is read from the player's crafted
- * statistic, which vanilla raises each time a result is taken from a crafting grid, so no mixin is needed: a rise since the last
- * tick is a craft. The first look at a player takes their running totals as they are, so what they crafted before this existed (or
- * before they joined) offers nothing.
+ * ({@link UpgradeEvents#BOUGHT}), the two places that hand out or fit an item for money. A craft is read from the
+ * player's crafted statistic, which vanilla raises each time a result is taken from a crafting grid, so no mixin is
+ * needed: a rise since the last tick is a craft. The first look at a player takes their running totals as they are, so
+ * what they crafted before this existed (or before they joined) offers nothing.
  */
 public final class SpecSheetPopups {
     /** Each online player's crafted counts of the Company items, as of the last tick. */
