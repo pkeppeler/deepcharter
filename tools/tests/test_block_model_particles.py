@@ -11,6 +11,7 @@ sys.path.insert(0, str(TOOLS / "textures"))
 import texgen  # noqa: E402
 
 ASSETS = texgen.ROOT / "src/main/resources/assets/deepcharter"
+CONNECTED = "deepcharter:connected"
 # The vanilla parents our models use, with the textures they define, from the 26.3 jar.
 VANILLA = {
     "minecraft:block/block": {},
@@ -30,7 +31,7 @@ def textures(name):
     if name in VANILLA:
         return dict(VANILLA[name])
     namespace, path = name.split(":") if ":" in name else ("minecraft", name)
-    assert namespace == "deepcharter", f"{name}: a vanilla parent missing from VANILLA"
+    assert namespace == "deepcharter", f"{name}: a vanilla model or parent missing from VANILLA; add its textures"
     model = read(ASSETS / "models" / f"{path}.json")
     return {**(textures(model["parent"]) if "parent" in model else {}), **model.get("textures", {})}
 
@@ -53,8 +54,10 @@ def blockstate_models():
         for entry in entries:
             for variant in entry if isinstance(entry, list) else [entry]:
                 # A deepcharter:connected variant (the conduit) names tile textures, not a model; its Java model picks the particle.
-                if "model" in variant:
-                    models.add(variant["model"])
+                if variant.get("fabric:type") == CONNECTED:
+                    continue
+                assert "model" in variant, f"{path.name}: a variant with no model: {variant}"
+                models.add(variant["model"])
     return sorted(models)
 
 
@@ -67,7 +70,7 @@ class BlockModelParticleTests(unittest.TestCase):
             with self.subTest(name):
                 texture = resolve(name)
                 self.assertIsNotNone(texture, f"{name}: particle does not resolve")
-                namespace, path = texture.split(":")
+                namespace, path = texture.split(":") if ":" in texture else ("minecraft", texture)
                 if namespace == "deepcharter":
                     self.assertTrue((ASSETS / "textures" / f"{path}.png").exists(), f"{name}: {texture} has no png")
 
