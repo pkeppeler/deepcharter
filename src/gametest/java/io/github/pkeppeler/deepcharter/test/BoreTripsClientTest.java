@@ -24,31 +24,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Trips down and up one bore (#1295): the real client and a mock ride a pod down through layer 1's floor (a swap) and up
- * through layer 2's ceiling (the teleport, since only a descent is streamed ahead), {@value #TRIPS} times at one site, and
- * what the client and the server hold is counted after each trip. A count that grows with the trips is a leak.
+ * Trips down and up one bore (#1295): the real client and a mock ride a pod down through layer 1's floor (a swap) and
+ * up through layer 2's ceiling (the teleport, since only a descent is streamed ahead), {@value #TRIPS} times at one
+ * site, and what the client and the server hold is counted after each trip. A count that grows with the trips is a
+ * leak.
+ *
+ * <p>This is the chain of separate layer dimensions, not the campaign world, whose layers are bands of one level and
+ * whose crossings move nobody. The comparison is last trip against first, so it misses an object kept once and never
+ * again.
  */
 public class BoreTripsClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger("BoreTripsClientTest");
     private static final int TRIPS = 10;
     private static final double X = 15000.5;
     private static final double Z = 3000.5;
-    /** Chunks the last trip may hold over the two thirds mark: tickets lapse on a timer, so the count wanders a little. */
+    /** Chunks the last trip may hold over the two-thirds mark: tickets lapse on a timer, so the count wanders. */
     private static final double CHUNK_SLACK = 1.1;
 
     private static final String CLIENT_LEVEL = "net.minecraft.client.multiplayer.ClientLevel";
-    private static final String HOLD = "io.github.pkeppeler.deepcharter.layer.LightSync$Hold";
     private static final String NET_WATCH = "io.github.pkeppeler.deepcharter.layer.LightSync$NetWatch";
-    private static final String OFFER = "io.github.pkeppeler.deepcharter.layer.LightSync$RingOffer";
-    private static final Set<String> TRACKED = Set.of(CLIENT_LEVEL, HOLD, NET_WATCH, OFFER);
+    private static final Set<String> TRACKED = Set.of(CLIENT_LEVEL, NET_WATCH);
 
     /** What is held after one trip. */
     private record Tripped(
             int trip,
             long clientLevels,
-            long lightHolds,
             long lightNetWatches,
-            long lightOffers,
             int clientEntities,
             String particles,
             String sounds,
@@ -60,6 +61,8 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
+        TRACKED.forEach(BoreTripsClientTest::requireClass);
+        int forceSendsBefore = ForceSends.total();
         TwoSeatPods.armClient(true);
         List<Tripped> trips = new ArrayList<>();
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
@@ -74,7 +77,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                             new Site(TestLayers.layerDimension(server, 1), TestLayers.layerDimension(server, 2), X, Z));
             for (int trip = 1; trip <= TRIPS; trip++) {
                 trip(context, two, clientId, site);
-                Tripped held = sample(context, two, trip, site);
+                Tripped held = sample(context, two, trip, site, forceSendsBefore);
                 trips.add(held);
                 LOGGER.info("BORE-TRIP {}", held);
             }
@@ -85,14 +88,16 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Fails on a count that grows with the trips. The counts are read after a full collection, so they are what is held and
-     * not what is waiting to be freed. What is compared is the last trip with the first (light watches come and go within a
-     * few seconds of a trip, so those are compared with the most of the first three).
+     * Fails on a count that grows with the trips. The counts are read after a full collection, so they are what is held
+     * and not what is waiting to be freed. The last trip is compared with the first, which misses an object kept once
+     * and never again; light watches come and go within seconds of a trip, so they are compared with the most of the
+     * first three.
      */
     private static void expectSteady(List<Tripped> trips) {
         Tripped first = trips.getFirst();
         Tripped last = trips.getLast();
         require(trips.size() == TRIPS, "only " + trips.size() + " of " + TRIPS + " trips ran");
+        require(first.clientLevels() > 0, "no ClientLevel was counted: the count is blind");
         require(
                 last.clientLevels() <= first.clientLevels(),
                 "the client holds " + last.clientLevels() + " levels after " + TRIPS + " trips, " + first.clientLevels()
@@ -106,18 +111,30 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                 .mapToLong(Tripped::lightNetWatches)
                 .max()
                 .orElse(0);
+        require(watches > 0, "no LightSync watch was counted in the first three trips: the count is blind");
         require(
-                last.lightHolds() <= first.lightHolds() && last.lightNetWatches() <= watches && last.lightOffers() <= 1,
-                "LightSync holds more after " + TRIPS + " trips than in the first three: " + last + " against "
-                        + first);
+                last.lightNetWatches() <= watches,
+                "LightSync holds " + last.lightNetWatches() + " watches after " + TRIPS + " trips, at most " + watches
+                        + " in the first three");
+        // A guard and not evidence: vanilla reaches this only for a player who is not a passenger, and the test's rider
+        // stays seated, so it passes however the pod is dropped. It would catch a rider who ended up on foot.
         require(
                 last.forceSends() == 0,
                 "vanilla force-sent the blocks below a player " + last.forceSends() + " times in " + TRIPS + " trips");
+        Tripped third = trips.get(TRIPS * 2 / 3);
         require(
-                last.layerChunks() <= trips.get(TRIPS * 2 / 3).layerChunks() * CHUNK_SLACK,
+                last.layerChunks() <= third.layerChunks() * CHUNK_SLACK,
                 "the server holds more chunks after " + TRIPS + " trips than after the first two thirds: "
-                        + last.layerChunks() + " against "
-                        + trips.get(TRIPS * 2 / 3).layerChunks());
+                        + last.layerChunks() + " against " + third.layerChunks());
+    }
+
+    private static void requireClass(String name) {
+        try {
+            Class.forName(name, false, BoreTripsClientTest.class.getClassLoader());
+        } catch (ClassNotFoundException missing) {
+            throw new AssertionError(
+                    "The tracked class " + name + " does not exist: a rename left the count at 0", missing);
+        }
     }
 
     private static void trip(ClientGameTestContext context, TwoPlayerServer two, UUID clientId, Site site) {
@@ -161,7 +178,8 @@ public class BoreTripsClientTest implements FabricClientGameTest {
         SeamPodScene.finish(two, pod);
     }
 
-    private static Tripped sample(ClientGameTestContext context, TwoPlayerServer two, int trip, Site site) {
+    private static Tripped sample(
+            ClientGameTestContext context, TwoPlayerServer two, int trip, Site site, int forceSendsBefore) {
         int chunks = two.server()
                 .computeOnServer(server -> site.one().getChunkSource().getLoadedChunksCount()
                         + site.two().getChunkSource().getLoadedChunksCount());
@@ -171,14 +189,12 @@ public class BoreTripsClientTest implements FabricClientGameTest {
         return context.computeOnClient(client -> new Tripped(
                 trip,
                 live.getOrDefault(CLIENT_LEVEL, 0L),
-                live.getOrDefault(HOLD, 0L),
                 live.getOrDefault(NET_WATCH, 0L),
-                live.getOrDefault(OFFER, 0L),
                 client.level == null ? -1 : client.level.getEntityCount(),
                 client.particleEngine.countParticles(),
                 client.getSoundManager().getChannelDebugString(),
                 mspt,
-                ForceSends.total(),
+                ForceSends.total() - forceSendsBefore,
                 chunks,
                 heapMb));
     }

@@ -7,8 +7,9 @@ import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.Property;
 
 /**
- * Counts vanilla's "standing on air - force-sending blocks below" lines (#1295), which {@code ServerGamePacketListenerImpl} logs
- * under its own logger, not this mod's. Attached once to the root logger and never detached: same-named appenders collide.
+ * Counts vanilla's "standing on air - force-sending blocks below" lines (#1295), which {@code
+ * ServerGamePacketListenerImpl} logs under its own logger, not this mod's. Attached once to the root logger and never
+ * detached: same-named appenders collide.
  */
 public final class ForceSends {
     private static final String MARKER = "standing on air - force-sending blocks below";

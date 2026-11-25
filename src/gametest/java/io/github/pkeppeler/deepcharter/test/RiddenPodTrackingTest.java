@@ -21,9 +21,10 @@ import net.minecraft.server.network.PlayerChunkSender;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 /**
- * A pod stays on its pilot's client while a send of its chunk is pending (#1302, ADR 0092): {@code LightSync} re-sends the
- * chunks round a carve to a player who holds them, vanilla's {@code isChunkTracked} is false while one is queued, and a
- * pod that changes section then was dropped, with no move packet from its rider to bring it back.
+ * A pod stays on its pilot's client while a send of its chunk is pending (#1302, ADR 0092): {@code LightSync} re-sends
+ * the chunks round a carve to a player who holds them, vanilla's {@code isChunkTracked} is false while one is queued,
+ * and a pod that changes section then was dropped, with no move packet from its rider to bring it back. The redirect
+ * only keeps a pod a rider tracks already ({@code TrackedEntityMixin}); a first tracking is vanilla's.
  */
 public class RiddenPodTrackingTest {
     /** Past the sites of {@code SeamSwapTest}, which starts at 40. */
@@ -32,7 +33,7 @@ public class RiddenPodTrackingTest {
     private static final int SECTION = 16;
     /** Ticks the sender is held with the pod's chunk queued, over the move to the next section. */
     private static final int HELD_TICKS = 10;
-    /** A count of unacknowledged batches no send ever gets under: what a client that is slow to acknowledge looks like. */
+    /** A count of unacknowledged batches no send gets under: what a client that is slow to acknowledge looks like. */
     private static final int NEVER_ACKNOWLEDGED = 1 << 20;
 
     @GameTest(maxTicks = MAX_TICKS)

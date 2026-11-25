@@ -46,8 +46,9 @@ public final class HeapHistogram {
     private HeapHistogram() {}
 
     /**
-     * The live instances of each class named in {@code classes} (binary names), after a full collection: a class with none is
-     * counted as 0. Always runs, whatever {@link #DIR_ENV} says, so a test can assert on what a client or server holds.
+     * The live instances of each class named in {@code classes} (binary names), after a full collection: a class with
+     * none is counted as 0, so a caller checks the name exists. Always runs, whatever {@link #DIR_ENV} says, so a test
+     * can assert on what a client or server holds.
      */
     public static Map<String, Long> liveCounts(Set<String> classes) {
         Map<String, Long> counts = new HashMap<>();
