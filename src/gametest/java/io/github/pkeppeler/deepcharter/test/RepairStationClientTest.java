@@ -6,10 +6,12 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.FlueScrape;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
 import io.github.pkeppeler.deepcharter.suit.SuitTracks;
@@ -26,6 +28,7 @@ import io.github.pkeppeler.deepcharter.test.support.SuitScenes;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -40,7 +43,8 @@ import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Client GameTest for #70: the repair station screen opens, and its repair and buy buttons send the actions the server
- * acts on (the server's answer is checked, not the screen's own state).
+ * acts on (the server's answer is checked, not the screen's own state). The soot rows (#1280) show only where they
+ * apply.
  */
 public class RepairStationClientTest implements FabricClientGameTest {
     private static final long START_BALANCE = 100_000;
@@ -89,9 +93,75 @@ public class RepairStationClientTest implements FabricClientGameTest {
             require(
                     account(singleplayer, scene) == START_BALANCE - 10 - 100 - 30 * 1,
                     "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
+            expectTheSootRowsOnlyWhereTheyApply(context, singleplayer, scene);
             expectTheSuitRowsMoveOnAsTiersAreBought(context, singleplayer, scene);
             context.setScreen(() -> null);
         }
+    }
+
+    /**
+     * The soot rows (#1280) follow the synced soot with no press: a limp pod at the colony gets the paid row and the
+     * free scrape, a pod under the limit only the paid row, a clean engine neither. A running scrape counts down on an
+     * inactive row, and ends when the engine is no longer limp.
+     */
+    private static void expectTheSootRowsOnlyWhereTheyApply(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
+        String scrape = "SCRAPE FLUE (FREE, SLOW)";
+        setSoot(singleplayer, scene, 13f);
+        ClientWait.until(
+                context,
+                "the paid row and the scrape row of a limp pod",
+                () -> rowActive(context, "SERVICE ALL 13 L ($130)").equals(Optional.of(true))
+                        && rowActive(context, scrape).equals(Optional.of(true)),
+                () -> "rows " + labels(context));
+        clickRow(context, scrape);
+        ClientWait.until(
+                context,
+                "the scrape counting down on an inactive row",
+                () -> labels(context).stream().anyMatch(label -> label.startsWith("SCRAPING FLUE: "))
+                        && rowActive(context, scrape).isEmpty(),
+                () -> "rows " + labels(context));
+        require(
+                singleplayer.getServer().computeOnServer(server -> FlueScrape.running(scene.pod())),
+                "the press should start the scrape on the server");
+        setSoot(singleplayer, scene, 11f);
+        ClientWait.until(
+                context,
+                "only the paid row under the limit",
+                () -> rowActive(context, "SERVICE ALL 11 L ($110)").equals(Optional.of(true))
+                        && labels(context).stream().noneMatch(label -> label.contains("FLUE")),
+                () -> "rows " + labels(context));
+        require(
+                !singleplayer.getServer().computeOnServer(server -> FlueScrape.running(scene.pod())),
+                "a pod out of limp mode ends its scrape");
+        setSoot(singleplayer, scene, 0f);
+        ClientWait.until(
+                context,
+                "no soot rows for a clean engine",
+                () -> labels(context).stream().noneMatch(label -> label.contains("SERVICE") || label.contains("FLUE")),
+                () -> "rows " + labels(context));
+    }
+
+    private static void setSoot(TestSingleplayerContext singleplayer, Scene scene, float litres) {
+        singleplayer
+                .getServer()
+                .runOnServer(server ->
+                        scene.pod().setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(litres, 0f, 0f))));
+    }
+
+    /** Every row's label, scrolling the list through. */
+    private static List<String> labels(ClientGameTestContext context) {
+        RepairStationScreen screen =
+                context.computeOnClient(client -> ClientSession.screen(client, RepairStationScreen.class));
+        return context.computeOnClient(client -> {
+            Set<String> seen = new LinkedHashSet<>();
+            for (int first = 0; first < screen.rowCount(); first++) {
+                ScreenScroll.scrollTo(screen, first);
+                ClientChecks.buttons(screen)
+                        .forEach(button -> seen.add(button.getMessage().getString()));
+            }
+            return List.copyOf(seen);
+        });
     }
 
     /**
