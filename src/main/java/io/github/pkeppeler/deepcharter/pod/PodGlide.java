@@ -18,10 +18,12 @@ import org.jspecify.annotations.Nullable;
  *   <li>With no move to follow, the pod coasts on at the speed the server last reported, for {@link PodGlideTuning#coastTicks()} ticks (the last at
  *       {@link PodGlideTuning#coastTailShare()} of it), so it does not freeze. The coast stops short of any block, so a pod that hit a wall or the ground is never drawn inside it.
  *   <li>When the moves arrive in a burst, the pod catches up at {@link PodGlideTuning#catchUp()} times its speed (and at no less than a
- *       share of its gap), so it does not lunge.
- *   <li>A pod that coasted past where the server put it stays there for {@link PodGlideTuning#settleDelayTicks()} ticks, in case a late move
- *       says it went on, then gives the excess back at {@link PodGlideTuning#settleShare()} of the gap a tick, and ends exactly on the
- *       server's last position. A move that says it stopped there gets the same gentle return at once.
+ *       share of its gap), so it does not lunge, in even steps, so the last is not a sliver.
+ *   <li>A pod that coasted past where the server put it goes on while the server reports it moving and the moves that come keep
+ *       advancing (a late server), within the coast's reach past the server's position, and stands when that is used up. Once the
+ *       server reports it still, a move that does not advance comes, or {@link PodGlideTuning#settleDelayTicks()} ticks pass with no
+ *       move, it gives the excess back at {@link PodGlideTuning#settleShare()} of the gap a tick and ends exactly on the server's last
+ *       position.
  * </ul>
  *
  * The server stays the authority: the target is only ever a position the server sent, and the coast is a drawn guess that ends.
@@ -32,9 +34,6 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     /** The share of the reported speed a move has to advance the target by for the server to count as driving the pod on. */
     private static final double ADVANCING_SHARE = 0.5;
-
-    /** Blocks the network rounds a position to (VecDeltaCodec.TRUNCATION_STEPS is 4096): two rounded positions differ from the truth by up to this. */
-    private static final double POSITION_QUANTUM = 1.0 / 4096;
 
     /** Halvings of the first coast sub-step tried before the coast gives up for the tick. */
     private static final int COAST_CLIP_TRIES = 3;
@@ -57,13 +56,6 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     /** Whether the latest move put the target further along the coast than the one before it: the server is still driving the pod on. */
     private boolean advancing;
-
-    /**
-     * What the moves that advanced the target since the pod was last drawn moved it by: the server's own steps. A pod that goes on past a
-     * late move draws these, not the speed the server reported, which is rounded up, so the pod does not run ahead of the moves by the
-     * rounding every tick.
-     */
-    private Vec3 owed = Vec3.ZERO;
 
     private boolean active;
 
@@ -96,7 +88,6 @@ final class PodGlide extends AbstractInterpolationHandler {
         advancing = coast != null
                 && path.endPosition().subtract(target.position()).dot(coast.normalize())
                         >= ADVANCING_SHARE * entity.getDeltaMovement().length();
-        owed = advancing ? owed.add(path.endPosition().subtract(target.position())) : Vec3.ZERO;
         target.set(path.endPosition(), yRot, xRot);
         remaining = interpolationSteps;
         coasted = 0;
@@ -107,14 +98,6 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     @Override
     protected void doInterpolate() {
-        try {
-            drawTick();
-        } finally {
-            owed = Vec3.ZERO;
-        }
-    }
-
-    private void drawTick() {
         PodGlideTuning tuning = PodGlideTuning.DEFAULT;
         sinceMove++;
         Vec3 reported = entity.getDeltaMovement();
@@ -159,10 +142,10 @@ final class PodGlide extends AbstractInterpolationHandler {
             }
             step = distance * tuning.settleShare();
         } else if (!snapping && moving && coastDirection != null && distance < speed) {
-            // A pod that has coasted sits within a tick of its target, behind it by the rounding of the moves it follows. Arriving
-            // would draw less than the speed the server reports (nothing at all, for a gap of a rounding step), a hitch in a drive
-            // that is going on at speed, and the next tick would lunge to make it up. The pod draws the whole tick, as it does
-            // when it sits ahead of the target, within the same reach.
+            // A pod that has coasted sits within a tick of its target, behind it by the rounding of the moves it
+            // follows. Arriving would draw less than the speed the server reports (nothing at all, for a gap of a
+            // rounding step), a hitch in a drive that is going on at speed. It draws the whole tick, and the part past
+            // the target counts against the coast's reach like any other.
             if (coast(reported)) {
                 turn(share);
                 remaining = Math.max(0, remaining - 1);
@@ -177,7 +160,13 @@ final class PodGlide extends AbstractInterpolationHandler {
             // motion, a tick covers at least the reported speed. A pod that never coasted trails by design and keeps
             // the share.
             double flow = moving && coastDirection != null ? speed : 0;
-            step = Math.min(Math.max(distance * share, flow), Math.max(pace, distance / tuning.catchUpTicks()));
+            double cap = Math.max(pace, distance / tuning.catchUpTicks());
+            step = Math.min(Math.max(distance * share, flow), cap);
+            if (moving && step >= cap && distance > cap) {
+                // Capped steps of a moving pod split the gap evenly: a cap and a sliver would draw the sliver's tick
+                // short, a hitch in the drive, when no move follows it.
+                step = distance / Math.ceil(distance / cap);
+            }
         }
         boolean arrives = distance <= step + ARRIVED;
         entity.setPos(arrives ? target.position() : entity.position().add(gap.scale(step / distance)));
@@ -202,22 +191,15 @@ final class PodGlide extends AbstractInterpolationHandler {
     }
 
     /**
-     * Draws a pod that is {@code distance} ahead of its target on, within the furthest the coast reaches ahead of the server's
-     * position ({@code coastTicks - 1 + coastTailShare} ticks of speed). A tick draws the whole speed or its tail share, never less,
-     * so a steady drive stays above the test's step floor; a pod with less reach than the tail stands. The reach is measured to within
-     * a network position quantum: a pod exactly the whole reach behind a late server, as a drive one tick later than the coast's tail
-     * allows, is that much off by rounding alone.
+     * Draws a pod that is {@code distance} ahead of its target on by a tick of the reported speed, or by what is left of the furthest the
+     * coast reaches past the server's position ({@code coastTicks - 1 + coastTailShare} ticks of speed) when that is less, so it ends
+     * exactly there and stands, never further (ADR 0082).
      */
     private void goOn(PodGlideTuning tuning, Vec3 reported, double distance) {
         double speed = reported.length();
-        double reach = (tuning.coastTicks() - 1 + tuning.coastTailShare()) * speed - distance + POSITION_QUANTUM;
-        // The moves that came this tick, when they advance the target by about the speed (a burst of them counts as one tick), else the
-        // reported speed.
-        Vec3 tick = owed.length() >= ADVANCING_SHARE * speed ? owed.scale(Math.min(1, speed / owed.length())) : reported;
-        if (reach >= speed) {
-            coast(tick);
-        } else if (reach >= tuning.coastTailShare() * speed) {
-            coast(tick.scale(tuning.coastTailShare()));
+        double reach = (tuning.coastTicks() - 1 + tuning.coastTailShare()) * speed - distance;
+        if (reach > ARRIVED) {
+            coast(reported.scale(Math.min(1, reach / speed)));
         }
     }
 
