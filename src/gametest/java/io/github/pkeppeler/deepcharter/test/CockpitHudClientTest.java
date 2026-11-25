@@ -133,6 +133,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                             -ROOM_RADIUS,
                             ROOM_RADIUS,
                             Blocks.AIR);
+                });
+                ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+                singleplayer.getServer().runOnServer(server -> {
+                    ServerLevel one = TestLayers.level(server, 1);
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
                     PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                     pod.setPos(0.5, FEET_Y, 0.5);
@@ -543,8 +548,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     Blocks.AIR);
             pod.setHull(pod.maxHull() / 10f);
             pod.setStranded(true);
-            pod.setPos(0.5, floorFeetY, 0.5);
         });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+        singleplayer.getServer().runOnServer(server -> pod.setPos(0.5, floorFeetY, 0.5));
         ClientWait.until(
                 context,
                 "the pod in the blackout band on the client",

@@ -870,6 +870,7 @@ public class RetainedTest {
         FarChunks.awaitEntityTicking(helper, nether, spot, () -> {
             List<LamplessFigure> naturals = new ArrayList<>();
             for (int i = 0; i < TUNING.maxPerBand(); i++) {
+                // Counted and discarded in this callback, before the figure's first tick (#1237).
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, nether);
                 figure.markNatural();
                 figure.setNoAi(true);

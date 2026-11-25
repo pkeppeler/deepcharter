@@ -141,7 +141,7 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - **Voice:** the employer's cheerful corporate voice. Previous miners' handwritten margin notes tell a different story. The handbook is "revised" five times as the story turns. Revisions change its tone, never its rules. Text, margin notes and revisions: [lore/handbook.md](lore/handbook.md).
 - **Visibility:** show only the road just ahead, and never spoil.
   - The current Directives are explicit.
-  - The next chapter shows its title and Directive list.
+  - The next chapter shows its title and Directive list on its own tab. The current chapter's map does not preview it.
   - Anything further ahead is a redacted shape with a CLASSIFIED stamp.
 
 ### After layer 2
@@ -158,7 +158,8 @@ The **Employee Handbook** is a company-issued onboarding manual.
 ### Directives and progress
 
 - **Directives** are the handbook's objectives, shown as a **quest map**: a tab down the side for the intro and one for each chapter on every page, and each chapter a fixed flowchart sheet: nothing on it drags, pans or zooms (playtest 3, #962). They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
-- A step shows its instruction, the items it needs with counts and progress, a link to its chapter page and each item's recipe one click away. The chapter text pages stay as the manual.
+- A step's card shows its instruction, a link to its chapter page and, when the step asks for an item (obtained or crafted), that item with its count and progress. It never lists the item's ingredients. A click on the item opens its recipe, as in the GregTech: New Horizons questbook (BetterQuesting). The chapter text pages stay as the manual.
+- The handbook has a controls page after the contents: how to use the handbook, the parts catalogue, the pod and the scanner, with each key read live from the player's bindings, so a rebind shows.
 - A completed step shows a themed popup. Nothing is pinned on screen. The book opens where the player left it, and L opens it as well as H.
 - Directives give no rewards. The employer's transmission bonuses still exist separately.
 - Progress is shared by the charter, with personal read marks for each player.
@@ -293,7 +294,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 ## 9. On foot
 
 - Hybrid play: leave the pod to explore caverns, fight and build.
-- **Hardness:** below layer 1, rock cannot be broken by hand tools, only by pod drills.
+- **Hardness:** the way through pod-only blocks (the breach crust, Company rock, and rock below layer 1) is a pod drill. Any hand tool (pickaxe, axe, shovel, hoe, sword or spear) can brute-force one, in any layer, at 60 seconds a block and a ruinous cost that Unbreaking and Mending cannot lower: a diamond or better tool pays half its durability, and a lesser tool (wood, stone, iron, gold, copper) is destroyed as the block goes. It drops nothing, and the game says what the player is doing wrong ([ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
 - **Environment:** heat, pressure and toxic air outside the pod, worse with depth.
 - **Suit timer:** how long you can stay on foot outside a pod or habitable outpost.
 - **Suit:** upgraded separately: oxygen and toxins, heat, pressure, lamp battery.
@@ -301,7 +302,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 
 ## 10. Hazards
 
-- Baseline from the original: Company Rock (a plain drill refuses it; a bought blasting charge clears it, [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md); a shaped charge clears a column of it and a tier 3 drill bites it slowly, [ADR 0052](adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)), visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
+- Baseline from the original: Company Rock (a plain drill refuses it, and a hand tool breaks it only at the ruinous cost of [ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md); a bought blasting charge clears it, [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md); a shaped charge clears a column of it and a tier 3 drill bites it slowly, [ADR 0052](adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)), visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
 - Earthquakes (in certain layers) and local cave-ins block a stretch of shaft, small or large, rather than erasing it.
 - Ways to clear a blockage:
   1. Climb out and plant explosives, with the suit timer running.
