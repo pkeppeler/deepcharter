@@ -329,12 +329,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             // the smallest GUI.
             WorkOrdersView many = new WorkOrdersView(true, List.of(entry(0), entry(1), entry(2), entry(3), entry(4)));
             TerminalView manyView = new TerminalView(
-                    processor,
-                    TerminalTypes.ORE_PROCESSOR.id(),
-                    true,
-                    true,
-                    List.of(),
-                    Optional.of(new ProcessorView(many, List.of())));
+                    processor, TerminalTypes.ORE_PROCESSOR.id(), Optional.of(new ProcessorView(many, List.of())));
             for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                 context.setScreen(() -> new OreProcessorScreen(manyView));
                 OreProcessorScreen crowded =

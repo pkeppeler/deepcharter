@@ -40,10 +40,6 @@ public final class TerminalScreens {
     public static Screen create(TerminalView view) {
         TerminalType type = TerminalTypes.get(view.type())
                 .orElseThrow(() -> new IllegalStateException("unknown terminal type " + view.type()));
-        if (!view.repaired()) {
-            throw new IllegalArgumentException(
-                    "terminal " + view.type() + " is not repaired: it opens its repair menu");
-        }
         return ONLINE.getOrDefault(type, TerminalScreen::new).apply(view);
     }
 }

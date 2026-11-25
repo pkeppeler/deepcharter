@@ -530,18 +530,9 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return cases;
     }
 
-    /** The online view of {@code type}, its parts all in and its feature at its largest. */
+    /** The online view of {@code type}, its feature at its largest. */
     private static TerminalView onlineView(TerminalType type, Map<TerminalType, TerminalFeature> features) {
-        List<TerminalView.PartStatus> inserted = type.parts().stream()
-                .map(part -> new TerminalView.PartStatus(BuiltInRegistries.ITEM.getKey(part), true))
-                .toList();
-        return new TerminalView(
-                POS,
-                type.id(),
-                true,
-                true,
-                type.needsRepair() ? inserted : List.of(),
-                Optional.ofNullable(features.get(type)));
+        return new TerminalView(POS, type.id(), Optional.ofNullable(features.get(type)));
     }
 
     /**
@@ -552,9 +543,6 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return new TerminalView(
                 POS,
                 online.type(),
-                true,
-                true,
-                online.parts(),
                 online.feature(),
                 OutpostRisks.lines(
                         Optional.of(new Ratings(5, 5, 5, 5)),
@@ -635,9 +623,6 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return new TerminalView(
                 view.pos(),
                 view.type(),
-                view.repaired(),
-                view.unlocked(),
-                view.parts(),
                 Optional.of(new ProcessorView(new WorkOrdersView(true, orders), processor.cargo())),
                 view.notices());
     }

@@ -213,14 +213,7 @@ public class OutpostRiskLineTest {
                                     new Status(true, 40, 0, Set.of()))
                             .flatMap(status -> OutpostRisks.lines(Optional.of(EXAMPLE_LAYER), status).stream())
                             .toList();
-                    TerminalView withLines = new TerminalView(
-                            view.pos(),
-                            view.type(),
-                            view.repaired(),
-                            view.unlocked(),
-                            view.parts(),
-                            view.feature(),
-                            real);
+                    TerminalView withLines = new TerminalView(view.pos(), view.type(), view.feature(), real);
                     ByteBuf wire = Unpooled.buffer();
                     TerminalView.STREAM_CODEC.encode(wire, withLines);
                     TerminalView decoded = TerminalView.STREAM_CODEC.decode(wire);

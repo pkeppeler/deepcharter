@@ -1030,13 +1030,8 @@ public class TerminalFrameworkTest {
     @GameTest
     public void aTerminalViewCarriesItsTypesFeatureOnTheWire(GameTestHelper helper) {
         BlockPos pos = new BlockPos(1, 2, 3);
-        TerminalView withFeature = new TerminalView(
-                pos,
-                TerminalTestTypes.OPEN.id(),
-                true,
-                true,
-                List.of(),
-                Optional.of(new TerminalTestTypes.Note("hello")));
+        TerminalView withFeature =
+                new TerminalView(pos, TerminalTestTypes.OPEN.id(), Optional.of(new TerminalTestTypes.Note("hello")));
         TerminalView decoded = roundTrip(withFeature);
         if (!decoded.equals(withFeature)
                 || !decoded.feature(TerminalTestTypes.Note.class)
@@ -1048,8 +1043,7 @@ public class TerminalFrameworkTest {
                 || decoded.feature(TerminalTestTypes.Note.class).isEmpty()) {
             throw failure(helper, "the feature should be readable by its class");
         }
-        TerminalView without =
-                new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), false, true, List.of(), Optional.empty());
+        TerminalView without = new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), Optional.empty());
         if (!roundTrip(without).equals(without)) {
             throw failure(
                     helper, "a view of a type with no feature should round-trip with none, got %s", roundTrip(without));
@@ -1065,12 +1059,7 @@ public class TerminalFrameworkTest {
         boolean refused = false;
         try {
             roundTrip(new TerminalView(
-                    pos,
-                    TerminalTestTypes.REPAIRABLE.id(),
-                    true,
-                    true,
-                    List.of(),
-                    Optional.of(new TerminalTestTypes.Note("x"))));
+                    pos, TerminalTestTypes.REPAIRABLE.id(), Optional.of(new TerminalTestTypes.Note("x"))));
         } catch (IllegalStateException unregistered) {
             refused = true;
         }

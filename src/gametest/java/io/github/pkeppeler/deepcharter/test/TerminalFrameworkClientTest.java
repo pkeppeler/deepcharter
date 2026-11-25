@@ -251,8 +251,8 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         ClientWait.screen(context, InPlaceScreen.class);
         InPlaceScreen screen = context.computeOnClient(client -> ClientSession.screen(client, InPlaceScreen.class));
         require(
-                screen.view().repaired() && screen.view().parts().isEmpty(),
-                "a terminal with no repair opens online, with no parts");
+                screen.view().type().equals(TerminalTestTypes.OPEN.id()),
+                "a terminal with no repair opens online, got " + screen.view().type());
         context.runOnClient(client -> screen.field().setValue("RIGGS"));
         context.runOnClient(client -> ClientPlayNetworking.send(
                 new TerminalActionPayload(scene.open(), TerminalTestTypes.PING, new CompoundTag())));

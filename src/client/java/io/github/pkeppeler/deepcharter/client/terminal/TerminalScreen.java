@@ -36,10 +36,10 @@ public final class TerminalScreen extends CrtScreen implements TerminalViewScree
                 typewriter(Component.translatable("screen.deepcharter.terminal.online"), new TypewriterSound());
     }
 
-    /** True when {@code other} is the same terminal, still online, so this screen can take it with {@link #update}. */
+    /** True when {@code other} is the same terminal, so this screen can take it with {@link #update}. */
     @Override
     public boolean accepts(TerminalView other) {
-        return view.pos().equals(other.pos()) && view.type().equals(other.type()) && other.repaired();
+        return view.pos().equals(other.pos()) && view.type().equals(other.type());
     }
 
     /** Shows a newer view of the same terminal, keeping the typewriter where it is. */

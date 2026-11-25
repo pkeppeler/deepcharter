@@ -249,11 +249,13 @@ public final class Terminals {
     private static void sendView(ServerPlayer player, BlockPos pos, Access.Granted access) {
         if (ServerPlayNetworking.canSend(player, TerminalViewPayload.TYPE)) {
             MinecraftServer server = player.level().getServer();
-            TerminalView view = TerminalView.of(pos, access.type(), RepairState.get(server));
             Optional<TerminalFeature> feature =
-                    TerminalFeatures.supply(access.type(), view.repaired(), server, player, access.charter(), pos);
+                    TerminalFeatures.supply(access.type(), server, player, access.charter(), pos);
             List<Component> notices = TerminalNotices.collect(server, player, access.charter(), pos);
-            ServerPlayNetworking.send(player, new TerminalViewPayload(view.with(feature, notices)));
+            ServerPlayNetworking.send(
+                    player,
+                    new TerminalViewPayload(
+                            new TerminalView(pos.immutable(), access.type().id(), feature, notices)));
         }
     }
 }
