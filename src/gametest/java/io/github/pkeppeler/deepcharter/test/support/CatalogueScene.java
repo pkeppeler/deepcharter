@@ -88,9 +88,7 @@ public final class CatalogueScene {
 
     /** The catalogue of the screen the client shows. */
     public static CataloguePanel panel(ClientGameTestContext context) {
-        return context.computeOnClient(client -> Objects.requireNonNull(
-                CatalogueScreens.panelOf(Objects.requireNonNull(client.gui.screen(), "a screen is open")),
-                "the open screen has a catalogue"));
+        return context.computeOnClient(CatalogueScene::panelNow);
     }
 
     /** The catalogue of the screen the client shows, for a caller already on the client thread. */
