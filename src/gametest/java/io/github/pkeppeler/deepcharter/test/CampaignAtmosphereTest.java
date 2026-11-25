@@ -322,9 +322,9 @@ public class CampaignAtmosphereTest {
 
     /**
      * The eyes adjusting lift a water fog colour to full brightness unless a channel is exactly 0, so each underground
-     * biome sets a dark water fog with a zero channel, ending where its air fog ends, and two biomes one above the other
-     * share a zero channel (ADR 0062, note of #1187). The surface keeps vanilla's water fog (#1213), so the walk starts
-     * at layer 1's top zone.
+     * biome sets a dark water fog with a zero channel, ending where its air fog ends, and two biomes one above the
+     * other share a zero channel (ADR 0062, note of #1187). The surface keeps vanilla's water fog (#1213), so the walk
+     * starts at layer 1's top zone.
      */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void everyUndergroundBiomeSetsADarkWaterFogTheEyesCannotLift(GameTestHelper helper) {
