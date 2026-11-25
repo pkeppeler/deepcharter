@@ -47,16 +47,10 @@ val blankLiterals: (String) -> String = { text ->
 }
 extra["blankLiterals"] = blankLiterals
 
-// A formatter (palantir-java-format) wraps a long statement over several lines and moves a trailing `// <marker>:` comment to the
-// end of the wrapped statement, so "the flagged line or the one above" no longer finds it. markedNear(lines, line, isMarker) is
-// true when isMarker holds for the flagged line (0-based `line`), the line above it, any line of the statement the flagged line is
-// in, or a comment line directly above that statement. A statement runs from after the previous line that ends in `;`, `{` or `}`
-// to the next one, judged on the code of each line: `//` and block comments (a URL in javadoc, a `;` in prose) are cut out first.
-// `lines` come from blankLiterals, so a `//` or `/*` inside a literal is already gone and cannot pass for a comment. The walk is
-// capped at 12 lines each way, so a marker never reaches far.
-val markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean = { lines, line, isMarker ->
+// The code of each line of `lines`, trimmed: `//` and block comments are cut out, an open block comment carried to the next line.
+val codeLines: (List<String>) -> List<String> = { lines ->
 	var inBlock = false
-	val codes = lines.map { l ->
+	lines.map { l ->
 		val code = StringBuilder()
 		var i = 0
 		while (i < l.length) {
@@ -75,6 +69,18 @@ val markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean = { lines, l
 		}
 		code.toString().trim()
 	}
+}
+extra["codeLines"] = codeLines
+
+// A formatter (palantir-java-format) wraps a long statement over several lines and moves a trailing `// <marker>:` comment to the
+// end of the wrapped statement, so "the flagged line or the one above" no longer finds it. markedNear(lines, line, isMarker) is
+// true when isMarker holds for the flagged line (0-based `line`), the line above it, any line of the statement the flagged line is
+// in, or a comment line directly above that statement. A statement runs from after the previous line that ends in `;`, `{` or `}`
+// to the next one, judged on the code of each line: `//` and block comments (a URL in javadoc, a `;` in prose) are cut out first.
+// `lines` come from blankLiterals, so a `//` or `/*` inside a literal is already gone and cannot pass for a comment. The walk is
+// capped at 12 lines each way, so a marker never reaches far.
+val markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean = { lines, line, isMarker ->
+	val codes = codeLines(lines)
 	fun endsStatement(i: Int): Boolean = codes[i].let { it.endsWith(";") || it.endsWith("{") || it.endsWith("}") }
 	var top = line
 	while (top > 0 && line - top < 12) {

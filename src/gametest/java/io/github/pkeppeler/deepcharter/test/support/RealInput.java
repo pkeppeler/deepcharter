@@ -7,7 +7,8 @@ import net.minecraft.client.input.MouseButtonInfo;
 
 /**
  * Clicks and types through {@code MouseHandler.onButton} and {@code KeyboardHandler}, the way the window delivers input (#1304). Minecraft
- * 26.3 runs on SDL, which numbers mouse buttons from 1, so pass {@code InputConstants.MOUSE_BUTTON_LEFT} and the like, never a bare number.
+ * 26.3 runs on SDL, which numbers mouse buttons from 1, so pass {@code InputConstants.MOUSE_BUTTON_LEFT} and the like, never a bare number. {@code type} calls {@code textInput} directly, past SDL's text-input gate, so it cannot catch a missing {@code
+ * TextInputManager.startTextInput}; only an assertion on {@code SDLKeyboard.SDL_TextInputActive} can (#1269).
  */
 public final class RealInput {
     private RealInput() {}
