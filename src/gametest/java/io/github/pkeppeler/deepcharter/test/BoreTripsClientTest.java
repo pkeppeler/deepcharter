@@ -20,9 +20,11 @@ import java.util.TreeMap;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.minecraft.core.SectionPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
+import net.minecraft.world.level.ChunkPos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,13 +36,19 @@ import org.slf4j.LoggerFactory;
  *
  * <p>This is the chain of separate layer dimensions, not the campaign world, whose layers are bands of one level and
  * whose crossings move nobody. The comparison is last trip against first, so it misses an object kept once and never
- * again.
+ * again. The server's chunks are counted through their tickets, so it also misses a chunk whose ticket is gone but
+ * whose unload stalls; left to settle, the layers held 4418 chunks after trips 1, 2 and 10 (#1301), so none did then.
  */
 public class BoreTripsClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger("BoreTripsClientTest");
     private static final int TRIPS = 10;
     private static final double X = 15000.5;
     private static final double Z = 3000.5;
+    /** Where the test holds a ticket of its own in each layer, far from the site, so the census cannot read empty. */
+    private static final ChunkPos CONTROL =
+            new ChunkPos(SectionPos.blockToSectionCoord(X) + 64, SectionPos.blockToSectionCoord(Z));
+
+    private static final String CONTROL_TYPE = "minecraft:forced";
     /**
      * Ticket types left out of the count. A player's tickets follow the player, whose number the test holds constant,
      * and are added a few at a time after each crossing (the whole view area takes about 300 ticks), so their count
@@ -84,11 +92,23 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             Site site = two.server()
                     .computeOnServer(server ->
                             new Site(TestLayers.layerDimension(server, 1), TestLayers.layerDimension(server, 2), X, Z));
-            for (int trip = 1; trip <= TRIPS; trip++) {
-                trip(context, two, clientId, site);
-                Tripped held = sample(context, two, trip, site, forceSendsBefore);
-                trips.add(held);
-                LOGGER.info("BORE-TRIP {}", held);
+            two.server()
+                    .runOnServer(server -> List.of(site.one(), site.two())
+                            .forEach(level -> level.getChunkSource()
+                                    // force-ok: client test, no GameTestHelper; released in the finally below
+                                    .addTicketWithRadius(TicketType.FORCED, CONTROL, 0)));
+            try {
+                for (int trip = 1; trip <= TRIPS; trip++) {
+                    trip(context, two, clientId, site);
+                    Tripped held = sample(context, two, trip, site, forceSendsBefore);
+                    trips.add(held);
+                    LOGGER.info("BORE-TRIP {}", held);
+                }
+            } finally {
+                two.server()
+                        .runOnServer(server -> List.of(site.one(), site.two())
+                                .forEach(level ->
+                                        level.getChunkSource().removeTicketWithRadius(TicketType.FORCED, CONTROL, 0)));
             }
         } finally {
             TwoSeatPods.armClient(false);
@@ -131,14 +151,22 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                 last.forceSends() == 0,
                 "vanilla force-sent the blocks below a player " + last.forceSends() + " times in " + TRIPS + " trips");
         // The tickets and not the loaded chunks: each crossing moves both players' view areas, which load over
-        // about 300 ticks, longer than a trip, so the loaded count is wherever that load had got to (#1301). Every
-        // loaded chunk is held by a ticket, so a chunk kept across trips shows here as a ticket that stays.
+        // about 300 ticks, longer than a trip, so the loaded count is wherever that load had got to (#1301). A chunk
+        // kept across trips by a ticket shows here as a ticket that stays. It misses a chunk whose ticket is gone but
+        // whose unload stalls (a holder future that never completes); the settled count showed none.
+        for (Tripped trip : trips) {
+            for (String layer : List.of("layer1 ", "layer2 ")) {
+                int control = trip.layerTickets().getOrDefault(layer + CONTROL_TYPE, 0);
+                require(
+                        control == 1,
+                        "trip " + trip.trip() + " counted " + control + " of the test's own " + layer + CONTROL_TYPE
+                                + " ticket, not 1: the census is blind");
+            }
+        }
         Map<String, Integer> early = new TreeMap<>();
         trips.stream()
                 .limit(TRIPS * 2 / 3)
                 .forEach(trip -> trip.layerTickets().forEach((type, count) -> early.merge(type, count, Math::max)));
-        // The rider ends each trip above layer 1's floor, so layer 2 holds its arrival area.
-        require(!early.isEmpty(), "no ticket was counted in the first two thirds: the count is blind");
         last.layerTickets()
                 .forEach((type, count) -> require(
                         count <= early.getOrDefault(type, 0),
