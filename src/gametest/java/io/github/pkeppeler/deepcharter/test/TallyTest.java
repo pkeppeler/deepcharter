@@ -1050,10 +1050,10 @@ public class TallyTest {
     }
 
     /**
-     * (#1237) A Tally despawns like any monster ({@code removeWhenFarAway} is true), so a test that leaves one standing builds it with
-     * {@code TestEntities.mob}. The only player is more than 128 blocks off, where {@code Mob.checkDespawn} removes a mob at once: a plain
-     * {@code create} Tally goes, a persistent one stays. The site is more than 128 blocks from every other test's arena, whose players
-     * would otherwise be the nearest.
+     * (#1237) A Tally despawns like any monster ({@code removeWhenFarAway} is true), so a test that leaves one standing
+     * builds it with {@code TestEntities.mob}. The only player is more than 128 blocks off, where
+     * {@code Mob.checkDespawn} removes a mob at once: a plain {@code create} Tally goes, a persistent one stays. The
+     * site is more than 128 blocks from every other test's arena, whose players would otherwise be the nearest.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void aTallyTheTestBuildsWithMobIsNotDespawnedByTheGame(GameTestHelper helper) {
@@ -1070,12 +1070,12 @@ public class TallyTest {
             }
             Tally plain = TestEntities.create(CreatureRegistry.TALLY, level);
             Tally persistent = TestEntities.mob(CreatureRegistry.TALLY, level);
-            for (Tally tally : List.of(plain, persistent)) {
-                tally.setPos(Vec3.atBottomCenterOf(origin.above(30)));
-                level.addFreshEntity(tally);
-                tally.checkDespawn();
-            }
             try {
+                for (Tally tally : List.of(plain, persistent)) {
+                    tally.setPos(Vec3.atBottomCenterOf(origin.above(30)));
+                    level.addFreshEntity(tally);
+                    tally.checkDespawn();
+                }
                 if (!plain.isRemoved()) {
                     throw failure(helper, "a Tally built with create was not despawned %s blocks from a player", apart);
                 }
@@ -1086,6 +1086,7 @@ public class TallyTest {
                             persistent.getRemovalReason());
                 }
             } finally {
+                plain.discard();
                 persistent.discard();
             }
             helper.succeed();
