@@ -36,12 +36,12 @@ public class PodChaseClientTest implements FabricClientGameTest {
     private static final float YAW_TOLERANCE = 3f;
 
     private static final float SETTLED = 8f;
+    /** Blocks under the top of layer 1, which is open air, that the pilot is moved to. */
+    private static final int HEADROOM = 3;
     /**
      * A first-person drive longer than the mouse's 20 still ticks plus a settle, short of the end of the open ground.
      */
     private static final int NEVER_SETTLES_TICKS = 50;
-    /** A height in layer 1 that is open air, to move the pilot to. */
-    private static final int HIGH_LOCAL_Y = 150;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -139,7 +139,7 @@ public class PodChaseClientTest implements FabricClientGameTest {
         two.server().runOnServer(server -> {
             ServerLevel layer = TestLayers.level(server, 1);
             realPlayer(server, mock)
-                    .teleportTo(layer, 0.5, TestLayers.worldY(1, HIGH_LOCAL_Y), 0.5, Set.of(), 0f, 0f, true);
+                    .teleportTo(layer, 0.5, TestLayers.band(server, 1).maxY() - HEADROOM, 0.5, Set.of(), 0f, 0f, true);
         });
         ClientWait.until(
                 context,
