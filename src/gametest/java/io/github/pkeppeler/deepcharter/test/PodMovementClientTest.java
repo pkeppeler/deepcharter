@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodGlideTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
@@ -13,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.OpenGround;
 import io.github.pkeppeler.deepcharter.test.support.PodDrives;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
+import java.util.Arrays;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -29,8 +31,24 @@ import org.slf4j.LoggerFactory;
  * server's, and the client must see the mock pilot's pod move.
  */
 public class PodMovementClientTest implements FabricClientGameTest {
-    /** Input lag (SPEC section 7): 2 ticks the harness lags a pod, 1 for the client's slide (#961), at the pod's speed, plus 0.05 of margin. */
-    static final double MAX_LAG_BLOCKS = (2 + 1) * PodTuning.DEFAULT.movement().horizontalSpeed() + 0.05;
+    private static final double SPEED = PodTuning.DEFAULT.movement().horizontalSpeed();
+
+    private static final double MARGIN_BLOCKS = 0.05;
+
+    /** Input lag (SPEC section 7): 2 ticks the harness lags a pod, 1 for the client's slide (#961), at the pod's speed, plus a margin. */
+    static final double MAX_LAG_BLOCKS = (2 + 1) * SPEED + MARGIN_BLOCKS;
+
+    /** Moves in a row a loaded machine delivers a tick late, each adding a tick of speed to the trail (#1356). */
+    private static final int LATE_MOVES = 2;
+
+    /**
+     * Ticks in a row the trail may stay over {@link #MAX_LAG_BLOCKS} (#1356): the {@link #LATE_MOVES} ticks the late moves are
+     * missing, then the ticks the client's slide takes to bring their {@code LATE_MOVES} ticks of speed back under the margin, the slide
+     * closing 1/{@code steps} of its gap a tick. A pod that really lags stays over for the rest of the drive.
+     */
+    static final int MAX_TICKS_OVER = LATE_MOVES
+            + (int) Math.ceil(Math.log(LATE_MOVES * SPEED / MARGIN_BLOCKS)
+                    / Math.log(PodGlideTuning.DEFAULT.steps() / (PodGlideTuning.DEFAULT.steps() - 1.0)));
 
     static final int DRIVE_TICKS = 40;
     private static final Logger LOGGER = LoggerFactory.getLogger(PodMovementClientTest.class);
@@ -121,18 +139,24 @@ public class PodMovementClientTest implements FabricClientGameTest {
             context.getInput().holdKey(options -> options.keyUp);
             driveMock(two);
 
-            double lag = 0;
-            double worstLag = 0;
+            double[] trail = new double[DRIVE_TICKS];
             for (int tick = 0; tick < DRIVE_TICKS; tick++) {
                 context.waitTick();
-                lag = lagBlocks(context, two, ownPodId);
-                worstLag = Math.max(worstLag, lag);
+                trail[tick] = lagBlocks(context, two, ownPodId);
             }
+            double lag = trail[DRIVE_TICKS - 1];
+            double worstLag = Arrays.stream(trail).max().orElseThrow();
+            int ticksOver = TrailJudge.longestRunOver(trail, MAX_LAG_BLOCKS);
             LOGGER.info(
-                    "PodMovementClientTest: client pod trailed the server pod by {} blocks at tick {}, worst {}",
+                    "PodMovementClientTest: client pod trailed the server pod by {} blocks at tick {}, worst {}, over {} for {} ticks in a"
+                            + " row at most (allowed {}): {}",
                     lag,
                     DRIVE_TICKS,
-                    worstLag);
+                    worstLag,
+                    MAX_LAG_BLOCKS,
+                    ticksOver,
+                    MAX_TICKS_OVER,
+                    Arrays.toString(trail));
             context.getInput().releaseKey(options -> options.keyUp);
 
             Vec3 ownEnd = context.computeOnClient(
@@ -147,10 +171,11 @@ public class PodMovementClientTest implements FabricClientGameTest {
                     !(mockEnd.subtract(mockStart).horizontalDistance() < 2),
                     "The client should see the mock pilot's pod move, it moved " + mockStart.distanceTo(mockEnd));
             require(
-                    !(lag > MAX_LAG_BLOCKS),
-                    "After " + DRIVE_TICKS + " ticks the client's pod trailed the server's by " + lag
-                            + " blocks, over the " + MAX_LAG_BLOCKS + " bound (worst during the drive: " + worstLag
-                            + ")");
+                    ticksOver <= MAX_TICKS_OVER,
+                    "The client's pod trailed the server's by over " + MAX_LAG_BLOCKS + " blocks for " + ticksOver
+                            + " ticks in a row, more than the " + MAX_TICKS_OVER + " that late moves explain (at tick "
+                            + DRIVE_TICKS + ": " + lag + ", worst: " + worstLag + ", every tick: "
+                            + Arrays.toString(trail) + ")");
         }
     }
 
