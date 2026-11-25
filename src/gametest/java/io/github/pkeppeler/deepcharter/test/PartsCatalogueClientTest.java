@@ -57,6 +57,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.InputQuirks;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.context.ContextMap;
@@ -1219,8 +1220,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         CatalogueScene.hover(context, layout.shelf().search());
         require(!sdlTextInputOn(context), "SDL text input is off before the field is clicked " + where);
-        context.getInput().pressMouse(LEFT_MOUSE);
-        context.waitTicks(1);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
         require(context.computeOnClient(client -> panel.searchFocused()), "a click focuses the field " + where);
         require(sdlTextInputOn(context), "the focused field turns SDL text input on, or no text arrives " + where);
         for (char letter : "rotor".toCharArray()) {
