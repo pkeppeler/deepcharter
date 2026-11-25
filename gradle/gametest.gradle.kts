@@ -100,10 +100,12 @@ object GametestScan {
 	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
 	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
-	// A carve makes LightSync queue a ring re-send, and while it is pending a pod added or moved for its rider is untracked, so the client
-	// pilot ends up on foot (#1249, #1303). Each method of a client GameTest or scenario is read in source order as carves, waits and
-	// seats, where a call or method reference to a same-file method stands for that method's steps; a seat after a carve with no wait
-	// between fails. The marker goes on the seat's statement, or on the call that reaches it.
+	// A carve makes LightSync queue a ring re-send. ADR 0092 keeps a ridden pod its rider already tracks through it, but a first tracking (a
+	// pod added, or moved into a chunk the rider has not been sent) waits for the send, so the client pilot is on foot until then (#1249,
+	// #1303). The gate cannot tell a first tracking from a kept one, so it matches every seat, add and move. Each method of a client
+	// GameTest or scenario is read in source order as carves, waits and seats, where a call or method reference to a same-file method
+	// stands for that method's steps; a seat after a carve with no wait between fails. The marker goes on the seat's statement, or on the
+	// call that reaches it.
 	// Heuristic: a call through another object or class (a support helper, a base class, another scenario) is not followed, a method is
 	// matched by name across its overloads, and the order is the text's, so a loop that seats before it carves again is not seen.
 	private const val LIGHT_SETTLED_MARKER = "// light-settled-ok:"
@@ -301,7 +303,7 @@ object GametestScan {
 						val pending = carve ?: continue
 						val line = lineOf(text, step.at)
 						if ((pending.call && step.call && pending.at == step.at) || !reported.add(line)) continue
-						problems.add("$className:${line + 1} seats a pod after a RoomCarver carve (line ${lineOf(text, pending.at) + 1}) with no ClientWait.lightSettled between them, so a chunk re-send queued by the carve can leave the rider's pod untracked (#1303); carve, call ClientWait.lightSettled over the room's chunks, then seat, or mark a seat the carve cannot affect with '$LIGHT_SETTLED_MARKER <reason>'")
+						problems.add("$className:${line + 1} seats a pod after a RoomCarver carve (line ${lineOf(text, pending.at) + 1}) with no ClientWait.lightSettled between them, so a pod first tracked while the carve's chunk re-send is queued reaches its rider only after the send (#1303, ADR 0092); carve, call ClientWait.lightSettled over the room's chunks, then seat, or mark a seat the carve cannot affect with '$LIGHT_SETTLED_MARKER <reason>'")
 					}
 				}
 			}
