@@ -2,7 +2,7 @@
 	"transmissions": [
 		{
 			"id": "deepcharter:t01",
-			"sender": "employer",
+			"sender": "personnel",
 			"framing": "live",
 			"trigger": {
 				"type": "event"
@@ -10,27 +10,88 @@
 		},
 		{
 			"id": "deepcharter:t02",
-			"sender": "colony_beacon",
-			"framing": "relay",
+			"sender": "personnel",
+			"framing": "live",
+			"trigger": {
+				"type": "event"
+			},
+			"bonus": "b1",
+			"replay": true
+		},
+		{
+			"id": "deepcharter:t03",
+			"sender": "personnel",
+			"framing": "live",
 			"trigger": {
 				"type": "event"
 			},
 			"replay": true
 		},
 		{
-			"id": "deepcharter:t03",
-			"sender": "employer",
+			"id": "deepcharter:t04",
+			"sender": "personnel",
+			"framing": "live",
+			"trigger": {
+				"type": "event"
+			},
+			"bonus": "b1",
+			"replay": true
+		},
+		{
+			"id": "deepcharter:t05",
+			"sender": "personnel",
+			"framing": "live",
+			"trigger": {
+				"type": "event"
+			},
+			"replay": true
+		},
+		{
+			"id": "deepcharter:t06",
+			"sender": "personnel",
+			"framing": "live",
+			"trigger": {
+				"type": "event"
+			},
+			"bonus": "b1"
+		},
+		{
+			"id": "deepcharter:t07",
+			"sender": "personnel",
 			"framing": "live",
 			"trigger": {
 				"type": "zone",
 				"layer": 1,
 				"zone": 0
+			},
+			"bonus": "b1"
+		},
+		{
+			"id": "deepcharter:t08",
+			"sender": "hal",
+			"framing": "live",
+			"trigger": {
+				"type": "zone",
+				"layer": 1,
+				"zone": 1
 			}
 		},
 		{
-			"id": "deepcharter:t04",
-			"sender": "employer",
+			"id": "deepcharter:t09",
+			"sender": "personnel",
 			"framing": "live",
+			"trigger": {
+				"type": "zone",
+				"layer": 1,
+				"zone": 1,
+				"lower_half": true
+			},
+			"bonus": "b2"
+		},
+		{
+			"id": "deepcharter:t10",
+			"sender": "unknown",
+			"framing": "unknown",
 			"trigger": {
 				"type": "zone",
 				"layer": 1,
@@ -38,19 +99,30 @@
 			}
 		},
 		{
-			"id": "deepcharter:t05",
-			"sender": "employer",
+			"id": "deepcharter:t11",
+			"sender": "personnel",
 			"framing": "live",
 			"trigger": {
 				"type": "breach",
 				"to_layer": 2
 			},
-			"bonus": "b1"
+			"bonus": "b2"
 		},
 		{
-			"id": "deepcharter:t06",
-			"sender": "unknown",
-			"framing": "unknown",
+			"id": "deepcharter:t12",
+			"sender": "mole_0388",
+			"framing": "relay",
+			"trigger": {
+				"type": "zone",
+				"layer": 2,
+				"zone": 0
+			},
+			"loop": 14002
+		},
+		{
+			"id": "deepcharter:t13",
+			"sender": "hal",
+			"framing": "live",
 			"trigger": {
 				"type": "zone",
 				"layer": 2,
@@ -58,29 +130,31 @@
 			}
 		},
 		{
-			"id": "deepcharter:t07",
-			"sender": "lost_crew",
+			"id": "deepcharter:t14",
+			"sender": "personnel",
+			"framing": "live",
+			"trigger": {
+				"type": "zone",
+				"layer": 2,
+				"zone": 1
+			},
+			"bonus": "b2"
+		},
+		{
+			"id": "deepcharter:t15",
+			"sender": "prospector_0002",
 			"framing": "relay",
 			"trigger": {
 				"type": "zone",
 				"layer": 2,
 				"zone": 1
-			}
-		},
-		{
-			"id": "deepcharter:t08",
-			"sender": "colony_beacon",
-			"framing": "relay",
-			"trigger": {
-				"type": "event"
 			},
-			"bonus": "b2",
-			"replay": true
+			"loop": 15048
 		},
 		{
-			"id": "deepcharter:t09",
-			"sender": "unknown",
-			"framing": "unknown",
+			"id": "deepcharter:t16",
+			"sender": "hal",
+			"framing": "live",
 			"trigger": {
 				"type": "zone",
 				"layer": 2,
@@ -88,89 +162,28 @@
 			}
 		},
 		{
-			"id": "deepcharter:t10",
-			"sender": "employer",
+			"id": "deepcharter:t17",
+			"sender": "personnel",
 			"framing": "live",
-			"trigger": {
-				"type": "breach",
-				"to_layer": 3
-			}
-		},
-		{
-			"id": "deepcharter:t11",
-			"sender": "lost_crew",
-			"framing": "relay",
-			"trigger": {
-				"type": "breach",
-				"to_layer": 4
-			}
-		},
-		{
-			"id": "deepcharter:t12",
-			"sender": "colony_beacon",
-			"framing": "relay",
 			"trigger": {
 				"type": "event"
-			},
-			"replay": true
-		},
-		{
-			"id": "deepcharter:t13",
-			"sender": "lost_crew",
-			"framing": "relay",
-			"trigger": {
-				"type": "breach",
-				"to_layer": 5
-			}
-		},
-		{
-			"id": "deepcharter:t14",
-			"sender": "employer",
-			"framing": "live",
-			"trigger": {
-				"type": "breach",
-				"to_layer": 6
 			},
 			"bonus": "b3"
 		},
 		{
-			"id": "deepcharter:t15",
-			"sender": "unknown",
-			"framing": "unknown",
-			"trigger": {
-				"type": "breach",
-				"to_layer": 7
-			}
-		},
-		{
-			"id": "deepcharter:t16",
-			"sender": "unknown",
-			"framing": "unknown",
-			"trigger": {
-				"type": "breach",
-				"to_layer": 8
-			}
-		},
-		{
-			"id": "deepcharter:t17",
-			"sender": "employer",
+			"id": "deepcharter:t18",
+			"sender": "personnel",
 			"framing": "live",
 			"trigger": {
-				"type": "event"
-			}
-		},
-		{
-			"id": "deepcharter:t18",
-			"sender": "unknown",
-			"framing": "unknown",
-			"trigger": {
-				"type": "event"
-			}
+				"type": "breach",
+				"to_layer": 3
+			},
+			"bonus": "b3"
 		},
 		{
 			"id": "deepcharter:surface_arrival",
-			"sender": "colony_beacon",
-			"framing": "relay",
+			"sender": "company",
+			"framing": "live",
 			"trigger": {
 				"type": "breach",
 				"to_layer": 0
