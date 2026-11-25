@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -51,15 +52,36 @@ final class RetainedChamber {
                 ctx,
                 "the player in layer " + LAYER,
                 client -> client.level != null && TestLayers.clientIsIn(client, LAYER) && client.gui.screen() == null);
-        // A teleported-to chunk is loaded before it ticks entities, and an entity added to it then is not in the level
-        // (getEntity finds nothing): a slow server (headless, software rendering) is still there when the scenario adds
-        // its pod, so the wait is on the server, not on the client's view of the player.
-        BlockPos arrival = BlockPos.containing(x, y, z);
+        awaitEntityTicking(BlockPos.containing(x, y, z));
+    }
+
+    /**
+     * Waits on the server until the chunk at {@code pos} is entity-ticking, and says so when it had to wait, so a failure after
+     * it can be read. Call it before a scenario adds an entity there. A chunk a player has just teleported to is loaded at
+     * once, unloaded in the tick that swaps the arrival ticket for the player's own, and loaded again. The unload hides the
+     * entities already added (the pod, which the player rides, stays in the level, not removed, but {@code getEntity} no longer
+     * finds it), and they are tracked again only when the chunk's entity-ticking promotion reaches the entity manager, which on
+     * a slow server (headless, software rendering) took more than 25 ticks.
+     */
+    void awaitEntityTicking(BlockPos pos) {
+        long started = System.nanoTime();
+        int[] polls = {0};
         ClientWait.until(
                 ctx,
-                "the arrival chunk entity-ticking on the server",
-                () -> serverGet(server -> layer(server).isPositionEntityTicking(arrival)),
-                () -> "the chunk at " + arrival.toShortString() + " is not entity-ticking");
+                "the chunk at " + pos.toShortString() + " entity-ticking on the server",
+                () -> {
+                    boolean ticking = serverGet(server -> layer(server).isPositionEntityTicking(pos));
+                    if (!ticking) {
+                        polls[0]++;
+                    }
+                    return ticking;
+                },
+                () -> "polls: " + polls[0]);
+        if (polls[0] > 0) {
+            System.out.println("[retained-chamber] waited " + polls[0] + " polls, "
+                    + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) + " ms, for the chunk at "
+                    + pos.toShortString() + " to be entity-ticking");
+        }
     }
 
     /** A stone chamber with its floor block at {@link #FLOOR}: {@code length} blocks along x, {@code 2 * halfWidth + 1} across, {@code height} high, sealed. */
