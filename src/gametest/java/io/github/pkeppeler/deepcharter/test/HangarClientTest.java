@@ -37,7 +37,8 @@ public class HangarClientTest implements FabricClientGameTest {
                 TerminalView view = new TerminalView(
                         BlockPos.ZERO,
                         HangarTerminal.TYPE.id(),
-                        Optional.<TerminalFeature>of(new HangarView(advanceLeft)));
+                        Optional.<TerminalFeature>of(new HangarView(advanceLeft)),
+                        List.of());
                 for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                     context.setScreen(() -> new HangarScreen(view));
                     HangarScreen screen =

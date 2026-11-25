@@ -140,10 +140,6 @@ public final class RepairMenu extends SlottedMenu {
         return PARTS_Y + rows * PART_ROW + REFUSAL_GAP;
     }
 
-    public Opening opening() {
-        return opening;
-    }
-
     public TerminalType type() {
         return type;
     }

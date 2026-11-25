@@ -536,7 +536,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 
     /** The online view of {@code type}, its feature at its largest. */
     private static TerminalView onlineView(TerminalType type, Map<TerminalType, TerminalFeature> features) {
-        return new TerminalView(POS, type.id(), Optional.ofNullable(features.get(type)));
+        return new TerminalView(POS, type.id(), Optional.ofNullable(features.get(type)), List.of());
     }
 
     /**

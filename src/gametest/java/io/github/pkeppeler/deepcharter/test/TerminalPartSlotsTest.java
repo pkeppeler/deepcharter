@@ -244,7 +244,7 @@ public class TerminalPartSlotsTest {
             if (!(player.containerMenu instanceof RepairMenu menu)) {
                 throw failure(helper, "a locked terminal still opens its repair menu, got %s", player.containerMenu);
             }
-            expect(helper, !menu.opening().unlocked(), "the processor is locked while the pump is broken");
+            expect(helper, !menu.unlocked(), "the processor is locked while the pump is broken");
             click(menu, player, SlotClicks.inventorySlot(menu, coil).index, ContainerInput.QUICK_MOVE);
             expectRefusal(helper, menu, TerminalRefusal.PREREQUISITE_UNREPAIRED, "a part of a locked terminal");
             expect(helper, count(player, coil) == 1, "the refused part stays with the player");
@@ -421,7 +421,10 @@ public class TerminalPartSlotsTest {
             if (!(player.containerMenu instanceof RepairMenu server)) {
                 throw failure(helper, "a locked terminal still opens its repair menu, got %s", player.containerMenu);
             }
-            RepairMenu client = new RepairMenu(server.containerId, player.getInventory(), server.opening());
+            RepairMenu client = new RepairMenu(
+                    server.containerId,
+                    player.getInventory(),
+                    new RepairMenu.Opening(processor, TerminalTypes.ORE_PROCESSOR.id(), false));
             server.addSlotListener(new ContainerListener() {
                 @Override
                 public void slotChanged(AbstractContainerMenu menu, int slot, ItemStack stack) {}

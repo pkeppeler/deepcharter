@@ -40,11 +40,6 @@ public record TerminalView(BlockPos pos, Identifier type, Optional<TerminalFeatu
         }
     };
 
-    /** A view with no notices. */
-    public TerminalView(BlockPos pos, Identifier type, Optional<TerminalFeature> feature) {
-        this(pos, type, feature, List.of());
-    }
-
     public TerminalView {
         notices = List.copyOf(notices);
     }
