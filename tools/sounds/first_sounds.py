@@ -343,9 +343,18 @@ def ogg_channels(path):
     return head[at + 11] if at >= 0 and len(head) > at + 11 and head.startswith(b"OggS") else 0
 
 
+def has_libvorbis():
+    """Whether an ffmpeg is on PATH with the libvorbis encoder: the sound tools' one test for it, and the tests' guard (#1332)."""
+    try:
+        probe = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], check=False, capture_output=True, text=True, timeout=10)
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    # tools/install-ffmpeg.sh tests the same fact with `*libvorbis*`; keep the two in step.
+    return probe.returncode == 0 and " libvorbis " in probe.stdout
+
+
 def _encoder_args():
-    listing = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], check=True, capture_output=True, text=True).stdout
-    if " libvorbis " not in listing:
+    if not has_libvorbis():
         raise SystemExit("first_sounds: ffmpeg has no libvorbis; its native Vorbis encoder writes stereo, and Minecraft positions mono only")
     return ["-c:a", "libvorbis", "-q:a", str(VORBIS_QUALITY)]
 
