@@ -30,11 +30,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * Evidence scenario "m2-spec-sheet" for #848: the scanner unit's spec sheet opened from the recipe console's SPEC SHEET button (still
- * {@code sheet-open}), then the first time the player crafts biofuel, taken from four wheat in the inventory's grid: no sheet opens, a corner slip
- * names it and the key (still {@code first-craft-slip}), and the key opens it (still {@code sheet-by-key}), then the longest sheet there is, a part's, looked up by hand (still
- * {@code sheet-tiers}). The craft is the server's real crafting path, so the slip is what a player
- * sees, not a fixture.
+ * Evidence scenario "m2-spec-sheet" for #848: the scanner unit's spec sheet opened from the recipe console's SPEC SHEET
+ * button (still {@code sheet-open}), then the first time the player crafts biofuel, taken from four wheat in the
+ * inventory's grid: no sheet opens, a corner slip names it and the key (still {@code first-craft-slip}), and the key
+ * opens it (still {@code sheet-by-key}), then the longest sheet there is, a part's, looked up by hand (still
+ * {@code sheet-tiers}). The craft is the server's real crafting path, so the slip is what a player sees, not a fixture.
  */
 public class SpecSheetScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;

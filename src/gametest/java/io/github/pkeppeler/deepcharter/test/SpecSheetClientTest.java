@@ -539,7 +539,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 "with no sheet offered the key opens no screen");
     }
 
-    /** A first craft or buy sends the sheet; it shows as a corner slip naming the item and the key, and opens no screen. */
+    /** A first craft or buy sends the sheet: a corner slip names the item and the key, and no screen opens. */
     private static void aFirstCraftOpensNoSheetAndShowsASlip(
             ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         // Over the catalogue: where a player is when they craft.
@@ -636,7 +636,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         });
     }
 
-    /** The key opens the sheet of the item most recently offered, not the first, and the button's path is not touched. */
+    /** The key opens the sheet of the item most recently offered, not the first. */
     private static void theKeyOpensTheMostRecentSheet(
             ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         Item older = ComponentItems.item(ComponentTrack.DRILL);

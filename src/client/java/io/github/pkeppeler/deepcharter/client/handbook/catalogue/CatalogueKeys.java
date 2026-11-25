@@ -7,7 +7,8 @@ import net.minecraft.client.KeyMapping;
 
 /**
  * The catalogue's keys, rebindable, in the mod's key category ({@link HandbookKeys}): R on an item shows its recipes, U its uses and A stars
- * it. J opens the latest spec sheet the server offered. R is also the pilot's lining key, which is used only in a pod with no screen open, so the two never meet.
+ * it. J opens the latest spec sheet the server offered. R is also the pilot's lining key, which is used only in a pod
+ * with no screen open, so the two never meet.
  */
 public final class CatalogueKeys {
     public static final KeyMapping RECIPES = key("recipes", InputConstants.KEY_R);

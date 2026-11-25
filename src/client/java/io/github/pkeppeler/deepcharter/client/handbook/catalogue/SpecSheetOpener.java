@@ -15,12 +15,13 @@ import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Opens spec sheets: the one a player asks for, and the latest the server offered the first time they craft or buy an item
- * ({@link SpecSheetPayload}). An offer opens nothing: it shows a corner slip with the item's name and the key
- * ({@link CatalogueKeys#SPEC_SHEET}) that opens its sheet, and remembers the item. Every request joins one queue, and the queue is drained in order whenever a sheet can be shown:
- * over the parts catalogue of the screen that is open (where the player is when they craft), on a screen of its own when nothing is
- * open ({@link SpecSheetScreen}), and never over anything else, so a sheet waits for a terminal to close and never takes its session
- * away. A sheet being shown is never replaced: the next waits until it is put away.
+ * Opens spec sheets: the one a player asks for, and the latest the server offered the first time they craft or buy an
+ * item ({@link SpecSheetPayload}). An offer opens nothing: it shows a corner slip with the item's name and the key
+ * ({@link CatalogueKeys#SPEC_SHEET}) that opens its sheet, and remembers the item. Every request joins one queue, and
+ * the queue is drained in order whenever a sheet can be shown: over the parts catalogue of the screen that is open
+ * (where the player is when they craft), on a screen of its own when nothing is open ({@link SpecSheetScreen}), and
+ * never over anything else, so a sheet waits for a terminal to close and never takes its session away. A sheet being
+ * shown is never replaced: the next waits until it is put away.
  *
  * <p>The queue and the latest offer are memory only, and a disconnect drops both: the player can look a sheet up in the catalogue
  * any time.

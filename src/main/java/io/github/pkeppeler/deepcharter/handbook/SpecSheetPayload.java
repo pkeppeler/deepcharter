@@ -10,8 +10,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Clientbound: tell the client a spec sheet is new for this item, because the player crafted or bought it for the first time
- * ({@link SpecSheetPopups}). The sheet itself is not sent: the client builds it from the same tunings.
+ * Clientbound: tell the client a spec sheet is new for this item, because the player crafted or bought it for the first
+ * time ({@link SpecSheetPopups}). The sheet itself is not sent: the client builds it from the same tunings.
  */
 public record SpecSheetPayload(Identifier item) implements CustomPacketPayload {
     public static final Type<SpecSheetPayload> TYPE =

@@ -24,8 +24,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * The popup of a finished step: a slip of handbook paper with a red head rule, "Directive complete" and the step's own line. The line
  * wraps to the slip's width and the slip is as tall as its lines. It slides in from the left edge and out again, and is the only trace
- * on screen; nothing stays pinned. The slip of a new spec sheet ({@link #specSlip}) is the same paper under another head, so it
- * is placed and kept clear of the HUD, the vanilla toasts and the other slips the same way.
+ * on screen; nothing stays pinned. The slip of a new spec sheet ({@link #specSlip}) is the same paper under another
+ * head, so it is placed and kept clear of the HUD, the vanilla toasts and the other slips the same way.
  *
  * <p>It never covers the HUD (#1030). It sits in the left column, at the highest place where it is clear of every rectangle that
  * {@link HudKeepClear} lists and of the slips above it; it moves down when a part of the HUD grows under it. Where the left column has
@@ -72,8 +72,8 @@ public final class StepToast implements Toast {
     }
 
     /**
-     * The slip of a spec sheet just offered: the same paper, placement and clearing as a step popup, smaller and shorter-lived, with
-     * the item's name and the key that opens its sheet. Client thread.
+     * The slip of a spec sheet just offered: the same paper, placement and clearing as a step popup, smaller and
+     * shorter-lived, with the item's name and the key that opens its sheet. Client thread.
      */
     public static StepToast specSlip(Component item, Component key) {
         QuestMapTuning q = QuestMapTuning.current();
