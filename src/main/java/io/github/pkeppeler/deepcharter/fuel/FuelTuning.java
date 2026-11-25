@@ -23,7 +23,7 @@ public record FuelTuning(
         Weight weight,
         Soot soot) {
     public static final FuelTuning DEFAULT = new FuelTuning(
-            1, List.of(1, 5, 10), 25f, 16, new Weight(0.6f, 0.4f, 0.5f), new Soot(3f, 12f, 0.5f, 0.5f, 0.3f, 2f, 3));
+            1, List.of(1, 5, 10), 25f, 16, new Weight(0.6f, 0.4f, 0.5f), new Soot(3f, 12f, 0.5f, 0.5f, 0.3f, 2f, 10));
 
     /** Mass of one item of each solid fuel. */
     public record Weight(float coal, float charcoal, float biofuel) {

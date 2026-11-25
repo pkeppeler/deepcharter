@@ -26,3 +26,4 @@ status: accepted
 - **Soot as a new pod part or a `PodData` field.** Rejected: `PodData` takes no more changes, and a part is a purchase.
 - **A clogged engine that stops.** Rejected: deep underground it would strand the pod, and the user asked for lost efficiency until a service, not for a stranding. Limp mode loses speed and burns fuel instead, and the gate is at the colony.
 - **A burn penalty capped at +50%.** Rejected: free fuel plus a capped penalty never makes a player service. The loss is progressive to a limit, and past it the engine limps.
+- **Coal at 0.5 L of soot and a $3 service.** Rejected: the pump out-earned coal by 2% a minute on the stock trip, so it still felt pointless. Coal's soot is 0.75 L a litre and the service $10 a litre, which puts the pump 10.9% a minute ahead of coal on the stock trip (`FuelTripEconomyTest` asserts at least 10%). Soot alone cannot do it: it would have to pass charcoal's. The litres a fuel gives are untouched.

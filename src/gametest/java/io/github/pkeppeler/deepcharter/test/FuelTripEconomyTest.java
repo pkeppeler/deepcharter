@@ -64,6 +64,9 @@ public class FuelTripEconomyTest {
 
     private static final int SERVICES = 3;
 
+    /** How far ahead of coal, a minute, the pump must be on the stock trip: the reason to fill up at the colony. */
+    private static final double PUMP_MARGIN_OVER_COAL = 1.10;
+
     /** Hands-on and waiting seconds to put one item of a fuel in the pack, derived. */
     private record Prep(double handsOn, double withWaiting) {}
 
@@ -166,7 +169,14 @@ public class FuelTripEconomyTest {
     }
 
     private static void table(
-            GameTestHelper helper, String label, Run run, double seconds, Prep charcoal, Prep coal, Prep biofuel) {
+            GameTestHelper helper,
+            String label,
+            boolean stock,
+            Run run,
+            double seconds,
+            Prep charcoal,
+            Prep coal,
+            Prep biofuel) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         try {
             for (boolean waiting : new boolean[] {false, true}) {
@@ -214,6 +224,17 @@ public class FuelTripEconomyTest {
                             pump.perMinute() > solid.perMinute(),
                             "a trip on pump fuel should earn more a minute than one on %s: %s",
                             solid.fuel(),
+                            line);
+                }
+                if (stock) {
+                    LOGGER.info(
+                            "[fuel-economy] {} ({}): pump is {}% a minute over coal",
+                            label, bound, 100 * (pump.perMinute() / coalR.perMinute() - 1));
+                    expect(
+                            helper,
+                            pump.perMinute() >= coalR.perMinute() * PUMP_MARGIN_OVER_COAL,
+                            "the pump should earn at least %s%% a minute more than coal on the stock trip: %s",
+                            100 * (PUMP_MARGIN_OVER_COAL - 1),
                             line);
                 }
                 expect(
@@ -291,6 +312,7 @@ public class FuelTripEconomyTest {
             table(
                     helper,
                     "stock Mole, " + String.format("%.2f", first.litres()) + " L",
+                    true,
                     first,
                     EarlyRunModel.runSeconds(zone, stock, 0, first),
                     charcoal,
@@ -301,6 +323,7 @@ public class FuelTripEconomyTest {
             table(
                     helper,
                     "tier 3 tank, " + String.format("%.2f", longer.litres()) + " L",
+                    false,
                     longer,
                     EarlyRunModel.runSeconds(zone, big, 0, longer),
                     charcoal,

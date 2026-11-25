@@ -35,7 +35,7 @@ import net.minecraft.world.item.ItemStack;
 /**
  * The items that refuel a pod, defined in data: an item is fuel when it is in the {@link #TAG} tag, and the litres
  * it gives come from the table, one JSON file for each item. The file's path is the item's id:
- * {@code data/minecraft/pod_fuel/coal.json} holds {@code {"litres": 2.0, "soot": 0.5}} for {@code minecraft:coal}: the
+ * {@code data/minecraft/pod_fuel/coal.json} holds {@code {"litres": 2.0, "soot": 0.75}} for {@code minecraft:coal}: the
  * litres one item gives, and the litres of soot each litre leaves in the engine as it burns ({@code soot} is optional,
  * 0 for a clean fuel). A datapack
  * adds a fuel by adding the item to the tag and a file to the table, and replaces one with a file of the same path,

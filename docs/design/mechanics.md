@@ -509,24 +509,24 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 **What it does.** Each change copies something in the game:
 1. **Solid fuel is bulky and heavy.** Coal, charcoal and biofuel stack to 16 (a default `max_stack_size`, through Fabric's `DefaultItemComponentEvents` for the vanilla items). They carry a `CargoWeight` (ADR 0097), counted by the same `OreEncumbrance` as ore: a pack slows a person on foot (the Ore/Fuel status, once Ore-laden, names both), and what the pilot carries cuts the pod's lift through `PodEvents.EXTRA_MASS`, as cargo does. A one-time line says why the first time a person carries a load of fuel with no ore in it.
 2. **Fuel grades.** Charcoal gives 1 L, coal 2 L, biofuel 3 L (`pod_fuel/*.json`). Biofuel is the best solid per slot (48 L, against coal's 32 and charcoal's 16) and per mass, as the user asked ("more than coal"). It costs three stalk mash and three cooks for 3 L.
-3. **Soot.** Burning solid fuel leaves soot in the engine (`soot` in `pod_fuel/*.json`: charcoal 1 L of soot a litre burned, coal 0.5, biofuel 0.1, pump fuel none). The soot is a pod attachment (`EngineSoot`, ADR 0097), and the engine pays for it in steps:
+3. **Soot.** Burning solid fuel leaves soot in the engine (`soot` in `pod_fuel/*.json`: charcoal 1 L of soot a litre burned, coal 0.75, biofuel 0.1, pump fuel none). The soot is a pod attachment (`EngineSoot`, ADR 0097), and the engine pays for it in steps:
    - **Up to 3 L** (the grace): nothing.
    - **3 to 12 L**: the engine loses top speed and climb speed, in a straight line to 50% at 12 L, and burns more fuel, to +50%. At 4 L that is 5.6% slower and 5.6% more fuel; at 7.5 L, 25% and 25%. The pod's readout says so from the first percent: "ENGINE SOOTED 8 L: 25% SLOWER, 25% MORE FUEL". Engine power is untouched, so the lift is.
    - **12 L and over: limp mode.** 30% of the speed and climb, twice the burn, and the readout says "ENGINE CLOGGED: LIMP MODE. SERVICE AT THE COLONY". The pod never stops, so one deep down can always climb home: the user's rule was a loss of efficiency until a service at the colony, not a stranding.
    - **At the colony the gate is hard.** A pod in limp mode on the surface will not drill (launch): the pilot reads "The engine is clogged with soot. Service it at the repair station before you launch." and sprint does nothing. Driving, flying and the station are free, so it can reach the station.
-4. **Service.** The repair station's SERVICE ENGINE row clears the soot for **$3 a litre**, like hull repair (the parked pod, the charter's account, a refusal for a clean engine, a wreck or a short account). The row shows only once the pod has a litre or more of soot. A service of a full limp engine is $36.
-5. **Biofuel (#1288).** Three stalk mash (the colony's campfire meal, `deepcharter:stalk_meal`, cooked from a fungal stalk) are fermented into one biofuel, shapeless, at the crafting grid. Stalks grow on crater floors and in layer 1's caves ([SPEC](../SPEC.md)). The old recipe (four crops) and the `biofuel_crops` tag are gone. It is the cleanest solid, not clean: its soot is 0.1 L a litre, a fifth of coal's.
+4. **Service.** The repair station's SERVICE ENGINE row clears the soot for **$10 a litre**, dearer than hull repair (the parked pod, the charter's account, a refusal for a clean engine, a wreck or a short account). The row shows only once the pod has a litre or more of soot. A service of a full limp engine is $120, a trip's haul.
+5. **Biofuel (#1288).** Three stalk mash (the colony's campfire meal, `deepcharter:stalk_meal`, cooked from a fungal stalk) are fermented into one biofuel, shapeless, at the crafting grid. Stalks grow on crater floors and in layer 1's caves ([SPEC](../SPEC.md)). The old recipe (four crops) and the `biofuel_crops` tag are gone. It is the cleanest solid, not clean: its soot is 0.1 L a litre, a seventh of coal's.
 
 **What the player pays.** Per litre, over the services the engine forces (`FuelTripEconomyTest` burns a fuel until the engine has been forced into limp mode and serviced three times, paying the real bill):
 
 | Fuel | L an item | L a slot | Mass an item | Mass a slot | Soot a litre | Cash a litre (with services) | Trips between services (stock Mole) |
 |---|---|---|---|---|---|---|---|
 | Pump | | any | 0 | 0 | 0 | $1.00 | never |
-| Biofuel | 3 | 48 | 0.5 | 8.0 | 0.1 | $0.30 | 75 |
-| Coal | 2 | 32 | 0.6 | 9.6 | 0.5 | $1.52 | 15 |
-| Charcoal | 1 | 16 | 0.4 | 6.4 | 1 | $3.04 | 8 |
+| Biofuel | 3 | 48 | 0.5 | 8.0 | 0.1 | $1.00 | 75 |
+| Coal | 2 | 32 | 0.6 | 9.6 | 0.75 | $7.53 | 10 |
+| Charcoal | 1 | 16 | 0.4 | 6.4 | 1 | $10.07 | 8 |
 
-Before: coal, charcoal and biofuel 2 L, stack 64, no mass: 128 L a slot. Coal and charcoal cost more cash a litre than the pump, which is the only thing a pump-less trip trades away. Biofuel costs less cash a litre than the pump ($0.30) and is paid for in effort instead, below.
+Before: coal, charcoal and biofuel 2 L, stack 64, no mass: 128 L a slot. Coal and charcoal cost more cash a litre than the pump, which is the only thing a pump-less trip trades away. Biofuel costs the same cash a litre as the pump ($1.00, its litres free at the pump and its soot light) and is paid for in effort instead, below.
 
 **What the effort is.** Nothing is invented. The test derives it from the game's data: a fungal stalk takes 7.5 s to fell bare-handed (the block's destroy time), a coal block 9.4 s with a stone pickaxe for 9 coal, and the recipes cook for 200 ticks (furnace, charcoal), 100 (smoker) and 600 (campfire) for the mash. Cooking runs by itself, so there are two bounds: hands-on only (the felling and mining), and waiting for each cook in turn. A charcoal item is one stalk, 7.5 s hands-on, 17.5 s waiting. A biofuel item is three stalks, 22.5 s hands-on, 37.5 s waiting with a smoker. The trip adds the 45 s a colony trip spends off the pod ([Crafted first-tier parts](#crafted-first-tier-parts-536-a)).
 
@@ -534,24 +534,24 @@ Before: coal, charcoal and biofuel 2 L, stack 64, no mass: 128 L a slot. Coal an
 
 | Trip | Pump | Biofuel | Coal | Charcoal |
 |---|---|---|---|---|
-| Stock Mole: net a trip | $123.61 | $124.50 | $122.53 | $119.87 |
-| Stock Mole: a minute, hands-on / waiting | $104.46 | $89.80 / $81.81 | $102.33 | $85.97 / $71.54 |
-| Tier 3 tank: net a trip | $384.95 | $388.55 | $380.10 | $369.60 |
-| Tier 3 tank: a minute, hands-on / waiting | $153.19 | $115.64 / $99.00 | $147.69 | $109.19 / $81.27 |
+| Stock Mole: net a trip | $123.61 | $123.37 | $112.79 | $107.99 |
+| Stock Mole: a minute, hands-on / waiting | $104.46 | $88.98 / $81.06 | $94.20 | $77.46 / $64.45 |
+| Tier 3 tank: net a trip | $384.95 | $383.81 | $334.60 | $320.60 |
+| Tier 3 tank: a minute, hands-on / waiting | $153.19 | $114.23 / $97.79 | $129.81 | $94.71 / $70.49 |
 
-- Pump fuel earns more a minute than every solid fuel, biofuel included, at both bounds and on both trips. Pump is the cheapest of the soot fuels in cash a litre ($1.00 against coal's $1.52 and charcoal's $3.04).
-- **Biofuel nets a little more cash a trip than pump fuel** ($0.89 on the stock trip, $3.60 on the tier 3 trip), because its soot is light and its litres cost nothing at the pump. That is not the measure of it: the 22.5 s of felling it takes an item is the cost. It matches the pump a minute only if an item took 0.95 s (stock trip) or 0.62 s (tier 3) to prepare, against the 22.5 s derived. The test asserts it stays below the pump even if felling were twice as fast, and prints the break-even.
+- Pump fuel earns more a minute than every solid fuel, biofuel included, at both bounds and on both trips. Pump is the cheapest of the soot fuels in cash a litre ($1.00 against coal's $7.53 and charcoal's $10.07), and **on the stock trip it earns 10.9% a minute more than coal** (18% on the tier 3 trip). The test asserts at least 10% on the stock trip: a pump that felt pointless against coal at a 2% gap now has a margin a player feels.
+- **Biofuel nets about what pump fuel does a trip** ($0.24 less on the stock trip, $1.14 less on the tier 3 trip), because its soot is light and its litres cost nothing at the pump, and the $10 service has made that soot cost what the pump's litres do. The effort is the cost: the 22.5 s of felling an item takes. It cannot match the pump a minute even if an item took no time to prepare (the break-even is -0.25 s on the stock trip and -0.20 s on the tier 3 trip, against the 22.5 s derived). The test asserts it stays below the pump even if felling were twice as fast, and prints the break-even.
 - The loss of speed and climb is not counted in the trips' time, which favours the solid fuels.
 
 **Early game.** No first-run number changes: the first tank, the first trips (`PodFuelTripTest`) and the upgrade economy (`EconomyAffordabilityTest`) use the pump or a clean engine. What gets harder is the field refuel: a stack of coal is 32 L, was 128 L.
 
 **For #1276 (pod sprint).** Sprint should multiply the burn per second on top of the engine's soot factor: `PodFuel.tick` takes `drainPercentPerTick x EngineSoot.burnMultiplier`, so a sprint multiplier is one more factor beside it. The soot a litre leaves is per litre, so a sprinting pod on charcoal soots faster per block: +40% speed at 1.8 times the burn is 29% more litres a block, and so 29% more soot. A limp engine's top speed is 30% of the clean one, so a sprint on top of it still loses to a clean engine's cruise. Headroom: the output and burn curves, the grace and the limit are `FuelTuning.Soot`, and the per-litre soot is data.
 
-**Trade-offs.** A stack of 16 and a weight make a bore with carried fuel a real load, and the soot makes charcoal the poorest fuel. Coal is the best of the solids at cash a litre, with one source (the colony's coal blocks). Biofuel is the best per slot and the cleanest, and the dearest in effort. Limp mode is a pace penalty and a trip to the station, never a stranding. The service is paid at the colony, so a pilot who burns solid fuel at depth pays when they come home.
+**Trade-offs.** A stack of 16 and a weight make a bore with carried fuel a real load, and the soot makes charcoal the poorest fuel. Coal is the best of the solids at cash a litre among the sooty ones, with one source (the colony's coal blocks). Biofuel is the best per slot and the cleanest, and the dearest in effort. Limp mode is a pace penalty and a trip to the station, never a stranding. The service is paid at the colony, so a pilot who burns solid fuel at depth pays when they come home.
 
 **Not built.** A flue brush (a field consumable that clears part of the soot): it needs a recipe, a texture and a use action for something the repair station already does at the colony, so it is left out. The speed loss is not in the drill: the drill is its own track.
 
-**Knobs.** `FuelTuning` (`solidStack` 16, `weight`, `soot`: grace 3, limit 12, 50% loss and +50% burn at the limit, limp 30% and x2, $3 a litre), `pod_fuel/*.json` (litres and soot an item), `recipe/biofuel.json`, `EngineSoot.QUANTUM` (0.1 L), `PodTuning.Fuel`.
+**Knobs.** `FuelTuning` (`solidStack` 16, `weight`, `soot`: grace 3, limit 12, 50% loss and +50% burn at the limit, limp 30% and x2, $10 a litre), `pod_fuel/*.json` (litres and soot an item), `recipe/biofuel.json`, `EngineSoot.QUANTUM` (0.1 L), `PodTuning.Fuel`.
 
 **Open questions.**
 - Should a hangar part (a filter) cut the soot? A candidate for a later track.

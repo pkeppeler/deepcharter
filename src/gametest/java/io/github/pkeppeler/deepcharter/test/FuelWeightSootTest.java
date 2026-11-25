@@ -88,7 +88,7 @@ public class FuelWeightSootTest {
                 3.0,
                 PodFuelItems.litresOf(new ItemStack(FuelRegistry.BIOFUEL)).orElseThrow());
         near(helper, "charcoal soot", 1.0, PodFuelItems.sootOf(new ItemStack(Items.CHARCOAL)));
-        near(helper, "coal soot", 0.5, PodFuelItems.sootOf(new ItemStack(Items.COAL)));
+        near(helper, "coal soot", 0.75, PodFuelItems.sootOf(new ItemStack(Items.COAL)));
         near(helper, "biofuel soot", 0.1, PodFuelItems.sootOf(new ItemStack(FuelRegistry.BIOFUEL)));
         helper.succeed();
     }
@@ -249,7 +249,7 @@ public class FuelWeightSootTest {
                     sootPerFuel[1],
                     sootPerFuel[2]);
             near(helper, "soot from 6 L of charcoal", 6.0, sootPerFuel[0]);
-            near(helper, "soot from 6 L of coal", 3.0, sootPerFuel[1]);
+            near(helper, "soot from 6 L of coal", 4.5, sootPerFuel[1]);
             near(helper, "soot from 6 L of biofuel", 0.6, sootPerFuel[2]);
             // Pump fuel is not an item: litres bought leave no soot to come.
             burn(pod, 6f);
