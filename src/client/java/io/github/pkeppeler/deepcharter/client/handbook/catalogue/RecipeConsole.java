@@ -31,11 +31,6 @@ import org.jspecify.annotations.Nullable;
  * thing is and what a click does, so the two behave alike.
  */
 final class RecipeConsole {
-    /** The star of a favourite, and of any other item: unscii, the terminal font, has both. */
-    private static final String FULL_STAR = "★";
-
-    private static final String HOLLOW_STAR = "☆";
-
     /** An item under the mouse and the cell it is in. */
     record Hit(Item item, Rect cell) {}
 
@@ -63,11 +58,6 @@ final class RecipeConsole {
     RecipeConsole(CatalogueState state, Font font) {
         this.state = state;
         this.font = font;
-    }
-
-    /** The star drawn for an item that is a favourite, or is not: the hint on the empty favourites row names the hollow one. */
-    static String star(boolean starred) {
-        return starred ? FULL_STAR : HOLLOW_STAR;
     }
 
     /** The name the console is titled with: what the shown recipe makes, or the item looked up, in capitals; null while nothing is. */
@@ -190,7 +180,15 @@ final class RecipeConsole {
         graphics.nextStratum();
 
         CatalogueHardware.title(graphics, font, titleLines(catalogue, base), card.left(), card.titleY(), card.right());
-        drawStar(graphics, base.star(), starred, base.star().contains(mouseX, mouseY));
+        Rect star = base.star();
+        int size = Math.min(star.width(), star.height());
+        CatalogueHardware.star(
+                graphics,
+                star.x() + (star.width() - size) / 2,
+                star.y() + (star.height() - size) / 2,
+                size,
+                starred,
+                starred || star.contains(mouseX, mouseY));
         if (recipe == null) {
             String none = text(lookup.mode() == CatalogueState.Mode.RECIPES ? "none.recipes" : "none.uses");
             dim(graphics, font, fit(font, none, width), card.left(), card.stationY());
@@ -235,17 +233,6 @@ final class RecipeConsole {
                 fill.on(),
                 fill.active(),
                 recipe != null && base.fill().contains(mouseX, mouseY));
-    }
-
-    /** The star in {@code rect}: full and lit for a favourite, hollow and dim for any other item, lit under the mouse either way. */
-    private void drawStar(GuiGraphicsExtractor graphics, Rect rect, boolean starred, boolean hot) {
-        String star = star(starred);
-        int x = rect.x() + (rect.width() - termWidth(font, star)) / 2;
-        if (starred || hot) {
-            glow(graphics, font, star, x, rect.y());
-        } else {
-            dim(graphics, font, star, x, rect.y());
-        }
     }
 
     private void drawRecipe(

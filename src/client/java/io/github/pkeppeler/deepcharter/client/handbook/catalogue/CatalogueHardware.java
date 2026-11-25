@@ -8,8 +8,11 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import java.util.List;
+import java.util.function.ToIntFunction;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -47,6 +50,32 @@ final class CatalogueHardware {
         graphics.pose().scale(scale, scale);
         graphics.item(new ItemStack(Items.CRAFTING_TABLE), 0, 0);
         graphics.pose().popMatrix();
+    }
+
+    /**
+     * The favourite's star, {@code size} pixels square with its top left at ({@code x}, {@code y}): filled for a favourite, its outline for any
+     * other item. Lit, it is phosphor with the glow terminal text has; otherwise dim, as dim text is.
+     */
+    static void star(GuiGraphicsExtractor graphics, int x, int y, int size, boolean filled, boolean lit) {
+        Identifier sprite = filled ? CatalogueLook.STAR : CatalogueLook.STAR_HOLLOW;
+        if (!lit) {
+            graphics.blitSprite(
+                    RenderPipelines.GUI_TEXTURED,
+                    sprite,
+                    x,
+                    y,
+                    size,
+                    size,
+                    PanelLook.current().dimTextColor());
+            return;
+        }
+        CrtTuning crt = CrtTuning.current();
+        // The halo of CrtDraw.glowText: a copy one pixel out on each side, under the star.
+        for (int[] out : new int[][] {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
+            graphics.blitSprite(
+                    RenderPipelines.GUI_TEXTURED, sprite, x + out[0], y + out[1], size, size, crt.glowColor());
+        }
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, size, size, crt.phosphorColor());
     }
 
     /**
@@ -88,11 +117,16 @@ final class CatalogueHardware {
 
     /** {@code text} cut to {@code width} with {@link #ELLIPSIS} in place of its tail when it is wider. */
     static String fit(Font font, String text, int width) {
-        if (termWidth(font, text) <= width) {
+        return fit(line -> termWidth(font, line), text, width);
+    }
+
+    /** {@link #fit(Font, String, int)} measured by {@code measure}, for a line with something other than text in it. */
+    static String fit(ToIntFunction<String> measure, String text, int width) {
+        if (measure.applyAsInt(text) <= width) {
             return text;
         }
         String cut = text;
-        while (!cut.isEmpty() && termWidth(font, cut + ELLIPSIS) > width) {
+        while (!cut.isEmpty() && measure.applyAsInt(cut + ELLIPSIS) > width) {
             cut = cut.substring(0, cut.length() - 1);
         }
         return cut.stripTrailing() + ELLIPSIS;

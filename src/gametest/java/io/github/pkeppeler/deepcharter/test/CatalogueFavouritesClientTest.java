@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnSprites;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
@@ -31,18 +32,17 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 
 /**
  * Client GameTest for #1266 (c): favourites. With none starred the favourites row is still there, with a hint that names the key bound
- * now and the star. A on a hovered item stars it and a click on the star of the recipe console takes the star off and puts it back; the
- * star is drawn full for a favourite and hollow for any other item, and each change is in the favourites file at once, read back from disk
- * the way {@link CatalogueFavourites} keeps it.
+ * now and shows the recipe console's hollow star. A on a hovered item stars it and a click on the star of the recipe console takes the
+ * star off and puts it back; the star sprite is filled for a favourite and hollow for any other item, and each change is in the favourites
+ * file at once, read back from disk the way {@link CatalogueFavourites} keeps it.
  */
 public class CatalogueFavouritesClientTest implements FabricClientGameTest {
     private static final Item DRILL = HangarParts.DRILL_HEAD;
-    private static final String FULL_STAR = "★";
-    private static final String HOLLOW_STAR = "☆";
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -119,6 +119,27 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
         return context.computeOnClient(client -> Objects.requireNonNull(client.gui.screen()));
     }
 
+    /** The star sprites drawn with their middle in {@code rect}, each once: a lit star's glow is copies of the same sprite. */
+    private static List<Identifier> starsIn(ClientGameTestContext context, Rect rect) {
+        return context.computeOnClient(client -> {
+            var window = client.getWindow();
+            return DrawnSprites.of(
+                            Objects.requireNonNull(client.gui.screen()),
+                            (int) client.mouseHandler.getScaledXPos(window),
+                            (int) client.mouseHandler.getScaledYPos(window))
+                    .sprites()
+                    .stream()
+                    .filter(sprite -> sprite.sprite().equals(CatalogueLook.STAR)
+                            || sprite.sprite().equals(CatalogueLook.STAR_HOLLOW))
+                    .filter(sprite -> rect.contains(
+                            sprite.box().x() + sprite.box().width() / 2,
+                            sprite.box().y() + sprite.box().height() / 2))
+                    .map(DrawnSprites.Drawn::sprite)
+                    .distinct()
+                    .toList();
+        });
+    }
+
     /** The favourites row's cells, under its label. */
     private static Rect row(CatalogueLayout layout) {
         CatalogueLayout.Shelf shelf = layout.shelf();
@@ -140,14 +161,19 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
                         + drawn.stream().map(Drawn::text).toList());
         String key = context.computeOnClient(client ->
                 CatalogueKeys.FAVOURITE.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT));
-        String hint = context.computeOnClient(
-                client -> Component.translatable("deepcharter.catalogue.favourites.hint", key, HOLLOW_STAR)
-                        .getString());
+        // The star in the hint is a sprite, not a letter: the words are the hint's with the star taken out.
+        String words = context.computeOnClient(
+                client -> Component.translatable("deepcharter.catalogue.favourites.hint", key, "")
+                        .getString()
+                        .replaceAll("\\s+", " ")
+                        .strip());
         String shown = textIn(drawn, row(layout));
-        require(shown.equals(hint), "the empty row says how to star an item, '" + hint + "', drew '" + shown + "'");
+        require(shown.equals(words), "the empty row says how to star an item, '" + words + "', drew '" + shown + "'");
+        require(shown.contains(key), "the hint names the key bound now, drew '" + shown + "'");
+        List<Identifier> stars = starsIn(context, row(layout));
         require(
-                shown.contains(key) && shown.contains(HOLLOW_STAR),
-                "the hint names the key bound now and the star, drew '" + shown + "'");
+                stars.equals(List.of(CatalogueLook.STAR_HOLLOW)),
+                "the hint shows the recipe console's hollow star, drew " + stars);
     }
 
     private static void theKeyAndTheStarToggleAndPersist(ClientGameTestContext context, UUID player) {
@@ -160,26 +186,31 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
         require(
                 textIn(drawn(context, screen(context)), row(layout)).isEmpty(),
                 "with a favourite the hint gives way to its cell");
+        require(starsIn(context, row(layout)).isEmpty(), "and its star with it");
 
         // The recipe console of the drill head: its star is full while the item is a favourite.
         context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES));
         context.waitTicks(1);
         Rect star = layout.card().star();
         require(
-                textIn(drawn(context, screen(context)), star).equals(FULL_STAR),
-                "a favourite's recipe console shows a full star");
+                starsIn(context, star).equals(List.of(CatalogueLook.STAR)),
+                "a favourite's recipe console shows a full star, drew " + starsIn(context, star));
 
         CatalogueScene.hover(context, star);
         RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
         require(onDisk(context, player).isEmpty(), "a click on the star takes the star off, on disk at once");
-        require(textIn(drawn(context, screen(context)), star).equals(HOLLOW_STAR), "and the star is drawn hollow");
+        require(
+                starsIn(context, star).equals(List.of(CatalogueLook.STAR_HOLLOW)),
+                "and the star is drawn hollow, drew " + starsIn(context, star));
         require(
                 context.computeOnClient(client -> panel.state().lookup()) != null,
                 "the click on the star leaves the recipe shown");
 
         RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
         require(onDisk(context, player).equals(List.of(DRILL)), "a second click stars it again, on disk");
-        require(textIn(drawn(context, screen(context)), star).equals(FULL_STAR), "and the star is full again");
+        require(
+                starsIn(context, star).equals(List.of(CatalogueLook.STAR)),
+                "and the star is full again, drew " + starsIn(context, star));
 
         int cell = CatalogueLook.current().slotSize();
         Rect first = new Rect(layout.shelf().left(), layout.shelf().favouritesY(), cell, cell);

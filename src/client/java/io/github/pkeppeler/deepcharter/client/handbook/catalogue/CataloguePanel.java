@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
 import static io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueHardware.ICON;
 
+import com.google.common.base.Splitter;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.TextInputManager;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
@@ -55,6 +56,11 @@ import org.jspecify.annotations.Nullable;
 public final class CataloguePanel {
     /** The most the craftable switch counts out; more reads "99+". */
     private static final int MOST_COUNTED = 99;
+    /**
+     * Where the favourites hint shows the recipe console's star, which is a sprite and not a letter: a private-use character, which no
+     * translation holds and the terminal font never draws.
+     */
+    private static final String STAR_MARK = "\uE000";
     /** How long a note about the fill switch stays over the recipe console, and the note of an item with nothing known by a slot. */
     static final int STATUS_TICKS = 80;
     /** How many ticks a fill press is given to change the grid before the server is taken to have refused it. */
@@ -1021,20 +1027,49 @@ public final class CataloguePanel {
         CatalogueHardware.counter(graphics, font, look, panel, crt, shelf.counter(), (page + 1) + "/" + pages);
     }
 
-    /** What the empty favourites row says instead: the favourite key, as bound now, and the recipe console's star. */
+    /**
+     * What the empty favourites row says instead: the favourite key, as bound now, and the recipe console's hollow star, drawn in the line
+     * where the hint holds {@link #STAR_MARK}.
+     */
     private void drawFavouritesHint(GuiGraphicsExtractor graphics, CatalogueLayout.Shelf shelf, PanelLook panel) {
         String key =
                 CatalogueKeys.FAVOURITE.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT);
-        String hint = Component.translatable("deepcharter.catalogue.favourites.hint", key, RecipeConsole.star(false))
+        String hint = Component.translatable("deepcharter.catalogue.favourites.hint", key, STAR_MARK)
                 .getString();
         Rect row = shelf.favourites();
         int rows = Math.max(1, (row.bottom() - shelf.favouritesY()) / font.lineHeight);
-        List<String> lines = TextWrap.lines(this::termWidth, hint, row.width());
+        List<String> lines = TextWrap.lines(this::hintWidth, hint, row.width());
         for (int i = 0; i < Math.min(rows, lines.size()); i++) {
             // A key bound to a long name can make the hint longer than the row: its last line takes the rest, cut.
-            String line =
-                    i == rows - 1 ? fit(String.join(" ", lines.subList(i, lines.size())), row.width()) : lines.get(i);
-            dim(graphics, line, shelf.left(), shelf.favouritesY() + i * font.lineHeight, panel);
+            String line = i == rows - 1
+                    ? CatalogueHardware.fit(
+                            this::hintWidth, String.join(" ", lines.subList(i, lines.size())), row.width())
+                    : lines.get(i);
+            drawHintLine(graphics, line, shelf.left(), shelf.favouritesY() + i * font.lineHeight, panel);
+        }
+    }
+
+    /** How wide a line of the favourites hint is drawn: its text, and a line-high star for each {@link #STAR_MARK}. */
+    private int hintWidth(String line) {
+        int stars = (int) line.chars().filter(c -> c == STAR_MARK.charAt(0)).count();
+        return termWidth(line.replace(STAR_MARK, "")) + stars * font.lineHeight;
+    }
+
+    /** A line of the favourites hint at ({@code x}, {@code y}): its text dim, and the hollow star, dim too, where it holds the mark. */
+    private void drawHintLine(GuiGraphicsExtractor graphics, String line, int x, int y, PanelLook panel) {
+        List<String> parts = Splitter.on(STAR_MARK).splitToList(line);
+        int at = x;
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) {
+                CatalogueHardware.star(graphics, at, y, font.lineHeight, false, false);
+                at += font.lineHeight;
+            }
+            String part = parts.get(i);
+            String words = part.strip();
+            if (!words.isEmpty()) {
+                dim(graphics, words, at + termWidth(part.substring(0, part.indexOf(words))), y, panel);
+            }
+            at += termWidth(part);
         }
     }
 
