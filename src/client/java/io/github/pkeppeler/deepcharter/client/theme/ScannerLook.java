@@ -35,8 +35,10 @@ import java.util.Map;
  * @param smallRockShadeColor laid over rock in place of {@code rockShadeColor} when cells are smaller than {@code oreMarkBelowPixels}, so the marks stand out of it
  * @param oreMarkColors the mark of each of the mod's ores in a small cell: bright, and told apart by hue
  * @param rulerTickBlocks blocks of depth between the ticks of the depth ruler down the map's left edge
- * @param rulerLabelBlocks blocks of depth between its labelled ticks; a multiple of it where cells are too small for labels this close
- * @param rulerLabelGapPixels the fewest GUI pixels from one label's row to the next: where cells are small, labels skip rows to keep it
+ * @param rulerLabelBlocks blocks of depth between its labelled ticks; a multiple of it where cells are too small for
+ *     labels this close
+ * @param rulerLabelGapPixels the fewest GUI pixels from one label's row to the next: where cells are small, labels skip
+ *     rows to keep it
  * @param rulerTickPixels GUI pixels a tick reaches in from the edge
  * @param rulerLabelTickPixels GUI pixels a labelled tick reaches in; its label starts just past it
  * @param rulerPodMarkPixels GUI pixels the mark on the player's row reaches in
@@ -44,9 +46,10 @@ import java.util.Map;
  * @param rulerLabelColor the ruler's labels: the altimeter's number of feet for the row
  * @param rulerLabelBackColor the backing under a label, so that it reads over the rock
  * @param rulerPodMarkColor the mark on the player's row
- * @param rockGrainLevels how many levels (of 255) two quadrants of a rock cell are lightened, and the other two darkened, in a pattern its
- *     block's place picks, so uniform rock shows a grain that moves past as the pod digs. The cell's mean colour does not move, so bands of
- *     rock and ore marks keep their contrast; kept small so the grain reads as texture, not as a mark; {@code 0} turns it off
+ * @param rockGrainLevels how many levels (of 255) two quadrants of a rock cell are lightened, and the other two
+ *     darkened, in a pattern its block's place picks, so uniform rock shows a grain that moves past as the pod digs.
+ *     The cell's mean colour does not move, so bands of rock and ore marks keep their contrast; kept small so the grain
+ *     reads as texture, not as a mark; {@code 0} turns it off
  */
 public record ScannerLook(
         int cellPixels,

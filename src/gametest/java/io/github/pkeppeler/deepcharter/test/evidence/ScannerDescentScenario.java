@@ -20,10 +20,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "scanner-descent" for #1272: the pilot digs a Mole straight down through a block of plain stone that fills the
- * scanner's whole view, with a shaft open above the pod as a real bore leaves it. Before #1272 every frame of the scanner was the same
- * picture; now the depth ruler scrolls up past the pod and the rock's grain moves with it. Ends with a still of the scanner and a zoom
- * of the ruler.
+ * Evidence scenario "scanner-descent" for #1272: the pilot digs a Mole straight down through a block of plain stone
+ * that fills the scanner's whole view, with a shaft open above the pod as a real bore leaves it. Before #1272 every
+ * frame of the scanner was the same picture; now the depth ruler scrolls up past the pod and the rock's grain moves
+ * with it. Ends with a still of the scanner and a zoom of the ruler.
  */
 public class ScannerDescentScenario extends EvidenceScenario {
     private static final int X = 4600;

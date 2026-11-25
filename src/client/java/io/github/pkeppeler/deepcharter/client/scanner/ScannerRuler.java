@@ -12,15 +12,19 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 
 /**
- * The depth ruler down the scanner's left edge (#1272): a tick every {@link ScannerLook#rulerTickBlocks()} blocks of depth, a longer one
- * with the depth beside it every {@link ScannerLook#rulerLabelBlocks()}, and a mark on the player's row. The pod stays centred, so the
- * ruler scrolls up past it as the pod digs, and a descent through uniform rock shows. A label is the altimeter's number for its row
- * ({@link Altimeter#feet}), so the two always agree; the unit is left off to keep the label narrow over the map.
+ * The depth ruler down the scanner's left edge (#1272): a tick every {@link ScannerLook#rulerTickBlocks()} blocks of
+ * depth, a longer one with the depth beside it every {@link ScannerLook#rulerLabelBlocks()}, and a mark on the player's
+ * row. The pod stays centred, so the ruler scrolls up past it as the pod digs, and a descent through uniform rock
+ * shows. A label is the altimeter's number for its row ({@link Altimeter#feet}), so the two always agree; the unit is
+ * left off to keep the label narrow over the map.
  */
 final class ScannerRuler {
     private ScannerRuler() {}
 
-    /** Draws the ruler over the cells of {@code slice}, {@code cell} GUI pixels each, the top left cell at ({@code left}, {@code top}). */
+    /**
+     * Draws the ruler over the cells of {@code slice}, {@code cell} GUI pixels each, the top left
+     * cell at ({@code left}, {@code top}).
+     */
     static void draw(
             GuiGraphicsExtractor graphics,
             Minecraft client,
@@ -69,8 +73,9 @@ final class ScannerRuler {
     }
 
     /**
-     * Blocks of depth between labels: {@link ScannerLook#rulerLabelBlocks()}, or the smallest multiple of it whose rows span
-     * {@link ScannerLook#rulerLabelGapPixels()} and a line of text, so that small cells do not stack the labels over the map.
+     * Blocks of depth between labels: {@link ScannerLook#rulerLabelBlocks()}, or the smallest multiple of it whose rows
+     * span {@link ScannerLook#rulerLabelGapPixels()} and a line of text, so that small cells do not stack the labels
+     * over the map.
      */
     private static int labelBlocks(ScannerLook look, int cell, int lineHeight) {
         int step = look.rulerLabelBlocks();
@@ -79,8 +84,9 @@ final class ScannerRuler {
     }
 
     /**
-     * The label {@code text} centred on the row whose middle is {@code middle}, on its backing; left out where it would cross the map's top
-     * or bottom edge. A digit fills the top {@code lineHeight - 2} rows of a line, so that is what is centred.
+     * The label {@code text} centred on the row whose middle is {@code middle}, on its backing; left out where it would
+     * cross the map's top or bottom edge. A digit fills the top {@code lineHeight - 2} rows of a line, so that is what
+     * is centred.
      */
     private static void label(
             GuiGraphicsExtractor graphics,

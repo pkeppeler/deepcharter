@@ -40,10 +40,10 @@ import org.slf4j.LoggerFactory;
  * costs the same); one blit costs the same at any scan size, and the picture is rebuilt only when the scanner rescans, every few ticks, or
  * when the resources reload.
  *
- * <p>A cell drawn in fewer screen pixels than {@link ScannerLook#oreMarkBelowPixels()} cannot show a texture. There an ore cell is one flat mark of its
- * ore's colour (see {@link #oreMark}), which stays easy to spot, and rock takes the darker small-cell shade; every other cell keeps its texture.
- * Two quadrants of a textured rock cell are lightened and two darkened by a pattern its block's place picks ({@link #grain}), so uniform
- * rock is not one repeated tile.
+ * <p>A cell drawn in fewer screen pixels than {@link ScannerLook#oreMarkBelowPixels()} cannot show a texture. There an
+ * ore cell is one flat mark of its ore's colour (see {@link #oreMark}), which stays easy to spot, and rock takes the
+ * darker small-cell shade; every other cell keeps its texture. Two quadrants of a textured rock cell are lightened and
+ * two darkened by a pattern its block's place picks ({@link #grain}), so uniform rock is not one repeated tile.
  *
  * <p>A cell's pixels are read from the active resource pack's texture file for the sprite that {@link ScannerSprites} names, because the block
  * atlas lives on the graphics card and cannot be read back. The first frame of an animated texture is the cell's. Each texture is
@@ -61,8 +61,8 @@ final class ScannerMap {
     private static final int SUPERSAMPLE = 2;
 
     /**
-     * The ways to lighten two quadrants of a cell and darken the other two, for {@link #grain}: bit {@code q} lightens quadrant {@code q}
-     * (0 top left, 1 top right, 2 bottom left, 3 bottom right).
+     * The ways to lighten two quadrants of a cell and darken the other two, for {@link #grain}: bit {@code q} lightens
+     * quadrant {@code q} (0 top left, 1 top right, 2 bottom left, 3 bottom right).
      */
     private static final int[] GRAIN_PATTERNS = {0b0011, 0b1100, 0b0101, 0b1010, 0b1001, 0b0110};
 
@@ -206,8 +206,8 @@ final class ScannerMap {
     }
 
     /**
-     * The tile with {@code overlay} laid over it, a one-pixel frame of {@code outline} round its edge ({@code 0}: none), and the quadrants
-     * of {@code grain} moved {@code levels} up or down ({@link #grain}).
+     * The tile with {@code overlay} laid over it, a one-pixel frame of {@code outline} round its edge ({@code 0}:
+     * none), and the quadrants of {@code grain} moved {@code levels} up or down ({@link #grain}).
      */
     private static void copyTile(
             NativeImage image, int x, int y, int pixels, int[] tile, int overlay, int outline, int grain, int levels) {
@@ -221,10 +221,11 @@ final class ScannerMap {
     }
 
     /**
-     * The rock grain of the block at {@code pos} (#1272), for a cell {@code pixels} square: which two quadrants of the cell are lightened by
-     * {@link ScannerLook#rockGrainLevels()} and which two darkened, picked by a hash of the block's place; {@code 0} for none. Uniform rock
-     * then shows a texture that moves past as the pod digs, and a block looks the same in every frame and from wherever the pod is. Half
-     * goes up and half down, so the cell's mean colour, which the eye reads a band of rock or an ore against, does not move.
+     * The rock grain of the block at {@code pos} (#1272), for a cell {@code pixels} square: which two quadrants of the
+     * cell are lightened by {@link ScannerLook#rockGrainLevels()} and which two darkened, picked by a hash of the
+     * block's place; {@code 0} for none. Uniform rock then shows a texture that moves past as the pod digs, and a block
+     * looks the same in every frame and from wherever the pod is. Half goes up and half down, so the cell's mean
+     * colour, which the eye reads a band of rock or an ore against, does not move.
      */
     private static int grain(ScannerLook look, BlockPos pos, int pixels) {
         if (look.rockGrainLevels() == 0 || pixels < 2) {

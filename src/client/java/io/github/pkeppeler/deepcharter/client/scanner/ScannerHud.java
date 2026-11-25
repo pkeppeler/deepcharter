@@ -215,9 +215,10 @@ public final class ScannerHud {
     }
 
     /**
-     * The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at ({@code left}, {@code top}). The
-     * known cells are one picture of the blocks' own textures, one blit ({@link ScannerMap}); the pod is a flat marker over it, and the
-     * depth ruler ({@link ScannerRuler}) runs down the left edge.
+     * The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at
+     * ({@code left}, {@code top}). The known cells are one picture of the blocks' own textures, one blit
+     * ({@link ScannerMap}); the pod is a flat marker over it, and the depth ruler ({@link ScannerRuler}) runs down the
+     * left edge.
      */
     private static void drawCells(
             GuiGraphicsExtractor graphics, Minecraft client, ScanSlice scanned, int cell, int left, int top) {

@@ -38,13 +38,14 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * #1272: digging straight down through uniform rock, the scanner must show the pod descending. The pod sits in a shaft cut in a slab of
- * stone that fills the whole scan area, and is moved one block down; on main the two pictures were the same.
+ * #1272: digging straight down through uniform rock, the scanner must show the pod descending. The pod sits in a shaft
+ * cut in a slab of stone that fills the whole scan area, and is moved one block down; on main the two pictures were the
+ * same.
  *
  * <ul>
  *   <li>The rendered map differs between the two depths.
- *   <li>Rock grain is a property of the block's place: a rock cell looks the same in two frames, and the block one row up after the
- *       descent looks as it did before it.
+ *   <li>Rock grain is a property of the block's place: a rock cell looks the same in two frames, and the block one row
+ *       up after the descent looks as it did before it.
  *   <li>Uniform rock is not one flat picture: its cells do not all look alike.
  *   <li>Each depth label on the ruler is the altimeter's number for its row, so the ruler and the HUD readout agree.
  * </ul>
@@ -59,9 +60,15 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
     private static final int FILL_BELOW = AREA.down() + 3;
     /** The first column ahead that is rock: right of the 3-wide shaft, and on the side away from the ruler. */
     private static final int ROCK_FROM = 2;
-    /** Cells this far from the map's edge are compared cell by cell; the cockpit bezel's rounded corners cover the map's corners. */
+    /**
+     * Cells this far from the map's edge are compared cell by cell; the cockpit bezel's rounded corners cover the map's
+     * corners.
+     */
     private static final int EDGE = 2;
-    /** How far (levels of 255) the mean brightness of two stone cells may differ: the grain moves none, rounding a little. */
+    /**
+     * How far (levels of 255) the mean brightness of two stone cells may differ: the grain moves none, rounding a
+     * little.
+     */
     private static final double MEAN_SPREAD = 1;
 
     private static final Pattern DEPTH_LABEL = Pattern.compile("-?[0-9][0-9,]*");
@@ -96,8 +103,9 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Fills the scan plane round the pod with stone, cuts a 3 by 3 shaft from the pod's new feet to the top of the fill, and moves the
-     * pod there; returns its feet. The fill sits above the flat world's ground, so nothing but stone and the shaft is in the scan.
+     * Fills the scan plane round the pod with stone, cuts a 3 by 3 shaft from the pod's new feet to the top of the
+     * fill, and moves the pod there; returns its feet. The fill sits above the flat world's ground, so nothing but
+     * stone and the shaft is in the scan.
      */
     private static BlockPos buildShaft(ClientGameTestContext context, TestServerContext server) {
         BlockPos feet = server.computeOnServer(minecraftServer -> {
@@ -157,7 +165,10 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
         pod.setDeltaMovement(Vec3.ZERO);
     }
 
-    /** Waits until the client's pod stands at {@code feet} and the scanner has rescanned there, then takes a shot of the map. */
+    /**
+     * Waits until the client's pod stands at {@code feet} and the scanner has rescanned there, then takes a shot of the
+     * map.
+     */
     private static HudShot settledShot(ClientGameTestContext context, BlockPos feet, String name) {
         ClientWait.until(
                 context,
@@ -197,8 +208,8 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
     }
 
     /**
-     * A rock cell's look follows its block: the same in two frames at one depth, and after the descent the block that was at
-     * {@code up} is drawn, one row up, as it was.
+     * A rock cell's look follows its block: the same in two frames at one depth, and after the descent the block that
+     * was at {@code up} is drawn, one row up, as it was.
      */
     private static void expectGrainStable(HudShot before, HudShot again, HudShot after) {
         for (int up = -AREA.down() + EDGE; up <= AREA.up() - EDGE; up++) {
@@ -218,8 +229,9 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Uniform rock shows a grain: its cells are not all drawn alike, so the picture has something to move. The grain leaves each cell's
-     * mean where it was, so a band of rock keeps its contrast with the next and an ore mark with the rock round it.
+     * Uniform rock shows a grain: its cells are not all drawn alike, so the picture has something to move. The grain
+     * leaves each cell's mean where it was, so a band of rock keeps its contrast with the next and an ore mark with the
+     * rock round it.
      */
     private static void expectGrain(HudShot shot) {
         Set<List<Integer>> looks = new HashSet<>();
@@ -243,8 +255,9 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The scanner draws a depth label beside some rows; each is the number the altimeter shows for a player at that row's height,
-     * so the ruler reads in the readout's units with its formula. A label is centred on its row. Returns what is wrong.
+     * The scanner draws a depth label beside some rows; each is the number the altimeter shows for a player at that
+     * row's height, so the ruler reads in the readout's units with its formula. A label is centred on its row. Returns
+     * what is wrong.
      */
     private static List<String> labelProblems(ClientGameTestContext context, BlockPos feet) {
         return context.computeOnClient(client -> {
