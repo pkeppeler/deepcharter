@@ -10,12 +10,15 @@ import net.minecraft.client.Options;
 import net.minecraft.network.chat.Component;
 
 /**
- * The controls pages of the handbook (#1260): one sheet each for the handbook, the parts catalogue, the pod and the scanner. Every key
- * a line names is read from the player's own binding when the line is built, so a rebind shows on the next draw and no key letter
- * is written into the language file. A key the game does not let the player rebind (Ctrl+F, the arrow keys) is written out in the line.
+ * The controls pages of the handbook (#1260): one sheet each for the handbook, the parts catalogue, the pod and the
+ * scanner. Every key a line names is read from the player's own binding when the line is built, so a rebind shows on
+ * the next draw and no key letter is written into the language file. A key the game does not let the player rebind
+ * (Ctrl+F, the arrow keys) is written out in the line.
  */
 public final class HandbookControls {
-    /** One line of a sheet: its language key under the sheet's, and the bindings its {@code %s} slots show, in order. */
+    /**
+     * One line of a sheet: its language key under the sheet's, and the bindings its {@code %s} slots show, in order.
+     */
     record Row(String name, List<Function<Options, KeyMapping>> keys) {}
 
     /** One page of controls: its name, which keys its language keys, and its lines. */

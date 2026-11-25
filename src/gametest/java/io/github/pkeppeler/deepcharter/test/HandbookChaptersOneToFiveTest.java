@@ -196,10 +196,10 @@ public class HandbookChaptersOneToFiveTest {
             Set.of("minecraft:inventory_changed", "minecraft:recipe_crafted", "minecraft:crafter_recipe_crafted");
 
     /**
-     * Every directive whose advancement completes on an obtained or crafted item names the item the step asks for in {@code targets}
-     * (not its ingredients), so its index card shows it and a click opens its recipe (#1260). Each target is a registered item that the
-     * advancement itself accepts, so the card cannot show an item the step does not ask for. A new directive of that kind that names
-     * no item fails here.
+     * Every directive whose advancement completes on an obtained or crafted item names the item the step asks for in
+     * {@code targets} (not its ingredients), so its index card shows it and a click opens its recipe (#1260). Each
+     * target is a registered item that the advancement itself accepts, so the card cannot show an item the step does
+     * not ask for. A new directive of that kind that names no item fails here.
      */
     @GameTest
     public void everyItemDirectiveNamesTheRealItemsItAsksFor(GameTestHelper helper) {
@@ -244,7 +244,10 @@ public class HandbookChaptersOneToFiveTest {
                 : item.key().identifier().equals(Identifier.parse(predicate));
     }
 
-    /** The item predicates of the item triggers of the advancement a directive shares its id with; empty when it has none. */
+    /**
+     * The item predicates of the item triggers of the advancement a directive shares its id with; empty when it has
+     * none.
+     */
     private static List<String> acceptedItems(Identifier directive) {
         String path = "/data/" + directive.getNamespace() + "/advancement/" + directive.getPath() + ".json";
         List<String> accepted = new ArrayList<>();
@@ -271,7 +274,9 @@ public class HandbookChaptersOneToFiveTest {
         return accepted;
     }
 
-    /** A directive without {@code targets} targets nothing, and a target of count 0 is refused when the chapter loads. */
+    /**
+     * A directive without {@code targets} targets nothing, and a target of count 0 is refused when the chapter loads.
+     */
     @GameTest
     public void targetsAreOptionalAndACountOfZeroIsRefused(GameTestHelper helper) {
         JsonObject bare = JsonParser.parseString("{\"id\": \"deepcharter:x\", \"text\": \"x\"}")

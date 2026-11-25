@@ -383,8 +383,9 @@ public class QuestMapClientTest implements FabricClientGameTest {
     }
 
     /**
-     * In the real game, with the shipped chapter 1: each step that asks for an item shows exactly the items it names, with a count each
-     * (never the ingredients), and a click on the first of them opens that item's recipes in the parts catalogue (#1260).
+     * In the real game, with the shipped chapter 1: each step that asks for an item shows exactly the items it names,
+     * with a count each (never the ingredients), and a click on the first of them opens that item's recipes in the
+     * parts catalogue (#1260).
      */
     private static void everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(ClientGameTestContext context) {
         Map<Identifier, HandbookChapter> shipped = context.computeOnClient(client -> {

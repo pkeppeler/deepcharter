@@ -26,8 +26,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * Client GameTest for #1260's controls pages: they follow the first contents page, every key a line names is the player's binding
- * read at draw time (a rebind changes what the page shows), and each page fits the default window.
+ * Client GameTest for #1260's controls pages: they follow the first contents page, every key a line names is the
+ * player's binding read at draw time (a rebind changes what the page shows), and each page fits the default window.
  */
 public class HandbookControlsClientTest implements FabricClientGameTest {
     private static final int WIDTH = 427;
@@ -103,7 +103,10 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
                 "chapter 1 follows the controls pages");
     }
 
-    /** The handbook's own key, a mod key of the catalogue and a vanilla key are each rebound: the page names the new key, not the old. */
+    /**
+     * The handbook's own key, a mod key of the catalogue and a vanilla key are each rebound: the page names the new
+     * key, not the old.
+     */
     private static void aRebindChangesWhatThePageShows(Options options) {
         rebind(HandbookKeys.OPEN, InputConstants.KEY_J, 1, "[H]", "[J]");
         rebind(options.keyUp, InputConstants.KEY_I, controlsPartOf("pod"), "[W]", "[I]");

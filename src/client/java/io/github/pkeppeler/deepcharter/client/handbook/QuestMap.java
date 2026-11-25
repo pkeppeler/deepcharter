@@ -19,10 +19,10 @@ import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The quest map of one chapter: its directives as a flowchart of ink-outlined boxes on the paper, the chapters after it as
- * black redaction bars while they are still classified, and the index card of the step the player picked. This class lays out and draws; the
- * screen owns the state. Layout is in map pixels from the flowchart's top left corner.
- * Every colour and length is in {@link HandbookScreenTuning} and {@link QuestMapTuning}.
+ * The quest map of one chapter: its directives as a flowchart of ink-outlined boxes on the paper, the chapters after it
+ * as black redaction bars while they are still classified, and the index card of the step the player picked. This class
+ * lays out and draws; the screen owns the state. Layout is in map pixels from the flowchart's top left corner. Every
+ * colour and length is in {@link HandbookScreenTuning} and {@link QuestMapTuning}.
  */
 final class QuestMap {
     private QuestMap() {}
@@ -50,7 +50,10 @@ final class QuestMap {
         }
     }
 
-    /** What a chapter's map shows: the chapter, and whether redaction bars close the map, because a chapter after this one is still classified. */
+    /**
+     * What a chapter's map shows: the chapter, and whether redaction bars close the map, because a chapter after this
+     * one is still classified.
+     */
     record Model(HandbookPage.Chapter main, boolean bars) {}
 
     /** Where everything of a {@link Model} sits, in map pixels. */
@@ -103,9 +106,10 @@ final class QuestMap {
 
     /**
      * Lays {@code model} out in a map {@code mapWidth} wide, with {@code noteLines} lines of margin note, in at most
-     * {@code availableHeight} pixels when that can be done. Steps run in rows of up to {@link QuestMapTuning#stepColumns()}, fewer
-     * on a narrow sheet. A map that is too tall puts the note beside the last row of steps when that row is partial (the empty
-     * columns beside it hold the note). The redaction bars with their stamp and the note always stay. Nothing is scaled.
+     * {@code availableHeight} pixels when that can be done. Steps run in rows of up to {@link
+     * QuestMapTuning#stepColumns()}, fewer on a narrow sheet. A map that is too tall puts the note beside the last row
+     * of steps when that row is partial (the empty columns beside it hold the note). The redaction bars with their
+     * stamp and the note always stay. Nothing is scaled.
      */
     static Layout layout(int mapWidth, int availableHeight, Model model, int lineHeight, int noteLines) {
         Layout below = Objects.requireNonNull(
@@ -117,7 +121,10 @@ final class QuestMap {
         return beside != null && beside.height() <= below.height() ? beside : below;
     }
 
-    /** The layout with the note below the steps, or beside the last row of them; null when {@code beside} has no room for it. */
+    /**
+     * The layout with the note below the steps, or beside the last row of them; null when {@code beside} has no room
+     * for it.
+     */
     private static @Nullable Layout layoutOrNull(
             int mapWidth, Model model, int lineHeight, int noteLines, boolean beside) {
         QuestMapTuning q = QuestMapTuning.current();

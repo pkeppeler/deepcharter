@@ -35,9 +35,9 @@ public record HandbookChapter(int order, Component title, List<Entry> directives
     }
 
     /**
-     * One directive: its id, which is also the id of its advancement, the line the handbook shows, and the items the step asks the
-     * player to obtain or craft, each with a count (never the ingredients of one). {@code targets} is for the quest map's index card
-     * only, where a click opens the item's recipe: nothing here takes the items.
+     * One directive: its id, which is also the id of its advancement, the line the handbook shows, and the items the
+     * step asks the player to obtain or craft, each with a count (never the ingredients of one). {@code targets} is for
+     * the quest map's index card only, where a click opens the item's recipe: nothing here takes the items.
      */
     public record Entry(Identifier id, Component text, List<Target> targets) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(instance -> instance.group(

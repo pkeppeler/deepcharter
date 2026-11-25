@@ -33,7 +33,10 @@ public sealed interface HandbookPage {
      */
     record Contents(int part, int parts, int firstChapter, int count) implements HandbookPage {}
 
-    /** One page of the controls, after the contents: sheet {@code part} of {@code parts}, each counted from 1 ({@link HandbookControls}). */
+    /**
+     * One page of the controls, after the contents: sheet {@code part} of {@code parts}, each counted from 1 ({@link
+     * HandbookControls}).
+     */
     record Controls(int part, int parts) implements HandbookPage {}
 
     /**

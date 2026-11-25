@@ -40,10 +40,10 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.gamerules.GameRules;
 
 /**
- * Server GameTests for #845: a charter knows the recipes its quest step asks for and the ones its members' items touch, the server
- * sends each player only their charter's, a player on no charter has their own, and they carry into a charter and back out of it.
- * Recipes used: the bucket and the diamond pickaxe, which share no item; the scanner unit recipe, which the scanner step of
- * chapter 1 asks for (it names the scanner unit, not its ingredients).
+ * Server GameTests for #845: a charter knows the recipes its quest step asks for and the ones its members' items touch,
+ * the server sends each player only their charter's, a player on no charter has their own, and they carry into a
+ * charter and back out of it. Recipes used: the bucket and the diamond pickaxe, which share no item; the scanner unit
+ * recipe, which the scanner step of chapter 1 asks for (it names the scanner unit, not its ingredients).
  */
 public class KnownRecipesTest {
     private static final Identifier BUCKET = Identifier.withDefaultNamespace("bucket");
