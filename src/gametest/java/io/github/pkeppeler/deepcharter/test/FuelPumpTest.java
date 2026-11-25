@@ -415,7 +415,8 @@ public class FuelPumpTest {
                     helper,
                     List.of(new ItemStack(crop), new ItemStack(crop), new ItemStack(crop), new ItemStack(crop)));
             if (!made.isEmpty()) {
-                throw helper.assertionException("four %s should craft nothing, the world has no crops; got %s", crop, made);
+                throw helper.assertionException(
+                        "four %s should craft nothing, the world has no crops; got %s", crop, made);
             }
         }
         ItemStack three = craft(
