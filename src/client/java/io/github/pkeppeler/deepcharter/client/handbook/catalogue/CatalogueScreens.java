@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import java.util.HashMap;
 import java.util.Map;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -31,6 +32,8 @@ import org.jspecify.annotations.Nullable;
  */
 public final class CatalogueScreens {
     private static final Map<Screen, CataloguePanel> PANELS = new HashMap<>();
+    /** What every panel is set to: the client's, so it carries across a close and a reopen, and from the inventory to the table. */
+    private static volatile CatalogueState state = new CatalogueState();
     /** An item {@link #open} was asked for before the inventory it needs was open, looked up as soon as the panel exists. */
     private static @Nullable Item pending;
     /** The screen each inventory {@link #open} made over another screen goes back to when it closes. */
@@ -44,6 +47,8 @@ public final class CatalogueScreens {
         CatalogueKeys.register();
         SpecSheetOpener.register();
         ClientTickEvents.END_CLIENT_TICK.register(CatalogueScreens::reopenReturnScreen);
+        // A world is where the recipes were taught, so leaving it puts the catalogue back as a new client has it.
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> resetState());
         ScreenEvents.BEFORE_INIT.register((client, screen, width, height) -> {
             if (hasCatalogue(screen) && fits(width, height)) {
                 closeVanillaBook(client);
@@ -54,6 +59,11 @@ public final class CatalogueScreens {
                 attach(book, width, height);
             }
         });
+    }
+
+    /** Puts the catalogue back as a new client has it: the next panel opens on an empty search, the switch off and nothing looked up. */
+    public static void resetState() {
+        state = new CatalogueState();
     }
 
     /** Whether a screen {@code width} by {@code height} has room for the panels, which is when they take the place of the vanilla recipe book. */
@@ -127,7 +137,7 @@ public final class CatalogueScreens {
     }
 
     private static void attach(AbstractRecipeBookScreen<?> screen, int width, int height) {
-        CataloguePanel panel = PANELS.computeIfAbsent(screen, ignored -> new CataloguePanel(screen));
+        CataloguePanel panel = PANELS.computeIfAbsent(screen, ignored -> new CataloguePanel(screen, state));
         panel.resize(width, height);
         // The panels replace the recipe book, so its button goes only while they are drawn: a window too small for them
         // keeps the book.

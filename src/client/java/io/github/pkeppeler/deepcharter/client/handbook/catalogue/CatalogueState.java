@@ -7,7 +7,7 @@ import net.minecraft.world.item.Item;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What one open catalogue is set to: the search, the craftable-now filter, the page, the favourites row's scroll and the recipe lookup.
+ * What the catalogue is set to, for the client session: the search, the craftable-now filter, the page, the favourites row's scroll and the recipe lookup.
  * No drawing and no input here, so the rules of the filter and the lookup are testable on their own.
  */
 public final class CatalogueState {
@@ -42,9 +42,9 @@ public final class CatalogueState {
         return craftableOnly;
     }
 
+    /** Flips the filter. The page stays; {@link #page(int)} brings it inside the new page count. */
     public void toggleCraftableOnly() {
         craftableOnly = !craftableOnly;
-        page = 0;
     }
 
     /** The known items that match the search and, with the filter on, can be made at {@code bench} from {@code contents} now. */
@@ -59,20 +59,30 @@ public final class CatalogueState {
         return shown;
     }
 
+    /** How many known items can be made at {@code bench} from {@code contents} now, whatever the search and the filter say. */
+    public int craftableCount(PartsCatalogue catalogue, StackedItemContents contents, Bench bench) {
+        int count = 0;
+        for (Item item : catalogue.items()) {
+            if (catalogue.craftable(item, contents, bench)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     /** How many pages {@code total} items make at {@code perPage} to a page; at least one. */
     public static int pages(int total, int perPage) {
         return Math.max(1, (total + perPage - 1) / perPage);
     }
 
-    /** The page being shown, from 0, kept inside {@code pages}. */
+    /** The page being shown, from 0, inside {@code pages}. The page kept is not changed: a list that is briefly short does not forget it. */
     public int page(int pages) {
-        page = Math.clamp(page, 0, pages - 1);
-        return page;
+        return Math.clamp(page, 0, pages - 1);
     }
 
-    /** Moves {@code delta} pages, stopping at the first and the last. */
+    /** Moves {@code delta} pages from the one shown, stopping at the first and the last, and keeps that page. */
     public void turn(int delta, int pages) {
-        page = Math.clamp((long) page + delta, 0, pages - 1);
+        page = Math.clamp((long) page(pages) + delta, 0, pages - 1);
     }
 
     /** The first favourite shown in the row, kept so that the row stays full while there are enough. */
