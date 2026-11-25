@@ -356,6 +356,7 @@
         ]}
       ]
     },
-    "block/roof_bolt": {"kind": "opaque", "layers": [{"op": "noise", "ramp": ["steel.2", "steel.3", "steel.3"], "seed": 9871, "cell": 8, "octaves": 2, "dither": 0.8}, {"op": "speckle", "colours": ["steel.1", "steel.5"], "density": 0.06, "seed": 9872}, {"op": "rect", "rect": [0, 0, 16, 1], "colour": "steel.1"}, {"op": "rect", "rect": [0, 15, 16, 1], "colour": "steel.1"}, {"op": "rect", "rect": [0, 0, 1, 16], "colour": "steel.1"}, {"op": "rect", "rect": [15, 0, 1, 16], "colour": "steel.1"}, {"op": "rivets", "at": [[4, 4], [11, 4], [4, 11], [11, 11]], "ramp": ["steel.0", "steel.5", "steel.6"]}]}
+    "block/roof_bolt": {"kind": "opaque", "layers": [{"op": "noise", "ramp": ["steel.2", "steel.3", "steel.3"], "seed": 9871, "cell": 8, "octaves": 2, "dither": 0.8}, {"op": "speckle", "colours": ["steel.1", "steel.5"], "density": 0.06, "seed": 9872}, {"op": "rect", "rect": [0, 0, 16, 1], "colour": "steel.1"}, {"op": "rect", "rect": [0, 15, 16, 1], "colour": "steel.1"}, {"op": "rect", "rect": [0, 0, 1, 16], "colour": "steel.1"}, {"op": "rect", "rect": [15, 0, 1, 16], "colour": "steel.1"}, {"op": "rivets", "at": [[4, 4], [11, 4], [4, 11], [11, 11]], "ramp": ["steel.0", "steel.5", "steel.6"]}]},
+    "block/glowcap": {"kind": "cutout", "layers": [{"op": "pixels", "legend": {"f": "cold.5", "Y": "cold.4", "y": "cold.3", "g": "cold.2", "s": "stalk.1"}, "rows": ["................", "................", "................", "................", "................", "................", "...........ff...", "..........fYYf..", ".ff......YYYYYy.", "fYYf.....yggggy.", "YYYYy......s....", "yggy.......s....", "..s....ff..s....", "..s...fYYf.s....", "..s...yggy.s....", "..s.....s..s...."]}]}
   }
 }

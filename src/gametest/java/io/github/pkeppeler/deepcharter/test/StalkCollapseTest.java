@@ -36,6 +36,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -324,6 +325,9 @@ public class StalkCollapseTest {
         });
     }
 
+    /** The chunk-local x or z of the middle of a chunk, give or take the 3 x 3 footprint. */
+    private static final int MID_CHUNK = 6;
+
     /** The tallest a great stalk grows, with air above it, for the tests that clear an area for one. */
     private static final int GREAT_CLEAR_HEIGHT = 22;
 
@@ -337,15 +341,8 @@ public class StalkCollapseTest {
         BlockPos here = helper.absolutePos(new BlockPos(0, BASE_ROW, 0)).above(SKY);
         BlockPos origin = new BlockPos(((here.getX() >> 4) << 4) + 15, here.getY(), here.getZ());
         GreatStalkLayout layout = layoutOf(BRAID_SEED);
-        for (int x = -BRAID_MAX_REACH; x <= BRAID_MAX_REACH; x++) {
-            for (int z = -BRAID_MAX_REACH; z <= BRAID_MAX_REACH; z++) {
-                level.setBlock(origin.offset(x, -1, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-                for (int y = 0; y <= GREAT_CLEAR_HEIGHT; y++) {
-                    level.setBlock(origin.offset(x, y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
-                }
-            }
-        }
-        if (!GreatStalk.place(level, RandomSource.create(BRAID_SEED), origin)) {
+        clearGreatArea(level, origin);
+        if (!GreatStalk.place(level, RandomSource.create(BRAID_SEED), origin, false)) {
             throw failure(helper, "the placer would not grow a great stalk on a chunk border");
         }
         Map<Cell, Part> grown = new HashMap<>();
@@ -372,6 +369,75 @@ public class StalkCollapseTest {
         helper.succeed();
     }
 
+    /**
+     * Grown to stay in its chunk (#972), a great stalk puts no block outside the chunk of its origin, trunk or cap: from origins stepped
+     * towards the chunk's east side, it grows whole where it fits, leaves out the caps that would reach over, and refuses where a trunk
+     * would. Built in the air above the test, as {@link #aGreatStalkOnAChunkBorderIsWhole} is.
+     */
+    @GameTest(maxTicks = TEST_MAX_TICKS)
+    public void aGreatStalkGrownInItsChunkStaysInIt(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos here = helper.absolutePos(new BlockPos(0, BASE_ROW, 0)).above(SKY);
+        int chunkX = here.getX() >> 4;
+        // Mid-chunk along z, so only the east side is reached for.
+        int z = ((here.getZ() >> 4) << 4) + MID_CHUNK;
+        GreatStalkLayout layout = layoutOf(BRAID_SEED);
+        int grew = 0;
+        int reachedOver = 0;
+        for (int local = 15 - BRAID_MAX_REACH; local <= 15; local++) {
+            BlockPos origin = new BlockPos((chunkX << 4) + local, here.getY(), z);
+            clearGreatArea(level, origin);
+            boolean overSide = layout.parts().keySet().stream()
+                    .anyMatch(cell -> ((origin.getX() + cell.x()) >> 4) != chunkX
+                            || ((origin.getZ() + cell.z()) >> 4) != (origin.getZ() >> 4));
+            if (overSide) {
+                reachedOver++;
+            }
+            if (GreatStalk.place(level, RandomSource.create(BRAID_SEED), origin, true)) {
+                grew++;
+            }
+            for (int dx = -BRAID_MAX_REACH; dx <= BRAID_MAX_REACH; dx++) {
+                for (int dz = -BRAID_MAX_REACH; dz <= BRAID_MAX_REACH; dz++) {
+                    for (int y = 0; y <= GREAT_CLEAR_HEIGHT; y++) {
+                        BlockPos pos = origin.offset(dx, y, dz);
+                        if (partOf(level.getBlockState(pos)) != null
+                                && !ChunkPos.containing(pos).equals(ChunkPos.containing(origin))) {
+                            throw failure(
+                                    helper,
+                                    "a great stalk grown in its chunk from %s put %s at %s, in chunk %s",
+                                    origin.toShortString(),
+                                    level.getBlockState(pos),
+                                    pos.toShortString(),
+                                    ChunkPos.containing(pos));
+                        }
+                    }
+                }
+            }
+        }
+        clearGreatArea(level, new BlockPos((chunkX << 4) + 15, here.getY(), z));
+        if (grew == 0 || reachedOver == 0) {
+            throw failure(
+                    helper,
+                    "of %s origins the stalk grew from %s and its layout reached over a side from %s: both must be some",
+                    BRAID_MAX_REACH + 1,
+                    grew,
+                    reachedOver);
+        }
+        helper.succeed();
+    }
+
+    /** Stone under, and air over, the reach of a great stalk at {@code origin}, so each try starts from bare ground. */
+    private static void clearGreatArea(ServerLevel level, BlockPos origin) {
+        for (int x = -BRAID_MAX_REACH; x <= BRAID_MAX_REACH; x++) {
+            for (int z = -BRAID_MAX_REACH; z <= BRAID_MAX_REACH; z++) {
+                level.setBlock(origin.offset(x, -1, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+                for (int y = 0; y <= GREAT_CLEAR_HEIGHT; y++) {
+                    level.setBlock(origin.offset(x, y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+                }
+            }
+        }
+    }
+
     /** No room above the ground for a trunk, and no great stalk: a block of stone where one of its trunks would stand. */
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aGreatStalkNeedsHeadroomForItsTrunks(GameTestHelper helper) {
@@ -384,7 +450,7 @@ public class StalkCollapseTest {
                 .orElseThrow();
         clearBraidArea(helper);
         level.setBlock(at(braidOrigin(helper), high), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-        if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))
+        if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper), false)
                 || !standing(helper).isEmpty()) {
             throw failure(helper, "a great stalk grew under a roof lower than its trunks");
         }
@@ -542,7 +608,7 @@ public class StalkCollapseTest {
 
     private static boolean growBraid(GameTestHelper helper, long seed) {
         clearBraidArea(helper);
-        return GreatStalk.place(helper.getLevel(), RandomSource.create(seed), braidOrigin(helper));
+        return GreatStalk.place(helper.getLevel(), RandomSource.create(seed), braidOrigin(helper), false);
     }
 
     private static boolean rotationallySymmetric(Set<Cell> cells) {
@@ -659,7 +725,7 @@ public class StalkCollapseTest {
             Cell base = new Cell(trunk.x(), 0, trunk.z());
             clearBraidArea(helper);
             level.setBlock(at(braidOrigin(helper), trunk), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-            if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))
+            if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper), false)
                     || !standing(helper).isEmpty()) {
                 throw failure(helper, "the braid grew over a block in its trunk");
             }
@@ -667,7 +733,7 @@ public class StalkCollapseTest {
             level.setBlock(at(braidOrigin(helper), base).below(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
             if (layout.parts().containsKey(base)
                     && !layout.optional().contains(base)
-                    && (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))
+                    && (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper), false)
                             || !standing(helper).isEmpty())) {
                 throw failure(helper, "the braid grew a trunk over a hole in the ground");
             }
@@ -678,7 +744,7 @@ public class StalkCollapseTest {
                     .orElseThrow();
             clearBraidArea(helper);
             level.setBlock(at(braidOrigin(helper), cap), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-            if (!GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))) {
+            if (!GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper), false)) {
                 throw failure(helper, "the braid would not grow with a block in the way of one cap");
             }
             Set<Cell> expected =

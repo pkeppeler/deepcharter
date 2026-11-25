@@ -59,7 +59,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param toastHeight least height of the step-done popup; it grows to fit a step that wraps to more lines
  * @param toastMillis how long the step-done popup shows
  * @param toastInset space between the step-done popup's edge and its text
- * @param toastMargin space between the step-done popup and the left and top and bottom edges of the screen
+ * @param toastMargin space between the step-done popup and the left, right, top and bottom edges of the screen
  * @param toastGap the least space between the step-done popup and any part of the HUD it keeps clear of
  * @param toastStaleMillis how long after its last frame a step-done popup still counts as on screen, to the popups placed under it
  * @param toastWaitMillis how long a step-done popup waits for room before it gives up: on a GUI with no clear place for it, it
@@ -83,6 +83,19 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param windowMargin space kept between the sheet and the window's sides
  * @param tabEdgeGap space kept between the chapter tabs and the window's right edge
  * @param cardItemsGap space between the card's instruction and its first row of items
+ * @param pencilRowPitch tallest a row of the pencil sheet is, from the top of its boxes to the top of the next row's
+ * @param pencilRowGap space between two rows of the pencil sheet
+ * @param pencilSourcePercent width of the box of the Note that draws a path, in percent of the sheet's text width
+ * @param pencilArrowMin shortest the dashed pencil line between a path's two boxes is drawn, with its x
+ * @param pencilBoxInset space between a pencil box's edge and its text
+ * @param pencilMarkSize how far the arms of the x at a payoff reach from its middle
+ * @param pencilWobble how far, in pixels, the pencil boxes' corners overshoot and their sides drift: the hand in a hand-drawn box
+ * @param pencilRingExtra how far the ring of a reached path stands out past the arms of its x
+ * @param pencilTextTop space between a pencil box's top edge and its first line of text
+ * @param pencilLineGap space between two lines of text in a pencil box
+ * @param pencilTipGap space between the tip of the dashed pencil line and the arms of the x it points at
+ * @param pencilStartGap space between a Note's box and the start of the dashed pencil line
+ * @param pencilMarkGap space between the x and the payoff box
  */
 public record QuestMapTuning(
         int chapterTabWidth,
@@ -158,7 +171,20 @@ public record QuestMapTuning(
         int ruleGap,
         int windowMargin,
         int tabEdgeGap,
-        int cardItemsGap) {
+        int cardItemsGap,
+        int pencilRowPitch,
+        int pencilRowGap,
+        int pencilSourcePercent,
+        int pencilArrowMin,
+        int pencilBoxInset,
+        int pencilMarkSize,
+        int pencilWobble,
+        int pencilRingExtra,
+        int pencilTextTop,
+        int pencilLineGap,
+        int pencilTipGap,
+        int pencilStartGap,
+        int pencilMarkGap) {
     public static QuestMapTuning current() {
         return UiTheme.current().questMap();
     }
@@ -238,6 +264,19 @@ public record QuestMapTuning(
                 d.integer("ruleGap", 0),
                 d.integer("windowMargin", 0),
                 d.integer("tabEdgeGap", 0),
-                d.integer("cardItemsGap", 0));
+                d.integer("cardItemsGap", 0),
+                d.integer("pencilRowPitch", 1),
+                d.integer("pencilRowGap", 0),
+                d.integer("pencilSourcePercent", 10, 60),
+                d.integer("pencilArrowMin", 1),
+                d.integer("pencilBoxInset", 0),
+                d.integer("pencilMarkSize", 1),
+                d.integer("pencilWobble", 0, 3),
+                d.integer("pencilRingExtra", 0),
+                d.integer("pencilTextTop", 0),
+                d.integer("pencilLineGap", 0),
+                d.integer("pencilTipGap", 0),
+                d.integer("pencilStartGap", 0),
+                d.integer("pencilMarkGap", 0));
     }
 }

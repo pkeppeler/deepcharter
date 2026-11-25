@@ -3,14 +3,21 @@
   "package": "io.github.pkeppeler.deepcharter.test.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BatchKeyMixin",
     "ChunkHolderLightSuppressMixin",
     "ChunkMapAccess",
     "ChunkMapSaveMixin",
     "ChunkMapUnloadMixin",
+    "GameTestBatchFactoryMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
     "LightSyncSendMixin",
-    "ServerLevelForcedMixin"
+    "MainShutdownHookMixin",
+    "MinecraftServerAccess",
+    "ServerChunkCacheAccess",
+    "ServerChunkCacheBlockingLoadMixin",
+    "ServerLevelForcedMixin",
+    "TicketAccess"
   ],
   "client": [
     "CardinalLightingMixin",

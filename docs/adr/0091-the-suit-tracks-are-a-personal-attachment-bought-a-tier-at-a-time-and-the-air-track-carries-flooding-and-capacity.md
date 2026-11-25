@@ -1,0 +1,35 @@
+---
+status: accepted
+---
+
+# The suit tracks are a personal attachment, bought a tier at a time at the repair station, and the air track carries flooding and capacity
+
+SPEC section 9 says the suit is "upgraded separately: oxygen and toxins, heat, pressure, lamp battery". [ADR 0083](0083-the-suit-timer-drains-at-the-depths-row-measured-against-the-suits-ratings-and-an-uninhabitable-hall-leaks-it.md) gave the suit its own ratings, stock (0,0,0), a fixed capacity of 180 suit-seconds, and left the steps to this issue ([#1064](https://github.com/pkeppeler/deepcharter/issues/1064)). The air canister, which tops the reserve up in the field, is [#1194](https://github.com/pkeppeler/deepcharter/issues/1194).
+
+## Decision
+
+- **The tiers are a player attachment, `deepcharter:suit_tracks`.** `SuitTracks(heat, pressure, air)` is a versioned attachment (version 1) like `deepcharter:suit`: persistent, kept on death (`copyOnDeath`), initialised to stock, and sent to its owner alone. A tier is 0 (stock) to 3. Tiers are personal, as the suit is: a crewmate's suit is not lifted by yours, and a death costs nothing. The body writes a missing tier as 0 and a tier out of range reads clamped to 0 to 3 on disk, so the clamped value is what the next save writes back; the wire refuses what its encoder cannot produce (a tier out of range throws, which disconnects, as a version mismatch does). An unknown version is `Unreadable` and kept. The rule: [m2-rules.md](../../.claude/skills/deepcharter-conventions/m2-rules.md), "every SavedData and attachment has a version, and never fails to decode".
+- **Three tracks, with the air track carrying two things.** Heat and pressure each add a level to the suit's rating for that axis. The air track (SPEC's "oxygen and toxins") adds a level of flooding rating and raises the capacity: 180, 240, 300, 360 suit-seconds for tiers 0 to 3 (`SuitTuning.capacities`, validated rising). So the SPEC's four tracks need no fifth: flooding rides on air, and the lamp battery stays its own, later track. This amends ADR 0083's fixed 180: the capacity is the person's own, and 180 is the stock suit's. "Toxins" is a name only: there is no toxin axis, and none is added until one exists.
+- **The suit is rated by its tracks.** `SuitTracks.ratings()` is `Ratings(heat, pressure, air, 0)`: the air tier is the flooding level, and quake is never rated. The drain reads the person's own ratings, so a track's step shows in the time it buys.
+- **The clamps.** The suit's reserve is clamped to the person's own capacity every second, and a new life refills to it. A load clamps to the largest capacity any suit has (`SuitTuning.maxCapacity`, 360) because it does not know the tracks, which fixes a latent bug: a 300 s reserve loaded as 180. A reserve above a suit's own capacity (a saved 300 on a stock suit) falls to 180 on the next second.
+- **Tier 1 is bought, not crafted.** SPEC section 7's "Tier 1 is crafted, every later tier is bought" sits under Pods and the scanner ([ADR 0048](0048-the-tier-1-scanner-is-a-crafted-unit-fitted-by-use.md)); section 9 keeps the suit separate. The suit has no crafting recipe, a track's tier 1 is a purchase like its later tiers, and this is a reading of the SPEC, not a conflict with it.
+- **Bought directly, next tier only.** The repair station sells each track's next tier: `deepcharter:suit_buy` with `track` and `tier` arguments. It refuses, before it spends, an unknown track, a tier that is not the person's current tier plus one, a track already at the top, and a suit whose log is unreadable; then it spends from the charter's account and sets the attachment. An air buy fills the suit to its new capacity. Nothing is crafted, carried or fitted: the person is the one at the screen. The repair station's screen adds one row for each track ("SUIT HEAT T2 $1,100", or "(TOP)" with the button inactive), read from the synced attachment; the account line already updates.
+- **Prices are banded against the layer 2 runs that fund them.** Heat and pressure cost $450, $1,100 and $2,500; air costs $550, $1,400 and $3,000. `EconomyAffordabilityTest` holds tier 1 to at most two runs of a Mole with tier 2 parts from the outpost (`OUTPOST_RUN_NET`, $455), tier 2 to at most four, and tier 3 to at most two runs of a Prospector with tier 3 parts (three for air); the Prospector nets $1,728 a run today, so air tier 3 is two. The prices are pinned by literal values, so a retune of the runs moves the test, not the band silently.
+- **The payoff is below layer 2 only.** Layers 1 and 2 and the surface ask nothing of a suit (ADR 0076, 0083), so a track buys nothing there. The repair station's intro and the fitting confirmation say that the tracks pay off from layer 3 down, so no one buys one expecting relief earlier. The first row where a track shows is layer 3 (and the unbuilt depth below).
+- **The wire.** `SuitState` goes to version 2: the wire carries a per-axis `shortfall` (four bits an axis in one var int; a level is short by at most 15) in place of the axes mask, which is derived from it, so the two cannot drift; the gauge shows how far each axis is short ("HEAT -2 PRESSURE -2 FLOODING -2"). The saved body is unchanged, so the disk codec is `Versioned.codec(2, BODY, Map.of(1, BODY))`: a v1 save loads and is written back as v2. On the wire a value of another version throws, which disconnects a client of another build, as the rule says; an unreadable value goes as a marker. A test pins the v2 wire bytes, that a v1 save loads, and that a v1 wire value is refused.
+- **Unreadable tracks stop the suit.** The ticker neither drains, refills nor hurts a person whose tracks it cannot read, as for an unreadable suit, and the gauge says the suit log is unreadable. The shop sells nothing over unreadable data.
+
+## Considered options
+
+- **Tracks crafted, or fitted to a pod.** Rejected: the suit is the person's, and a crafted tier 1 needs a recipe and a bench for no gain over a price on the curve.
+- **A fifth track for flooding.** Rejected: SPEC section 9 names four, and oxygen and toxins are one track, so flooding rides on air.
+- **Several tiers at once.** Rejected: a purchase of a tier two ahead skips the price of the one between; the next tier only keeps the curve whole.
+- **A refill rate that grows with capacity.** Rejected for now: the rate stays 15 a second, so a bigger suit takes longer to fill (24 s at air tier 3). The trade is readable, and a faster refill can come with the canister.
+- **A per-charter suit.** Rejected as in ADR 0083: the suit is on a person.
+- **Keeping the suit's version at 1 and sending the shortfall in a new attachment.** Rejected: the shortfall is part of what the suit is doing, derived with the axes and the rate, and a second sync of one fact can arrive out of step.
+
+## Consequences
+
+- `SuitTuning` loses `capacity` and `stock`; callers read the person's own tracks.
+- A suit's gauge bar is the reserve over its own capacity, and a full refilling suit hides at its own.
+- `docs/design/mechanics.md` carries the tier table; `SuitPacingTest` prints it.

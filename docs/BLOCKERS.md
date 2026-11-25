@@ -20,7 +20,7 @@ Until then nothing bumps dependencies. The weekly `audit.yml` still reports advi
 
 From about 10:51 UTC every CI job fails with zero steps: "The job was not started because recent account payments have failed or your spending limit needs to be increased" (first seen on run 37766192132). The 10:46 run had succeeded, so the Free plan's monthly Actions minutes have most likely run out. The orchestrator can't see billing (`gh` lacks the `user` scope).
 
-`tools/merge-pr.sh` requires green CI, so no PR merges until Actions runs again. The orchestrator keeps working: PRs go through implementation, review cycle 1, the simplifier and cycle 2, and wait marked `review-passed`. When CI is back, each needs a close and reopen to re-run CI on a fresh merge ref, then the gate.
+`tools/merge-pr.sh` requires green CI, so no PR merges until Actions runs again. The orchestrator keeps working: PRs go through implementation, review cycle 1, the simplifier and cycle 2, and wait marked `review-passed`. When CI is back, each needs the whole runs holding its newest non-skipped `build`, `tool-tests` and `client-gametest` jobs re-run (`tools/merge-queue.sh` does it; never per job, since a job re-run copies the other jobs without their merged-main annotation) to record a fresh merge of main, then the gate.
 
 The options are the user's call:
 - set a small Actions spending limit;

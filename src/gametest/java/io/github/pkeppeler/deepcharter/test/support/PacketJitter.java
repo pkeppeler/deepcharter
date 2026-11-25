@@ -12,12 +12,27 @@ import net.minecraft.client.multiplayer.ClientLevel;
  * connection does this whenever the client's tick and the server's packets drift against each other; the GameTest harness ticks the
  * server and the client in lockstep, so it never does by itself. Inert until {@link #start} and ended by {@link #stop}, which a test
  * calls in a {@code finally}. Read by {@code ClientPacketListenerMixin}. Client thread only.
+ *
+ * <p>It also counts the client ticks in a row that handled no entity move ({@link #resetMoveless}, {@link #movelessTicks}): the test
+ * server is a real one, and on a loaded machine it delivers late on its own, on top of the stall a test injects.
  */
 public final class PacketJitter {
     /** Every third client tick holds the moves. */
     private static final int PERIOD = 3;
 
     private static int period;
+    /** The client game time until which every move is held; -1 when no stall is on. */
+    private static long stallUntil = -1;
+
+    /** Client ticks since the jitter was first registered: the clock the moveless count runs on. */
+    private static long clientTick;
+
+    /** The client tick the latest entity move was handled on. */
+    private static long lastMoveTick;
+
+    /** The most client ticks in a row without a handled move since {@link #resetMoveless}. */
+    private static int movelessTicks;
+
     private static boolean replaying;
     private static boolean registered;
     private static final List<Runnable> HELD = new ArrayList<>();
@@ -28,16 +43,48 @@ public final class PacketJitter {
     public static void start() {
         HELD.clear();
         period = PERIOD;
+        registerOnce();
+    }
+
+    private static void registerOnce() {
         if (!registered) {
             registered = true;
-            // An event cannot be unregistered; with no period it does nothing.
+            // An event cannot be unregistered; with no period and no stall it does nothing.
             ClientTickEvents.START_CLIENT_TICK.register(PacketJitter::replayIfDue);
         }
+    }
+
+    /**
+     * Holds every entity move for the next {@code ticks} client ticks, then hands them all over in one tick: what a client sees when
+     * the server falls behind and catches up, or the network stalls and delivers. Call it with the jitter off or on.
+     */
+    public static void stall(int ticks) {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (level == null) {
+            throw new IllegalStateException("no client level to stall");
+        }
+        registerOnce();
+        stallUntil = level.getGameTime() + ticks;
+    }
+
+    /** Starts counting the longest stretch of client ticks with no move of any entity handled from now. */
+    public static void resetMoveless() {
+        movelessTicks = 0;
+        lastMoveTick = clientTick;
+    }
+
+    /**
+     * The most client ticks in a row, since {@link #resetMoveless}, in which no entity move was handled; the stretch still open now
+     * counts. The jitter's skipped tick is one of them, a stall adds its length, and a late server adds its own.
+     */
+    public static int movelessTicks() {
+        return Math.max(movelessTicks, (int) (clientTick - lastMoveTick) - 1);
     }
 
     /** Ends the jitter and drops any move still held: a held move is one the client never sees, which is what a test that ended wants. */
     public static void stop() {
         period = 0;
+        stallUntil = -1;
         HELD.clear();
     }
 
@@ -46,10 +93,26 @@ public final class PacketJitter {
      * with no later packet is delivered one tick late, as a real connection would, and not whenever the next packet comes.
      */
     private static void replayIfDue(Minecraft client) {
+        clientTick++;
         ClientLevel level = client.level;
-        if (period != 0 && level != null && level.getGameTime() % period != 1) {
+        if (level == null) {
+            return;
+        }
+        if (stallUntil >= 0) {
+            if (level.getGameTime() < stallUntil) {
+                return;
+            }
+            stallUntil = -1;
+            replayHeld();
+        } else if (period != 0 && level.getGameTime() % period != 1) {
             replayHeld();
         }
+    }
+
+    /** Notes that the client handles an entity move now. */
+    private static void noteMove() {
+        movelessTicks = movelessTicks();
+        lastMoveTick = clientTick;
     }
 
     private static void replayHeld() {
@@ -65,6 +128,16 @@ public final class PacketJitter {
         }
     }
 
+    /** Whether a stall holds a packet now, to be handled by {@code handle} when the stall ends. Only a stall holds it, never the jitter. */
+    public static boolean stalls(Runnable handle) {
+        Minecraft client = Minecraft.getInstance();
+        if (stallUntil < 0 || replaying || client.level == null || !client.isSameThread()) {
+            return false;
+        }
+        HELD.add(handle);
+        return true;
+    }
+
     /**
      * Whether the client is to skip a position packet now, and handle it later by running {@code handle}. A tick that is not skipped
      * replays the held packets first, in order, so entities see their moves and teleports in the order the server sent them: a
@@ -75,14 +148,24 @@ public final class PacketJitter {
         ClientLevel level = client.level;
         // A packet arrives on the network thread first, and vanilla hands it to the client thread by calling the
         // handler again.
-        if (period == 0 || replaying || level == null || !client.isSameThread()) {
+        if ((period == 0 && stallUntil < 0) || replaying || level == null || !client.isSameThread()) {
+            // A move handled on the client thread, whether it came straight in or was replayed; the network thread's
+            // first call is not one.
+            if (level != null && client.isSameThread()) {
+                noteMove();
+            }
             return false;
+        }
+        if (stallUntil >= 0) {
+            HELD.add(handle);
+            return true;
         }
         if (level.getGameTime() % period == 1) {
             HELD.add(handle);
             return true;
         }
         replayHeld();
+        noteMove();
         return false;
     }
 }

@@ -4,10 +4,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -37,10 +39,11 @@ import org.joml.Vector3fc;
 
 /** Server GameTests for layer dimensions and depth math. */
 public class LayerDimensionsTest {
+    private static final String CAMPAIGN = "deepcharter:campaign_sample";
     private static final Identifier CRUST_ID = Identifier.fromNamespaceAndPath("deepcharter", "breach_crust");
 
     /** Runs inside deepcharter:campaign_sample: proves the GameTest server loads the test pack's campaign dimension, and that it holds every layer. */
-    @GameTest(dimension = "deepcharter:campaign_sample")
+    @GameTest(environment = CampaignEnvironments.B, dimension = CAMPAIGN)
     public void gameTestRunsInTheCampaignLevel(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         if (!LayerChain.isCampaign(level)
@@ -53,8 +56,8 @@ public class LayerDimensionsTest {
 
     /**
      * {@code TestLayers.band} of a level that does not hold the layer fails loud: the flat test overworld holds the surface only, and the
-     * Nether is no layer's level. ({@code TestLayers.dimension(server, n)} returns the overworld for a layer once the overworld is the
-     * campaign level (#803), so that branch has no test before then.)
+     * Nether is no layer's level. (The GameTest server's overworld is flat, so {@code TestLayers.dimension(server, n)} returns
+     * the sample here; its overworld branch is tested in {@code CampaignWorldClientTest}, in a default-preset world.)
      */
     @GameTest
     public void aLevelThatDoesNotHoldALayerHasNoBandForIt(GameTestHelper helper) {
@@ -69,7 +72,7 @@ public class LayerDimensionsTest {
     }
 
     /** The surface is a band of the campaign level, and a position is in exactly the band its Y falls in. */
-    @GameTest(dimension = "deepcharter:campaign_sample")
+    @GameTest(environment = CampaignEnvironments.B, dimension = CAMPAIGN)
     public void theSurfaceIsABandOfTheCampaignLevel(GameTestHelper helper) {
         ServerLevel campaign = helper.getLevel();
         LayerChain.Band surface = TestLayers.band(campaign, TestLayers.SURFACE);
@@ -101,7 +104,7 @@ public class LayerDimensionsTest {
     public void testPresetMatchesTheShippedDimensions(GameTestHelper helper) throws IOException {
         JsonObject preset = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject();
-        for (String name : List.of("layer_1", "layer_2", "campaign_sample")) {
+        for (String name : List.of("layer_1", "layer_2", "campaign_sample", "campaign_full")) {
             String id = "deepcharter:" + name;
             JsonElement shipped = read(helper, "/data/deepcharter/dimension/" + name + ".json");
             if (!shipped.equals(preset.getAsJsonObject("dimensions").get(id))) {
@@ -120,7 +123,7 @@ public class LayerDimensionsTest {
     }
 
     /** The darkening is the zone biomes' ambient light colour (ADR 0059): layer 2 reads a darker one than layer 1, and neither is lit by the sky. */
-    @GameTest(dimension = "deepcharter:campaign_sample")
+    @GameTest(environment = CampaignEnvironments.B, dimension = CAMPAIGN)
     public void layersAreDarkerWithDepth(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         float one = brightness(level, TestLayers.pos(1, 0, 100, 0));
@@ -256,10 +259,12 @@ public class LayerDimensionsTest {
                 throw helper.assertionException("player placed at y=%s, outside the layer", pos.y);
             }
             try {
-                server.getCommands().getDispatcher().execute("deepcharter layer goto 3", source);
-                throw helper.assertionException("goto 3 should fail: only 2 layers exist");
+                int past = CampaignBands.lastLayer() + 1;
+                server.getCommands().getDispatcher().execute("deepcharter layer goto " + past, source);
+                throw helper.assertionException(
+                        "goto %s should fail: only %s layers exist", past, CampaignBands.lastLayer());
             } catch (CommandSyntaxException outOfRange) {
-                if (!String.valueOf(outOfRange.getMessage()).contains("No layer 3")) {
+                if (!String.valueOf(outOfRange.getMessage()).contains("No layer " + (CampaignBands.lastLayer() + 1))) {
                     throw helper.assertionException(
                             "expected the no-such-layer failure, got %s", String.valueOf(outOfRange.getMessage()));
                 }

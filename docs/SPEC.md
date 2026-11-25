@@ -34,7 +34,7 @@ Pillars, ranked. The higher one wins a conflict.
 - **Colony:** one derelict mining colony per world, at spawn, named Prosperity. Its terminals are repaired once per world: when any charter fixes one, every charter can use it. The contract terminal works from the start.
 - **Conduit:** an undiggable Company pipe runs from the colony's ore processor straight down through every layer, at the same coordinates in each, ending in the Furnace. It is a landmark and the story's first clue ([LORE.md](LORE.md#8-prosperity)).
 - **Width:** unlimited, no border.
-- **Performance:** world height drives cost, because Minecraft generates whole columns. Keep layers about 256 blocks or less, and uncharted worlds 2048 tall. If world files grow large, add a tool to trim unvisited chunks.
+- **Performance:** world height drives cost, because Minecraft generates whole columns. Keep layers about 256 blocks or less, and deep dimensions no taller than they need (up to 4,064, one dimension's limit, [ADR 0085](adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). If world files grow large, add a tool to trim unvisited chunks.
 
 ### Layers
 
@@ -51,7 +51,7 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Seams and grained crust
 
-- Below the campaign world, the worlds are 2048 tall. Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
+- Below the campaign world, the worlds are up to 4,064 tall, the limit of one dimension ([ADR 0085](adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
 - The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
 - Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam cannot be told from a decoy.
 
@@ -76,7 +76,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Uncharted layers
 
-- Below the ramp, without limit: a chain of 2048-tall worlds. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
+- Below the ramp, without limit: a chain of deep dimensions, each up to 4,064 tall. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
 - A bragging-rights grind for the records board.
 - The altimeter reads "UNCHARTED".
 - No rated materials exist for them, so no outpost there can be made habitable.
@@ -91,7 +91,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Darkness
 
-- Each layer sets its own ambient light, darker with depth.
+- The darkness comes from each zone biome's ambient colour, darker with depth; the dimension's own ambient light is 0.
 - Pod lights are a component track. On foot, the suit lamp runs on a battery.
 - The original was fully lit; Minecraft's real darkness adds to the dread.
 
@@ -150,8 +150,9 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - From then on the back section fills only with **Notes** found in the world: wreck logs, torn pages, miners' scribbles.
 - A Note picked up by anyone in a charter goes into every member's handbook, unread for each person.
 - Using a Note in the world opens it to read, charter or not. A player on no charter is told to found one at the contract terminal to file it.
-- Each Note also draws a **pencil path** on the quest map, from earlier miners. It completes when the charter reaches the place the Note points to: a cache, a wreck or another Note. The place is the payoff; there is no claim button. A pencil path is not a Directive.
-- The first version ships 1–2 paths from existing Notes. More come with lore sessions.
+- Each Note also draws a **pencil path** on the pencil sheet (below), from earlier miners. It completes when the charter reaches the place the Note points to: a cache, a wreck or another Note. The place is the payoff; there is no claim button. A pencil path is not a Directive.
+- The paths sit on one fixed **pencil sheet** after the last chapter (nothing drags or zooms), in Roz's green pencil: a box for the Note, a dashed line, an x at the place. The sheet exists once a Note has drawn a path.
+- The first version ships two paths from existing Notes: N07, the prayer card, to the Prospector's wreck, and N10, Ines's log, to the Kells' shaft. More come with lore sessions. A wax cylinder found where a path ends ([#864](https://github.com/pkeppeler/deepcharter/issues/864)) is a payoff of the same kind, added with the cylinder.
 - Revisions may also add stamped pages: a disciplinary notice, the Chairmen's Book or the Ledger. They carry no rules ([lore/handbook.md](lore/handbook.md#revisions)).
 
 ### Directives and progress

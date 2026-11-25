@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.surface;
 
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -17,9 +18,13 @@ import net.minecraft.world.level.levelgen.feature.Feature;
  * Grows one fungal stalk at its origin: an ordinary column of two to {@link SurfaceTuning#ordinaryMaxHeight()} blocks, biased to the
  * short ones, or, with the chance {@link SurfaceTuning#greatStalkChance()} and where there is room, a {@link GreatStalk}. The
  * placed features pick the ground; this decides what grows on it.
+ *
+ * @param inChunk whether a great stalk must fit in its origin's chunk, so what grows does not depend on the order chunks are
+ *     decorated in (layer 3, #972); the surface's stalks predate it and keep their shape without
  */
-public record FungalStalkFeature() implements Feature {
-    public static final MapCodec<FungalStalkFeature> CODEC = MapCodec.unit(new FungalStalkFeature());
+public record FungalStalkFeature(boolean inChunk) implements Feature {
+    public static final MapCodec<FungalStalkFeature> CODEC =
+            Codec.BOOL.optionalFieldOf("in_chunk", false).xmap(FungalStalkFeature::new, FungalStalkFeature::inChunk);
 
     private static final int ORDINARY_MIN_HEIGHT = 2;
 
@@ -31,7 +36,7 @@ public record FungalStalkFeature() implements Feature {
     @Override
     public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
         SurfaceTuning tuning = SurfaceTuning.DEFAULT;
-        if (random.nextDouble() < tuning.greatStalkChance() && GreatStalk.place(level, random, origin)) {
+        if (random.nextDouble() < tuning.greatStalkChance() && GreatStalk.place(level, random, origin, inChunk)) {
             return true;
         }
         Block stalk = BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("deepcharter", "fungal_stalk"));

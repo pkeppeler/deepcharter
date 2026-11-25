@@ -371,12 +371,15 @@ public class LamplessFigureTest {
                 if (!level.getBlockState(feet).is(BlockTags.RAILS)) {
                     throw failure(helper, "the second figure stands at %s, which is not a rail", feet.toShortString());
                 }
-                if (level.getBrightness(LightLayer.BLOCK, feet) >= TUNING.litBlockLight()) {
+                // light-wait-ok: waits on the game-time respawn delay, not on light; the check fails only on light that
+                // is already there, so a lagging engine reads dark and passes
+                int light = level.getBrightness(LightLayer.BLOCK, feet);
+                if (light >= TUNING.litBlockLight()) {
                     throw failure(
                             helper,
                             "the second figure appeared at %s, where the light is %d",
                             feet.toShortString(),
-                            level.getBrightness(LightLayer.BLOCK, feet));
+                            light);
                 }
                 killedAt[0] = level.getGameTime();
                 figure[0].kill(level);

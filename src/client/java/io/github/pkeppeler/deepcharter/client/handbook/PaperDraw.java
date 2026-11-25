@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
+import java.util.Random;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
@@ -159,6 +160,76 @@ final class PaperDraw {
                 y += sy;
             }
         }
+    }
+
+    /**
+     * A box drawn by hand in one colour: each side a line of its own, a pixel or so off true and running past the corner, so no two
+     * boxes with different {@code seed}s match. {@code wobble} is the most a side drifts or overshoots; 0 draws a true box.
+     */
+    static void sketchBox(
+            GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int color, int seed, int wobble) {
+        line(
+                graphics,
+                left - Math.abs(drift(seed, 0, wobble)),
+                top + drift(seed, 1, wobble),
+                right + Math.abs(drift(seed, 2, wobble)),
+                top + drift(seed, 3, wobble),
+                color,
+                1,
+                0);
+        line(
+                graphics,
+                left - Math.abs(drift(seed, 4, wobble)),
+                bottom + drift(seed, 5, wobble),
+                right + Math.abs(drift(seed, 6, wobble)),
+                bottom + drift(seed, 7, wobble),
+                color,
+                1,
+                0);
+        line(
+                graphics,
+                left + drift(seed, 8, wobble),
+                top - Math.abs(drift(seed, 9, wobble)),
+                left + drift(seed, 10, wobble),
+                bottom + Math.abs(drift(seed, 11, wobble)),
+                color,
+                1,
+                0);
+        line(
+                graphics,
+                right + drift(seed, 12, wobble),
+                top - Math.abs(drift(seed, 13, wobble)),
+                right + drift(seed, 14, wobble),
+                bottom + Math.abs(drift(seed, 15, wobble)),
+                color,
+                1,
+                0);
+    }
+
+    /** A steady pseudo-random whole number from {@code -wobble} to {@code wobble}: the same for the same {@code seed} and {@code index}. */
+    static int drift(int seed, int index, int wobble) {
+        if (wobble == 0) {
+            return 0;
+        }
+        return new Random(seed * 1_000_003L + index * 7_919L).nextInt(2 * wobble + 1) - wobble;
+    }
+
+    /** A ring of radius {@code radius} round ({@code x}, {@code y}): the circle that marks a spot as done. */
+    static void ring(GuiGraphicsExtractor graphics, int x, int y, int radius, int color) {
+        for (int degrees = 0; degrees < 360; degrees++) {
+            double angle = Math.toRadians(degrees);
+            pixel(
+                    graphics,
+                    x + (int) Math.round(Math.cos(angle) * radius),
+                    y + (int) Math.round(Math.sin(angle) * radius),
+                    color);
+        }
+    }
+
+    /** A cross of two strokes through ({@code x}, {@code y}), its arms {@code reach} pixels out: the x that marks a spot. */
+    static void cross(GuiGraphicsExtractor graphics, int x, int y, int reach, int color) {
+        line(graphics, x - reach, y - reach, x + reach, y + reach, color, 1, 0);
+        line(graphics, x - reach, y + reach, x + reach, y - reach, color, 1, 0);
     }
 
     /** A line through {@code points} (x, y pairs), with a head of barbs {@code head} long on its last end if {@code head} is above 0. */

@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -66,6 +67,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTest for #85: the scripted run of the evidence scenario {@code m2-slice}, without a client. Two players on one charter
@@ -75,10 +77,53 @@ import net.minecraft.world.phys.Vec3;
  * added to the game fails this test until the slice covers it.
  */
 public class M2SliceTest {
+    static {
+        M2SliceEndState.watchCrossings();
+    }
+
     private static final double X = 9300.5;
     private static final double Z = 9300.5;
     private static final BlockPos TERMINAL = new BlockPos(0, 1, 0);
     private static final long FUNDS = 50_000;
+
+    /**
+     * The end state says whether a descent changed anyone's dimension: a crossing in place (both levels the same) passes it by, and one
+     * that moved a player fails it before it looks at anything else. In the campaign world no crossing moves anyone (ADR 0061).
+     */
+    @GameTest
+    public void theEndStateFailsWhenACrossingMovedAPlayer(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerLevel campaign = TestLayers.level(server, 1);
+        MockPlayer mock = MockPlayers.join(helper, "end-state-moved");
+        try {
+            mock.teleportTo(campaign, new Vec3(X, TestLayers.worldY(1, 40), Z), 0, 0);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, campaign);
+            BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, campaign, 1, 2);
+            AssertionError inPlace = endStateFailure(server, pod);
+            if (inPlace instanceof M2SliceEndState.PlayerMoved) {
+                throw failure(helper, "a crossing in place counted as a move: %s", inPlace.getMessage());
+            }
+            BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, server.overworld(), 1, 2);
+            AssertionError moved = endStateFailure(server, pod);
+            if (!(moved instanceof M2SliceEndState.PlayerMoved)) {
+                throw failure(helper, "a crossing that moved a player passed: %s", moved);
+            }
+        } finally {
+            M2SliceEndState.forgetCrossings(mock.player().getUUID());
+            mock.leave();
+        }
+        helper.succeed();
+    }
+
+    /** The end state's failure for a world where nothing of the slice was done; null when it does not fail. */
+    private static @Nullable AssertionError endStateFailure(MinecraftServer server, PodEntity prospector) {
+        try {
+            M2SliceEndState.require(server, CharterId.random(), prospector);
+            return null;
+        } catch (AssertionError failure) {
+            return failure;
+        }
+    }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theScriptedSliceReachesItsEndState(GameTestHelper helper) {
