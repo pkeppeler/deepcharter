@@ -405,11 +405,10 @@ public class GiantFungusTest {
     }
 
     /**
-     * A parasol's stem is thick (#1218), not a stick: every row of it over the foot is at least three cells across both
-     * ways, a core with an arm on each side. Its foot flares: every cell within two of the foot, on the floor, is stem or
-     * flare. Two
-     * of the largest parasols and a great stalk on them (its yield, 90) still fall in one collapse, which lowers at most
-     * 2048 blocks ({@code StalkCollapse.MOST_BLOCKS}).
+     * A parasol's stem is thick (#1218), not a stick: every row of it over the foot is at least three cells across
+     * both ways, a core with an arm on each side. Its foot flares: every cell within two of the foot, on the floor, is
+     * stem or flare. Two of the largest parasols and a great stalk on them (its yield, 90) still fall in one collapse,
+     * which lowers at most 2048 blocks ({@code StalkCollapse.MOST_BLOCKS}).
      */
     @GameTest
     public void aParasolsStemIsThickAndFlaresAtItsFoot(GameTestHelper helper) {
@@ -778,9 +777,9 @@ public class GiantFungusTest {
     }
 
     /**
-     * A giant falls as a great stalk does ({@code StalkCollapse}): break the core of a parasol's thick stem low down and
-     * the stem above it comes down with its cap, while the arms beside the break, the flare and the glowcaps stand;
-     * break one spire of a cluster and it falls, and the others stand.
+     * A giant falls as a great stalk does ({@code StalkCollapse}): break the core of a parasol's thick stem low down
+     * and the stem above it comes down with its cap, while the arms beside the break, the flare and the glowcaps
+     * stand; break one spire of a cluster and it falls, and the others stand.
      *
      * <p>The collapse steps on scheduled ticks, which run only in a ticking chunk, and the spires stand 40 blocks off
      * the test, so both giants are grown once every chunk they span is entity-ticking.
