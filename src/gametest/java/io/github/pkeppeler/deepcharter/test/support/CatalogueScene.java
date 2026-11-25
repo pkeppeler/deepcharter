@@ -88,9 +88,14 @@ public final class CatalogueScene {
 
     /** The catalogue of the screen the client shows. */
     public static CataloguePanel panel(ClientGameTestContext context) {
-        return context.computeOnClient(client -> Objects.requireNonNull(
+        return context.computeOnClient(CatalogueScene::panelNow);
+    }
+
+    /** The catalogue of the screen the client shows, for a caller already on the client thread. */
+    public static CataloguePanel panelNow(Minecraft client) {
+        return Objects.requireNonNull(
                 CatalogueScreens.panelOf(Objects.requireNonNull(client.gui.screen(), "a screen is open")),
-                "the open screen has a catalogue"));
+                "the open screen has a catalogue");
     }
 
     /** Where the panels are, which must be shown (a window wide enough). */

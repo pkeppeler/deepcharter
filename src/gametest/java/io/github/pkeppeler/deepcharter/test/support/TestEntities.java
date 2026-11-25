@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
 
 /** Entities a test builds or looks up by hand, failing loud when the game has none. */
@@ -20,6 +21,13 @@ public final class TestEntities {
     /** A new {@code type} in {@code level} for {@code reason}, not yet added to the level. */
     public static <T extends Entity> T create(EntityType<T> type, Level level, EntitySpawnReason reason) {
         return Objects.requireNonNull(type.create(level, reason), () -> "no " + type + " was created");
+    }
+
+    /** As {@link #create}, for a mob that {@code Mob.checkDespawn} never removes however long a test idles (#1234). */
+    public static <T extends Mob> T mob(EntityType<T> type, Level level) {
+        T mob = create(type, level);
+        mob.setPersistenceRequired();
+        return mob;
     }
 
     /** The entity with this network id, which must be in {@code level}. */
