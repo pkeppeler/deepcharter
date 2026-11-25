@@ -19,9 +19,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param stepTextInset space between a step box's edge and its text
  * @param stepMaxLines most lines of a step's text; the last one ends in dots when it is cut
  * @param mapPad space between the chapter title's rule and the first row of steps
- * @param aheadGap space above the next chapter's title and above the redaction bars
- * @param aheadLabelGap distance from the next chapter's title to its steps
- * @param chapterLinkInset how far in from the last step's right edge the dashed link to the next chapter runs
+ * @param aheadGap space above the redaction bars and the note
  * @param arrowHeadSize length of each barb of an arrow head
  * @param dashOn drawn pixels of a dashed line
  * @param dashOff gap pixels of a dashed line
@@ -52,6 +50,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param cardBottomPad space below the last row of needed items
  * @param itemIconSize size of an item icon on the card
  * @param itemCountGap space between an item icon and its count
+ * @param anyCueGap space between an any-of slot's count and its "any" cue
+ * @param cycleTicks how long an any-of slot's icon shows each alternative
  * @param itemCountTop distance from the top of an item icon to its count's text
  * @param stampLeft distance from the text column's left edge to the centre of the COMPLETE or COMING SOON stamp
  * @param stampTop distance from the sheet's first line to the centre of that stamp
@@ -65,7 +65,6 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param toastWaitMillis how long a step-done popup waits for room before it gives up: on a GUI with no clear place for it, it
  *     waits, and its {@code toastMillis} do not run while it does
  * @param barsNoteGap space between the redaction bars and the margin note under them
- * @param chapterLinkTop space between the last step's bottom edge and the dashed link to the next chapter
  * @param dropLinkPercent where the black link from the row above drops to the bars, in percent of a step box's width
  * @param stampXPercent where the CLASSIFIED stamp's centre sits along the first bar, in percent of a step box's width
  * @param stampYOffset how far below the first bar's middle the CLASSIFIED stamp's centre sits
@@ -110,8 +109,6 @@ public record QuestMapTuning(
         int stepMaxLines,
         int mapPad,
         int aheadGap,
-        int aheadLabelGap,
-        int chapterLinkInset,
         int arrowHeadSize,
         int dashOn,
         int dashOff,
@@ -142,6 +139,8 @@ public record QuestMapTuning(
         int cardBottomPad,
         int itemIconSize,
         int itemCountGap,
+        int anyCueGap,
+        int cycleTicks,
         int itemCountTop,
         int stampLeft,
         int stampTop,
@@ -154,7 +153,6 @@ public record QuestMapTuning(
         int toastStaleMillis,
         int toastWaitMillis,
         int barsNoteGap,
-        int chapterLinkTop,
         int dropLinkPercent,
         int stampXPercent,
         int stampYOffset,
@@ -203,8 +201,6 @@ public record QuestMapTuning(
                 d.integer("stepMaxLines", 1),
                 d.integer("mapPad", 0),
                 d.integer("aheadGap", 0),
-                d.integer("aheadLabelGap", 0),
-                d.integer("chapterLinkInset", 0),
                 d.integer("arrowHeadSize", 0),
                 d.integer("dashOn", 1),
                 d.integer("dashOff", 0),
@@ -235,6 +231,8 @@ public record QuestMapTuning(
                 d.integer("cardBottomPad", 0),
                 d.integer("itemIconSize", 1),
                 d.integer("itemCountGap", 0),
+                d.integer("anyCueGap", 0),
+                d.integer("cycleTicks", 1),
                 d.integer("itemCountTop", 0),
                 d.integer("stampLeft", 0),
                 d.integer("stampTop", 0),
@@ -247,7 +245,6 @@ public record QuestMapTuning(
                 d.integer("toastStaleMillis", 1),
                 d.integer("toastWaitMillis", 1),
                 d.integer("barsNoteGap", 0),
-                d.integer("chapterLinkTop", 0),
                 d.integer("dropLinkPercent", 0),
                 d.integer("stampXPercent", 0),
                 d.integer("stampYOffset", 0),
