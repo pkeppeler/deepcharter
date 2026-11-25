@@ -76,7 +76,7 @@ public final class RepairMenu extends SlottedMenu {
     private final @Nullable ServerPlayer player;
 
     private final MirrorContainer view;
-    /** 1 while the type's prerequisite, if any, is repaired: the server sets it on each broadcast, the client reads it. */
+    /** 1 while the type's prerequisite, if any, is repaired: the server sets it on each broadcast, the client reads. */
     private final DataSlot unlocked = DataSlot.standalone();
     /** This menu put the last part in: once it closes (it is no longer valid), the terminal opens online. */
     private boolean repairedHere;
