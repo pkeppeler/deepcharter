@@ -474,9 +474,10 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             double shortestTick = expectSmooth(what, subject.frames(), drive);
             if (drive.steady() && judgeFloor) {
                 require(
-                        shortestTick >= MIN_TICK_SHARE * drive.speed(),
+                        DriveJudge.reaches(shortestTick, MIN_TICK_SHARE * drive.speed()),
                         what + ": the drawn pod covered only " + shortestTick
-                                + " blocks in one tick of a steady drive, under " + MIN_TICK_SHARE * drive.speed());
+                                + " blocks in one tick of a steady drive, under " + MIN_TICK_SHARE * drive.speed()
+                                + " (less the " + DriveJudge.POSITION_QUANTUM + " network position quantum)");
             }
         }
         if (late != null && late.recovers()) {
