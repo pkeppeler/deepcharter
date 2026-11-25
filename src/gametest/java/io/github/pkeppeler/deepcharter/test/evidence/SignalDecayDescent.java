@@ -107,6 +107,7 @@ final class SignalDecayDescent {
                 singleplayer.getServer().runOnServer(server -> {
                     ServerLevel one = TestLayers.level(server, 1);
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                    player.resetFallDistance();
                     player.setGameMode(GameType.SURVIVAL);
                     PodEntity pod = TestEntities.create(PodRegistry.typeOf(chassis), one);
                     pod.setPos(X + 0.5, START_Y, Z + 0.5);

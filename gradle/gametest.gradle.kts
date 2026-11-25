@@ -112,13 +112,15 @@ object GametestScan {
 
 	// After a far teleport only a one-tick ticket holds the player's new chunk until the player's own, throttled ticket lands; when the short one lapses first,
 	// the chunk is demoted and an entity added or seated there in that tick is hidden for seconds (#1345, #1352). A client GameTest, evidence scenario or test
-	// helper that teleports a player (`teleportTo` on anything but a pod) and then adds an entity (`addFreshEntity`) or seats one (`startRiding`) in one
-	// runOnServer, computeOnServer, serverDo or serverGet block has no wait between them: teleport in one block, call ClientWait.arrived, then add and seat in
-	// the next. A teleport that leaves no chunk cold (in place, into chunks the player's tickets already hold, or into forced chunks) carries the marker below,
-	// with a reason, on its statement or the comment line above it. Heuristic: a teleport or a seat inside a helper method the block calls is not seen.
+	// helper that teleports a player (`teleportTo` on anything but a pod, a receiver whose name ends in `pod` or `Pod`, such as `realPod()` or `pod[0]`) and
+	// then adds an entity (`addFreshEntity`) or seats one (`startRiding`) in one runOnServer, computeOnServer, serverDo or serverGet block has no wait between
+	// them: teleport in one block, call ClientWait.arrived, then add and seat in the next. A teleport that leaves no chunk cold (in place, into chunks the
+	// player's tickets already hold, or into forced chunks) carries the marker below, with a reason, on its statement or the comment line above it.
+	// Heuristic: a teleport or a seat inside a helper method the block calls is not seen, and the gate does not check that a wait sits between the two blocks,
+	// so a teleport block followed straight by a seat block passes.
 	private const val ARRIVED_MARKER = "// arrived-ok:"
 	private val stagingBlockCall = Regex("""\b(?:runOnServer|computeOnServer|serverDo|serverGet)\s*\(""")
-	private val teleportCall = Regex("""(\b\w*[pP]od\w*\s*(?:\(\s*\)\s*)?\.\s*)?\bteleportTo\s*\(""")
+	private val teleportCall = Regex("""(\b\w*[pP]od\s*(?:\(\s*\)|\[\s*\w+\s*])?\s*\.\s*)?\bteleportTo\s*\(""")
 	private val entityArrival = Regex("""\b(?:startRiding|addFreshEntity)\s*\(""")
 
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the

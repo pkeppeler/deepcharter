@@ -45,6 +45,7 @@ public class PodTeleportClientTest implements FabricClientGameTest {
         singleplayer.getServer().runOnServer(server -> {
             pod.teleportTo(0, 0, 0);
             rig.realPod().teleportTo(0, 0, 0);
+            pod[0].teleportTo(0, 0, 0);
             player.startRiding(pod);
             one.addFreshEntity(other);
         });
@@ -112,6 +113,7 @@ public class StagingNotes {
 VIOLATIONS = {
     "startRiding": ("player.teleportTo(one, 0, 0, 0, Set.of(), 0f, 0f, true);\n            player.startRiding(pod);", 5),
     "addFreshEntity": ("player.teleportTo(one, 0, 0, 0, Set.of(), 0f, 0f, true);\n            one.addFreshEntity(pod);", 5),
+    "a player named after a pod": ("podPilot.teleportTo(one, 0, 0, 0, Set.of(), 0f, 0f, true);\n            podPilot.startRiding(pod);", 5),
     "a mock teleport": ("two.mock().teleportTo(level, at, 0, 0);\n            level.addFreshEntity(pod);", 5),
     "a wrapped teleport": ("player.teleportTo(\n                one, 0, 0, 0, Set.of(), 0f, 0f, true);\n            player.startRiding(pod);", 5),
     "a seat past other statements": (
