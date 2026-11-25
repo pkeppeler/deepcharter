@@ -18,6 +18,7 @@ Code lives under `io.github.pkeppeler.deepcharter`. Detail beyond this file:
 - `just check` (`./gradlew check`, a subset of `./gradlew build`); `just audit` (osv-scanner; needs it on PATH). `audit.yml` runs it weekly and on PRs touching dependency files; a lapsed `ignoreUntil` or a new advisory fails the weekly run.
 - Formatting: palantir-java-format via Spotless owns all Java formatting (4-space indent, 120 columns); `spotlessCheck` is part of `check`. Run `just fmt` (`./gradlew spotlessApply`) before handing work back. The Kotlin DSL files stay tab-indented and unformatted.
 - Fast test command (server GameTests): `./gradlew runGameTest`
+- A change to `gradle/*.kts`, `build.gradle.kts` or `settings.gradle.kts` runs `./gradlew check -x runGameTest` twice with the configuration cache on (no `--no-configuration-cache`: the first run stores the entry, the second reuses it), because CI uses it and a task action that captures a script-level `val` fails only there. The pre-push hook's compile step already runs with it on.
 - One server GameTest, or a prefix: `tools/gametest.sh '<test_id or prefix*>'`
 - Server suite in reverse name order (leak check): `./gradlew runGameTest -PgametestOrder=reverse`
 - One client test class: `tools/gametest.sh --client <filter>` or `./gradlew runClientGameTest -PclientTests=<filter>`

@@ -48,28 +48,32 @@ val blankLiterals: (String) -> String = { text ->
 extra["blankLiterals"] = blankLiterals
 
 // The code of each line of `lines`, trimmed: `//` and block comments are cut out, an open block comment carried to the next line.
-val codeLines: (List<String>) -> List<String> = { lines ->
-	var inBlock = false
-	lines.map { l ->
-		val code = StringBuilder()
-		var i = 0
-		while (i < l.length) {
-			if (inBlock) {
-				val end = l.indexOf("*/", i)
-				if (end < 0) i = l.length else { inBlock = false; i = end + 2 }
-			} else if (l.startsWith("//", i)) {
-				i = l.length
-			} else if (l.startsWith("/*", i)) {
-				inBlock = true
-				i += 2
-			} else {
-				code.append(l[i])
-				i++
+// An object, not a script-level val: a task action that captured a val would capture the script, which the configuration cache cannot store.
+object CodeLines {
+	fun of(lines: List<String>): List<String> {
+		var inBlock = false
+		return lines.map { l ->
+			val code = StringBuilder()
+			var i = 0
+			while (i < l.length) {
+				if (inBlock) {
+					val end = l.indexOf("*/", i)
+					if (end < 0) i = l.length else { inBlock = false; i = end + 2 }
+				} else if (l.startsWith("//", i)) {
+					i = l.length
+				} else if (l.startsWith("/*", i)) {
+					inBlock = true
+					i += 2
+				} else {
+					code.append(l[i])
+					i++
+				}
 			}
+			code.toString().trim()
 		}
-		code.toString().trim()
 	}
 }
+val codeLines: (List<String>) -> List<String> = { lines -> CodeLines.of(lines) }
 extra["codeLines"] = codeLines
 
 // A formatter (palantir-java-format) wraps a long statement over several lines and moves a trailing `// <marker>:` comment to the
@@ -80,7 +84,7 @@ extra["codeLines"] = codeLines
 // `lines` come from blankLiterals, so a `//` or `/*` inside a literal is already gone and cannot pass for a comment. The walk is
 // capped at 12 lines each way, so a marker never reaches far.
 val markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean = { lines, line, isMarker ->
-	val codes = codeLines(lines)
+	val codes = CodeLines.of(lines)
 	fun endsStatement(i: Int): Boolean = codes[i].let { it.endsWith(";") || it.endsWith("{") || it.endsWith("}") }
 	var top = line
 	while (top > 0 && line - top < 12) {
