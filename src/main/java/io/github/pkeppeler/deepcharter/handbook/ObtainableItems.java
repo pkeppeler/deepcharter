@@ -81,7 +81,8 @@ public final class ObtainableItems {
     /**
      * Whether every ingredient of {@code recipe} takes an obtainable item (a tag needs one member, not all) and every
      * item it makes is obtainable. A special recipe (map cloning, dyeing) names neither and is kept: what it takes is
-     * not obtainable either.
+     * not obtainable either. The station is not checked: a kept recipe whose station the world lacks crafts nothing,
+     * and the gate's derivation, which does need the station, lists no item that only such a recipe makes.
      */
     private static boolean keeps(Recipe<?> recipe, List<Holder<Item>> obtainable) {
         for (Ingredient ingredient : recipe.placementInfo().ingredients()) {

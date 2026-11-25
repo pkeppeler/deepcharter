@@ -26,7 +26,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * vanilla's included, so none of them crafts, unlocks or reaches a recipe book (ADR 0093). The constructor
  * ({@code <init>}) builds the recipe map before the reloaded tags are bound to the items, so the
  * {@code RecipeMap.create} call there only keeps the recipe registry, and {@code finalizeRecipeLoading}, which runs
- * once the tags are bound and before anything reads the recipes, builds the map again without those recipes.
+ * once the tags are bound and before the server crafts, sends or indexes a recipe, builds the map again without those
+ * recipes. Fabric's recipe API copies the map at the end of the constructor, so its
+ * {@code FabricRecipeManager.getSynchronizedRecipes()} still holds the left-out recipes (ADR 0093).
  */
 @Mixin(RecipeManager.class)
 public abstract class RecipeManagerMixin {

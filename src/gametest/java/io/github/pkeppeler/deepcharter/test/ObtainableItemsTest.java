@@ -23,12 +23,14 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -81,7 +83,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.WeatheringCopper;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.carver.WorldCarver;
 import net.minecraft.world.level.levelgen.feature.Feature;
@@ -275,18 +276,24 @@ public class ObtainableItemsTest {
             }
         }
         ServerLevel wrecks = TestLayers.level(helper, StructureKind.WRECK.layer());
-        LayerStructures.prospector(wrecks)
-                .ifPresent(site ->
-                        sites.add(new Site(wrecks, TestLayers.band(wrecks, StructureKind.WRECK.layer()), site, true)));
+        Optional<StructureSite> prospector = LayerStructures.prospector(wrecks);
+        expect(helper, prospector.isPresent(), "the layer of wrecks has no Prospector site");
+        sites.add(
+                new Site(wrecks, TestLayers.band(wrecks, StructureKind.WRECK.layer()), prospector.orElseThrow(), true));
+        // Loaded on the worker threads; a synchronous getChunk here would hold the server thread (#1016).
         for (Site site : sites) {
             for (var chunk : LayerStructuresTest.chunksOf(site.site())) {
-                site.level().getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                FarChunks.force(helper, site.level(), chunk.x(), chunk.z());
             }
         }
         FarChunks.Deadline deadline = FarChunks.deadline();
         TestTicks.each(helper, () -> {
             List<String> standing = new ArrayList<>();
             for (Site site : sites) {
+                if (!LayerStructuresTest.loaded(site.level(), site.site())) {
+                    standing.add(site.site().kind() + " not loaded yet");
+                    continue;
+                }
                 List<String> unmet = LayerStructuresTest.unmet(
                         site.level(),
                         site.band().minY(),
@@ -354,7 +361,7 @@ public class ObtainableItemsTest {
 
     /** Every block in the site's bounds now. */
     private static Set<Block> blocksIn(Site site) {
-        Set<Block> found = new HashSet<>();
+        Set<Block> found = new LinkedHashSet<>();
         BoundingBox box = site.site().bounds();
         for (BlockPos pos :
                 BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
@@ -424,7 +431,7 @@ public class ObtainableItemsTest {
                         biome.key().identifier());
             }
         });
-        Set<Block> blocks = new HashSet<>();
+        Set<Block> blocks = new LinkedHashSet<>();
         encoded.forEach(json -> collectBlocks(json, blocks));
         return blocks;
     }
@@ -444,9 +451,9 @@ public class ObtainableItemsTest {
 
     /** The palette of every structure file of the colony. */
     private static Set<Block> colonyBlocks(MinecraftServer server) {
-        Set<Block> blocks = new HashSet<>();
-        Map<Identifier, Resource> files = server.getResourceManager()
-                .listResources("structure/colony", path -> path.getPath().endsWith(".nbt"));
+        Set<Block> blocks = new LinkedHashSet<>();
+        Map<Identifier, Resource> files = new TreeMap<>(server.getResourceManager()
+                .listResources("structure/colony", path -> path.getPath().endsWith(".nbt")));
         HolderLookup<Block> lookup = server.registryAccess().lookupOrThrow(Registries.BLOCK);
         files.forEach((path, resource) -> {
             try (InputStream in = resource.open()) {
@@ -668,7 +675,7 @@ public class ObtainableItemsTest {
          * transform is enough.
          */
         private void transforms() {
-            Map<Holder<BlockTransformer>, ItemStack> byTransform = new java.util.LinkedHashMap<>();
+            Map<Holder<BlockTransformer>, ItemStack> byTransform = new LinkedHashMap<>();
             for (Item item : obtainable) {
                 ItemStack stack = new ItemStack(item);
                 Holder<BlockTransformer> transform = stack.get(DataComponents.BLOCK_TRANSFORMER);

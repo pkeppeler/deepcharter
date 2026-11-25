@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -405,7 +407,8 @@ public class FuelPumpTest {
 
     /**
      * The crops biofuel takes never grow in the campaign world, so its recipe is not loaded (ADR 0093) and four of them
-     * craft nothing. #1288 gives it an ingredient the world yields and makes this a crafting test again.
+     * craft nothing. If #1288 gives it an ingredient the world yields, this becomes a crafting test again, with the
+     * three-crop and four-stick cases it had.
      */
     @GameTest
     public void biofuelIsNotCraftedFromCropsTheWorldLacksAndRefuels(GameTestHelper helper) {
@@ -414,25 +417,7 @@ public class FuelPumpTest {
             ItemStack made = craft(
                     helper,
                     List.of(new ItemStack(crop), new ItemStack(crop), new ItemStack(crop), new ItemStack(crop)));
-            if (!made.isEmpty()) {
-                throw helper.assertionException(
-                        "four %s should craft nothing, the world has no crops; got %s", crop, made);
-            }
-        }
-        ItemStack three = craft(
-                helper, List.of(new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT)));
-        if (!three.isEmpty()) {
-            throw helper.assertionException("three crops should craft nothing, got %s", three);
-        }
-        ItemStack sticks = craft(
-                helper,
-                List.of(
-                        new ItemStack(Items.STICK),
-                        new ItemStack(Items.STICK),
-                        new ItemStack(Items.STICK),
-                        new ItemStack(Items.STICK)));
-        if (!sticks.isEmpty()) {
-            throw helper.assertionException("four sticks are not crops, got %s", sticks);
+            expect(helper, made.isEmpty(), "four %s should craft nothing, the world has no crops; got %s", crop, made);
         }
 
         var litres = PodFuelItems.litresOf(new ItemStack(FuelRegistry.BIOFUEL));

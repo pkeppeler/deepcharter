@@ -235,8 +235,9 @@ public class LayerStructuresTest {
                         CELL,
                         conduit);
                 sites.add(site);
+                // Loaded on the worker threads; a synchronous getChunk here would hold the server thread (#1016).
                 for (ChunkPos chunk : chunksOf(site)) {
-                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                    FarChunks.force(helper, level, chunk.x(), chunk.z());
                 }
             }
         }
@@ -249,6 +250,10 @@ public class LayerStructuresTest {
                 ServerLevel level = TestLayers.level(helper, site.kind().layer());
                 // The chunk states are read first and without loading: reading a block loads an unloaded chunk.
                 String chunks = chunkStates(level, site);
+                if (!loaded(level, site)) {
+                    failing.add(String.format("%s: chunks not loaded yet: %s", site.kind(), chunks));
+                    continue;
+                }
                 Map<Block, Integer> found = census(level, site);
                 List<String> unmet = unmet(level, site, found);
                 if (!unmet.isEmpty()) {
@@ -293,6 +298,12 @@ public class LayerStructuresTest {
             }
         }
         return chunks;
+    }
+
+    /** Whether every chunk the site's bounds touch is loaded, read without loading any. */
+    static boolean loaded(ServerLevel level, StructureSite site) {
+        return chunksOf(site).stream()
+                .allMatch(chunk -> level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null);
     }
 
     /** How many of each block the site's bounds hold now. */
