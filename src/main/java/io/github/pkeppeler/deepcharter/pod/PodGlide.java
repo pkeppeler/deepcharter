@@ -141,11 +141,12 @@ final class PodGlide extends AbstractInterpolationHandler {
                 return;
             }
             step = distance * tuning.settleShare();
-        } else if (!snapping && moving && coastDirection != null && distance < speed) {
-            // A pod that has coasted sits within a tick of its target, behind it by the rounding of the moves it
-            // follows. Arriving would draw less than the speed the server reports (nothing at all, for a gap of a
-            // rounding step), a hitch in a drive that is going on at speed. It draws the whole tick, and the part past
-            // the target counts against the coast's reach like any other.
+        } else if (!snapping && moving && advancing && coastDirection != null && distance < speed) {
+            // A pod that has coasted sits within a tick of its target, and the moves keep advancing it. Arriving would
+            // draw less than the speed the server reports (nothing at all, when the gap is a rounding step of the
+            // moves), a hitch in a drive that goes on at speed. It draws the whole tick, and the part past the target
+            // counts against the coast's reach like any other. A move that does not advance (a pushed pod the server
+            // slows faster than the speed it reported) arrives instead: the pod is not dead-reckoned past it.
             if (coast(reported)) {
                 turn(share);
                 remaining = Math.max(0, remaining - 1);

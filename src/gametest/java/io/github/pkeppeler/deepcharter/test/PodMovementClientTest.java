@@ -35,6 +35,20 @@ public class PodMovementClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodMovementClientTest.class);
     private static final double MOCK_OFFSET_BLOCKS = 8;
 
+    /** Blocks a tick the watched pod coasts at before the push: slow, so it is still near its target when the push comes. */
+    private static final double PRE_PUSH_SPEED = 0.1;
+
+    /** Blocks a tick a push reports, as a knockback or a tow release does. */
+    private static final double PUSHED_SPEED = 3.0;
+
+    /** Blocks each move of the pushed pod advances it: under half of {@link #PUSHED_SPEED}, as a server that slows the pod faster than its last reported speed. */
+    private static final double PUSHED_ADVANCE = 1.0;
+
+    private static final int PUSHED_MOVES = 6;
+
+    /** Blocks a pushed pod may be drawn past where the server put it: within PodGlide's arrival, so none. */
+    private static final double PUSHED_PAST_TOLERANCE = 1e-4;
+
     /** Seat the real player in a new pod, and the mock in another pod beside it. Returns the mock pod's entity id. */
     public static int mountBoth(TwoPlayerServer two) {
         return two.server().computeOnServer(server -> {
@@ -94,6 +108,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity
                             && ClientLight.clientLevel(client).getEntity(mockPodId) != null);
             context.waitTicks(10);
+            expectPushedCoastedPodStaysBehindItsTarget(context, mockPodId);
 
             int ownPodId = context.computeOnClient(
                     client -> TestEntities.vehicle(ClientSession.player(client)).getId());
@@ -136,6 +151,57 @@ public class PodMovementClientTest implements FabricClientGameTest {
                             + " blocks, over the " + MAX_LAG_BLOCKS + " bound (worst during the drive: " + worstLag
                             + ")");
         }
+    }
+
+    /**
+     * A pod that has coasted and is then pushed (a knockback, a tow release) reports a speed its moves do not keep up with: each move
+     * advances the target by less than half of it. The client draws it to each target and never dead-reckons past one at the reported
+     * speed (ADR 0082). Driven on the client's copy of the watched pod, which the server holds still, as the moves a server would send.
+     */
+    private static void expectPushedCoastedPodStaysBehindItsTarget(ClientGameTestContext context, int podId) {
+        Vec3 start = context.computeOnClient(client ->
+                TestEntities.require(ClientLight.clientLevel(client), podId).position());
+        double past = Double.NEGATIVE_INFINITY;
+        try {
+            context.runOnClient(client -> {
+                Entity pod = TestEntities.require(ClientLight.clientLevel(client), podId);
+                pod.setDeltaMovement(0, 0, PRE_PUSH_SPEED);
+                pod.moveOrInterpolateTo(start, pod.getYRot(), pod.getXRot());
+            });
+            ClientWait.until(
+                    context,
+                    "the watched pod coasting past its target",
+                    client -> TestEntities.require(ClientLight.clientLevel(client), podId)
+                                    .getZ()
+                            > start.z);
+            for (int move = 1; move <= PUSHED_MOVES; move++) {
+                Vec3 target = start.add(0, 0, move * PUSHED_ADVANCE);
+                context.runOnClient(client -> {
+                    Entity pod = TestEntities.require(ClientLight.clientLevel(client), podId);
+                    pod.setDeltaMovement(0, 0, PUSHED_SPEED);
+                    pod.moveOrInterpolateTo(target, pod.getYRot(), pod.getXRot());
+                });
+                context.waitTick();
+                past = Math.max(
+                        past,
+                        context.computeOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), podId)
+                                        .getZ()
+                                - target.z));
+            }
+        } finally {
+            context.runOnClient(client -> {
+                Entity pod = TestEntities.require(ClientLight.clientLevel(client), podId);
+                pod.setDeltaMovement(Vec3.ZERO);
+                pod.moveOrInterpolateTo(start, pod.getYRot(), pod.getXRot());
+            });
+        }
+        LOGGER.info(
+                "PodMovementClientTest: a pushed pod that had coasted: drawn {} blocks past its target at most (allowed {})",
+                past,
+                PUSHED_PAST_TOLERANCE);
+        require(
+                past <= PUSHED_PAST_TOLERANCE,
+                "a pushed pod that had coasted was drawn " + past + " blocks past where the server put it");
     }
 
     /** Distance between the client's pod and the server's pod now. The server side runs between two client ticks. */
