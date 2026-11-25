@@ -49,8 +49,8 @@ import net.minecraft.world.phys.AABB;
 final class StalkCollapse {
     /** The most blocks one collapse lowers, so that no chain of touching great stalks makes a step cost a lot. */
     private static final int MOST_BLOCKS = 2048;
-    // The most that can hang together: two parasols whose caps touch across a chunk edge (the largest of 4000 rolls
-    // per zone is 535 blocks, flare and twin included) and a great stalk (at most 90, its yield, tested) on them.
+    // The most that can hang together: two parasols whose caps touch across a chunk edge and a great stalk (at most
+    // 90, its yield, tested) on them. GiantFungusTest.aParasolsStemIsThickAndFlaresAtItsFoot holds that under this.
 
     private static final Direction[] JOINS = {
         Direction.UP, Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
