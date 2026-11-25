@@ -105,14 +105,17 @@ public class SpecSheetScenario extends EvidenceScenario {
             menu.clicked(0, 0, ContainerInput.PICKUP, player);
             menu.setCarried(ItemStack.EMPTY);
         });
-        ClientWait.until(
-                context,
-                "the slip over the catalogue",
-                client -> DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics)).stream()
-                        .anyMatch(text -> text.text()
-                                .contains(new ItemStack(biofuel).getHoverName().getString())));
-        context.waitTicks(SLIP_SETTLE_TICKS);
+        // The scenario hides the HUD, and a hidden HUD does not run the toasts: the slip is awaited with it shown.
         ClientChecks.withHudShown(context, () -> {
+            ClientWait.until(
+                    context,
+                    "the slip over the catalogue",
+                    client -> DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics)).stream()
+                            .anyMatch(text -> text.text()
+                                    .contains(new ItemStack(biofuel)
+                                            .getHoverName()
+                                            .getString())));
+            context.waitTicks(SLIP_SETTLE_TICKS);
             frame(context);
             screenshot(context, "first-craft-slip");
         });
@@ -127,13 +130,14 @@ public class SpecSheetScenario extends EvidenceScenario {
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         ClientWait.until(context, "the sheet put away", client -> client.gui.screen() == null);
         CatalogueScene.openInventory(context);
+        CataloguePanel reopened = CatalogueScene.panel(context);
         context.runOnClient(client -> client.gui.toastManager().clear());
 
         // The longest sheet there is, a part with a stock tier and six bought ones, the way a player looks one up
         // later.
         Item drillPart = ComponentItems.item(ComponentTrack.DRILL);
         context.runOnClient(client -> SpecSheetOpener.show(drillPart));
-        ClientWait.until(context, "the drill part's sheet", client -> panel.sheetItem() == drillPart);
+        ClientWait.until(context, "the drill part's sheet", client -> reopened.sheetItem() == drillPart);
         hold(context);
         screenshot(context, "sheet-tiers");
     }
