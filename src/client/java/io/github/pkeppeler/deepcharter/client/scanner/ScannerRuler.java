@@ -70,8 +70,8 @@ final class ScannerRuler {
     /**
      * Draws the ruler over the cells of {@code slice}, {@code cell} GUI pixels each, the top left cell at
      * ({@code left}, {@code top}). Only the part from {@code visibleLeft} across and from {@code visibleTop} to
-     * {@code visibleBottom} shows (the cockpit's window cuts a slice larger than it), so the ruler sits at the left edge
-     * of that part and a label that would cross its top or bottom is left out.
+     * {@code visibleBottom} shows (the cockpit's window cuts a slice larger than it), so the ruler sits at the left
+     * edge of that part and a label that would cross its top or bottom is left out.
      */
     static void draw(
             GuiGraphicsExtractor graphics,
