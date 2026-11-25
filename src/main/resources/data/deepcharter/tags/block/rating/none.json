@@ -29,6 +29,9 @@
     "deepcharter:cicatrium_ore",
     "deepcharter:phonograph",
     "deepcharter:colony_phonograph",
+    "deepcharter:company_horn",
+    "deepcharter:wreck_phonograph",
+    "deepcharter:company_clock",
     "deepcharter:glowcap"
   ]
 }

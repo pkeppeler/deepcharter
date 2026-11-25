@@ -22,7 +22,7 @@
   "knobSize": 14,
   "switchWidth": 16,
   "switchHeight": 8,
-  "switchPad": 3,
+  "switchPad": 2,
   "counterWidth": 30,
   "casingColor": "#465850",
   "casingLightColor": "#82988B",
@@ -75,11 +75,22 @@
   "nameStripPad": 3,
   "nameStripGap": 2,
   "caretHeight": 3,
+  "tableIconSize": 8,
 
   "sheetWidth": 210,
   "sheetHeight": 212,
   "sheetMinHeight": 90,
   "sheetGap": 4,
   "sheetLineGap": 1,
-  "sheetValueGap": 6
+  "sheetValueGap": 6,
+
+  "buttonWidth": 20,
+  "buttonHeight": 18,
+  "buttonCell": 2,
+  "buttonCellGap": 1,
+  "buttonColumns": 3,
+  "buttonRows": 2,
+
+  "ghostColor": "#5000E5A0",
+  "missingColor": "#90FF2A20"
 }

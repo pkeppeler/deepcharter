@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -289,15 +290,23 @@ public class CampaignContentTest {
             unmet.add(where + (famous ? " is not the famous Prospector" : " holds the famous Prospector"));
         }
         int lanterns = 0;
+        int phonographs = 0;
         BoundingBox box = site.bounds();
         for (BlockPos pos :
                 BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
             if (level.getBlockState(pos).is(Blocks.LANTERN)) {
                 lanterns++;
             }
+            if (level.getBlockState(pos).is(PhonographRegistry.WRECK_PHONOGRAPH)) {
+                phonographs++;
+            }
         }
         if (lanterns != (famous ? 1 : 0)) {
             unmet.add(where + " has " + lanterns + " lanterns");
+        }
+        // The cabin phonograph (#861) is the story bay's alone.
+        if (phonographs != (famous ? 1 : 0)) {
+            unmet.add(where + " has " + phonographs + " cabin phonographs");
         }
     }
 

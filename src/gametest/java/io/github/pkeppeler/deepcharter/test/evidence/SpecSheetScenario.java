@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetOpener;
+import io.github.pkeppeler.deepcharter.colony.ColonyRations;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
@@ -26,18 +27,17 @@ import net.minecraft.world.item.Items;
 
 /**
  * Evidence scenario "m2-spec-sheet" for #848: the scanner unit's spec sheet opened from the recipe console's SPEC SHEET button (still
- * {@code sheet-open}), then the sheet that pops up by itself the first time the player crafts biofuel, taken from four wheat in the
- * inventory's grid (still {@code first-craft-popup}), then the longest sheet there is, a part's, looked up by hand (still
- * {@code sheet-tiers}). The craft is the server's real crafting path, so the pop-up is what a player
- * sees, not a fixture.
+ * {@code sheet-open}), then the sheet that pops up by itself the first time the player crafts biofuel, taken from three
+ * stalk mash in the inventory's grid (still {@code first-craft-popup}), then the longest sheet there is, a part's,
+ * looked up by hand (still {@code sheet-tiers}). The craft is the server's real crafting path, so the pop-up is what a
+ * player sees, not a fixture.
  */
 public class SpecSheetScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
-    private static final int LEFT_MOUSE = 0;
     /** The advancement toasts of the first items held, which sit over the top of the screen, fade by now. */
     private static final int TOAST_TICKS = 60;
-    /** The inventory's crafting grid is 2 x 2: slots 1 to 4, the result is slot 0. */
-    private static final int GRID_SLOTS = 4;
+    /** The inventory's crafting grid is 2 x 2: slots 1 to 4, the result is slot 0. Biofuel takes three stalk mash. */
+    private static final int MASH_PER_BIOFUEL = 3;
 
     @Override
     protected String name() {
@@ -78,7 +78,7 @@ public class SpecSheetScenario extends EvidenceScenario {
         context.waitTicks(2);
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         CatalogueScene.hover(context, layout.card().spec());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         ClientWait.until(
                 context, "the scanner unit's sheet", client -> panel.sheetItem() == ScannerRegistry.SCANNER_UNIT);
         CatalogueScene.parkCursor(context, layout);
@@ -87,13 +87,13 @@ public class SpecSheetScenario extends EvidenceScenario {
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         ClientWait.until(context, "the sheet put away", client -> panel.sheetItem() == null);
 
-        // Four wheat in the grid make biofuel, the first thing this player crafts that is Company issue.
+        // Three stalk mash in the grid make biofuel, the first thing this player crafts that is Company issue.
         Item biofuel = BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "biofuel"));
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             InventoryMenu menu = player.inventoryMenu;
-            for (int slot = 1; slot <= GRID_SLOTS; slot++) {
-                menu.getSlot(slot).set(new ItemStack(Items.WHEAT));
+            for (int slot = 1; slot <= MASH_PER_BIOFUEL; slot++) {
+                menu.getSlot(slot).set(new ItemStack(ColonyRations.STALK_MEAL));
             }
             menu.clicked(0, 0, ContainerInput.PICKUP, player);
             menu.setCarried(ItemStack.EMPTY);

@@ -31,6 +31,24 @@ final class SpecSheetView {
 
     private SpecSheetView() {}
 
+    /** What a click on a placed sheet does. */
+    enum Click {
+        /** The Recipes link: show the item's recipes in the catalogue. */
+        RECIPES,
+        /** The close switch, or anywhere off the sheet's console: put the sheet away. */
+        CLOSE,
+        /** Anywhere else on the console: nothing, so a stray click never loses the sheet. */
+        NONE
+    }
+
+    /** What a click at ({@code x}, {@code y}) does to a sheet laid out as {@code layout}. */
+    static Click clickAt(SpecSheetLayout layout, double x, double y) {
+        if (layout.recipes().contains(x, y)) {
+            return Click.RECIPES;
+        }
+        return layout.close().contains(x, y) || !layout.casing().contains(x, y) ? Click.CLOSE : Click.NONE;
+    }
+
     /** How a planned line is drawn. */
     enum Style {
         BRIGHT,
@@ -43,13 +61,13 @@ final class SpecSheetView {
     /**
      * Everything a sheet draws as text.
      *
-     * @param title the item's name, in capitals
+     * @param title the item's name, in capitals, a line for each the width takes
      * @param cell the item's cell
      * @param lines the lines under the title
      * @param usedBottom the y under the last of the text
      * @param complete whether every line of the sheet fits
      */
-    record Plan(String title, Rect cell, List<Line> lines, int usedBottom, boolean complete) {}
+    record Plan(List<String> title, Rect cell, List<Line> lines, int usedBottom, boolean complete) {}
 
     /** A sheet placed on a screen: the console, and the text on its glass. */
     record Placed(SpecSheetLayout layout, Plan plan) {}
@@ -69,12 +87,16 @@ final class SpecSheetView {
     static Plan plan(SpecSheet sheet, SpecSheetLayout layout, CatalogueLook look, Font font) {
         boolean complete = true;
         int width = layout.right() - layout.left();
-        String title =
-                fit(font, new ItemStack(sheet.item()).getHoverName().getString().toUpperCase(Locale.ROOT), width);
+        List<String> title = TextWrap.lines(
+                text -> termWidth(font, text),
+                new ItemStack(sheet.item()).getHoverName().getString().toUpperCase(Locale.ROOT),
+                width);
         List<Line> lines = new ArrayList<>();
         int pitch = font.lineHeight + look.sheetLineGap();
 
-        Rect cell = new Rect(layout.left(), layout.bodyTop(), look.slotSize(), look.slotSize());
+        // Each line of the title past the first pushes the body down.
+        int bodyTop = layout.bodyTop() + (title.size() - 1) * font.lineHeight;
+        Rect cell = new Rect(layout.left(), bodyTop, look.slotSize(), look.slotSize());
         int kindX = cell.right() + look.sheetGap();
         lines.add(new Line(
                 fit(font, sheet.kind().getString(), layout.right() - kindX),
@@ -120,7 +142,8 @@ final class SpecSheetView {
             SpecSheet sheet,
             Plan plan,
             int mouseX,
-            int mouseY) {
+            int mouseY,
+            boolean recipesActive) {
         CatalogueLook look = CatalogueLook.current();
         CrtTuning crt = CrtTuning.current();
         PanelLook panel = PanelLook.current();
@@ -128,7 +151,7 @@ final class SpecSheetView {
         CatalogueHardware.body(graphics, look, layout.casing(), layout.glass(), List.of());
         graphics.nextStratum();
 
-        CrtDraw.header(graphics, font, CrtText.terminal(plan.title()), layout.left(), layout.titleY(), layout.right());
+        CatalogueHardware.title(graphics, font, plan.title(), layout.left(), layout.titleY(), layout.right());
         Rect cell = plan.cell();
         CrtDraw.border(graphics, cell.x(), cell.y(), cell.right(), cell.bottom(), crt.phosphorColor());
         graphics.item(new ItemStack(sheet.item()), cell.x() + look.iconInset(), cell.y() + look.iconInset());
@@ -144,6 +167,17 @@ final class SpecSheetView {
         graphics.nextStratum();
         CatalogueHardware.glassFront(graphics, look, panel, layout.glass());
         graphics.nextStratum();
+        CatalogueHardware.legendSwitch(
+                graphics,
+                font,
+                look,
+                panel,
+                crt,
+                layout.recipes(),
+                Component.translatable("deepcharter.catalogue.sheet.recipes").getString(),
+                false,
+                recipesActive,
+                layout.recipes().contains(mouseX, mouseY));
         CatalogueHardware.legendSwitch(
                 graphics,
                 font,

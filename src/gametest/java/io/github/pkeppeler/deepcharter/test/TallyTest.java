@@ -78,6 +78,8 @@ public class TallyTest {
     private static final int FIRST_SLOT_X = 6808;
     private static final int SLOT_Z_SPACING = 64;
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 100);
+    /** (#1237) A column no other test uses, farther than {@link #DESPAWN_BLOCKS} from every arena slot. */
+    private static final BlockPos DESPAWN_SITE = new BlockPos(52_000, FLOOR_Y, 52_000);
     /** The trail (600 ticks), with the flight to the mark (measured up to 83 ticks) and a margin for a loaded runner; an annotation needs a constant, so a test pins it to the tuning. */
     private static final int CLAMP_BUDGET_TICKS = 760;
     /** The hold (60 ticks), the flight away (40) and a margin. */
@@ -158,7 +160,7 @@ public class TallyTest {
                     holder.player().getInventory().add(OreRegistry.stack(OreType.IRONIUM));
                 }
             }
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
             tally.setPos(Vec3.atBottomCenterOf(origin.west(HALF - 1).above(2)));
             level.addFreshEntity(tally);
             return new Arena(level, origin, pod, podRide, holder, tally, survey(level, origin), helper.getTick());
@@ -494,7 +496,7 @@ public class TallyTest {
         BlockPos origin = slot(4);
         TestTicks.each(helper, () -> {});
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
             tally.setNoAi(true);
             tally.setPos(Vec3.atBottomCenterOf(origin.above(30)));
             level.addFreshEntity(tally);
@@ -729,6 +731,7 @@ public class TallyTest {
                 || TUNING.podSampleTicks() + TUNING.leaveTicks() + 60 > SAMPLE_BUDGET_TICKS) {
             throw failure(helper, "the tests' tick budgets do not cover the tuning %s", TUNING);
         }
+        // Never added to a level, so the game never checks it for despawn.
         var inside = TestEntities.create(CreatureRegistry.TALLY, helper.getLevel());
         inside.setPos(casing.getX() + 0.5 + range, casing.getY(), casing.getZ() + 0.5 - range);
         if (!Tallies.nearCasing(inside, casing)) {
@@ -755,7 +758,7 @@ public class TallyTest {
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(Vec3.atBottomCenterOf(at));
             level.addFreshEntity(pod);
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
             tally.setNoAi(true);
             tally.setPos(Vec3.atBottomCenterOf(at.east(2)));
             level.addFreshEntity(tally);
@@ -1043,6 +1046,50 @@ public class TallyTest {
             }
         }
         helper.succeed();
+    }
+
+    /**
+     * (#1237) A Tally despawns like any monster ({@code removeWhenFarAway} is true), so a test that leaves one standing
+     * builds it with {@code TestEntities.mob}. The only player is more than 128 blocks off, where
+     * {@code Mob.checkDespawn} removes a mob at once: a plain {@code create} Tally goes, a persistent one stays. The
+     * site is more than 128 blocks from every other test's arena, whose players would otherwise be the nearest.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
+    public void aTallyTheTestBuildsWithMobIsNotDespawnedByTheGame(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = DESPAWN_SITE;
+        TestTicks.each(helper, () -> {});
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            MockPlayer far = MockPlayers.join(helper, "despawn-bystander");
+            // GameTest players are creative, and the despawn check looks past a creative player.
+            far.player().setGameMode(GameType.SURVIVAL);
+            double apart = far.player().position().distanceTo(Vec3.atCenterOf(origin));
+            if (apart <= DESPAWN_BLOCKS) {
+                throw failure(helper, "the only player is %s blocks from the Tally, within %s", apart, DESPAWN_BLOCKS);
+            }
+            Tally plain = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally persistent = TestEntities.mob(CreatureRegistry.TALLY, level);
+            try {
+                for (Tally tally : List.of(plain, persistent)) {
+                    tally.setPos(Vec3.atBottomCenterOf(origin.above(30)));
+                    level.addFreshEntity(tally);
+                    tally.checkDespawn();
+                }
+                if (!plain.isRemoved()) {
+                    throw failure(helper, "a Tally built with create was not despawned %s blocks from a player", apart);
+                }
+                if (persistent.isRemoved()) {
+                    throw failure(
+                            helper,
+                            "a Tally built with mob was despawned by the game: %s",
+                            persistent.getRemovalReason());
+                }
+            } finally {
+                plain.discard();
+                persistent.discard();
+            }
+            helper.succeed();
+        });
     }
 
     private static final AtomicInteger CHARTERS = new AtomicInteger();

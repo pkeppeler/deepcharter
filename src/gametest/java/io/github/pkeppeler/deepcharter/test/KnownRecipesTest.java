@@ -40,18 +40,17 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.gamerules.GameRules;
 
 /**
- * Server GameTests for #845: a charter knows the recipes its quest step asks for and the ones its members' items touch, the server
- * sends each player only their charter's, a player on no charter has their own, and they carry into a charter and back out of it.
- * Recipes used: the bucket and the diamond pickaxe, which share no item; the redstone and copper ingot recipes, which the scanner
- * step of chapter 1 asks for.
+ * Server GameTests for #845: a charter knows the recipes its quest step asks for and the ones its members' items touch,
+ * the server sends each player only their charter's, a player on no charter has their own, and they carry into a
+ * charter and back out of it. Recipes used: the bucket and the diamond pickaxe, which share no item; the scanner unit
+ * recipe, which the scanner step of chapter 1 asks for (it names the scanner unit, not its ingredients).
  */
 public class KnownRecipesTest {
     private static final Identifier BUCKET = Identifier.withDefaultNamespace("bucket");
     private static final Identifier DIAMOND_PICKAXE = Identifier.withDefaultNamespace("diamond_pickaxe");
     private static final Identifier STONE_PICKAXE = Identifier.withDefaultNamespace("stone_pickaxe");
     private static final Identifier CRAFTING_TABLE = Identifier.withDefaultNamespace("crafting_table");
-    private static final Identifier REDSTONE = Identifier.withDefaultNamespace("redstone");
-    private static final Identifier COPPER_INGOT = Identifier.withDefaultNamespace("copper_ingot");
+    private static final Identifier SCANNER_UNIT = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "scanner_unit");
     private static final Identifier SCANNER_STEP =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/craft_scanner");
 
@@ -158,7 +157,7 @@ public class KnownRecipesTest {
         ServerPlayer behind = MockPlayers.join(helper, "Behind").player();
         CharterId aheadId = found(helper, server, ahead);
         found(helper, server, behind);
-        // The scanner step asks for redstone and copper ingots; it is current once every step before it is done.
+        // The scanner step asks for the scanner unit; it is current once every step before it is done.
         for (Identifier directive : HandbookChapters.directivesOrEmpty(server)) {
             if (directive.equals(SCANNER_STEP)) {
                 break;
@@ -167,10 +166,8 @@ public class KnownRecipesTest {
         }
 
         helper.succeedWhen(() -> {
-            expectKnows(helper, server, ahead, REDSTONE, true);
-            expectKnows(helper, server, ahead, COPPER_INGOT, true);
-            expectKnows(helper, server, behind, REDSTONE, false);
-            expectKnows(helper, server, behind, COPPER_INGOT, false);
+            expectKnows(helper, server, ahead, SCANNER_UNIT, true);
+            expectKnows(helper, server, behind, SCANNER_UNIT, false);
         });
     }
 
