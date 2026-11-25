@@ -55,13 +55,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Server GameTests for overgrowth (#974): an unvisited bore grows over from its walls inward after the delay, a visited one does not, a
- * placed block is never grown over or replaced, a lining block holds a stretch open, an entity's cell is skipped, nothing grows outside the
- * biome tag, the drill pays extra fuel through growth and marks what it bores, a hand cuts growth, the bores survive a chunk reload, and
- * the pacing on the real tick path. A test has a column of its own, a stone box in layer 1 with a 3 x 3 bore cut in it, in the test
- * biome {@code deepcharter-test:hollows} (the only member of the tag in the test data). Most tests pass the clock to {@link Overgrowth#grow}
- * instead of waiting for it, as the production tick does; one waits.
- */
+ * Server GameTests for overgrowth (#974): an unvisited bore grows over from its walls inward after the delay, a visited
+ * one does not, a placed block is never grown over or replaced, a lining block holds a stretch open, an entity's cell
+ * is skipped, nothing grows outside the biome tag, the drill pays extra fuel through growth and marks what it bores, a
+ * hand cuts growth, the bores survive a chunk reload, and the pacing on the real tick path. A test has a column of its
+ * own, a stone box in layer 1 with a 3 x 3 bore cut in it, in the test biome {@code deepcharter-test:hollows} (the only
+ * member of the tag in the test data). Most tests pass the clock to {@link Overgrowth#grow} instead of waiting for it,
+ * as the production tick does; one waits. /
 public class OvergrowthTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(OvergrowthTest.class);
     private static final OvergrowthTuning TUNING = OvergrowthTuning.DEFAULT;
@@ -744,9 +744,9 @@ public class OvergrowthTest {
     }
 
     /**
-     * A grown bore cell that no chain of grown cells joins to a wall cell (one that touches the rock round the bore), or null. A pass fills
-     * several cells in turn, so a middle cell may grow in the pass after a wall cell it touches did; it may not grow with no growth to hold to.
-     */
+     * A grown bore cell that no chain of grown cells joins to a wall cell (one that touches the rock round the bore),
+     * or null. A pass fills several cells in turn, so a middle cell may grow in the pass after a wall cell it touches
+     * did; it may not grow with no growth to hold to. /
     private static @Nullable BlockPos unanchored(ServerLevel level, int x) {
         Set<BlockPos> bore = new HashSet<>(boreCells(x));
         Set<BlockPos> anchored = new HashSet<>();

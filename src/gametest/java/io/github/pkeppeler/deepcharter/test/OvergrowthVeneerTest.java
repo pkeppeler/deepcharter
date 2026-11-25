@@ -35,11 +35,11 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for the overgrowth veneer (#974): the thin moss film that creeps ahead of the fill along a bore's walls, spills round a
- * closed mouth in ragged patches, hangs from ceilings, never blocks movement or the drill, and goes when the growth it belongs to is cut or
- * the bore is visited. A test has a column of its own: a stone box in layer 1 with a 3 x 3 bore cut in it and a one-block-high cave over
- * the bore's end, in the test biome {@code deepcharter-test:hollows}.
- */
+ * Server GameTests for the overgrowth veneer (#974): the thin moss film that creeps ahead of the fill along a bore's
+ * walls, spills round a closed mouth in ragged patches, hangs from ceilings, never blocks movement or the drill, and
+ * goes when the growth it belongs to is cut or the bore is visited. A test has a column of its own: a stone box in
+ * layer 1 with a 3 x 3 bore cut in it and a one-block-high cave over the bore's end, in the test biome {@code
+ * deepcharter-test:hollows}. /
 public class OvergrowthVeneerTest {
     private static final OvergrowthTuning TUNING = OvergrowthTuning.DEFAULT;
     private static final int Z = 6900;
