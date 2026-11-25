@@ -55,8 +55,20 @@ gradle_lock=${DEEPCHARTER_GRADLE_LOCK:-}
 if [[ -z $gradle_lock ]] && common=$(git rev-parse --git-common-dir 2>/dev/null) && common=$(cd "$common" && pwd -P); then
   gradle_lock=$common/gradle-slot.lock
 fi
+# -o: the Gradle client and daemon do not inherit the lock fd. -w: give up after DEEPCHARTER_GRADLE_LOCK_WAIT seconds (exit 200) rather than hang.
 with_gradle_lock() { # with_gradle_lock <command>...
-  if [[ -n $gradle_lock ]] && command -v flock >/dev/null 2>&1; then flock "$gradle_lock" "$@"; else "$@"; fi
+  if [[ -z $gradle_lock ]] || ! command -v flock >/dev/null 2>&1; then "$@"; return; fi
+  if ! { : >>"$gradle_lock"; } 2>/dev/null; then
+    echo "pre-push: cannot open the Gradle lock file $gradle_lock. Fix its path or permissions, or skip the hook once with: git push --no-verify" >&2
+    exit 1
+  fi
+  local rc=0
+  flock -o -w "${DEEPCHARTER_GRADLE_LOCK_WAIT:-1800}" -E 200 "$gradle_lock" "$@" || rc=$?
+  if [[ $rc -eq 200 ]]; then
+    echo "pre-push: timed out after ${DEEPCHARTER_GRADLE_LOCK_WAIT:-1800} s waiting for the Gradle lock $gradle_lock. Retry later, or skip the hook once with: git push --no-verify" >&2
+    exit 1
+  fi
+  return "$rc"
 }
 echo "pre-push: conflict markers" >&2
 tools/py tools/tests/conflict_markers.py \

@@ -207,6 +207,7 @@ if command -v flock >/dev/null; then
   lock=$work/held.lock
   flock "$lock" sleep 30 &
   holder=$!
+  trap 'kill "$holder" 2>/dev/null || true; rm -rf "$work"' EXIT
   sleep 0.5
   : >"$work/calls"
   (cd "$work" && printf '%s' "$refs" | DEEPCHARTER_GRADLE_LOCK="$lock" STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) \
@@ -220,6 +221,23 @@ if command -v flock >/dev/null; then
   wait "$hook" || status=$?
   check "the hook runs gradle once the lock is released" "0:1" "$status:$(grep -c gradlew "$work/calls" || true)"
   check "DEEPCHARTER_GRADLE_LOCK names the lock file" "yes" "$([[ -f $lock ]] && echo yes || echo no)"
+  # A lock that stays held past DEEPCHARTER_GRADLE_LOCK_WAIT fails the hook with a message naming the lock and --no-verify.
+  flock "$lock" sleep 30 &
+  holder=$!
+  sleep 0.5
+  : >"$work/calls"
+  status=0
+  (cd "$work" && printf '%s' "$refs" | DEEPCHARTER_GRADLE_LOCK="$lock" DEEPCHARTER_GRADLE_LOCK_WAIT=1 STUB_LOG="$work/calls" PATH="$work/bin:$PATH" \
+    bash "$work/.githooks/pre-push" origin url) >"$work/out" 2>&1 || status=$?
+  kill "$holder" 2>/dev/null || true
+  check "a lock held past the wait limit blocks the push" "1:0" "$status:$(grep -c gradlew "$work/calls" || true)"
+  check "the timeout message names the lock and --no-verify" "yes" "$(grep -q "timed out.*$lock.*--no-verify" "$work/out" && echo yes || echo no)"
+  check "the timeout is not reported as a compile failure" "no" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
+  # A lock file flock cannot open is named as such.
+  status=0
+  (cd "$work" && printf '%s' "$refs" | DEEPCHARTER_GRADLE_LOCK="$work/no/such/dir.lock" STUB_LOG="$work/calls" PATH="$work/bin:$PATH" \
+    bash "$work/.githooks/pre-push" origin url) >"$work/out" 2>&1 || status=$?
+  check "an unopenable lock file blocks with its own message" "1:yes" "$status:$(grep -q 'cannot open the Gradle lock file' "$work/out" && echo yes || echo no)"
   # The default lock is shared by every worktree of the clone: it lives in the git common dir.
   : >"$work/calls"
   (cd "$g" && printf 'refs/heads/b %s refs/heads/b %s\n' "$tip" "$zero" | STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$g/.githooks/pre-push" origin url) \

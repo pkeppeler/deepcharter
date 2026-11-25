@@ -257,5 +257,16 @@ check "a git config failure still prints the handoff" yes "$(has '## Orchestrato
 check "a git config failure is noted" yes "$(has 'could not set core.hooksPath')"
 check "a git config failure leaves it unset" unset "$(hp)"
 
+# Only the write fails (the read succeeds, empty): the note still appears.
+cat >"$work/bin/git" <<S
+#!/usr/bin/env bash
+[[ "\$*" != "config core.hooksPath .githooks" ]] || exit 1
+exec $(command -v git) "\$@"
+S
+chmod +x "$work/bin/git"
+out=$(LIMITS_JSON='{}' run_hook)
+rm -f "$work/bin/git"
+check "a failing write alone is noted" yes "$(has 'could not set core.hooksPath')"
+
 [[ $failures -eq 0 ]] || { echo "$failures failure(s)"; exit 1; }
 echo "all passed"
