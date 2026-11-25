@@ -1,0 +1,96 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/columnar_basalt_0"
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_0",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_0",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_0",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_1"
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_1",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_1",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_1",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_2"
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_2",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_2",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_2",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_3"
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_3",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_3",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_3",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_4"
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_4",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_4",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_4",
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_5"
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_5",
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_5",
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/columnar_basalt_5",
+        "y": 270
+      }
+    ]
+  }
+}

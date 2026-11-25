@@ -58,6 +58,20 @@ public final class OutpostData extends SavedData {
                         instance,
                         (charter, layer, centre) -> new Outpost(charter, layer, LayerChain.dimension(layer), centre)));
 
+        /** True when {@code pos} is inside the hall: the room that the shell closes, not the shell, floor and ceiling included. */
+        public boolean encloses(BlockPos pos) {
+            int dy = pos.getY() - centre.getY();
+            return Math.abs(pos.getX() - centre.getX()) < OutpostBuilder.EDGE
+                    && Math.abs(pos.getZ() - centre.getZ()) < OutpostBuilder.EDGE
+                    && dy > 0
+                    && dy < OutpostBuilder.HEIGHT + 1;
+        }
+
+        /** The middle of the top row inside the hall, just under its ceiling. */
+        public BlockPos insideTop() {
+            return centre.above(OutpostBuilder.HEIGHT);
+        }
+
         /** True when {@code pos} is in the hall: inside its shell, from the floor to the ceiling. */
         public boolean contains(BlockPos pos) {
             int dy = pos.getY() - centre.getY();
@@ -120,6 +134,13 @@ public final class OutpostData extends SavedData {
     public Optional<Outpost> containing(int layer, BlockPos pos) {
         return state.orThrow().stream()
                 .filter(outpost -> outpost.layer() == layer && outpost.contains(pos))
+                .findFirst();
+    }
+
+    /** The outpost, of any charter, whose hall encloses {@code pos} in {@code dimension}: the room inside its shell. Halls never touch, so there is at most one. */
+    public Optional<Outpost> enclosing(ResourceKey<Level> dimension, BlockPos pos) {
+        return state.orThrow().stream()
+                .filter(outpost -> outpost.dimension().equals(dimension) && outpost.encloses(pos))
                 .findFirst();
     }
 

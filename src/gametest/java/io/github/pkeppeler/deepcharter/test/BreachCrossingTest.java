@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -159,8 +160,8 @@ public class BreachCrossingTest {
 
     @GameTest(maxTicks = 40)
     public void theLastLayersFloorHasNoCrossing(GameTestHelper helper) {
-        ServerLevel two = TestLayers.level(helper, 2);
-        LayerChain.Band twoBand = TestLayers.band(two, 2);
+        ServerLevel two = TestLayers.level(helper, CampaignBands.lastLayer());
+        LayerChain.Band twoBand = TestLayers.band(two, CampaignBands.lastLayer());
         MockPlayer mock = MockPlayers.join(helper, "breach-last-floor");
         mock.player().setNoGravity(true);
         mock.teleportTo(two, new Vec3(1500.5, twoBand.minY() + 10, 1500.5), 0, 0);
@@ -173,7 +174,7 @@ public class BreachCrossingTest {
             if (mock.player().level() != two || mock.player().getY() >= twoBand.minY()) {
                 throw failure(
                         helper,
-                        "the player is at y=%s in %s, expected under the floor %s of layer 2",
+                        "the player is at y=%s in %s, expected under the floor %s of the last layer",
                         mock.player().getY(),
                         mock.player().level().dimension(),
                         twoBand.minY());
@@ -183,7 +184,7 @@ public class BreachCrossingTest {
     }
 
     @GameTest
-    public void handsCannotBreakTheCrustButADrillCan(GameTestHelper helper) {
+    public void bareHandsCannotBreakTheCrustButADrillCan(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
         BlockPos pos = new BlockPos(1600, TestLayers.band(one, 1).minY() + 1, 1600);
         MockPlayer mock = MockPlayers.join(helper, "breach-hands");
@@ -191,10 +192,10 @@ public class BreachCrossingTest {
         mock.player().setGameMode(GameType.SURVIVAL);
         one.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos)) {
-            throw failure(helper, "a player broke the crust by hand");
+            throw failure(helper, "a bare-handed player broke the crust");
         }
         if (!one.getBlockState(pos).is(LayerBlocks.BREACH_CRUST)) {
-            throw failure(helper, "the crust is gone after a refused hand-break");
+            throw failure(helper, "the crust is gone after a refused bare-hand break");
         }
         // Other blocks are unaffected.
         BlockPos stone = pos.east();
@@ -204,7 +205,7 @@ public class BreachCrossingTest {
         }
         mock.player().setGameMode(GameType.ADVENTURE);
         if (mock.player().gameMode.destroyBlock(pos) || !one.getBlockState(pos).is(LayerBlocks.BREACH_CRUST)) {
-            throw failure(helper, "an adventure player broke the crust by hand");
+            throw failure(helper, "a bare-handed adventure player broke the crust");
         }
         mock.player().setGameMode(GameType.CREATIVE);
         if (!mock.player().gameMode.destroyBlock(pos) || !one.getBlockState(pos).isAir()) {

@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -31,7 +32,37 @@ public final class BandCost {
     /** The rounds of each world a pool needs before the gate judges it. */
     public static final int ROUNDS = 18;
 
+    /**
+     * One-sided 90% Student t for 1 to 9 degrees of freedom: a pool of 3 runs has 2. From 10 degrees of freedom (11 runs) the t is that
+     * of 10, 1.372, which is a little high for more runs and so errs towards passing.
+     */
+    private static final double[] T90 = {3.078, 1.886, 1.638, 1.533, 1.476, 1.440, 1.415, 1.397, 1.383};
+
+    private static final double T90_LIMIT = 1.372;
+
     private BandCost() {}
+
+    /**
+     * The least the runs' mean can be, with 90% confidence one-sided: the mean less the t of the runs' own scatter over the square root of
+     * their number. A band is over only when this is over its bar, so a pool whose runs disagree cannot fail it (detection odds: ADR 0086).
+     */
+    public static double lowerBound(double[] perRun) {
+        int n = perRun.length;
+        if (n == 0 || Arrays.stream(perRun).anyMatch(value -> !Double.isFinite(value))) {
+            throw new IllegalStateException(
+                    "a run's ratio is not a finite number (its reference marginal is zero or less?): "
+                            + Arrays.toString(perRun));
+        }
+        double mean = Arrays.stream(perRun).average().orElseThrow();
+        if (n < 2) {
+            return mean;
+        }
+        double squares = Arrays.stream(perRun)
+                .map(value -> (value - mean) * (value - mean))
+                .sum();
+        double t = n - 2 < T90.length ? T90[n - 2] : T90_LIMIT;
+        return mean - t * Math.sqrt(squares / (n - 1) / n);
+    }
 
     /**
      * One round's reading of one world: the run it came from, the tree it measured, the columns of a round, the world's blocks of
@@ -78,20 +109,29 @@ public final class BandCost {
         }
     }
 
-    /** A window's marginal CPU ms per filled row, that over the reference's, and the ratchet that holds it, if any. */
-    public record Ratio(Window window, double marginal, double ratio, Optional<Ratchet> ratchet) {
+    /**
+     * A window's marginal CPU ms per filled row, that over the reference's (pooled), the {@link #lowerBound} of the runs' own ratios, and
+     * the ratchet that holds it, if any. The band is over when {@code bound} is over its bar.
+     */
+    public record Ratio(Window window, double marginal, double ratio, double bound, Optional<Ratchet> ratchet) {
         /** The most the ratio may be. */
         public double bar() {
             return ratchet.map(Ratchet::ceiling).orElse(BAR);
         }
 
         public boolean over() {
-            return ratio > bar();
+            return bound > bar();
         }
 
         @Override
         public String toString() {
-            return String.format(Locale.ROOT, "%s %.3fx of %.3fx", window.band().name(), ratio, bar())
+            return String.format(
+                            Locale.ROOT,
+                            "%s %.3fx (at least %.3fx) of %.3fx",
+                            window.band().name(),
+                            ratio,
+                            bound,
+                            bar())
                     + ratchet.map(held -> " (a ratchet, #" + held.issue() + ")").orElse("");
         }
     }
@@ -146,6 +186,19 @@ public final class BandCost {
                     StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE,
                     StandardOpenOption.APPEND);
+        }
+
+        /** The median CPU ms per column of every round of {@code world} that {@code run} took. */
+        public double median(String world, String run) {
+            return ColumnCost.medianOf(of(world)
+                    .filter(reading -> reading.run().equals(run))
+                    .mapToDouble(Reading::cpuMsPerColumn)
+                    .toArray());
+        }
+
+        /** {@link #marginalPerRow(String, String)} on one run's rounds alone. */
+        public double marginalPerRow(String world, String floor, String run) {
+            return (median(world, run) - median(floor, run)) / (height(world) - height(floor));
         }
 
         public boolean has(String world) {
@@ -210,14 +263,35 @@ public final class BandCost {
     public static List<Ratio> ratios(
             Pool pool, List<Window> windows, List<Ratchet> ratchets, String reference, String referenceFloor) {
         double perRow = pool.marginalPerRow(reference, referenceFloor);
+        if (!(perRow > 0)) {
+            throw new IllegalStateException(
+                    "the reference " + reference + " has no cost per row over " + referenceFloor + ": " + perRow);
+        }
         return windows.stream()
                 .map(window -> {
                     double marginal = pool.marginalPerRow(window.world(), window.floor());
+                    // Only a run that read all four worlds has a ratio of its own; with none, the bound is the pooled
+                    // ratio.
+                    double[] perRun = pool.runs(window.world()).stream()
+                            .filter(run -> Stream.of(window.floor(), reference, referenceFloor)
+                                    .allMatch(world -> pool.runs(world).contains(run)))
+                            .mapToDouble(run -> perRunRatio(pool, window, reference, referenceFloor, run))
+                            .toArray();
                     Optional<Ratchet> ratchet = ratchets.stream()
                             .filter(held -> held.band().equals(window.band()))
                             .findFirst();
-                    return new Ratio(window, marginal, marginal / perRow, ratchet);
+                    double bound = perRun.length == 0 ? marginal / perRow : lowerBound(perRun);
+                    return new Ratio(window, marginal, marginal / perRow, bound, ratchet);
                 })
                 .toList();
+    }
+
+    private static double perRunRatio(Pool pool, Window window, String reference, String referenceFloor, String run) {
+        double referencePerRow = pool.marginalPerRow(reference, referenceFloor, run);
+        if (!(referencePerRow > 0)) {
+            throw new IllegalStateException("run " + run + " has no cost per row for " + reference + " over "
+                    + referenceFloor + ": " + referencePerRow);
+        }
+        return pool.marginalPerRow(window.world(), window.floor(), run) / referencePerRow;
     }
 }

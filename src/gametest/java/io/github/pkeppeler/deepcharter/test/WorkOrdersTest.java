@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -99,7 +101,7 @@ public class WorkOrdersTest {
                                 mock.player().getUUID(),
                                 name + " " + UUID.randomUUID().toString().substring(0, 8))
                         .isPresent()) {
-            throw helper.assertionException("founding a charter for %s should succeed", name);
+            throw failure(helper, "founding a charter for %s should succeed", name);
         }
         return mock;
     }
@@ -150,14 +152,14 @@ public class WorkOrdersTest {
 
     static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
         if (refusal.isPresent()) {
-            throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
+            throw failure(helper, "%s should succeed, was refused: %s", what, refusal.get());
         }
     }
 
     static void expectRefused(
             GameTestHelper helper, TerminalRefusal expected, Optional<TerminalRefusal> actual, String what) {
         if (!actual.equals(Optional.of(expected))) {
-            throw helper.assertionException("%s should be refused with %s, got %s", what, expected, actual);
+            throw failure(helper, "%s should be refused with %s, got %s", what, expected, actual);
         }
     }
 
@@ -165,7 +167,7 @@ public class WorkOrdersTest {
         if (refusal.isEmpty()
                 || !(refusal.get().getContents() instanceof TranslatableContents contents)
                 || !contents.getKey().equals(key)) {
-            throw helper.assertionException("%s should be refused with %s, got %s", what, key, refusal);
+            throw failure(helper, "%s should be refused with %s, got %s", what, key, refusal);
         }
     }
 
@@ -175,15 +177,14 @@ public class WorkOrdersTest {
 
     private static void expectHands(GameTestHelper helper, MinecraftServer server, boolean restored, String when) {
         if (handsRestored(server) != restored) {
-            throw helper.assertionException(
-                    "%s: the Founder's hands should be %s", when, restored ? "restored" : "missing");
+            throw failure(helper, "%s: the Founder's hands should be %s", when, restored ? "restored" : "missing");
         }
     }
 
     /** Runs {@code body} once, when the chunk the Host stands in ticks: his displays are entities, found only in a chunk that does. */
     static void whenTheHostTicks(GameTestHelper helper, MinecraftServer server, Runnable body) {
         BlockPos statue = Colony.anchor(server, ColonyAnchor.STATUE)
-                .orElseThrow(() -> helper.assertionException("the colony was not built"));
+                .orElseThrow(() -> failure(helper, "the colony was not built"));
         ColonyChunks.whenTicking(
                 helper,
                 server.overworld(),
@@ -216,15 +217,15 @@ public class WorkOrdersTest {
         FarChunks.awaitEntityTicking(helper, level, far, () -> ticking[0] = true);
         helper.succeedWhen(() -> {
             if (!ticking[0]) {
-                throw helper.assertionException("waiting for the far chunk to tick");
+                throw failure(helper, "waiting for the far chunk to tick");
             }
             List<Display.BlockDisplay> found = level.getEntitiesOfClass(Display.BlockDisplay.class, around);
             if (found.stream().noneMatch(display -> display.getBlockState().equals(HostBody.state()))) {
-                throw helper.assertionException("waiting for the body display, which stays, to be found");
+                throw failure(helper, "waiting for the body display, which stays, to be found");
             }
             if (found.stream().anyMatch(display -> display.getBlockState().equals(FounderStatue.handsState()))) {
-                throw helper.assertionException(
-                        "the hands display should have discarded itself: the world says the Host has no hands");
+                throw failure(
+                        helper, "the hands display should have discarded itself: the world says the Host has no hands");
             }
             found.forEach(Entity::discard);
         });
@@ -277,7 +278,7 @@ public class WorkOrdersTest {
                                         d -> d.getBlockState().equals(FounderStatue.handsState()))
                                 .size();
                         if (hands != 1) {
-                            throw helper.assertionException("the hands the world owes should stand, found %s", hands);
+                            throw failure(helper, "the hands the world owes should stand, found %s", hands);
                         }
                         FarChunks.release(helper, level, chunkX, chunkZ);
                         by[0] = FarChunks.deadline();
@@ -300,7 +301,8 @@ public class WorkOrdersTest {
                         // without them for a while.
                         missing[0] = body && !hands ? missing[0] + 1 : 0;
                         if (missing[0] > 40) {
-                            throw helper.assertionException(
+                            throw failure(
+                                    helper,
                                     "the chunk's body display loaded again, and the hands that the world owes did not (marker %s)",
                                     level.getBlockState(marker));
                         }
@@ -355,7 +357,7 @@ public class WorkOrdersTest {
                     CharterId id = charter(server, player).id();
                     if (carried(player, OreType.BRONZIUM) != 10
                             || WorkOrderData.get(server).delivered(id, WorkOrder.FOUNDERS_HANDS) != 0) {
-                        throw helper.assertionException("a refused completion must keep the ore and the progress");
+                        throw failure(helper, "a refused completion must keep the ore and the progress");
                     }
                 }));
         helper.succeed();
@@ -366,16 +368,19 @@ public class WorkOrdersTest {
         MinecraftServer server = helper.getLevel().getServer();
         whenTheHostTicks(helper, server, () -> {
             if (Colony.placed(server).isEmpty()) {
-                throw helper.assertionException("the colony was not built, so the Host has no hands to lack");
+                throw failure(helper, "the colony was not built, so the Host has no hands to lack");
             }
             if (ColonyChunks.hostBody(server).size() != 1) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the Host's body should stand in the square, found %s",
                         ColonyChunks.hostBody(server).size());
             }
             if (!FounderStatue.hands(server).isEmpty()) {
-                throw helper.assertionException(
-                        "the built colony should leave the Host without hands, found %s", FounderStatue.hands(server));
+                throw failure(
+                        helper,
+                        "the built colony should leave the Host without hands, found %s",
+                        FounderStatue.hands(server));
             }
         });
     }
@@ -402,18 +407,20 @@ public class WorkOrdersTest {
                     CharterId id = charter(server, player).id();
                     if (WorkOrderData.get(server).delivered(id, WorkOrder.FOUNDERS_HANDS) != 4
                             || carried(player, OreType.BRONZIUM) != 0) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "four Bronzium should be handed in: progress %s, still carried %s",
                                 WorkOrderData.get(server).delivered(id, WorkOrder.FOUNDERS_HANDS),
                                 carried(player, OreType.BRONZIUM));
                     }
                     if (carried(player, OreType.IRONIUM) != 2) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "another ore must stay with the player, %s Ironium left",
                                 carried(player, OreType.IRONIUM));
                     }
                     if (charter(server, player).account() != before) {
-                        throw helper.assertionException("a partial delivery pays nothing");
+                        throw failure(helper, "a partial delivery pays nothing");
                     }
                     expectHands(helper, server, false, "after a partial delivery");
                 }));
@@ -445,19 +452,23 @@ public class WorkOrdersTest {
 
                     CharterId id = charter(server, player).id();
                     if (WorkOrderData.get(server).delivered(id, WorkOrder.FOUNDERS_HANDS) != 10) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "the order should stand at 10 of 10, got %s",
                                 WorkOrderData.get(server).delivered(id, WorkOrder.FOUNDERS_HANDS));
                     }
                     if (carried(player, OreType.BRONZIUM) != 3) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "only the four still owed should be taken from seven, %s left",
                                 carried(player, OreType.BRONZIUM));
                     }
                     if (charter(server, player).account() != before + 600) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "completing should pay $600: balance %s -> %s",
-                                before, charter(server, player).account());
+                                before,
+                                charter(server, player).account());
                     }
                     expectHands(helper, server, true, "after the completing delivery");
 
@@ -473,7 +484,7 @@ public class WorkOrdersTest {
                             "a delivery to a finished order");
                     if (carried(player, OreType.BRONZIUM) != 3
                             || charter(server, player).account() != before + 600) {
-                        throw helper.assertionException("a finished order takes no more ore and pays no more");
+                        throw failure(helper, "a finished order takes no more ore and pays no more");
                     }
                 }));
     }
@@ -511,7 +522,7 @@ public class WorkOrdersTest {
                                     >= WorkOrder.FOUNDERS_HANDS.quantity()
                             || data.delivered(charter(server, first.player()).id(), WorkOrder.FOUNDERS_HANDS)
                                     < WorkOrder.FOUNDERS_HANDS.quantity()) {
-                        throw helper.assertionException("each charter keeps its own progress");
+                        throw failure(helper, "each charter keeps its own progress");
                     }
                 }));
     }
@@ -520,10 +531,10 @@ public class WorkOrdersTest {
     @GameTest
     public void theSavedNamesNeverChange(GameTestHelper helper) {
         if (!"founders_hands".equals(WorkOrder.FOUNDERS_HANDS.getSerializedName())) {
-            throw helper.assertionException("the saved name of the Founder's hands order must stay founders_hands");
+            throw failure(helper, "the saved name of the Founder's hands order must stay founders_hands");
         }
         if (!"deepcharter:work_orders".equals(WorkOrderData.ID.toString())) {
-            throw helper.assertionException("the saved data id must stay deepcharter:work_orders");
+            throw failure(helper, "the saved data id must stay deepcharter:work_orders");
         }
         helper.succeed();
     }
@@ -575,11 +586,11 @@ public class WorkOrdersTest {
                             "a completing delivery into a full account");
                     if (carried(player, OreType.BRONZIUM) != 10
                             || WorkOrderData.get(server).delivered(id, WorkOrder.FOUNDERS_HANDS) != 0) {
-                        throw helper.assertionException("a refused completion must keep the ore and the progress");
+                        throw failure(helper, "a refused completion must keep the ore and the progress");
                     }
                     expectHands(helper, server, false, "after a refused completion");
                     if (carried(player, OreType.SILVERIUM) != 5) {
-                        throw helper.assertionException("another ore must not be touched");
+                        throw failure(helper, "another ore must not be touched");
                     }
                 }));
     }
@@ -614,7 +625,7 @@ public class WorkOrdersTest {
                                     orderArgs(WorkOrder.FOUNDERS_HANDS)),
                             "a delivery at an unrepaired processor"));
             if (carried(drifter.player(), OreType.BRONZIUM) != 10 || carried(member.player(), OreType.BRONZIUM) != 10) {
-                throw helper.assertionException("a refused delivery must take no ore");
+                throw failure(helper, "a refused delivery must take no ore");
             }
         });
         helper.succeed();
@@ -641,7 +652,7 @@ public class WorkOrdersTest {
                     || WorkOrderData.get(server)
                                     .delivered(charter(server, player).id(), WorkOrder.FOUNDERS_HANDS)
                             != 0) {
-                throw helper.assertionException("a refused completion must keep the ore and the progress");
+                throw failure(helper, "a refused completion must keep the ore and the progress");
             }
         });
         helper.succeed();
@@ -666,8 +677,7 @@ public class WorkOrdersTest {
             WorkOrderData loaded =
                     WorkOrderData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
             if (!loaded.isReadable() || loaded.delivered(charter(server, player).id(), WorkOrder.FOUNDERS_HANDS) != 7) {
-                throw helper.assertionException(
-                        "seven Bronzium should still be handed in after a reload, got %s", saved);
+                throw failure(helper, "seven Bronzium should still be handed in after a reload, got %s", saved);
             }
         });
         helper.succeed();
@@ -689,7 +699,7 @@ public class WorkOrdersTest {
                             .equals(WorkOrderData.CODEC
                                     .encodeStart(NbtOps.INSTANCE, unreadable)
                                     .getOrThrow())) {
-                throw helper.assertionException("version 99 should load as unreadable and be written back unchanged");
+                throw failure(helper, "version 99 should load as unreadable and be written back unchanged");
             }
             Optional<Charter> charter = Charters.charterOfOrThrow(server, player.getUUID());
             Map<String, Runnable> paths = new LinkedHashMap<>();
@@ -710,12 +720,12 @@ public class WorkOrdersTest {
             paths.put("view", () -> {
                 WorkOrdersView view = WorkOrders.view(server, player, charter, processor);
                 if (view.readable() || !view.orders().isEmpty()) {
-                    throw helper.assertionException("the view of unreadable data lists no order, got %s", view);
+                    throw failure(helper, "the view of unreadable data lists no order, got %s", view);
                 }
             });
             UnreadableChecks.assertSavedDataNoThrow(helper, "work orders", server, WorkOrderData.TYPE, paths);
             if (carried(player, OreType.BRONZIUM) != 10) {
-                throw helper.assertionException("a refused delivery must keep the ore");
+                throw failure(helper, "a refused delivery must keep the ore");
             }
             // A body of this version that does not parse (here: more handed in than the order asks) is kept unread, not
             // dropped.
@@ -733,7 +743,7 @@ public class WorkOrdersTest {
                     .parse(NbtOps.INSTANCE, overfull)
                     .getOrThrow()
                     .isReadable()) {
-                throw helper.assertionException("progress past the order's quantity should load as unreadable");
+                throw failure(helper, "progress past the order's quantity should load as unreadable");
             }
         });
         helper.succeed();
@@ -750,7 +760,7 @@ public class WorkOrdersTest {
             WorkOrdersView fresh = WorkOrders.view(server, player, charter, processor);
             if (!fresh.equals(
                     new WorkOrdersView(true, List.of(new WorkOrdersView.Entry(WorkOrder.FOUNDERS_HANDS, 0, 0))))) {
-                throw helper.assertionException("a new charter has handed in nothing, got %s", fresh);
+                throw failure(helper, "a new charter has handed in nothing, got %s", fresh);
             }
             carry(player, OreType.BRONZIUM, 4);
             expectDone(
@@ -760,7 +770,7 @@ public class WorkOrdersTest {
             WorkOrdersView after = WorkOrders.view(server, player, charter, processor);
             if (!after.equals(
                     new WorkOrdersView(true, List.of(new WorkOrdersView.Entry(WorkOrder.FOUNDERS_HANDS, 4, 0))))) {
-                throw helper.assertionException("the view should show four in, got %s", after);
+                throw failure(helper, "the view should show four in, got %s", after);
             }
         });
         helper.succeed();

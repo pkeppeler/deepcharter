@@ -76,6 +76,8 @@ public class BandReadersTest {
     private static final float ROW = 8f;
     private static final Band ONE = CampaignBands.LAYER_1;
     private static final Band TWO = CampaignBands.LAYER_2;
+    /** The deepest layer the campaign world builds: its floor crust leads nowhere. */
+    private static final Band LAST = CampaignBands.layer(CampaignBands.lastLayer());
 
     // ---- PodDrill.crustLeadsOn ----
 
@@ -148,12 +150,12 @@ public class BandReadersTest {
         });
     }
 
-    /** Layer 2's floor crust leads nowhere (unbuilt depth lies below it), so the pod stands on it and does not drill. */
+    /** The last layer's floor crust leads nowhere (unbuilt depth lies below it), so the pod stands on it and does not drill. */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void theCrustAtLayer2sFloorIsRefused(GameTestHelper helper) {
+    public void theCrustAtTheLastLayersFloorIsRefused(GameTestHelper helper) {
         // Layer 1's bore is in this column too: the layers share a level, so one set of chunks serves both.
         int x = 23000;
-        int floor = TWO.minY();
+        int floor = LAST.minY();
         ServerLevel level = helper.getLevel();
         Bore bore = new Bore(helper, x, floor, 3, 3);
         TestTicks.each(helper, () -> {
@@ -164,7 +166,7 @@ public class BandReadersTest {
             expect(
                     helper,
                     !pod.drilling() && crustCells(level, x, floor + 2) == 4,
-                    "the pod drills the crust at layer 2's floor, which leads to unbuilt depth");
+                    "the pod drills the crust at the last layer's floor, which leads to unbuilt depth");
             if (pod.tickCount < 100) {
                 return;
             }
@@ -191,7 +193,8 @@ public class BandReadersTest {
 
     /**
      * Above layer 1's floor the crust warning counts from that band's floor: 7 slabs above its 3 crust rows, in the crust, and out of reach
-     * higher up. Layer 2's floor has no warning (nothing is bored there), nor has the surface.
+     * higher up, and the same above layer 2's floor, which leads on to layer 3 (#972). The last layer's floor has no warning (nothing is bored
+     * there), nor has the surface.
      */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theBraceWarnsAboveEachBandFloorThatLeadsOn(GameTestHelper helper) {
@@ -217,10 +220,17 @@ public class BandReadersTest {
                 "a warning far above layer 1's floor");
         expect(
                 helper,
-                PodBrace.status(pod(level, TWO.minY() + crust + 7, 1f), true)
+                PodBrace.status(pod(level, TWO.minY() + crust + 7, 20f), true)
+                        .warning()
+                        .filter(warning -> warning.slabsAway() == 7)
+                        .isPresent(),
+                "no crust warning 7 slabs above layer 2's floor, which leads on to layer 3");
+        expect(
+                helper,
+                PodBrace.status(pod(level, LAST.minY() + crust + 7, 1f), true)
                         .warning()
                         .isEmpty(),
-                "a warning above layer 2's floor, whose crust is not drilled");
+                "a warning above the last layer's floor, whose crust is not drilled");
         expect(
                 helper,
                 PodBrace.status(pod(level, CampaignBands.SURFACE.minY() + crust + 7, 1f), true)
@@ -474,10 +484,10 @@ public class BandReadersTest {
         ServerLevel level = helper.getLevel();
         expect(
                 helper,
-                LayerChain.layerCount(level) == 2,
+                LayerChain.layerCount(level) == 3,
                 "the campaign level holds %d layers",
                 LayerChain.layerCount(level));
-        int[] tops = {127, 319, 575};
+        int[] tops = {127, 319, 575, 831};
         for (int layer = 1; layer <= tops.length; layer++) {
             expect(
                     helper,
@@ -489,21 +499,24 @@ public class BandReadersTest {
         }
         expect(
                 helper,
-                LayerChain.deepestDepth(level) == 575,
+                LayerChain.deepestDepth(level) == 831,
                 "the deepest depth is %d",
                 LayerChain.deepestDepth(level));
         expect(
                 helper,
-                Depth.of(level, ONE.maxY()) == 128 && Depth.of(level, TWO.minY()) == 575,
-                "the first block of layer 1 is at depth %d and the floor of layer 2 at %d",
+                Depth.of(level, ONE.maxY()) == 128
+                        && Depth.of(level, TWO.minY()) == 575
+                        && Depth.of(level, LAST.minY()) == 831,
+                "the first block of layer 1 is at depth %d, the floor of layer 2 at %d and the floor of layer 3 at %d",
                 Depth.of(level, ONE.maxY()),
-                Depth.of(level, TWO.minY()));
+                Depth.of(level, TWO.minY()),
+                Depth.of(level, LAST.minY()));
         helper.succeed();
     }
 
     /**
      * The Morale Initiative opens at the top of layer 3, depth 575, as the band table gives it for the level the player is in: a charter at
-     * 574 is not offered it and one at 575 is. The cockpit's depth gauge is the pod's depth out of the deepest block, 575.
+     * 574 is not offered it and one at 575 is. The cockpit's depth gauge is the pod's depth out of the deepest block, 831 (layer 3's floor).
      */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void workOrdersOpenAndTheGaugeEndsAtTheDepthsOfTheBandTable(GameTestHelper helper) {
@@ -539,16 +552,22 @@ public class BandReadersTest {
                     depth,
                     offered ? "offered" : "not offered");
         }
-        PodEntity pod = pod(level, TWO.minY(), 10f);
+        PodEntity pod = pod(level, LAST.minY(), 10f);
         expect(
                 helper,
                 Math.abs(CockpitReading.of(pod, 0).depth() - 1.0) < 1e-9,
+                "the gauge at the last layer's floor reads %s",
+                CockpitReading.of(pod, 0).depth());
+        pod.setPos(23128, TWO.minY(), Z);
+        expect(
+                helper,
+                Math.abs(CockpitReading.of(pod, 0).depth() - 575.0 / 831.0) < 1e-9,
                 "the gauge at layer 2's floor reads %s",
                 CockpitReading.of(pod, 0).depth());
         pod.setPos(23128, ONE.maxY(), Z);
         expect(
                 helper,
-                Math.abs(CockpitReading.of(pod, 0).depth() - 128.0 / 575.0) < 1e-9,
+                Math.abs(CockpitReading.of(pod, 0).depth() - 128.0 / 831.0) < 1e-9,
                 "the gauge at layer 1's top reads %s",
                 CockpitReading.of(pod, 0).depth());
         helper.succeed();
@@ -674,12 +693,16 @@ public class BandReadersTest {
                         feet.toShortString());
             }
             try {
-                op(helper, mock, "deepcharter layer goto 3");
-                throw failure(helper, "goto 3 should fail: only %d layers exist", CampaignBands.lastLayer());
+                op(helper, mock, "deepcharter layer goto " + (CampaignBands.lastLayer() + 1));
+                throw failure(
+                        helper,
+                        "goto %d should fail: only %d layers exist",
+                        CampaignBands.lastLayer() + 1,
+                        CampaignBands.lastLayer());
             } catch (CommandSyntaxException outOfRange) {
                 expect(
                         helper,
-                        String.valueOf(outOfRange.getMessage()).contains("No layer 3"),
+                        String.valueOf(outOfRange.getMessage()).contains("No layer " + (CampaignBands.lastLayer() + 1)),
                         "expected the no-such-layer failure, got %s",
                         outOfRange.getMessage());
             }

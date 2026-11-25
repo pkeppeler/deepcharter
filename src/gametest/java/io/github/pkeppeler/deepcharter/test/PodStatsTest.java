@@ -60,7 +60,7 @@ public class PodStatsTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final float SOUTH = 0f;
-    /** Layer 1 at these columns is the test's own: PodDrillTest uses x 3000 to 3704. */
+    /** Layer 1 at these columns is the test's own: PodDrillTest uses x 2996 to 4157 at z 2996 to 3004. */
     private static final int Z = 3000;
 
     private static final int FAR_MARGIN_TICKS = 1000;

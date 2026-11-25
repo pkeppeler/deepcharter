@@ -1,6 +1,7 @@
 {
   "block.deepcharter.flare_light": "Burning Flare",
   "entity.deepcharter.thrown_kit": "Thrown Kit",
+  "item.deepcharter.air_canister": "Air Canister",
   "item.deepcharter.bolt": "Bolts",
   "item.deepcharter.bolt_driver": "Bolt Driver",
   "item.deepcharter.blasting_charge": "Blasting Charge",
@@ -44,12 +45,14 @@
   "screen.deepcharter.repair.buy": "BUY %s $%s",
   "screen.deepcharter.repair.buy_pack": "BUY %s (PACK OF %s) $%s",
   "screen.deepcharter.repair.hull": "HULL %s / %s",
-  "screen.deepcharter.repair.intro": "Emendation Station online. Park your pod beside it to repair the hull. Each point has its price on the button.",
+  "screen.deepcharter.repair.intro": "Emendation Station online. Park your pod beside it to repair the hull. Each point has its price on the button. Suit tiers pay off from layer 3 down.",
   "screen.deepcharter.repair.no_pod": "No pod of yours is parked here",
   "screen.deepcharter.repair.repair": "REPAIR %s HP ($%s)",
   "screen.deepcharter.repair.scroll": "%s-%s OF %s - SCROLL",
   "screen.deepcharter.repair.total": "REPAIR ALL",
   "message.deepcharter.repair.recovery_called": "Stranded: winch in %ss, $%s. Refuel to cancel",
   "message.deepcharter.repair.recovery_done": "Winched home. Fee $%s",
-  "message.deepcharter.repair.recovery_short": "Winched home. Paid $%s of $%s; hull took the rest"
+  "message.deepcharter.repair.recovery_short": "Winched home. Paid $%s of $%s; hull took the rest",
+  "screen.deepcharter.repair.suit": "SUIT %s T%s $%s",
+  "screen.deepcharter.repair.suit_top": "SUIT %s (TOP)"
 }

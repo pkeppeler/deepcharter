@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "deepcharter:blocks/basalt_core",
+  "pools": [
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:basalt_core"
+        }
+      ]
+    }
+  ]
+}

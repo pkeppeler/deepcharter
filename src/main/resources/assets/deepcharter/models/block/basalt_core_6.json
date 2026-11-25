@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "side": "deepcharter:block/basalt_core_6",
+    "end": "deepcharter:block/basalt_core_end_2"
+  }
+}

@@ -101,5 +101,18 @@
   "ruleGap": 2,
   "windowMargin": 12,
   "tabEdgeGap": 2,
-  "cardItemsGap": 1
+  "cardItemsGap": 1,
+  "pencilRowPitch": 40,
+  "pencilRowGap": 8,
+  "pencilSourcePercent": 30,
+  "pencilArrowMin": 36,
+  "pencilBoxInset": 3,
+  "pencilMarkSize": 4,
+  "pencilWobble": 1,
+  "pencilRingExtra": 2,
+  "pencilTextTop": 2,
+  "pencilLineGap": 1,
+  "pencilTipGap": 4,
+  "pencilStartGap": 1,
+  "pencilMarkGap": 2
 }

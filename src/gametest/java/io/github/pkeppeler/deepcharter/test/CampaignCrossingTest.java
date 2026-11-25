@@ -113,13 +113,13 @@ public class CampaignCrossingTest {
                 new Step(layer1Floor + crust + 0.5, "1>2", "2>1"),
                 new Step(layer1Floor + 2, "1>2", "2>1"),
                 new Step(layer1Floor - 0.5, "1>2", "2>1", "1>2"),
-                new Step(CampaignBands.UNBUILT.minY() + 100, "1>2", "2>1", "1>2"),
-                new Step(layer1Floor + 100, "1>2", "2>1", "1>2", "2>1"),
-                new Step(surfaceFloor + crust + 0.5, "1>2", "2>1", "1>2", "2>1", "1>0"),
-                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>1", "1>0"),
-                new Step(surfaceFloor - 0.5, "1>2", "2>1", "1>2", "2>1", "1>0", "0>1"),
-                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>1", "1>0", "0>1"),
-                new Step(surfaceFloor + 100, "1>2", "2>1", "1>2", "2>1", "1>0", "0>1", "1>0"));
+                new Step(CampaignBands.UNBUILT.minY() + 100, "1>2", "2>1", "1>2", "2>3"),
+                new Step(layer1Floor + 100, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1"),
+                new Step(surfaceFloor + crust + 0.5, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0"),
+                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0"),
+                new Step(surfaceFloor - 0.5, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0", "0>1"),
+                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0", "0>1"),
+                new Step(surfaceFloor + 100, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0", "0>1", "1>0"));
         TestTicks.each(helper, () -> {
             long tick = helper.getTick();
             int index = (int) (tick / STEP_TICKS);
@@ -315,8 +315,8 @@ public class CampaignCrossingTest {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel campaign = helper.getLevel();
         ServerLevel overworld = server.overworld();
-        BreachPayload inPlace = BreachPayload.of(campaign, campaign, 1, 2);
-        BreachPayload moved = BreachPayload.of(overworld, campaign, 0, 1);
+        BreachPayload inPlace = BreachPayload.of(campaign, campaign, 1, 2, false);
+        BreachPayload moved = BreachPayload.of(overworld, campaign, 0, 1, false);
         if (inPlace.fades() || !moved.fades()) {
             throw failure(helper, "in place: %s, between levels: %s", inPlace, moved);
         }
@@ -433,13 +433,14 @@ public class CampaignCrossingTest {
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void theBandTableReadsTheSameForEveryY(GameTestHelper helper) {
         List<String> seen = new ArrayList<>();
-        for (int y : new int[] {319, -64, -65, -256, -257, -512, -513}) {
+        for (int y : new int[] {319, -64, -65, -256, -257, -512, -513, -768, -769}) {
             seen.add(y + "="
                     + CampaignBands.bandAt(y)
                             .map(band -> String.valueOf(band.layer()))
                             .orElse("none"));
         }
-        List<String> expected = List.of("319=0", "-64=0", "-65=1", "-256=1", "-257=2", "-512=2", "-513=none");
+        List<String> expected =
+                List.of("319=0", "-64=0", "-65=1", "-256=1", "-257=2", "-512=2", "-513=3", "-768=3", "-769=none");
         if (!seen.equals(expected)) {
             throw failure(helper, "expected %s, got %s", expected, seen);
         }

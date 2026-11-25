@@ -25,10 +25,11 @@ public final class CampaignBands {
     public static final Band SURFACE = new Band("surface", -64, 384);
     public static final Band LAYER_1 = new Band("layer 1", -256, 192);
     public static final Band LAYER_2 = new Band("layer 2", -512, 256);
-    public static final Band UNBUILT = new Band("unbuilt depth", -2032, 1520);
+    public static final Band LAYER_3 = new Band("layer 3", -768, 256);
+    public static final Band UNBUILT = new Band("unbuilt depth", -2032, 1264);
 
     /** Top to bottom. */
-    public static final List<Band> ALL = List.of(SURFACE, LAYER_1, LAYER_2, UNBUILT);
+    public static final List<Band> ALL = List.of(SURFACE, LAYER_1, LAYER_2, LAYER_3, UNBUILT);
 
     /** The layers, top to bottom: index 0 is layer 1. */
     public static final List<Band> LAYERS = ALL.subList(1, ALL.size() - 1);

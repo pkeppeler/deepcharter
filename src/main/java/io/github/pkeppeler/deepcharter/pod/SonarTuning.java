@@ -18,6 +18,7 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param maxMarks        the most marks a pod holds; a new one beyond it drops the oldest
  * @param markCooldownTicks ticks a pod waits between two marks (or unmarks), so a client cannot force a sync at packet rate
  * @param aimDegrees      how far off the navigator's look an echo may be and still be the one they mean to mark
+ * @param lureTicks       ticks a ping holds the creatures that heard it ({@link SonarLure}): the Sleeper's give up after about ten seconds of silence
  */
 public record SonarTuning(
         int rangeBlocks,
@@ -33,15 +34,16 @@ public record SonarTuning(
         int markLifetimeTicks,
         int maxMarks,
         int markCooldownTicks,
-        double aimDegrees) {
+        double aimDegrees,
+        int lureTicks) {
     /**
      * (A) A ping reaches 24 blocks (the tier 1 scanner's half width), is heard 48, costs 0.4 L (4% of a stock 10 L tank, 23 pings from full to
      * the reserve, about 6 s of idle burn), and can come again after 4 s. Its echoes show 10 s, so a navigator reads one ping and the next
      * overlaps it. Cells are 4 blocks, and a cell with its middle under 6 blocks away is the pod's own cab and returns nothing; gas reads as gas inside 12 blocks. A mark holds a minute, three at a time, a pod marks at most every 5 ticks, and
-     * is the echo the navigator looks within 12 degrees of.
+     * is the echo the navigator looks within 12 degrees of. A ping holds the creatures that heard it 10 s (200 ticks), CREATURES.md's ten seconds of silence.
      */
     public static final SonarTuning DEFAULT =
-            new SonarTuning(24, 48, 0.4f, 80, 200, 4, 6, 12, 0.05, 32, 1200, 3, 5, 12.0);
+            new SonarTuning(24, 48, 0.4f, 80, 200, 4, 6, 12, 0.05, 32, 1200, 3, 5, 12.0, 200);
 
     public SonarTuning {
         if (rangeBlocks < 1 || noiseBlocks < rangeBlocks) {
@@ -54,6 +56,9 @@ public record SonarTuning(
         if (markLifetimeTicks < 1 || maxMarks < 1 || markCooldownTicks < 0 || !(aimDegrees > 0 && aimDegrees < 90)) {
             throw new IllegalArgumentException(
                     "a mark holds 1 tick or more, a pod holds 1 mark or more, and the aim is under 90 degrees");
+        }
+        if (lureTicks < 0) {
+            throw new IllegalArgumentException("a ping holds a creature 0 ticks or more, got " + lureTicks);
         }
         if (cooldownTicks < 0 || lifetimeTicks < 1 || maxEchoes < 1) {
             throw new IllegalArgumentException(

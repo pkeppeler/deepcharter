@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.market;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalNoticeLine;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
@@ -40,6 +41,9 @@ import net.minecraft.world.level.Level;
  * only asks the server; the server decides, and the account shown is the one it last synced, so it changes when a sale goes through.
  *
  * <p>WITHDRAW ORE swaps the sheet for a list of the ores the parked pods hold, each with buttons that move 1, 10 or all of it into the pack (#536). BACK returns to the sheet.
+ *
+ * <p>When not one order row fits between the account line and WITHDRAW ORE (a risk line and a wrapped intro take the room, #993), the work order
+ * heading becomes a button that swaps the sheet for the orders alone, paged, with BACK.
  */
 public final class OreProcessorScreen extends CrtScreen implements TerminalViewScreen {
     private static final int MARGIN = 24;
@@ -66,6 +70,10 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     private int pages = 1;
     /** True while the sheet is the list of ores to withdraw. */
     private boolean withdrawing;
+    /** True while the sheet is the work orders alone, opened from the heading when no row fits under the account line. */
+    private boolean showingOrders;
+    /** True when the last layout made the work order heading a button, so the heading is not drawn as text under it. */
+    private boolean headingIsButton;
     /** The ores listed by the last layout of the withdraw list and the y of each, for the text beside its buttons. */
     private final List<ProcessorView.Hold> listedHolds = new ArrayList<>();
 
@@ -114,8 +122,13 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     @Override
     protected void layout() {
         orderRows.clear();
+        headingIsButton = false;
         if (withdrawing()) {
             layoutWithdrawal();
+            return;
+        }
+        if (showingOrders()) {
+            layoutOrderSheet();
             return;
         }
         int left = contentLeft(MARGIN);
@@ -193,6 +206,16 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
         return withdrawing;
     }
 
+    /** True while the sheet is the work orders alone. */
+    public boolean showingOrders() {
+        return showingOrders;
+    }
+
+    private void showOrders(boolean shown) {
+        showingOrders = shown;
+        rebuildWidgets();
+    }
+
     /** How many ore rows fit between the heading and the back button. */
     private int holdsPerPage() {
         return Math.max(1, (contentBottom(MARGIN) - BUTTON_HEIGHT - GAP - holdsTop()) / (BUTTON_HEIGHT + GAP));
@@ -200,11 +223,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 
     /** The y of the first ore row, under the heading and the one line that says what the list does. */
     private int holdsTop() {
-        return contentTop(MARGIN)
-                + font.lineHeight
-                + 14
-                + 2 * (font.lineHeight + CrtTuning.current().lineSpacing())
-                + GAP;
+        return underHeader() + 2 * (font.lineHeight + CrtTuning.current().lineSpacing()) + GAP;
     }
 
     /** The withdraw list: a row for each ore the parked pods hold, with the three amounts, and BACK. */
@@ -297,16 +316,66 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     }
 
     /**
-     * The order rows sit above the cargo button, in the room between it and the account line, so their number is bounded by the
-     * screen: as many rows as fit, at least one. The orders beyond a page are reached with the pager, beside the heading, under the prices.
+     * The order rows sit above the withdraw button, in the room between it and the account line, so their number is bounded by the
+     * screen: as many rows as fit. The orders beyond a page are reached with the pager, beside the heading, under the prices. When not
+     * one row fits, the heading is a button to the order sheet instead.
      */
-    private void layoutOrders(int cargoY) {
+    private void layoutOrders(int withdrawY) {
+        int room = withdrawY - ORDER_GAP - (accountTop() + font.lineHeight + ORDER_GAP);
+        int perPage = rowsIn(room);
+        if (perPage == 0) {
+            pages = 1;
+            if (!listedOrders().isEmpty()) {
+                headingIsButton = true;
+                addRenderableWidget(new CrtButton(
+                        rightColumn(),
+                        headingTop() + (font.lineHeight - BUTTON_HEIGHT) / 2,
+                        Math.min(BUTTON_WIDTH, contentRight(MARGIN) - rightColumn()),
+                        BUTTON_HEIGHT,
+                        Component.translatable("screen.deepcharter.processor.orders"),
+                        button -> showOrders(true)));
+            }
+            return;
+        }
+        layoutOrderPage(withdrawY - ORDER_GAP - perPage * ORDER_ROW_PITCH + ORDER_ROW_GAP, perPage);
+    }
+
+    /** The order sheet: the heading, the rows of a page under it, and BACK with the pager beside it. */
+    private void layoutOrderSheet() {
+        int left = contentLeft(MARGIN);
+        int backY = contentBottom(MARGIN) - BUTTON_HEIGHT;
+        addRenderableWidget(new CrtButton(
+                left,
+                backY,
+                CLOSE_WIDTH,
+                BUTTON_HEIGHT,
+                Component.translatable("screen.deepcharter.processor.back"),
+                button -> showOrders(false)));
+        int perPage = Math.max(1, rowsIn(backY - GAP - sheetRowsTop()));
+        layoutOrderPage(sheetRowsTop(), perPage);
+    }
+
+    /** The y of the first line under the header: the intro (after the notice), the order sheet's heading, the withdraw list's text. */
+    private int underHeader() {
+        return contentTop(MARGIN) + font.lineHeight + 14;
+    }
+
+    private int sheetRowsTop() {
+        return underHeader() + font.lineHeight + GAP;
+    }
+
+    /** How many order rows fit in {@code room} pixels, none when it is too short for one. */
+    private static int rowsIn(int room) {
+        return Math.max(0, (room + ORDER_ROW_GAP) / ORDER_ROW_PITCH);
+    }
+
+    /** The order rows of the page on screen, {@code perPage} to a page from {@code rowsTop} down, and the pager when there is more than one page. */
+    private void layoutOrderPage(int rowsTop, int perPage) {
         List<WorkOrdersView.Entry> listed = listedOrders();
-        int perPage = ordersPerPage(cargoY);
         pages = Math.max(1, (listed.size() + perPage - 1) / perPage);
         page = Math.clamp(page, 0, pages - 1);
         int first = page * perPage;
-        int rowY = cargoY - ORDER_GAP - perPage * ORDER_ROW_PITCH + ORDER_ROW_GAP;
+        int rowY = rowsTop;
         for (WorkOrdersView.Entry entry : listed.subList(first, Math.min(listed.size(), first + perPage))) {
             Component deliver = Component.translatable(
                     "screen.deepcharter.processor.deliver",
@@ -325,11 +394,16 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
             rowY += ORDER_ROW_PITCH;
         }
         if (pages > 1) {
-            // On the heading's row, after its text, so that the pager does not sit in the fuse button's row.
-            int pagerY = headingTop() + (font.lineHeight - BUTTON_HEIGHT) / 2;
-            int pagerX = Math.min(
-                    rightColumn() + CrtText.width(font, orderHeading()) + GAP * 2,
-                    contentRight(MARGIN) - 2 * PAGER_WIDTH - GAP);
+            // On the order sheet beside BACK; on the main sheet on the heading's row, after its text, so that the pager
+            // does not sit in the fuse button's row.
+            int pagerY = showingOrders()
+                    ? contentBottom(MARGIN) - BUTTON_HEIGHT
+                    : headingTop() + (font.lineHeight - BUTTON_HEIGHT) / 2;
+            int pagerX = showingOrders()
+                    ? contentLeft(MARGIN) + CLOSE_WIDTH + GAP
+                    : Math.min(
+                            rightColumn() + CrtText.width(font, orderHeading()) + GAP * 2,
+                            contentRight(MARGIN) - 2 * PAGER_WIDTH - GAP);
             CrtButton previous = addRenderableWidget(new CrtButton(
                     pagerX, pagerY, PAGER_WIDTH, BUTTON_HEIGHT, Component.literal("<"), button -> turnPage(-1)));
             previous.active = page > 0;
@@ -349,21 +423,19 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
         rebuildWidgets();
     }
 
-    /** How many order rows fit between the account line and the cargo button. */
-    private int ordersPerPage(int cargoY) {
-        int room = cargoY - ORDER_GAP - (accountTop() + font.lineHeight + ORDER_GAP);
-        return Math.max(1, (room + ORDER_ROW_GAP) / ORDER_ROW_PITCH);
-    }
-
     /** The y of the account line, which is below the intro in full. Fixed, so that the rows do not move while the intro types. */
     private int accountTop() {
         int introLines =
                 CrtText.wrap(font, typewriter.text(), contentWidth(MARGIN)).size();
-        return contentTop(MARGIN)
-                + font.lineHeight
-                + 14
+        return underHeader()
+                + noticeHeight()
                 + introLines * (font.lineHeight + CrtTuning.current().lineSpacing())
                 + GAP * 2;
+    }
+
+    /** The room the view's risk line takes under the header, which everything below it moves down by. */
+    private int noticeHeight() {
+        return TerminalNoticeLine.height(font, view, contentWidth(MARGIN));
     }
 
     private int rightColumn() {
@@ -371,12 +443,19 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     }
 
     private int pricesBottom() {
-        return accountTop() + OreType.values().length * (font.lineHeight + 2);
+        return accountTop() + OreType.values().length * priceStep();
+    }
+
+    /** The pitch of the price lines: a risk line takes room from the right column, which has none to spare, so they close up by a pixel. */
+    private int priceStep() {
+        return font.lineHeight + (noticeHeight() > 0 ? 1 : 2);
     }
 
     /** The y of the work order heading, under the prices. */
     private int headingTop() {
-        return pricesBottom() + GAP * 2;
+        // A risk line pushes the right column down, which has no room to spare: the heading closes up under the prices
+        // by what the line took.
+        return pricesBottom() + (noticeHeight() > 0 ? GAP : GAP * 2);
     }
 
     private Optional<WorkOrdersView> orders() {
@@ -451,7 +530,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     /** What the list does, then the ore of each row at the left of its buttons, or the line that says there is none. */
     private void extractWithdrawal(GuiGraphicsExtractor graphics, CrtTuning tuning) {
         List<String> lines = withdrawLines();
-        int y = contentTop(MARGIN) + font.lineHeight + 14;
+        int y = underHeader();
         for (String line : CrtText.wrap(font, lines.getFirst(), contentWidth(MARGIN))) {
             CrtDraw.glowText(graphics, font, line, contentLeft(MARGIN), y, tuning.phosphorColor());
             y += font.lineHeight + tuning.lineSpacing();
@@ -499,12 +578,17 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
             super.extractRenderState(graphics, mouseX, mouseY, partialTick);
             return;
         }
-        drawTypewriter(
-                graphics,
-                typewriter,
-                contentLeft(MARGIN),
-                contentTop(MARGIN) + font.lineHeight + 14,
-                contentWidth(MARGIN));
+        if (showingOrders()) {
+            List<String> lines = orderLines();
+            if (!lines.isEmpty()) {
+                CrtDraw.glowText(
+                        graphics, font, lines.getFirst(), contentLeft(MARGIN), underHeader(), tuning.phosphorColor());
+            }
+            super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+            return;
+        }
+        TerminalNoticeLine.draw(graphics, font, view, contentLeft(MARGIN), contentTop(MARGIN), contentWidth(MARGIN));
+        drawTypewriter(graphics, typewriter, contentLeft(MARGIN), underHeader() + noticeHeight(), contentWidth(MARGIN));
         int top = accountTop();
         CrtDraw.glowText(graphics, font, accountLine(), contentLeft(MARGIN), top, tuning.phosphorColor());
         if (typewriter.done()) {
@@ -523,11 +607,11 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
                                 OutpostRates.orePrice(level, view.pos().getY(), ore))
                         .getString();
                 CrtDraw.glowText(graphics, font, price, x, y, PanelLook.dimText(tuning.dimColor()));
-                y += font.lineHeight + 2;
+                y += priceStep();
             }
             // The rows are buttons; only the heading (or the reason there are none) is text.
             List<String> lines = orderLines();
-            if (!lines.isEmpty()) {
+            if (!lines.isEmpty() && !headingIsButton) {
                 CrtDraw.glowText(graphics, font, lines.getFirst(), x, headingTop(), tuning.phosphorColor());
             }
         }

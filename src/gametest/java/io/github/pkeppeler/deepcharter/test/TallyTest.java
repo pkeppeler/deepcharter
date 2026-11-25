@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
+import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.creature.Tallies;
 import io.github.pkeppeler.deepcharter.creature.Tally;
 import io.github.pkeppeler.deepcharter.creature.TallyTuning;
@@ -16,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.scanner.EchoedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
@@ -76,6 +78,8 @@ public class TallyTest {
     private static final int FIRST_SLOT_X = 6808;
     private static final int SLOT_Z_SPACING = 64;
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 100);
+    /** (#1237) A column no other test uses, farther than {@link #DESPAWN_BLOCKS} from every arena slot. */
+    private static final BlockPos DESPAWN_SITE = new BlockPos(52_000, FLOOR_Y, 52_000);
     /** The trail (600 ticks), with the flight to the mark (measured up to 83 ticks) and a margin for a loaded runner; an annotation needs a constant, so a test pins it to the tuning. */
     private static final int CLAMP_BUDGET_TICKS = 760;
     /** The hold (60 ticks), the flight away (40) and a margin. */
@@ -84,6 +88,10 @@ public class TallyTest {
     private static final int ORES = 3;
     /** The approach to the mark, on top of the trail, at most: measured 37 to 83 ticks. */
     private static final int APPROACH_TICKS_MAX = 100;
+    /** How long the flare of the flare tests burns, and how far it reaches. */
+    private static final int FLARE_BURN_TICKS = 40;
+
+    private static final double FLARE_REACH = 6;
     /** Ticks the cutter may take over the bites it needs: the pod's drill starts a tick or so after the input. */
     private static final int CUTTER_SLACK_TICKS = 5;
     /** Ticks a pod and its pilot take to settle before they are asked what they draw. */
@@ -152,7 +160,7 @@ public class TallyTest {
                     holder.player().getInventory().add(OreRegistry.stack(OreType.IRONIUM));
                 }
             }
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
             tally.setPos(Vec3.atBottomCenterOf(origin.west(HALF - 1).above(2)));
             level.addFreshEntity(tally);
             return new Arena(level, origin, pod, podRide, holder, tally, survey(level, origin), helper.getTick());
@@ -489,7 +497,7 @@ public class TallyTest {
         BlockPos origin = slot(4);
         TestTicks.each(helper, () -> {});
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
             tally.setNoAi(true);
             tally.setPos(Vec3.atBottomCenterOf(origin.above(30)));
             level.addFreshEntity(tally);
@@ -575,6 +583,96 @@ public class TallyTest {
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
     }
 
+    private static void lightFlare(ServerLevel level, BlockPos pos, long burnsOutAt) {
+        // room-carver: a flare block in this test's own arena
+        level.setBlock(pos, RepairRegistry.FLARE_LIGHT.defaultBlockState(), 3);
+        DrawSources.addFlare(level, pos, RepairRegistry.FLARE_LIGHT, FLARE_REACH, burnsOutAt);
+    }
+
+    private static void snuffFlare(ServerLevel level, BlockPos pos) {
+        // room-carver: the flare block of this test's own arena goes out with its entry
+        level.removeBlock(pos, false);
+    }
+
+    /**
+     * (#1003) A burning flare keeps a Tally off a dark pod as it keeps the Retained off (ADR 0078): the pod inside its reach draws none, and
+     * draws one again once the flare has burnt out and its block is gone.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SETTLE_TICKS + FLARE_BURN_TICKS + 60)
+    public void aBurningFlareKeepsATallyOffADarkPodUntilItIsOut(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(14);
+        Arena[] made = {null};
+        BlockPos[] flare = {null};
+        long[] burnsOutAt = {-1};
+        TestTicks.each(helper, () -> {
+            Arena arena = made[0];
+            if (arena == null || arena.age(helper) < SETTLE_TICKS) {
+                return;
+            }
+            if (flare[0] == null) {
+                if (!Tally.draws(arena.pod)) {
+                    throw failure(helper, "a dark pod with ore and a pilot draws no Tally before the flare");
+                }
+                flare[0] = arena.pod.blockPosition().above(2);
+                burnsOutAt[0] = level.getGameTime() + FLARE_BURN_TICKS;
+                lightFlare(level, flare[0], burnsOutAt[0]);
+            } else if (level.getGameTime() < burnsOutAt[0]) {
+                if (Tally.draws(arena.pod)) {
+                    throw failure(helper, "a dark pod inside a burning flare's reach draws a Tally");
+                }
+            } else {
+                snuffFlare(level, flare[0]);
+                if (!Tally.draws(arena.pod)) {
+                    throw failure(helper, "a dark pod draws no Tally once the flare is out");
+                }
+                arena.clear();
+                helper.succeed();
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
+    }
+
+    /**
+     * (#1003) A Tally that trails a pod drops it when a flare lights the pod, and takes it up again once the flare is out: the pilot is told
+     * of the approach a second time.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_TICKS_MAX + FLARE_BURN_TICKS + 400)
+    public void aTallyTrailingAPodDropsItWhenAFlareLightsIt(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(15);
+        Arena[] made = {null};
+        BlockPos[] flare = {null};
+        long[] litAt = {-1};
+        TestTicks.each(helper, () -> {
+            Arena arena = made[0];
+            if (arena == null) {
+                return;
+            }
+            if (flare[0] == null) {
+                if (arena.told(APPROACH_KEY) > 0) {
+                    flare[0] = arena.pod.blockPosition().above(2);
+                    litAt[0] = level.getGameTime();
+                    lightFlare(level, flare[0], litAt[0] + FLARE_BURN_TICKS);
+                } else if (arena.age(helper) > APPROACH_TICKS_MAX) {
+                    throw failure(helper, "the Tally never began to trail the pod");
+                }
+                return;
+            }
+            if (level.getGameTime() < litAt[0] + FLARE_BURN_TICKS) {
+                return;
+            }
+            snuffFlare(level, flare[0]);
+            if (arena.told(APPROACH_KEY) > 1) {
+                arena.clear();
+                helper.succeed();
+            } else if (level.getGameTime() > litAt[0] + FLARE_BURN_TICKS + 300) {
+                throw failure(helper, "the Tally did not take the pod up again once the flare was out");
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
+    }
+
     /**
      * (#917) The spawner: a check that passes puts one Tally in dark open air between {@code spawnMinBlocks} and {@code spawnMaxBlocks} of the
      * mark, a second finds one near and sends none, and a check that does not pass sends none.
@@ -634,6 +732,7 @@ public class TallyTest {
                 || TUNING.podSampleTicks() + TUNING.leaveTicks() + 60 > SAMPLE_BUDGET_TICKS) {
             throw failure(helper, "the tests' tick budgets do not cover the tuning %s", TUNING);
         }
+        // Never added to a level, so the game never checks it for despawn.
         var inside = TestEntities.create(CreatureRegistry.TALLY, helper.getLevel());
         inside.setPos(casing.getX() + 0.5 + range, casing.getY(), casing.getZ() + 0.5 - range);
         if (!Tallies.nearCasing(inside, casing)) {
@@ -660,7 +759,7 @@ public class TallyTest {
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(Vec3.atBottomCenterOf(at));
             level.addFreshEntity(pod);
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
             tally.setNoAi(true);
             tally.setPos(Vec3.atBottomCenterOf(at.east(2)));
             level.addFreshEntity(tally);
@@ -948,6 +1047,50 @@ public class TallyTest {
             }
         }
         helper.succeed();
+    }
+
+    /**
+     * (#1237) A Tally despawns like any monster ({@code removeWhenFarAway} is true), so a test that leaves one standing
+     * builds it with {@code TestEntities.mob}. The only player is more than 128 blocks off, where
+     * {@code Mob.checkDespawn} removes a mob at once: a plain {@code create} Tally goes, a persistent one stays. The
+     * site is more than 128 blocks from every other test's arena, whose players would otherwise be the nearest.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
+    public void aTallyTheTestBuildsWithMobIsNotDespawnedByTheGame(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = DESPAWN_SITE;
+        TestTicks.each(helper, () -> {});
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            MockPlayer far = MockPlayers.join(helper, "despawn-bystander");
+            // GameTest players are creative, and the despawn check looks past a creative player.
+            far.player().setGameMode(GameType.SURVIVAL);
+            double apart = far.player().position().distanceTo(Vec3.atCenterOf(origin));
+            if (apart <= DESPAWN_BLOCKS) {
+                throw failure(helper, "the only player is %s blocks from the Tally, within %s", apart, DESPAWN_BLOCKS);
+            }
+            Tally plain = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally persistent = TestEntities.mob(CreatureRegistry.TALLY, level);
+            try {
+                for (Tally tally : List.of(plain, persistent)) {
+                    tally.setPos(Vec3.atBottomCenterOf(origin.above(30)));
+                    level.addFreshEntity(tally);
+                    tally.checkDespawn();
+                }
+                if (!plain.isRemoved()) {
+                    throw failure(helper, "a Tally built with create was not despawned %s blocks from a player", apart);
+                }
+                if (persistent.isRemoved()) {
+                    throw failure(
+                            helper,
+                            "a Tally built with mob was despawned by the game: %s",
+                            persistent.getRemovalReason());
+                }
+            } finally {
+                plain.discard();
+                persistent.discard();
+            }
+            helper.succeed();
+        });
     }
 
     private static final AtomicInteger CHARTERS = new AtomicInteger();

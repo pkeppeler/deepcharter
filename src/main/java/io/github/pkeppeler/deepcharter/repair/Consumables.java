@@ -7,6 +7,8 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.suit.SuitReserve;
+import io.github.pkeppeler.deepcharter.suit.SuitTuning;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -18,16 +20,23 @@ import net.minecraft.sounds.SoundSource;
 /**
  * What each item does (SPEC sections 10 and 11). All of them but the thrown kit work on the pod the player is piloting, and
  * on no other: an item used on foot, or in a wreck, is refused and kept. The thrown kit (#985) is the other way round: it is
- * thrown on foot and refused from a seat, and {@link ThrownKit} does it.
+ * thrown on foot and refused from a seat, and {@link ThrownKit} does it. The air canister (#1194) is neither: it tops up the suit,
+ * on foot or in a seat that does not refill it.
  */
 final class Consumables {
     private Consumables() {}
 
     /** Server only: applies the item for {@code player}. Empty when it worked (the caller uses it up), or the reason it did not. */
     static Optional<Component> use(ServerPlayer player, Consumable consumable) {
-        if (consumable.thrown()) {
-            return ThrownKit.throwFrom(player, consumable, ThrownKitTuning.DEFAULT);
-        }
+        return switch (consumable.use()) {
+            case THROWN -> ThrownKit.throwFrom(player, consumable, ThrownKitTuning.DEFAULT);
+            case SUIT -> SuitReserve.topUp(player, SuitTuning.DEFAULT.canisterSeconds());
+            case PILOT_SEAT -> pilot(player, consumable);
+            case OWN -> throw new IllegalStateException(consumable + " handles its own use");
+        };
+    }
+
+    private static Optional<Component> pilot(ServerPlayer player, Consumable consumable) {
         if (!(player.getVehicle() instanceof PodEntity pod) || pod.getControllingPassenger() != player) {
             return refusal("not_piloting");
         }
@@ -44,11 +53,7 @@ final class Consumables {
             case SHAPED_CHARGE -> PodCharge.set(pod, tuning, PodCharge.Kind.SHAPED);
             case QUANTUM_TELEPORTER -> Teleports.send(pod, tuning.quantumScatter());
             case MATTER_TRANSMITTER -> Teleports.send(pod, 0.0);
-            case THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE ->
-                throw new IllegalStateException(consumable + " is thrown on foot and handled above");
-            // The switch must cover every constant; a TOOL never reaches here, because RepairRegistry gives it its own
-            // item, and the bolts are the driver's ammunition, not a use of their own.
-            case TETHER, BOLT_DRIVER, BOLT ->
+            case THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE, TETHER, BOLT_DRIVER, BOLT, AIR_CANISTER ->
                 throw new IllegalStateException(consumable + " is not used from the pilot's seat");
         };
     }
