@@ -6,6 +6,8 @@ status: accepted
 
 Amends [ADR 0015](0015-zones-are-filled-block-by-block-from-the-originals-rows.md). Issue #509. The user (2026-10-11) said Company rock must be destroyable: a player must be able to sink a straight shaft, and enough upgrades, tools or purchases must resolve the obstacles. Motherload cleared its rocks with dynamite and C4. The lore: the Company sells you the means to break its own rock.
 
+Amended by [ADR 0069](0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md): a hand tool can brute-force Company rock at a ruinous cost, so "a player's hand still cannot break it" no longer holds. The blasting charge and the drill's refusal stand.
+
 ## Decision
 
 - **Company rock stays hardness -1 and in `deepcharter:undiggable`.** The pod drill still refuses a slab with it and a player's hand still cannot break it. Nothing about the drill or `CompanyRock` changes. What changes is that something else clears it.
