@@ -115,6 +115,17 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
 
     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
 
+    /** The ladder's rungs and the niches' candle stubs: the vanilla blocks a shaft places. */
+    private static final Block RUNG = Blocks.LADDER;
+
+    private static final Block CANDLE_STUB = Blocks.CANDLE;
+
+    /**
+     * Every vanilla block a shaft places, none of which its config names, so the obtainable-items gate (ADR 0093)
+     * reads them here.
+     */
+    public static final List<Block> VANILLA_PLACED = List.of(RUNG, CANDLE_STUB);
+
     public static void register() {
         Registry.register(
                 BuiltInRegistries.FEATURE_TYPE,
@@ -333,7 +344,7 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
             // The ladder, on the wall across from the drift, where a wall still holds it.
             int lx = x + ladderWall.getStepX() * HOLLOW;
             int lz = z + ladderWall.getStepZ() * HOLLOW;
-            BlockState rung = Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, ladderWall.getOpposite());
+            BlockState rung = RUNG.defaultBlockState().setValue(LadderBlock.FACING, ladderWall.getOpposite());
             for (int y = bottom; y <= top; y++) {
                 boolean held = !get(lx + ladderWall.getStepX(), y, lz + ladderWall.getStepZ())
                         .isAir();
@@ -398,7 +409,7 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
 
         /** A candle burnt down and out: one to three stubs, unlit. */
         private BlockState stub() {
-            return Blocks.CANDLE
+            return CANDLE_STUB
                     .defaultBlockState()
                     .setValue(CandleBlock.CANDLES, random.nextIntBetweenInclusive(1, 3))
                     .setValue(CandleBlock.LIT, false);
