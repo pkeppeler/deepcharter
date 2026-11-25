@@ -18,6 +18,7 @@
     "MinecraftServerAccess",
     "ServerChunkCacheAccess",
     "ServerChunkCacheBlockingLoadMixin",
+    "ServerGamePacketListenerAccess",
     "ServerLevelForcedMixin",
     "TicketAccess"
   ],

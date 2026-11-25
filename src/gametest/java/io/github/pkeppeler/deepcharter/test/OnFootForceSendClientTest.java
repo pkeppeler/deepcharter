@@ -54,9 +54,10 @@ import org.slf4j.LoggerFactory;
  * server generates nothing far off, and the player is counted only once the client holds every chunk in view and the
  * server is calm. Each step records the server's slowest tick, so a red run tells lag from a block disagreement.
  *
- * <p>A landing can still make the line over any floor, by a race in vanilla ({@link #landingRace}). So {@code
- * ForceSendProbe} records each line with the move packets before it and the blocks round the player on the server and
- * the client, and a line passes only when it is that race and both sides hold the same blocks.
+ * <p>A landing can still make the line over a floor the server holds: vanilla's check reads the collision of the
+ * server's previous move of the player, which can be stale. So {@code ForceSendProbe} records each line, and a line is
+ * excused only when the server's own blocks hold up the box the packet lands the player in. Every excused line is
+ * logged with its evidence, and more than {@link #MAX_EXCUSED} in a run fail it.
  *
  * <p>The control: the server removes the stone patch without telling the client, and the player drops onto it again.
  * The line must come, so a zero above is not the appender or the line's wording failing.
@@ -114,6 +115,14 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         ServerTickEvents.END_SERVER_TICK.register(OnFootForceSendClientTest::watchTick);
         ClientTickEvents.END_CLIENT_TICK.register(OnFootForceSendClientTest::probeClient);
     }
+
+    /**
+     * The most force-send lines one run may excuse as vanilla's stale-move race. Observed: at most 1 per run in the
+     * runs since the probe (#1331, PR body). Vanilla allows one line in 200 ticks, so the measured phase could hold
+     * about 6; a cap of 2 leaves margin over the observed rate and still fails a regression that makes the line on most
+     * landings.
+     */
+    private static final int MAX_EXCUSED = 2;
 
     /** Vanilla sends nothing in the first 200 ticks of a connection. */
     private static final int SILENT_TICKS = 260;
@@ -254,11 +263,17 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         int total = ForceSends.total() - before;
         LOGGER.info("Force-send lines and slowest server tick per step: {}", steps);
         List<Seen> seen = List.copyOf(FORCE_SENDS);
-        long disagreements = seen.stream().filter(line -> !line.landingRace()).count();
+        List<String> excused = steps.excused();
+        LOGGER.info("Excused force-send lines, server-supported: {}", excused.size());
+        for (String line : excused) {
+            LOGGER.info("Excused: {}", line);
+        }
+        long unsupported = seen.stream().filter(line -> !line.serverSupported()).count();
         require(
-                total == seen.size() && disagreements == 0,
-                total + " force-send lines, " + seen.size() + " seen by the probe, " + disagreements
-                        + " not vanilla's landing race (" + onTheBlocks + " before the tether; " + steps + "; " + seen
+                total == seen.size() && unsupported == 0 && excused.size() <= MAX_EXCUSED,
+                total + " force-send lines, " + seen.size() + " seen by the probe, " + unsupported
+                        + " over no server block, " + excused.size() + " excused (at most " + MAX_EXCUSED + "; "
+                        + onTheBlocks + " before the tether; " + steps + "; " + seen
                         + ") for a real client on foot in a carved bore, and " + setup + " in the setup");
 
         // No line since the count began, and a setup line was waited out before it, so vanilla's cooldown is clear.
@@ -279,8 +294,8 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                 () -> "no line; " + setupLines + " in the setup");
         ClientWait.until(
                 context,
-                "the probe naming the removed block as a disagreement",
-                () -> FORCE_SENDS.stream().anyMatch(line -> !line.landingRace()),
+                "the probe finding no server block under the landing on the removed block",
+                () -> FORCE_SENDS.stream().anyMatch(line -> !line.serverSupported()),
                 () -> "seen: " + FORCE_SENDS);
     }
 
@@ -385,31 +400,14 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
     /**
      * A force-send line as the probe saw it.
      *
-     * @param landingRace the client and server hold the same blocks round the player, and the server took the landing
-     *     packet with the one before it and no tick between: see {@link #landingRace(ForceSendProbe.Shot)}
+     * @param serverSupported the server's own blocks hold up the box the packet lands the player in: vanilla's
+     *     stale-move race, excused. Otherwise the client stands on a block the server lacks.
      */
-    private record Seen(String text, boolean landingRace) {
+    private record Seen(String text, boolean serverSupported) {
         @Override
         public String toString() {
-            return (landingRace ? "landing race: " : "DISAGREEMENT: ") + text;
+            return (serverSupported ? "server-supported: " : "UNSUPPORTED: ") + text;
         }
-    }
-
-    /**
-     * Whether the line came from vanilla's landing race, not a block. Vanilla's check reads the collision of the
-     * server's last move of the player. Between two move packets the server simulates the player for a tick, and on a
-     * landing that tick's move hits the floor. When the last in-air packet and the landing packet reach the server in
-     * one tick (the integrated server's connection races its tick), that move is missing: the server's last move
-     * was in the air, and the line comes over any floor.
-     */
-    private static boolean landingRace(ForceSendProbe.Shot shot) {
-        List<ForceSendProbe.Move> moves = shot.moves();
-        if (moves.size() < 2) {
-            return false;
-        }
-        ForceSendProbe.Move air = moves.get(moves.size() - 2);
-        ForceSendProbe.Move landing = moves.getLast();
-        return air.tick() == landing.tick() && !air.onGround() && landing.onGround();
     }
 
     /** Adds the client's blocks, read this tick, to each force-send the server recorded. */
@@ -422,13 +420,14 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                     clientBlocks.add(ForceSendProbe.describe(client.level, pos));
                 }
             }
+            // The client's blocks are read after vanilla sent its correction, so they are evidence, never the verdict.
             String text = "force-send at tick " + shot.tick() + " (" + (shot.tick() - switchTick)
-                    + " after the switch to survival): moves " + shot.moves() + ", box " + shot.box() + "; server "
-                    + shot.serverBlocks() + "; client " + clientBlocks + ", client player at "
+                    + " after the switch to survival): moves " + shot.moves() + ", landing box " + shot.box()
+                    + "; server " + shot.serverBlocks() + "; client after " + clientBlocks + ", client player at "
                     + (client.player == null
                             ? "none"
                             : client.player.position() + " onGround " + client.player.onGround());
-            Seen seen = new Seen(text, landingRace(shot) && shot.serverBlocks().equals(clientBlocks));
+            Seen seen = new Seen(text, shot.serverSupported());
             LOGGER.info("{}", seen);
             FORCE_SENDS.add(seen);
         }
@@ -454,7 +453,9 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
      */
     private static final class Steps {
         private final StringBuilder record = new StringBuilder();
+        private final List<String> excused = new ArrayList<>();
         private int mark;
+        private int seenMark;
 
         Steps(int from) {
             mark = from;
@@ -472,6 +473,18 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                     .append(LONGEST_GAP.getAndSet(0) / 1_000_000L)
                     .append(" ms)");
             mark = now;
+            List<Seen> seen = List.copyOf(FORCE_SENDS);
+            for (Seen line : seen.subList(seenMark, seen.size())) {
+                if (line.serverSupported()) {
+                    excused.add("step " + name + ": " + line);
+                }
+            }
+            seenMark = seen.size();
+        }
+
+        /** Each server-supported line, with the step it was seen by the end of. */
+        List<String> excused() {
+            return List.copyOf(excused);
         }
 
         @Override

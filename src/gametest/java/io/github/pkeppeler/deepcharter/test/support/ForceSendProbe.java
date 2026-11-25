@@ -10,40 +10,60 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What the server saw when vanilla force-sent the blocks under a player (#1317): the move packets that led to it, and
- * the blocks under and inside the player's box where the packet puts it. Inert until {@link #watch}; {@code
+ * Whether the server's own blocks hold up the player where a force-send's packet lands them (#1317). Vanilla's check
+ * reads the collision of the server's previous move of the player, which can be stale: a supported landing is that
+ * race, an unsupported one is a block the client holds and the server does not. Inert until {@link #watch}; {@code
  * ForceSendProbeMixin} feeds it.
  */
 public final class ForceSendProbe {
     private static final int MOVES_KEPT = 6;
+    /** How far under the box a block counts as holding it up: the depth vanilla's own force-send reads. */
+    private static final double SUPPORT_DEPTH = 1.0E-5;
 
     /**
-     * One move packet as the server took it, before moving the player.
+     * One on-foot move packet as the server took it, before moving the player.
      *
      * @param tick the server tick it was handled in
      * @param fromY the server's Y of the player before it
-     * @param toY the packet's Y
+     * @param to the packet's position
      * @param onGround the packet's on-ground flag
      * @param collidedBelow the server's {@code verticalCollisionBelow} before it, which vanilla's check reads
      * @param serverVy the server's simulated vertical speed of the player before it
      */
-    public record Move(int tick, double fromY, double toY, boolean onGround, boolean collidedBelow, double serverVy) {
+    public record Move(int tick, double fromY, Vec3 to, boolean onGround, boolean collidedBelow, double serverVy) {
         @Override
         public String toString() {
-            return "t" + tick + " y " + fromY + " -> " + toY + (onGround ? " ground" : " air")
+            return "t" + tick + " y " + fromY + " -> " + to + (onGround ? " ground" : " air")
                     + (collidedBelow ? " below" : " -") + " vy " + serverVy;
         }
     }
 
-    /** A force-send: the last moves, the box the packet puts the player in, and each block there on the server. */
-    public record Shot(int tick, List<Move> moves, AABB box, List<BlockPos> positions, List<String> serverBlocks) {}
+    /**
+     * A force-send that passed vanilla's cooldown.
+     *
+     * @param player who it was for
+     * @param box the player's box where the packet lands them
+     * @param serverSupported whether the server's blocks hold up {@code box}: see {@link #supports}
+     * @param serverBlocks each block of {@code positions} on the server, for the failure message
+     */
+    public record Shot(
+            UUID player,
+            int tick,
+            List<Move> moves,
+            AABB box,
+            boolean serverSupported,
+            List<BlockPos> positions,
+            List<String> serverBlocks) {}
 
     private static final Map<UUID, Deque<Move>> MOVES = new ConcurrentHashMap<>();
     private static final ConcurrentLinkedQueue<Shot> SHOTS = new ConcurrentLinkedQueue<>();
@@ -65,14 +85,14 @@ public final class ForceSendProbe {
         return SHOTS.poll();
     }
 
-    public static void move(ServerPlayer player, double toY, boolean onGround) {
+    public static void move(ServerPlayer player, Vec3 to, boolean onGround) {
         if (!watching) {
             return;
         }
         Move move = new Move(
                 player.level().getServer().getTickCount(),
                 player.getY(),
-                toY,
+                to,
                 onGround,
                 player.verticalCollisionBelow,
                 player.getDeltaMovement().y);
@@ -85,33 +105,46 @@ public final class ForceSendProbe {
         }
     }
 
-    /** Called before vanilla's move of {@code player}, so its box is still where the last packet put it. */
+    /** Called from vanilla's force-send, before it moves {@code player} to the packet that made it. */
     public static void forceSend(ServerPlayer player) {
         if (!watching) {
             return;
         }
-        Deque<Move> moves = MOVES.getOrDefault(player.getUUID(), new ArrayDeque<>());
-        List<Move> kept;
-        synchronized (moves) {
-            kept = List.copyOf(moves);
+        List<Move> kept = List.of();
+        Deque<Move> moves = MOVES.get(player.getUUID());
+        if (moves != null) {
+            synchronized (moves) {
+                kept = List.copyOf(moves);
+            }
         }
-        AABB box = player.getBoundingBox();
-        if (!kept.isEmpty()) {
-            Move last = kept.getLast();
-            box = box.move(0, last.toY() - last.fromY(), 0);
-        }
+        AABB box = kept.isEmpty()
+                ? player.getBoundingBox()
+                : player.getDimensions(player.getPose())
+                        .makeBoundingBox(kept.getLast().to());
         List<BlockPos> positions = positions(box);
         List<String> blocks = new ArrayList<>();
         for (BlockPos pos : positions) {
             blocks.add(describe(player.level(), pos));
         }
-        SHOTS.add(new Shot(player.level().getServer().getTickCount(), kept, box, positions, blocks));
+        SHOTS.add(new Shot(
+                player.getUUID(),
+                player.level().getServer().getTickCount(),
+                kept,
+                box,
+                supports(player.level(), player, box),
+                positions,
+                blocks));
+    }
+
+    /** Whether a block of {@code level} collides with {@code entity} just under {@code box}, as a floor under its feet. */
+    public static boolean supports(CollisionGetter level, Entity entity, AABB box) {
+        return !level.noBlockCollision(entity, box.expandTowards(0, -SUPPORT_DEPTH, 0));
     }
 
     /** The blocks of the row under the box and of its lowest row. */
     public static List<BlockPos> positions(AABB box) {
         List<BlockPos> positions = new ArrayList<>();
-        int below = (int) Math.floor(box.minY - 1.0E-5);
+        int below = (int) Math.floor(box.minY - SUPPORT_DEPTH);
         for (int y = below; y <= below + 1; y++) {
             for (int x = (int) Math.floor(box.minX); x <= (int) Math.floor(box.maxX); x++) {
                 for (int z = (int) Math.floor(box.minZ); z <= (int) Math.floor(box.maxZ); z++) {
