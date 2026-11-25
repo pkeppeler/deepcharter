@@ -80,6 +80,7 @@ public class SeamAscentTest {
                 "the hold height %d is outside the floor margin %d",
                 HOLD_HEIGHT,
                 LayerTuning.DEFAULT.seamFloorMargin());
+        TickTimes.restart();
         boolean[] ticking = {false};
         int[] stage = {0};
         int[] crossedAt = {-1};
@@ -122,6 +123,7 @@ public class SeamAscentTest {
             if (crossedAt[0] < 0) {
                 if (TestLayers.isInDimensionOf(mock.player(), 1)) {
                     crossedAt[0] = (int) helper.getTick();
+                    LOGGER.info("[seam-ascent] streamed: peak tick {} ms at the crossing", TickTimes.peakMillis());
                 } else {
                     loadedBefore[0] = loadedAround(site.one(), site.centre());
                     ticketsBefore[0] = arrivalTickets(site.one(), site.centre()).size();
@@ -169,6 +171,7 @@ public class SeamAscentTest {
         MockPlayer mock = MockPlayers.join(helper, "seam-ascent-no-lead");
         LogCapture log = LogCapture.start(mock.player().getUUID().toString());
         int ceilingY = site.two().getMaxY();
+        TickTimes.restart();
         boolean[] ticking = {false};
         boolean[] armed = {false};
         FarChunks.awaitAllEntityTicking(
