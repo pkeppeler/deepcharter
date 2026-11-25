@@ -38,8 +38,7 @@ public class PodEntity extends Entity {
     // only.
     private float turnRate;
     // Neither saved nor synced: the compass direction a quarter turn in a bore is turning the pod to, and whether A or
-    // D was held
-    // last tick, so that one press starts one quarter turn (PodSteering). Server only.
+    // D was held last tick, so that one press starts one quarter turn (PodSteering). Server only.
     private @Nullable Direction turnTarget;
     private boolean turnKeyHeld;
 

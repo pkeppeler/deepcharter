@@ -10,7 +10,7 @@ import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The pilot's camera (#1281, #1268; ADR 0093). Taking the pilot seat switches to the third-person chase view, with no
+ * The pilot's camera (#1281, #1268; ADR 0095). Taking the pilot seat switches to the third-person chase view, with no
  * opt-out, and leaving it restores the view the player had; F5 still cycles in between. While seated the view's yaw
  * turns with the pod by the pod's own turn each tick, as a vanilla boat adds its rotation to its rider's, so the mouse
  * look the player has stays: it is not clamped, as a boat's is. In the third-person view the angle also eases back
@@ -53,8 +53,7 @@ public final class PodChase {
     }
 
     // test-seam: client tests and recorded scenarios stage a first-person cockpit and keep the camera they set, so each
-    // one
-    // starts with the chase off (ClientTestLog); PodChaseClientTest and the pod-controls scenario run it as shipped
+    // one starts with the chase off (ClientTestLog); PodChaseClientTest and the pod-controls scenario run it as shipped
     public static void setAutomatic(boolean automatic) {
         PodChase.automatic = automatic;
         forget();

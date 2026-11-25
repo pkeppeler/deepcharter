@@ -2458,7 +2458,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 ## Pod controls and the chase camera (#1281, #1268, A)
 
-**Problem.** The pod read WASD relative to the pilot's view, snapped to four directions, and turned to face where it drove. With a camera behind the pod, pressing back made it turn round and drive at the camera. That is a top-down scheme, and Minecraft players already know the vehicle one ([ADR 0093](../adr/0093-pods-steer-like-a-boat-and-the-pilots-camera-chases-them.md)).
+**Problem.** The pod read WASD relative to the pilot's view, snapped to four directions, and turned to face where it drove. With a camera behind the pod, pressing back made it turn round and drive at the camera. That is a top-down scheme, and Minecraft players already know the vehicle one ([ADR 0095](../adr/0095-pods-steer-like-a-boat-and-the-pilots-camera-chases-them.md)).
 
 **Rule.** Copy the vanilla boat (`AbstractBoat`) and deviate only where a drilling pod needs it.
 

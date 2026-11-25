@@ -8,7 +8,7 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Steering a pod as a boat is steered (ADR 0093): W drives along the pod's facing, S backs up without turning, A and D
+ * Steering a pod as a boat is steered (ADR 0095): W drives along the pod's facing, S backs up without turning, A and D
  * turn the pod's yaw, and the pilot's view does not steer. Where it differs from a boat is the grid: the drill and a
  * bore as wide as the pod turn it square to the compass, so tunnels stay straight. Server only; all state is the pod's
  * own yaw and its turn rate.

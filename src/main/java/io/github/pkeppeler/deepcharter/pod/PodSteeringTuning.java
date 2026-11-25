@@ -2,7 +2,7 @@ package io.github.pkeppeler.deepcharter.pod;
 
 /**
  * How a pod steers, read as {@code PodSteeringTuning.DEFAULT.thing()}. The first two are vanilla's boat as it is
- * (ADR 0093); the rest are where a drilling pod differs from a boat. It is a record of its own because
+ * (ADR 0095); the rest are where a drilling pod differs from a boat. It is a record of its own because
  * {@link PodTuning} takes no more changes.
  *
  * @param turnAcceleration degrees a tick of turn rate that A or D adds each tick it is held (the boat's 1)

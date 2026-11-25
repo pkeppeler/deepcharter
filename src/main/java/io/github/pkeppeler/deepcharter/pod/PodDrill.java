@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Pod drilling (SPEC section 7): sprint bores down, driving forward into a wall bores sideways, never up. The bore is
  * the pod's footprint, one slab at a time, and the pod turns square to the compass first so the bore stays straight
- * (ADR 0093).
+ * (ADR 0095).
  */
 public final class PodDrill {
     private static final double ALIGNED = 1e-6;
