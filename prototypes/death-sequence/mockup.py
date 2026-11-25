@@ -335,7 +335,7 @@ class Phonautogram:
         a = np.pad(audio, (0, max(0, frame * n - len(audio))))[: frame * n].reshape(n, frame)
         env = np.sqrt((a**2).mean(1))
         env = np.convolve(env, np.ones(9) / 9, mode="same")
-        env = (env / (env.max() + 1e-9)) ** 1.4
+        env = env / (env.max() + 1e-9)
         zc = (np.diff(np.sign(a), axis=1) != 0).mean(1)
         zc = np.convolve(zc, np.ones(15) / 15, mode="same")
         wavelength = 30 - 18 * (zc / (zc.max() + 1e-9))  # in half pixels
@@ -566,7 +566,7 @@ def l2_horn(death, laugh_src, horn_frames, label, args):
     cut.mix(voice, cut.t + 0.9, 0)
     cut.add(
         hs,
-        lambda t, i, n: soot_grade(horn[min(int(t / TICK), len(horn) - 1)], 1.3 + 0.45 * min(1, t / hs), (0.5, 0.42)),
+        lambda t, i, n: soot_grade(horn[min(int(t / TICK), len(horn) - 1)], 1.15 + 0.4 * min(1, t / hs), (0.5, 0.42)),
     )
     still = cut.t - 1.0
     cut.add(1.0, lambda *_: BLACK)
@@ -632,7 +632,7 @@ def l4_wind_down(death, laugh_src, label, args):
         return np.where(t < wind_from, 1.0, np.maximum(0.08, np.exp(-(t - wind_from) / 1.6)))
 
     audio = wax(resample(under, speed, 0.012, 0.004))
-    audio = fade(audio[: int((len(under) / SR + 4.0) * SR)], 0.0, 0.6)
+    audio = fade(audio[: int((len(under) / SR + 2.6) * SR)], 0.0, 0.6)
     write_trace(cut, Phonautogram(audio), audio, lambda t, secs: 1 - 0.35 * max(0, (t - secs + 1.5) / 1.5))
     still = cut.t - 2.5
     cut.add(1.0, lambda *_: BLACK)
@@ -647,10 +647,10 @@ def main():
     p.add_argument("--mc", required=True)
     p.add_argument("--laugh", required=True)
     p.add_argument("--out", required=True)
-    p.add_argument("--gameplay-seconds", type=float, default=4.5)
+    p.add_argument("--gameplay-seconds", type=float, default=4.0)
     p.add_argument("--replay-seconds", type=float, default=2.3)
     p.add_argument("--skip-seconds", type=float, default=0.42)
-    p.add_argument("--horn-skip", type=int, default=24, help="horn frames still loading the world")
+    p.add_argument("--horn-skip", type=int, default=30, help="horn frames still loading the world")
     p.add_argument("--only", default="l1,l2,l3,l4")
     p.add_argument("--labels", default="RESPAWN,RETURN TO WORK,RESPAWN,RETURN TO WORK")
     p.add_argument("--prefix", default="")
