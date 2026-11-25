@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
@@ -1030,6 +1031,24 @@ public final class HandbookScreen extends Screen {
                 seePageLink(chapter),
                 chapter.completed().contains(step.id()),
                 this::heldItems);
+    }
+
+    // test-seam: where the index card of a chapter's picked step draws the icon of {@code item}, which the client test
+    // clicks to
+    // see the click open the item's recipes; null when the card has no such item
+    public @Nullable Rect indexCardItemBox(int chapterNumber, Item item) {
+        HandbookPage.Chapter chapter = Objects.requireNonNull(
+                chapters.get(chapterNumber), () -> "chapter " + chapterNumber + " has no chapter page");
+        for (QuestMap.CardItem shown : indexCard(chapter).items()) {
+            if (shown.item() == item) {
+                return new Rect(
+                        shown.box().x(),
+                        shown.box().y(),
+                        shown.box().w(),
+                        shown.box().h());
+            }
+        }
+        return null;
     }
 
     // test-seam: the number the first impression rests on, which no drawn text shows: how many pixels of the sheet a

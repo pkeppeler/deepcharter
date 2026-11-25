@@ -33,7 +33,8 @@ import org.jspecify.annotations.Nullable;
  */
 public final class PhonographBlock extends BaseEntityBlock {
     public static final BooleanProperty LOADED = BooleanProperty.create("loaded");
-    private static final VoxelShape SHAPE = Shapes.box(0.0625, 0, 0.0625, 0.9375, 0.875, 0.9375);
+    /** The cabinet, and the mandrel and horn above it (turned to any facing, so one shape serves all four). */
+    static final VoxelShape SHAPE = Shapes.or(Block.box(1, 0, 1, 15, 8, 15), Block.box(3, 8, 1, 13, 16, 15));
 
     private final boolean colony;
 

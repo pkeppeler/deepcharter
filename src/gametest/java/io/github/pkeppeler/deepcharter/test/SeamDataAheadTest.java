@@ -1,10 +1,12 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.SeamSite.HOLD_HEIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.SeamSite.MAX_TICKS;
 
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.SeamChunkPayload;
 import io.github.pkeppeler.deepcharter.layer.SeamDiscardPayload;
 import io.github.pkeppeler.deepcharter.layer.SeamMissedPayload;
@@ -26,6 +28,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeManager;
@@ -622,15 +625,31 @@ public class SeamDataAheadTest {
         });
     }
 
-    /** A report that comes after the window the server keeps the skipped chunks for sends nothing. */
+    /**
+     * A report that comes after the window the server keeps the skipped chunks for sends nothing. The count is of the
+     * seam's own resends only: a chunk packet over the report may also come from {@code LightSync}, which marks a
+     * chunk pending again when a hold ends for a player who came into view during it (the swapped-in rider, once the
+     * window has dropped its skipped chunks), and a hold ends in wall time, not in ticks (#1242). So the count starts
+     * when {@code LightSync} has nothing left to settle for the area and the mock has nothing pending, on two ticks
+     * running (the mock reads a tick late). The wait fails at {@link #QUIET_CAP_TICKS}, naming what is still busy.
+     */
     @GameTest(maxTicks = MAX_TICKS)
     public void aMissedReportAfterTheWindowResendsNothing(GameTestHelper helper) {
         int[] reportedAt = {-1};
+        int[] quietTicks = {0};
         Map<ChunkPos, Integer> before = new HashMap<>();
         crossingScenario(helper, FIRST_INDEX + 11, "seam-data-late", run -> {}, (run, mock, ticks) -> {
             ResourceKey<Level> two = run.site().two().dimension();
             if (reportedAt[0] < 0) {
                 if (ticks >= LayerTuning.DEFAULT.seamMissedWindowTicks() + SETTLE_TICKS) {
+                    quietTicks[0] =
+                            lightIsQuiet(run.site().two(), mock, area(run.site().centre())) ? quietTicks[0] + 1 : 0;
+                }
+                if (quietTicks[0] < 2 && ticks >= QUIET_CAP_TICKS) {
+                    throw failBusy(
+                            helper, run.site().two(), mock, area(run.site().centre()), ticks);
+                }
+                if (quietTicks[0] >= 2) {
                     area(run.site().centre()).forEach(pos -> before.put(pos, mock.timesSentIn(two, pos)));
                     mock.send(new SeamMissedPayload(two));
                     reportedAt[0] = ticks;
@@ -649,6 +668,38 @@ public class SeamDataAheadTest {
             }
             helper.succeed();
         });
+    }
+
+    /**
+     * Ticks the late-report test waits for the light to go quiet before it fails with the busy state. A hold ends at
+     * the latest at {@code LightSync}'s 600-tick stuck limit, and the chunk's net watch closes 100 ticks after the last
+     * hold (checked every 10), so a normal run is quiet by about tick 140 + 600 + 100 + 10 = 850. The cap leaves more
+     * than twice that, and sits far under {@code MAX_TICKS}, so the diagnostic always fires before the generic timeout.
+     */
+    private static final int QUIET_CAP_TICKS = 2_000;
+
+    private static RuntimeException failBusy(
+            GameTestHelper helper, ServerLevel level, MockPlayer mock, Set<ChunkPos> chunks, int ticks) {
+        List<ChunkPos> watching =
+                chunks.stream().filter(pos -> LightSync.watching(level, pos)).toList();
+        List<ChunkPos> pending =
+                chunks.stream().filter(pos -> isPending(mock, pos)).toList();
+        return failure(
+                helper,
+                "light still busy at tick %d: watching %s, pending on the sender %s, held %s",
+                ticks,
+                watching,
+                pending,
+                LightSync.heldChunks());
+    }
+
+    /** Whether {@code LightSync} settles none of the chunks and the player has none of them waiting to be sent. */
+    private static boolean lightIsQuiet(ServerLevel level, MockPlayer mock, Set<ChunkPos> chunks) {
+        return chunks.stream().noneMatch(pos -> LightSync.watching(level, pos) || isPending(mock, pos));
+    }
+
+    private static boolean isPending(MockPlayer mock, ChunkPos pos) {
+        return mock.player().connection.chunkSender.isPending(pos.pack());
     }
 
     /**

@@ -38,6 +38,7 @@ import net.minecraft.server.level.ServerPlayer;
 public class TransmissionsClientTest implements FabricClientGameTest {
     private static final String CREW_NAME = "Overlay Crew";
     private static final String TWO_PLAYER_NAME = "Two Player Overlay";
+    private static final String LIVE_FROM_THE_EMPLOYER = "> LIVE FROM THE EMPLOYER";
     private static final double X = 2400.5;
     private static final double Z = 2400.5;
     /** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
@@ -121,9 +122,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
             String header = context.computeOnClient(client -> TransmissionOverlay.headerShown());
-            require(
-                    header.equals("> LIVE FROM THE EMPLOYER"),
-                    "t05 is live from the employer, the header is: " + header);
+            require(header.equals(LIVE_FROM_THE_EMPLOYER), "t05 is live from the employer, the header is: " + header);
             require(
                     context.computeOnClient(
                             client -> TransmissionOverlay.bodyShown().equals(TransmissionOverlay.bodyFull())),
@@ -139,16 +138,20 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                 BreachEffects.begin(true);
                 TransmissionOverlay.enqueue(new TransmissionPayload(id("t01"), CREW_NAME, player));
             });
+            // A screen covers the HUD and stops the overlay typing while the fade runs on to black under it (#1245).
             ClientWait.until(
                     context,
-                    "the breach fade done with the transmission header shown",
-                    client -> BreachEffects.fadeAlpha(0f) >= 1f
-                            && TransmissionOverlay.active()
-                            && !TransmissionOverlay.headerShown().isEmpty(),
-                    client -> seen());
+                    "the whole transmission header typed over the black of the breach fade, with no screen open",
+                    client -> client.gui.screen() == null
+                            && BreachEffects.fadeAlpha(0f) >= 1f
+                            && TransmissionOverlay.headerShown().equals(LIVE_FROM_THE_EMPLOYER),
+                    client -> seen() + ", fade alpha " + BreachEffects.fadeAlpha(0f) + ", "
+                            + ClientWait.describe(client));
+            long overFade = greenPixels(context.takeScreenshot("transmission-over-fade"));
             require(
-                    greenPixels(context.takeScreenshot("transmission-over-fade")) >= 20,
-                    "The transmission should be drawn over the black of the fade, not under it");
+                    overFade >= 20,
+                    "The transmission should be drawn over the black of the fade, not under it; the shot has "
+                            + overFade + " green pixels");
             context.runOnClient(client -> {
                 BreachEffects.reset();
                 TransmissionOverlay.reset();
