@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.scanner;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -58,6 +59,9 @@ final class ScannerMap {
     /** The picture; null before the first scan is drawn and after {@link #release}. */
     private static @Nullable DynamicTexture texture;
 
+    /** Whether the last release of a picture ran on the render thread; null until one has. */
+    private static volatile @Nullable Boolean releasedOnRenderThread;
+
     private static int textureWidth;
     private static int textureHeight;
     /** What the texture shows, so that a frame with the same slice at the same size and look draws without a rebuild. */
@@ -77,6 +81,14 @@ final class ScannerMap {
     private record TileKey(List<Identifier> sprites, int pixels, int backdrop) {}
 
     private ScannerMap() {}
+
+    static boolean held() {
+        return texture != null;
+    }
+
+    static @Nullable Boolean releasedOnRenderThread() {
+        return releasedOnRenderThread;
+    }
 
     /** Draws the known cells of {@code slice}, {@code cell} GUI pixels each, the top left of the area at ({@code left}, {@code top}). Air is left as it is. */
     static void draw(GuiGraphicsExtractor graphics, ScanSlice slice, ScannerLook look, int cell, int left, int top) {
@@ -105,9 +117,13 @@ final class ScannerMap {
                 textureHeight);
     }
 
-    /** Drops the picture and everything kept for it, when the player leaves the world: the texture can be large and nothing draws it until the next scan. */
+    /**
+     * Drops the picture and everything kept for it, when the player has left the world: the texture can be large and
+     * nothing draws it until the next scan. Render thread only.
+     */
     static void release() {
         if (texture != null) {
+            releasedOnRenderThread = RenderSystem.isOnRenderThread();
             Minecraft.getInstance().getTextureManager().release(ID);
             texture = null;
         }
