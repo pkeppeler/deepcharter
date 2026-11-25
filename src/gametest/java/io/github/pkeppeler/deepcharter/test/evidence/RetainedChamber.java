@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -40,10 +41,15 @@ final class RetainedChamber {
         this.world = world;
     }
 
-    /** Takes the player into the chamber's layer, with the mobs of the world off. Call once the world is up. */
-    void enterLayer(double x, double y, double z, float yaw, float pitch) {
+    /**
+     * Carves the chamber (see {@link #buildChamber}) and takes the player into it, in one server step. The terrain
+     * there is noise with lava in it, and the waits that follow last seconds: a player teleported into uncarved rock
+     * suffocates or burns before they end. Call once the world is up.
+     */
+    void enterLayer(int length, int halfWidth, int height, double x, double y, double z, float yaw, float pitch) {
         ctx.waitTicks(40); // tick-wait: the world's spawn settles before the player is moved
         serverDo(server -> {
+            buildChamber(layer(server), length, halfWidth, height);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.teleportTo(layer(server), x, y, z, Set.of(), yaw, pitch, true);
         });
@@ -51,6 +57,38 @@ final class RetainedChamber {
                 ctx,
                 "the player in layer " + LAYER,
                 client -> client.level != null && TestLayers.clientIsIn(client, LAYER) && client.gui.screen() == null);
+        awaitEntityTicking(new Vec3(x, y, z));
+    }
+
+    /**
+     * Waits on the server until the chunk at {@code at} is entity-ticking, and says so when it had to wait, so a
+     * failure after it can be read. Call it before a scenario adds an entity there. A chunk a player has just
+     * teleported to is loaded at once, unloaded in the tick that swaps the arrival ticket for the player's own, and
+     * loaded again. The unload hides the entities already added (the pod, which the player rides, stays in the level,
+     * not removed, but {@code getEntity} no longer finds it), and they are tracked again only when the chunk's
+     * entity-ticking promotion reaches the entity manager, which on a slow server (headless, software rendering) took
+     * more than 25 ticks.
+     */
+    void awaitEntityTicking(Vec3 at) {
+        BlockPos pos = BlockPos.containing(at);
+        long started = System.nanoTime();
+        int[] polls = {0};
+        ClientWait.until(
+                ctx,
+                "the chunk at " + pos.toShortString() + " entity-ticking on the server",
+                () -> {
+                    boolean ticking = serverGet(server -> layer(server).isPositionEntityTicking(pos));
+                    if (!ticking) {
+                        polls[0]++;
+                    }
+                    return ticking;
+                },
+                () -> "polls: " + polls[0]);
+        if (polls[0] > 0) {
+            System.out.println("[retained-chamber] waited " + polls[0] + " polls, "
+                    + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) + " ms, for the chunk at "
+                    + pos.toShortString() + " to be entity-ticking");
+        }
     }
 
     /** A stone chamber with its floor block at {@link #FLOOR}: {@code length} blocks along x, {@code 2 * halfWidth + 1} across, {@code height} high, sealed. */
