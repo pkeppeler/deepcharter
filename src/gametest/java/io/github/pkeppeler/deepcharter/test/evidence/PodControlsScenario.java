@@ -43,7 +43,7 @@ public class PodControlsScenario extends EvidenceScenario {
     private static final int TURN_TICKS = 10;
     /** Ticks for a turn rate to fall to a hundredth of itself: nine tenths of it is kept each tick. */
     private static final int TURN_DIES_TICKS = 45;
-    /** Backing up is slower than driving, and the chase camera sits behind the nose, so a short leg keeps the pod in frame. */
+    /** Backing up is slower than driving, and the camera sits behind the nose: a short leg keeps the pod in frame. */
     private static final int REVERSE_TICKS = 18;
 
     private static final int DRILL_TICKS = 360;
