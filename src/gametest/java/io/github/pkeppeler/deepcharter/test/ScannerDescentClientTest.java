@@ -6,16 +6,20 @@ import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
+import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -29,6 +33,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -72,6 +77,13 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
     private static final double MEAN_SPREAD = 1;
 
     private static final Pattern DEPTH_LABEL = Pattern.compile("-?[0-9][0-9,]*");
+    private static final int RGB = 0xFFFFFF;
+
+    /**
+     * A cockpit window smaller than the tier 1 slice, at the GUI's top left: no chassis takes the tier 4 scanner whose
+     * slice overflows the real window, so this window makes the slice overflow it the same way, on every side.
+     */
+    private static final Decal NARROW_WINDOW = new Decal(30, 36, 0, 0, 10, 10);
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -94,6 +106,17 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
             BlockPos lower = feet.below();
             HudShot after = settledShot(context, lower, "scanner-descent-after");
             labelProblems.addAll(labelProblems(context, lower));
+            labelProblems.addAll(narrowWindowProblems(context, lower));
+            markProblem(context, after, lower).ifPresent(labelProblems::add);
+            ClientPacks.enable(context, TestPacks.COCKPIT_OFF);
+            try {
+                HudShot panel = settledShot(context, lower, "scanner-descent-panel");
+                require(panel.window() == null, "with the cockpit off, the scanner should be the plain panel");
+                labelProblems.addAll(labelProblems(context, lower));
+                markProblem(context, panel, lower).ifPresent(labelProblems::add);
+            } finally {
+                ClientPacks.disable(context, TestPacks.COCKPIT_OFF);
+            }
 
             expectMapChanged(before, after);
             expectGrainStable(before, again, after);
@@ -173,7 +196,8 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the client's pod at " + feet.toShortString(),
-                // A long move can drop the pod from the client and add it back, its rider seated again a moment later.
+                // The first runs of this test saw the client's player without a vehicle for a moment after the move, so
+                // the wait asks for the seat instead of assuming it; a rider that never sits again times out here.
                 client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                         && pod.blockPosition().equals(feet));
         context.waitTicks(2 * TUNING.rescanTicks() + 2);
@@ -271,29 +295,104 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
                     .orElseGet(() -> ScannerHud.cellSize(guiWidth, guiHeight, AREA));
             int top = seated.map(layout -> ScannerHud.windowCellTop(guiHeight, layout.scanner(), AREA, AREA.up()))
                     .orElseGet(() -> ScannerHud.cellTop(guiWidth, guiHeight, AREA, AREA.up()));
-            // A digit fills the top lineHeight - 2 rows of its line; its middle is the row's.
-            int halfLine = (client.font.lineHeight - 2) / 2;
-            List<DrawnText.Drawn> labels = drawn.stream()
-                    .filter(text -> DEPTH_LABEL.matcher(text.text()).matches())
-                    .toList();
-            if (labels.size() < 2) {
-                return List.of("the scanner should draw at least two depth labels, it drew "
-                        + drawn.stream().map(DrawnText.Drawn::text).toList());
-            }
-            return labels.stream()
-                    .flatMap(label -> {
-                        int up = AREA.up() - Math.floorDiv(label.box().y() + halfLine - top, cell);
-                        String reading = Altimeter.reading(ClientLight.clientLevel(client), feet.getY() + up)
-                                .getString();
-                        String labelled = Component.translatable("deepcharter.breach.altimeter", label.text())
-                                .getString();
-                        return reading.equals(labelled)
-                                ? Stream.<String>empty()
-                                : Stream.of(
-                                        "the label '%s' sits on the row %d above the feet, where the altimeter reads '%s'"
-                                                .formatted(label.text(), up, reading));
-                    })
-                    .toList();
+            return checkLabels(client, drawn, feet, cell, top, 2);
         });
+    }
+
+    /**
+     * A slice wider and taller than its cockpit window keeps its ruler inside the window: at least one label is drawn,
+     * whole (not cut by the window's edge), and reads as the altimeter does.
+     */
+    private static List<String> narrowWindowProblems(ClientGameTestContext context, BlockPos feet) {
+        return context.computeOnClient(client -> {
+            int guiWidth = client.getWindow().getGuiScaledWidth();
+            int guiHeight = client.getWindow().getGuiScaledHeight();
+            List<DrawnText.Drawn> drawn =
+                    DrawnText.of(graphics -> ScannerHud.drawInWindow(graphics, client, NARROW_WINDOW));
+            List<String> problems = new ArrayList<>();
+            for (DrawnText.Drawn label : labels(drawn)) {
+                if (label.box().x() < NARROW_WINDOW.left(guiWidth)
+                        || label.box().width() != client.font.width(label.text())
+                        || label.box().height() != client.font.lineHeight) {
+                    problems.add("in a window smaller than the slice, the label '%s' is cut by the window's edge: %s"
+                            .formatted(label.text(), label.box()));
+                }
+            }
+            if (!problems.isEmpty()) {
+                return problems;
+            }
+            return checkLabels(
+                    client,
+                    drawn,
+                    feet,
+                    ScannerHud.windowCellSize(NARROW_WINDOW, AREA),
+                    ScannerHud.windowCellTop(guiHeight, NARROW_WINDOW, AREA, AREA.up()),
+                    1);
+        });
+    }
+
+    private static List<DrawnText.Drawn> labels(List<DrawnText.Drawn> drawn) {
+        return drawn.stream()
+                .filter(text -> DEPTH_LABEL.matcher(text.text()).matches())
+                .toList();
+    }
+
+    /**
+     * At least {@code least} of the depth labels in {@code drawn} are there, and each is the altimeter's reading for the
+     * row it is centred on, the map's top row at {@code top} with cells {@code cell} GUI pixels.
+     */
+    private static List<String> checkLabels(
+            Minecraft client, List<DrawnText.Drawn> drawn, BlockPos feet, int cell, int top, int least) {
+        // A digit fills the top lineHeight - 2 rows of its line; its middle is the row's.
+        int halfLine = (client.font.lineHeight - 2) / 2;
+        List<DrawnText.Drawn> labels = labels(drawn);
+        if (labels.size() < least) {
+            return List.of("the scanner should draw at least %d depth labels, it drew %s"
+                    .formatted(least, drawn.stream().map(DrawnText.Drawn::text).toList()));
+        }
+        return labels.stream()
+                .flatMap(label -> {
+                    int up = AREA.up() - Math.floorDiv(label.box().y() + halfLine - top, cell);
+                    String reading = Altimeter.reading(ClientLight.clientLevel(client), feet.getY() + up)
+                            .getString();
+                    String labelled = Component.translatable("deepcharter.breach.altimeter", label.text())
+                            .getString();
+                    return reading.equals(labelled)
+                            ? Stream.<String>empty()
+                            : Stream.of(
+                                    "the label '%s' sits on the row %d above the feet, where the altimeter reads '%s'"
+                                            .formatted(label.text(), up, reading));
+                })
+                .toList();
+    }
+
+    /**
+     * The ruler's mark is on the player's row, at the edge of what shows of the map: its colour is there in
+     * {@code shot}.
+     */
+    private static Optional<String> markProblem(ClientGameTestContext context, HudShot shot, BlockPos feet) {
+        int playerUp =
+                context.computeOnClient(client -> ClientSession.player(client).getBlockY()) - feet.getY();
+        Decal window = shot.window();
+        int cell = window == null
+                ? ScannerHud.cellSize(shot.guiWidth(), shot.guiHeight(), AREA)
+                : ScannerHud.windowCellSize(window, AREA);
+        int edge = window == null
+                ? ScannerHud.cellLeft(shot.guiWidth(), shot.guiHeight(), AREA, -AREA.halfWidth())
+                : Math.max(
+                        ScannerHud.windowCellLeft(shot.guiWidth(), window, AREA, -AREA.halfWidth()),
+                        window.left(shot.guiWidth()));
+        int rowTop = window == null
+                ? ScannerHud.cellTop(shot.guiWidth(), shot.guiHeight(), AREA, playerUp)
+                : ScannerHud.windowCellTop(shot.guiHeight(), window, AREA, playerUp);
+        int x = edge * shot.scale() + 1;
+        int y = rowTop * shot.scale() + cell * shot.scale() / 2;
+        int found = shot.image().getRGB(x, y) & RGB;
+        int expected = ScannerLook.current().rulerPodMarkColor() & RGB;
+        return found == expected
+                ? Optional.empty()
+                : Optional.of(
+                        "the ruler's mark on the player's row (%d above the feet) should be %06X at (%d, %d), it is %06X"
+                                .formatted(playerUp, expected, x, y, found));
     }
 }
