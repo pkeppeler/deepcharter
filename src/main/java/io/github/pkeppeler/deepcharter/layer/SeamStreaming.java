@@ -60,7 +60,7 @@ public final class SeamStreaming {
             boolean ready) {}
 
     /** What a root vehicle is holding open under or over it: the ticket's level and chunk and when it was last taken.
-    * */
+     * */
     private record Streaming(
             ResourceKey<Level> target,
             ChunkPos centre,
@@ -165,7 +165,7 @@ public final class SeamStreaming {
     }
 
     /** Every descent approach under way now: one per root vehicle that is streaming a level below. A rise is not served
-    * to riders. */
+     * to riders. */
     public static List<Approach> approaches() {
         List<Approach> approaches = new ArrayList<>();
         TRACKS.forEach((key, track) -> {
@@ -198,7 +198,7 @@ public final class SeamStreaming {
      * run. Silent when the area is ready.
      */
     static void reportCrossing(Entity root, ServerLevel to, ChunkPos arrival, boolean ascending) {
-        Optional<Approach> approach = approachOf(root.getUUID(), ascending);
+        Optional<Approach> approach = ascending ? ascentOf(root.getUUID()) : approachOf(root.getUUID());
         ChunkPos centre = approach.map(Approach::centre).orElse(arrival);
         int loaded = loadedAround(to, centre);
         int total = areaChunks();

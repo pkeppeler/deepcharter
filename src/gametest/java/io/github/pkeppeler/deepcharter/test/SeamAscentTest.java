@@ -73,7 +73,7 @@ public class SeamAscentTest {
         Site site = Site.of(helper, STREAMED_SITE);
         MockPlayer mock = MockPlayers.join(helper, "seam-ascent");
         FarChunks.Deadline deadline = FarChunks.deadline();
-        int ceilingY = site.two().getMaxY();
+        int ceilingY = TestLayers.dimensionBand(site.two()).maxY();
         expect(
                 helper,
                 HOLD_HEIGHT <= LayerTuning.DEFAULT.seamFloorMargin(),
@@ -170,7 +170,7 @@ public class SeamAscentTest {
         Site site = Site.of(helper, CONTROL_SITE);
         MockPlayer mock = MockPlayers.join(helper, "seam-ascent-no-lead");
         LogCapture log = LogCapture.start(mock.player().getUUID().toString());
-        int ceilingY = site.two().getMaxY();
+        int ceilingY = TestLayers.dimensionBand(site.two()).maxY();
         TickTimes.restart();
         boolean[] ticking = {false};
         boolean[] armed = {false};
