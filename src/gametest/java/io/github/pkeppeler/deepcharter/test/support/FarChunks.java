@@ -337,10 +337,10 @@ public final class FarChunks {
     }
 
     /**
-     * As {@code awaitLoaded} (which waits for the chunks to load), then runs {@code body} as a step of the test, where it may read the chunks, fail and
-     * {@code helper.succeed()}. Call it from the test method, last or with the test's other sequences started after it. Loaded is not
-     * entity ticking: an entity that spawns or arrives in these chunks is invisible to {@code getEntity} until it ticks, so for
-     * entities use {@code awaitAllEntityTicking} (#1151).
+     * As {@code awaitLoaded} (which waits for the chunks to load), then runs {@code body} as a step of the test, where
+     * it may read the chunks, fail and {@code helper.succeed()}. Call it from the test method, last or with the test's
+     * other sequences started after it. Loaded is not entity ticking: an entity that spawns or arrives in these chunks
+     * is invisible to {@code getEntity} until it ticks, so for entities use {@code awaitAllEntityTicking} (#1151).
      */
     public static void whenBlocksLoaded(GameTestHelper helper, List<At> chunks, Runnable body) {
         boolean[] loaded = {false};
@@ -355,12 +355,13 @@ public final class FarChunks {
     }
 
     /**
-     * Runs {@code body} as a step of the test once every chunk of {@code chunks} has reached {@code status}, with the chunks in the
-     * order of the list, or fails the test naming the first one still missing after {@link #WAIT_SECONDS}. For a test that reads
-     * blocks and needs no more than a status short of full (a tall world's full chunks cost seconds each, #1142): unlike
-     * {@link #whenBlocksLoaded} it does not force the chunks, so they stop at {@code status}. Each waiting tick asks for them
-     * with a ticket at that level, which expires on its own, and for generation to that status, so the workers generate them and the server keeps ticking, and a chunk
-     * that has reached {@code status} is kept by reference, not held. Call it from the test method.
+     * Runs {@code body} as a step of the test once every chunk of {@code chunks} has reached {@code status}, with the
+     * chunks in the order of the list, or fails the test naming the first one still missing after {@link
+     * #WAIT_SECONDS}. For a test that reads blocks and needs no more than a status short of full (a tall world's full
+     * chunks cost seconds each, #1142): unlike {@link #whenBlocksLoaded} it does not force the chunks, so they stop at
+     * {@code status}. Each waiting tick asks for them with a ticket at that level, which expires on its own, and for
+     * generation to that status, so the workers generate them and the server keeps ticking. A chunk that has reached
+     * {@code status} is kept by reference, not held. Call it from the test method.
      *
      * @throws IllegalStateException if called after the test's first tick
      */
@@ -389,9 +390,8 @@ public final class FarChunks {
                 ChunkHolder holder = cache.chunkMap.getUpdatingChunkIfPresent(pos.pack());
                 ChunkAccess access = holder == null ? null : holder.getChunkIfPresent(status);
                 if (holder != null && access == null) {
-                    // A ticket alone only makes the holder; asking for the status starts the work, on the workers, and
-                    // is
-                    // the same future on every later tick.
+                    // A ticket alone only makes the holder. Asking for the status starts the work on the workers,
+                    // and is the same future on every later tick.
                     var _ = holder.scheduleChunkGenerationTask(status, cache.chunkMap);
                 }
                 if (access != null) {
