@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,9 +68,11 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
+import net.minecraft.world.entity.ai.goal.RandomStrollGoal;
 import net.minecraft.world.entity.animal.chicken.Chicken;
 import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.monster.zombie.Husk;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -163,10 +166,30 @@ public class PodSonarTest {
      */
     private static void run(
             GameTestHelper helper, int x, List<Entity> bodies, Consumer<ServerLevel> build, Predicate<Scene> perTick) {
+        run(helper, x, bodies, 0, build, perTick);
+    }
+
+    /**
+     * As {@link #run(GameTestHelper, int, List, Consumer, Predicate)}. With a {@code laterChunksTick} above 0 only the pod's chunk is forced on the
+     * first tick and the rest of the site on that tick: a loaded chunk that is not yet entity ticking, as a loaded runner leaves a neighbour of the
+     * pod's chunk for ticks after the pod's own (#1234).
+     */
+    private static void run(
+            GameTestHelper helper,
+            int x,
+            List<Entity> bodies,
+            int laterChunksTick,
+            Consumer<ServerLevel> build,
+            Predicate<Scene> perTick) {
         ServerLevel level = TestLayers.level(helper, 1);
+        List<ChunkPos> later = new ArrayList<>();
         for (int cx = (x - REACH) >> 4; cx <= (x + REACH) >> 4; cx++) {
             for (int cz = (Z - REACH) >> 4; cz <= (Z + REACH) >> 4; cz++) {
-                FarChunks.force(helper, level, cx, cz);
+                if (laterChunksTick > 0 && (cx != x >> 4 || cz != Z >> 4)) {
+                    later.add(new ChunkPos(cx, cz));
+                } else {
+                    FarChunks.force(helper, level, cx, cz);
+                }
             }
         }
         site(level, x);
@@ -189,9 +212,27 @@ public class PodSonarTest {
             }
             scene[0] = new Scene(pod, pilot, navigator);
         });
+        FarChunks.Deadline bodiesDeadline = FarChunks.deadline();
         TestTicks.each(helper, () -> {
             try {
-                if (scene[0] != null && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
+                if (helper.getTick() == laterChunksTick) {
+                    later.forEach(chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
+                }
+                if (scene[0] == null) {
+                    return;
+                }
+                // A body in a chunk that is not entity ticking does not move: the settle ticks count from when all of
+                // them do.
+                Optional<Entity> idle = bodies.stream()
+                        .filter(body -> !level.isPositionEntityTicking(body.blockPosition()))
+                        .findFirst();
+                bodiesDeadline.await(
+                        helper,
+                        level,
+                        idle.isEmpty(),
+                        () -> idle.get() + " in chunk "
+                                + ChunkPos.containing(idle.get().blockPosition()) + " was not entity-ticking");
+                if (idle.isEmpty() && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
                     scene[0].pod().discard();
                     bodies.forEach(Entity::discard);
                     helper.succeed();
@@ -462,7 +503,7 @@ public class PodSonarTest {
     // ---- signatures: what echoes and what does not (#924) ----
 
     private static <T extends Mob> T still(ServerLevel level, EntityType<T> type, double x, double y, double z) {
-        T mob = TestEntities.create(type, level);
+        T mob = TestEntities.mob(type, level);
         mob.removeFreeWill();
         mob.setPos(x, y, z);
         level.addFreshEntity(mob);
@@ -554,6 +595,72 @@ public class PodSonarTest {
                 });
     }
 
+    // ---- the creature tests wait for what they stand on, and nothing removes what they place (#1234) ----
+
+    /** The tick on which the late-chunk test lets {@link #run} force the chunks beside the pod's. */
+    private static final int LATER_CHUNKS_TICK = 20;
+
+    /**
+     * The check waits until every body's chunk is entity ticking: a cow in the chunk beside the pod's, forced on tick {@value #LATER_CHUNKS_TICK},
+     * has landed when it runs. The later chunks stay loaded through the carve, so the cow survives until the force without a ticket.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aCreatureInTheChunkBesideThePodsIsWaitedForUntilItTicks(GameTestHelper helper) {
+        int x = 9100;
+        List<Entity> bodies = new ArrayList<>();
+        run(
+                helper,
+                x,
+                bodies,
+                LATER_CHUNKS_TICK,
+                level -> {
+                    room(level, x + 8, FLOOR, Z, 2, 1, 4);
+                    bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR, Z + 1.5));
+                },
+                scene -> {
+                    expect(
+                            helper,
+                            bodies.get(0).onGround(),
+                            "the cow has settled on the floor, on tick %s",
+                            helper.getTick());
+                    return true;
+                });
+    }
+
+    /** Idle ticks after which {@code Mob.checkDespawn} may remove a monster 32 or more blocks from every player. */
+    private static final int DESPAWN_IDLE_TICKS = 600;
+
+    /** Tries at 1 in 800 each: a mob the game may remove survives them with a chance near e^-25. */
+    private static final int DESPAWN_TRIES = 20_000;
+
+    /** A creature the test places 36 blocks from the pod is never despawned, however long the test waits. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aCreatureTheTestPlacesFarFromThePlayersIsNotDespawnedByTheGame(GameTestHelper helper) {
+        int x = 9164;
+        List<Entity> bodies = new ArrayList<>();
+        Husk[] husk = new Husk[1];
+        scene(
+                helper,
+                x,
+                bodies,
+                level -> {
+                    corridor(helper, level, x, 56);
+                    husk[0] = walker(level, x + 36.5, 0.5);
+                    bodies.add(husk[0]);
+                },
+                scene -> {
+                    husk[0].setNoActionTime(DESPAWN_IDLE_TICKS + 1);
+                    for (int i = 0; i < DESPAWN_TRIES && !husk[0].isRemoved(); i++) {
+                        husk[0].checkDespawn();
+                    }
+                    expect(
+                            helper,
+                            !husk[0].isRemoved(),
+                            "a placed creature far from the players was removed by the game's despawn check: %s",
+                            husk[0].getRemovalReason());
+                });
+    }
+
     // ---- the ping draws the Sleeper's (#924) ----
 
     private static void corridor(GameTestHelper helper, ServerLevel level, int x, int length) {
@@ -573,7 +680,7 @@ public class PodSonarTest {
 
     /** A husk with no will of its own, the test's stand-in for a Sleeper's walker (sun-proof; its follow range is how far it can path). */
     private static Husk walker(ServerLevel level, double x, double lane) {
-        Husk husk = TestEntities.create(EntityTypes.HUSK, level);
+        Husk husk = TestEntities.mob(EntityTypes.HUSK, level);
         husk.setPos(x, FLOOR, Z + lane);
         husk.removeFreeWill();
         level.addFreshEntity(husk);
@@ -602,7 +709,7 @@ public class PodSonarTest {
                     walkers[0] = walker(level, x + 36.5, 0.5);
                     walkers[1] = walker(level, x + 47.5, -2.5);
                     walkers[2] = walker(level, x + 52.5, 2.5);
-                    chicken[0] = TestEntities.create(EntityTypes.CHICKEN, level);
+                    chicken[0] = TestEntities.mob(EntityTypes.CHICKEN, level);
                     chicken[0].setPos(x + 20.5, FLOOR, Z + 0.5);
                     chicken[0].removeFreeWill();
                     level.addFreshEntity(chicken[0]);
@@ -734,9 +841,18 @@ public class PodSonarTest {
                 });
     }
 
-    /** A cow that is in the hears tag and keeps all its own goals: the test's stand-in for a Sleeper's creature that has other things to do. */
+    /**
+     * A cow that is in the hears tag and keeps its own goals but the random stroll: the test sends it elsewhere by hand, and a stroll that starts on
+     * the tick after a resend (one in 120) takes it off the ping before the test's 10-tick window reads it (#1234). A subclass, because the goal
+     * selector is protected; it is made persistent as {@link TestEntities#mob} makes it.
+     */
     private static Cow busyCow(ServerLevel level, double x) {
-        Cow cow = TestEntities.create(EntityTypes.COW, level);
+        Cow cow = new Cow(EntityTypes.COW, level) {
+            {
+                goalSelector.removeAllGoals(goal -> goal instanceof RandomStrollGoal);
+            }
+        };
+        cow.setPersistenceRequired();
         cow.setPos(x, FLOOR, Z + 0.5);
         level.addFreshEntity(cow);
         return cow;

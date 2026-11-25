@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
+import io.github.pkeppeler.deepcharter.sound.phonograph.Recording;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,7 @@ public class LootTableDropsTest {
             Map.entry("great_stalk_cap", "fungal_stalk"),
             Map.entry("ironium_ore", "ironium"),
             Map.entry("ochre_regolith", "ochre_regolith"),
+            Map.entry("phonograph", "phonograph"),
             Map.entry("platinium_ore", "platinium"),
             Map.entry("regolith", "regolith"),
             Map.entry("regolith_packed", "regolith_packed"),
@@ -98,6 +101,7 @@ public class LootTableDropsTest {
         Set<String> covered = new TreeSet<>();
         SINGLE_DROP.keySet().forEach(path -> covered.add("blocks/" + path));
         covered.add("blocks/salvage_crate");
+        covered.add("chests/wreck_locker");
         if (!shipped.equals(covered)) {
             throw helper.assertionException("the mod ships loot tables %s and this test covers %s", shipped, covered);
         }
@@ -149,6 +153,8 @@ public class LootTableDropsTest {
         Map<String, Set<Integer>> seen = new TreeMap<>();
         Set<String> known = new TreeSet<>();
         CRATE.forEach(range -> known.add(range.item()));
+        // The rare cylinder is not in CRATE: its own tests below count it.
+        known.add("deepcharter:wax_cylinder");
         for (long seed = 1; seed <= SEEDS; seed++) {
             List<ItemStack> drops = roll(level, "salvage_crate", seed, null);
             for (Range range : CRATE) {
@@ -218,6 +224,121 @@ public class LootTableDropsTest {
             }
         }
         helper.succeed();
+    }
+
+    /** A rare find is measured over many more seeds than the common drops. */
+    private static final int RARE_SEEDS = 4000;
+
+    /** The salvage crate's cylinder: a few in a hundred crates, a single one, and any of the recordings. */
+    @GameTest(maxTicks = 400)
+    public void aSalvageCrateRarelyDropsOneWaxCylinder(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Map<Recording, Integer> found = new TreeMap<>();
+        int crates = 0;
+        for (long seed = 1; seed <= RARE_SEEDS; seed++) {
+            List<ItemStack> cylinders = cylinders(roll(level, "salvage_crate", seed, null));
+            if (cylinders.size() > 1) {
+                throw helper.assertionException("salvage_crate seed %s drops %s cylinders", seed, cylinders.size());
+            }
+            for (ItemStack cylinder : cylinders) {
+                crates++;
+                found.merge(recording(helper, cylinder), 1, Integer::sum);
+            }
+        }
+        expectRare(helper, "salvage_crate", crates, RARE_SEEDS, 0.03, 0.05, found);
+        helper.succeed();
+    }
+
+    /** The wreck's locker: scrap, and a cylinder in about three bays in ten. */
+    @GameTest(maxTicks = 400)
+    public void aWreckLockerHoldsScrapAndNowAndThenOneWaxCylinder(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Set<String> allowed = Set.of(
+                "deepcharter:scrap_iron",
+                "deepcharter:scrap_copper",
+                "deepcharter:salvage_cloth",
+                "minecraft:redstone",
+                "deepcharter:wax_cylinder");
+        Map<Recording, Integer> found = new TreeMap<>();
+        int lockers = 0;
+        for (long seed = 1; seed <= RARE_SEEDS; seed++) {
+            List<ItemStack> loot = lockerLoot(level, seed);
+            if (loot.isEmpty()) {
+                throw helper.assertionException("the wreck locker on seed %s is empty", seed);
+            }
+            for (ItemStack stack : loot) {
+                if (!allowed.contains(id(stack))) {
+                    throw helper.assertionException("the wreck locker on seed %s holds %s", seed, id(stack));
+                }
+            }
+            List<ItemStack> cylinders = cylinders(loot);
+            if (cylinders.size() > 1) {
+                throw helper.assertionException(
+                        "the wreck locker on seed %s holds %s cylinders", seed, cylinders.size());
+            }
+            for (ItemStack cylinder : cylinders) {
+                lockers++;
+                found.merge(recording(helper, cylinder), 1, Integer::sum);
+            }
+        }
+        expectRare(helper, "wreck_locker", lockers, RARE_SEEDS, 0.26, 0.34, found);
+        helper.succeed();
+    }
+
+    private static void expectRare(
+            GameTestHelper helper,
+            String table,
+            int cylinders,
+            int rolls,
+            double least,
+            double most,
+            Map<Recording, Integer> found) {
+        double share = (double) cylinders / rolls;
+        if (share < least || share > most) {
+            throw helper.assertionException(
+                    "%s drops a cylinder in %s of %s rolls (%s), expected between %s and %s",
+                    table, cylinders, rolls, share, least, most);
+        }
+        if (!found.keySet().equals(Set.of(Recording.values()))) {
+            throw helper.assertionException("%s drops the recordings %s, expected every one of them", table, found);
+        }
+        // Each recording is as likely as the next: a third of the cylinders, give or take, so a doubled weight fails.
+        for (Map.Entry<Recording, Integer> entry : found.entrySet()) {
+            double of = (double) entry.getValue() / cylinders;
+            if (of < 0.25 || of > 0.42) {
+                throw helper.assertionException(
+                        "%s drops %s in %s of its cylinders, expected a third", table, entry.getKey(), of);
+            }
+        }
+    }
+
+    /** The cylinders among drops; any of them carries one recording of the cylinders' own set and nothing else on it. */
+    private static List<ItemStack> cylinders(List<ItemStack> drops) {
+        return drops.stream()
+                .filter(stack -> stack.is(PhonographRegistry.WAX_CYLINDER))
+                .toList();
+    }
+
+    private static Recording recording(GameTestHelper helper, ItemStack cylinder) {
+        Recording recording = cylinder.get(PhonographRegistry.RECORDING);
+        if (recording == null
+                || cylinder.getCount() != 1
+                || cylinder.getComponentsPatch().size() > 1) {
+            throw helper.assertionException("a dropped cylinder is not a lone recording: %s", cylinder);
+        }
+        return recording;
+    }
+
+    private static List<ItemStack> lockerLoot(ServerLevel level, long seed) {
+        ResourceKey<LootTable> key = ResourceKey.create(
+                Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "chests/wreck_locker"));
+        LootTable table = level.getServer().reloadableRegistries().getLootTable(key);
+        LootParams params = new LootParams.Builder(level)
+                .withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
+                .create(LootContextParamSets.CHEST);
+        return table.getRandomItems(params, seed).stream()
+                .filter(stack -> !stack.isEmpty())
+                .toList();
     }
 
     /** No shipped table reads the tool: a silk touch pick and a fortune pick drop what an empty hand does. */
