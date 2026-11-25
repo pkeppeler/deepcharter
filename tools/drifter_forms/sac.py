@@ -80,12 +80,17 @@ HOOK_POINTS = tuple(hook_points(hook) for hook in HOOKS)
 
 
 def shadow(t):
-    """How deep in a dark shape a place on the skin is: 1 in its core, falling to 0 over a soft edge, and a wide faint
-    halo."""
+    """How a dark shape curled behind the skin shows at a place on it: its depth, 1 over the shape and fading
+    to 0 over a few pixels, its darkest core along the thick of its spine, and a rim where it presses the skin."""
     cx, cz = body_centre(t.y)
     arc = math.atan2(t.x - cx, -(t.z - cz)) * RADIUS
     near = min(math.hypot(arc - u, t.y - v) - r for points in HOOK_POINTS for u, v, r in points)
-    return kit.smooth(1.2 - near / 1.4), kit.smooth(1 - near / 6.0)
+    # A ragged edge, as through cloudy skin.
+    near += 1.6 * (kit.fbm(t.x * 0.35, t.y * 0.35, t.z * 0.35, SEED + 29, 2) - 0.5)
+    depth = kit.smooth(1.0 - near / 3.4)
+    core = kit.smooth(-near / 1.1)
+    rim = kit.smooth(1.0 - abs(near - 1.5) / 0.9) * (1 - depth**4)
+    return depth, core, rim
 
 
 def surface_normal(t):
@@ -121,18 +126,21 @@ def paint_skin(t):
     patch = kit.fbm(t.x * 0.11 + 4, t.y * 0.11, t.z * 0.11, SEED + 8, 2)
     if patch > 0.68:
         colour = kit.mix(colour, (170, 206, 190), kit.smooth((patch - 0.68) / 0.05) * 0.5)
-    core, halo = shadow(t)
-    colour = kit.mix(colour, kit.mix(SHADE, DARK, 0.5), 0.25 * halo)
+    depth, core, rim = shadow(t)
+    # The shape behind the skin: dim and murky where it is deep, darkest only along its spine, with the skin's own
+    # milk laid over it, and a pale rim where it presses.
+    murk = kit.mix((96, 116, 110), (30, 40, 38), core)
+    colour = kit.mix(colour, kit.mix(murk, BONE, 0.14), 0.8 * depth)
+    colour = kit.mix(colour, (176, 214, 196), 0.3 * rim)
+    if depth > 0.05 or rim > 0.05:
+        glow = (*COLD, max(glow[3] * (1 - depth), 22 * depth + 60 * rim))
     near, far = kit.cells(t.x * 0.085, t.y * 0.085, t.z * 0.085, SEED + 11)
     web = far - near
     if web < 0.06:
-        colour = kit.mix(colour, VEIN, 0.7 * (1 - 0.7 * core))
-        glow = (*COLD, (200 if web < 0.035 else 90) * (1 - 0.8 * core))
+        colour = kit.mix(colour, VEIN, 0.7)
+        glow = (*COLD, (200 if web < 0.035 else 90) * (1 - 0.3 * depth))
     elif web < 0.11:
         colour = kit.mix(colour, (176, 206, 186), 0.4)
-    colour = kit.mix(colour, kit.mix(DARK, (44, 60, 56), mottle), 0.92 * core)
-    if core > 0.2:
-        glow = (*COLD, 24 * (1 - core))
     if t.z < 0 and t.y > FLOOR - 0.4:
         gap = abs(t.x - seam_x(t.y))
         if t.y < CENTRE + 3 and gap < seam_half(t.y):
@@ -300,7 +308,7 @@ def add_threads(model):
 
 
 def build():
-    model = kit.Model(IDENT, SIZE, (4, 4, 0.5))
+    model = kit.Model(IDENT, SIZE, (4, 4, 0.5), engine_uv=True)
     model.bone("root", None, (0, 0, 0))
     model.bone("body", "root", (0, CENTRE, 0))
     add_slabs(model)

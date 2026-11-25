@@ -214,6 +214,7 @@ class Cube:
     cap_density: float = None
     faces: tuple = field(default=None)
     uv: dict = field(default_factory=dict)
+    engine_uv: bool = False
 
     def __post_init__(self):
         if self.pivot is None:
@@ -249,6 +250,8 @@ class Cube:
         """The place on a face at (fu, fv), before the cube is turned, and the way the face looks."""
         ox, oy, oz = self.origin
         w, h, d = self.size
+        if self.engine_uv:
+            return self.engine_point(face, fu, fv)
         if face == "north":
             return (ox + w * (1 - fu), oy + h * (1 - fv), oz), (0, 0, -1)
         if face == "south":
@@ -260,6 +263,24 @@ class Cube:
         if face == "up":
             return (ox + w * fu, oy + h, oz + d * fv), (0, 1, 0)
         return (ox + w * fu, oy, oz + d * (1 - fv)), (0, -1, 0)
+
+    def engine_point(self, face, fu, fv):
+        """`face_point` as GeckoLib lays a face out, found by baking a cube through its loader (#1204). The loader
+        negates the model's x, so the north and south faces run the other way along x, the up and down faces
+        run the other way along z, and the file's "east" face is the one at the low x and "west" at the high x."""
+        ox, oy, oz = self.origin
+        w, h, d = self.size
+        if face == "north":
+            return (ox + w * fu, oy + h * (1 - fv), oz), (0, 0, -1)
+        if face == "south":
+            return (ox + w * (1 - fu), oy + h * (1 - fv), oz + d), (0, 0, 1)
+        if face == "east":
+            return (ox, oy + h * (1 - fv), oz + d * (1 - fu)), (-1, 0, 0)
+        if face == "west":
+            return (ox + w, oy + h * (1 - fv), oz + d * fu), (1, 0, 0)
+        if face == "up":
+            return (ox + w * fu, oy + h, oz + d * (1 - fv)), (0, 1, 0)
+        return (ox + w * fu, oy, oz + d * fv), (0, -1, 0)
 
     def emit(self):
         body = {"origin": list(self.origin), "size": list(self.size)}
@@ -287,16 +308,18 @@ class Canvas:
 
 
 class Model:
-    def __init__(self, ident, size, bounds):
+    def __init__(self, ident, size, bounds, engine_uv=False):
         self.ident = ident
         self.size = size
         self.bounds = bounds
+        self.engine_uv = engine_uv
         self.bones = {}
 
     def bone(self, name, parent, pivot):
         self.bones[name] = {"parent": parent, "pivot": pivot, "cubes": []}
 
     def add(self, bone, cube):
+        cube.engine_uv = self.engine_uv
         self.bones[bone]["cubes"].append(cube)
 
     def _layout(self):
