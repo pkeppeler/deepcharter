@@ -30,7 +30,8 @@ import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 /**
  * The recipes a charter knows, and what the server sends each player of them (ADR 0070, ADR 0066). A recipe becomes known when a
  * quest step that asks for its item becomes current ({@link HandbookChapters#current}), or when anyone on the charter holds the
- * recipe's result or one of its ingredients. Every recipe follows the rule, vanilla's too. A player on no charter has recipes of
+ * recipe's result or one of its ingredients. Every loaded recipe follows the rule, vanilla's too; one that needs or makes an item
+ * the campaign world does not yield is not loaded at all ({@link ObtainableItems}, ADR 0093). A player on no charter has recipes of
  * their own ({@link KnownRecipesData}), which {@link ProgressCarry} moves into a charter they found or join. Unknown recipes still
  * craft: nothing here limits crafting.
  *

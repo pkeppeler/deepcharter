@@ -67,6 +67,16 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
+import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.RecipeBookCategories;
+import net.minecraft.tags.ItemTags;
+import java.util.OptionalInt;
 
 /**
  * Client GameTest for #846, the parts catalogue. The model (what is known, the search, craftable now, the lookup, the favourites file)
@@ -87,6 +97,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     private static final Bench TABLE = new Bench(RecipeBookType.CRAFTING, 3, 3);
 
     private static final Bench POCKET = new Bench(RecipeBookType.CRAFTING, 2, 2);
+    /** Past the fixtures' ids (they start at 100,000), so the tag fixture never takes one's place. */
+    private static final int TAG_FIXTURE_ID = 200_000;
+
     /** The narrowest GUI the panels draw at, and one pixel under it. */
     private static final int NARROWEST = 425;
 
@@ -149,6 +162,51 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                                 .getNamespace()
                                 .equals(DeepCharter.MOD_ID)),
                 "Company parts come first, got " + catalogue.items());
+    }
+
+    /**
+     * A tag ingredient lists only the items the campaign world yields (#1263, ADR 0093): "any planks" shows oak, which salvage crates
+     * drop, and not jungle or pale oak, which the world has none of. Resolved with the world's tags, as the real catalogue is.
+     */
+    private static void aTagIngredientListsOnlyObtainableItems(Minecraft client) {
+        ContextMap context = SlotDisplayContext.fromLevel(Objects.requireNonNull(client.level, "a world is loaded"));
+        RecipeDisplayEntry chest = new RecipeDisplayEntry(
+                new RecipeDisplayId(TAG_FIXTURE_ID),
+                new ShapelessCraftingRecipeDisplay(
+                        List.of(new SlotDisplay.TagSlotDisplay(ItemTags.PLANKS)),
+                        new SlotDisplay.ItemSlotDisplay(Items.CHEST),
+                        new SlotDisplay.ItemSlotDisplay(Items.CRAFTING_TABLE)),
+                OptionalInt.empty(),
+                RecipeBookCategories.CRAFTING_MISC,
+                Optional.empty());
+        Set<Item> planks = KnownRecipe.of(chest, context).ingredientItems();
+        require(planks.contains(Items.OAK_PLANKS), "any planks lists oak planks, got " + planks);
+        require(
+                !planks.contains(Items.JUNGLE_PLANKS) && !planks.contains(Items.PALE_OAK_PLANKS),
+                "any planks lists no wood the world lacks, got " + planks);
+        List<Item> listed = PartsCatalogue.of(List.of(chest), context).items();
+        require(
+                !listed.contains(Items.JUNGLE_PLANKS) && listed.contains(Items.OAK_PLANKS),
+                "the catalogue lists oak planks and not jungle planks, got " + listed);
+    }
+
+    /** The creative tabs, built as the creative screen builds them, hold no vanilla item the world lacks, and keep one it yields. */
+    private static void theCreativeTabsShowOnlyObtainableItems(Minecraft client) {
+        ClientLevel level = Objects.requireNonNull(client.level, "a world is loaded");
+        CreativeModeTab.ItemDisplayParameters parameters =
+                new CreativeModeTab.ItemDisplayParameters(level.enabledFeatures(), true, level.registryAccess());
+        Set<Item> shown = new HashSet<>();
+        for (CreativeModeTab tab : CreativeModeTabs.allTabs()) {
+            if (tab.getType() == CreativeModeTab.Type.CATEGORY) {
+                tab.buildContents(parameters);
+                tab.getDisplayItems().forEach(stack -> shown.add(stack.getItem()));
+                tab.getSearchTabDisplayItems().forEach(stack -> shown.add(stack.getItem()));
+            }
+        }
+        require(shown.contains(Items.OAK_PLANKS), "the creative tabs show oak planks");
+        require(
+                !shown.contains(Items.JUNGLE_PLANKS) && !shown.contains(Items.DIAMOND),
+                "the creative tabs show no jungle planks and no diamond");
     }
 
     private static void theSearchMatchesNamesIdsAndNamespaces() {
@@ -512,6 +570,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             // Item components are bound only once a world is loaded ("Components not bound yet" before it, #1124).
             context.runOnClient(client -> {
                 onlyTheKnownAreListed();
+                aTagIngredientListsOnlyObtainableItems(client);
+                theCreativeTabsShowOnlyObtainableItems(client);
                 theSearchMatchesNamesIdsAndNamespaces();
                 craftableNowNeedsTheIngredientsInHand();
                 craftableNowMeansCraftableOnThisScreen();

@@ -62,7 +62,7 @@ public class LayerStructuresTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(LayerStructuresTest.class);
     private static final int SPACING = 384;
     /** A spacing cell that is far from the colony's Conduit, so no structure shares its blocks. */
-    private static final int CELL = 3;
+    static final int CELL = 3;
 
     private static final int PAD_REACH = 40;
     private static final int PAD_HEIGHT = 8;
