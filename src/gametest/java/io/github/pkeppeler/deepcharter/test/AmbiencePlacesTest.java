@@ -110,8 +110,7 @@ public class AmbiencePlacesTest {
                     hour);
             ClockCaller caller = new ClockCaller(ClockTuning.DEFAULT, new SplittableRandom(1));
             // Away from the clock, or with no hour, for far longer than any gap: nothing is called and the timer does
-            // not
-            // run.
+            // not run.
             for (int tick = 0; tick < 500_000; tick++) {
                 expect(helper, PunchClock.tick(caller, away, hour, false).isEmpty(), "called away from the clock");
                 expect(
@@ -245,9 +244,7 @@ public class AmbiencePlacesTest {
         Vec3 eyes = Vec3.atCenterOf(centre);
         arena(helper, centre, ignored -> {
             // A wall of stone 6 blocks east, which hides the place 15 blocks east of the eyes; 15 blocks south is open
-            // and
-            // dark; 15 blocks
-            // west stands in the glare of a lamp.
+            // and dark; 15 blocks west stands in the glare of a lamp.
             for (int y = Y - 5; y <= Y + 6; y++) {
                 for (int z = -6; z <= 6; z++) {
                     level.setBlock(centre.offset(6, y - Y, z), Blocks.STONE.defaultBlockState(), 3);

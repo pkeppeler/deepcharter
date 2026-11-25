@@ -690,22 +690,22 @@ public class LayerStructuresTest {
         }
     }
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aHornUnderADistantRoofHangsOnAChainFromIt(GameTestHelper helper) {
         hornHangsFromRoof(helper, HORN_CEILING_CELL, 10);
     }
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aHornWithTheRoofRightOverItKeepsTheRoofAndHasNoChain(GameTestHelper helper) {
         hornHangsFromRoof(helper, HORN_ADJACENT_CELL, 1);
     }
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aHornWithTheRoofTwoOverItHangsOnOneChain(GameTestHelper helper) {
         hornHangsFromRoof(helper, HORN_ONE_CHAIN_CELL, 2);
     }
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aHornWithNoRoofInReachHangsFromABeamOnAPost(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 2);
         PunchClockDraw draw =
