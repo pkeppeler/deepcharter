@@ -29,6 +29,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -48,7 +49,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class ContinuityEventTest {
     private static final String CHAT_KEY = "deepcharter.continuity.chat";
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = 1; // fixed-pos: a row of the test's own structure, relative to it, not a world Y
 
     /** The saved form of the record, its version and its clamps, by literal values; a future version reads as unreadable. */
     @GameTest
@@ -152,7 +153,10 @@ public class ContinuityEventTest {
                             "the count is kept across the respawn, it reads %s",
                             events(second[0]));
                     second[0].setGameMode(GameType.SURVIVAL);
+                    // A respawned person takes no damage until their client has loaded.
+                    mock.markLoaded();
                     second[0].kill(helper.getLevel());
+                    expect(helper, second[0].isDeadOrDying(), "the second kill should have killed the person");
                     expect(
                             helper,
                             events(second[0]) == 2,
@@ -245,6 +249,7 @@ public class ContinuityEventTest {
         MockPlayer pilot = MockPlayers.join(helper, "continuity-pilot");
         MockPlayer crewmate = MockPlayers.join(helper, "continuity-crewmate");
         pilot.player().setGameMode(GameType.SURVIVAL);
+        Vec3[] died = new Vec3[1];
         helper.startSequence()
                 .thenExecute(() -> {
                     if (!pilot.player().startRiding(pod, true, false)) {
@@ -252,6 +257,10 @@ public class ContinuityEventTest {
                     }
                     pod.damageHull(pod.maxHull());
                     expect(helper, pilot.player().isDeadOrDying(), "the wreck should have killed its pilot");
+                    died[0] = new Vec3(
+                            pilot.player().getX(),
+                            pilot.player().getEyeY(),
+                            pilot.player().getZ());
                 })
                 .thenIdle(2)
                 .thenExecute(() -> {
@@ -271,26 +280,28 @@ public class ContinuityEventTest {
                             key(line.getArgs()[3]).equals(Optional.of("deepcharter.breach.altimeter")),
                             "the line ends in the depth as the altimeter reads it, the line was %s",
                             line);
+                    // Tests run side by side, and another test's death is heard too: only what was played where the
+                    // pilot died counts.
+                    List<Identifier> crewHeard = heardAt(crewmate, died[0]);
                     expect(
                             helper,
-                            crewmate.soundsInTheWorld()
-                                    .contains(DeepSound.CONTINUITY_LAMP_OUT
-                                            .event()
-                                            .location()),
+                            crewHeard.contains(
+                                    DeepSound.CONTINUITY_LAMP_OUT.event().location()),
                             "the crewmate should hear the lamp go out, heard %s",
-                            crewmate.soundsInTheWorld());
+                            crewHeard);
                     expect(
                             helper,
-                            !crewmate.soundsInTheWorld().contains(SoundEvents.PLAYER_DEATH.location()),
+                            !crewHeard.contains(SoundEvents.PLAYER_DEATH.location()),
                             "no vanilla death cry, heard %s",
-                            crewmate.soundsInTheWorld());
+                            crewHeard);
                     expect(
                             helper,
-                            !pilot.soundsInTheWorld()
+                            !heardAt(pilot, died[0])
                                     .contains(DeepSound.CONTINUITY_LAMP_OUT
                                             .event()
                                             .location()),
-                            "the person whose lamp it was hears nothing of it");
+                            "the person whose lamp it was hears nothing of it, heard %s",
+                            heardAt(pilot, died[0]));
                     pod.discard();
                     pilot.leave();
                     crewmate.leave();
@@ -353,6 +364,14 @@ public class ContinuityEventTest {
                     player.setGameMode(GameType.SPECTATOR);
                 })
                 .thenSucceed();
+    }
+
+    /** The sounds {@code listener} was sent that were played within a block of {@code at}. */
+    private static List<Identifier> heardAt(MockPlayer listener, Vec3 at) {
+        return listener.soundsHeardAtPlaces().stream()
+                .filter(sound -> sound.at().distanceTo(at) < 1.0)
+                .map(MockPlayer.PlacedSound::id)
+                .toList();
     }
 
     private static int events(ServerPlayer player) {
