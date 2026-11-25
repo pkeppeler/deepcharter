@@ -184,11 +184,7 @@ public class OvergrowthVeneerTest {
     public void theFilmGoesWhenTheBoreIsVisitedAndNeverBlocksAnything(GameTestHelper helper) {
         onceReady(helper, 5240, (level, x) -> {
             LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
-            cutBore(level, x);
-            Overgrowth.grow(level, chunk, lastVisit(level, x) + TUNING.delayTicks());
-            List<BlockPos> film = boreCells(x).stream()
-                    .filter(cell -> level.getBlockState(cell).is(LayerBlocks.OVERGROWTH_VENEER))
-                    .toList();
+            List<BlockPos> film = filmWithSomeOutOfReach(level, chunk, x);
             if (film.isEmpty()) {
                 throw failure(helper, "no veneer ahead of the fill");
             }
@@ -582,6 +578,33 @@ public class OvergrowthVeneerTest {
         for (BlockPos cell : boreCells(x)) {
             Hollows.cut(level, cell);
         }
+    }
+
+    /**
+     * Cuts the bore and grows one pass, and returns its film. Which cells a pass weighs follows the clock, and the clock
+     * of a full suite is not that of one class: on a pass that puts all the film beside growth there is nothing to
+     * retreat, so it tries the next pass on a fresh bore.
+     */
+    private static List<BlockPos> filmWithSomeOutOfReach(ServerLevel level, LevelChunk chunk, int x) {
+        cutBore(level, x);
+        long start = lastVisit(level, x) + TUNING.delayTicks();
+        Overgrowth.grow(level, chunk, start);
+        List<BlockPos> film = filmOf(level, x);
+        for (int again = 1; again <= 8 && film.stream().allMatch(cell -> nearGrowth(level, cell)); again++) {
+            for (BlockPos cell : boreCells(x)) {
+                level.setBlock(cell, Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+            }
+            cutBore(level, x);
+            Overgrowth.grow(level, chunk, start + (long) again * TUNING.passTicks());
+            film = filmOf(level, x);
+        }
+        return film;
+    }
+
+    private static List<BlockPos> filmOf(ServerLevel level, int x) {
+        return boreCells(x).stream()
+                .filter(cell -> level.getBlockState(cell).is(LayerBlocks.OVERGROWTH_VENEER))
+                .toList();
     }
 
     private static List<BlockPos> boreCells(int x) {
