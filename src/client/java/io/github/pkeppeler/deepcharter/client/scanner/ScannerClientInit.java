@@ -13,8 +13,7 @@ public final class ScannerClientInit {
     public static void init() {
         ScannerClientRegistry.register();
         ScannerHud.init();
-        // Not ClientPlayConnectionEvents.DISCONNECT: it can fire on a network thread, off which a texture cannot be
-        // freed, and a frame can still draw the map between it and the level going.
+        // Release once the level is gone: a last frame would re-create the texture after a queued release.
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.level == null && ScannerMap.held()) {
                 ScannerMap.release();

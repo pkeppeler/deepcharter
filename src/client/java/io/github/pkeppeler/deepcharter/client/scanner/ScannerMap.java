@@ -117,11 +117,7 @@ final class ScannerMap {
                 textureHeight);
     }
 
-    /**
-     * Drops the picture and everything kept for it, when the player has left the world: the texture can be large and
-     * nothing draws it until the next scan. Render thread only, because a texture is freed only there;
-     * {@link ScannerClientInit} calls it from a client tick, since the disconnect event can fire on a network thread.
-     */
+    /** Drops the picture and everything kept for it, when the player has left the world: the texture can be large and nothing draws it until the next scan. Render thread only. */
     static void release() {
         if (texture != null) {
             releasedOnRenderThread = RenderSystem.isOnRenderThread();
