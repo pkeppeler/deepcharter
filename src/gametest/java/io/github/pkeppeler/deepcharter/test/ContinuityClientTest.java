@@ -19,9 +19,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
-import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
@@ -142,11 +142,13 @@ public class ContinuityClientTest implements FabricClientGameTest {
             // The world's sounds are cut off: an anvil now is never started.
             anvil(singleplayer);
 
-            // Once the laugh plays, nothing that clears or covers the screen while the person is dead ends the sequence: vanilla would
+            // Once the laugh plays, nothing that clears or covers the screen while the person is dead ends the
+            // sequence: vanilla would
             // build its death screen again for a container the server closes and for a screen shut over it.
             ClientWait.until(
-                    context, "the laugh started", client -> heard.since(opened).stream()
-                            .anyMatch(p -> p.id().equals(LAUGH)));
+                    context,
+                    "the laugh started",
+                    client -> heard.since(opened).stream().anyMatch(p -> p.id().equals(LAUGH)));
             SoundInstance laugh = heard.since(opened).stream()
                     .filter(p -> p.id().equals(LAUGH))
                     .findFirst()
@@ -159,7 +161,8 @@ public class ContinuityClientTest implements FabricClientGameTest {
                 require(client.getSoundManager().isActive(laugh), "a closed container does not cut the laugh");
                 client.gui.setScreen(new ChatScreen("", false));
             });
-            ClientWait.until(context, "the chat open over the sequence", client -> client.gui.screen() instanceof ChatScreen);
+            ClientWait.until(
+                    context, "the chat open over the sequence", client -> client.gui.screen() instanceof ChatScreen);
             context.runOnClient(client -> {
                 require(client.getSoundManager().isActive(laugh), "a screen over the sequence does not cut the laugh");
                 client.gui.setScreen(null);

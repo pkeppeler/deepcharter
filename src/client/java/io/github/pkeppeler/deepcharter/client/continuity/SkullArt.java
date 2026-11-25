@@ -91,7 +91,16 @@ final class SkullArt {
         if (look.bloomLayers() > 0) {
             for (int row = 0; row < grid.rows(); row++) {
                 if (arrived[row]) {
-                    bloom(graphics, grid, row, left + tear[row], top + row * cellHeight, cellWidth, cellHeight, look, bloom);
+                    bloom(
+                            graphics,
+                            grid,
+                            row,
+                            left + tear[row],
+                            top + row * cellHeight,
+                            cellWidth,
+                            cellHeight,
+                            look,
+                            bloom);
                 }
             }
         }
@@ -121,7 +130,8 @@ final class SkullArt {
             boolean any = false;
             for (int col = 0; col < grid.cols(); col++) {
                 byte cell = grid.cells()[row * grid.cols() + col];
-                // The line runs on through the lit cells only, so it reads on from row to row and never lines up in columns.
+                // The line runs on through the lit cells only, so it reads on from row to row and never lines up in
+                // columns.
                 char letter = cell == SkullShape.NONE ? ' ' : text.charAt((lit++ + shuffle) % text.length());
                 skullRow[col] = cell == SkullShape.SKULL ? letter : ' ';
                 boneRow[col] = cell == SkullShape.BONE ? letter : ' ';

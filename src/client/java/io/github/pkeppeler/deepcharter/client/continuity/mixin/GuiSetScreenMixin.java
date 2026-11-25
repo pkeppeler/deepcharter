@@ -32,7 +32,10 @@ public abstract class GuiSetScreenMixin {
         return continuity(screen);
     }
 
-    @ModifyVariable(method = "setScreen(Lnet/minecraft/client/gui/screens/Screen;)V", at = @At("STORE"), argsOnly = true)
+    @ModifyVariable(
+            method = "setScreen(Lnet/minecraft/client/gui/screens/Screen;)V",
+            at = @At("STORE"),
+            argsOnly = true)
     private @Nullable Screen deepcharter$builtDeathScreen(@Nullable Screen screen) {
         return continuity(screen);
     }

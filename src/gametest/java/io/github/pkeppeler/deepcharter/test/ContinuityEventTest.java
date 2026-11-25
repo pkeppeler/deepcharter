@@ -359,10 +359,12 @@ public class ContinuityEventTest {
         MockPlayer mock = MockPlayers.join(helper, "continuity-nether");
         ServerPlayer player = mock.player();
         player.setGameMode(GameType.SURVIVAL);
-        ServerLevel nether = Objects.requireNonNull(helper.getLevel().getServer().getLevel(Level.NETHER), "no nether");
+        ServerLevel nether =
+                Objects.requireNonNull(helper.getLevel().getServer().getLevel(Level.NETHER), "no nether");
         helper.startSequence()
                 .thenExecute(() -> {
-                    // fixed-pos: a place in the Nether's own rows, only somewhere that is not the campaign; nothing reads it
+                    // fixed-pos: a place in the Nether's own rows, only somewhere that is not the campaign; nothing
+                    // reads it
                     mock.teleportTo(nether, Vec3.atBottomCenterOf(new BlockPos(0, 100, 0)), 0f, 0f);
                     player.hurtServer(nether, nether.damageSources().lava(), 1000f);
                 })
@@ -381,7 +383,8 @@ public class ContinuityEventTest {
                             mock.chatMessages());
                     expect(
                             helper,
-                            key(lines.getFirst().getArgs()[2]).equals(Optional.of("deepcharter.continuity.cause.burned")),
+                            key(lines.getFirst().getArgs()[2])
+                                    .equals(Optional.of("deepcharter.continuity.cause.burned")),
                             "the line still names the cause, it was %s",
                             lines.getFirst());
                     player.setGameMode(GameType.SPECTATOR);

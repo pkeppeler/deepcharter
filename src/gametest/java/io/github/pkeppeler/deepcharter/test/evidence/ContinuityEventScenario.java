@@ -128,7 +128,8 @@ public final class ContinuityEventScenario extends EvidenceScenario {
                 }
             }
             if (!skull || !laugh) {
-                throw new AssertionError("the sequence ended before its stills: the skull " + skull + ", the laugh " + laugh);
+                throw new AssertionError(
+                        "the sequence ended before its stills: the skull " + skull + ", the laugh " + laugh);
             }
             if (!buttonShown(context)) {
                 throw new AssertionError("RETURN TO WORK never came");

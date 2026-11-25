@@ -28,7 +28,8 @@ final class RecentSounds implements SoundEventListener {
     static final RecentSounds INSTANCE = new RecentSounds();
 
     /** Kinds of sound the record never skips on: the score and the beds under everything, not an event. */
-    private static final Set<SoundSource> BACKGROUND = EnumSet.of(SoundSource.MUSIC, SoundSource.RECORDS, SoundSource.AMBIENT);
+    private static final Set<SoundSource> BACKGROUND =
+            EnumSet.of(SoundSource.MUSIC, SoundSource.RECORDS, SoundSource.AMBIENT);
 
     /**
      * One sound as it was started.

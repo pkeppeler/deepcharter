@@ -77,8 +77,7 @@ public final class ContinuityCrewmateScenario extends EvidenceScenario {
                 ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
                 camera.setGameMode(GameType.CREATIVE);
                 camera.setPermanentlyInvulnerable(true);
-                camera.teleportTo(
-                        one, X + 1.5 - DISTANCE, FLOOR_Y, Z + 0.5, Set.of(), CAMERA_YAW, LOOK_DOWN, true);
+                camera.teleportTo(one, X + 1.5 - DISTANCE, FLOOR_Y, Z + 0.5, Set.of(), CAMERA_YAW, LOOK_DOWN, true);
                 MockPlayer mock =
                         MockPlayers.join(server, "Crewmate", one, new Vec3(X + 1.5, FLOOR_Y, Z + 0.5), CREWMATE_YAW);
                 ServerPlayer body = mock.player();
@@ -123,10 +122,10 @@ public final class ContinuityCrewmateScenario extends EvidenceScenario {
                     }
                 }
                 if (!still || !fading) {
-                    throw new AssertionError("the crewmate's death was not seen: still " + still + ", fading " + fading);
+                    throw new AssertionError(
+                            "the crewmate's death was not seen: still " + still + ", fading " + fading);
                 }
-                ClientWait.until(
-                        context, "the body gone", client -> crewmateOf(client, crewmate) == null);
+                ClientWait.until(context, "the body gone", client -> crewmateOf(client, crewmate) == null);
                 step(context);
                 screenshot(context, "4-ash");
                 for (int i = 0; i < AFTER_FRAMES; i++) {
