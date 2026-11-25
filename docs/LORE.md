@@ -37,7 +37,7 @@ H. Colom & Company has reopened Prosperity, a mining colony that emptied in one 
 1. The Company and its Chairman get the jokes. The dead never do.
 2. **The lure never goes dark.** No story beat ever blocks selling, buying or upgrading. The Chairman's threats come with a receipt. This protects pillar 1.
 3. The handbook can change its tone, never its rules.
-4. Faith is quiet and unnamed. No denomination, no quoted scripture, no sermons. It shows in the miners' private lives: a candle, a hymn, a prayer card.
+4. Faith is quiet and unnamed. No denomination, no sermons. It shows in the miners' private lives: a candle, a hymn, a prayer card. Period recordings of hymns, choirs and prayers are welcome as found material, heard and never explained; our own text still doesn't preach.
 5. The thing at the bottom is never named, gendered or explained in game text. The game hints; it never explains.
 6. **No children in the deep.** In scripture, Moloch is the idol children were sacrificed to. We keep his shape and his hunger and nothing else: no child characters, victims or sacrifice imagery. Miners may mention their families.
 7. **No gore** (the default; the user may lift it). Horror comes from wrongness and absence: an empty cab, a loop counter, a punch clock still ticking.
@@ -121,6 +121,8 @@ What it explains:
   - Convoy Nine's lamps are still lit under the water.
   - Moloch's glow is counterfeit light.
   - Renunciation gives every crew member a lamp that never goes out. Signing puts the Director's out forever.
+- **Wax.** The oldest voices ever caught on a surface, a scale, a girl's song and a few lines of a play, turn on wax cylinders. The label gives a title and a year and nothing more, and nobody says whose voices they are. A cylinder turns up now and then among a wreck's scrap. Sometimes the Lamp and Pick's phonograph plays at night, and nobody was there to start it.
+  - A wreck's cabin phonograph plays an old French song for whoever comes close. Deeper, the same song sometimes comes faint out of the dark, from where no radio is. Roz's margin says what to do; no text says why.
 - **Hands.** The Founder's open bronze hands hold nothing. The Company needs your hands because it has none. At the end, you open your hand and let go.
 - **Rest.** The Company promises retirement and never pays it. Hal is always retiring on Friday. Renunciation ends in rest.
 - **Hidden names.** H. COLOM is one. The catalysts are another (a proposal; the numbers pass decides which materials are catalysts): they sound like Motherload ores and decode to Latin anatomy. Cicatrium (layer 2, scar), Mycium (3, fungus), Lymphium (4), Nervium (5), Haemium (6, blood), Ossium (7, bone), Cordium (8, heart).
@@ -202,7 +204,7 @@ Zones: **Topsoil Claims → Stone Benches → Deep Claim.**
 Zones: **Upper Levels → Shift Change → Prospector's Run.**
 
 - **Upper Levels:** collapsed galleries, timber props, ore carts loaded and never hauled.
-- **Shift Change:** the colony's underground rail hub. A punch clock still ticking; 400 time cards: all but one punched IN at 23:00 on the Friday, none OUT. The unpunched card is Roz's.
+- **Shift Change:** the colony's underground rail hub. A punch clock still ticking, which now and then calls an hour, and not always the hour; 400 time cards: all but one punched IN at 23:00 on the Friday, none OUT. The unpunched card is Roz's.
 - **Prospector's Run:** the rail line to the breach, the Prospector wreck with one light still on, and **something moving in the dark**: a lampless figure walking the rails. It never attacks. It never stops. More of them walk the caverns and shafts of layers 1 and 2, rare, and some carry a lamp; they come to a dark pod, cling to it and drain its fuel (section 6). They are the deep's ordinary mob, a thing to avoid: not a boss.
 - Relays with loop counters. Personnel: *"Crosstalk is a known fault on the Company side. No action is required!"*
 - The handbook ends here: *"Further documentation is restricted to Senior Personnel,"* and Roz's margin: *"Nobody's ever been promoted."*

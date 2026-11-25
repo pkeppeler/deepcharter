@@ -23,7 +23,10 @@ public abstract class ClientChunkCacheSeamMixin {
     @Final
     private ClientLevel level;
 
-    @Inject(method = "onLightUpdate", at = @At("HEAD"), cancellable = true)
+    @Inject(
+            method = "onLightUpdate(Lnet/minecraft/world/level/LightLayer;Lnet/minecraft/core/SectionPos;)V",
+            at = @At("HEAD"),
+            cancellable = true)
     private void deepcharter$quietLightUpdate(LightLayer layer, SectionPos pos, CallbackInfo ci) {
         if (SeamClient.isBackground(level)) {
             ci.cancel();

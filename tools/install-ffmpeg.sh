@@ -83,4 +83,5 @@ fi
 ffmpeg -hide_banner -version >/dev/null || fail "ffmpeg does not run after the install"
 ffprobe -hide_banner -version >/dev/null || fail "ffprobe does not run after the install"
 encoders=$(ffmpeg -hide_banner -encoders) || fail "ffmpeg -encoders failed after the install"
+# tools/sounds/first_sounds.py has_libvorbis() tests the same fact with " libvorbis "; keep the two in step.
 [[ $encoders == *libvorbis* ]] || fail "the installed ffmpeg has no libvorbis encoder"
