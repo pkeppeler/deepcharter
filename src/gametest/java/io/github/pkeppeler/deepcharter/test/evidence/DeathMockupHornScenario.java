@@ -90,7 +90,7 @@ public class DeathMockupHornScenario extends EvidenceScenario {
         }
     }
 
-    /** A square of {@code block} {@code radius} blocks out from the horn's column, from {@code yFrom} to {@code yTo}. */
+    /** A square of {@code block} {@code radius} blocks out from the horn, from {@code yFrom} to {@code yTo}. */
     private static void box(ServerLevel level, int yFrom, int yTo, int radius, Block block) {
         for (int x = X - radius; x <= X + radius; x++) {
             for (int y = yFrom; y <= yTo; y++) {
