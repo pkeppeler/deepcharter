@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +19,7 @@ public class TestTicksTest {
         List<Long> expected =
                 IntStream.rangeClosed(0, last).mapToObj(Long::valueOf).toList();
         if (!expected.equals(ticks)) {
-            throw helper.assertionException("body ran on ticks " + ticks + ", expected " + expected);
+            throw failure(helper, "body ran on ticks %s, expected %s", ticks, expected);
         }
     }
 
@@ -34,7 +36,7 @@ public class TestTicksTest {
         TestTicks.each(helper, () -> ticks.add(helper.getTick()));
         helper.succeedWhen(() -> {
             if (helper.getTick() < LAST_TICK) {
-                throw helper.assertionException("waiting");
+                throw failure(helper, "waiting");
             }
             assertRanThrough(helper, ticks, (int) helper.getTick());
         });
@@ -57,12 +59,12 @@ public class TestTicksTest {
                 TestTicks.each(helper, () -> {});
             } catch (IllegalStateException expected) {
                 if (!NESTED_MESSAGE.equals(expected.getMessage())) {
-                    throw helper.assertionException("wrong message: " + expected.getMessage());
+                    throw failure(helper, "wrong message: %s", expected.getMessage());
                 }
                 helper.succeed();
                 return;
             }
-            throw helper.assertionException("a nested call should throw IllegalStateException");
+            throw failure(helper, "a nested call should throw IllegalStateException");
         });
     }
 }

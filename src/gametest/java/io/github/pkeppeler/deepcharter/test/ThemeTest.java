@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 import io.github.pkeppeler.deepcharter.theme.ThemeData.Layer;
 import java.util.List;
@@ -7,7 +9,6 @@ import java.util.Set;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 
 /** Server GameTests for #226: a theme area reads colours and numbers, layers merge key by key, and a bad value fails loud. */
 public class ThemeTest {
@@ -126,8 +127,7 @@ public class ThemeTest {
 
     private static void expect(GameTestHelper helper, String what, Object expected, Object actual) {
         if (!expected.equals(actual)) {
-            throw helper.assertionException(
-                    Component.literal("%s: expected %s, got %s".formatted(what, expected, actual)));
+            throw failure(helper, "%s: expected %s, got %s", what, expected, actual);
         }
     }
 
@@ -138,14 +138,12 @@ public class ThemeTest {
         } catch (IllegalArgumentException | IllegalStateException e) {
             return String.valueOf(e.getMessage());
         }
-        throw helper.assertionException(
-                Component.literal("expected an IllegalArgumentException or IllegalStateException, none was thrown"));
+        throw failure(helper, "expected an IllegalArgumentException or IllegalStateException, none was thrown");
     }
 
     private static void requireContains(GameTestHelper helper, String message, String part) {
         if (!message.contains(part)) {
-            throw helper.assertionException(
-                    Component.literal("message '%s' should name '%s'".formatted(message, part)));
+            throw failure(helper, "message '%s' should name '%s'", message, part);
         }
     }
 }

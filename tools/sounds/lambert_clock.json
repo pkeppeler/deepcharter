@@ -1,0 +1,198 @@
+{
+  "files": {
+    "clock/fragment_1": {
+      "cut_sha256": "8b21ef498e3f29efd08a10013c0cfb9b5bd7cfcd7186cb1202245722557b645e",
+      "duration_seconds": 2.602,
+      "end": 4.2,
+      "kind": "fragment",
+      "lufs": -30.0,
+      "ogg_sha256": "c947f8b2bb74e869e32011f1c82bd44f1ec4ebaac20e746fe1c74c4965941e82",
+      "pcm_sha256": "33b45d0ef00858ccab0e69b1ff456ff773d1ab394a73b295ae562f078e5bcb0b",
+      "peak_dbfs": -9.3,
+      "start": 2.0,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/fragment_2": {
+      "cut_sha256": "8504cc45d6c6c756c3187eb3a7421134b3348e0c6ed88cc8dc11f7efcafce638",
+      "duration_seconds": 2.913,
+      "end": 11.0,
+      "kind": "fragment",
+      "lufs": -30.0,
+      "ogg_sha256": "cde15aeda21f7524feebfa71817fad3dca543778d0946cd37ad5b84eab429690",
+      "pcm_sha256": "e74f11f45d96ae46cd9117a95678dd690bab2956452ba6ae5e9d223b562d9099",
+      "peak_dbfs": -11.2,
+      "start": 8.5,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/fragment_3": {
+      "cut_sha256": "23b9f9eee325db52b4dced30f761dd88b233c75ae8629198cf5332eb91500df3",
+      "duration_seconds": 3.431,
+      "end": 77.0,
+      "kind": "fragment",
+      "lufs": -30.0,
+      "ogg_sha256": "f191e7961b20de528469fb1aa4c462af436a17fb862fab7879f72795fafcb4cd",
+      "pcm_sha256": "63ff3151dc2712f382342c54644bfa3f1de78205f9a6cd133fb9544a3114e849",
+      "peak_dbfs": -12.7,
+      "start": 74.0,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/fragment_4": {
+      "cut_sha256": "1836e17f3d9bf1755b5558a1932ff974bebc2479c3cce8faacfadb27e7a0b3bd",
+      "duration_seconds": 3.949,
+      "end": 91.5,
+      "kind": "fragment",
+      "lufs": -30.0,
+      "ogg_sha256": "4c41360f28673897d4a212002833773505203ea947020c2c992b28645780816e",
+      "pcm_sha256": "2ebf4df1aeebab647953af3d6c953d242c021e1a3b4b034a675fbe6d512783c7",
+      "peak_dbfs": -14.4,
+      "start": 88.0,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_1": {
+      "cut_sha256": "ef9cf1502a9f568f0386c7c18948bacf6fdbc9d38183488298c28004ea68ff7b",
+      "duration_seconds": 0.86,
+      "end": 23.57,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "17e645118875e609761a209ff97bd58d93cae9deea678733cb4c5ddb1117f6d7",
+      "pcm_sha256": "ce45b0a7226238c036e0f9b9cc11245c44f04a9efb58319a2496e69d091b81a5",
+      "peak_dbfs": -14.8,
+      "start": 23.09,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_11": {
+      "cut_sha256": "9cd77c929b375ce140da0658152e1af2ecd0aa362541a805d7455b5c2a09d6c9",
+      "duration_seconds": 1.46,
+      "end": 32.87,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "8f5464c42dc02c5c68bd5eb73f0cacc93ba6051a10d75645301441a7077e8944",
+      "pcm_sha256": "ecd9f450db69c900203f7bb0748f01e52481df62df2fbb4e38d38c8d5c2b34c1",
+      "peak_dbfs": -13.9,
+      "start": 31.79,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_12": {
+      "cut_sha256": "e86c3b9ad48ddb1703d8a234dcaeedd3adc004a0fd52fec31a68d48517bcdefd",
+      "duration_seconds": 1.15,
+      "end": 33.92,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "948362d9ba06a9edb4d19f943400700967a8f2aa3bdee2c9f3e16cdaf46f92eb",
+      "pcm_sha256": "8f96fa49e4221d77db9d2ac4162a1aa194eda0a20faf410554a527a481c34878",
+      "peak_dbfs": -13.9,
+      "start": 33.15,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_2": {
+      "cut_sha256": "2f414b43aade75192bc0e039e206e77081481a97d043edaeb73f2b336bbf02a6",
+      "duration_seconds": 0.84,
+      "end": 24.2,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "6b40dda5c73d81e4e7fb47445eaa6f75372ebad49594f820d24628affb510e6d",
+      "pcm_sha256": "91b4b9dab521fbd79c0b16de6a7c6c67deff65dd8abd59134aed334ffc62e269",
+      "peak_dbfs": -12.8,
+      "start": 23.74,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_3": {
+      "cut_sha256": "8b0f6de25ed0b269440e4960f4c63ba5cf2e50095aaf55f228c2e0aaeee2c73e",
+      "duration_seconds": 1.45,
+      "end": 25.58,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "6323d31885df6c667a23e3362935bda6e346be56153f8e9863d1f5668593158e",
+      "pcm_sha256": "9bfb3d0f5f360f3f2fd5212e31511245ed98713b111cb6c2749c09fee82b25ef",
+      "peak_dbfs": -15.2,
+      "start": 24.51,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_4": {
+      "cut_sha256": "1ff23fc5d48b2297d241e7dc91ecc7e64850a049d376f71968d5275499ea3d98",
+      "duration_seconds": 1.01,
+      "end": 26.66,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "9ac5c6ee9647cfe0a6029f369719ba72c08c9eb1b1f4d78050e27d199e9ac844",
+      "pcm_sha256": "7898159f6b3af36ae39334a4744f552e594861c67b980d3a8f317a58f3d6f9d1",
+      "peak_dbfs": -14.1,
+      "start": 26.03,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_5": {
+      "cut_sha256": "8530d8ce74d427a4a6d85579a2712d7b4dc10560dee9af815cfa3bfd6e0fdf3f",
+      "duration_seconds": 0.69,
+      "end": 27.09,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "b0cac91355ac99391b320bc61a0f252da15438edc132b4c2868505d7bea82617",
+      "pcm_sha256": "b4d7995bdc11462b90866a855a59ca17e1c3e618b3644f0eb5e01e0c1e46cb0a",
+      "peak_dbfs": -15.2,
+      "start": 26.78,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_6": {
+      "cut_sha256": "7f0c4b5c074207e16003d6e66be25ed9766ea2e167f23ae655145ae7be14a1a9",
+      "duration_seconds": 1.28,
+      "end": 28.47,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "52b9eeb7ef61ca2c591677dca6bbc054f729e9ea77d8b018adfc88c32e40e942",
+      "pcm_sha256": "5741e2795e576a90d2752b6a4d678adc59c13e74824ec99b3d2d8dd5ebef6034",
+      "peak_dbfs": -13.5,
+      "start": 27.57,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_7": {
+      "cut_sha256": "639059cfbb3421343b2ccf217497fedc547c0961aed31f3a7304bb13b16dedee",
+      "duration_seconds": 0.81,
+      "end": 29.18,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "985e1dd2312a4e25f8dd4ca973d6716a23ee625527717f58d22c6c6b0421103a",
+      "pcm_sha256": "ee6304e7503e6ca5ec494e01142abe5973c7eeb1d2c67ca092961583018a36a3",
+      "peak_dbfs": -15.6,
+      "start": 28.75,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_8": {
+      "cut_sha256": "ec0faa8a4f293c4cb7387ff936b3072d7a4ba246b8474eff6e65e1e3dc050d2e",
+      "duration_seconds": 0.67,
+      "end": 29.94,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "deadbde4e3f20627568541c37b20e43b6f91f2a6219434bce7449bb555991d69",
+      "pcm_sha256": "037ee999cd89755e0745aec9247276d53f125691beb3239d89d640d29544b336",
+      "peak_dbfs": -13.1,
+      "start": 29.65,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    },
+    "clock/hour_9": {
+      "cut_sha256": "62960a2347a668e9e383fc394514616cbb654c204ed90fca300ce9168229e009",
+      "duration_seconds": 1.59,
+      "end": 31.4,
+      "kind": "hour",
+      "lufs": -30.0,
+      "ogg_sha256": "86b58031c7ebd8495d808b3170a6cee1d03cd0cbc366835ba08824e8260b92e7",
+      "pcm_sha256": "25a3d8d244b8a636bb2682390e42d08eae80ff4301b8ed36baf2ff946245f715",
+      "peak_dbfs": -15.7,
+      "start": 30.19,
+      "treatment_sha256": "ec0ab513785e50740f0603fda83782c0bdaf192a4f8eeae6bc113ea58ab20b3d"
+    }
+  },
+  "source": {
+    "notes_url": "https://tinfoil.com/cm-0101.htm",
+    "sha256": "157ca72d35456b5eab1b0c13cd1b5acc063f50db0e265eb9d54d5e79ef9349fa",
+    "tags": {
+      "album": "www.tinfoil.com, Glenn Sage.",
+      "artist": "Frank Lambert",
+      "comment": "Digital transfers from original wax cylinders, editing and compiled by Glenn Sage (Tinfoil.com)",
+      "copyright": "(C)(P) Glenn Sage (Tinfoil.com).  Do not copy, modify or distribute without permission.",
+      "date": "1878",
+      "genre": "Other",
+      "title": "Talking Clock"
+    },
+    "url": "https://www.tinfoil.com/lam-clock~.mp3"
+  }
+}
