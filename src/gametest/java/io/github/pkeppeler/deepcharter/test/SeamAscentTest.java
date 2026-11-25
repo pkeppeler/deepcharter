@@ -105,8 +105,9 @@ public class SeamAscentTest {
                         helper,
                         site.one(),
                         ready,
-                        () -> "a mock held " + HOLD_HEIGHT + " blocks under the ceiling of layer 2 has " + loaded + " of "
-                                + AREA_CHUNKS + " arrival chunks of layer 1 loaded and " + tickets + " arrival tickets");
+                        () -> "a mock held " + HOLD_HEIGHT + " blocks under the ceiling of layer 2 has " + loaded
+                                + " of " + AREA_CHUNKS + " arrival chunks of layer 1 loaded and " + tickets
+                                + " arrival tickets");
                 if (ready) {
                     mock.player().setPos(site.x(), ceilingY - RUN_UP, site.z());
                     BlockingLoads.arm(helper.getBounds());
@@ -120,8 +121,7 @@ public class SeamAscentTest {
                     crossedAt[0] = (int) helper.getTick();
                 } else {
                     loadedBefore[0] = loadedAround(site.one(), site.centre());
-                    ticketsBefore[0] =
-                            arrivalTickets(site.one(), site.centre()).size();
+                    ticketsBefore[0] = arrivalTickets(site.one(), site.centre()).size();
                     mock.player().setPos(site.x(), mock.player().getY() + 1, site.z());
                 }
                 return;
