@@ -62,14 +62,14 @@ You fight your way to the Furnace and break its body, but that does not kill it.
 - Seal motto: *NIHIL REDDITUR* ("nothing is returned"), presented as a no-refunds policy.
 - Slogan: *Deeper Together!*
 
-**The name.** H. COLOM reversed, letter by letter, is MOLOCH. The initial is part of the trick: "nobody knows what the H stands for," because it stands for nothing. It is the last letter of his name. The clue ladder:
+**The name.** H. COLOM reversed, letter by letter, is MOLOCH, and the story does not hide it ([ADR 0098](adr/0098-the-name-is-in-plain-sight-the-secret-is-the-title-and-the-hiring.md)). A playtester decoded it in two minutes, so it is dramatic irony: the player knows, and the characters act as if nobody does. The secret the story protects is that "H. Colom" is a title worn by a former Director, and that it is hiring (the next bullets). The name's beats, none of them a puzzle:
 
 | Where | Clue | Channel |
 |-------|------|---------|
-| Layer 1 (the handbook, from hour one) | Beside the Founder's letter: *"Twenty years here and nobody knows what the H stands for. —R."* | Margin note |
-| Layer 5 | Every Company transmission echoes with its sender reversed: `H. COLOM & CO. ↩ .OC & MOLOC .H` | Transmission header |
-| Layer 7 | Roz: *"It isn't an initial, you know. It's the end of his name."* | Transmission T41 |
-| Layer 8 | The sender field's letters slide into MOLOCH while he speaks. | Transmission T50 |
+| Layer 1 (the handbook, from hour one) | Beside the Founder's letter: *"Twenty years here and nobody knows what the H stands for. —R."* A wink for sharp players. | Margin note |
+| Layer 5 | Every Company transmission echoes with its sender reversed: `H. COLOM & CO. ↩ .OC & MOLOC .H`. The game drops the pretence. | Transmission header |
+| Layer 7 | Roz points at the masks and the open seat, not at the name: *"There's one opening, and it's been yours since the day you signed on."* | Transmission T41 |
+| Layer 8 | The sender field's letters slide into MOLOCH while he speaks. The pretence ends on screen. | Transmission T50 |
 
 **Moloch.** A parasite older than any colony, fastened to the Sleeper's hide. Over ages it burrowed toward the heart, leaving cold furnaces behind it (the Ossuary). It now sits in the heart cavity, but it has never broken the wall around the heart (the Ramp). Its body is the Furnace and everything built in it. At the centre of Head Office stands a mountain-sized bronze figure with open hands and a furnace mouth in its chest, built from every delivery ever made.
 
@@ -123,9 +123,9 @@ What it explains:
   - Renunciation gives every crew member a lamp that never goes out. Signing puts the Director's out forever.
 - **Wax.** The oldest voices ever caught on a surface, a scale, a girl's song and a few lines of a play, turn on wax cylinders. The label gives a title and a year and nothing more, and nobody says whose voices they are. A cylinder turns up now and then among a wreck's scrap. Sometimes the Lamp and Pick's phonograph plays at night, and nobody was there to start it.
   - A wreck's cabin phonograph plays an old French song for whoever comes close. Deeper, the same song sometimes comes faint out of the dark, from where no radio is. Roz's margin says what to do; no text says why.
-- **Hands.** The Founder's open bronze hands hold nothing. The Company needs your hands because it has none. At the end, you open your hand and let go.
+- **Hands.** The Founder's open bronze hands hold nothing. The Company needs your hands because it has none. At the end, the crew opens their hands together and lets go.
 - **Rest.** The Company promises retirement and never pays it. Hal is always retiring on Friday. Renunciation ends in rest.
-- **Hidden names.** H. COLOM is one. The catalysts are another (a proposal; the numbers pass decides which materials are catalysts): they sound like Motherload ores and decode to Latin anatomy. Cicatrium (layer 2, scar), Mycium (3, fungus), Lymphium (4), Nervium (5), Haemium (6, blood), Ossium (7, bone), Cordium (8, heart).
+- **Hidden names.** H. COLOM is not one: its name is in plain sight (section 4). The catalysts are the hidden names (a proposal; the numbers pass decides which materials are catalysts): they sound like Motherload ores and decode to Latin anatomy. Cicatrium (layer 2, scar), Mycium (3, fungus), Lymphium (4), Nervium (5), Haemium (6, blood), Ossium (7, bone), Cordium (8, heart).
 - **Echoes for writers, never quoted in game:**
   - Scripture: Psalm 115:4–8 (hands that handle not; those who make idols become like them), Isaiah 44:9–20 (the idol-maker's half-log), 1 Kings 18:27 (mocking the idol), Job 41 ("out of his mouth go burning lamps"), Ecclesiastes 5:10 (silver never satisfies), Matthew 25:1–13 (the lamps), Luke 14:33 (forsake all), Matthew 11:28 (rest).
   - Tolkien: Moria ("too greedily and too deep"), Gandalf's nameless things gnawing the world, Isengard's furnaces, the Dead Marshes, the Ringwraiths.
@@ -284,11 +284,12 @@ Combat details are in [CREATURES.md](CREATURES.md#7-the-finale), from the creatu
 3. **The offer.** The mask crawls out of the wreck, small and hollow, with Moloch speaking through it: *"…Every notice said turn back. You came anyway. That is what we look for in a Chairman. The position is yours. Take it. All of it."* The **Controlling Interest** drops: a physical deed. The wreck of Head Office, the richest haul in the game, is part of what is offered.
 4. **Signing** (the Director only, at the Boardroom table). Final and permanent.
    - The Director becomes the Chairman. The deed binds to him, impossible to lose, and his suit lamp goes dark for good. Both follow him even if he leaves the charter.
-   - The wreck's wealth and a recurring dividend are credited, from the labour of the Retained, who never rest. Every dividend notice asks for more.
+   - The wreck's wealth and a recurring dividend are credited to the **charter's shared account**, not to the Director alone, from the labour of the Retained, who never rest. The crew lives off it too. Every dividend notice asks for more.
+   - Evil is a private deal. A Director who signs over the crew is a betrayal story, not a wipe.
    - The Furnace relights. The Retained turn to face their new Chairman. Moloch wears a new mask.
    - For that charter, the altimeter reads YOU ARE ON COMPANY PREMISES everywhere, including the surface.
    - Last exchange: Hal asks, *"Is it Friday?"* The Company answers, *"No."*
-5. **Renunciation** (anyone in the charter holding the deed throws it into the Furnace). The true ending, and the only thing that kills him.
+5. **Renunciation** (done together). The holder holds the deed out at the Furnace's edge. The fire takes it only when every online charter member stands at the edge and lets go too, each by their own action in the world. Anyone who steps back cancels it, and nothing burns until the last hand lets go. The true ending, and the only thing that kills him.
    - An idol given nothing cannot live. The mask burns in its own fire, and the wreck of Head Office slumps into it.
    - Every coin in the charter's account goes with it. Serial numbers burn off every pod and component: the parts read UNNUMBERED, and they are yours. (Binding to the charter is unchanged; the rules never change.)
    - The Retained lay down their tools and sit down where they stand, one by one: rest. Hal: *"Is it Friday? Feels like Friday."* His channel closes after 38 years.
@@ -297,7 +298,7 @@ Combat details are in [CREATURES.md](CREATURES.md#7-the-finale), from the creatu
    - Light rises from the crack, and every crew member receives an **Unnumbered Lamp**: no serial number, nobody's property, and it never goes out. It belongs to the player, not the charter.
    - Roz's lamp does not go out either. It walks down toward the Ramp.
 
-**Deed rules** (design intent): only members of the charter that broke Head Office can hold its deed. The deed cannot leave the Boardroom; if its holder dies or leaves, it returns to the table. Nothing ends until someone signs or burns it.
+**Deed rules** (design intent): only members of the charter that broke Head Office can hold its deed. The deed cannot leave the Boardroom; if its holder dies or leaves, it returns to the table. Nothing ends until the Director signs it or the whole online crew burns it together. Offline members do not count, so a member who quit cannot block the true ending; a group could still wait until someone logs off ([ADR 0096](adr/0096-renunciation-needs-the-whole-online-crew-signing-stays-the-directors.md)).
 
 ## 13. Post-game
 
