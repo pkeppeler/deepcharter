@@ -8,10 +8,12 @@ import static io.github.pkeppeler.deepcharter.test.support.TestSites.row;
 
 /**
  * The table of {@link TestSites}: every server test class that stages at a fixed place of the shared worlds, with the block columns
- * it takes in each layer (layer 0 is the surface; {@code LAST} is the last built layer and {@code UNBUILT} the depth below it, resolved from {@code CampaignBands}, so a claim for either survives a new layer). A box is one room with its shell ({@link RoomCarver} writes the shell one block
- * outside the room) and whatever the test moves or flies beyond it; a {@code row} is {@code count} boxes {@code step} columns apart.
- * A test that only forces or reads a chunk claims that chunk's 16 x 16 columns. Two owners never share a column of a layer: pick the
- * next free place and run {@code TestSitesTest}, which names the pair that does.
+ * it takes in each layer (layer 0 is the surface). {@code LAST} is the last built layer and {@code UNBUILT} the depth below it,
+ * resolved from {@code CampaignBands}, so a claim for either survives a new layer. A box is one room with its shell
+ * ({@link RoomCarver} writes the shell one block outside the room) and whatever the test moves or flies beyond it; a {@code row}
+ * is {@code count} boxes {@code step} columns apart. A test that only forces or reads a chunk claims that chunk's 16 x 16
+ * columns. Two owners never share a column of a layer: pick the next free place and run {@code TestSitesTest}, which names the
+ * pair that does.
  */
 final class TestSiteTable {
     private TestSiteTable() {}
@@ -331,6 +333,9 @@ final class TestSiteTable {
         claim("RoomCarverSendTest", 2, 26593, 26607, 26593, 26607);
 
         claim("SealedRoomArrivalLightTest", 1, -60016, -59985, 59984, 60015);
+
+        // The campaign level's chunk (2688, 2500) at layer 1, forced for a mock the seam test holds there (site index 3).
+        claim("SeamStreamingTest", 1, 43008, 43023, 40000, 40015);
 
         row("ShapedChargeTest", 1, 4001, 4031, 64, 6, 5385, 5415);
 

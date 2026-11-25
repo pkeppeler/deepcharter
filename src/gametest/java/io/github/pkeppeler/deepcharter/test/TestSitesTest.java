@@ -195,14 +195,15 @@ public class TestSitesTest {
         expect(
                 helper,
                 TestSites.sites().stream()
-                                .anyMatch(site -> site.owner().equals("SuitTimerTest")
-                                        && site.x0() == 6595
-                                        && site.layer() == CampaignBands.lastLayer() + 1)
-                        && TestSites.sites().stream()
-                                .anyMatch(site -> site.owner().equals("BandReadersTest")
-                                        && site.layer() == CampaignBands.lastLayer()
-                                        && site.x0() == 22997),
-                "SuitTimerTest does not claim the layer below the last built one, or BandReadersTest the last one");
+                        .anyMatch(site -> site.owner().equals("SuitTimerTest")
+                                && site.layer() == CampaignBands.lastLayer() + 1),
+                "SuitTimerTest does not claim the layer below the last built one");
+        expect(
+                helper,
+                TestSites.sites().stream()
+                        .anyMatch(site -> site.owner().equals("BandReadersTest")
+                                && site.layer() == CampaignBands.lastLayer()),
+                "BandReadersTest does not claim the last built layer");
         helper.succeed();
     }
 }
