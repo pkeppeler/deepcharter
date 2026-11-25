@@ -137,12 +137,12 @@ public final class ForceSendProbe {
     }
 
     /** Whether a block of {@code level} collides with {@code entity} just under {@code box}: a floor under its feet. */
-    public static boolean supports(CollisionGetter level, Entity entity, AABB box) {
+    private static boolean supports(CollisionGetter level, Entity entity, AABB box) {
         return !level.noBlockCollision(entity, box.expandTowards(0, -SUPPORT_DEPTH, 0));
     }
 
     /** The blocks of the row under the box and of its lowest row. */
-    public static List<BlockPos> positions(AABB box) {
+    private static List<BlockPos> positions(AABB box) {
         List<BlockPos> positions = new ArrayList<>();
         int below = (int) Math.floor(box.minY - SUPPORT_DEPTH);
         for (int y = below; y <= below + 1; y++) {

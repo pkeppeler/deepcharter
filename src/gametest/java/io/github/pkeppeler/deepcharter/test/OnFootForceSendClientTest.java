@@ -17,7 +17,6 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -54,10 +53,8 @@ import org.slf4j.LoggerFactory;
  * server generates nothing far off, and the player is counted only once the client holds every chunk in view and the
  * server is calm. Each step records the server's slowest tick, so a red run tells lag from a block disagreement.
  *
- * <p>A landing can still make the line over a floor the server holds: vanilla's check reads the collision of the
- * server's previous move of the player, which can be stale. So {@code ForceSendProbe} records each line, and a line is
- * excused only when the server's own blocks hold up the box the packet lands the player in. Every excused line is
- * logged with its evidence, and more than {@link #MAX_EXCUSED} in a run fail it.
+ * <p>A line is excused only when {@code ForceSendProbe} finds the server's own blocks holding up the landing
+ * (vanilla's stale-move race). Every excused line is logged, and more than {@link #MAX_EXCUSED} in a run fail it.
  *
  * <p>The control: the server removes the stone patch without telling the client, and the player drops onto it again.
  * The line must come, so a zero above is not the appender or the line's wording failing.
@@ -106,7 +103,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
     private static final AtomicLong LONGEST_GAP = new AtomicLong();
     private static final AtomicLong LAST_TICK_END = new AtomicLong();
     private static volatile boolean watching;
-    /** Each force-send line, as the server and then the client saw it, while {@link #watching}. */
+    /** Each force-send line, as the server and then the client saw it, while {@code ForceSendProbe} watches. */
     private static final ConcurrentLinkedQueue<Seen> FORCE_SENDS = new ConcurrentLinkedQueue<>();
 
     private static volatile int switchTick;
@@ -305,8 +302,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             ServerPlayer player = player(s);
             player.setHealth(player.getMaxHealth());
             player.teleportTo(s.overworld(), X + 0.5, floor + DROP + 2, X + 0.5, Set.of(), 0, 0, true);
-            PodTether.clip(
-                    player, Objects.requireNonNull((PodEntity) s.overworld().getEntity(podId)));
+            PodTether.clip(player, TestEntities.require(s.overworld(), podId, PodEntity.class));
         });
     }
 
