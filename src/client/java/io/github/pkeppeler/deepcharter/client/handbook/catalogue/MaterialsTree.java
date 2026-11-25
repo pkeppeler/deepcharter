@@ -22,11 +22,12 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  * <li>A need is met first from what an earlier craft of the tree made too many of, then from the player's stock, and only the rest is
  * made: an intermediate the player holds is not broken down. The shown recipe's own result is never taken from stock.
- * <li>An intermediate is made by its first known recipe that does not take an item already being made further up this branch, so a
- * recipe loop (an iron block from ingots, ingots from a block) ends; with no such recipe it is a base material.
+ * <li>An intermediate is made by its first known recipe that neither undoes another known recipe (ingots from an iron block, when the
+ * block is made from ingots) nor takes an item already being made further up this branch, so a recipe loop ends; with no such recipe
+ * it is a base material.
  * <li>It is made as many times as the need takes, rounding up; what that makes beyond the need feeds later needs.
- * <li>A cell that takes several items (a tag) takes the one the player has most of, or with none held, the first that has a known
- * recipe, or else the first.
+ * <li>A cell that takes several items (a tag) takes the one the player has most of, or with none held, the first that a known recipe
+ * can make, or else the first.
  * </ul>
  *
  * @param root the shown recipe, made once
@@ -160,12 +161,16 @@ public record MaterialsTree(Node root, List<Material> materials) {
             return new Node(item, needed, fromStock, fromSpare, recipe, crafts, List.copyOf(children));
         }
 
-        /** The first known recipe of {@code item} whose every cell can take something not being made on this branch, or null. */
+        /**
+         * The first known recipe of {@code item} that does not undo another and whose every cell can take something not being made on
+         * this branch, or null.
+         */
         private @Nullable KnownRecipe recipeFor(Item item) {
             for (KnownRecipe recipe : known.apply(item)) {
-                if (recipe.needs().stream()
-                        .allMatch(need -> need.choices().stream()
-                                .anyMatch(choice -> !choice.is(item) && !branch.contains(choice.getItem())))) {
+                if (!undoes(recipe, item)
+                        && recipe.needs().stream()
+                                .allMatch(need -> need.choices().stream()
+                                        .anyMatch(choice -> !choice.is(item) && !branch.contains(choice.getItem())))) {
                     return recipe;
                 }
             }
@@ -173,8 +178,19 @@ public record MaterialsTree(Node root, List<Material> materials) {
         }
 
         /**
+         * Whether {@code recipe}, which makes {@code item}, undoes a known recipe: some cell of it takes only items a known recipe makes
+         * from {@code item} (ingots from an iron block, or from nuggets, when the block and the nuggets are made from ingots).
+         */
+        private boolean undoes(KnownRecipe recipe, Item item) {
+            return recipe.needs().stream()
+                    .anyMatch(need -> need.choices().stream()
+                            .allMatch(choice -> known.apply(choice.getItem()).stream()
+                                    .anyMatch(back -> back.ingredientItems().contains(item))));
+        }
+
+        /**
          * The item a cell of {@code need} takes: of those not being made on this branch, the one most of is at hand, or with none at hand
-         * the first with a known recipe, or the first. A cell that takes only items being made gets its first: the loop ends there.
+         * the first that a known recipe can make, or the first. A cell that takes only items being made gets its first: the loop ends there.
          */
         private Item choose(KnownRecipe.Need need) {
             List<Item> open = new ArrayList<>();
@@ -196,7 +212,7 @@ public record MaterialsTree(Node root, List<Material> materials) {
                 return most;
             }
             return open.stream()
-                    .filter(item -> !known.apply(item).isEmpty())
+                    .filter(item -> recipeFor(item) != null)
                     .findFirst()
                     .orElse(open.getFirst());
         }

@@ -33,7 +33,8 @@ import org.jspecify.annotations.Nullable;
  * Server GameTests for #1378: the total-materials breakdown of a known recipe. The recipes are built by hand as the client's recipe book
  * would hold them and resolved through {@link KnownRecipe#of}, so a tag cell holds exactly the members the world yields. The tree follows
  * only the recipes it is given (the charter's known ones), crafts an intermediate as often as the need takes, rounding up, feeds a later
- * need from what an earlier craft made too many of, stops at an item already being made further up (a recipe loop), takes the tag member
+ * need from what an earlier craft made too many of, does not follow a recipe that undoes another (ingots from an iron block), stops at an
+ * item already being made further up (a recipe loop), takes the tag member
  * the player holds most of, and takes what the player holds before it breaks anything down.
  */
 public class MaterialsTreeTest {
@@ -191,29 +192,44 @@ public class MaterialsTreeTest {
     }
 
     @GameTest
-    public void aRecipeLoopStopsAtTheItemBeingMade(GameTestHelper helper) {
-        // Iron block from ingots, ingots from a block (listed first) or from nuggets, nuggets from an ingot.
+    public void aRecipeThatUndoesAnotherIsNotFollowed(GameTestHelper helper) {
+        // Iron block from ingots, nuggets from an ingot; ingots from a block (listed first), from nuggets, or smelted
+        // from raw iron.
         KnownRecipe block = recipe(helper, Items.IRON_BLOCK, 1, times(item(Items.IRON_INGOT), 9));
+        KnownRecipe nuggets = recipe(helper, Items.IRON_NUGGET, 9, item(Items.IRON_INGOT));
         KnownRecipe ingotFromBlock = recipe(helper, Items.IRON_INGOT, 9, item(Items.IRON_BLOCK));
         KnownRecipe ingotFromNuggets = recipe(helper, Items.IRON_INGOT, 1, times(item(Items.IRON_NUGGET), 9));
-        KnownRecipe nuggets = recipe(helper, Items.IRON_NUGGET, 9, item(Items.IRON_INGOT));
-        Function<Item, List<KnownRecipe>> known = known(block, ingotFromBlock, ingotFromNuggets, nuggets);
+        KnownRecipe smelted = recipe(helper, Items.IRON_INGOT, 1, item(Items.RAW_IRON));
 
-        MaterialsTree ofBlock = MaterialsTree.of(block, known, stock());
-        expectMaterials(
-                helper,
-                ofBlock,
-                "the block's ingots skip the recipe that takes a block, and the nuggets the one that takes an ingot",
-                Items.IRON_NUGGET,
-                81,
-                0);
+        MaterialsTree ofBlock =
+                MaterialsTree.of(block, known(block, nuggets, ingotFromBlock, ingotFromNuggets, smelted), stock());
+        expectMaterials(helper, ofBlock, "the block's ingots are smelted", Items.RAW_IRON, 9, 0);
         expect(
                 helper,
-                node(helper, ofBlock, Items.IRON_INGOT).recipe() == ingotFromNuggets,
-                "the ingots are made from nuggets");
+                node(helper, ofBlock, Items.IRON_INGOT).recipe() == smelted,
+                "the ingots are smelted, not unpacked from a block or packed from nuggets");
 
-        MaterialsTree ofIngots = MaterialsTree.of(ingotFromBlock, known, stock());
-        expectMaterials(helper, ofIngots, "ingots from a block need the block itself", Items.IRON_BLOCK, 1, 0);
+        MaterialsTree unsmelted =
+                MaterialsTree.of(block, known(block, nuggets, ingotFromBlock, ingotFromNuggets), stock());
+        expectMaterials(
+                helper, unsmelted, "with no smelting known, the ingots are a base material", Items.IRON_INGOT, 9, 0);
+
+        MaterialsTree ofIngots = MaterialsTree.of(
+                ingotFromBlock, known(block, nuggets, ingotFromBlock, ingotFromNuggets, smelted), stock());
+        expectMaterials(helper, ofIngots, "the shown recipe is made even when it unpacks", Items.IRON_BLOCK, 1, 0);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aRecipeLoopStopsAtTheItemBeingMade(GameTestHelper helper) {
+        // A torch from coal, coal from a stick, a stick from a torch: no pair undoes the other, but the three go round.
+        KnownRecipe torch = recipe(helper, Items.TORCH, 1, item(Items.COAL));
+        KnownRecipe coal = recipe(helper, Items.COAL, 1, STICK);
+        KnownRecipe stick = recipe(helper, Items.STICK, 1, item(Items.TORCH));
+        MaterialsTree tree = MaterialsTree.of(torch, known(torch, coal, stick), stock());
+        expectMaterials(
+                helper, tree, "the stick would take the torch being made, so it is a base material", Items.STICK, 1, 0);
+        expect(helper, node(helper, tree, Items.COAL).crafts() == 1, "the coal is made from the stick");
         helper.succeed();
     }
 
