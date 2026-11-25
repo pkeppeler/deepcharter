@@ -20,10 +20,12 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -39,9 +41,14 @@ import net.minecraft.world.level.block.Blocks;
  * apart between client and server: a client holding the jump key on a plain stone slab in the End logged the line
  * too, with none of our blocks near.
  *
- * <p>So is the setup. The player is a spectator until the client holds the carved bore and its light is settled, and
- * only then on foot and counted. In one run of four, with the player teleported on foot into the bore's fresh chunks
- * while the server ran 130 ticks behind, one line came before the tether.
+ * <p>The setup is not counted either. The player is a spectator until the client holds the carved bore and its light
+ * is settled, and only then on foot and counted. In one run of four, with the player teleported on foot into the
+ * bore's fresh chunks while the server ran 130 ticks behind, one line came before the tether. Vanilla logs at most one
+ * line in 200 ticks per player, so a setup line would hide a measured one: the count waits that out first.
+ *
+ * <p>The control: the server then removes the stone patch without telling the client, and the player drops onto it
+ * again. The client lands on a block the server lacks, and the line must come, so a zero above is not the appender or
+ * the line's wording failing.
  */
 public class OnFootForceSendClientTest implements FabricClientGameTest {
     private static final int X = 29000;
@@ -52,6 +59,8 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
     private static final int LAP_TICKS = 15;
     private static final int TETHER_TRIPS = 3;
     private static final int SETTLE_TICKS = 40;
+    /** More than vanilla's 200 ticks between two lines for one player. */
+    private static final int LINE_COOLDOWN_TICKS = 220;
     /** The walls of the room above the bore, and how far the pod stands from its centre. */
     private static final int ROOM_RADIUS = 8;
 
@@ -78,6 +87,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);
             TestServerContext server = singleplayer.getServer();
+            int start = ForceSends.total();
             int floor = CampaignBands.LAYER_1.minY() + 60;
             context.waitTicks(SILENT_TICKS); // tick-wait: the connection's first 200 ticks log nothing
             server.runOnServer(s -> {
@@ -100,6 +110,10 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                             && client.level.getBlockState(top.atY(floor - 1)).is(Blocks.STONE));
             ClientWait.chunksAround(context, X, X, ROOM_RADIUS);
             ClientWait.lightSettled(context, server, 1, X, X, ROOM_RADIUS);
+            int setup = ForceSends.total() - start;
+            if (setup > 0) {
+                context.waitTicks(LINE_COOLDOWN_TICKS); // tick-wait: a setup line's cooldown would hide a measured line
+            }
             server.runOnServer(s -> player(s).setGameMode(GameType.SURVIVAL));
             int before = ForceSends.total();
 
@@ -118,7 +132,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             int onTheBlocks = ForceSends.total() - before;
 
             UUID podId = server.computeOnServer(s -> addPodOnALedge(s.overworld(), floor));
-            context.waitTicks(SETTLE_TICKS); // tick-wait: the room and the pod reach the client
+            ClientWait.until(context, "the pod on the client", client -> holdsEntity(client, podId));
             for (int trip = 0; trip < TETHER_TRIPS; trip++) {
                 server.runOnServer(s -> {
                     ServerPlayer player = player(s);
@@ -146,7 +160,23 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             require(
                     total == 0,
                     total + " force-send lines (" + onTheBlocks
-                            + " before the tether) for a real client on foot in a carved bore");
+                            + " before the tether) for a real client on foot in a carved bore, and " + setup
+                            + " in the setup");
+
+            context.waitTicks(LINE_COOLDOWN_TICKS); // tick-wait: past vanilla's cooldown for any earlier line
+            Patch stone = PATCHES.getLast();
+            server.runOnServer(s -> s.overworld()
+                    .setBlock(
+                            new BlockPos(X + stone.dx(), floor - 1, X + stone.dz()),
+                            Blocks.AIR.defaultBlockState(),
+                            Block.UPDATE_INVISIBLE));
+            int beforeControl = ForceSends.total();
+            dropOnto(context, server, floor, stone);
+            ClientWait.until(
+                    context,
+                    "a force-send line for a client landing on a block the server removed unseen",
+                    () -> ForceSends.total() > beforeControl,
+                    () -> "no line; " + setup + " in the setup");
         }
     }
 
@@ -203,9 +233,22 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         return server.getPlayerList().getPlayers().getFirst();
     }
 
+    private static boolean holdsEntity(Minecraft client, UUID id) {
+        if (client.level == null) {
+            return false;
+        }
+        for (Entity entity : client.level.entitiesForRendering()) {
+            if (entity.getUUID().equals(id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Whether the server holds every chunk the bore and the room round its mouth touch. */
     private static boolean loaded(ServerLevel level) {
-        for (int cx = (X - 4) >> 4; cx <= (X + 4) >> 4; cx++) {
-            for (int cz = (X - 4) >> 4; cz <= (X + 4) >> 4; cz++) {
+        for (int cx = (X - ROOM_RADIUS) >> 4; cx <= (X + ROOM_RADIUS) >> 4; cx++) {
+            for (int cz = (X - ROOM_RADIUS) >> 4; cz <= (X + ROOM_RADIUS) >> 4; cz++) {
                 if (level.getChunkSource().getChunkNow(cx, cz) == null) {
                     return false;
                 }

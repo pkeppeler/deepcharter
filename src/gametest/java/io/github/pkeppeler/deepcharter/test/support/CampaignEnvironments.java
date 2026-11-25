@@ -13,11 +13,5 @@ public final class CampaignEnvironments {
     /** A batch of its own for a case that loads its chunks on the server thread (a same-tick {@code WorldData.with}), which would starve a test beside it (#1016). */
     public static final String SYNC_CHUNK_LOAD = "deepcharter-test:campaign_sync_chunk_load";
 
-    /**
-     * A batch of its own for {@code OnFootForceSendTest}, which counts a log line of every player on the server
-     * ({@link ForceSends}): a player of a test beside it would add to the count (#1317).
-     */
-    public static final String FORCE_SENDS = "deepcharter-test:campaign_force_sends";
-
     private CampaignEnvironments() {}
 }
