@@ -21,6 +21,7 @@ import java.util.TreeSet;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -43,11 +44,14 @@ import org.joml.Vector3fc;
 /**
  * Server GameTests for #797 (campaign world plan, #214; ADR 0062): in a campaign level the layers' zone biomes are applied after the
  * surface's sky timeline and the weather, so a layer keeps its own fog, light and dust while the surface band reads exactly what the flat
- * overworld reads. Everything runs in {@code deepcharter:campaign_sample}, the test dimension of the shipped campaign type.
+ * overworld reads. Everything runs in {@code deepcharter:campaign_sample}, the test dimension of the shipped campaign type. The unbuilt
+ * depth under the last layer is underground too, and its biome is held to the same rules (#1192).
  */
 public class CampaignAtmosphereTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final Identifier SKY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sky");
+    private static final ResourceKey<Biome> UNBUILT_DEPTH =
+            ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "unbuilt_depth"));
     private static final long SKY_DUSK = 0;
     private static final long SKY_NIGHT = 144_000;
     private static final long GAMEPLAY_NOON = 6_000;
@@ -123,8 +127,8 @@ public class CampaignAtmosphereTest {
             new Moment("sky 0, noon, thunder", SKY_DUSK, GAMEPLAY_NOON, 1f),
             new Moment("sky 144000, midnight, thunder", SKY_NIGHT, GAMEPLAY_MIDNIGHT, 1f));
 
-    /** A layer's zone, with the middle block of its rows. */
-    private record Zone(int layer, Identifier biome, BlockPos middle) {}
+    /** A layer's zone, or the unbuilt depth, with the middle block of its rows. */
+    private record Zone(String name, Identifier biome, BlockPos middle) {}
 
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void aLayerReadsItsOwnBiomeAtEverySkyTimeGameplayTimeAndWeather(GameTestHelper helper) {
@@ -136,8 +140,7 @@ public class CampaignAtmosphereTest {
                     for (EnvironmentAttribute<?> attribute : LAYER_VALUES) {
                         expectEqual(
                                 helper,
-                                "layer %s zone %s, %s, %s"
-                                        .formatted(zone.layer(), zone.biome(), moment, name(attribute)),
+                                "%s (%s), %s, %s".formatted(zone.name(), zone.biome(), moment, name(attribute)),
                                 wanted(biome, attribute),
                                 level.environmentAttributes().getValue(attribute, zone.middle()));
                     }
@@ -198,7 +201,7 @@ public class CampaignAtmosphereTest {
         expect(helper, !driven.isEmpty(), "the type runs no timeline that sets an attribute");
         List<Holder<Biome>> surface =
                 new ArrayList<>(source(level).possibleBiomes().stream().toList());
-        surface.removeAll(layerBiomes(level));
+        surface.removeAll(undergroundBiomes(helper, level));
         expect(helper, surface.size() >= 4, "the surface has %s biomes, wanted at least 4", surface.size());
         for (Holder<Biome> biome : surface) {
             for (EnvironmentAttribute<?> attribute : driven) {
@@ -219,7 +222,7 @@ public class CampaignAtmosphereTest {
     }
 
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
-    public void everyLayerBiomeSetsEachTimelineAttributeThatCanBeSeenUnderground(GameTestHelper helper) {
+    public void everyUndergroundBiomeSetsEachTimelineAttributeThatCanBeSeenUnderground(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<EnvironmentAttribute<?>> driven = timelineAttributes(level);
         for (EnvironmentAttribute<?> attribute : UNDERGROUND) {
@@ -237,12 +240,12 @@ public class CampaignAtmosphereTest {
                 "the layers have %s zone biomes, wanted %s",
                 layerBiomes.size(),
                 zoneBiomes);
-        for (Holder<Biome> biome : layerBiomes) {
+        for (Holder<Biome> biome : undergroundBiomes(helper, level)) {
             for (EnvironmentAttribute<?> attribute : UNDERGROUND) {
                 expect(
                         helper,
                         biome.value().getAttributes().contains(attribute),
-                        "layer biome %s does not set %s, so the surface's timeline shows through underground",
+                        "underground biome %s does not set %s, so the surface's timeline shows through underground",
                         id(biome),
                         name(attribute));
                 // The biome entry is applied twice (ADR 0062), which only an override survives.
@@ -250,7 +253,7 @@ public class CampaignAtmosphereTest {
                 expect(
                         helper,
                         entry != null && entry.modifier().equals(AttributeModifier.override()),
-                        "layer biome %s sets %s with a modifier other than override",
+                        "underground biome %s sets %s with a modifier other than override",
                         id(biome),
                         name(attribute));
             }
@@ -259,14 +262,13 @@ public class CampaignAtmosphereTest {
     }
 
     /**
-     * A cavern shows the sky wherever a line of sight runs past the render distance, so each layer biome turns the sky into its fog
-     * (#1161): the sky's colour is the fog colour, the sky dome is all fog, no sunset glow, no stars, and the sun and the moon straight down.
+     * A cavern shows the sky wherever a line of sight runs past the render distance, so each layer biome and the unbuilt depth's turn the
+     * sky into their fog (#1161, #1192): the sky's colour is the fog colour, the sky dome is all fog, no sunset glow, no stars, and the sun
+     * and the moon straight down.
      */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
-    public void everyLayerBiomeTurnsTheSkyIntoItsFog(GameTestHelper helper) {
-        List<Holder<Biome>> layerBiomes = layerBiomes(helper.getLevel());
-        expect(helper, !layerBiomes.isEmpty(), "the sample level places no layer biome");
-        for (Holder<Biome> holder : layerBiomes) {
+    public void everyUndergroundBiomeTurnsTheSkyIntoItsFog(GameTestHelper helper) {
+        for (Holder<Biome> holder : undergroundBiomes(helper, helper.getLevel())) {
             Biome biome = holder.value();
             Identifier id = id(holder);
             Vector3fc fog = wanted(biome, EnvironmentAttributes.FOG_COLOR);
@@ -274,14 +276,14 @@ public class CampaignAtmosphereTest {
                     helper,
                     biome.getAttributes().contains(EnvironmentAttributes.SKY_COLOR)
                             && wanted(biome, EnvironmentAttributes.SKY_COLOR).equals(fog),
-                    "layer biome %s: set minecraft:visual/sky_color to its fog colour %s, or the fog takes on the sky's colour",
+                    "underground biome %s: set minecraft:visual/sky_color to its fog colour %s, or the fog takes on the sky's colour",
                     id,
                     hex(fog));
             expect(
                     helper,
                     biome.getAttributes().contains(EnvironmentAttributes.SKY_FOG_END_DISTANCE)
                             && wanted(biome, EnvironmentAttributes.SKY_FOG_END_DISTANCE) == 0f,
-                    "layer biome %s: set minecraft:visual/sky_fog_end_distance to 0.0, so the sky dome and the dark disc under the horizon"
+                    "underground biome %s: set minecraft:visual/sky_fog_end_distance to 0.0, so the sky dome and the dark disc under the horizon"
                             + " are all fog, read %s",
                     id,
                     wanted(biome, EnvironmentAttributes.SKY_FOG_END_DISTANCE));
@@ -291,24 +293,87 @@ public class CampaignAtmosphereTest {
                             && wanted(biome, EnvironmentAttributes.SUNRISE_SUNSET_COLOR)
                                             .w()
                                     == 0f,
-                    "layer biome %s: set minecraft:visual/sunrise_sunset_color to \"#00000000\" (alpha 0), or the dusk glow shows",
+                    "underground biome %s: set minecraft:visual/sunrise_sunset_color to \"#00000000\" (alpha 0), or the dusk glow shows",
                     id);
             expect(
                     helper,
                     biome.getAttributes().contains(EnvironmentAttributes.STAR_BRIGHTNESS)
                             && wanted(biome, EnvironmentAttributes.STAR_BRIGHTNESS) == 0f,
-                    "layer biome %s: set minecraft:visual/star_brightness to 0.0, or the stars show",
+                    "underground biome %s: set minecraft:visual/star_brightness to 0.0, or the stars show",
                     id);
             for (EnvironmentAttribute<Float> body :
                     List.of(EnvironmentAttributes.SUN_ANGLE, EnvironmentAttributes.MOON_ANGLE)) {
                 expect(
                         helper,
                         biome.getAttributes().contains(body) && wanted(biome, body) == NADIR,
-                        "layer biome %s: set %s to %s, so it stands under the horizon, behind the dark disc",
+                        "underground biome %s: set %s to %s, so it stands under the horizon, behind the dark disc",
                         id,
                         name(body),
                         NADIR);
             }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The unbuilt depth's fog (#1192) is darker than every layer's and starts and ends no farther out, so it is at least as thick at every
+     * distance. Night vision scales a fog colour's brightest channel to full but leaves one with a channel of 0 alone
+     * ({@code FogRenderer.computeFogColor} in 26.3), so the abyss stays dark under the potion. Its water fog is black (#1187): unset, it
+     * would be vanilla's blue, which the camera blends into the water within about 12 blocks of the last layer's floor.
+     */
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
+    public void theUnbuiltDepthsFogIsTheDarkestAndNearestAndNightVisionCannotLiftIt(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Biome unbuilt = unbuiltBiome(helper, level).value();
+        for (EnvironmentAttribute<?> attribute : List.of(
+                EnvironmentAttributes.FOG_COLOR,
+                EnvironmentAttributes.FOG_START_DISTANCE,
+                EnvironmentAttributes.FOG_END_DISTANCE)) {
+            expect(
+                    helper,
+                    unbuilt.getAttributes().contains(attribute),
+                    "the unbuilt depth sets no %s, so the surface's sky timeline sets it",
+                    name(attribute));
+        }
+        Vector3fc fog = wanted(unbuilt, EnvironmentAttributes.FOG_COLOR);
+        expect(
+                helper,
+                fog.x() == 0f || fog.y() == 0f || fog.z() == 0f,
+                "the unbuilt depth's fog colour %s has no channel of 0, so night vision lifts it to full brightness",
+                hex(fog));
+        Vector3fc waterFog = wanted(unbuilt, EnvironmentAttributes.WATER_FOG_COLOR);
+        expect(
+                helper,
+                waterFog.x() == 0f && waterFog.y() == 0f && waterFog.z() == 0f,
+                "the unbuilt depth's water fog %s is not black, so water within the blend of the last layer's floor turns toward it",
+                hex(waterFog));
+        float start = wanted(unbuilt, EnvironmentAttributes.FOG_START_DISTANCE);
+        float end = wanted(unbuilt, EnvironmentAttributes.FOG_END_DISTANCE);
+        for (Holder<Biome> zone : layerBiomes(level)) {
+            Vector3fc zoneFog = wanted(zone.value(), EnvironmentAttributes.FOG_COLOR);
+            expect(
+                    helper,
+                    fog.x() <= zoneFog.x() && fog.y() <= zoneFog.y() && fog.z() <= zoneFog.z(),
+                    "the unbuilt depth's fog %s is not darker on every channel than layer biome %s's %s",
+                    hex(fog),
+                    id(zone),
+                    hex(zoneFog));
+            float zoneStart = wanted(zone.value(), EnvironmentAttributes.FOG_START_DISTANCE);
+            expect(
+                    helper,
+                    start <= zoneStart,
+                    "the unbuilt depth's fog starts at %s blocks, farther out than layer biome %s's %s",
+                    start,
+                    id(zone),
+                    zoneStart);
+            float zoneEnd = wanted(zone.value(), EnvironmentAttributes.FOG_END_DISTANCE);
+            expect(
+                    helper,
+                    end <= zoneEnd,
+                    "the unbuilt depth's fog ends at %s blocks, farther out than layer biome %s's %s",
+                    end,
+                    id(zone),
+                    zoneEnd);
         }
         helper.succeed();
     }
@@ -440,10 +505,33 @@ public class CampaignAtmosphereTest {
                         layer,
                         index,
                         wanted);
-                zones.add(new Zone(layer, wanted, middle));
+                zones.add(new Zone("layer %s zone %s".formatted(layer, index), wanted, middle));
             }
         }
+        zones.add(new Zone("the unbuilt depth", id(unbuiltBiome(helper, level)), unbuiltMiddle()));
         return zones;
+    }
+
+    /** The middle block of the unbuilt depth's rows, far from either edge, so a read there is the unbuilt depth's biome alone. */
+    private static BlockPos unbuiltMiddle() {
+        return new BlockPos(0, CampaignBands.UNBUILT.minY() + CampaignBands.UNBUILT.height() / 2, 0);
+    }
+
+    /** The biome the level places in the middle of the unbuilt depth, read from the chunk's stored cell: {@code deepcharter:unbuilt_depth}. */
+    private static Holder<Biome> unbuiltBiome(GameTestHelper helper, ServerLevel level) {
+        BlockPos middle = unbuiltMiddle();
+        Holder<Biome> biome = level.getChunk(middle)
+                .getNoiseBiome(
+                        QuartPos.fromBlock(middle.getX()),
+                        QuartPos.fromBlock(middle.getY()),
+                        QuartPos.fromBlock(middle.getZ()));
+        expect(
+                helper,
+                biome.is(UNBUILT_DEPTH),
+                "the middle of the unbuilt depth reads biome %s, not %s",
+                id(biome),
+                UNBUILT_DEPTH.identifier());
+        return biome;
     }
 
     private static Biome biome(ServerLevel level, Zone zone) {
@@ -476,6 +564,13 @@ public class CampaignAtmosphereTest {
         return source(level).layers().stream()
                 .flatMap(layer -> layer.biomes().stream())
                 .toList();
+    }
+
+    /** The biomes under the surface: every layer zone's, and the unbuilt depth's. */
+    private static List<Holder<Biome>> undergroundBiomes(GameTestHelper helper, ServerLevel level) {
+        List<Holder<Biome>> biomes = new ArrayList<>(layerBiomes(level));
+        biomes.add(unbuiltBiome(helper, level));
+        return biomes;
     }
 
     private static Identifier id(Holder<Biome> biome) {
