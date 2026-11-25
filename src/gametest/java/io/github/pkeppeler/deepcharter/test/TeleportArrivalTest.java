@@ -12,14 +12,16 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.test.mixin.ServerChunkCacheAccess;
+import io.github.pkeppeler.deepcharter.test.mixin.TicketAccess;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -47,10 +49,11 @@ import net.minecraft.world.phys.Vec3;
  */
 public class TeleportArrivalTest {
     /**
-     * Ticks after the teleport by which the arrival ticket must be gone. Its countdown starts only once the chunk is
-     * ready to save, which took 148 and 183 ticks in two runs, and then runs {@code arrivalTicketTicks}.
+     * Ticks past {@code arrivalTicketTicks}, counted from the first tick its countdown shows, by which the arrival ticket
+     * must be gone. The countdown itself starts only once the chunk is ready to save, which takes as long as the
+     * machine's load makes it, so that wait is bounded by a {@link FarChunks.Deadline} instead.
      */
-    private static final int RELEASE_DEADLINE = 600;
+    private static final int RELEASE_MARGIN = 20;
 
     /** Ticks the chunk is watched after the arrival ticket is released, for a lapse at the handover. */
     private static final int AFTER_RELEASE_TICKS = 40;
@@ -66,9 +69,8 @@ public class TeleportArrivalTest {
     private static final int ANSWER_DELAY = 5;
 
     // The landing look-up loads the cold chunk synchronously on the server thread, inside a same-tick WorldData.with.
-    @GameTest(
-            environment = CampaignEnvironments.SYNC_CHUNK_LOAD,
-            maxTicks = RELEASE_DEADLINE + AFTER_RELEASE_TICKS + 100)
+    // The wait for the countdown, then the boarding, countdown, margin and watch, with room.
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theArrivalChunkHoldsUntilTheLatePilotsTicketsArrive(GameTestHelper helper) {
         ServerLevel overworld = helper.getLevel().getServer().overworld();
         int x = 14_000;
@@ -95,11 +97,13 @@ public class TeleportArrivalTest {
         PodComponents.register(pod, charter.id());
         expect(helper, pilot.player().startRiding(pod, true, false), "the pilot could not board the pod");
         int podId = pod.getId();
+        int countdownTicks = RepairTuning.DEFAULT.arrivalTicketTicks();
+        FarChunks.Deadline countdownWait = FarChunks.deadline();
         long[] sent = {-1};
         boolean[] everLoaded = {false};
         boolean[] everHeld = {false};
+        long[] countdown = {-1};
         long[] released = {-1};
-        List<String> lapses = new ArrayList<>();
         TestTicks.each(helper, () -> {
             ServerPlayer player = pilot.player();
             if (sent[0] < 0) {
@@ -132,27 +136,53 @@ public class TeleportArrivalTest {
             List<Ticket> tickets = ((ServerChunkCacheAccess) overworld.getChunkSource())
                     .deepcharter$ticketStorage()
                     .getTickets(key);
-            boolean held = tickets.stream()
-                    .anyMatch(ticket -> ARRIVAL_TICKET.equals(BuiltInRegistries.TICKET_TYPE.getKey(ticket.getType())));
+            List<Ticket> arrivalTickets = tickets.stream()
+                    .filter(ticket -> ARRIVAL_TICKET.equals(BuiltInRegistries.TICKET_TYPE.getKey(ticket.getType())))
+                    .toList();
+            boolean held = !arrivalTickets.isEmpty();
             everHeld[0] |= held;
+            if (countdown[0] < 0
+                    && arrivalTickets.stream()
+                            .anyMatch(ticket -> ((TicketAccess) ticket).deepcharter$ticksLeft() < countdownTicks)) {
+                countdown[0] = tick;
+            }
             if (everHeld[0] && !held && released[0] < 0) {
                 released[0] = tick;
             }
             everLoaded[0] |= loaded;
-            if (level > ChunkLevel.byStatus(FullChunkStatus.FULL) || (everLoaded[0] && !loaded)) {
-                lapses.add(String.format("tick %d: level %d, entities loaded %s", tick, level, loaded));
-            }
             expect(
                     helper,
-                    released[0] >= 0 || tick < RELEASE_DEADLINE,
-                    "the arrival ticket was not released within %d ticks (ever held: %s, tickets now: %s), lapses: %s",
-                    RELEASE_DEADLINE,
-                    everHeld[0],
-                    tickets,
-                    lapses);
+                    level <= ChunkLevel.byStatus(FullChunkStatus.FULL) && (loaded || !everLoaded[0]),
+                    "the arrival chunk lapsed at tick %d: level %d, entities loaded %s (arrival ticket held: %s)",
+                    tick,
+                    level,
+                    loaded,
+                    held);
+            expect(
+                    helper,
+                    released[0] < 0 || countdown[0] >= 0,
+                    "the arrival ticket was released at tick %d before its countdown started",
+                    released[0]);
+            countdownWait.await(
+                    helper,
+                    overworld,
+                    countdown[0] >= 0,
+                    () -> String.format(
+                            "the arrival ticket's countdown never started (ever held: %s, tickets now: %s)",
+                            everHeld[0], tickets));
+            expect(
+                    helper,
+                    released[0] >= 0 || countdown[0] < 0 || tick <= countdown[0] + countdownTicks + RELEASE_MARGIN,
+                    "the arrival ticket was not released within %d ticks of its countdown starting at tick %d"
+                            + " (tickets now: %s)",
+                    countdownTicks + RELEASE_MARGIN,
+                    countdown[0],
+                    tickets);
             if (released[0] >= 0 && tick >= released[0] + AFTER_RELEASE_TICKS) {
-                DeepCharter.LOGGER.info("[teleport-arrival] ticket released at tick={}", released[0]);
-                expect(helper, lapses.isEmpty(), "the arrival chunk lapsed: %s", lapses);
+                DeepCharter.LOGGER.info(
+                        "[teleport-arrival] countdown started at tick={}, ticket released at tick={}",
+                        countdown[0],
+                        released[0]);
                 expect(helper, !pod.isRemoved(), "the pod was removed: %s", pod.getRemovalReason());
                 // Only at the end: the client still drops the pod for a tick at tick 1 and after the answer (#1364).
                 expect(helper, clientHolds(pilot, podId), "the pilot's client should hold its pod at the end");
