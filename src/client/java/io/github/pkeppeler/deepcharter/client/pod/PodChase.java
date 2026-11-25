@@ -26,6 +26,9 @@ public final class PodChase {
     /** Blocks a tick the pod must be driving at for the chase view to settle behind it. */
     private static final double DRIVING = 0.02;
 
+    /** Off only while a test or scenario that stages its own cockpit view runs, which {@link #setAutomatic} sets. */
+    private static boolean automatic = true;
+
     /** The pod the local player pilots, null when none. */
     private static @Nullable PodEntity seat;
     /** The view the player had before taking the seat. */
@@ -43,7 +46,18 @@ public final class PodChase {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> forget());
     }
 
+    // test-seam: client tests and recorded scenarios stage a first-person cockpit and keep the camera they set, so
+    // every one
+    // starts with the chase off (ClientTestLog); PodChaseClientTest and the pod-controls scenario run it as shipped
+    public static void setAutomatic(boolean automatic) {
+        PodChase.automatic = automatic;
+        forget();
+    }
+
     private static void tick(Minecraft client) {
+        if (!automatic) {
+            return;
+        }
         LocalPlayer player = client.player;
         if (player == null
                 || !(player.getVehicle() instanceof PodEntity piloted)

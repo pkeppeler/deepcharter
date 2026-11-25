@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
+import io.github.pkeppeler.deepcharter.client.pod.PodChase;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -35,6 +36,7 @@ public class PodChaseClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
+        PodChase.setAutomatic(true);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             PodMovementClientTest.moveToOpenGround(context, two);
             // A view that is neither the default nor the chase view, so a restore cannot pass by luck.
