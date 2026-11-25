@@ -82,6 +82,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - Prove a regression test with a mutation check: break the code under test in your worktree, see it go red, revert (#627's first case was vacuous).
 
 - Gradle runs with the configuration cache on in every worktree: `gradlew` gives each checkout its own daemon registry (`.gradle/daemon-registry`, #1120), so a configuration cache entry never names another worktree's scripts, and `--no-configuration-cache` is not needed for concurrent worktrees. Memory model: one daemon (`-Xmx2G`) per active worktree, gone 10 minutes after its last build. A Gradle started another way (an IDE, a bare `gradle`) shares one daemon again. `tools/tests/gradle-worktree-isolation.test.sh` guards this.
+- A test guard that skips on a missing local tool fails under `CI=true` instead, or names the CI step that guarantees the tool (as `tools/install-ffmpeg.sh` does for libvorbis).
 
 ## Client slots
 

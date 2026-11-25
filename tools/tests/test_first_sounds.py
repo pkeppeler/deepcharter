@@ -24,6 +24,7 @@ sys.path.insert(0, str(SOUNDS))
 
 import first_sounds  # noqa: E402
 import soundgen  # noqa: E402
+from vorbis_guard import needs_mono_vorbis  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = (shutil.which("ffmpeg"), shutil.which("ffprobe"))
@@ -341,6 +342,7 @@ class AuClairDeLaLuneTest(unittest.TestCase):
 
 
 @unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
+@needs_mono_vorbis
 class DarkRenderTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -384,6 +386,7 @@ class DarkRenderTest(unittest.TestCase):
 
 
 @unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
+@needs_mono_vorbis
 class CutRebuildTest(unittest.TestCase):
     """A recording whose cut changed is rendered again, and a refusal anywhere in the list writes nothing."""
 
@@ -451,6 +454,7 @@ class CutRebuildTest(unittest.TestCase):
 
 
 @unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
+@needs_mono_vorbis
 class OpeningTest(unittest.TestCase):
     """An amix in the filter graph once opened every clip with 0.6 s of loud buzz that the source does not have."""
 
