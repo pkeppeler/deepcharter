@@ -245,7 +245,7 @@ def smoked_paper():
     paper = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8))
     d = ImageDraw.Draw(paper)
     font = ImageFont.truetype(SERIF, 30)
-    d.text((86, 70), "Nº 0412", font=font, fill=(52, 42, 34))
+    d.text((86, 70), "Nº 0412", font=font, fill=(40, 32, 26))
     return paper
 
 
@@ -262,12 +262,21 @@ class Phonautogram:
         self.seconds = seconds
         row_len = self.X1 - self.X0
         self.total_px = row_len * len(self.ROWS)
-        # One aliased sample per half pixel: loud passages scrawl, quiet ones run nearly flat.
+        # Scott's traces are one thin wavering line: its swing follows the loudness and its wavelength the pitch, slowed far
+        # down so each wave is a few pixels long, as the stylus wrote at the drum's slow speed.
         n = self.total_px * 2
-        idx = np.linspace(0, len(audio) - 1, n).astype(int)
-        env = np.convolve(np.abs(audio), np.ones(2400) / 2400, mode="same")
-        y = audio[idx] * 0.6 + np.sign(audio[idx]) * env[idx] * 0.8
-        self.y = y / (np.abs(y).max() + 1e-9)
+        frame = max(1, len(audio) // n)
+        a = audio[: frame * n].reshape(n, frame)
+        env = np.sqrt((a**2).mean(1))
+        env = np.convolve(env, np.ones(9) / 9, mode="same")
+        env = (env / (env.max() + 1e-9)) ** 1.4
+        zc = (np.diff(np.sign(a), axis=1) != 0).mean(1)
+        zc = np.convolve(zc, np.ones(15) / 15, mode="same")
+        wavelength = 30 - 18 * (zc / (zc.max() + 1e-9))  # in half pixels: 12 to 30
+        phase = np.cumsum(2 * math.pi / np.maximum(wavelength, 3))
+        jitter = np.convolve(RNG.standard_normal(n), np.ones(5) / 5, mode="same") * 0.08
+        self.y = (0.03 + env) * np.sin(phase) + jitter * (0.2 + env)
+        self.y /= np.abs(self.y).max() + 1e-9
         self.done = 0
 
     def point(self, k, ref=False):
@@ -277,7 +286,7 @@ class Phonautogram:
         x = self.X0 + px - row * (self.X1 - self.X0)
         if ref:
             return x, self.ROWS[row] - 58 + 3.2 * math.sin(px * 2 * math.pi / 7.5)
-        return x, self.ROWS[row] - 46 * self.y[min(k, len(self.y) - 1)]
+        return x, self.ROWS[row] - 38 * self.y[min(k, len(self.y) - 1)]
 
     def advance_to(self, k_end, flat=False, ticks_every=None):
         k_end = min(k_end, len(self.y) * (1 if not flat else 10))
@@ -287,14 +296,13 @@ class Phonautogram:
                 a = (a[0], self.ROWS[min(int((k / 2) // (self.X1 - self.X0)), 2)])
                 b = (b[0], a[1])
             if abs(a[0] - b[0]) < 5:
-                self.draw.line([a, b], fill=(18, 14, 11, 235), width=2)
+                self.draw.line([a, b], fill=(18, 14, 11, 240), width=2)
                 ra, rb = self.point(k, True), self.point(k + 1, True)
                 self.draw.line([ra, rb], fill=(30, 24, 20, 150), width=1)
         self.done = max(self.done, k_end)
 
     def frame(self, brightness=1.0, shake=(0, 0)):
         img = self.paper.copy()
-        img.alpha_composite if False else None
         bleed = self.ink.filter(ImageFilter.GaussianBlur(1.2))
         img = Image.alpha_composite(img.convert("RGBA"), bleed)
         img = Image.alpha_composite(img, self.ink)
@@ -341,7 +349,7 @@ class Ledger:
     """The Charter's CRT terminal typing the write-off, in the mod's own font and CRT colours."""
 
     def __init__(self, name="Player"):
-        self.font = ImageFont.truetype(FONT, 6 * GUI)
+        self.font = ImageFont.truetype(FONT, 26)
         self.lines = [
             ("dim", "THE CHARTER · LEDGER OF ASSETS"),
             ("dim", "—" * 44),
@@ -367,7 +375,7 @@ class Ledger:
         gui_w, gui_h = W, H
         layer = Image.new("RGB", (gui_w, gui_h), (0, 0, 0))
         d = ImageDraw.Draw(layer)
-        x0, y = 6 * GUI + 18 * GUI, 18 * GUI
+        x0, y = 120, 110
         shown = sum(1 for at, _ in self.schedule if at <= t)
         cursor_line, cursor_x = None, x0
         for kind, text in self.lines:
@@ -378,14 +386,11 @@ class Ledger:
                 d.text((x0, y), text[:n], font=self.font, fill=col)
             if n < len(text) and cursor_line is None:
                 cursor_line, cursor_x = y, x0 + self.font.getlength(text[:n])
-            if kind != "gap":
-                y += (6 + 2 + 6) * GUI
-            else:
-                y += 6 * GUI
+            y += 50 if kind != "gap" else 24
         if cursor_line is None:
-            cursor_line, cursor_x = y - 14 * GUI, x0 + self.font.getlength(self.lines[-1][1]) + GUI
+            cursor_line, cursor_x = y - 50, x0 + self.font.getlength(self.lines[-1][1]) + 4
         if int(t * 2) % 2 == 0 or t < self.typed_until:
-            d.rectangle([cursor_x, cursor_line, cursor_x + 5 * GUI, cursor_line + 6 * GUI], fill=PHOSPHOR)
+            d.rectangle([cursor_x + 2, cursor_line, cursor_x + 18, cursor_line + 26], fill=PHOSPHOR)
         glow = np.asarray(layer.filter(ImageFilter.GaussianBlur(4 * GUI))).astype(np.float32) * 0.55
         base = np.asarray(layer).astype(np.float32)
         img = np.maximum(base, glow) + np.array(CRT_BG, np.float32)
@@ -438,7 +443,7 @@ class Cut:
             w.writeframes((np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes())
         p = subprocess.Popen(
             ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS),
-             "-i", "-", "-i", wav, "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p",
+             "-i", "-", "-i", wav, "-c:v", "libx264", "-preset", "slow", "-crf", "21", "-pix_fmt", "yuv420p",
              "-c:a", "aac", "-b:a", "192k", "-ac", "2", "-movflags", "+faststart", "-shortest", path],
             stdin=subprocess.PIPE,
         )

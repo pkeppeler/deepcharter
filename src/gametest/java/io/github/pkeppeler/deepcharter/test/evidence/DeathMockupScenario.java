@@ -104,7 +104,7 @@ public class DeathMockupScenario extends EvidenceScenario {
             float last = START_HEALTH;
             for (int i = 0; i < DEATH_LIMIT_TICKS; i++) {
                 boolean dead = context.computeOnClient(client ->
-                        client.screen instanceof DeathScreen || ClientSession.player(client).isDeadOrDying());
+                        client.gui.screen() instanceof DeathScreen || ClientSession.player(client).isDeadOrDying());
                 if (dead) {
                     event("death");
                     break;
