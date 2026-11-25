@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import git_env  # noqa: E402
 import lambert_clock  # noqa: E402
+from vorbis_guard import needs_mono_vorbis  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 SOUNDS_JSON = ROOT / "src/main/resources/assets/deepcharter/sounds.json"
@@ -157,6 +158,7 @@ class PlanTest(unittest.TestCase):
 
 
 @unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg is needed to cut")
+@needs_mono_vorbis
 class EndToEndTest(unittest.TestCase):
     """A synthetic recording is cut, levelled, encoded and checked with the script's own commands."""
 

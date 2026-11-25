@@ -6,6 +6,8 @@ status: accepted
 
 Issue [#217](https://github.com/pkeppeler/deepcharter/issues/217), slice 1 in [#1159](https://github.com/pkeppeler/deepcharter/issues/1159). Settles what [ADR 0085](0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md) left open ("how seamless the seam must be, and whether the fade and the arrival pocket stay"). Builds on the seam of [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md), whose rejection of a fade as the plan still holds.
 
+Amended 2026-11-25 (#1254): the last Decision bullet, on the mid-layer seam.
+
 ## Decision
 
 - **The target is a seamless swap.** The server streams the next world's arrival area ahead of the crossing, the client builds a second world from it, and at the seam it switches to that world without vanilla's respawn path. Position, velocity, rotation and interpolation carry over.
@@ -21,7 +23,7 @@ Issue [#217](https://github.com/pkeppeler/deepcharter/issues/217), slice 1 in [#
   - **The release.** An approach ends when its vehicle leaves the zone, changes level, is removed or disconnects. The ticket is not removed: it lapses on its timeout, which keeps the arrival area through the swap. A re-centre of a live approach does remove the old centre's ticket. A crossing that finds the area not loaded still works, waits for the chunks on the server thread as before and logs how many of the 81 were loaded.
 - **Nothing is sent to the client in slice 1.** The player sees no change. Slice 1 streams the descent only: a rise through a level's top still lands by the fallback crossing, as before.
 - **The Sodium outcome.** Sodium needs no mixin of ours: its chunk tracker is per level and its renderer seeds from it when a level is set ([#1183](https://github.com/pkeppeler/deepcharter/issues/1183)). The swap works under Sodium and under vanilla's renderer alike.
-- **The crust at a mid-layer seam is open.** Whether a seam that falls inside a layer carries a crust, or none, is with the user. Slice 1 does not depend on it: the trigger reads the distance to the level's floor and nothing about what is there.
+- **A mid-layer seam sits in a plain slab.** Decided by the user on 2026-11-25 (#1254). A seam at a layer boundary sits in the grained crust, as before. A seam inside a layer sits in a plain slab: a few blocks of ordinary rock, with none of the grained-crust rules. Building the slab is separate work. Slice 1 does not depend on it: the trigger reads the distance to the level's floor and nothing about what is there.
 
 ## Considered Options
 

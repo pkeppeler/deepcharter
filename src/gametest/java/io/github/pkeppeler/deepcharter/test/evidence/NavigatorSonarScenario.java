@@ -221,7 +221,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         // Far west, a Tally (a Company machine) in a hollow of its own: it echoes as ore. Far east, a Retained in
         // another: the hollow returns an open cave and the figure in it returns nothing.
         room(level, X - 5 * CELL, FLOOR_Y, Z - 3 * CELL, 1, 1);
-        Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+        Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
         tally.setNoAi(true);
         tally.setPos(X - 5 * CELL + 2, FLOOR_Y + 1, Z - 3 * CELL + 2);
         level.addFreshEntity(tally);
