@@ -282,24 +282,20 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
 
     private static void expectTheSlipIsClearOfATransmission(ClientGameTestContext context) {
         try (var _ = QuietTransmissions.shown()) {
-            expectTheSlipIsClearOfAShownTransmission(context);
+            context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(
+                    Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t01"), CHARTER, "Director")));
+            ClientWait.until(context, "a transmission on screen", client -> TransmissionOverlay.active());
+            context.runOnClient(client -> {
+                for (int[] gui : COCKPIT_GUIS) {
+                    Map<String, Box> hud = critical(client, gui[0], gui[1]);
+                    require(
+                            hud.containsKey("transmission"),
+                            "the transmission is among the HUD on " + gui[0] + " x " + gui[1]);
+                    requireClearOrNowhere(client, gui, SHORT_STEP, hud, false);
+                }
+                TransmissionOverlay.reset();
+            });
         }
-    }
-
-    private static void expectTheSlipIsClearOfAShownTransmission(ClientGameTestContext context) {
-        context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(
-                Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t01"), CHARTER, "Director")));
-        ClientWait.until(context, "a transmission on screen", client -> TransmissionOverlay.active());
-        context.runOnClient(client -> {
-            for (int[] gui : COCKPIT_GUIS) {
-                Map<String, Box> hud = critical(client, gui[0], gui[1]);
-                require(
-                        hud.containsKey("transmission"),
-                        "the transmission is among the HUD on " + gui[0] + " x " + gui[1]);
-                requireClearOrNowhere(client, gui, SHORT_STEP, hud, false);
-            }
-            TransmissionOverlay.reset();
-        });
     }
 
     private static void expectTheSlipIsClearOnFoot(ClientGameTestContext context) {

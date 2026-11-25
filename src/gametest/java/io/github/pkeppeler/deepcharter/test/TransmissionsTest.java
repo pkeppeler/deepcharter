@@ -172,19 +172,18 @@ public class TransmissionsTest {
             Transmission.Trigger trigger,
             Optional<Integer> loop,
             Optional<Transmission.Bonus> bonus,
-            boolean replay) {}
+            boolean replay) {
+        Canon paid(Transmission.Bonus tier) {
+            return new Canon(sender, framing, trigger, loop, Optional.of(tier), replay);
+        }
+
+        Canon replayed() {
+            return new Canon(sender, framing, trigger, loop, bonus, true);
+        }
+    }
 
     private static Canon live(String sender, Transmission.Trigger trigger) {
         return new Canon(sender, Transmission.Framing.LIVE, trigger, Optional.empty(), Optional.empty(), false);
-    }
-
-    private static Canon paid(Canon canon, Transmission.Bonus bonus) {
-        return new Canon(
-                canon.sender(), canon.framing(), canon.trigger(), canon.loop(), Optional.of(bonus), canon.replay());
-    }
-
-    private static Canon replayed(Canon canon) {
-        return new Canon(canon.sender(), canon.framing(), canon.trigger(), canon.loop(), canon.bonus(), true);
     }
 
     private static Canon relay(String pod, Transmission.Trigger trigger, int loop) {
@@ -200,14 +199,14 @@ public class TransmissionsTest {
         Transmission.Trigger event = new Transmission.Trigger.Event();
         Map<String, Canon> expected = new LinkedHashMap<>();
         expected.put("t01", live("personnel", event));
-        expected.put("t02", replayed(paid(live("personnel", event), Transmission.Bonus.B1)));
-        expected.put("t03", replayed(live("personnel", event)));
-        expected.put("t04", replayed(paid(live("personnel", event), Transmission.Bonus.B1)));
-        expected.put("t05", replayed(live("personnel", event)));
-        expected.put("t06", paid(live("personnel", event), Transmission.Bonus.B1));
-        expected.put("t07", paid(live("personnel", zone(1, 0, false)), Transmission.Bonus.B1));
+        expected.put("t02", live("personnel", event).paid(Transmission.Bonus.B1).replayed());
+        expected.put("t03", live("personnel", event).replayed());
+        expected.put("t04", live("personnel", event).paid(Transmission.Bonus.B1).replayed());
+        expected.put("t05", live("personnel", event).replayed());
+        expected.put("t06", live("personnel", event).paid(Transmission.Bonus.B1));
+        expected.put("t07", live("personnel", zone(1, 0, false)).paid(Transmission.Bonus.B1));
         expected.put("t08", live("hal", zone(1, 1, false)));
-        expected.put("t09", paid(live("personnel", zone(1, 1, true)), Transmission.Bonus.B2));
+        expected.put("t09", live("personnel", zone(1, 1, true)).paid(Transmission.Bonus.B2));
         expected.put(
                 "t10",
                 new Canon(
@@ -217,14 +216,16 @@ public class TransmissionsTest {
                         Optional.empty(),
                         Optional.empty(),
                         false));
-        expected.put("t11", paid(live("personnel", new Transmission.Trigger.Breach(2)), Transmission.Bonus.B2));
+        expected.put(
+                "t11", live("personnel", new Transmission.Trigger.Breach(2)).paid(Transmission.Bonus.B2));
         expected.put("t12", relay("mole_0388", zone(2, 0, false), 14_002));
         expected.put("t13", live("hal", zone(2, 0, false)));
-        expected.put("t14", paid(live("personnel", zone(2, 1, false)), Transmission.Bonus.B2));
+        expected.put("t14", live("personnel", zone(2, 1, false)).paid(Transmission.Bonus.B2));
         expected.put("t15", relay("prospector_0002", zone(2, 1, false), 15_048));
         expected.put("t16", live("hal", zone(2, 2, false)));
-        expected.put("t17", paid(live("personnel", event), Transmission.Bonus.B3));
-        expected.put("t18", paid(live("personnel", new Transmission.Trigger.Breach(3)), Transmission.Bonus.B3));
+        expected.put("t17", live("personnel", event).paid(Transmission.Bonus.B3));
+        expected.put(
+                "t18", live("personnel", new Transmission.Trigger.Breach(3)).paid(Transmission.Bonus.B3));
         expected.put("surface_arrival", live("company", new Transmission.Trigger.Breach(LayerChain.SURFACE)));
 
         List<Identifier> order =
@@ -895,8 +896,8 @@ public class TransmissionsTest {
                 throw helper.assertionException("crossing into layer 2 should send t11, sent %s", delivered);
             }
             // The zone poll may have fired layer 1's zone transmissions on the way down: the account holds each bonus
-            // sent live,
-            // once. Founding replayed the repairs other tests fired into the shared world, and a replay pays nothing.
+            // sent live, once. Founding replayed the repairs other tests fired into the shared world, and a replay pays
+            // nothing.
             long paid = delivered.stream()
                     .map(TransmissionCatalog::require)
                     .filter(transmission -> !transmission.replay())
@@ -1013,8 +1014,7 @@ public class TransmissionsTest {
     /**
      * The event triggers of the script: each colony terminal's repair fires its transmission (T05 for any further one), and a bought
      * Mole fires T06. The hangar console's repair fires nothing here: the hangar fires T06 when it hands over the founding Mole.
-     * Called on the hooks' handlers, not the events, so no other feature's listener
-     * changes the shared world.
+     * Called on the hooks' handlers, not the events, so no other feature's listener changes the shared world.
      */
     @GameTest
     public void eachRepairAndTheMoleFireTheirTransmissions(GameTestHelper helper) {

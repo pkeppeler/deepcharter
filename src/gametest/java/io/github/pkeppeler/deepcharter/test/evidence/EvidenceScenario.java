@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
@@ -7,6 +8,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -21,6 +24,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.component.SwingAnimation;
@@ -148,6 +152,17 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
                         .getPlayers()
                         .getFirst()
                         .teleportTo(server.overworld(), feet.x, feet.y, feet.z, Set.of(), yaw, pitch, true));
+    }
+
+    /**
+     * Marks every transmission with a bonus fired for {@code charter}, so a scenario that drops through a breach and its
+     * zones keeps the balance its stills show: the breach and the zones on the way down would pay Personnel's bonuses.
+     */
+    protected static void markBonusesFired(MinecraftServer server, CharterId charter) {
+        TransmissionData data = TransmissionData.get(server);
+        TransmissionCatalog.all().stream()
+                .filter(transmission -> transmission.bonus().isPresent())
+                .forEach(transmission -> data.fire(charter, transmission));
     }
 
     /** Waits for the client to have joined the world: a player and a level. */

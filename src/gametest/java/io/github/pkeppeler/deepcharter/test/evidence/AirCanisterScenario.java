@@ -17,8 +17,6 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.SuitScenes;
 import io.github.pkeppeler.deepcharter.test.support.SuitScenes.Pocket;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
-import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
-import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -58,16 +56,10 @@ public class AirCanisterScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
-            // The breach and the zones on the way down pay Personnel's bonuses when the scenario drops into the unbuilt
-            // depth. Every transmission with a bonus is marked fired now, so the balance the stills show stays the one
-            // the
-            // scenario leaves.
             singleplayer
                     .getServer()
-                    .runOnServer(server -> TransmissionCatalog.all().stream()
-                            .filter(transmission -> transmission.bonus().isPresent())
-                            .forEach(transmission -> TransmissionData.get(server)
-                                    .fire(scene.charter().id(), transmission)));
+                    .runOnServer(
+                            server -> markBonusesFired(server, scene.charter().id()));
             ClientWait.until(
                     context,
                     "the charter's balance",

@@ -161,7 +161,7 @@ public final class TransmissionOverlay {
      * the loop counter, grouped in thousands as the script writes it.
      */
     private static String header(Transmission transmission, long day) {
-        String sender = translate(transmission.senderKey(), Component.translatable(transmission.senderKey()));
+        String sender = translate(transmission.senderKey());
         String key = transmission.framing().headerKey();
         Component header = transmission.framing() == Transmission.Framing.RELAY
                 ? Component.translatable(key, sender, String.format(Locale.ROOT, "%,d", transmission.loopOn(day)))
@@ -178,17 +178,15 @@ public final class TransmissionOverlay {
     private static Current build(TransmissionPayload payload) {
         Transmission transmission = TransmissionCatalog.require(payload.transmission());
         String header = header(transmission, day());
-        String end = translate(
-                transmission.framing().endKey(),
-                Component.translatable(transmission.framing().endKey()));
-        String body = fill(
-                        translate(transmission.bodyKey(), Component.translatable(transmission.bodyKey())),
-                        payload.charter(),
-                        payload.director())
+        String body = fill(translate(transmission.bodyKey()), payload.charter(), payload.director())
                 + PARAGRAPH
-                + end;
+                + translate(transmission.framing().endKey());
         Typewriter.LetterHook hook = (index, letter) -> letterTyped |= !Character.isWhitespace(letter);
         return new Current(transmission, new Typewriter(header, hook), new Typewriter(body, hook));
+    }
+
+    private static String translate(String key) {
+        return translate(key, Component.translatable(key));
     }
 
     private static String translate(String key, Component component) {
