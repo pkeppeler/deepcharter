@@ -395,10 +395,12 @@ public class GrainedCrustDecoyTest {
         List<Boolean> kinds = expectEveryBoundaryIsTheDraw(helper, level, layers);
         expect(
                 helper,
-                kinds.contains(true) && kinds.contains(false),
-                "the seed %d draws only one kind of floor %s: the sample proves nothing about the other",
+                !kinds.get(1) && kinds.get(2),
+                "the seed %d draws layer 2's floor %s and layer 3's %s, not breach then grained: the sample no longer"
+                        + " sees both kinds",
                 level.getSeed(),
-                kinds);
+                kinds.get(1) ? "grained" : "breach",
+                kinds.get(2) ? "grained" : "breach");
         helper.succeed();
     }
 
