@@ -743,6 +743,17 @@ public class ThemeLooksTest {
                 () -> ContinuityLook.of(
                         area("continuity", "{ \"skipPeriodSeconds\": 0.1, \"skipOverlapSeconds\": 0.2 }")),
                 "skipOverlapSeconds");
+        // The last pass is the shortest: 0.3 s shrunk by half four times is under 0.02 s, shorter than the overlap.
+        rejected(
+                helper,
+                () -> ContinuityLook.of(area(
+                        "continuity",
+                        "{ \"skipPeriodSeconds\": 0.3, \"skipShrink\": 0.5, \"skipPasses\": 5,"
+                                + " \"skipOverlapSeconds\": 0.08 }")),
+                "skipShrink");
+        // With no pass to overlap, the overlap is never used.
+        Object _ = ContinuityLook.of(
+                area("continuity", "{ \"skipPeriodSeconds\": 0.1, \"skipPasses\": 0, \"skipOverlapSeconds\": 0.2 }"));
         helper.succeed();
     }
 

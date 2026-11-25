@@ -25,8 +25,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Evidence scenario "death-sequence-crewmate" for #1337: the Continuity Event as the crew see it. A crewmate in a pick and a chestplate
  * stands in a lit layer-1 chamber, facing the camera a few blocks off, and dies there of a burn. Their body does not fall or flash red: it
- * stands still for half of the dying time, then fades see-through with nothing it wore or held, and goes up in ash and smoke. The client
- * records no sound, so the lamp's click is not in the frames ({@code ContinuityEventTest} checks it). The stills are taken by the dying
+ * stands still for half of the dying time, then fades see-through with nothing it wore or held. Ash and smoke rise from it from the death
+ * on, as from a Retained, and drift on after the body is gone. The client records no sound, so the lamp's click is not in the frames ({@code ContinuityEventTest} checks it). The stills are taken by the dying
  * body's own death time as the client counts it.
  */
 public final class ContinuityCrewmateScenario extends EvidenceScenario {

@@ -32,9 +32,10 @@ public final class ContinuityEvents {
      * person's lamp out for everyone else, with the body's ash.
      */
     public static void died(ServerPlayer player) {
-        Optional<ContinuityRecord> record = Versioned.readable(player, ContinuityRegistry.RECORD);
-        record.ifPresent(before -> player.setAttached(ContinuityRegistry.RECORD, Versioned.of(before.next())));
-        int number = record.map(before -> before.events() + 1).orElse(0);
+        Optional<ContinuityRecord> after =
+                Versioned.readable(player, ContinuityRegistry.RECORD).map(ContinuityRecord::next);
+        after.ifPresent(record -> player.setAttached(ContinuityRegistry.RECORD, Versioned.of(record)));
+        int number = after.map(ContinuityRecord::events).orElse(0);
         if (ServerPlayNetworking.canSend(player, ContinuityEventPayload.TYPE)) {
             ServerPlayNetworking.send(player, new ContinuityEventPayload(number, employeeNumber(player.getUUID())));
         }

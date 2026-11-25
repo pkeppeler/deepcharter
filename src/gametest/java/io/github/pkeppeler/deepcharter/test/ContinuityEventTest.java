@@ -194,6 +194,41 @@ public class ContinuityEventTest {
                 .thenSucceed();
     }
 
+    /**
+     * A count at the top of {@code int} stays there: the death goes ahead without a throw inside {@code ServerPlayer.die}, the record
+     * keeps the highest number, and the dying client is told it.
+     */
+    @GameTest
+    public void aCountAtItsTopStaysThere(GameTestHelper helper) {
+        MockPlayer mock = MockPlayers.join(helper, "continuity-top");
+        mock.announceChannel(ContinuityEventPayload.TYPE);
+        ServerPlayer player = mock.player();
+        player.setGameMode(GameType.SURVIVAL);
+        player.setAttached(ContinuityRegistry.RECORD, Versioned.of(new ContinuityRecord(Integer.MAX_VALUE)));
+        helper.startSequence()
+                .thenExecute(() -> {
+                    player.kill(helper.getLevel());
+                    expect(helper, player.isDeadOrDying(), "the person still dies");
+                    expect(
+                            helper,
+                            events(player) == Integer.MAX_VALUE,
+                            "the count stays at its top, it reads %s",
+                            events(player));
+                })
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    expect(
+                            helper,
+                            mock.payloadsOf(ContinuityEventPayload.class)
+                                    .equals(List.of(new ContinuityEventPayload(
+                                            Integer.MAX_VALUE, ContinuityEvents.employeeNumber(player.getUUID())))),
+                            "the dying client is told the top number, it was told %s",
+                            mock.payloadsOf(ContinuityEventPayload.class));
+                    player.setGameMode(GameType.SPECTATOR);
+                })
+                .thenSucceed();
+    }
+
     /** The count is saved with the person and comes back on a login. */
     @GameTest
     public void theCountIsSavedWithThePerson(GameTestHelper helper) {

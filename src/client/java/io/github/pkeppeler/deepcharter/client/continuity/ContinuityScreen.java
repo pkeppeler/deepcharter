@@ -39,7 +39,8 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ContinuityScreen extends Screen {
     private final LocalPlayer dead;
-    private final String line;
+    private String line;
+    private boolean numberKnown;
     private final SkullArt art = new SkullArt();
 
     private long openedAt = -1;
@@ -49,6 +50,7 @@ public final class ContinuityScreen extends Screen {
     private @Nullable SoundInstance laugh;
     private boolean buttonShown;
     private boolean disconnectShown;
+    private boolean respawnAsked;
     private @Nullable CrtButton returnButton;
     private @Nullable CrtButton disconnectButton;
 
@@ -108,11 +110,27 @@ public final class ContinuityScreen extends Screen {
     public ContinuityScreen(LocalPlayer dead, int number, int employee) {
         super(Component.translatable("deepcharter.continuity.screen"));
         this.dead = dead;
+        this.line = line(number, employee);
+        this.numberKnown = number > 0;
+    }
+
+    private static String line(int number, int employee) {
         Component numberText = number > 0
                 ? Component.literal(Integer.toString(number))
                 : Component.translatable("deepcharter.continuity.unknown_number");
-        this.line = Component.translatable("deepcharter.continuity.skull", Integer.toString(employee), numberText)
+        return Component.translatable("deepcharter.continuity.skull", Integer.toString(employee), numberText)
                 .getString();
+    }
+
+    /** Whether the skull is written in a number of the server's; false when it reads as unknown. */
+    boolean numberKnown() {
+        return numberKnown;
+    }
+
+    /** Writes the skull in the numbers the server sent after the sequence began: it started before they arrived. */
+    void adopt(int number, int employee) {
+        line = line(number, employee);
+        numberKnown = number > 0;
     }
 
     @Override
@@ -144,7 +162,20 @@ public final class ContinuityScreen extends Screen {
                 Component.translatable("deepcharter.continuity.disconnect"),
                 button -> disconnect()));
         returnButton.visible = buttonShown;
+        returnButton.active = !respawnAsked;
         disconnectButton.visible = disconnectShown;
+    }
+
+    /** A re-show (a screen shut over the sequence) builds the buttons anew: the focus goes back where it was. */
+    @Override
+    protected void setInitialFocus() {
+        if (disconnectShown) {
+            setFocused(disconnectButton);
+        } else if (buttonShown) {
+            setFocused(returnButton);
+        } else {
+            super.setInitialFocus();
+        }
     }
 
     private double now() {
@@ -270,6 +301,7 @@ public final class ContinuityScreen extends Screen {
 
     private void returnToWork(Button button) {
         dead.respawn();
+        respawnAsked = true;
         button.active = false;
     }
 

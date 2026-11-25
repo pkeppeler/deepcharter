@@ -5,12 +5,17 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityClient;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
 import io.github.pkeppeler.deepcharter.client.continuity.Silence;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.continuity.ContinuityRecord;
 import io.github.pkeppeler.deepcharter.continuity.ContinuityRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
+import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -24,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
@@ -38,6 +44,8 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.client.sounds.WeighedSoundEvents;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -55,13 +63,16 @@ import net.minecraft.world.level.GameType;
  * three times on the last sound, each pass lower, each with the needle, then the laugh; nothing shows or answers before RETURN TO WORK,
  * which comes when the laugh ends; a container closed or a screen opened and shut over it while the person is dead neither brings back
  * vanilla's death screen nor cuts the laugh; Esc then shows DISCONNECT; a click on RETURN TO WORK brings the person back alive, and the
- * world's sounds with them; a second death is No. 2 and plays again; leaving the world mid-sequence lifts the silence. And what the crew
+ * world's sounds with them; a re-shown screen keeps its buttons' focus; a second death, at a terminal, is No. 2 and plays again, and the
+ * terminal's music, cut by the death, plays on the next terminal; leaving the world mid-sequence lifts the silence. And what the crew
  * see of a death: another player's body still, unflashed and then see-through.
  */
 public class ContinuityClientTest implements FabricClientGameTest {
     private static final Identifier ANVIL = SoundEvents.ANVIL_LAND.location();
     private static final Identifier NEEDLE = DeepSound.CONTINUITY_NEEDLE.event().location();
     private static final Identifier LAUGH = DeepSound.CONTINUITY_LAUGH.event().location();
+    private static final Identifier TERMINAL_MUSIC =
+            DeepSound.MUSIC_TERMINAL.event().location();
     private static final String RETURN = "RETURN TO WORK";
     private static final String DISCONNECT = "DISCONNECT";
     /** The laugh's length ({@code continuity/laugh_envelope.json}) and the cut before it: the button cannot come sooner. */
@@ -93,6 +104,12 @@ public class ContinuityClientTest implements FabricClientGameTest {
         /** Whether {@code id} was started at or after {@code millis}. */
         boolean heard(Identifier id, long millis) {
             return since(millis).stream().anyMatch(p -> p.id().equals(id));
+        }
+
+        /** Whether {@code id} was started at or after {@code millis} and the engine still plays it. */
+        boolean playing(Minecraft client, Identifier id, long millis) {
+            return since(millis).stream()
+                    .anyMatch(p -> p.id().equals(id) && client.getSoundManager().isActive(p.sound()));
         }
     }
 
@@ -188,6 +205,15 @@ public class ContinuityClientTest implements FabricClientGameTest {
                 require(client.gui.screen() instanceof ContinuityScreen, "the first Esc stays on the screen");
                 List<String> labels = labels(client);
                 require(labels.equals(List.of(RETURN, DISCONNECT)), "Esc shows DISCONNECT, the screen shows " + labels);
+                // A screen opened and shut over it builds the buttons anew: they come back as they were, focus and all.
+                client.gui.setScreen(new ChatScreen("", false));
+                client.gui.setScreen(null);
+                require(client.gui.screen() == sequence, "the re-shown sequence is the same screen");
+                require(labels(client).equals(labels), "the re-shown buttons are the same, they are " + labels(client));
+                require(
+                        shown(client).getFocused() == ClientChecks.button(shown(client), DISCONNECT),
+                        "DISCONNECT keeps the keyboard's focus over a re-show, it is on "
+                                + shown(client).getFocused());
             });
 
             Button button = context.computeOnClient(client -> ClientChecks.button(shown(client), RETURN));
@@ -203,13 +229,34 @@ public class ContinuityClientTest implements FabricClientGameTest {
             anvil(singleplayer);
             ClientWait.until(context, "the world's sounds back", client -> heard.heard(ANVIL, back));
 
-            // A second death in the same session is a sequence of its own, No. 2, laugh and all.
+            // A terminal's music: a death with the terminal open cuts it (the silence's SoundManager.stop() drops it
+            // unstopped),
+            // and it plays again on the next terminal after the person is back.
+            singleplayer
+                    .getServer()
+                    .runOnServer(server -> require(
+                            Charters.found(
+                                            server,
+                                            server.getPlayerList()
+                                                    .getPlayers()
+                                                    .getFirst()
+                                                    .getUUID(),
+                                            "Continuity Test Charter")
+                                    .isEmpty(),
+                            "founding a charter for the terminal should succeed"));
+            long terminal = context.computeOnClient(client -> Util.getMillis());
+            openTerminal(context, singleplayer);
+            ClientWait.until(
+                    context, "the terminal's music", client -> heard.playing(client, TERMINAL_MUSIC, terminal));
+
+            // A second death in the same session, at the terminal, is a sequence of its own, No. 2, laugh and all.
             long second = context.computeOnClient(client -> Util.getMillis());
             burn(singleplayer);
             ClientWait.until(
                     context,
                     "a second sequence",
                     client -> client.gui.screen() instanceof ContinuityScreen screen && screen != sequence);
+            Screen secondSequence = context.computeOnClient(ContinuityClientTest::shown);
             ClientWait.until(context, "the second laugh", client -> heard.heard(LAUGH, second));
             int events = singleplayer
                     .getServer()
@@ -219,7 +266,34 @@ public class ContinuityClientTest implements FabricClientGameTest {
                             .orElse(-1));
             require(events == 2, "the second death is No. 2, the record reads " + events);
             require(!SAW_DEATH_SCREEN.get(), "vanilla's death screen never opened");
-            context.runOnClient(client -> require(Silence.refuses(click()), "the second sequence holds the silence"));
+            ClientWait.until(
+                    context,
+                    "RETURN TO WORK shown again",
+                    client -> client.gui.screen() == secondSequence
+                            && !ClientChecks.visibleWidgets(secondSequence).isEmpty());
+            Button again = context.computeOnClient(client -> ClientChecks.button(shown(client), RETURN));
+            ClientCursor.moveTo(context, again.getX() + again.getWidth() / 2.0, again.getY() + again.getHeight() / 2.0);
+            RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+            ClientWait.until(
+                    context,
+                    "back at work again",
+                    client -> client.gui.screen() == null && client.player != null && client.player.isAlive());
+            long backAgain = context.computeOnClient(client -> Util.getMillis());
+            openTerminal(context, singleplayer);
+            ClientWait.until(
+                    context,
+                    "the terminal's music after the death",
+                    client -> heard.playing(client, TERMINAL_MUSIC, backAgain),
+                    client -> "the client heard " + heard.since(backAgain));
+            context.runOnClient(client -> client.gui.setScreen(null));
+
+            // A third death, left mid-sequence.
+            burn(singleplayer);
+            ClientWait.until(
+                    context,
+                    "a third sequence",
+                    client -> client.gui.screen() instanceof ContinuityScreen screen && screen != secondSequence);
+            context.runOnClient(client -> require(Silence.refuses(click()), "the third sequence holds the silence"));
         } finally {
             context.runOnClient(client -> client.getSoundManager().removeListener(heard));
         }
@@ -309,6 +383,19 @@ public class ContinuityClientTest implements FabricClientGameTest {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.hurtServer(player.level(), player.level().damageSources().lava(), 1000f);
         });
+    }
+
+    /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would. */
+    private static void openTerminal(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        BlockPos pump = singleplayer.getServer().computeOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            BlockPos at = player.blockPosition().relative(Direction.EAST, 2);
+            TerminalBlock.place(
+                    player.level(), at, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
+            return at;
+        });
+        context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(pump)));
+        ClientWait.until(context, "the terminal open", client -> client.gui.screen() instanceof TerminalViewScreen);
     }
 
     /** The labels of the widgets the open screen shows. */

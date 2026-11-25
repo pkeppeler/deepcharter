@@ -13,7 +13,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param skipShrink          how much shorter each pass is than the one before
  * @param skipPasses          passes of the last sound before the laugh
  * @param skipPitch           each pass plays at this times the pitch of the one before: slightly lower
- * @param skipOverlapSeconds  the laugh starts this long before the last pass ends
+ * @param skipOverlapSeconds  the laugh starts this long before the last pass ends; shorter than the last pass
  * @param skipLoudness        how loud each pass reads to the skull, 0 to 1, at its start
  * @param skipDecaySeconds    how fast a pass's loudness dies away for the skull
  * @param replaySeconds       how far back the last sound is looked for; nothing older is replayed
@@ -96,17 +96,24 @@ public record ContinuityLook(
 
     public static ContinuityLook of(ThemeData d) {
         double period = d.decimal("skipPeriodSeconds", 0.05, 1.0);
+        double shrink = d.decimal("skipShrink", 0.5, 1.0);
+        int passes = d.integer("skipPasses", 0, 6);
         double overlap = d.decimal("skipOverlapSeconds", 0.0, 0.5);
-        if (overlap >= period) {
+        // The laugh overlaps the last pass, the shortest: each pass is skipShrink as long as the one before.
+        if (passes > 0 && overlap >= period * Math.pow(shrink, passes - 1)) {
             throw d.conflict(
-                    "the laugh cannot start before the last pass does", "skipOverlapSeconds", "skipPeriodSeconds");
+                    "the laugh cannot start before the last pass does",
+                    "skipOverlapSeconds",
+                    "skipPeriodSeconds",
+                    "skipShrink",
+                    "skipPasses");
         }
         return new ContinuityLook(
                 d.decimal("cutSeconds", 0.0, 2.0),
                 d.decimal("arrivalSeconds", 0.0, 2.0),
                 period,
-                d.decimal("skipShrink", 0.5, 1.0),
-                d.integer("skipPasses", 0, 6),
+                shrink,
+                passes,
                 d.decimal("skipPitch", 0.5, 1.0),
                 overlap,
                 d.decimal("skipLoudness", 0.0, 1.0),

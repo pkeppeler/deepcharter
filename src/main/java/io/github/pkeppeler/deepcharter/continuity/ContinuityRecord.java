@@ -26,8 +26,11 @@ public record ContinuityRecord(int events) {
                     Codec.INT.optionalFieldOf("events", 0).forGetter(ContinuityRecord::events))
             .apply(instance, events -> new ContinuityRecord(Math.max(0, events))));
 
-    /** The record after one more Continuity Event. */
+    /**
+     * The record after one more Continuity Event. The count stops at {@link Integer#MAX_VALUE} rather than wrapping: it is made inside
+     * {@code ServerPlayer.die}, which must never throw.
+     */
     public ContinuityRecord next() {
-        return new ContinuityRecord(events + 1);
+        return events == Integer.MAX_VALUE ? this : new ContinuityRecord(events + 1);
     }
 }
