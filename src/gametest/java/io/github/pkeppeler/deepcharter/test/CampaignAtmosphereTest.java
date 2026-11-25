@@ -321,16 +321,10 @@ public class CampaignAtmosphereTest {
     }
 
     /**
-     * Under water the client lifts the water's fog colour as the eyes adjust, to full brightness at its brightest
-     * channel, unless a channel is exactly 0 (26.3 {@code FogRenderer.computeFogColor}): vanilla's {@code #050533}
-     * becomes {@code #1919ff}, and any dark tint with no zero channel becomes as bright (#1187). So each underground
-     * biome sets a dark water fog with a zero channel, ending where its air fog ends, so water is never clearer than
-     * air. Two biomes one above the other share a zero channel, because the camera blends their colours and a blend of
-     * two different zeros has none. Checking pairs is enough while a zone (at least 64 blocks) is taller than the blend
-     * window (about 24), so the camera never blends three biomes.
-     *
-     * <p>The walk runs from layer 1's top zone down to the unbuilt depth. The surface above layer 1 keeps vanilla's
-     * water fog, a known gap (#1213), so the surface and Topsoil Claims are not paired.
+     * The eyes adjusting lift a water fog colour to full brightness unless a channel is exactly 0, so each underground
+     * biome sets a dark water fog with a zero channel, ending where its air fog ends, and two biomes one above the other
+     * share a zero channel (ADR 0062, note of #1187). The surface keeps vanilla's water fog (#1213), so the walk starts
+     * at layer 1's top zone.
      */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void everyUndergroundBiomeSetsADarkWaterFogTheEyesCannotLift(GameTestHelper helper) {

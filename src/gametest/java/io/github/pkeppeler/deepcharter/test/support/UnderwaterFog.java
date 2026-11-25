@@ -14,10 +14,8 @@ import net.minecraft.world.level.block.Blocks;
 
 /**
  * A flooded hall in the middle zone of each layer, and a camera under its water looking east along it, past the render
- * distance, once the eyes have adjusted (#1187). There the client lifts the water's fog colour to full brightness at
- * its brightest channel unless a channel is exactly 0, so vanilla's water fog shows as a bright-blue wall.
- * {@code UnderwaterFogClientTest} asserts the frame is dark and the {@code underwater-fog} scenario shows it, so the
- * two cannot drift.
+ * distance, once the eyes have adjusted (#1187). {@code UnderwaterFogClientTest} asserts the frame is dark and the
+ * {@code underwater-fog} scenario shows it, so the two cannot drift.
  */
 public final class UnderwaterFog {
     /**
@@ -58,11 +56,7 @@ public final class UnderwaterFog {
 
     private UnderwaterFog() {}
 
-    /**
-     * Floods a hall in each layer, cuts the render distance, and stands the camera, a spectator, under each hall's
-     * water facing east until its eyes have adjusted (the client's water vision is full). {@code atLayer} runs at each,
-     * given the layer.
-     */
+    /** Stands the camera under each layer's flooded hall until its eyes have adjusted, then runs {@code atLayer}. */
     public static void tour(ClientGameTestContext context, TestServerContext server, IntConsumer atLayer) {
         ClientChecks.withRenderDistance(
                 context,

@@ -8,8 +8,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.server.level.ParticleStatus;
 
 /**
- * Evidence for #1187: the view of {@code UnderwaterFogClientTest} in each layer, from under the water of a flooded hall
- * in its middle zone, east past the render distance, once the eyes have adjusted.
+ * Evidence for #1187: the view of {@code UnderwaterFogClientTest} in each layer ({@code UnderwaterFog.tour}).
  */
 public class UnderwaterFogScenario extends EvidenceScenario {
     @Override
