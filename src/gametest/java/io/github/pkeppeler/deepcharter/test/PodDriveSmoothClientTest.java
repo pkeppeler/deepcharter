@@ -1,35 +1,40 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
-import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.PodDrives.INPUT_LAG_TICKS;
+import static io.github.pkeppeler.deepcharter.test.support.PodDrives.SETTLE_TICKS;
+import static io.github.pkeppeler.deepcharter.test.support.PodDrives.SETTLE_TOLERANCE;
+import static io.github.pkeppeler.deepcharter.test.support.PodDrives.STEP_MARGIN;
+import static io.github.pkeppeler.deepcharter.test.support.PodDrives.coastReach;
+import static io.github.pkeppeler.deepcharter.test.support.PodDrives.onClient;
+import static io.github.pkeppeler.deepcharter.test.support.PodDrives.put;
+import static io.github.pkeppeler.deepcharter.test.support.PodDrives.serverPosition;
+import static io.github.pkeppeler.deepcharter.test.support.PodDrives.standsAt;
 
-import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodGlideTuning;
-import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
-import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PacketJitter;
+import io.github.pkeppeler.deepcharter.test.support.PodDrives;
+import io.github.pkeppeler.deepcharter.test.support.PodDrives.Drive;
+import io.github.pkeppeler.deepcharter.test.support.PodDrives.Rig;
+import io.github.pkeppeler.deepcharter.test.support.PodDrives.Stall;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
+import java.util.OptionalInt;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.Options;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -37,89 +42,24 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The real client pilots one pod and watches a mock
- * player's pod beside it, over flat ground, climbing on the rotor, and drilling into a wall. Every client tick the test samples what a
- * renderer would draw, the pod's position at four partial ticks, for the pilot (the camera follows the player riding) and for the
- * watched pod, and asserts the drawn position never steps backward along the drive and never steps further in one frame than the
- * pod's speed allows, and that a flat drive is never still for a tick it should be moving.
+ * player's pod beside it, over flat ground, climbing on the rotor, and drilling into a wall, judged by {@link PodDrives}.
  *
  * <p>The harness ticks the server and client in lockstep, so the network is as regular as it never is in play. {@link PacketJitter}
  * makes it irregular the way a real connection is: every third client tick the client handles no pod move and the next tick
  * handles two. Without a slide between the server's moves the pod then stands still for a tick and lunges the next.
  *
- * <p>The late-server drives (#1041, ADR 0082) hold every move for a few client ticks and hand them over in one, as a server that runs
- * late does ({@link PacketJitter#stall}). They cover stalls of 3 and 5 ticks (the pod coasts through, the 5 on the coast's tail: steady floor and lunge bound hold),
- * 4 ticks across a key release (the pod ends past the server's stop by no more than a coast, steps back under half a frame's speed,
- * and settles on the server's), 6 ticks (the pod may stand, never lunges, keeps 80% of its progress and settles), 6 ticks across the
- * arrival at a wall, and 5 ticks across a landing from 10 blocks (never drawn inside a block, never below the ground). They do not cover
- * stalls beyond 6 ticks: a longer one stands the pod for the rest of it, and a gap over {@code snapGap} blocks glides over as before
- * (ADR 0082). A connection that gets two ticks slower and stays so (#1112, {@link PacketJitter#lag}) hands the moves over one a tick, each
- * stale, so the pod has coasted past every move it gets: it must go on at its speed, never turn back to the stale position. A server
- * that runs two ticks late for four ticks and catches up hands over stale moves and then a burst, the pattern behind CI's
- * 0.0674533 (#1112).
- *
- * <p>A steady drive is judged for the stall it injects, not a longer one: when the real test server also ran late and the drive saw more
- * moveless ticks than the glide covers ({@link #COVERED_MOVELESS_TICKS}), it is run again (#1168).
+ * <p>It also covers what a server does to a pod besides driving it (ADR 0082): a push, a teleport behind a coasting pod or one still
+ * being driven, a pin while the server reports a speed, and a coast at a thin wall; and the two late-server drives where the pod
+ * meets a block, a 6-tick stall across the arrival at a wall and a 5-tick stall across a landing from 10 blocks (never drawn inside
+ * a block, never below the ground). The other late-server drives are {@link PodDriveLateClientTest}'s.
  */
 public class PodDriveSmoothClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodDriveSmoothClientTest.class);
-
-    /**
-     * The factor every pod's horizontal speed is scaled by, from the environment (1 when unset): a faster pod, such as a sprinting one
-     * (#1276), is driven through the same drives, and every bound is judged against its reported speed, not the stock one.
-     */
-    private static final double SPEED_SCALE = driveSpeedScale();
-
-    /** Frames drawn per client tick: a renderer at 80 frames a second. */
-    private static final float[] PARTIAL_TICKS = {0.25f, 0.5f, 0.75f, 1f};
-
-    private static final int FRAMES = PARTIAL_TICKS.length;
-    /** Client ticks after a drive starts before it is judged: the pod reaches speed and its slide fills. */
-    private static final int SETTLE_TICKS = 15;
-
-    /** Client ticks for a released key to reach the server and act there, with margin. */
-    private static final int INPUT_LAG_TICKS = 5;
 
     private static final int FLAT_TICKS = 70;
     private static final int CLIMB_TICKS = 32;
     /** Long enough for three slabs of wall and the approach to it. */
     private static final int DRILL_TICKS = 190;
-
-    /** Long enough for a stall in the middle of it and the pod to recover after. */
-    private static final int STALL_DRIVE_TICKS = 90;
-
-    /** Client ticks into a drive when a stall begins: past the settle, with the pod at speed. */
-    private static final int STALL_AT_TICK = 40;
-
-    /** A server a few ticks late: the pod coasts through it. */
-    private static final int SHORT_STALL_TICKS = 3;
-
-    /**
-     * A short stall and the server's own lateness on top of it (#1112): the tall world's server ticks run long enough to add two, and the
-     * pod's coast and its tail cover it with a tick to spare, so the drawn pod never stands.
-     */
-    private static final int LAGGED_STALL_TICKS = 5;
-
-    /** A server later than the pod coasts: the pod may stand a few ticks, but never lunges when the moves arrive. */
-    private static final int LONG_STALL_TICKS = 6;
-
-    /**
-     * A connection that gets this many client ticks slower and stays so (#1112): the pod sees no move for that long, then a move a
-     * tick, each as stale as the gap was long. It is what a one-tick-late move is, and it left the pod behind a stale target.
-     */
-    private static final int SLOWER_TICKS = 2;
-
-    /**
-     * A server that runs {@link #SLOWER_TICKS} late for this many client ticks and then catches up (#1112): the client sees no move for
-     * two ticks, then stale moves, then the rest in one burst. CI's loaded runners did this, and a pod that had coasted a tick read a
-     * stale move a rounding step behind it as an overshoot and stood (0.0674533 against the 0.1 floor, the same to every digit on five
-     * CI runs).
-     */
-    private static final int CATCH_UP_AFTER_TICKS = 4;
-
-    /** Client ticks of the stall that hides a stop: the keys are released one tick into it, so the server stops while the client is blind. */
-    private static final int STOP_STALL_TICKS = 4;
-
-    private static final int STOP_RELEASE_TICK = STALL_AT_TICK - 1;
 
     /** A stall across the pod's arrival at the wall, which it reaches about 38 ticks into the drive. */
     private static final int WALL_STALL_AT_TICK = 34;
@@ -132,21 +72,6 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     private static final int LANDING_STALL_AT_TICK = 17;
     private static final int LANDING_STALL_TICKS = 5;
     private static final int LANDING_DRIVE_TICKS = 50;
-
-    /** Client ticks after a drive for a drawn pod that coasted too far to settle on the server's. */
-    private static final int SETTLE_AFTER_TICKS = 40;
-
-    /** How far the drawn pod may end from the server's, once it has settled. */
-    private static final double SETTLE_TOLERANCE = 0.02;
-
-    /** A stall drive's net progress, at least this share of what the speed covers. */
-    private static final double MIN_PROGRESS_SHARE = 0.8;
-
-    /** A pod that coasted too far gives it back at under this share of its speed, so it is a bounce too small to read as a reversal. */
-    private static final double MAX_BOUNCE_SHARE = 0.5;
-
-    /** Blocks the pod's drawn box is shrunk by before it is tested against blocks: touching a wall is not inside it. */
-    private static final double INSIDE_MARGIN = 0.05;
 
     /** Blocks a pod is pushed away from where the client draws it, on either side of the catch-up's old cliff at 2, and past the snap gap. */
     private static final double[] PUSH_GAPS = {1.0, 2.0, 2.01, 5.0, 15.0, 20.0};
@@ -193,124 +118,23 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /** Ticks a pinned pod is watched beyond the ones ADR 0082's settle needs ({@link #pinnedTicks}). */
     private static final int PIN_SLACK_TICKS = 1;
 
-    private static final int WALL_AHEAD = 8;
-    private static final int WALL_SLABS = 3;
     private static final int WALL_HEIGHT = 4;
-    private static final int WALL_WIDTH = 14;
-
-    /**
-     * How far above the pod's own speed a drawn step may be: a pod that fell behind catches up at {@code PodGlideTuning.catchUp()} times
-     * its speed, 1.25, and the margin leaves room for the packet rounding. An uncapped catch-up after a stall lunges 1.5 times its
-     * speed or more (#1041).
-     */
-    private static final double STEP_MARGIN = 1.4;
-
-    /**
-     * The most moveless ticks a lagged drive's pod is judged for: the lag's own and the jitter's skipped tick. A connection that stays
-     * slower leaves the coast's reach already used by the lag, so a server late on its own on top of it is not covered (#1112).
-     */
-    private static final int COVERED_LAGGED_MOVELESS_TICKS = SLOWER_TICKS + 1;
-
-    /** The most client ticks in a row without a move that the glide covers (ADR 0082); a steady drive that saw more is not judged. */
-    private static final int COVERED_MOVELESS_TICKS = 6;
-
-    /** Runs of a steady drive before the run fails for a server that was late on its own every time. */
-    private static final int DRIVE_ATTEMPTS = 3;
-
-    private static final double BACKWARD_TOLERANCE = 1e-4;
-    /** A flat drive covers at least this share of the pod's speed in every tick past the settle. */
-    private static final double MIN_TICK_SHARE = 0.5;
 
     /** The pod an {@link PodEvents#AFTER_TICK} listener of this test holds in place, and where; none when the id is -1. */
     private static volatile int pinnedPodId = -1;
 
     private static volatile @Nullable Vec3 pinnedAt;
 
-    /**
-     * What a renderer drew for one view, every frame, and, every tick, how far along the drive its pod was drawn past the last position the
-     * server sent for it.
-     */
-    private record Subject(String name, List<Vec3> frames, List<Double> leads) {
-        Subject(String name) {
-            this(name, new ArrayList<>(), new ArrayList<>());
-        }
-    }
-
-    /** The two pods the drives use: the real client's, and the mock's beside it, with where each stood at the start. */
-    private record Rig(TwoPlayerServer two, int ownPodId, int mockPodId, Vec3 ownStart, Vec3 mockStart) {}
-
-    /** One kind of drive: what the real client holds, what the mock's input is, how many client ticks, and the pod's speed in it. */
-    private record Drive(
-            String name,
-            List<Function<Options, KeyMapping>> keys,
-            Input mockInput,
-            int ticks,
-            double speed,
-            boolean climbing,
-            boolean steady,
-            boolean wall,
-            @Nullable Late late) {
-        /** A drive with the forward key held. */
-        static Drive forward(String name, int ticks, double speed, boolean steady, boolean wall, @Nullable Late late) {
-            return new Drive(name, List.of(options -> options.keyUp), FORWARD, ticks, speed, false, steady, wall, late);
-        }
-    }
-
-    /**
-     * A drive through a late server (#1041): where the stall begins and how long it lasts, when the keys are released ({@code -1} for
-     * never), how far above its start the pod is dropped, whether the drawn pod must settle on the server's, and whether it must keep
-     * its progress. A lagged one ({@link PacketJitter#lag}) holds every move for {@code stallTicks} instead, until it ends {@code
-     * lagTicks} ticks in ({@code -1} for never).
-     */
-    private record Late(
-            int stallAt,
-            int stallTicks,
-            int releaseAt,
-            double dropBlocks,
-            boolean settles,
-            boolean recovers,
-            boolean lags,
-            int lagTicks) {
-        Late(int stallAt, int stallTicks, int releaseAt, double dropBlocks, boolean settles, boolean recovers) {
-            this(stallAt, stallTicks, releaseAt, dropBlocks, settles, recovers, false, -1);
-        }
-
-        /** A connection {@code lateBy} ticks slower in a steady drive, for {@code lagTicks} ticks ({@code -1} for the rest of it). */
-        static Late lag(int lateBy, int lagTicks) {
-            return new Late(STALL_AT_TICK, lateBy, -1, 0, true, true, true, lagTicks);
-        }
-
-        boolean stops() {
-            return releaseAt >= 0 || dropBlocks > 0;
-        }
-
-        /** Whether the connection stays slower to the end of the drive. */
-        boolean staysSlower() {
-            return lags && lagTicks < 0;
-        }
-    }
-
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             PodMovementClientTest.moveToOpenGround(context, two);
-            int mockPodId = PodMovementClientTest.mountBoth(two);
-            ClientWait.until(
-                    context,
-                    "the client riding a pod with the mock's pod in view",
-                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity
-                            && ClientLight.clientLevel(client).getEntity(mockPodId) instanceof PodEntity);
-            int ownPodId = context.computeOnClient(
-                    client -> TestEntities.vehicle(ClientSession.player(client)).getId());
-            Rig rig = new Rig(two, ownPodId, mockPodId, serverPosition(two, ownPodId), serverPosition(two, mockPodId));
+            Rig rig = PodDrives.rig(context, two, PodMovementClientTest.mountBoth(two));
             context.waitTicks(10);
 
             PodTuning.Movement movement = PodTuning.DEFAULT.movement();
-            double flatSpeed = movement.horizontalSpeed() * SPEED_SCALE;
-            if (SPEED_SCALE != 1) {
-                PodStats.MODIFY.register((pod, stats) -> stats.withHorizontalSpeed((float) flatSpeed));
-            }
+            double flatSpeed = movement.horizontalSpeed();
             // Forward and up together: the pod's speed is the two at once.
             double climbSpeed = Math.hypot(flatSpeed, movement.maxClimbSpeed());
             PodEvents.AFTER_TICK.register(pod -> {
@@ -326,68 +150,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             expectPinnedPodSettles(context, rig);
             PacketJitter.start();
             try {
-                drive(context, rig, Drive.forward("flat drive", FLAT_TICKS, flatSpeed, true, false, null));
-                drive(
-                        context,
-                        rig,
-                        Drive.forward(
-                                "flat drive through a short server stall",
-                                STALL_DRIVE_TICKS,
-                                flatSpeed,
-                                true,
-                                false,
-                                new Late(STALL_AT_TICK, SHORT_STALL_TICKS, -1, 0, true, true)));
-                drive(
-                        context,
-                        rig,
-                        Drive.forward(
-                                "flat drive through a server that runs late and catches up",
-                                STALL_DRIVE_TICKS,
-                                flatSpeed,
-                                true,
-                                false,
-                                Late.lag(SLOWER_TICKS, CATCH_UP_AFTER_TICKS)));
-                drive(
-                        context,
-                        rig,
-                        Drive.forward(
-                                "flat drive through a connection that gets slower",
-                                STALL_DRIVE_TICKS,
-                                flatSpeed,
-                                true,
-                                false,
-                                Late.lag(SLOWER_TICKS, -1)));
-                drive(
-                        context,
-                        rig,
-                        Drive.forward(
-                                "flat drive through a lagging server stall",
-                                STALL_DRIVE_TICKS,
-                                flatSpeed,
-                                true,
-                                false,
-                                new Late(STALL_AT_TICK, LAGGED_STALL_TICKS, -1, 0, true, true)));
-                drive(
-                        context,
-                        rig,
-                        Drive.forward(
-                                "flat drive through a long server stall",
-                                STALL_DRIVE_TICKS,
-                                flatSpeed,
-                                false,
-                                false,
-                                new Late(STALL_AT_TICK, LONG_STALL_TICKS, -1, 0, true, true)));
-                drive(
-                        context,
-                        rig,
-                        Drive.forward(
-                                "flat drive stopped during a server stall",
-                                STALL_DRIVE_TICKS,
-                                flatSpeed,
-                                false,
-                                false,
-                                new Late(STALL_AT_TICK, STOP_STALL_TICKS, STOP_RELEASE_TICK, 0, true, false)));
-                drive(
+                PodDrives.drive(context, rig, Drive.forward("flat drive", FLAT_TICKS, flatSpeed, true, false, null));
+                PodDrives.drive(
                         context,
                         rig,
                         Drive.forward(
@@ -396,8 +160,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 flatSpeed,
                                 false,
                                 true,
-                                new Late(WALL_STALL_AT_TICK, WALL_STALL_TICKS, -1, 0, false, false)));
-                drive(
+                                new Stall(WALL_STALL_AT_TICK, WALL_STALL_TICKS, OptionalInt.empty(), 0, false, false)));
+                PodDrives.drive(
                         context,
                         rig,
                         new Drive(
@@ -409,8 +173,14 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 false,
                                 false,
                                 false,
-                                new Late(LANDING_STALL_AT_TICK, LANDING_STALL_TICKS, -1, DROP_BLOCKS, true, false)));
-                drive(
+                                new Stall(
+                                        LANDING_STALL_AT_TICK,
+                                        LANDING_STALL_TICKS,
+                                        OptionalInt.empty(),
+                                        DROP_BLOCKS,
+                                        true,
+                                        false)));
+                PodDrives.drive(
                         context,
                         rig,
                         new Drive(
@@ -423,265 +193,13 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 false,
                                 false,
                                 null));
-                drive(context, rig, Drive.forward("drilling into a wall", DRILL_TICKS, flatSpeed, false, true, null));
+                PodDrives.drive(
+                        context, rig, Drive.forward("drilling into a wall", DRILL_TICKS, flatSpeed, false, true, null));
             } finally {
                 PacketJitter.stop();
-                context.getInput().releaseKey(options -> options.keyUp);
-                context.getInput().releaseKey(options -> options.keyJump);
-                two.server().runOnServer(server -> two.mock().releaseInput());
+                PodDrives.releaseAll(context, rig);
             }
         }
-    }
-
-    private static double driveSpeedScale() {
-        String scale = System.getenv("DEEPCHARTER_DRIVE_SPEED_SCALE");
-        return scale == null ? 1 : Double.parseDouble(scale);
-    }
-
-    /** The moveless ticks the {@code drive}'s pod is judged for. */
-    private static int coveredMoveless(Drive drive) {
-        Late late = drive.late();
-        return late != null && late.staysSlower() ? COVERED_LAGGED_MOVELESS_TICKS : COVERED_MOVELESS_TICKS;
-    }
-
-    /**
-     * Puts both pods on their start, behind a wall when the drive drills, holds the keys, samples every frame of the drive, and asserts
-     * what the pilot's camera and the watched pod drew.
-     */
-    private static void drive(ClientGameTestContext context, Rig rig, Drive drive) {
-        List<Integer> late = new ArrayList<>();
-        for (int attempt = 1; attempt <= DRIVE_ATTEMPTS; attempt++) {
-            int moveless = driveOnce(context, rig, drive);
-            if (!drive.steady() || moveless <= coveredMoveless(drive)) {
-                return;
-            }
-            late.add(moveless);
-            LOGGER.info(
-                    "PodDriveSmoothClientTest: {}: the server was late on its own, {} client ticks in a row without a move (the pod is judged"
-                            + " up to {}); attempt {} of {}",
-                    drive.name(),
-                    moveless,
-                    coveredMoveless(drive),
-                    attempt,
-                    DRIVE_ATTEMPTS);
-        }
-        require(
-                false,
-                drive.name() + ": late in all " + DRIVE_ATTEMPTS + " attempts: " + late
-                        + " moveless ticks, the pod is judged up to " + coveredMoveless(drive));
-    }
-
-    /** One run of {@code drive}; returns the most client ticks in a row it saw without an entity move handled. */
-    private static int driveOnce(ClientGameTestContext context, Rig rig, Drive drive) {
-        TwoPlayerServer two = rig.two();
-        Late late = drive.late();
-        // A drop starts held in the air: the pods wait there without gravity, so the client has them in place before
-        // they fall.
-        double drop = late == null ? 0 : late.dropBlocks();
-        Vec3 ownAt = rig.ownStart().add(0, drop, 0);
-        Vec3 mockAt = rig.mockStart().add(0, drop, 0);
-        two.server().runOnServer(server -> {
-            two.mock().releaseInput();
-            if (drive.wall()) {
-                buildWall(server.overworld(), rig.ownStart());
-            }
-            put(server.overworld(), rig.ownPodId(), ownAt);
-            put(server.overworld(), rig.mockPodId(), mockAt);
-            TestEntities.require(server.overworld(), rig.ownPodId()).setNoGravity(drop > 0);
-            TestEntities.require(server.overworld(), rig.mockPodId()).setNoGravity(drop > 0);
-        });
-        ClientWait.until(
-                context,
-                "both pods standing at their start",
-                () -> context.computeOnClient(
-                        client -> standsAt(client, rig.ownPodId(), ownAt) && standsAt(client, rig.mockPodId(), mockAt)),
-                () -> "own pod on the client " + onClient(context, rig.ownPodId()) + ", on the server "
-                        + serverPosition(two, rig.ownPodId()) + ", for " + ownAt + "; mock pod on the client "
-                        + onClient(context, rig.mockPodId()) + ", on the server " + serverPosition(two, rig.mockPodId())
-                        + ", for " + mockAt);
-        context.waitTicks(SETTLE_TICKS);
-        if (drop > 0) {
-            two.server().runOnServer(server -> {
-                TestEntities.require(server.overworld(), rig.ownPodId()).setNoGravity(false);
-                TestEntities.require(server.overworld(), rig.mockPodId()).setNoGravity(false);
-            });
-        }
-
-        Subject pilot = new Subject("the pilot's own view");
-        Subject watched = new Subject("the watched pod");
-        Subject ownPod = new Subject("the pilot's own pod");
-        int[] inside = {0};
-        boolean[] drilled = {false};
-        int moveless;
-        try {
-            drive.keys().forEach(key -> context.getInput().holdKey(key));
-            two.server().runOnServer(server -> two.mock().setInput(drive.mockInput()));
-            for (int tick = 0; tick < drive.ticks(); tick++) {
-                if (tick == SETTLE_TICKS) {
-                    context.runOnClient(client -> PacketJitter.resetMoveless());
-                }
-                if (late != null && tick == late.stallAt()) {
-                    context.runOnClient(client -> {
-                        if (late.lags()) {
-                            PacketJitter.lag(late.stallTicks());
-                        } else {
-                            PacketJitter.stall(late.stallTicks());
-                        }
-                    });
-                }
-                if (late != null && late.lags() && late.lagTicks() >= 0 && tick == late.stallAt() + late.lagTicks()) {
-                    context.runOnClient(client -> PacketJitter.endLag());
-                }
-                if (late != null && tick == late.releaseAt()) {
-                    drive.keys().forEach(key -> context.getInput().releaseKey(key));
-                    two.server().runOnServer(server -> two.mock().releaseInput());
-                }
-                context.waitTick();
-                context.runOnClient(client -> {
-                    Entity watchedPod = TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId());
-                    Entity own = TestEntities.vehicle(ClientSession.player(client));
-                    for (float partial : PARTIAL_TICKS) {
-                        pilot.frames().add(ClientSession.player(client).getPosition(partial));
-                        watched.frames().add(watchedPod.getPosition(partial));
-                        ownPod.frames().add(own.getPosition(partial));
-                        inside[0] += insideBlocks(watchedPod, partial) + insideBlocks(own, partial);
-                    }
-                    pilot.leads().add(lead(own));
-                    watched.leads().add(lead(watchedPod));
-                    ownPod.leads().add(lead(own));
-                    drilled[0] |= watchedPod instanceof PodEntity pod && pod.drilling();
-                });
-            }
-            moveless = context.computeOnClient(client -> PacketJitter.movelessTicks());
-        } finally {
-            context.runOnClient(client -> PacketJitter.endLag());
-            drive.keys().forEach(key -> context.getInput().releaseKey(key));
-            two.server().runOnServer(server -> two.mock().releaseInput());
-            // The server acts on the last input the client sent until the release reaches it; a pod put on its start
-            // before that would drive on from the start.
-            context.waitTicks(INPUT_LAG_TICKS);
-        }
-        boolean judgeFloor = moveless <= coveredMoveless(drive);
-        if (drive.wall()) {
-            require(drilled[0], "The watched pod never drilled, so the drilling drive was not a drilling drive");
-        }
-        if (late != null) {
-            require(inside[0] == 0, drive.name() + ": a pod was drawn inside a block in " + inside[0] + " frames");
-            if (late.stops()) {
-                context.waitTicks(SETTLE_AFTER_TICKS);
-                expectStopped(drive, late, rig, context, ownPod, watched);
-                return moveless;
-            }
-        }
-        for (Subject subject : List.of(pilot, watched)) {
-            String what = drive.name() + ", " + subject.name();
-            double shortestTick = expectSmooth(what, subject, drive);
-            if (drive.steady() && judgeFloor) {
-                require(
-                        DriveJudge.reaches(shortestTick, MIN_TICK_SHARE * drive.speed()),
-                        what + ": the drawn pod covered only " + shortestTick
-                                + " blocks in one tick of a steady drive, under " + MIN_TICK_SHARE * drive.speed()
-                                + ", after " + moveless + " moveless ticks (judged up to " + coveredMoveless(drive)
-                                + ")"
-                                + " (less the " + DriveJudge.POSITION_QUANTUM + " network position quantum)");
-            }
-        }
-        if (late != null && late.recovers()) {
-            for (Subject subject : List.of(ownPod, watched)) {
-                expectProgress(drive.name() + ", " + subject.name(), subject.frames(), drive);
-            }
-        }
-        if (late != null && late.settles()) {
-            context.waitTicks(SETTLE_AFTER_TICKS);
-            expectSettled(drive.name(), rig, context);
-        }
-        return moveless;
-    }
-
-    /** How far along the drive (south) the pod is drawn past the last position the server sent for it. */
-    private static double lead(Entity pod) {
-        return pod.getZ() - pod.getPositionCodec().getBase().z;
-    }
-
-    /** 1 when the pod's drawn box, shrunk by {@link #INSIDE_MARGIN}, overlaps a block at {@code partial}; else 0. */
-    private static int insideBlocks(Entity pod, float partial) {
-        AABB box = pod.getDimensions(pod.getPose())
-                .makeBoundingBox(pod.getPosition(partial))
-                .deflate(INSIDE_MARGIN);
-        return pod.level().getBlockCollisions(pod, box).iterator().hasNext() ? 1 : 0;
-    }
-
-    /** The drawn pods, once the drive is over and they have had time to settle, stand on the server's. */
-    private static void expectSettled(String what, Rig rig, ClientGameTestContext context) {
-        for (int podId : new int[] {rig.ownPodId(), rig.mockPodId()}) {
-            Vec3 server = serverPosition(rig.two(), podId);
-            Vec3 drawn = onClient(context, podId);
-            require(
-                    drawn.distanceTo(server) <= SETTLE_TOLERANCE,
-                    what + ": pod " + podId + " is drawn at " + drawn + ", the server has it at " + server
-                            + ", more than " + SETTLE_TOLERANCE + " apart after " + SETTLE_AFTER_TICKS + " ticks");
-        }
-    }
-
-    /** A stall drive keeps its progress: the pod covers at least {@link #MIN_PROGRESS_SHARE} of what its speed does, past the settle. */
-    private static void expectProgress(String what, List<Vec3> frames, Drive drive) {
-        double covered = frames.getLast().z - frames.get(SETTLE_TICKS * FRAMES).z;
-        double expected = MIN_PROGRESS_SHARE * drive.speed() * (drive.ticks() - SETTLE_TICKS);
-        LOGGER.info("PodDriveSmoothClientTest: {}: covered {} (at least {})", what, covered, expected);
-        require(covered >= expected, what + ": the drawn pod covered only " + covered + " blocks, under " + expected);
-    }
-
-    /**
-     * A drive that stops during a stall (the keys released, or the ground reached): the drawn pods never go past where the server put them
-     * by more than a coast ({@link #coastReach} of speed; none for a landing, since a coast stops short of the ground), each frame step
-     * stays under the lunge bound, the way back is under {@link #MAX_BOUNCE_SHARE} of a frame's speed, and they end on the server's.
-     */
-    private static void expectStopped(
-            Drive drive, Late late, Rig rig, ClientGameTestContext context, Subject ownPod, Subject watched) {
-        boolean landing = late.dropBlocks() > 0;
-        double coast = landing ? 0 : coastReach() * drive.speed();
-        double bounceBound = MAX_BOUNCE_SHARE * drive.speed() / FRAMES;
-        double stepBound = STEP_MARGIN * drive.speed() / FRAMES;
-        for (Subject subject : List.of(ownPod, watched)) {
-            int podId = subject == ownPod ? rig.ownPodId() : rig.mockPodId();
-            Vec3 server = serverPosition(rig.two(), podId);
-            double past = 0;
-            double longest = 0;
-            double backward = 0;
-            List<Vec3> frames = subject.frames();
-            for (int i = 1; i < frames.size(); i++) {
-                Vec3 step = frames.get(i).subtract(frames.get(i - 1));
-                past = Math.max(past, landing ? server.y - frames.get(i).y : frames.get(i).z - server.z);
-                if (!landing) {
-                    longest = Math.max(longest, step.length());
-                    backward = Math.min(backward, step.z);
-                }
-            }
-            String what = drive.name() + ", " + subject.name();
-            LOGGER.info(
-                    "PodDriveSmoothClientTest: {}: past the server's stop by {} (at most {}), longest frame step {} (bound {}), way back {} (at most {})",
-                    what,
-                    past,
-                    coast + SETTLE_TOLERANCE,
-                    longest,
-                    stepBound,
-                    -backward,
-                    bounceBound);
-            require(
-                    past <= coast + SETTLE_TOLERANCE,
-                    what + ": the drawn pod went " + past + " blocks past the server's");
-            require(longest <= stepBound, what + ": the drawn pod stepped " + longest + " blocks in one frame");
-            require(
-                    -backward <= bounceBound,
-                    what + ": the drawn pod stepped back " + -backward + " blocks in one frame");
-        }
-        expectSettled(drive.name(), rig, context);
-    }
-
-    /** Ticks of its speed a whole coast draws: the full-speed ticks and the tail's share of the last. */
-    private static double coastReach() {
-        PodGlideTuning tuning = PodGlideTuning.DEFAULT;
-        return tuning.coastTicks() - 1 + tuning.coastTailShare();
     }
 
     /** Puts the pilot's pod back on its start and waits for the client to draw it there, still. */
@@ -921,7 +439,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      */
     private static void expectPinnedPodSettles(ClientGameTestContext context, Rig rig) {
         returnToStart(context, rig);
-        double coast = coastReach() * PodTuning.DEFAULT.movement().horizontalSpeed() * SPEED_SCALE;
+        double coast = coastReach() * PodTuning.DEFAULT.movement().horizontalSpeed();
         int pinnedTicks = pinnedTicks(coast);
         double past = 0;
         Vec3 pin;
@@ -960,107 +478,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
     /**
      * Ticks a pod pinned {@code past} blocks behind where it is drawn is watched: the settle delay, then the ticks that giving back
-     * {@code settleShare} of the gap a tick takes to bring it within {@link #SETTLE_TOLERANCE}, and {@link #PIN_SLACK_TICKS}. A faster
+     * {@code settleShare} of the gap a tick takes to bring it within {@link PodDrives#SETTLE_TOLERANCE}, and {@link #PIN_SLACK_TICKS}. A faster
      * pod coasts further past the pin, so it is watched longer (40 ticks at the stock speed).
      */
     private static int pinnedTicks(double past) {
         PodGlideTuning tuning = PodGlideTuning.DEFAULT;
         double settling = Math.log(SETTLE_TOLERANCE / past) / Math.log(1 - tuning.settleShare());
         return tuning.settleDelayTicks() + (int) Math.ceil(settling) + PIN_SLACK_TICKS;
-    }
-
-    private static Vec3 onClient(ClientGameTestContext context, int podId) {
-        return context.computeOnClient(client ->
-                TestEntities.require(ClientLight.clientLevel(client), podId).position());
-    }
-
-    private static boolean standsAt(Minecraft client, int podId, Vec3 at) {
-        return TestEntities.require(ClientLight.clientLevel(client), podId)
-                        .position()
-                        .distanceToSqr(at)
-                < 0.04;
-    }
-
-    /** Sets the pod down at {@code at}, still, with no fall behind it. */
-    private static void put(ServerLevel level, int podId, Vec3 at) {
-        Entity pod = TestEntities.require(level, podId);
-        pod.setPos(at);
-        pod.setDeltaMovement(Vec3.ZERO);
-        pod.fallDistance = 0;
-    }
-
-    /** A wall of stone across both pods' way, {@code WALL_AHEAD} blocks ahead and {@code WALL_SLABS} deep. */
-    private static void buildWall(ServerLevel level, Vec3 start) {
-        BlockPos from = BlockPos.containing(start).offset(-WALL_WIDTH / 2, 0, WALL_AHEAD);
-        for (int x = 0; x < WALL_WIDTH + 10; x++) {
-            for (int z = 0; z < WALL_SLABS; z++) {
-                for (int y = 0; y < WALL_HEIGHT; y++) {
-                    level.setBlock(from.offset(x, y, z), Blocks.STONE.defaultBlockState(), 3);
-                }
-            }
-        }
-    }
-
-    private static Vec3 serverPosition(TwoPlayerServer two, int podId) {
-        return two.server()
-                .computeOnServer(server ->
-                        TestEntities.require(server.overworld(), podId).position());
-    }
-
-    /**
-     * Asserts the drawn frames past the settle: no step backward along the drive (south, and up when the drive climbs) and no step
-     * longer than {@link #STEP_MARGIN} times one frame's share of the drive's speed. Returns the shortest tick's displacement, which
-     * the caller judges against {@link #MIN_TICK_SHARE} of the speed.
-     *
-     * <p>A tick is measured from a frame a quarter into it to the same frame of the next, so three quarters of it is the tick before. The
-     * two ticks that take in a tick the pod stood at the coast's reach past the last position the server sent are not measured: ADR 0082
-     * never draws the pod further past it, so a server later than the coast covers stands the pod there by design (#1112). Every other
-     * tick is held to the floor.
-     */
-    private static double expectSmooth(String what, Subject subject, Drive drive) {
-        List<Vec3> frames = subject.frames();
-        double backwardTolerance =
-                drive.late() == null ? BACKWARD_TOLERANCE : MAX_BOUNCE_SHARE * drive.speed() / FRAMES;
-        double speed = drive.speed();
-        double reach = coastReach() * speed - DriveJudge.POSITION_QUANTUM;
-        boolean climbing = drive.climbing();
-        double longest = 0;
-        double shortestTick = Double.MAX_VALUE;
-        double worstBackward = 0;
-        int atReach = 0;
-        double stepBound = STEP_MARGIN * speed / FRAMES;
-        for (int i = SETTLE_TICKS * FRAMES + 1; i < frames.size(); i++) {
-            Vec3 step = frames.get(i).subtract(frames.get(i - 1));
-            longest = Math.max(longest, step.length());
-            worstBackward = Math.min(worstBackward, climbing ? Math.min(step.z, step.y) : step.z);
-            if (i % FRAMES == 0 && i >= (SETTLE_TICKS + 1) * FRAMES) {
-                int tick = i / FRAMES;
-                if (subject.leads().get(tick - 1) >= reach || subject.leads().get(tick - 2) >= reach) {
-                    atReach++;
-                } else {
-                    shortestTick = Math.min(
-                            shortestTick,
-                            frames.get(i).subtract(frames.get(i - FRAMES)).horizontalDistance());
-                }
-            }
-        }
-        LOGGER.info(
-                "PodDriveSmoothClientTest: {}: longest frame step {} (bound {}), shortest tick {} (floor {}; {} ticks at the coast's reach"
-                        + " not measured), worst backward step {}",
-                what,
-                longest,
-                stepBound,
-                shortestTick,
-                MIN_TICK_SHARE * speed,
-                atReach,
-                worstBackward);
-        require(
-                worstBackward >= -backwardTolerance,
-                what + ": the drawn pod stepped backward by " + -worstBackward + " blocks in one frame");
-        require(
-                longest <= stepBound,
-                what + ": the drawn pod stepped " + longest + " blocks in one frame, over the " + stepBound
-                        + " its speed allows");
-        return shortestTick;
     }
 }
