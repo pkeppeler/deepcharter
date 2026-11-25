@@ -16,8 +16,20 @@ addVmArgToRuns(exitOnOom)
 // batch cap (TestBatches) rises. Method: a forced GC every 1.5 s (jcmd GC.class_histogram) over a full run. Mechanisms: ChunkMapUnloadMixin,
 // ChunkMapSaveMixin, FarChunks.force, CampaignEnvironments, TestBatches.
 // Measured 2026-11-22 (1479 tests, 4 vCPU, 3 runs at 3G with the caps): peaks of 1250, 1352 and 1365 MB. Batches of 50 peaked at 1.5 to 1.7 GB.
-val gameTestHeap = "-Xmx3072m"
+// Measured 2026-11-24 (1650 tests, 4 vCPU, forced GC every 1.5 s, 1 run each): peaks of 1781 MB at 20 tests a batch, 1759 at 30 and 1907 at 40 (#823),
+// so 4G meets the 2x above (1907 MB x 2 <= 4096). CI's standard runners have 16 GB. Raise it again before the next cap raise or tall test world.
+val gameTestHeap = "-Xmx4096m"
 addVmArgToRun("gameTest", gameTestHeap)
+
+// Client GameTest heap, 4G (the default is a quarter of RAM). At 4G the live set after each class's forced full GC peaked at about 0.84 GB
+// (run 45308464189, 3 shards). A 3G trial (run 45316304043) made G1 compact twice in the heaviest shard, with live up to 1.07 GB, so 4G stays.
+// Watch the live set after a full collection, not the peak: G1 grows the heap to Xmx before it collects hard. Per-class table: PR #1148.
+// Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac, so the default two
+// client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest action prints the peak and
+// the live set from it.
+val clientGameTestHeap = "-Xmx4G"
+addVmArgToRun("clientGameTest", clientGameTestHeap)
+addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")
 
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
 // 0 without it. The second half fails if the JVM ever stops honouring the flag; the first, if a run drops it.
@@ -55,10 +67,14 @@ tasks.register("checkRunJvmOom") {
 	val bare = probeDir.map { it.file("bare.exit") }
 	val flag = exitOnOom
 	val heap = gameTestHeap
+	val clientHeap = clientGameTestHeap
 	doLast {
 		val missing = runArgs.get().filterValues { flag !in it }.keys
 		if (missing.isNotEmpty()) {
 			throw GradleException("run(s) $missing lack $flag: an OutOfMemoryError there would not end the JVM, so the build could pass after one (#541)")
+		}
+		if (clientHeap !in runArgs.get().getValue("clientGameTest")) {
+			throw GradleException("the clientGameTest run lacks $clientHeap: its heap would be a quarter of RAM, which the tall campaign world outgrows (#803)")
 		}
 		if (heap !in runArgs.get().getValue("gameTest")) {
 			throw GradleException("the gameTest run lacks $heap: its heap would be the JVM default (a quarter of RAM), which the suite outgrows (#541)")

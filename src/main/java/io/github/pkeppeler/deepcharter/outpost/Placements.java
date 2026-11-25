@@ -55,10 +55,7 @@ public final class Placements {
             return Optional.of(new Readout(Verdict.HOLDS_HERE, Optional.empty()));
         }
         List<RatingAxis> missing = held.shortfalls(required.get());
-        Component axes = missing.stream()
-                .map(RatingAxis::label)
-                .reduce((a, b) -> Component.empty().append(a).append(", ").append(b))
-                .orElseThrow();
+        Component axes = RatingAxis.list(missing);
         return Optional.of(new Readout(
                 Verdict.WILL_NOT_HOLD,
                 Optional.of(Component.translatable("readout.deepcharter.placement.short_on", axes))));
