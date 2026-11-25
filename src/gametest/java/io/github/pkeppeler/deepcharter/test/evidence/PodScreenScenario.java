@@ -47,9 +47,8 @@ public class PodScreenScenario extends EvidenceScenario {
     /** Where the cursor waits: off the window, so no slot shows a tooltip. */
     private static final double OFF_SCREEN = -10_000;
 
-    private static final Item CARGO_UNIT =
-            PartUnits.unit(ComponentTrack.CARGO_BAY).getItem();
-    private static final Item HULL_UNIT = PartUnits.unit(ComponentTrack.HULL).getItem();
+    private static final Item CARGO_UNIT = PartUnits.unit(ComponentTrack.CARGO_BAY);
+    private static final Item HULL_UNIT = PartUnits.unit(ComponentTrack.HULL);
 
     @Override
     protected String name() {

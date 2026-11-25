@@ -16,7 +16,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The pod's fuel slot (ADR 0100): one stack of pod fuel, like a furnace's, that feeds the tank one item at a time
+ * The pod's fuel slot (ADR 0102): one stack of pod fuel, like a furnace's, that feeds the tank one item at a time
  * whenever the tank has room for all of that item's litres, so nothing is wasted. It is filled through the pod screen
  * ({@link PodMenu}), weighs what its fuel weighs, and is saved with the pod.
  *

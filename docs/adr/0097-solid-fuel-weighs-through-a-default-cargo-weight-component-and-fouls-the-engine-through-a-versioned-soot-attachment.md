@@ -23,7 +23,7 @@ status: accepted
 
 - **Make `OreWeight` carry a mass.** Rejected: it changes the saved format of every ore stack for no gain; a second component costs nothing on disk.
 - **Weight as a vanilla attribute or an item tag.** Rejected: a tag has one number for all, and the tooltip needs the value on the client.
-- **A pod holds fuel in its cargo bay.** Rejected: the bay is ore only, and fuel is used from the pack.
+- **A pod holds fuel in its cargo bay.** Rejected: the bay is ore only, and fuel is used from the pack. Since [ADR 0102](0102-the-pod-screen-holds-any-item-keeps-ore-until-a-terminal-and-feeds-the-tank-from-a-fuel-slot.md) the hold takes any item, fuel included, and it weighs there.
 - **Soot as a new pod part or a `PodData` field.** Rejected: `PodData` takes no more changes, and a part is a purchase.
 - **A clogged engine that stops.** Rejected: deep underground it would strand the pod, and the user asked for lost efficiency until a service, not for a stranding. Limp mode loses speed and burns fuel instead, and the gate is at the colony.
 - **A burn penalty capped at +50%.** Rejected: free fuel plus a capped penalty never makes a player service. The loss is progressive to a limit, and past it the engine limps.

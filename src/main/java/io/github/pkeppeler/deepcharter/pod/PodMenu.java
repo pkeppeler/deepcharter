@@ -44,7 +44,7 @@ import net.minecraft.world.item.Items;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The pod screen (ADR 0100): one slot for each part track, the fuel slot, and a page of the hold, over the player's
+ * The pod screen (ADR 0102): one slot for each part track, the fuel slot, and a page of the hold, over the player's
  * inventory. It opens for the pod's own charter only: by sneak and use from outside, or by the pod screen key from a
  * seat ({@link PodScreenPayload}).
  *
@@ -68,8 +68,8 @@ public final class PodMenu extends SlottedMenu {
     public static final int HOLD_COLUMNS = 9;
     /** Part slots in each row. */
     public static final int PART_COLUMNS = 7;
-    /** Where the first part slot sits in the screen's image: under the title and one line of intro. */
-    public static final int PARTS_Y = 38;
+    /** Where the first part slot sits in the screen's image: under the title and two lines of intro. */
+    public static final int PARTS_Y = 46;
 
     public static final int FUEL_X = 145;
     /** Where the inventory and the hold start, at the bottom of the screen. */
@@ -132,6 +132,8 @@ public final class PodMenu extends SlottedMenu {
                 containerId,
                 inventory,
                 opening,
+                // entity-query: the server just opened this pod for this player, so the client tracks it; a miss only
+                // leaves the parts' condition unshown, and the server decides every click.
                 inventory.player.level().getEntity(opening.pod()) instanceof PodEntity seen ? seen : null,
                 null);
     }
@@ -250,6 +252,7 @@ public final class PodMenu extends SlottedMenu {
     }
 
     /** Hold slot {@code index} of the page shown, counted from the top left. */
+    // test-seam: a test clicks a hold slot by its place on the page, as the player sees it; the screen draws all slots
     public RuleSlot holdSlot(int index) {
         return holdSlots[index];
     }
@@ -330,7 +333,7 @@ public final class PodMenu extends SlottedMenu {
     // ---- rules ----
 
     private SlotRule partRule(ComponentTrack track) {
-        ItemStack unit = PartUnits.unit(track);
+        ItemStack unit = new ItemStack(PartUnits.unit(track));
         Component name = Component.translatable("item.deepcharter.part_" + track.id());
         Component ghost = UpgradeTuning.DEFAULT.value(track, 0) > 0f
                 ? Component.translatable("screen.deepcharter.pod.stock", name)
@@ -344,7 +347,7 @@ public final class PodMenu extends SlottedMenu {
     }
 
     private static Component wrongPart(ItemStack stack, ComponentTrack track) {
-        Component unit = PartUnits.unit(track).getHoverName();
+        Component unit = Component.translatable(PartUnits.unit(track).getDescriptionId());
         return PartUnits.trackOf(stack).isPresent()
                 ? Component.translatable("deepcharter.pod.screen.refusal.other_track", stack.getHoverName(), unit)
                 : Component.translatable("deepcharter.pod.screen.refusal.not_a_unit", unit);
@@ -516,13 +519,7 @@ public final class PodMenu extends SlottedMenu {
     }
 
     /** The server's numbers for the client, read from the pod on each broadcast. */
-    private static final class ServerData implements ContainerData {
-        private final PodEntity pod;
-
-        ServerData(PodEntity pod) {
-            this.pod = pod;
-        }
-
+    private record ServerData(PodEntity pod) implements ContainerData {
         @Override
         public int get(int index) {
             return switch (index) {

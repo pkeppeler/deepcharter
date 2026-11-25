@@ -26,7 +26,7 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A pod's hold (ADR 0100): a row of slots, as many as the pod's {@link PodStats#cargoSlots}, each holding one stack of
+ * A pod's hold (ADR 0102): a row of slots, as many as the pod's {@link PodStats#cargoSlots}, each holding one stack of
  * anything, with a mass. Drilled ore goes in one ore to a free slot ({@link #tryAdd}); the pod screen ({@link PodMenu})
  * moves stacks in and out of any slot, as a chest does. What the terminals and the brace read and take is the ore
  * ({@link #entries}, {@link #count}, {@link #take}, {@link #dump}); what else the crew stows rides along. The synced

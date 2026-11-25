@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.SettlingRooms;
 import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
+import io.github.pkeppeler.deepcharter.test.support.TestCleanups;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -57,7 +58,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 
 /**
- * Server GameTests for #1270 (ADR 0100): the pod screen. Only the pod's charter opens it, by sneak and use or by the key
+ * Server GameTests for #1270 (ADR 0102): the pod screen. Only the pod's charter opens it, by sneak and use or by the key
  * from a seat; a unit dragged or shift-clicked into its track's slot is fitted and stays, a wrong one is refused with a
  * reason; the slots show bought tiers; fuel goes into the fuel slot, at most a stack, and feeds the tank as it has room;
  * the hold moves items both ways up to the cargo bay's size; and no item is made or lost on close, with two viewers, or
@@ -68,7 +69,7 @@ import net.minecraft.world.level.storage.TagValueOutput;
 public class PodScreenTest {
     private static final AtomicInteger PLAYERS = new AtomicInteger();
 
-    /** The pod's charter's player and the pod, beside each other. */
+    /** The pod's charter's player and the pod, beside each other; both go when the test ends, however it ends. */
     private record Scene(MockPlayer mock, ServerPlayer player, PodEntity pod, CharterId charter) {
         void clean() {
             mock.leave();
@@ -78,6 +79,7 @@ public class PodScreenTest {
 
     private static MockPlayer join(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "Pod" + PLAYERS.incrementAndGet());
+        TestCleanups.onFinish(helper, mock::leave);
         mock.player().setGameMode(GameType.SURVIVAL);
         return mock;
     }
@@ -103,6 +105,7 @@ public class PodScreenTest {
         MockPlayer mock = join(helper);
         CharterId charter = found(helper, mock.player());
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
+        TestCleanups.onFinish(helper, pod::discard);
         PodComponents.register(pod, charter);
         standBy(mock, pod);
         return new Scene(mock, mock.player(), pod, charter);
@@ -208,7 +211,6 @@ public class PodScreenTest {
                     scene.player().containerMenu instanceof PodMenu,
                     "the key should open the pod screen, open %s",
                     scene.player().containerMenu);
-            scene.clean();
         });
     }
 
@@ -218,9 +220,9 @@ public class PodScreenTest {
     public void aUnitShiftClickedIntoItsSlotIsFittedAndStays(GameTestHelper helper) {
         Scene scene = scene(helper);
         try {
-            scene.player().getInventory().add(PartUnits.unit(ComponentTrack.DRILL));
+            scene.player().getInventory().add(new ItemStack(PartUnits.unit(ComponentTrack.DRILL)));
             PodMenu menu = open(helper, scene.player(), scene.pod());
-            Item unit = PartUnits.unit(ComponentTrack.DRILL).getItem();
+            Item unit = PartUnits.unit(ComponentTrack.DRILL);
             shiftClickFromInventory(menu, scene.player(), unit);
             Optional<PartLabel> fitted = PodComponents.partOf(scene.pod(), ComponentTrack.DRILL, scene.charter());
             expect(
@@ -257,9 +259,9 @@ public class PodScreenTest {
     public void aUnitDraggedOntoItsSlotIsFitted(GameTestHelper helper) {
         Scene scene = scene(helper);
         try {
-            scene.player().getInventory().add(PartUnits.unit(ComponentTrack.CARGO_BAY));
+            scene.player().getInventory().add(new ItemStack(PartUnits.unit(ComponentTrack.CARGO_BAY)));
             PodMenu menu = open(helper, scene.player(), scene.pod());
-            Item unit = PartUnits.unit(ComponentTrack.CARGO_BAY).getItem();
+            Item unit = PartUnits.unit(ComponentTrack.CARGO_BAY);
             click(menu, scene.player(), SlotClicks.inventorySlot(menu, unit).index, ContainerInput.PICKUP);
             click(menu, scene.player(), menu.partSlot(ComponentTrack.CARGO_BAY).index, ContainerInput.PICKUP);
             expect(
@@ -278,56 +280,53 @@ public class PodScreenTest {
     @GameTest
     public void aWrongUnitIsRefusedWithAReasonAndKept(GameTestHelper helper) {
         Scene scene = scene(helper);
-        try {
-            scene.mock().announceChannel(MenuRefusalPayload.TYPE);
-            Item drill = PartUnits.unit(ComponentTrack.DRILL).getItem();
-            Item hull = PartUnits.unit(ComponentTrack.HULL).getItem();
-            scene.player().getInventory().add(new ItemStack(drill));
-            scene.player().getInventory().add(new ItemStack(hull));
-            PodComponents.installAndDropReplaced(
-                    scene.pod(),
-                    ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.HULL, 2, scene.charter()));
-            PodMenu menu = open(helper, scene.player(), scene.pod());
+        Component already = PartFitting.Refusal.ALREADY_FITTED.message(ComponentTrack.HULL);
+        scene.mock().announceChannel(MenuRefusalPayload.TYPE);
+        Item drill = PartUnits.unit(ComponentTrack.DRILL);
+        Item hull = PartUnits.unit(ComponentTrack.HULL);
+        scene.player().getInventory().add(new ItemStack(drill));
+        scene.player().getInventory().add(new ItemStack(hull));
+        PodComponents.installAndDropReplaced(
+                scene.pod(),
+                ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.HULL, 2, scene.charter()));
+        PodMenu menu = open(helper, scene.player(), scene.pod());
 
-            click(menu, scene.player(), SlotClicks.inventorySlot(menu, drill).index, ContainerInput.PICKUP);
-            click(menu, scene.player(), menu.partSlot(ComponentTrack.SCANNER).index, ContainerInput.PICKUP);
-            expect(
-                    helper,
-                    menu.getCarried().is(drill)
-                            && menu.refusal().isPresent()
-                            && PodComponents.partOf(scene.pod(), ComponentTrack.SCANNER)
-                                    .isEmpty(),
-                    "a drill unit dropped on the scanner slot is refused and kept, carried %s, refusal %s",
-                    menu.getCarried(),
-                    menu.refusal());
-            menu.setCarried(ItemStack.EMPTY);
-            scene.player().getInventory().add(new ItemStack(drill));
+        click(menu, scene.player(), SlotClicks.inventorySlot(menu, drill).index, ContainerInput.PICKUP);
+        click(menu, scene.player(), menu.partSlot(ComponentTrack.SCANNER).index, ContainerInput.PICKUP);
+        expect(
+                helper,
+                menu.getCarried().is(drill)
+                        && menu.refusal().isPresent()
+                        && PodComponents.partOf(scene.pod(), ComponentTrack.SCANNER)
+                                .isEmpty(),
+                "a drill unit dropped on the scanner slot is refused and kept, carried %s, refusal %s",
+                menu.getCarried(),
+                menu.refusal());
+        menu.setCarried(ItemStack.EMPTY);
+        scene.player().getInventory().add(new ItemStack(drill));
 
-            shiftClickFromInventory(menu, scene.player(), hull);
-            Component already = PartFitting.Refusal.ALREADY_FITTED.message(ComponentTrack.HULL);
-            expect(
-                    helper,
-                    menu.refusal().equals(Optional.of(already))
-                            && held(scene.player(), hull) == 1
-                            && inHold(scene.pod(), hull) == 0
-                            && PodComponents.partOf(scene.pod(), ComponentTrack.HULL)
-                                    .map(PartLabel::tier)
-                                    .equals(Optional.of(2)),
-                    "a hull unit over a bought hull is refused with the reason and stays in the pack, not the hold:"
-                            + " refusal %s, %s held, %s in the hold",
-                    menu.refusal(),
-                    held(scene.player(), hull),
-                    inHold(scene.pod(), hull));
+        shiftClickFromInventory(menu, scene.player(), hull);
+        expect(
+                helper,
+                menu.refusal().equals(Optional.of(already))
+                        && held(scene.player(), hull) == 1
+                        && inHold(scene.pod(), hull) == 0
+                        && PodComponents.partOf(scene.pod(), ComponentTrack.HULL)
+                                .map(PartLabel::tier)
+                                .equals(Optional.of(2)),
+                "a hull unit over a bought hull is refused with the reason and stays in the pack, not the hold:"
+                        + " refusal %s, %s held, %s in the hold",
+                menu.refusal(),
+                held(scene.player(), hull),
+                inHold(scene.pod(), hull));
+        helper.succeedWhen(() -> {
             expect(
                     helper,
                     scene.mock().payloadsOf(MenuRefusalPayload.class).stream()
                             .anyMatch(payload -> payload.reason().equals(already)),
                     "the server sends its refusal to the client's menu, sent %s",
                     scene.mock().payloadsOf(MenuRefusalPayload.class));
-            helper.succeed();
-        } finally {
-            scene.clean();
-        }
+        });
     }
 
     @GameTest
@@ -411,7 +410,6 @@ public class PodScreenTest {
                     menu.tankTenths(),
                     litres,
                     tank);
-            scene.clean();
         });
     }
 
@@ -564,13 +562,13 @@ public class PodScreenTest {
             shiftClickFromInventory(menu, player, Items.DIRT);
             expect(
                     helper,
-                    held(player, Items.DIRT) == 1 && menu.refusal().isPresent(),
-                    "a full hold refuses a shift-click with a reason, refusal %s",
-                    menu.refusal());
+                    held(player, Items.DIRT) == 1 && inHold(pod, Items.DIRT) == 0,
+                    "a full hold takes nothing more, as a full chest: %s held, %s in the hold",
+                    held(player, Items.DIRT),
+                    inHold(pod, Items.DIRT));
 
-            player.getInventory().add(PartUnits.unit(ComponentTrack.CARGO_BAY));
-            shiftClickFromInventory(
-                    menu, player, PartUnits.unit(ComponentTrack.CARGO_BAY).getItem());
+            player.getInventory().add(new ItemStack(PartUnits.unit(ComponentTrack.CARGO_BAY)));
+            shiftClickFromInventory(menu, player, PartUnits.unit(ComponentTrack.CARGO_BAY));
             menu.broadcastChanges();
             int bigger = PodStats.of(pod).cargoSlots();
             shiftClickFromInventory(menu, player, Items.DIRT);
@@ -685,10 +683,12 @@ public class PodScreenTest {
             ServerPlayer crew = second.player();
             pilot.getInventory().add(new ItemStack(Items.DIRT, 10));
             crew.getInventory().add(new ItemStack(Items.STONE, 7));
-            crew.getInventory().add(new ItemStack(Items.COAL, 5));
-            PodMenu outside = open(helper, pilot, scene.pod());
-            PodMenu inside = open(helper, crew, scene.pod());
+            pilot.getInventory().add(new ItemStack(Items.COAL, 5));
             scene.pod().setFuel(PodTuning.DEFAULT.shell().fullFuel());
+            PodMenu outside = open(helper, pilot, scene.pod());
+            // The coal is in the fuel slot before the second screen opens, so a copy per screen would show it twice.
+            shiftClickFromInventory(outside, pilot, Items.COAL);
+            PodMenu inside = open(helper, crew, scene.pod());
 
             shiftClickFromInventory(outside, pilot, Items.DIRT);
             inside.broadcastChanges();
@@ -701,9 +701,8 @@ public class PodScreenTest {
                     inside.getCarried(),
                     outside.getCarried());
             click(inside, crew, inside.holdSlot(0).index, ContainerInput.PICKUP);
-            shiftClickFromInventory(inside, crew, Items.COAL);
-            click(outside, pilot, outside.fuelSlot().index, ContainerInput.PICKUP);
-            click(inside, crew, inside.fuelSlot().index, ContainerInput.PICKUP);
+            click(inside, crew, inside.fuelSlot().index, ContainerInput.QUICK_MOVE);
+            click(outside, pilot, outside.fuelSlot().index, ContainerInput.QUICK_MOVE);
             pilot.closeContainer();
             crew.closeContainer();
             int dirt = held(pilot, Items.DIRT) + held(crew, Items.DIRT) + inHold(scene.pod(), Items.DIRT);
@@ -777,7 +776,6 @@ public class PodScreenTest {
                     scene.player().containerMenu == scene.player().inventoryMenu,
                     "the player's next tick closes it, open %s",
                     scene.player().containerMenu);
-            scene.clean();
         });
     }
 
@@ -796,7 +794,6 @@ public class PodScreenTest {
                     scene.player().containerMenu == scene.player().inventoryMenu,
                     "the player's next tick closes it, open %s",
                     scene.player().containerMenu);
-            scene.clean();
         });
     }
 
@@ -812,7 +809,6 @@ public class PodScreenTest {
                     scene.player().containerMenu == scene.player().inventoryMenu,
                     "the player's next tick closes it, open %s",
                     scene.player().containerMenu);
-            scene.clean();
         });
     }
 
@@ -826,7 +822,7 @@ public class PodScreenTest {
                 SlottedMenu.RuleSlot slot = menu.partSlot(track);
                 if (!slot.rule().locks()
                         || slot.rule().ghost().isEmpty()
-                        || !slot.rule().fits().test(PartUnits.unit(track))) {
+                        || !slot.rule().fits().test(new ItemStack(PartUnits.unit(track)))) {
                     wrong.add(track);
                 }
             }

@@ -35,7 +35,7 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
     private static final int GAUGE_WIDTH = 72;
     private static final int GAUGE_HEIGHT = 12;
     /** The column of readouts right of the gauge. */
-    private static final int READOUT_X = GAUGE_X + GAUGE_WIDTH + 8;
+    private static final int READOUT_X = GAUGE_X + GAUGE_WIDTH + 12;
 
     private static final int LINE = 10;
     /** The refusal line, under the part slots. */

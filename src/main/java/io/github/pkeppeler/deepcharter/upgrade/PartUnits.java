@@ -44,9 +44,9 @@ public final class PartUnits {
     /** Loads the class, which registers the units. */
     public static void register() {}
 
-    /** A new stack of {@code track}'s unit. */
-    public static ItemStack unit(ComponentTrack track) {
-        return new ItemStack(Objects.requireNonNull(UNITS.get(track), "every track has a unit"));
+    /** {@code track}'s unit. */
+    public static Item unit(ComponentTrack track) {
+        return Objects.requireNonNull(UNITS.get(track), "every track has a unit");
     }
 
     /** The track a stack is the crafted unit of, if it is one. */

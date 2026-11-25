@@ -36,8 +36,8 @@ import net.minecraft.world.item.Items;
  * back; shift-clicked coal fills the fuel slot and the gauge rises as it feeds the tank; and Escape closes the screen.
  */
 public class PodScreenClientTest implements FabricClientGameTest {
-    private static final Item DRILL_UNIT = PartUnits.unit(ComponentTrack.DRILL).getItem();
-    private static final Item HULL_UNIT = PartUnits.unit(ComponentTrack.HULL).getItem();
+    private static final Item DRILL_UNIT = PartUnits.unit(ComponentTrack.DRILL);
+    private static final Item HULL_UNIT = PartUnits.unit(ComponentTrack.HULL);
 
     @Override
     public void runTest(ClientGameTestContext context) {
