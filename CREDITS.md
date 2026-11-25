@@ -39,8 +39,6 @@ When a person dies, the Company laughs: two laughers from a 1922 record, slowed,
 
 - **The Okeh Laughing Record.** Okeh 4678-A (1922), matrix 4678A. Transfer by the Great 78 Project, digitized at George Blood, L.P. (the file's tags). Licence: none stated. Source: https://archive.org/download/78_the-okeh-laughing-record_gbia0046783a/The%20Okeh%20Laughing%20Record.flac (page: https://archive.org/details/78_the-okeh-laughing-record_gbia0046783a)
 
-The item states no licence. It is a sound recording published in the United States before 1923, so it is in the public domain in the US under the Music Modernization Act.
-
 ## More early recordings
 
 Later and rarer recordings than the phonautograms. [tools/sounds/first_sounds.py](tools/sounds/first_sounds.py) and [tools/sounds/ambience.py](tools/sounds/ambience.py) make the files, and their manifests ([first_sounds.json](tools/sounds/first_sounds.json), [ambience.json](tools/sounds/ambience.json)) record each source's canonical URL and hash. Where a file states no licence, its credit says so: it is credited and linked, and no licence is claimed. The note above about derivative works and firstsounds.org covers the First Sounds playbacks here too.
