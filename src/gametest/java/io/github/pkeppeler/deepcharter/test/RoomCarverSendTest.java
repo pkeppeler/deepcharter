@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -31,7 +32,8 @@ import net.minecraft.world.phys.Vec3;
 public class RoomCarverSendTest {
     private static final int SECONDS = 30;
     private static final int LOCAL_FLOOR = 60; // fixed-pos: a layer-local Y, turned into a world Y by TestLayers.worldY
-    private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 200;
+    /** Three waits: the chunks ticking, the room's chunks sendable, and the carved room sent. */
+    private static final int MAX_TICKS = 3 * FarChunks.AWAIT_BUDGET_TICKS + 200;
 
     /**
      * Carves the box once its chunks tick and can be sent, brings the player in the same tick, and fails naming the chunks that are
@@ -47,19 +49,20 @@ public class RoomCarverSendTest {
                 .map(chunk -> new BlockPos(chunk.getMinBlockX(), min.getY(), chunk.getMinBlockZ()))
                 .toList();
         int[] ticking = {0};
-        boolean[] carved = {false};
         FarChunks.awaitEntityTicking(helper, level, columns, index -> ticking[0]++);
-        FarChunks.Deadline deadline = FarChunks.deadline(SECONDS);
+        FarChunks.Deadline sendable = FarChunks.deadline(SECONDS);
+        // Started at the carve: the send gets its own wait, whatever the wait for sendable chunks used up.
+        List<FarChunks.Deadline> sent = new ArrayList<>(1);
         TestTicks.each(helper, () -> {
             if (ticking[0] < columns.size()) {
                 return;
             }
-            if (!carved[0]) {
+            if (sent.isEmpty()) {
                 List<ChunkPos> unsendable = chunks.stream()
                         .filter(chunk -> level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) == null)
                         .toList();
                 if (!unsendable.isEmpty()) {
-                    deadline.await(
+                    sendable.await(
                             helper,
                             level,
                             false,
@@ -74,7 +77,7 @@ public class RoomCarverSendTest {
                             "the carve should hold " + chunks.get(0) + ", held: " + LightSync.heldChunks()));
                 }
                 player.teleportTo(level, Vec3.atBottomCenterOf(min), 0f, 0f);
-                carved[0] = true;
+                sent.add(FarChunks.deadline(SECONDS));
                 return;
             }
             List<ChunkPos> unsent = chunks.stream()
@@ -84,14 +87,15 @@ public class RoomCarverSendTest {
                 helper.succeed();
                 return;
             }
-            deadline.await(
-                    helper,
-                    level,
-                    false,
-                    () -> "RoomCarver held the sending of " + unsent + " in " + level.dimension()
-                            + " and never released it: "
-                            + SECONDS + " s into the test, which carved " + min + " to " + max
-                            + ", and a player in view of it has not been sent it");
+            sent.getFirst()
+                    .await(
+                            helper,
+                            level,
+                            false,
+                            () -> "RoomCarver held the sending of " + unsent + " in " + level.dimension()
+                                    + " and never released it: "
+                                    + SECONDS + " s after carving " + min + " to " + max
+                                    + ", a player in view of it has not been sent it");
         });
     }
 
