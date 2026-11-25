@@ -327,9 +327,10 @@ public class DrifterSpawnTest {
     }
 
     /**
-     * The alarm shows and ends: the pilot's readout carries the seconds it has left, the drone beats for a person in the zone within
-     * {@link DrifterTuning.Alarm#droneTicks()} ticks of the alarm, and after {@link DrifterTuning.Alarm#ticks()} ticks the line goes and the zone
-     * is quiet. It is held in memory only, so there is no saved form to read.
+     * The alarm shows and ends: the pilot's readout carries the seconds it has left, the drone beats for a person in
+     * the zone within {@link DrifterTuning.Alarm#droneTicks()} ticks of the alarm, and after
+     * {@link DrifterTuning.Alarm#ticks()} ticks the line goes and the zone is quiet. It is held in memory only, so
+     * there is no saved form to read.
      */
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 3_800)
     public void theAlarmShowsDronesAndEnds(GameTestHelper helper) {
