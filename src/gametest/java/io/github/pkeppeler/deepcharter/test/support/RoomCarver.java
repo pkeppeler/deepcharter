@@ -58,6 +58,9 @@ public final class RoomCarver {
 
     /** As {@link #carvePocketBelow(ServerLevel, int, int, int, int, int)}, with {@code rows} of air over the bed. */
     public static void carvePocketBelow(ServerLevel level, int layer, int x1, int x2, int z1, int z2, int rows) {
+        if (rows < 1) {
+            throw new IllegalArgumentException("a pocket needs at least one row of air, not " + rows);
+        }
         int floor = TestLayers.band(level, layer).minY();
         carve(level, x1, x2, floor - rows - 1, floor - rows - 1, z1, z2, Blocks.STONE);
         carve(level, x1, x2, floor - rows, floor - 1, z1, z2, Blocks.AIR);
