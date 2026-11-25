@@ -82,7 +82,7 @@ public class TowLineLedgeScenario extends EvidenceScenario {
 
             // East along the ledge, away from the drop, until the pod is back up on the ledge.
             two.server().runOnServer(server -> {
-                two.mock().player().setYRot(TowStage.EAST);
+                TowStage.turn(two, TowStage.EAST);
                 two.mock().setInput(Inputs.FORWARD);
             });
             int top = FLOOR_Y + LEDGE_HEIGHT;

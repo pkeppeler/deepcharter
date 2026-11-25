@@ -216,8 +216,8 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
         state.cabHidden = FrontCameraFeed.hidesCab(pod);
         state.hot = hasHotMask && pod.hullBurning();
         motions.computeIfAbsent(pod, ignored -> new PodMotion())
-                .advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));
-        // The pod turns as its motion says (towards where it drives or drills), not as its entity yaw does.
+                .advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance), partialTick);
+        // The server steers the pod, so the model faces the entity's yaw.
         state.addGeckolibData(DataTickets.ENTITY_BODY_YAW, state.heading);
         state.beam = PodBeams.beamFor(pod, state);
     }

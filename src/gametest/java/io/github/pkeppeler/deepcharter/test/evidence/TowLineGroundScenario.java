@@ -64,7 +64,7 @@ public class TowLineGroundScenario extends EvidenceScenario {
 
     private void drive(ClientGameTestContext context, TwoPlayerServer two, UUID tower, float yaw, int ticks) {
         two.server().runOnServer(server -> {
-            two.mock().player().setYRot(yaw);
+            TowStage.turn(two, yaw);
             two.mock().setInput(Inputs.FORWARD);
         });
         for (int done = 0; done < ticks; done += TowStage.TICKS_PER_FRAME) {

@@ -75,7 +75,7 @@ public class TowLineAirScenario extends EvidenceScenario {
 
     /** Flies {@link #LEG_TICKS} ticks along {@code yaw}, holding height. */
     private void leg(ClientGameTestContext context, TwoPlayerServer two, UUID tower, float yaw) {
-        two.server().runOnServer(server -> two.mock().player().setYRot(yaw));
+        two.server().runOnServer(server -> TowStage.turn(two, yaw));
         for (int done = 0; done < LEG_TICKS; done += TowStage.TICKS_PER_FRAME) {
             fly(context, two, tower, true);
         }
