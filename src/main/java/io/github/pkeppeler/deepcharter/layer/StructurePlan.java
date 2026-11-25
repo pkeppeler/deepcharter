@@ -114,9 +114,9 @@ final class StructurePlan {
     }
 
     /**
-     * A Company horn over the middle of the hall, {@link StructureKind#HORN_HEIGHT} above the floor, that always hangs from a sturdy
-     * block: a chain from the first solid block above it, or with none in reach a beam over it on a post from the floor. The support
-     * lies in the horn's own chunk, which is complete when drawn (a neighbour may not be).
+     * A Company horn over the middle of the hall, {@link StructureKind#HORN_HEIGHT} above the floor, that always hangs
+     * from a sturdy block: a chain from the first solid block above it, or with none in reach a beam over it on a post
+     * from the floor. The support lies in the horn's own chunk, which is complete when drawn (a neighbour may not be).
      */
     void companyHorn() {
         int y = StructureKind.HORN_HEIGHT;
@@ -134,7 +134,7 @@ final class StructurePlan {
         set(0, y, 0, AmbienceRegistry.COMPANY_HORN.defaultBlockState());
     }
 
-    /** A step to a neighbouring column in the same chunk as the horn's, the same from every chunk, so only the horn's chunk draws the post. */
+    /** A step to a neighbouring column in the horn's chunk, the same from every chunk, so only that chunk draws the post. */
     private int[] postStep() {
         BlockPos column = column(0, 0, 0);
         for (int[] step : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
@@ -146,7 +146,10 @@ final class StructurePlan {
         throw new IllegalStateException("every neighbour of " + column + " is in another chunk");
     }
 
-    /** The height of the first sturdy-underside block above the horn within {@link StructureKind#HORN_REACH}; empty if none, or the column is in another chunk. */
+    /**
+     * The height of the first sturdy-underside block above the horn within {@link StructureKind#HORN_REACH}; empty if
+     * none, or the column is in another chunk.
+     */
     private OptionalInt ceilingAbove() {
         for (int up = 1; up <= StructureKind.HORN_REACH; up++) {
             BlockPos pos = inChunk(0, StructureKind.HORN_HEIGHT + up, 0);
