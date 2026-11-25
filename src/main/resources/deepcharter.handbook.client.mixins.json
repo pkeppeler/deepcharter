@@ -3,6 +3,7 @@
   "package": "io.github.pkeppeler.deepcharter.client.handbook.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "EffectsInInventoryMixin",
     "ToastInstanceAccess",
     "ToastManagerAccess"
   ],

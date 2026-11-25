@@ -18,21 +18,27 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffectUtil;
 
 /**
- * The inventory's active effects, drawn in a row over the catalogue (see {@link CatalogueLayout#effects}) as vanilla's compact list draws
- * them: each is a tile with its icon, and the name, level and time left are its tooltip. Vanilla's own list stands right of the inventory
- * image, which is under the catalogue while the panels are shown, so it is drawn there and nobody sees it.
+ * The inventory's active effects, drawn in a row over the catalogue (see {@link CatalogueLayout#effects}) as vanilla's
+ * compact list draws them: each is a tile with its icon, and the name, level and time left are its tooltip. A row too
+ * short for tiles, or too crowded for them, is bare icons. Vanilla's own list stands right of the inventory image,
+ * under the catalogue while the panels are shown, and is not drawn then (ADR 0094).
  */
-final class CatalogueEffects {
+public final class CatalogueEffects {
     private static final Identifier BACKGROUND =
             Identifier.withDefaultNamespace("container/inventory/effect_background");
     private static final Identifier BACKGROUND_AMBIENT =
             Identifier.withDefaultNamespace("container/inventory/effect_background_ambient");
-    /** The icon's side and its inset in the tile, as vanilla draws them. */
-    private static final int ICON = 18;
-
+    /** The icon's inset in its tile, as vanilla draws it. */
     private static final int ICON_INSET = 7;
-    /** The pitch of the tiles: one pixel between them, as vanilla's compact list has. */
-    private static final int PITCH = CatalogueLayout.EFFECT_TILE + 1;
+    /** The pitch of tiles, one pixel between them as vanilla's compact list has; of bare icons, two. */
+    private static final int TILE_PITCH = CatalogueLayout.EFFECT_TILE + 1;
+
+    private static final int ICON_PITCH = CatalogueLayout.EFFECT_ICON + 2;
+    /**
+     * The pitch under which a tile's background would cover the icon of the tile before it, which sits in its first 25
+     * pixels.
+     */
+    private static final int TILE_CLEAR_PITCH = ICON_INSET + CatalogueLayout.EFFECT_ICON;
     /** The highest amplifier whose level has a numeral in the language file, as in vanilla. */
     private static final int LAST_NUMERAL = 9;
 
@@ -47,26 +53,32 @@ final class CatalogueEffects {
         }
         List<MobEffectInstance> effects = new ArrayList<>(player.getActiveEffects());
         Collections.sort(effects);
-        List<Rect> tiles = tiles(row, centre, effects.size());
+        List<Rect> boxes = boxes(row, centre, effects.size());
         int hovered = -1;
         for (int i = 0; i < effects.size(); i++) {
-            Rect tile = tiles.get(i);
+            Rect box = boxes.get(i);
             MobEffectInstance effect = effects.get(i);
-            graphics.blitSprite(
-                    RenderPipelines.GUI_TEXTURED,
-                    effect.isAmbient() ? BACKGROUND_AMBIENT : BACKGROUND,
-                    tile.x(),
-                    tile.y(),
-                    tile.width(),
-                    tile.height());
+            int iconX = box.x();
+            int iconY = box.y();
+            if (box.width() == CatalogueLayout.EFFECT_TILE) {
+                graphics.blitSprite(
+                        RenderPipelines.GUI_TEXTURED,
+                        effect.isAmbient() ? BACKGROUND_AMBIENT : BACKGROUND,
+                        box.x(),
+                        box.y(),
+                        box.width(),
+                        box.height());
+                iconX += ICON_INSET;
+                iconY += ICON_INSET;
+            }
             graphics.blitSprite(
                     RenderPipelines.GUI_TEXTURED,
                     Hud.getMobEffectSprite(effect.getEffect()),
-                    tile.x() + ICON_INSET,
-                    tile.y() + ICON_INSET,
-                    ICON,
-                    ICON);
-            if (tile.contains(mouseX, mouseY)) {
+                    iconX,
+                    iconY,
+                    CatalogueLayout.EFFECT_ICON,
+                    CatalogueLayout.EFFECT_ICON);
+            if (box.contains(mouseX, mouseY)) {
                 hovered = i;
             }
         }
@@ -83,21 +95,38 @@ final class CatalogueEffects {
         }
     }
 
-    /** The tiles of {@code count} effects: a pitch apart, as close as {@code row} lets them when it is too short for that, centred on {@code centre}. */
-    static List<Rect> tiles(Rect row, int centre, int count) {
+    /**
+     * Where {@code count} effects stand in {@code row}, in order, centred on {@code centre} and kept inside the row: 32
+     * px tiles a pitch apart while the row is as tall as one and they stay clear of each other's icons, else bare
+     * icons, which in a row too crowded even for them overlap evenly.
+     */
+    // test-seam: the client test pins the squeeze and the centring on a bare row, with no world or window to set up
+    public static List<Rect> boxes(Rect row, int centre, int count) {
         int tile = CatalogueLayout.EFFECT_TILE;
-        int pitch = count < 2 ? 0 : Math.min(PITCH, (row.width() - tile) / (count - 1));
-        int total = (count - 1) * pitch + tile;
+        int icon = CatalogueLayout.EFFECT_ICON;
+        boolean tiles = row.height() >= tile && fits(row.width(), tile, TILE_PITCH, TILE_CLEAR_PITCH, count);
+        int side = tiles ? tile : icon;
+        int pitch = count < 2 ? 0 : Math.min(tiles ? TILE_PITCH : ICON_PITCH, (row.width() - side) / (count - 1));
+        int total = (count - 1) * pitch + side;
         int x = Math.clamp(centre - total / 2, row.x(), Math.max(row.x(), row.right() - total));
-        List<Rect> tiles = new ArrayList<>();
+        int y = row.y() + (row.height() - side) / 2;
+        List<Rect> boxes = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            tiles.add(new Rect(x + i * pitch, row.y(), tile, tile));
+            boxes.add(new Rect(x + i * pitch, y, side, side));
         }
-        return tiles;
+        return boxes;
+    }
+
+    /**
+     * Whether {@code count} boxes {@code side} wide stand at least {@code least} apart in {@code width}, at their pitch
+     * or the room's.
+     */
+    private static boolean fits(int width, int side, int pitch, int least, int count) {
+        return count < 2 || Math.min(pitch, (width - side) / (count - 1)) >= least;
     }
 
     /** An effect's name, then its level in numerals from the second, as vanilla's list words it. */
-    private static Component label(MobEffectInstance effect) {
+    static Component label(MobEffectInstance effect) {
         MutableComponent name = effect.getEffect().value().getDisplayName().copy();
         if (effect.getAmplifier() >= 1 && effect.getAmplifier() <= LAST_NUMERAL) {
             name.append(CommonComponents.SPACE)

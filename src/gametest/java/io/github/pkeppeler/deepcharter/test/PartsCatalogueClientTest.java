@@ -287,7 +287,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         Minecraft client = Minecraft.getInstance();
         CatalogueLook look = CatalogueLook.current();
         CatalogueLayout layout = Objects.requireNonNull(
-                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight),
+                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight, true),
                 "the default window has the panels");
         Rect plate = layout.shelf().craftable();
         int textX = plate.x()
@@ -311,7 +311,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         Minecraft client = Minecraft.getInstance();
         CatalogueLook look = CatalogueLook.current();
         CatalogueLayout layout = Objects.requireNonNull(
-                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight),
+                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight, true),
                 "the default window has the panels");
         CatalogueLayout.Card card = layout.card();
         CatalogueLayout.Card lowered = card.lowered(2 * client.font.lineHeight, look.needRow());
@@ -501,14 +501,21 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     // ---------------------------------------------------------------- the layout
 
     private static Optional<CatalogueLayout> layoutAt(int width, int height) {
-        return Optional.ofNullable(CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), 9));
+        return Optional.ofNullable(
+                CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), 9, true));
     }
 
-    /** The shortest GUI the consoles draw at: they stand level with the inventory, under the row of its effects. */
+    /**
+     * The shortest GUI the consoles draw at on the inventory: level with the image, under a row of its effects as bare
+     * icons.
+     */
     private static int shortest() {
-        CatalogueLook look = CatalogueLook.current();
-        return look.consoleHeight()
-                + 2 * (look.screenEdge() + CatalogueLayout.EFFECTS_GAP + CatalogueLayout.EFFECT_TILE);
+        return CatalogueLayout.shortest(CatalogueLook.current(), CatalogueLayout.EffectRow.ICONS);
+    }
+
+    /** The shortest GUI the consoles draw at on a screen with no effects, the crafting table: level with the image. */
+    private static int shortestWithoutEffects() {
+        return CatalogueLayout.shortest(CatalogueLook.current(), CatalogueLayout.EffectRow.NONE);
     }
 
     private static void thePanelsFitAtEveryWindowSize() {
@@ -521,6 +528,16 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(layoutAt(WIDTH, shortest()).isPresent(), "the panels draw in a window just tall enough, " + shortest());
         require(layoutAt(WIDTH, shortest() - 1).isEmpty(), "and are hidden, not clipped, one pixel shorter");
         require(shortest() <= HEIGHT, "the default window is tall enough for the panels");
+        require(
+                CatalogueLayout.shortest(CatalogueLook.current(), CatalogueLayout.EffectRow.TILES) <= HEIGHT,
+                "and for the panels with a row of effect tiles over them");
+        CatalogueLook look = CatalogueLook.current();
+        require(
+                CatalogueLayout.of(WIDTH, shortestWithoutEffects(), look, CrtTuning.current(), 9, false) != null
+                        && CatalogueLayout.of(WIDTH, shortestWithoutEffects() - 1, look, CrtTuning.current(), 9, false)
+                                == null,
+                "a screen with no effects (the crafting table) needs no room for a row of them, only "
+                        + shortestWithoutEffects());
         for (int height : new int[] {shortest(), HEIGHT, 270}) {
             for (int width : new int[] {NARROWEST, 426, WIDTH, 480, 854}) {
                 requireFits(layoutAt(width, height).orElseThrow(), width, height);
@@ -1247,7 +1264,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                                     client.getWindow().getGuiScaledHeight(),
                                     CatalogueLook.current(),
                                     CrtTuning.current(),
-                                    client.font.lineHeight)
+                                    client.font.lineHeight,
+                                    true)
                             == null),
                     "setup: the window is too small for the consoles at GUI scale 4");
             context.runOnClient(client -> CatalogueScreens.open(DRILL));

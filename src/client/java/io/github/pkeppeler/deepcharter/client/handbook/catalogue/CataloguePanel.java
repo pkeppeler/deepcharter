@@ -102,7 +102,8 @@ public final class CataloguePanel {
 
     /** Lays the panels out for a screen {@code width} by {@code height}. */
     void resize(int width, int height) {
-        CatalogueLayout now = CatalogueLayout.of(width, height, look(), CrtTuning.current(), font.lineHeight);
+        CatalogueLayout now = CatalogueLayout.of(
+                width, height, look(), CrtTuning.current(), font.lineHeight, screen instanceof InventoryScreen);
         layout = now;
         screenWidth = width;
         screenHeight = height;
@@ -664,9 +665,10 @@ public final class CataloguePanel {
         Placed sheetAt = placed;
         Hit hit = shownSheet == null ? hitAt(mouseX, mouseY) : null;
         if (!state.hidden()) {
-            if (screen instanceof InventoryScreen) {
+            Rect effects = now.effects();
+            if (effects != null) {
                 CatalogueEffects.extract(
-                        graphics, now.effects(), now.inventory().x() + CatalogueLayout.IMAGE_WIDTH / 2, mouseX, mouseY);
+                        graphics, effects, now.inventory().x() + CatalogueLayout.IMAGE_WIDTH / 2, mouseX, mouseY);
             }
             graphics.nextStratum();
             drawShelf(graphics, now, look, hit);

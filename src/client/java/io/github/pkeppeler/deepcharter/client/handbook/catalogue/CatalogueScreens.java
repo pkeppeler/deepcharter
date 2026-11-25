@@ -50,7 +50,7 @@ public final class CatalogueScreens {
         // A world is where the recipes were taught, so leaving it puts the catalogue back as a new client has it.
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> resetState());
         ScreenEvents.BEFORE_INIT.register((client, screen, width, height) -> {
-            if (hasCatalogue(screen) && fits(width, height)) {
+            if (hasCatalogue(screen) && fits(width, height, screen instanceof InventoryScreen)) {
                 closeVanillaBook(client);
             }
         });
@@ -66,14 +66,18 @@ public final class CatalogueScreens {
         state = new CatalogueState();
     }
 
-    /** Whether a screen {@code width} by {@code height} has room for the panels, which is when they take the place of the vanilla recipe book. */
-    private static boolean fits(int width, int height) {
+    /**
+     * Whether a screen {@code width} by {@code height} has room for the panels, which is when they take the place of
+     * the vanilla recipe book. The inventory ({@code wantsEffects}) also needs room for its row of effects.
+     */
+    private static boolean fits(int width, int height, boolean wantsEffects) {
         return CatalogueLayout.of(
                         width,
                         height,
                         CatalogueLook.current(),
                         CrtTuning.current(),
-                        Minecraft.getInstance().font.lineHeight)
+                        Minecraft.getInstance().font.lineHeight,
+                        wantsEffects)
                 != null;
     }
 
@@ -101,7 +105,8 @@ public final class CatalogueScreens {
         if (player == null
                 || !fits(
                         client.getWindow().getGuiScaledWidth(),
-                        client.getWindow().getGuiScaledHeight())) {
+                        client.getWindow().getGuiScaledHeight(),
+                        true)) {
             return;
         }
         Screen open = client.gui.screen();
