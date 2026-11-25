@@ -1031,7 +1031,9 @@ public final class CataloguePanel {
         int rows = Math.max(1, (row.bottom() - shelf.favouritesY()) / font.lineHeight);
         List<String> lines = TextWrap.lines(this::termWidth, hint, row.width());
         for (int i = 0; i < Math.min(rows, lines.size()); i++) {
-            String line = i == rows - 1 && lines.size() > rows ? fit(lines.get(i) + " ..", row.width()) : lines.get(i);
+            // A key bound to a long name can make the hint longer than the row: its last line takes the rest, cut.
+            String line =
+                    i == rows - 1 ? fit(String.join(" ", lines.subList(i, lines.size())), row.width()) : lines.get(i);
             dim(graphics, line, shelf.left(), shelf.favouritesY() + i * font.lineHeight, panel);
         }
     }
