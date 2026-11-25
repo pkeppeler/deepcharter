@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
+import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import java.util.List;
 import java.util.Objects;
@@ -14,6 +15,7 @@ import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
@@ -116,6 +118,18 @@ public final class CatalogueScene {
     public static CatalogueLayout layout(ClientGameTestContext context, CataloguePanel panel) {
         return Objects.requireNonNull(
                 context.computeOnClient(client -> panel.layout()), "the panels are laid out at the window's size");
+    }
+
+    /** Where a recipe console on a screen of its own stands: centred on {@code screen}, as the screen lays it out. */
+    public static CatalogueLayout.Console centredConsole(ClientGameTestContext context, Screen screen) {
+        return Objects.requireNonNull(
+                context.computeOnClient(client -> CatalogueLayout.centred(
+                        screen.width,
+                        screen.height,
+                        CatalogueLook.current(),
+                        CrtTuning.current(),
+                        client.font.lineHeight)),
+                "the console fits the window");
     }
 
     /** The cell of grid position {@code index} on the page shown. */

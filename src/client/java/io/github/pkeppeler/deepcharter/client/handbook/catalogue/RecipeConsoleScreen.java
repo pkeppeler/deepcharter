@@ -3,18 +3,13 @@ package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
-import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -22,19 +17,23 @@ import org.jspecify.annotations.Nullable;
  * inventory): where R and U on one of its slots show the item's recipes or uses ({@link SlotLookup}), as EMI's recipe screen does. It
  * moves the client's {@link CatalogueState}, so its history and the catalogue's are one. R, U and A on its cells, Backspace and the back
  * knob, the star and the wheel work as on the catalogue's console. Escape, the inventory key, the title and a click off the console go
- * back to the screen under it; a container stays open on the server the whole time.
+ * back to the screen under it; a container stays open on the server the whole time. A click goes back on its release, which the console
+ * keeps: the screen under it would take a release it never saw pressed as the end of a click, and drop or place a stack on the cursor.
  *
  * <p>There is no crafting grid here, so the fill switch says NOT HERE; the SPEC SHEET switch is dim, because a sheet opens only over the
  * catalogue or with no screen open ({@link SpecSheetOpener}).
  */
 public final class RecipeConsoleScreen extends Screen {
+    /** A press that asked to go back: off the console, or on its title, which puts the console away too. */
+    private record BackOnRelease(int button, boolean putAway) {}
+
     private final @Nullable Screen parent;
     private final CatalogueState state;
     private final RecipeConsole console;
-    private PartsCatalogue catalogue = PartsCatalogue.of(List.of(), ContextMap.EMPTY);
-    private @Nullable List<RecipeCollection> builtFrom;
-    private List<Item> favourites = List.of();
     private CatalogueLayout.@Nullable Console layout;
+    /** The press waiting for its release to go back, or null. */
+    private @Nullable BackOnRelease backOnRelease;
+
     private int mouseX = -1;
     private int mouseY = -1;
 
@@ -47,10 +46,10 @@ public final class RecipeConsoleScreen extends Screen {
         this.parent = parent;
         this.state = CatalogueScreens.state();
         this.console = new RecipeConsole(state, Minecraft.getInstance().font);
-        refresh();
+        console.refresh();
         CatalogueState.Lookup now = state.lookup();
         if (now == null || now.item() != item || now.mode() != mode) {
-            state.look(catalogue, item, mode);
+            state.look(console.catalogue(), item, mode);
         }
     }
 
@@ -69,30 +68,9 @@ public final class RecipeConsoleScreen extends Screen {
         layout = centred(width, height);
     }
 
-    /** Where the console stands; null before the screen has opened, or in a window too small for it. */
-    // test-seam: the client tests click the back knob and the star of this console
-    public CatalogueLayout.@Nullable Console console() {
-        return layout;
-    }
-
-    /** Builds what the charter knows again when the recipe book changed, and reads the favourites. */
-    private void refresh() {
-        Minecraft client = Minecraft.getInstance();
-        LocalPlayer player = client.player;
-        if (player == null || client.level == null) {
-            return;
-        }
-        List<RecipeCollection> collections = player.getRecipeBook().getCollections();
-        if (collections != builtFrom) {
-            builtFrom = collections;
-            catalogue = PartsCatalogue.of(player.getRecipeBook(), SlotDisplayContext.fromLevel(client.level));
-        }
-        favourites = CatalogueFavourites.shared().items(player.getUUID());
-    }
-
     @Override
     public void tick() {
-        refresh();
+        console.refresh();
         // Nothing to show (the world was left, or the window shrank past the console): back to the screen under it.
         if (state.lookup() == null || layout == null) {
             onClose();
@@ -109,17 +87,15 @@ public final class RecipeConsoleScreen extends Screen {
         if (now == null || lookup == null) {
             return;
         }
-        RecipeConsole.Hit hit = console.hitAt(catalogue, now.card(), mouseX, mouseY);
+        RecipeConsole.Hit hit = console.hitAt(now.card(), mouseX, mouseY);
         console.draw(
                 graphics,
-                catalogue,
                 now.casing(),
                 now.glass(),
                 now.card(),
                 hit,
                 mouseX,
                 mouseY,
-                favourites.contains(lookup.item()),
                 false,
                 new RecipeConsole.FillSwitch(RecipeConsole.text("fill.here"), false, false));
         if (hit != null) {
@@ -138,17 +114,17 @@ public final class RecipeConsoleScreen extends Screen {
             return true;
         }
         CatalogueLayout.Console now = layout;
-        RecipeConsole.Hit hit = now == null ? null : console.hitAt(catalogue, now.card(), mouseX, mouseY);
+        RecipeConsole.Hit hit = now == null ? null : console.hitAt(now.card(), mouseX, mouseY);
         if (hit != null && CatalogueKeys.RECIPES.matches(event)) {
-            state.look(catalogue, hit.item(), CatalogueState.Mode.RECIPES);
+            state.look(console.catalogue(), hit.item(), CatalogueState.Mode.RECIPES);
             return true;
         }
         if (hit != null && CatalogueKeys.USES.matches(event)) {
-            state.look(catalogue, hit.item(), CatalogueState.Mode.USES);
+            state.look(console.catalogue(), hit.item(), CatalogueState.Mode.USES);
             return true;
         }
         if (hit != null && CatalogueKeys.FAVOURITE.matches(event)) {
-            toggleFavourite(hit.item());
+            console.toggleFavourite(hit.item());
             return true;
         }
         return super.keyPressed(event);
@@ -157,30 +133,43 @@ public final class RecipeConsoleScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         CatalogueLayout.Console now = layout;
-        CatalogueState.Lookup lookup = state.lookup();
-        if (now == null || lookup == null || !now.casing().contains(event.x(), event.y())) {
-            onClose();
+        if (now == null || state.lookup() == null || !now.casing().contains(event.x(), event.y())) {
+            backOnRelease = new BackOnRelease(event.button(), false);
             return true;
         }
-        RecipeConsole.Hit hit = console.hitAt(catalogue, now.card(), event.x(), event.y());
+        RecipeConsole.Hit hit = console.hitAt(now.card(), event.x(), event.y());
         if (hit != null) {
             state.look(
-                    catalogue,
+                    console.catalogue(),
                     hit.item(),
                     event.button() == InputConstants.MOUSE_BUTTON_RIGHT
                             ? CatalogueState.Mode.USES
                             : CatalogueState.Mode.RECIPES);
             return true;
         }
-        switch (console.controlAt(catalogue, now.card(), event.x(), event.y())) {
+        switch (console.controlAt(now.card(), event.x(), event.y())) {
             case BACK -> state.back();
-            case STAR -> toggleFavourite(lookup.item());
-            case TITLE -> {
-                state.clear();
-                onClose();
-            }
+            case STAR -> console.toggleStar();
+            case TITLE -> backOnRelease = new BackOnRelease(event.button(), true);
             // No grid to fill here, and no sheet to open over a screen that is not the catalogue's.
             case SPEC, FILL, NONE -> {}
+        }
+        return true;
+    }
+
+    /**
+     * The release of a click that asked to go back: back to the screen under the console, on the title with the console put away. Every
+     * release is the console's, so the screen under it never sees one.
+     */
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        BackOnRelease pressed = backOnRelease;
+        if (pressed != null && pressed.button() == event.button()) {
+            backOnRelease = null;
+            if (pressed.putAway()) {
+                state.clear();
+            }
+            onClose();
         }
         return true;
     }
@@ -189,18 +178,10 @@ public final class RecipeConsoleScreen extends Screen {
     public boolean mouseScrolled(double x, double y, double horizontal, double vertical) {
         CatalogueLayout.Console now = layout;
         if (now != null && vertical != 0 && now.casing().contains(x, y)) {
-            state.step(catalogue, vertical > 0 ? -1 : 1);
+            state.step(console.catalogue(), vertical > 0 ? -1 : 1);
             return true;
         }
         return false;
-    }
-
-    private void toggleFavourite(Item item) {
-        LocalPlayer player = Minecraft.getInstance().player;
-        if (player != null) {
-            CatalogueFavourites.shared().toggle(player.getUUID(), item);
-            favourites = CatalogueFavourites.shared().items(player.getUUID());
-        }
     }
 
     /** Back to the screen the console was opened over; it is not closed, so a container stays open on the server. */

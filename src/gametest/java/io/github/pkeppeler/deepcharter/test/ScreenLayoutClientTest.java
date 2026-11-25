@@ -197,8 +197,17 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             cases.addAll(terminalCases());
             cases.addAll(menuCases());
             cases.addAll(standalone());
-            for (Case screenCase : cases) {
-                check(context, screenCase, problems);
+            try {
+                for (Case screenCase : cases) {
+                    check(context, screenCase, problems);
+                }
+            } finally {
+                // The recipe console's case taught the client's book the nanobots' recipe: it goes again.
+                context.runOnClient(client -> {
+                    ClientRecipeBook book = ClientSession.player(client).getRecipeBook();
+                    book.remove(CatalogueFixtures.nanobots().id());
+                    book.rebuildCollections();
+                });
             }
             checkWithACharter(context, world, problems);
             context.setScreen(() -> null);

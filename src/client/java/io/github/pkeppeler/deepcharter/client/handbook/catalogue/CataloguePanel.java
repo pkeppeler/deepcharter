@@ -21,20 +21,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.AbstractCraftingMenu;
 import net.minecraft.world.inventory.RecipeBookMenu;
@@ -42,7 +39,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
-import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -88,8 +84,6 @@ public final class CataloguePanel {
 
     private int screenWidth;
     private int screenHeight;
-    private PartsCatalogue catalogue = PartsCatalogue.of(List.of(), ContextMap.EMPTY);
-    private @Nullable List<RecipeCollection> builtFrom;
     private StackedItemContents contents = new StackedItemContents();
     /** What the recipe card shows: the recipe, and the item and mode looked up to get it. */
     private record CardShows(
@@ -116,7 +110,6 @@ public final class CataloguePanel {
     private Set<Item> tableOnly = Set.of();
 
     private int shownStamp = -1;
-    private List<Item> favouritesCache = List.of();
     private boolean searchFocused;
     private boolean pressTaken;
     private int ticks;
@@ -211,7 +204,7 @@ public final class CataloguePanel {
     /** What the charter knows now, as of the last tick. */
     // test-seam: what the charter knows now, which the client test reads
     public PartsCatalogue catalogue() {
-        return catalogue;
+        return console.catalogue();
     }
 
     /** Whether the panels are drawn and take input: they have room, and the player has not put them away. */
@@ -279,7 +272,7 @@ public final class CataloguePanel {
         }
         if (unchanged
                 && !gridMakes(waiting.recipe())
-                && Objects.equals(idOf(waiting.recipe()), idOf(state.shownRecipe(catalogue)))) {
+                && Objects.equals(idOf(waiting.recipe()), idOf(state.shownRecipe(catalogue())))) {
             note(text("fill.status.refused"));
         }
     }
@@ -302,7 +295,7 @@ public final class CataloguePanel {
     private CardShows cardShows() {
         CatalogueState.Lookup lookup = state.lookup();
         return new CardShows(
-                idOf(state.shownRecipe(catalogue)),
+                idOf(state.shownRecipe(catalogue())),
                 lookup == null ? null : lookup.item(),
                 lookup == null ? null : lookup.mode());
     }
@@ -339,16 +332,13 @@ public final class CataloguePanel {
 
     /** Rebuilds what the catalogue lists when the recipe book changed, and counts what the player holds. */
     private void refresh() {
+        console.refresh();
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
         if (player == null || client.level == null) {
             return;
         }
-        List<RecipeCollection> collections = player.getRecipeBook().getCollections();
-        if (collections != builtFrom) {
-            builtFrom = collections;
-            catalogue = PartsCatalogue.of(player.getRecipeBook(), SlotDisplayContext.fromLevel(client.level));
-        }
+        PartsCatalogue catalogue = catalogue();
         contents = new StackedItemContents();
         player.getInventory().fillStackedContents(contents);
         // The fill takes the grid's items back first, as the server does, so they count as held.
@@ -358,18 +348,9 @@ public final class CataloguePanel {
         contentsStamp++;
         craftableCount = state.craftableCount(catalogue, contents, bench);
         tableOnly = catalogue.tableOnlyItems(contents, bench);
-        favouritesCache = CatalogueFavourites.shared().items(player.getUUID());
     }
 
     // ---------------------------------------------------------------- what is where
-
-    private static UUID player() {
-        LocalPlayer player = Minecraft.getInstance().player;
-        if (player == null) {
-            throw new IllegalStateException("The catalogue is open with no player");
-        }
-        return player.getUUID();
-    }
 
     /**
      * The items the grid lists, with the search and the filter applied. Worked out again once a tick (what the player holds may have
@@ -378,12 +359,12 @@ public final class CataloguePanel {
     private List<Item> shown() {
         String query = state.query();
         boolean filter = state.craftableOnly();
-        if (shownCatalogue != catalogue
+        if (shownCatalogue != catalogue()
                 || shownStamp != contentsStamp
                 || shownFilter != filter
                 || !shownQuery.equals(query)) {
-            shownCache = state.shown(catalogue, contents, bench);
-            shownCatalogue = catalogue;
+            shownCache = state.shown(catalogue(), contents, bench);
+            shownCatalogue = catalogue();
             shownStamp = contentsStamp;
             shownFilter = filter;
             shownQuery = query;
@@ -420,7 +401,7 @@ public final class CataloguePanel {
     // test-seam: the client test reads the lines the title must draw
     public List<String> titleLines() {
         CatalogueLayout now = layout;
-        return now == null ? List.of() : console.titleLines(catalogue, now.card());
+        return now == null ? List.of() : console.titleLines(now.card());
     }
 
     private CatalogueLayout layoutOrThrow() {
@@ -446,7 +427,7 @@ public final class CataloguePanel {
     }
 
     private List<Item> favourites() {
-        return favouritesCache;
+        return console.favourites();
     }
 
     /** What the mouse is over in a panel, or null. */
@@ -474,7 +455,7 @@ public final class CataloguePanel {
                 return new RecipeConsole.Hit(favourites.get(offset + i), cell);
             }
         }
-        return showsRecipePanel() ? console.hitAt(catalogue, now.card(), x, y) : null;
+        return showsRecipePanel() ? console.hitAt(now.card(), x, y) : null;
     }
 
     /** The item under the mouse, in a panel or in the inventory behind them. */
@@ -508,14 +489,14 @@ public final class CataloguePanel {
         if (state.hidden()) {
             state.toggleHidden();
         }
-        state.look(catalogue, item, mode);
+        state.look(catalogue(), item, mode);
     }
 
     // ---------------------------------------------------------------- fill and ghost
 
     /** What the fill switch does with the recipe shown, or null while none is. */
     private RecipeFill.@Nullable Fit fillFit() {
-        KnownRecipe recipe = showsRecipePanel() ? state.shownRecipe(catalogue) : null;
+        KnownRecipe recipe = showsRecipePanel() ? state.shownRecipe(catalogue()) : null;
         return recipe == null ? null : RecipeFill.fit(recipe, bench, fillContents);
     }
 
@@ -556,7 +537,7 @@ public final class CataloguePanel {
 
     /** The press of the fill switch: the server fills the grid, or the recipe shows as a ghost, or a note says why neither. */
     private void fillClicked(boolean maximum) {
-        KnownRecipe recipe = state.shownRecipe(catalogue);
+        KnownRecipe recipe = state.shownRecipe(catalogue());
         RecipeFill.Fit fit = fillFit();
         if (recipe == null || fit == null) {
             return;
@@ -732,16 +713,10 @@ public final class CataloguePanel {
             return true;
         }
         if (CatalogueKeys.FAVOURITE.matches(event)) {
-            toggleFavourite(item);
+            console.toggleFavourite(item);
             return true;
         }
         return false;
-    }
-
-    /** Stars {@code item}, or takes its star off: the favourite key and the recipe console's star. */
-    private void toggleFavourite(Item item) {
-        CatalogueFavourites.shared().toggle(player(), item);
-        favouritesCache = CatalogueFavourites.shared().items(player());
     }
 
     private boolean searchKey(KeyEvent event) {
@@ -828,9 +803,9 @@ public final class CataloguePanel {
         } else if (onShelf) {
             shelfClick(shelf, x, y);
         } else if (lookup != null) {
-            switch (console.controlAt(catalogue, now.card(), x, y)) {
+            switch (console.controlAt(now.card(), x, y)) {
                 case BACK -> state.back();
-                case STAR -> toggleFavourite(lookup.item());
+                case STAR -> console.toggleStar();
                 case SPEC -> SpecSheetHook.open(lookup.item());
                 case FILL -> fillClicked(event.hasShiftDown());
                 case TITLE -> state.clear();
@@ -881,7 +856,7 @@ public final class CataloguePanel {
             return true;
         }
         if (showsRecipePanel() && now.recipe().contains(x, y)) {
-            state.step(catalogue, direction);
+            state.step(catalogue(), direction);
             return true;
         }
         return false;
@@ -933,8 +908,8 @@ public final class CataloguePanel {
         if (shownSheet != null && sheetAt != null) {
             SpecSheetView.draw(graphics, font, sheetAt.layout(), shownSheet, sheetAt.plan(), mouseX, mouseY, true);
             // The screen's own tooltip step comes after this one and would draw the name of the slot under the sheet
-            // over it.
-            HoveredSlot.clear(screen);
+            // over it. Public through deepcharter.classtweaker.
+            screen.hoveredSlot = null;
         }
     }
 
@@ -1115,18 +1090,15 @@ public final class CataloguePanel {
     }
 
     private void drawCard(GuiGraphicsExtractor graphics, CatalogueLayout now, RecipeConsole.@Nullable Hit hit) {
-        CatalogueState.Lookup lookup = state.lookup();
         RecipeFill.Fit fit = fillFit();
         console.draw(
                 graphics,
-                catalogue,
                 now.recipe(),
                 now.recipeGlass(),
                 now.card(),
                 hit,
                 mouseX,
                 mouseY,
-                lookup != null && favourites().contains(lookup.item()),
                 true,
                 new RecipeConsole.FillSwitch(
                         fillLegend(),

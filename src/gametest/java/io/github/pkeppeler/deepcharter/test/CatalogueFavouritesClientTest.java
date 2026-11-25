@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.RecipeConsoleScreen;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
@@ -31,9 +32,16 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.client.renderer.texture.SpriteContents;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /**
  * Client GameTest for #1266 (c): favourites. With none starred the favourites row is still there, with a hint that names the key bound
@@ -63,8 +71,11 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
             try {
                 CatalogueScene.openInventory(context);
                 context.waitTicks(2); // tick-wait: the catalogue lists the fixtures it now knows
+                theStarSpritesResolve(context);
                 theEmptyRowShowsTheHint(context);
                 theKeyAndTheStarToggleAndPersist(context, player);
+                inUsesTheStarIsTheTitledItems(context, player);
+                theChestConsolesStarToggles(context, singleplayer, player);
             } finally {
                 unstarAll(context, player);
             }
@@ -150,6 +161,24 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
                 shelf.favourites().bottom() - shelf.favouritesY());
     }
 
+    /** Both star sprites are in the GUI atlas, 9 x 9: a missing one would be drawn as the missing texture and still be recorded. */
+    private static void theStarSpritesResolve(ClientGameTestContext context) {
+        for (Identifier id : List.of(CatalogueLook.STAR, CatalogueLook.STAR_HOLLOW)) {
+            context.runOnClient(client -> {
+                SpriteContents contents = client.getAtlasManager()
+                        .getAtlasOrThrow(AtlasIds.GUI)
+                        .getSprite(id)
+                        .contents();
+                require(
+                        !contents.name().equals(MissingTextureAtlasSprite.getLocation()),
+                        id + " is in the GUI atlas, not the missing sprite");
+                require(
+                        contents.width() == 9 && contents.height() == 9,
+                        id + " is 9 x 9, got " + contents.width() + " x " + contents.height());
+            });
+        }
+    }
+
     private static void theEmptyRowShowsTheHint(ClientGameTestContext context) {
         CataloguePanel panel = CatalogueScene.panel(context);
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
@@ -217,5 +246,78 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
         CatalogueScene.hover(context, first);
         RealInput.key(context, InputConstants.KEY_A, 0);
         require(onDisk(context, player).isEmpty(), "A on the favourite's own cell takes the star off");
+    }
+
+    /**
+     * In U the console is titled with what the shown recipe makes, not with the item looked up: the star is that item's, filled for it
+     * and toggling it.
+     */
+    private static void inUsesTheStarIsTheTitledItems(ClientGameTestContext context, UUID player) {
+        CataloguePanel panel = CatalogueScene.panel(context);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        CatalogueScene.parkCursor(context, layout);
+        context.runOnClient(
+                client -> panel.state().look(panel.catalogue(), Items.IRON_INGOT, CatalogueState.Mode.USES));
+        context.waitTicks(1);
+        Item titled = context.computeOnClient(
+                client -> Objects.requireNonNull(panel.state().shownRecipe(panel.catalogue()), "the iron has a use")
+                        .results()
+                        .getFirst()
+                        .getItem());
+        require(titled != Items.IRON_INGOT, "the use shown makes something other than iron, got " + titled);
+        Rect star = layout.card().star();
+        String title = new ItemStack(titled).getHoverName().getString().toUpperCase(Locale.ROOT);
+        List<String> titleLines = context.computeOnClient(client -> panel.titleLines());
+        require(String.join(" ", titleLines).equals(title), "the console is titled " + title + ", got " + titleLines);
+
+        // The iron starred: the item named beside the star is not, so the star stays hollow.
+        context.runOnClient(client -> CatalogueFavourites.shared().toggle(player, Items.IRON_INGOT));
+        try {
+            context.waitTicks(1);
+            require(
+                    starsIn(context, star).equals(List.of(CatalogueLook.STAR_HOLLOW)),
+                    "with the iron starred the star of " + title + " is hollow, drew " + starsIn(context, star));
+        } finally {
+            context.runOnClient(client -> CatalogueFavourites.shared().toggle(player, Items.IRON_INGOT));
+        }
+        CatalogueScene.hover(context, star);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(
+                onDisk(context, player).equals(List.of(titled)),
+                "a click on the star stars " + title + ", the item named beside it, got " + onDisk(context, player));
+        require(
+                starsIn(context, star).equals(List.of(CatalogueLook.STAR)),
+                "and the star is full, drew " + starsIn(context, star));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(onDisk(context, player).isEmpty(), "a second click takes the star off again");
+        context.setScreen(() -> null);
+    }
+
+    /** The recipe console a chest's R opens has the star too, and a click on it stars the item and takes the star off. */
+    private static void theChestConsolesStarToggles(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, UUID player) {
+        ContainerScreen chest = CatalogueScene.openChest(context, singleplayer, List.of(new ItemStack(DRILL)));
+        CatalogueScene.hover(
+                context,
+                CatalogueScene.slotCell(
+                        context, chest, slot -> !(slot.container instanceof Inventory) && slot.index == 0));
+        RealInput.key(context, InputConstants.KEY_R, 0);
+        ClientWait.until(
+                context, "the chest's recipe console", client -> client.gui.screen() instanceof RecipeConsoleScreen);
+        Screen console = screen(context);
+        Rect star = CatalogueScene.centredConsole(context, console).card().star();
+        require(
+                starsIn(context, star).equals(List.of(CatalogueLook.STAR_HOLLOW)),
+                "the chest's console shows a hollow star, drew " + starsIn(context, star));
+        CatalogueScene.hover(context, star);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(onDisk(context, player).equals(List.of(DRILL)), "a click on its star stars the drill head, on disk");
+        require(
+                starsIn(context, star).equals(List.of(CatalogueLook.STAR)),
+                "and the star is full, drew " + starsIn(context, star));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(onDisk(context, player).isEmpty(), "a second click takes the star off");
+        require(screen(context) == console, "the clicks on the star leave the console open");
+        context.setScreen(() -> null);
     }
 }

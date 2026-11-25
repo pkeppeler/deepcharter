@@ -34,8 +34,8 @@ import org.jspecify.annotations.Nullable;
 public final class DrawnText {
     private DrawnText() {}
 
-    /** A string the screen drew: its text, and the box it covers on the screen in GUI pixels. */
-    public record Drawn(String text, Box box) {
+    /** A string the screen drew: its text, the box it covers on the screen in GUI pixels, and its colour (ARGB). */
+    public record Drawn(String text, Box box, int color) {
         /** The text cut to 30 characters, for a failure message. */
         public String shortText() {
             return text.length() <= 30 ? text : text.substring(0, 30) + "...";
@@ -124,51 +124,51 @@ public final class DrawnText {
         @Override
         public void text(Font font, @Nullable String text, int x, int y, int color) {
             String drawn = Objects.requireNonNull(text, "text drawn without a string");
-            record(drawn, font.width(drawn), font, x, y);
+            record(drawn, font.width(drawn), font, x, y, color);
         }
 
         @Override
         public void text(Font font, @Nullable String text, int x, int y, int color, boolean shadow) {
             String drawn = Objects.requireNonNull(text, "text drawn without a string");
-            record(drawn, font.width(drawn), font, x, y);
+            record(drawn, font.width(drawn), font, x, y, color);
         }
 
         @Override
         public void text(Font font, FormattedCharSequence text, int x, int y, int color) {
-            record(plain(text), font.width(text), font, x, y);
+            record(plain(text), font.width(text), font, x, y, color);
         }
 
         @Override
         public void text(Font font, FormattedCharSequence text, int x, int y, int color, boolean shadow) {
-            record(plain(text), font.width(text), font, x, y);
+            record(plain(text), font.width(text), font, x, y, color);
         }
 
         @Override
         public void text(Font font, Component text, int x, int y, int color) {
-            record(text.getString(), font.width(text), font, x, y);
+            record(text.getString(), font.width(text), font, x, y, color);
         }
 
         @Override
         public void text(Font font, Component text, int x, int y, int color, boolean shadow) {
-            record(text.getString(), font.width(text), font, x, y);
+            record(text.getString(), font.width(text), font, x, y, color);
         }
 
         @Override
         public void centeredText(Font font, String text, int x, int y, int color) {
-            record(text, font.width(text), font, x - font.width(text) / 2, y);
+            record(text, font.width(text), font, x - font.width(text) / 2, y, color);
         }
 
         @Override
         public void centeredText(Font font, Component text, int x, int y, int color) {
-            record(text.getString(), font.width(text), font, x - font.width(text) / 2, y);
+            record(text.getString(), font.width(text), font, x - font.width(text) / 2, y, color);
         }
 
         @Override
         public void centeredText(Font font, FormattedCharSequence text, int x, int y, int color) {
-            record(plain(text), font.width(text), font, x - font.width(text) / 2, y);
+            record(plain(text), font.width(text), font, x - font.width(text) / 2, y, color);
         }
 
-        private void record(String text, int width, Font font, int x, int y) {
+        private void record(String text, int width, Font font, int x, int y, int color) {
             if (text.isBlank() || insideWidget()) {
                 return;
             }
@@ -184,9 +184,9 @@ public final class DrawnText {
                     && last.text().equals(text)
                     && Math.abs(last.box().x() - box.x()) <= GLOW_REACH
                     && Math.abs(last.box().y() - box.y()) <= GLOW_REACH) {
-                drawn.set(drawn.size() - 1, new Drawn(text, box));
+                drawn.set(drawn.size() - 1, new Drawn(text, box, color));
             } else {
-                drawn.add(new Drawn(text, box));
+                drawn.add(new Drawn(text, box, color));
             }
         }
 

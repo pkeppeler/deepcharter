@@ -17,18 +17,23 @@ import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
+import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
 
 /**
  * The recipe console: the recipes or uses {@link CatalogueState} has looked up, the back knob and the SPEC SHEET switch on its deck, the
- * fill switch under them, and a star at the end of the title for the item's favourite. {@link CataloguePanel} stands it beside the
- * inventory and {@link RecipeConsoleScreen} puts it on a screen of its own over a container that has no catalogue; both ask it where a
- * thing is and what a click does, so the two behave alike.
+ * fill switch under them, and a star at the end of the title for the favourite of the item it is titled with. {@link CataloguePanel}
+ * stands it beside the inventory and {@link RecipeConsoleScreen} puts it on a screen of its own over a container that has no catalogue;
+ * both ask it where a thing is and what a click does, and it keeps what the charter knows and the player's favourites for both, so the
+ * two behave alike.
  */
 final class RecipeConsole {
     /** An item under the mouse and the cell it is in. */
@@ -38,7 +43,7 @@ final class RecipeConsole {
     enum Control {
         /** The back knob: the recipe looked at before. */
         BACK,
-        /** The star: star the item looked up, or take its star off. */
+        /** The star: star the item the console is titled with, or take its star off. */
         STAR,
         /** The SPEC SHEET switch. */
         SPEC,
@@ -54,34 +59,93 @@ final class RecipeConsole {
 
     private final CatalogueState state;
     private final Font font;
+    private PartsCatalogue catalogue = PartsCatalogue.of(List.of(), ContextMap.EMPTY);
+    /** The recipe book's collections {@link #catalogue} was built from: the book makes a new list when it changes. */
+    private @Nullable List<RecipeCollection> builtFrom;
+
+    private List<Item> favourites = List.of();
 
     RecipeConsole(CatalogueState state, Font font) {
         this.state = state;
         this.font = font;
     }
 
-    /** The name the console is titled with: what the shown recipe makes, or the item looked up, in capitals; null while nothing is. */
-    private @Nullable String title(PartsCatalogue catalogue) {
+    /** Builds what the charter knows again when the recipe book changed, and reads the favourites again. Once a tick. */
+    void refresh() {
+        Minecraft client = Minecraft.getInstance();
+        LocalPlayer player = client.player;
+        if (player == null || client.level == null) {
+            return;
+        }
+        List<RecipeCollection> collections = player.getRecipeBook().getCollections();
+        if (collections != builtFrom) {
+            builtFrom = collections;
+            catalogue = PartsCatalogue.of(player.getRecipeBook(), SlotDisplayContext.fromLevel(client.level));
+        }
+        favourites = CatalogueFavourites.shared().items(player.getUUID());
+    }
+
+    /** What the charter knows, as of the last {@link #refresh}. */
+    PartsCatalogue catalogue() {
+        return catalogue;
+    }
+
+    /** The player's favourites, as of the last {@link #refresh} or star. */
+    List<Item> favourites() {
+        return favourites;
+    }
+
+    /** Stars {@code item}, or takes its star off: the favourite key on an item, and the star on what the console is titled with. */
+    void toggleFavourite(Item item) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            CatalogueFavourites.shared().toggle(player.getUUID(), item);
+            favourites = CatalogueFavourites.shared().items(player.getUUID());
+        }
+    }
+
+    /** A click on the star: stars what the console is titled with, or takes its star off. */
+    void toggleStar() {
+        Item titled = titled();
+        if (titled != null) {
+            toggleFavourite(titled);
+        }
+    }
+
+    /**
+     * The item the console is titled with, whose favourite the star shows and toggles: what the shown recipe makes, or the item looked
+     * up while no recipe is shown; null while nothing is looked up. In U the two differ: the uses of iron are titled with what they make.
+     */
+    @Nullable
+    Item titled() {
+        ItemStack titled = titledStack();
+        return titled == null ? null : titled.getItem();
+    }
+
+    /** {@link #titled} as a stack, whose name the title shows: the shown recipe's own result, which may carry a name of its own. */
+    private @Nullable ItemStack titledStack() {
         CatalogueState.Lookup lookup = state.lookup();
         if (lookup == null) {
             return null;
         }
         KnownRecipe recipe = state.shownRecipe(catalogue);
-        ItemStack named = recipe != null ? recipe.results().getFirst() : new ItemStack(lookup.item());
-        return named.getHoverName().getString().toUpperCase(Locale.ROOT);
+        return recipe != null ? recipe.results().getFirst() : new ItemStack(lookup.item());
     }
 
-    /** The lines the title draws on {@code base}, short of the star; none while nothing is looked up. */
-    List<String> titleLines(PartsCatalogue catalogue, Card base) {
-        String title = title(catalogue);
-        return title == null
+    /** The lines the title draws on {@code base}, short of the star, in capitals; none while nothing is looked up. */
+    List<String> titleLines(Card base) {
+        ItemStack titled = titledStack();
+        return titled == null
                 ? List.of()
-                : TextWrap.lines(text -> termWidth(font, text), title, base.titleRight() - base.left());
+                : TextWrap.lines(
+                        text -> termWidth(font, text),
+                        titled.getHoverName().getString().toUpperCase(Locale.ROOT),
+                        base.titleRight() - base.left());
     }
 
     /** {@code base} moved down by each line the title takes beyond the first. */
-    Card card(PartsCatalogue catalogue, Card base) {
-        int lines = titleLines(catalogue, base).size();
+    Card card(Card base) {
+        int lines = titleLines(base).size();
         return lines <= 1
                 ? base
                 : base.lowered(
@@ -89,13 +153,13 @@ final class RecipeConsole {
     }
 
     /** Each item of the shown recipe and its cell: the grid, the result and the have/need rows; none while no recipe is shown. */
-    List<Hit> hits(PartsCatalogue catalogue, Card base) {
+    List<Hit> hits(Card base) {
         KnownRecipe recipe = state.shownRecipe(catalogue);
         if (recipe == null) {
             return List.of();
         }
         CatalogueLook look = CatalogueLook.current();
-        Card card = card(catalogue, base);
+        Card card = card(base);
         List<Hit> hits = new ArrayList<>();
         for (int i = 0; i < recipe.cells().size(); i++) {
             ItemStack stack = cycled(recipe.cells().get(i));
@@ -115,8 +179,8 @@ final class RecipeConsole {
 
     /** The item of the shown recipe at ({@code x}, {@code y}), or null. */
     @Nullable
-    Hit hitAt(PartsCatalogue catalogue, Card base, double x, double y) {
-        for (Hit hit : hits(catalogue, base)) {
+    Hit hitAt(Card base, double x, double y) {
+        for (Hit hit : hits(base)) {
             if (hit.cell().contains(x, y)) {
                 return hit;
             }
@@ -125,7 +189,7 @@ final class RecipeConsole {
     }
 
     /** The control at ({@code x}, {@code y}) on a console laid out as {@code base}. */
-    Control controlAt(PartsCatalogue catalogue, Card base, double x, double y) {
+    Control controlAt(Card base, double x, double y) {
         if (state.lookup() == null) {
             return Control.NONE;
         }
@@ -133,7 +197,7 @@ final class RecipeConsole {
                 base.left(),
                 base.titleY(),
                 base.right() - base.left(),
-                titleLines(catalogue, base).size() * font.lineHeight);
+                titleLines(base).size() * font.lineHeight);
         if (base.back().contains(x, y)) {
             return Control.BACK;
         } else if (base.star().contains(x, y)) {
@@ -150,19 +214,16 @@ final class RecipeConsole {
 
     /**
      * Draws the console in {@code casing} with its glass, laid out as {@code base}, with {@code hit} under the mouse at ({@code mouseX},
-     * {@code mouseY}). {@code starred} is whether the item looked up is a favourite, {@code specActive} whether the SPEC SHEET switch does
-     * anything here.
+     * {@code mouseY}). {@code specActive} is whether the SPEC SHEET switch does anything here.
      */
     void draw(
             GuiGraphicsExtractor graphics,
-            PartsCatalogue catalogue,
             Rect casing,
             Rect glass,
             Card base,
             @Nullable Hit hit,
             int mouseX,
             int mouseY,
-            boolean starred,
             boolean specActive,
             FillSwitch fill) {
         CatalogueState.Lookup lookup = state.lookup();
@@ -172,14 +233,16 @@ final class RecipeConsole {
         CatalogueLook look = CatalogueLook.current();
         CrtTuning crt = CrtTuning.current();
         PanelLook panel = PanelLook.current();
-        Card card = card(catalogue, base);
+        Card card = card(base);
         KnownRecipe recipe = state.shownRecipe(catalogue);
+        Item titled = titled();
+        boolean starred = titled != null && favourites.contains(titled);
         int width = card.right() - card.left();
         graphics.nextStratum();
         CatalogueHardware.body(graphics, look, casing, glass, List.of());
         graphics.nextStratum();
 
-        CatalogueHardware.title(graphics, font, titleLines(catalogue, base), card.left(), card.titleY(), card.right());
+        CatalogueHardware.title(graphics, font, titleLines(base), card.left(), card.titleY(), card.right());
         Rect star = base.star();
         int size = Math.min(star.width(), star.height());
         CatalogueHardware.star(
@@ -194,7 +257,7 @@ final class RecipeConsole {
             dim(graphics, font, fit(font, none, width), card.left(), card.stationY());
         } else {
             dim(graphics, font, fit(font, recipe.station(), width), card.left(), card.stationY());
-            drawRecipe(graphics, catalogue, card, look, recipe, hit, crt);
+            drawRecipe(graphics, card, look, recipe, hit, crt);
         }
 
         graphics.nextStratum();
@@ -237,7 +300,6 @@ final class RecipeConsole {
 
     private void drawRecipe(
             GuiGraphicsExtractor graphics,
-            PartsCatalogue catalogue,
             Card card,
             CatalogueLook look,
             KnownRecipe recipe,

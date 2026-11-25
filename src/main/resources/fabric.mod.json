@@ -20,6 +20,7 @@
 			"io.github.pkeppeler.deepcharter.client.DeepCharterClient"
 		]
 	},
+	"accessWidener": "deepcharter.classtweaker",
 	"mixins": [
 		"deepcharter.mixins.json",
 		"deepcharter.pod.mixins.json",

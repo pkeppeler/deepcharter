@@ -155,9 +155,15 @@ public final class CatalogueState {
         }
     }
 
-    /** Goes back to the lookup left last, at the recipe it showed; returns whether there was one. */
+    /**
+     * Goes back to the lookup left last, at the recipe it showed; returns whether there was one. A page of the item and mode shown now
+     * (put away, then looked up again) is passed over and dropped: going back to it would change nothing.
+     */
     public boolean back() {
         Lookup previous = history.pollFirst();
+        while (previous != null && shownNow(previous)) {
+            previous = history.pollFirst();
+        }
         if (previous == null) {
             return false;
         }
@@ -167,7 +173,13 @@ public final class CatalogueState {
 
     /** Whether {@link #back} has a lookup to go back to. */
     public boolean canGoBack() {
-        return !history.isEmpty();
+        return history.stream().anyMatch(page -> !shownNow(page));
+    }
+
+    /** Whether {@code page} is of the item and mode looked up now. */
+    private boolean shownNow(Lookup page) {
+        Lookup now = lookup;
+        return now != null && now.item() == page.item() && now.mode() == page.mode();
     }
 
     /** Shows the recipe {@code delta} on from the one shown, wrapping round. */

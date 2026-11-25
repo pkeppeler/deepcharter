@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
 import net.minecraft.client.input.KeyEvent;
@@ -19,14 +20,17 @@ import org.jspecify.annotations.Nullable;
  * R and U over a slot of a container screen with no catalogue beside it: a chest, a barrel, the creative inventory, a modded container.
  * An item the charter knows a recipe or a use of opens the {@link RecipeConsoleScreen} over the container. One it knows nothing of opens
  * nothing and moves nothing (the lookup and its history stay as they were); a short note over the cursor says so, so no unknown recipe
- * is ever shown and the press is not lost in silence. A text field that has the keyboard (the creative search, an anvil's name) keeps
- * its R and U.
+ * is ever shown and the press is not lost in silence. The note is about that slot's item and goes when the cursor leaves the slot. A text
+ * field that has the keyboard (the creative search, an anvil's name) keeps its R and U, and while the catalogue is hidden they do nothing
+ * here either, as over the inventory's slots.
  */
 final class SlotLookup {
     private final AbstractContainerScreen<?> screen;
     private int ticks;
     /** What the note over the cursor says, or null while there is none. */
     private @Nullable String note;
+    /** The slot the note is about. */
+    private @Nullable Slot noteSlot;
 
     private int noteEndsAt;
 
@@ -46,10 +50,14 @@ final class SlotLookup {
     /** A key, before the screen sees it. Returns whether it was R or U over an item, which is then this class's. */
     private boolean keyPressed(KeyEvent event) {
         boolean recipes = CatalogueKeys.RECIPES.matches(event);
-        if ((!recipes && !CatalogueKeys.USES.matches(event)) || screen.isInputCaptured()) {
+        if ((!recipes && !CatalogueKeys.USES.matches(event))
+                || screen.isInputCaptured()
+                || screen.getFocused() instanceof EditBox
+                || CatalogueScreens.state().hidden()) {
             return false;
         }
-        Slot slot = HoveredSlot.of(screen);
+        // The screen sets it each frame from the mouse; it is public through deepcharter.classtweaker.
+        Slot slot = screen.hoveredSlot;
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
         if (slot == null || !slot.hasItem() || player == null || client.level == null) {
@@ -61,6 +69,7 @@ final class SlotLookup {
         List<KnownRecipe> found = recipes ? known.recipesFor(item) : known.usesOf(item);
         if (found.isEmpty()) {
             note = RecipeConsole.text(recipes ? "none.recipes" : "none.uses");
+            noteSlot = slot;
             noteEndsAt = ticks + CataloguePanel.STATUS_TICKS;
             return true;
         }
@@ -75,6 +84,7 @@ final class SlotLookup {
         ticks++;
         if (note != null && ticks >= noteEndsAt) {
             note = null;
+            noteSlot = null;
         }
     }
 
@@ -84,6 +94,11 @@ final class SlotLookup {
      * cursor only when there is no room above.
      */
     private void extract(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        if (screen.hoveredSlot != noteSlot) {
+            // The cursor left the item the note is about.
+            note = null;
+            noteSlot = null;
+        }
         String shown = note;
         if (shown == null) {
             return;
