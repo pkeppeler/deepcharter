@@ -74,6 +74,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - A visual-legibility test measures at the on-screen cell size of the smallest shipped window, not at the unscaled tile.
 - A test that restates a registry (a hand-copied list of names) is not a test; read the registry.
 - A render-path feature with its own update loop (`FloodlightBeams`) needs a client GameTest driving it, not only an evidence scenario.
+- A client-only part with logic (a finder, a picker, a ticker) keeps that logic in a class in `src/main` that takes a `LevelReader`, so a server GameTest runs it. The client holds only the wiring, and a client GameTest covers the wiring (#878: `HornSearch`, `SpotPicker`).
 - A change to shared client visuals runs every client test class that reads them, not only its own (#630 missed `TextureLayersClientTest`).
 - A control assertion must be shown to fail without the feature in every scenario it runs; a case that passes by closeness to a dark control is a log row, not an assertion.
 - A cadence or cap test drives the production tick path (the look, the roll, the count, the cap); a test that samples a helper the tick calls, or asserts arithmetic on tuning constants, is a log of the numbers and not a test of the cadence (`DrifterSpawnTest.theTickPlacesDriftersByPodsUpToTheZoneCap`).
