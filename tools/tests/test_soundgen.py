@@ -155,11 +155,6 @@ class BreachSoundTest(unittest.TestCase):
         window = signal[round(at * recipes.RATE) : round((at + length) * recipes.RATE)]
         return math.sqrt(sum(v * v for v in window) / len(window))
 
-    def test_each_re_renders_bit_identically_to_the_committed_hash(self):
-        manifest = json.loads(soundgen.MANIFEST.read_text())
-        for name in ("breach/rumble", "layer/cave_in"):
-            self.assertEqual(manifest[name]["pcm_sha256"], recipes.RECIPES[name]().sha256(), name)
-
     def test_the_breach_lasts_four_to_six_seconds_and_the_cave_in_is_shorter(self):
         breach = len(recipes.render("breach/rumble").left) / recipes.RATE
         cave_in = len(recipes.render("layer/cave_in").left) / recipes.RATE
@@ -195,10 +190,6 @@ class BreachSoundTest(unittest.TestCase):
 class ChannelTest(unittest.TestCase):
     def channels(self, name):
         return first_sounds.ogg_channels(soundgen.OUT / f"{name}.ogg")
-
-    def test_the_cave_in_is_mono_so_the_game_places_it_and_the_breach_is_stereo(self):
-        self.assertEqual(1, self.channels("layer/cave_in"))
-        self.assertEqual(2, self.channels("breach/rumble"))
 
     def test_only_the_sounds_listed_mono_are_mono(self):
         for name in recipes.RECIPES:

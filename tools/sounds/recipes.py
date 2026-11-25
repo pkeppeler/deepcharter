@@ -433,12 +433,17 @@ def _soft(count, attack):
     return [min(1.0, i / head) for i in range(count)]
 
 
+def _hit(signal, tau, attack):
+    """`signal` dying away with time constant `tau` after a soft start."""
+    return dsp.times(dsp.times(signal, dsp.decay(len(signal), tau)), _soft(len(signal), attack))
+
+
 def _stone(rng, freq, tau):
     """One stone: a dull ringing that dies at once, a little grit in it."""
     count = dsp.seconds(6 * tau)
     grit = dsp.filt(dsp.noise(rng, count), "lp", 2200, 0.7)
     body = [a + 0.5 * b for a, b in zip(dsp.sine(count, freq), grit)]
-    return dsp.times(dsp.times(body, dsp.decay(count, tau)), _soft(count, 0.002))
+    return _hit(body, tau, 0.002)
 
 
 def _stones(rng, out, times, band, tau, gain):
@@ -453,7 +458,7 @@ def _sub(count, start, end, tau, attack):
     """A body blow felt more than heard: a sine sliding from `start` to `end` Hz as it dies, with a soft start."""
     pitch = [end + (start - end) * math.exp(-i / RATE / 0.25) for i in range(count)]
     body = [math.sin(p) for p in dsp.phase_of(pitch)]
-    return dsp.times(dsp.times(body, dsp.decay(count, tau)), _soft(count, attack))
+    return _hit(body, tau, attack)
 
 
 def breach_rumble():
@@ -478,11 +483,11 @@ def breach_rumble():
     give = 1.05
     _put(mix, give, _sub(dsp.seconds(2.2), 62, 26, 0.45, 0.012), 1.0)
     thud = dsp.filt(dsp.noise(rng, dsp.seconds(0.9)), "lp", 120, 0.7)
-    _put(mix, give, dsp.times(dsp.times(thud, dsp.decay(len(thud), 0.18)), _soft(len(thud), 0.006)), 5.0)
+    _put(mix, give, _hit(thud, 0.18, 0.006), 5.0)
     _stones(rng, mix, [give + 0.03 + 0.5 * rng.random() ** 1.5 for _ in range(14)], (500, 1400), 0.012, lambda at: 0.28)
     cave = dsp.seconds(3.4)
     dark = dsp.filt(dsp.noise(rng, cave), "lp", dsp.ramp(cave, 220, 70), 0.7)
-    _put(mix, 1.15, dsp.times(dsp.times(dark, dsp.decay(cave, 1.3)), _soft(cave, 0.3)), 4.0)
+    _put(mix, 1.15, _hit(dark, 1.3, 0.3), 4.0)
     _stones(rng, mix, [1.5 + 2.9 * rng.random() ** 1.5 for _ in range(55)], (700, 2600), 0.02, lambda at: 0.14 * (1 - (at - 1.5) / 3.2))
     for ratio, gain, tau in ((1.0, 1.0, 0.9), (2.76, 0.5, 0.5), (5.4, 0.3, 0.25)):
         ping = dsp.times(dsp.sine(dsp.seconds(1.8), 640 * ratio), dsp.decay(dsp.seconds(1.8), tau))
@@ -505,12 +510,12 @@ def cave_in():
     mix = [0.0] * dsp.seconds(dry)
     _put(mix, 0.0, _sub(dsp.seconds(1.6), 70, 30, 0.35, 0.01), 1.0)
     thud = dsp.filt(dsp.noise(rng, dsp.seconds(0.6)), "lp", 200, 0.7)
-    _put(mix, 0.0, dsp.times(dsp.times(thud, dsp.decay(len(thud), 0.15)), _soft(len(thud), 0.008)), 4.0)
+    _put(mix, 0.0, _hit(thud, 0.15, 0.008), 4.0)
     _put(mix, 0.55, _sub(dsp.seconds(1.2), 55, 28, 0.3, 0.01), 0.5)
     _put(mix, 0.95, _sub(dsp.seconds(1.0), 48, 26, 0.25, 0.01), 0.35)
     count = dsp.seconds(2.2)
     rumble = dsp.filt(dsp.noise(rng, count), "lp", dsp.ramp(count, 260, 100), 0.7)
-    _put(mix, 0.05, dsp.times(dsp.times(rumble, dsp.decay(count, 0.8)), _soft(count, 0.1)), 3.0)
+    _put(mix, 0.05, _hit(rumble, 0.8, 0.1), 3.0)
     _stones(rng, mix, [0.04 + 1.9 * rng.random() ** 1.6 for _ in range(170)], (180, 1400), 0.03, lambda at: 0.4 * (1 - at / 2.2))
     _stones(rng, mix, [0.05 + 0.9 * rng.random() for _ in range(10)], (120, 400), 0.08, lambda at: 0.6)
     _stones(rng, mix, [1.3 + 1.2 * rng.random() for _ in range(40)], (600, 2400), 0.02, lambda at: 0.1 * (1 - (at - 1.3) / 1.3))
