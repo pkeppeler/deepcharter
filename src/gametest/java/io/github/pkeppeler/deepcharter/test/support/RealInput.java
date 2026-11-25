@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 
@@ -31,14 +30,22 @@ public final class RealInput {
         context.waitTicks(1);
     }
 
-    /** A key that also produces {@code character}: the key press, then the character the window sends after it. */
-    public static void type(ClientGameTestContext context, int key, char character) {
-        context.runOnClient(client -> {
-            long window = client.getWindow().handle();
-            client.keyboardHandler.keyPress(window, InputConstants.PRESS, new KeyEvent(key, 0, 0));
-            client.keyboardHandler.charTyped(window, new CharacterEvent(character));
-            client.keyboardHandler.keyPress(window, InputConstants.RELEASE, new KeyEvent(key, 0, 0));
-        });
+    /**
+     * Types {@code text} one letter, digit or space at a time, the way SDL sends it: each key goes down, then {@code
+     * KeyboardHandler.textInput} delivers its text (it calls {@code textEditing}, then {@code charTyped} per code point), then the key
+     * goes up. The key code of such a character is its upper-case ASCII value.
+     */
+    public static void type(ClientGameTestContext context, String text) {
+        for (int i = 0; i < text.length(); i++) {
+            char character = text.charAt(i);
+            int key = Character.toUpperCase(character);
+            context.runOnClient(client -> {
+                long window = client.getWindow().handle();
+                client.keyboardHandler.keyPress(window, InputConstants.PRESS, new KeyEvent(key, 0, 0));
+                client.keyboardHandler.textInput(window, String.valueOf(character));
+                client.keyboardHandler.keyPress(window, InputConstants.RELEASE, new KeyEvent(key, 0, 0));
+            });
+        }
         context.waitTicks(1);
     }
 }

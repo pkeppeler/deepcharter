@@ -986,10 +986,20 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(
                 left.item() == DRILL && left.mode() == CatalogueState.Mode.RECIPES,
                 "a real left click " + where + " opens the recipes of the item, got " + left);
+        // Another item, one on the first page (the crafting table lists copper past it): the right click is not the
+        // left's cell.
+        Item other = context.computeOnClient(client -> panel.shownItems().stream()
+                .filter(item -> item != DRILL)
+                .findFirst()
+                .orElseThrow());
+        CatalogueScene.hover(
+                context,
+                CatalogueScene.gridCell(
+                        CatalogueScene.layout(context, panel), CatalogueScene.indexOf(context, panel, other)));
         RealInput.click(context, InputConstants.MOUSE_BUTTON_RIGHT);
         CatalogueState.Lookup right = context.computeOnClient(client -> lookedAt(panel.state()));
         require(
-                right.item() == DRILL && right.mode() == CatalogueState.Mode.USES,
+                right.item() == other && right.mode() == CatalogueState.Mode.USES,
                 "a real right click " + where + " opens the uses of the item, got " + right);
     }
 
@@ -1153,7 +1163,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(1);
         require(context.computeOnClient(client -> panel.searchFocused()), "a click on the search field focuses it");
-        context.getInput().typeChars("rotor");
+        RealInput.type(context, "rotor");
         context.waitTicks(1);
         require(context.computeOnClient(client -> panel.state().query()).equals("rotor"), "typing fills the search");
         require(

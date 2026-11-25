@@ -12,4 +12,13 @@ class Allowed {
 	boolean i = list.size() == 0;
 	boolean j = event.modifiers() == 1;
 	Object k = new MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0);
+	// input-literal: a pre-SDL replay file stores button 0
+	boolean l = event.button() == 0;
+	boolean m = ready
+			&& event.button() == 0 // input-literal: the same file, marker inside the wrapped statement
+			&& other;
+	boolean n = ready
+			&& event.button()
+					== InputConstants.MOUSE_BUTTON_LEFT;
+	String o = "// input-literal: in a string, no marker"; boolean p = event.button() == InputConstants.MOUSE_BUTTON_LEFT;
 }
