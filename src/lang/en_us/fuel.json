@@ -2,7 +2,7 @@
   "deepcharter.fuel.first_soot": "Soot is fouling the engine: it loses speed and burns more fuel until the repair station services it. Pump fuel burns clean.",
   "deepcharter.fuel.launch_refused": "Clogged. Repair station: service it, or scrape the flue (free).",
   "hud.deepcharter.pod.soot": "ENGINE SOOTED %s L: %s%% SLOWER, %s%% MORE FUEL",
-  "hud.deepcharter.pod.soot_limp": "ENGINE CLOGGED: LIMP MODE. SERVICE AT THE COLONY",
+  "hud.deepcharter.pod.soot_limp": "ENGINE CLOGGED: LIMP MODE",
   "item.deepcharter.biofuel": "Biofuel",
   "item.deepcharter.reserve_tank": "Reserve Tank",
   "message.deepcharter.fuel.bad_amount": "The pump needs a whole number of litres",

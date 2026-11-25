@@ -58,7 +58,8 @@ public final class PodDrill {
             return;
         }
         if (EngineSoot.launchRefused(pod)) {
-            // A pod in limp mode does not leave the colony: it is serviced at the repair station first (#1280).
+            // A pod in limp mode does not leave a colony whose repair station works: it is serviced there first
+            // (#1280).
             if (pod.getControllingPassenger() instanceof ServerPlayer pilot && pod.tickCount % 40 == 0) {
                 pilot.sendOverlayMessage(Component.translatable("deepcharter.fuel.launch_refused"));
             }

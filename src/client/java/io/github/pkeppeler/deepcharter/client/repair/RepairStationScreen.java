@@ -174,7 +174,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                         RepairStation.SERVICE_ENGINE,
                         new CompoundTag(),
                         false)));
-        if (EngineSoot.launchRefused(pod)) {
+        if (EngineSoot.limpAtColony(pod)) {
             rows.add(FlueScrape.secondsLeft(pod)
                     .map(seconds -> new Row(
                             Component.translatable("screen.deepcharter.repair.scraping", seconds),

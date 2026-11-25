@@ -42,7 +42,8 @@ import org.slf4j.LoggerFactory;
  * <p>The trip is {@link EarlyRunModel}'s: its ore, litres and seconds. The engine is the real one: {@link EngineSoot}
  * soots as the litres burn, its loss of output and burn are applied, and when it is in limp mode at the colony the
  * player pays the real service and clears it, until the engine has forced three services. Nothing is forced that the
- * player would not do.
+ * player would not do. A coal pilot who never pays, and only scrapes the flue for free, is measured too: the scrape's
+ * wait at the station is its price.
  *
  * <p>The effort has no invented constants. It is derived from the game's own data: the seconds to fell a fungal stalk
  * (the block's destroy time with bare hands, measured here), the cook times of the real recipes (a furnace for
@@ -115,8 +116,19 @@ public class FuelTripEconomyTest {
                 .orElse(0);
     }
 
+    /**
+     * Burns the trip over and over until the engine has forced {@link #SERVICES} visits to the station: a paid service
+     * each, or, when {@code scrapeOnly}, the free flue scrape and its wait.
+     */
     private static Result trips(
-            PodEntity pod, String name, Run run, double seconds, @Nullable Item fuel, Prep prep, boolean waiting) {
+            PodEntity pod,
+            String name,
+            Run run,
+            double seconds,
+            @Nullable Item fuel,
+            Prep prep,
+            boolean waiting,
+            boolean scrapeOnly) {
         EngineSoot.burned(pod, 1_000_000f);
         EngineSoot.flush(pod);
         EngineSoot.service(pod);
@@ -131,9 +143,15 @@ public class FuelTripEconomyTest {
         double itemsBurned = 0;
         while (services < SERVICES && trips < (fuel == null ? 200 : 5000)) {
             if (EngineSoot.isLimp(pod)) {
-                // At the colony the pod cannot launch in limp mode: the player pays the service and clears it.
-                cash += EngineSoot.serviceCost(pod);
-                EngineSoot.service(pod);
+                // At the colony the pod cannot launch in limp mode: the player pays the service and clears it, or
+                // scrapes the flue for free and waits.
+                if (scrapeOnly) {
+                    minutes += tuning.soot().scrapeTicks() / 20.0 / 60;
+                    EngineSoot.scrape(pod);
+                } else {
+                    cash += EngineSoot.serviceCost(pod);
+                    EngineSoot.service(pod);
+                }
                 services++;
                 continue;
             }
@@ -181,11 +199,12 @@ public class FuelTripEconomyTest {
         try {
             for (boolean waiting : new boolean[] {false, true}) {
                 String bound = waiting ? "waiting for each cook" : "hands-on only";
-                Result pump = trips(pod, "pump", run, seconds, null, charcoal, waiting);
-                Result bio = trips(pod, "biofuel", run, seconds, FuelRegistry.BIOFUEL, biofuel, waiting);
-                Result coalR = trips(pod, "coal", run, seconds, Items.COAL, coal, waiting);
-                Result charR = trips(pod, "charcoal", run, seconds, Items.CHARCOAL, charcoal, waiting);
-                for (Result r : List.of(pump, bio, coalR, charR)) {
+                Result pump = trips(pod, "pump", run, seconds, null, charcoal, waiting, false);
+                Result bio = trips(pod, "biofuel", run, seconds, FuelRegistry.BIOFUEL, biofuel, waiting, false);
+                Result coalR = trips(pod, "coal", run, seconds, Items.COAL, coal, waiting, false);
+                Result charR = trips(pod, "charcoal", run, seconds, Items.CHARCOAL, charcoal, waiting, false);
+                Result coalScraped = trips(pod, "coal, scrape only", run, seconds, Items.COAL, coal, waiting, true);
+                for (Result r : List.of(pump, bio, coalR, charR, coalScraped)) {
                     LOGGER.info(
                             "[fuel-economy] {} ({}): {}: {} trips, {} services, {} L burned, ${} cash = ${} a litre, net ${} a trip, ${} a minute",
                             label,
@@ -237,16 +256,37 @@ public class FuelTripEconomyTest {
                             100 * (PUMP_MARGIN_OVER_COAL - 1),
                             line);
                 }
+                // The free scrape is the way out for a broke pilot, never a strategy: a coal pilot who only scrapes
+                // earns less a minute than one who services, and less than the pump.
+                LOGGER.info(
+                        "[fuel-economy] {} ({}): coal a minute, scrape only {}, serviced {}, pump {}",
+                        label,
+                        bound,
+                        coalScraped.perMinute(),
+                        coalR.perMinute(),
+                        pump.perMinute());
                 expect(
                         helper,
-                        charR.services() == SERVICES && coalR.services() == SERVICES && bio.services() == SERVICES,
+                        coalScraped.perMinute() < coalR.perMinute() && coalScraped.perMinute() < pump.perMinute(),
+                        "a coal pilot who only scrapes should earn less a minute (%s) than one who services (%s) and"
+                                + " than the pump (%s): %s",
+                        coalScraped.perMinute(),
+                        coalR.perMinute(),
+                        pump.perMinute(),
+                        line);
+                expect(
+                        helper,
+                        charR.services() == SERVICES
+                                && coalR.services() == SERVICES
+                                && bio.services() == SERVICES
+                                && coalScraped.services() == SERVICES,
                         "every solid fuel should have reached the limit and been serviced %s times: %s",
                         SERVICES,
                         line);
             }
             // The break-even: the most prep time per biofuel item at which a biofuel trip would still match the pump.
-            Result pumpTrip = trips(pod, "pump", run, seconds, null, biofuel, false);
-            Result bioFree = trips(pod, "biofuel", run, seconds, FuelRegistry.BIOFUEL, new Prep(0, 0), false);
+            Result pumpTrip = trips(pod, "pump", run, seconds, null, biofuel, false, false);
+            Result bioFree = trips(pod, "biofuel", run, seconds, FuelRegistry.BIOFUEL, new Prep(0, 0), false, false);
             double breakEven = breakEvenPrep(pumpTrip, bioFree, FuelRegistry.BIOFUEL);
             LOGGER.info(
                     "[fuel-economy] {}: biofuel matches pump a minute only if an item takes {} s or less to prepare; derived hands-on {} s, waiting {} s",

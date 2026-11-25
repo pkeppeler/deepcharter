@@ -45,6 +45,7 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>The station needs a repaired chain, a world-global record swapped only for one tick ({@link WorldData}), so each
  * test presses its buttons on its first tick and then only watches the pod's own ticks, which read no such record.
+ * Whether the pod is held reads it, so a later check swaps it in again for that tick ({@link #held}).
  */
 public class FlueScrapeTest {
     private static final int TICKS = FuelTuning.DEFAULT.soot().scrapeTicks();
@@ -83,6 +84,12 @@ public class FlueScrapeTest {
                 account == 0 || Charters.deposit(server, charter, account).isEmpty(),
                 "funding the account should succeed");
         Scene scene = new Scene(station, pilot, charter, pod);
+        WorldData.with(server, RepairState.TYPE, repaired(helper), () -> presses.accept(scene));
+        return scene;
+    }
+
+    /** A fresh repair state with the chain repaired up to the repair station. */
+    private static RepairState repaired(GameTestHelper helper) {
         RepairState fresh = new RepairState();
         for (TerminalType type : List.of(
                 TerminalTypes.FUEL_PUMP,
@@ -95,8 +102,18 @@ public class FlueScrapeTest {
                 });
             }
         }
-        WorldData.with(server, RepairState.TYPE, fresh, () -> presses.accept(scene));
-        return scene;
+        return fresh;
+    }
+
+    /** Whether the pod is held at the colony, asked within this tick with the station repaired. */
+    private static boolean held(GameTestHelper helper, PodEntity pod) {
+        boolean[] held = new boolean[1];
+        WorldData.with(
+                helper.getLevel().getServer(),
+                RepairState.TYPE,
+                repaired(helper),
+                () -> held[0] = EngineSoot.launchRefused(pod));
+        return held[0];
     }
 
     private static Optional<TerminalRefusal> press(Scene scene, Identifier action) {
@@ -138,7 +155,7 @@ public class FlueScrapeTest {
         helper.runAfterDelay(TICKS - 20, () -> {
             expect(helper, FlueScrape.running(pod), "a second before the end the scrape still runs");
             expect(helper, EngineSoot.soot(pod) == COAL_LIMP, "the scrape cleared early: %s L", EngineSoot.soot(pod));
-            expect(helper, EngineSoot.launchRefused(pod), "the pod launched before the scrape ended");
+            expect(helper, held(helper, pod), "the pod launched before the scrape ended");
         });
         helper.runAfterDelay(TICKS + 20, () -> {
             expect(helper, !FlueScrape.running(pod), "the scrape should have ended");
@@ -232,7 +249,7 @@ public class FlueScrapeTest {
                         EngineSoot.soot(scene.pod()) == COAL_LIMP,
                         "a scrape cut short should clear nothing, left %s L",
                         EngineSoot.soot(scene.pod()));
-                expect(helper, EngineSoot.launchRefused(scene.pod()), "the pod is still held");
+                expect(helper, held(helper, scene.pod()), "the pod is still held");
                 helper.succeed();
             } finally {
                 scene.pilot().leave();

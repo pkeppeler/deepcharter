@@ -149,7 +149,7 @@ public final class RepairStation {
             return refused;
         }
         PodEntity pod = parked.orElseThrow();
-        if (!EngineSoot.launchRefused(pod)) {
+        if (!EngineSoot.limpAtColony(pod)) {
             return Consumables.refusal("scrape_not_limp");
         }
         if (FlueScrape.running(pod)) {

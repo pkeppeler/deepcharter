@@ -25,8 +25,8 @@ import net.minecraft.server.level.ServerPlayer;
 
 /**
  * The free flue scrape (#1280): the repair station's way out of limp mode for a pilot who cannot pay for a service.
- * A pod in limp mode at the colony cannot launch ({@link EngineSoot#launchRefused}), and a charter with no money
- * cannot pay to service it, so without this a first-tank pilot on coal would be stuck.
+ * Once the station works, a pod in limp mode at the colony cannot launch ({@link EngineSoot#launchRefused}), and a
+ * charter with no money cannot pay to service it, so without this a first-tank pilot on coal would be stuck.
  *
  * <p>The player who starts it waits at the station for {@link FuelTuning.Soot#scrapeTicks}, with the pod parked there.
  * It then leaves {@link FuelTuning.Soot#scrapeLeavesLitres} of soot: under the limp limit, so the pod launches, and
@@ -107,7 +107,7 @@ public final class FlueScrape {
             return;
         }
         // A paid service came first, or the pod is a wreck: nothing left to scrape, and nothing to say.
-        if (!EngineSoot.launchRefused(pod) || pod.hull() <= 0f) {
+        if (!EngineSoot.limpAtColony(pod) || pod.hull() <= 0f) {
             stop(pod);
             return;
         }

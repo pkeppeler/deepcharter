@@ -13,10 +13,13 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.Inputs;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
+import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.Locale;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -37,6 +40,10 @@ import org.slf4j.LoggerFactory;
 public class FuelWeightSootTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(FuelWeightSootTest.class);
     private static final float TOLERANCE = 0.001f;
+    /** Pod ticks a sprinting pod is given to start a bore of the stone under it. */
+    private static final int DRILL_TICKS = 80;
+    /** Ticks until a mock has read what the server sent it: it reads its packets on its own tick. */
+    private static final int HEARD_LAG = 2;
 
     private static void near(GameTestHelper helper, String what, double expected, double actual) {
         expect(helper, Math.abs(expected - actual) <= TOLERANCE, "%s should be %s, got %s", what, expected, actual);
@@ -226,7 +233,7 @@ public class FuelWeightSootTest {
     }
 
     @GameTest
-    public void coalSootsHalfAsFastAsCharcoalAndBiofuelAFifthOfCoal(GameTestHelper helper) {
+    public void coalSootsThreeQuartersAsMuchAsCharcoalAndBiofuelATenthPerLitre(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "clean-burner");
         try {
@@ -348,35 +355,115 @@ public class FuelWeightSootTest {
         try {
             float limp = FuelTuning.DEFAULT.soot().limpLitres();
             pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(limp, 0f, 0f)));
-            // The helper's level is the test overworld, the surface: the colony.
-            expect(helper, EngineSoot.launchRefused(pod), "a pod in limp mode at the colony should not launch");
-            pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(limp - 0.5f, 0f, 0f)));
-            expect(helper, !EngineSoot.launchRefused(pod), "a pod under the limit launches");
+            // The helper's level is the test overworld, the surface: the colony, its repair station working.
+            WorldData.with(helper.getLevel().getServer(), RepairState.TYPE, stationOnline(), () -> {
+                expect(helper, EngineSoot.launchRefused(pod), "a pod in limp mode at the colony should not launch");
+                pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(limp - 0.5f, 0f, 0f)));
+                expect(helper, !EngineSoot.launchRefused(pod), "a pod under the limit launches");
+            });
             helper.succeed();
         } finally {
             pod.discard();
         }
     }
 
-    @GameTest(maxTicks = 200)
-    public void aPodInLimpModeDoesNotDrillAtTheColonyUntilItIsServiced(GameTestHelper helper) {
-        BlockPos below = new BlockPos(2, 1, 2);
+    /** A fresh repair state with the chain repaired up to the repair station, so it services and scrapes. */
+    private static RepairState stationOnline() {
+        return HandbookChaptersOneToFiveTest.repairedFor(
+                TerminalTypes.FUEL_PUMP,
+                TerminalTypes.ORE_PROCESSOR,
+                TerminalTypes.UPGRADE_TERMINAL,
+                TerminalTypes.REPAIR_STATION);
+    }
+
+    /** A stone floor under the pod's footprint, its middle block returned. */
+    private static BlockPos stoneFloor(GameTestHelper helper) {
         for (int x = 1; x <= 3; x++) {
             for (int z = 1; z <= 3; z++) {
                 helper.setBlock(new BlockPos(x, 1, z), Blocks.STONE);
             }
         }
+        return new BlockPos(2, 1, 2);
+    }
+
+    /**
+     * Ticks {@code pod} {@code ticks} times within this server tick, its pilot sprinting (drilling down), with {@code
+     * repairs} as the world's repair state, then puts the world's back. The repair state is world-global and swapped for
+     * one tick only ({@code WorldData}), so the ticks are run here, as {@code ServerLevel.tickNonPassenger} runs them;
+     * the input is released after, so the pod's own ticks drill nothing.
+     */
+    private static void sprintWith(
+            GameTestHelper helper, RepairState repairs, PodEntity pod, MockPlayer pilot, int ticks) {
+        WorldData.with(helper.getLevel().getServer(), RepairState.TYPE, repairs, () -> {
+            pilot.setInput(Inputs.SPRINT);
+            try {
+                for (int tick = 0; tick < ticks; tick++) {
+                    pod.tickCount++;
+                    pod.tick();
+                }
+            } finally {
+                pilot.releaseInput();
+            }
+        });
+    }
+
+    @GameTest
+    public void aLimpPodAtTheColonyDrillsWhileTheRepairStationIsOffline(GameTestHelper helper) {
+        BlockPos below = stoneFloor(helper);
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2.5f, 2f, 2.5f);
+        MockPlayer pilot = MockPlayers.join(helper, "offline-limper");
+        try {
+            expect(helper, pilot.player().startRiding(pod), "the pilot should mount the pod");
+            pod.setAttached(
+                    EngineSoot.STATE,
+                    Versioned.of(new EngineSoot.State(FuelTuning.DEFAULT.soot().limpLitres() + 1f, 0f, 0f)));
+            // A fresh world's repair state: the repair station, which services and scrapes, is not repaired yet.
+            sprintWith(helper, new RepairState(), pod, pilot, DRILL_TICKS);
+            expect(helper, EngineSoot.isLimp(pod), "the pod should still be limp");
+            expect(
+                    helper,
+                    pod.drilling() || !helper.getBlockState(below).is(Blocks.STONE),
+                    "with the repair station offline a limp pod has no way to be serviced, so it should drill");
+        } catch (RuntimeException e) {
+            pilot.leave();
+            pod.discard();
+            throw e;
+        }
+        helper.runAfterDelay(HEARD_LAG, () -> {
+            try {
+                expect(
+                        helper,
+                        pilot.actionBarMessages().isEmpty(),
+                        "no refusal should send the pilot to an offline station, heard %s",
+                        pilot.actionBarMessages());
+                helper.succeed();
+            } finally {
+                pilot.leave();
+                pod.discard();
+            }
+        });
+    }
+
+    @GameTest
+    public void aPodInLimpModeDoesNotDrillAtTheColonyUntilItIsServiced(GameTestHelper helper) {
+        BlockPos below = stoneFloor(helper);
         PodEntity pod = helper.spawn(PodRegistry.POD, 2.5f, 2f, 2.5f);
         MockPlayer pilot = MockPlayers.join(helper, "limp-driller");
-        expect(helper, pilot.player().startRiding(pod), "the pilot should mount the pod");
-        pod.setAttached(
-                EngineSoot.STATE,
-                Versioned.of(new EngineSoot.State(FuelTuning.DEFAULT.soot().limpLitres() + 1f, 0f, 0f)));
-        pilot.setInput(Inputs.SPRINT);
-        helper.runAfterDelay(60, () -> {
+        try {
+            expect(helper, pilot.player().startRiding(pod), "the pilot should mount the pod");
+            pod.setAttached(
+                    EngineSoot.STATE,
+                    Versioned.of(new EngineSoot.State(FuelTuning.DEFAULT.soot().limpLitres() + 1f, 0f, 0f)));
+            sprintWith(helper, stationOnline(), pod, pilot, DRILL_TICKS);
+            expect(helper, !pod.drilling(), "a pod in limp mode at the colony should not drill");
+            expect(helper, helper.getBlockState(below).is(Blocks.STONE), "the floor should be whole");
+        } catch (RuntimeException e) {
+            pilot.leave();
+            pod.discard();
+            throw e;
+        }
+        helper.runAfterDelay(HEARD_LAG, () -> {
             try {
-                expect(helper, !pod.drilling(), "a pod in limp mode at the colony should not drill");
-                expect(helper, helper.getBlockState(below).is(Blocks.STONE), "the floor should be whole");
                 expect(
                         helper,
                         pilot.actionBarMessages().stream()
@@ -386,14 +473,7 @@ public class FuelWeightSootTest {
                         "the pilot should be told why, heard %s",
                         pilot.actionBarMessages());
                 EngineSoot.service(pod);
-            } catch (RuntimeException e) {
-                pilot.leave();
-                pod.discard();
-                throw e;
-            }
-        });
-        helper.runAfterDelay(120, () -> {
-            try {
+                sprintWith(helper, stationOnline(), pod, pilot, DRILL_TICKS);
                 expect(
                         helper,
                         pod.drilling() || !helper.getBlockState(below).is(Blocks.STONE),

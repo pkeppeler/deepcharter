@@ -10,6 +10,8 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.netty.buffer.ByteBuf;
 import java.util.Map;
 import java.util.Optional;
@@ -21,6 +23,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -30,12 +33,13 @@ import net.minecraft.server.level.ServerPlayer;
  * <p>The engine in four steps, from {@link FuelTuning.Soot}: clean up to the grace; then it loses top speed and climb
  * speed and burns more fuel, in a straight line to the limp limit; at the limit it is in <b>limp mode</b>, with little
  * output and a high burn, which never stops it, so a pod deep down can always climb home. The colony is where limp
- * ends: a pod in limp mode cannot launch (drill) from the surface until it is serviced ({@link #launchRefused}).
+ * ends: once its repair station works, a pod in limp mode cannot launch (drill) from the surface until it is serviced
+ * or scraped ({@link #launchRefused}).
  *
  * <p>Refuelling with a solid fuel puts its litres, and the soot those litres will leave, in the tank's account; the
- * burn takes litres off that account in proportion. The account is clamped to the litres really in the tank when it is
- * read, so fuel that came from elsewhere (a pump, a reserve tank, a recovery) is never counted as solid. The burn is
- * taken off the solid fuel first, which counts a mixed tank pessimistically.
+ * burn takes litres off that account in proportion. Each write clamps the account to the litres really in the tank, so
+ * fuel that came from elsewhere (a pump, a reserve tank, a recovery) is never counted as solid. The burn is taken off
+ * the solid fuel first, which counts a mixed tank pessimistically.
  *
  * <p>The tick path writes nothing until {@link #QUANTUM} litres have burned: the burn is held in a transient map (lost
  * when the pod unloads, at most a quantum of soot), so the attachment and its sync change a few times a minute and not
@@ -153,15 +157,26 @@ public final class EngineSoot {
         return isLimp(soot(pod));
     }
 
-    /**
-     * Whether the pod may not launch: it is in limp mode and at the colony (the surface band), where the drill stops
-     * with a line until the engine is serviced. Below the surface a limp pod drills, drives and climbs as it can.
-     */
-    public static boolean launchRefused(PodEntity pod) {
+    /** Whether the engine is in limp mode at the colony (the surface band). Either side. */
+    public static boolean limpAtColony(PodEntity pod) {
         return isLimp(pod)
                 && LayerChain.bandAt(pod.level(), pod.getBlockY())
                         .map(band -> band.layer() == LayerChain.SURFACE)
                         .orElse(false);
+    }
+
+    /**
+     * Server only: whether the pod may not launch. It is limp at the colony, where the drill stops with a line until
+     * the engine is serviced or scraped, and only while the colony's repair station is online: both ways out are its
+     * actions, so before it is repaired (or when its state cannot be read) a limp pod launches, slow and thirsty (ADR
+     * 0097). Below the surface a limp pod drills, drives and climbs as it can.
+     */
+    public static boolean launchRefused(PodEntity pod) {
+        if (!limpAtColony(pod) || !(pod.level() instanceof ServerLevel level)) {
+            return false;
+        }
+        RepairState repairs = RepairState.get(level.getServer());
+        return repairs.isReadable() && repairs.online(TerminalTypes.REPAIR_STATION);
     }
 
     /**
