@@ -1040,7 +1040,7 @@ public final class HandbookScreen extends Screen {
         HandbookPage.Chapter chapter = Objects.requireNonNull(
                 chapters.get(chapterNumber), () -> "chapter " + chapterNumber + " has no chapter page");
         for (QuestMap.CardItem shown : indexCard(chapter).items()) {
-            if (shown.item() == item) {
+            if (shown.items().contains(item)) {
                 return new Rect(
                         shown.box().x(),
                         shown.box().y(),
