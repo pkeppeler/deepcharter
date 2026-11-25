@@ -268,7 +268,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         return new Rig(realPod, mockPod, columns(realPod), columns(mockPod));
     }
 
-    /** The Y the pod is lifted to: one slab past the layer 1 onset of the decay, so a retuned curve moves the test with it. */
+    /** The Y the pod is lifted to: a slab past the layer 1 decay onset, so a retuned curve moves the test with it. */
     private static int clearY(ServerLevel one) {
         return TestLayers.band(one, 1).minY()
                 + SignalDecayTuning.DEFAULT.band(1).onset()
@@ -276,8 +276,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Cuts a shaft above {@code pod} up to {@link #clearY}, with a stone shell like the room's. Returns where the pod stands, for
-     * putting it back. Wait for the shaft's light to settle before {@link #lift} (#1303).
+     * Cuts a shaft above {@code pod} up to {@link #clearY}, with a stone shell like the room's. Returns where the pod
+     * stands, for putting it back. Wait for the shaft's light to settle before {@link #lift} (#1303).
      */
     private static Vec3 cutShaft(MinecraftServer server, PodEntity pod) {
         ServerLevel one = TestLayers.level(server, 1);
