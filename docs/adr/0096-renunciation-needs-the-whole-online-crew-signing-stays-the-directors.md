@@ -17,4 +17,3 @@ Signing is unchanged: the Director's alone. Evil is a private deal; renouncing i
 ## Consequences
 
 - Offline members do not count. Accepted trade-off: a group could wait until someone logs off.
-- The signing payout is shared, so a signed charter's crew is paid, but only the Director becomes the Chairman.

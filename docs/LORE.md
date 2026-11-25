@@ -284,7 +284,7 @@ Combat details are in [CREATURES.md](CREATURES.md#7-the-finale), from the creatu
 3. **The offer.** The mask crawls out of the wreck, small and hollow, with Moloch speaking through it: *"…Every notice said turn back. You came anyway. That is what we look for in a Chairman. The position is yours. Take it. All of it."* The **Controlling Interest** drops: a physical deed. The wreck of Head Office, the richest haul in the game, is part of what is offered.
 4. **Signing** (the Director only, at the Boardroom table). Final and permanent.
    - The Director becomes the Chairman. The deed binds to him, impossible to lose, and his suit lamp goes dark for good. Both follow him even if he leaves the charter.
-   - The wreck's wealth and a recurring dividend are credited to the **charter's shared account**, not to the Director alone, from the labour of the Retained, who never rest. The crew lives off it too. Every dividend notice asks for more.
+   - The wreck's wealth and a recurring dividend are credited to the **charter's shared account**, so the whole crew lives off the labour of the Retained, who never rest. Every dividend notice asks for more.
    - The Furnace relights. The Retained turn to face their new Chairman. Moloch wears a new mask.
    - For that charter, the altimeter reads YOU ARE ON COMPANY PREMISES everywhere, including the surface.
    - Last exchange: Hal asks, *"Is it Friday?"* The Company answers, *"No."*
@@ -297,7 +297,7 @@ Combat details are in [CREATURES.md](CREATURES.md#7-the-finale), from the creatu
    - Light rises from the crack, and every crew member receives an **Unnumbered Lamp**: no serial number, nobody's property, and it never goes out. It belongs to the player, not the charter.
    - Roz's lamp does not go out either. It walks down toward the Ramp.
 
-**Deed rules** (design intent): only members of the charter that broke Head Office can hold its deed. The deed cannot leave the Boardroom; if its holder dies or leaves, it returns to the table. Nothing ends until the Director signs it or the whole online crew burns it together. Offline members do not count, so a member who quit cannot block the true ending; a group could still wait until someone logs off ([ADR 0096](adr/0096-renunciation-needs-the-whole-online-crew-signing-stays-the-directors.md)).
+**Deed rules** (design intent): only members of the charter that broke Head Office can hold its deed. The deed cannot leave the Boardroom; if its holder dies or leaves, it returns to the table. Nothing ends until the Director signs it or the whole online crew burns it together. Offline members do not count, so a member who quit cannot block the true ending ([ADR 0096](adr/0096-renunciation-needs-the-whole-online-crew-signing-stays-the-directors.md)).
 
 ## 13. Post-game
 
