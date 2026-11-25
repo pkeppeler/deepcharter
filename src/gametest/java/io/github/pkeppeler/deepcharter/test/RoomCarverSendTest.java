@@ -48,13 +48,13 @@ public class RoomCarverSendTest {
         List<BlockPos> columns = chunks.stream()
                 .map(chunk -> new BlockPos(chunk.getMinBlockX(), min.getY(), chunk.getMinBlockZ()))
                 .toList();
-        int[] ticking = {0};
-        FarChunks.awaitEntityTicking(helper, level, columns, index -> ticking[0]++);
-        FarChunks.Deadline sendable = FarChunks.deadline(SECONDS);
-        // Started at the carve: the send gets its own wait, whatever the wait for sendable chunks used up.
+        // Each wait starts its own deadline when the one before it ends, so a slow stage cannot use up the next one's
+        // time: the wait for sendable chunks once every column ticks, the wait for the send at the carve.
+        List<FarChunks.Deadline> sendable = new ArrayList<>(1);
         List<FarChunks.Deadline> sent = new ArrayList<>(1);
+        FarChunks.awaitAllEntityTicking(helper, level, columns, () -> sendable.add(FarChunks.deadline(SECONDS)));
         TestTicks.each(helper, () -> {
-            if (ticking[0] < columns.size()) {
+            if (sendable.isEmpty()) {
                 return;
             }
             if (sent.isEmpty()) {
@@ -62,12 +62,13 @@ public class RoomCarverSendTest {
                         .filter(chunk -> level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) == null)
                         .toList();
                 if (!unsendable.isEmpty()) {
-                    sendable.await(
-                            helper,
-                            level,
-                            false,
-                            () -> unsendable + " in " + level.dimension() + " tick but never became sendable, so the"
-                                    + " carve could not begin");
+                    sendable.getFirst()
+                            .await(
+                                    helper,
+                                    level,
+                                    false,
+                                    () -> unsendable + " in " + level.dimension()
+                                            + " tick but never became sendable, so the" + " carve could not begin");
                     return;
                 }
                 RoomCarver.carve(level, min, max, Blocks.AIR.defaultBlockState());
