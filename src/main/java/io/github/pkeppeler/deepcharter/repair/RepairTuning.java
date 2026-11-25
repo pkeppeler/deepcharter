@@ -17,6 +17,9 @@ package io.github.pkeppeler.deepcharter.repair;
  * @param chargeDamage      hull points a pod takes from a blast that touches it; less with distance
  * @param chargeReach       blocks from the blast, at most, that a pod is hurt; the damage falls to 0 there
  * @param shapedDepth       slab rows below the pod, at most, that a shaped charge clears down a Company rock column
+ * @param arrivalTicketTicks ticks a teleporter's hold on its landing chunk lasts once the chunk ticks entities
+ *                          (#1353): time for the pilot's own chunk tickets to arrive. Vanilla counts a timed ticket
+ *                          down only once its chunk is ready to save, which waits on the entity-ticking promotion
  */
 public record RepairTuning(
         long repairCostPerHp,
@@ -30,6 +33,7 @@ public record RepairTuning(
         int chargeDepth,
         float chargeDamage,
         double chargeReach,
-        int shapedDepth) {
-    public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 2, 20f, 3.0, 8);
+        int shapedDepth,
+        int arrivalTicketTicks) {
+    public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 2, 20f, 3.0, 8, 100);
 }

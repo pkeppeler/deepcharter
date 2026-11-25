@@ -38,8 +38,8 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A teleporter's arrival (#1353): a pod sent with its pilot to a cold chunk stays loaded and tracked for the pilot, as a
- * seam swap's or a tow's arrival does.
+ * A teleporter's arrival (#1353): a pod sent with its pilot to a cold chunk stays loaded and tracked for the pilot,
+ * as a seam swap's or a tow's arrival does.
  */
 public class TeleportArrivalTest {
     /** How long the arrival is watched, in ticks. */
@@ -47,8 +47,9 @@ public class TeleportArrivalTest {
 
     /**
      * Ticks from the teleport to the client's answer to it, which is what moves the pilot's own chunk tickets to the
-     * arrival: a 250 ms round trip, or a server running behind. Any answer later than the one-tick ticket of the landing
-     * look-up lets the arrival chunk drop with no ticket at all (#1353: 2, 3, 5 and 20 all did, 1 did not).
+     * arrival: a 250 ms round trip, or a server running behind. Without an arrival ticket, any answer later than the
+     * one-tick ticket of the landing look-up let the chunk drop with no ticket at all (#1353: answers 2, 3, 5 and 20
+     * ticks late all did, 1 tick late did not).
      */
     private static final int ANSWER_DELAY = 5;
 
