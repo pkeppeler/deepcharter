@@ -18,7 +18,8 @@
     "ServerChunkCacheAccess",
     "ServerChunkCacheBlockingLoadMixin",
     "ServerLevelForcedMixin",
-    "TicketAccess"
+    "TicketAccess",
+    "TicketStorageAccess"
   ],
   "client": [
     "CardinalLightingMixin",
