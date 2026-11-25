@@ -19,14 +19,18 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
-/** What a player must see while a pick brute-forces a block (#858): the pick worn on the client and the crack well along. */
+/**
+ * What a player must see while a pick brute-forces a block (#858): the pick worn on the client and the crack well
+ * along.
+ */
 public final class HandBreakChecks {
     private HandBreakChecks() {}
 
     /**
-     * Fails unless, after {@code ticks} of unbroken mining with a pick that bites, the client's held pick shows wear and the client's own
-     * destroy progress, which draws the crack, is about {@code ticks / 1200}. A swing the client restarted would show neither.
-     * {@code serverWear} reads the damage of the server's held pick, to tell a pick never worn from wear never shown.
+     * Fails unless, after {@code ticks} of unbroken mining with a tool, the client's held pick shows wear and the
+     * client's own destroy progress, which draws the crack, is about {@code ticks / 1200}. A swing the client
+     * restarted would show neither. {@code serverWear} reads the damage of the server's held pick, to tell a pick
+     * never worn from wear never shown.
      */
     public static void requireWorkShows(
             ClientGameTestContext context, int ticks, IntSupplier serverWear, Supplier<String> serverFacts) {
@@ -55,19 +59,20 @@ public final class HandBreakChecks {
     }
 
     /**
-     * Fails unless the client's destroy progress has moved on from {@code start} after {@code ticks} ticks of mining with a pick that bites:
-     * the pin is the only miner, so no progress means it is not mining the block.
+     * Fails unless the client's destroy progress has moved on from {@code start} after {@code ticks} ticks of mining
+     * with a tool: the pin is the only miner, so no progress means it is not mining the block.
      */
     public static void requireProgressedFrom(ClientGameTestContext context, float start, int ticks) {
         require(
                 clientProgress(context) > start,
                 "the client's destroy progress has not moved from " + start + " after " + ticks
-                        + " ticks of mining with a pick that bites; the client says: " + clientFacts(context));
+                        + " ticks of mining with a tool; the client says: " + clientFacts(context));
     }
 
     /**
-     * What the server holds of the mining of {@code target} by its first player, for a failure message: the game mode, the held pick, the
-     * game mode's own mining state, and what the rule makes of the block and the pick. Run on the server.
+     * What the server holds of the mining of {@code target} by its first player, for a failure message: the game mode,
+     * the held pick, the game mode's own mining state, and what the rule makes of the block and the pick. Run on the
+     * server.
      */
     public static String serverFacts(MinecraftServer server, BlockPos target) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -83,10 +88,13 @@ public final class HandBreakChecks {
                 + ", dimension " + level.dimension().identifier()
                 + ", layerOf " + HandBreak.layerOf(level, target)
                 + ", governs " + HandBreak.governs(player, level, target, state)
-                + ", bites " + HandBreak.bites(player.getMainHandItem(), HandBreak.layerOf(level, target));
+                + ", tool " + HandBreak.isTool(player.getMainHandItem());
     }
 
-    /** What the client holds of its own mining, for a failure message: the crosshair, the held pick and the game mode's mining state. */
+    /**
+     * What the client holds of its own mining, for a failure message: the crosshair, the held pick and the game mode's
+     * mining state.
+     */
     public static String clientFacts(ClientGameTestContext context) {
         return context.computeOnClient(client -> "crosshair " + client.hitResult + ", held "
                 + (client.player == null ? "(no player)" : client.player.getMainHandItem()) + ", game mode "
@@ -100,7 +108,10 @@ public final class HandBreakChecks {
                 + ", " + clientRule(client));
     }
 
-    /** What the rule makes of the block under the client's crosshair, as the client sees it: the swing's answer, and the pieces of it. */
+    /**
+     * What the rule makes of the block under the client's crosshair, as the client sees it: the swing's answer, and the
+     * pieces of it.
+     */
     private static String clientRule(Minecraft client) {
         if (!(client.hitResult instanceof BlockHitResult hit) || client.level == null || client.player == null) {
             return "no block under the crosshair";
@@ -111,7 +122,7 @@ public final class HandBreakChecks {
         return "crosshair block " + state.getBlock() + " at " + pos.toShortString()
                 + ", governs " + HandBreak.governs(client.player, client.level, pos, state)
                 + ", layerOf " + layer
-                + ", bites " + HandBreak.bites(client.player.getMainHandItem(), layer)
+                + ", tool " + HandBreak.isTool(client.player.getMainHandItem())
                 + ", swing answer "
                 + AttackBlockCallback.EVENT
                         .invoker()

@@ -23,24 +23,41 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * The one rule for pod-only blocks (ADR 0069): the breach crust, the grained crust that takes its place at a seam or a
- * decoy (#1022), Company rock ({@code deepcharter:undiggable}) and the rock of layer 2 and below
- * ({@code deepcharter:deep_rock}, which includes {@code #c:ores}). A pod drill or a charge removes them directly and
- * never meets this. A hand tool may brute-force one at a ruinous cost ({@link HandBreakCost}): the right pick, 60 s a
- * block, and a share of its durability that grows with depth.
+ * The one rule for pod-only blocks (ADR 0069): the breach crust, Company rock ({@code deepcharter:undiggable}) and the
+ * rock of layer 2 and below ({@code deepcharter:deep_rock}, which includes {@code #c:ores}). A pod drill or a charge
+ * removes them directly and never meets this. Any hand tool may brute-force one at a ruinous cost ({@link
+ * HandBreakCost}): 60 s a block, then half the durability of a diamond or better tool, or the whole of a lesser one,
+ * which is destroyed as the block goes.
  *
  * <p>This class holds what both sides must agree on, so it runs on the client as well: the predicate, the layer a block
- * counts as, which tools bite, the destroy progress (read by the client's prediction and by the server's check through
- * {@code BlockStateBaseMixin}, so the client never predicts a break the server refuses) and the swing callback. Creative
- * players are exempt from all of it.
+ * counts as, what a tool costs, the destroy progress (read by the client's prediction and by the server's check through
+ * {@code BlockStateBaseMixin}, so the client never predicts a break the server refuses) and the swing callback.
+ * Creative players are exempt from all of it.
  */
 public final class HandBreak {
     /** Rock below layer 1 is pod-only; {@code #c:ores} is part of it. */
     private static final TagKey<Block> DEEP_ROCK =
             TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "deep_rock"));
 
+    /** What brute-forcing a block costs the tool that does it. */
+    public enum Wear {
+        /** Not a tool (a bare hand, a stick, a fishing rod): it makes no progress and cannot break the block. */
+        NONE,
+        /**
+         * A tool that cannot be damaged (Unbreakable): it breaks the block and pays nothing, as nothing can wear it.
+         */
+        FREE,
+        /** A diamond or better tool, in {@code deepcharter:hand_break/durable}: a share of its durability. */
+        SHARE,
+        /** Any other tool: all of its durability, spent so that it is destroyed as the block goes. */
+        DESTROYED
+    }
+
     private static final String FIRST_TRY_KEY = "deepcharter.layer.pod_only.first_try";
-    /** The line for a tool that cannot bite; the client says it too, for a swing it refuses before the server hears of it. */
+    /**
+     * The line for a held item that is no tool; the client says it too, for a swing it refuses before the server hears
+     * of it.
+     */
     public static final String CANNOT_BITE_KEY = "deepcharter.layer.pod_only.cannot_bite";
 
     /** Players the server has told each line, for this session and not saved: it forgets one on disconnect. */
@@ -51,7 +68,7 @@ public final class HandBreak {
     private HandBreak() {}
 
     public static void init() {
-        // The server's refusal of a swing that cannot bite is the backstop; the client refuses it first, in
+        // The server's refusal of a swing with no tool is the backstop; the client refuses it first, in
         // HandBreakClient, so no crack starts.
         AttackBlockCallback.EVENT.register(HandBreak::onSwing);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
@@ -65,24 +82,24 @@ public final class HandBreak {
      * reads only the level, so it works on the client.
      */
     public static boolean isPodOnly(Level level, BlockPos pos, BlockState state) {
-        // Picking through a grained floor would skip the breach as surely as through a breach crust one.
-        if (state.is(LayerBlocks.BREACH_CRUST)
-                || state.is(LayerBlocks.GRAINED_CRUST)
-                || state.is(HazardBlocks.UNDIGGABLE)) {
+        if (state.is(LayerBlocks.BREACH_CRUST) || state.is(HazardBlocks.UNDIGGABLE)) {
             return true;
         }
         return state.is(DEEP_ROCK) && layerOf(level, pos) > 1;
     }
 
-    /** True when a swing or a break by this player is governed by the rule: not a creative player, and a pod-only block. */
+    /**
+     * True when a swing or a break by this player is governed by the rule: not a creative player, and a pod-only block.
+     */
     public static boolean governs(Player player, Level level, BlockPos pos, BlockState state) {
         return !player.isCreative() && isPodOnly(level, pos, state);
     }
 
     /**
-     * The layer a block counts as, which sets what bites it and what it costs. The crust counts as the layer whose floor it
-     * is. Unbuilt depth of the campaign world counts as the layer below the last one built; the surface and a level
-     * outside the chain (the Nether, the End, a dimension type given inline) count as layer 1. It never throws.
+     * The layer a block counts as, which decides whether rock is pod-only (below layer 1) and nothing else: the rule is
+     * the same in every layer. The crust counts as the layer whose floor it is. Unbuilt depth of the campaign world
+     * counts as the layer below the last one built; the surface and a level outside the chain (the Nether, the End, a
+     * dimension type given inline) count as layer 1. It never throws.
      */
     public static int layerOf(Level level, BlockPos pos) {
         // A dimension type a data pack gives inline has no key, which LayerChain rejects: such a level is outside the
@@ -102,25 +119,37 @@ public final class HandBreak {
                 && pos.getY() < CampaignBands.layer(CampaignBands.lastLayer()).minY();
     }
 
-    /** True when {@code tool} is a tool that bites a pod-only block of {@code layer}. */
-    public static boolean bites(ItemStack tool, int layer) {
-        return tool.isDamageableItem()
-                && tool.is(LayerTuning.DEFAULT.handBreak().toolsFor(layer));
+    /** True when {@code tool} is in the tool tag, and so can brute-force a pod-only block in any layer. */
+    public static boolean isTool(ItemStack tool) {
+        return tool.is(LayerTuning.DEFAULT.handBreak().tools());
+    }
+
+    /** What brute-forcing a block costs {@code tool}, whatever the layer. */
+    public static Wear wearOf(ItemStack tool) {
+        if (!isTool(tool)) {
+            return Wear.NONE;
+        }
+        // An Unbreakable tool is not damageable, so there is nothing to spend: it breaks the block for free.
+        if (!tool.isDamageableItem()) {
+            return Wear.FREE;
+        }
+        return tool.is(LayerTuning.DEFAULT.handBreak().durableTools()) ? Wear.SHARE : Wear.DESTROYED;
     }
 
     /**
      * The destroy progress of a pod-only block for a player under the rule: one tick's share of {@code breakTicks}
-     * whatever the enchantments, effects or footing, for a tool that bites, and none for any other.
+     * whatever the tool, the layer, the enchantments, effects or footing, for a tool, and none for any other item.
      */
-    public static float progress(Player player, Level level, BlockPos pos) {
-        return bites(player.getMainHandItem(), layerOf(level, pos))
+    public static float progress(Player player) {
+        return isTool(player.getMainHandItem())
                 ? 1.0F / LayerTuning.DEFAULT.handBreak().breakTicks()
                 : 0.0F;
     }
 
     /**
-     * True when {@code now} is the stack {@code began} was, worn down: the same item and components but for the damage. The
-     * client uses it to go on mining while the server wears the pick, which vanilla would take for a new tool and restart.
+     * True when {@code now} is the stack {@code began} was, worn down: the same item and components but for the
+     * damage. The client uses it to go on mining while the server wears the pick, which vanilla would take for a new
+     * tool and restart.
      */
     public static boolean sameButWorn(ItemStack began, ItemStack now) {
         if (!ItemStack.isSameItem(began, now)) {
@@ -135,15 +164,15 @@ public final class HandBreak {
 
     private static InteractionResult onSwing(
             Player player, Level level, InteractionHand hand, BlockPos pos, Direction direction) {
-        // The client decides for itself (HandBreakClient): its swing is only ever sent when the tool bites.
+        // The client decides for itself (HandBreakClient): its swing is only ever sent with a tool in hand.
         if (level.isClientSide() || !governs(player, level, pos, level.getBlockState(pos))) {
             return InteractionResult.PASS;
         }
-        boolean bites = bites(player.getMainHandItem(), layerOf(level, pos));
-        Set<UUID> told = bites ? TOLD_FIRST_TRY : TOLD_CANNOT_BITE;
+        boolean tool = isTool(player.getMainHandItem());
+        Set<UUID> told = tool ? TOLD_FIRST_TRY : TOLD_CANNOT_BITE;
         if (told.add(player.getUUID())) {
-            player.sendSystemMessage(Component.translatable(bites ? FIRST_TRY_KEY : CANNOT_BITE_KEY));
+            player.sendSystemMessage(Component.translatable(tool ? FIRST_TRY_KEY : CANNOT_BITE_KEY));
         }
-        return bites ? InteractionResult.PASS : InteractionResult.FAIL;
+        return tool ? InteractionResult.PASS : InteractionResult.FAIL;
     }
 }

@@ -16,8 +16,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * Gives a pod-only block the same destroy progress on the client and the server (ADR 0069). Target:
  * {@code BlockBehaviour.BlockStateBase.getDestroyProgress(Player, BlockGetter, BlockPos)}, at its head. It is the one
  * method both the client's prediction ({@code MultiPlayerGameMode.continueDestroyBlock}) and the server's check
- * ({@code ServerPlayerGameMode}) read, and it runs the same code on both sides, so the client never predicts a break the
- * server refuses.
+ * ({@code ServerPlayerGameMode}) read, and it runs the same code on both sides, so the client never predicts a break
+ * the server refuses.
  */
 @Mixin(BlockBehaviour.BlockStateBase.class)
 public abstract class BlockStateBaseMixin {
@@ -27,7 +27,7 @@ public abstract class BlockStateBaseMixin {
         // The only subclass of BlockStateBase is BlockState.
         BlockState state = (BlockState) (Object) this;
         if (getter instanceof Level level && HandBreak.governs(player, level, pos, state)) {
-            cir.setReturnValue(HandBreak.progress(player, level, pos));
+            cir.setReturnValue(HandBreak.progress(player));
         }
     }
 }

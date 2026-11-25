@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.TextInputManager;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetView.Placed;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
@@ -94,6 +95,9 @@ public final class CataloguePanel {
         screenWidth = width;
         screenHeight = height;
         planSheet();
+        if (searchFocused) {
+            focusSearch(layout != null);
+        }
     }
 
     /** Shows the spec sheet of {@code item} over the screen, until a click or Escape puts it away. */
@@ -159,6 +163,20 @@ public final class CataloguePanel {
     // test-seam: whether the search field has the keyboard, which the client test reads
     public boolean searchFocused() {
         return searchFocused;
+    }
+
+    /** SDL sends no text until text input is on, so focus starts it and unfocus stops it, as {@code EditBox} does. */
+    private void focusSearch(boolean focused) {
+        CatalogueLayout now = layout;
+        searchFocused = focused && now != null;
+        TextInputManager input = Minecraft.getInstance().textInputManager();
+        if (now != null && searchFocused) {
+            Rect search = now.shelf().search();
+            input.setTextInputArea(search.x(), search.y(), search.right(), search.bottom());
+            input.startTextInput(this);
+        } else {
+            input.stopTextInput(this);
+        }
     }
 
     void tick() {
@@ -364,7 +382,7 @@ public final class CataloguePanel {
         }
         // Ctrl+F, or Cmd+F on a Mac (hasControlDownWithQuirk is the shortcut key of the platform).
         if (event.hasControlDownWithQuirk() && event.key() == InputConstants.KEY_F) {
-            searchFocused = true;
+            focusSearch(true);
             return true;
         }
         if (event.isEscape() && showsRecipePanel()) {
@@ -396,7 +414,7 @@ public final class CataloguePanel {
     private boolean searchKey(KeyEvent event) {
         String query = state.query();
         if (event.isEscape() || event.isConfirmation()) {
-            searchFocused = false;
+            focusSearch(false);
         } else if (event.key() == InputConstants.KEY_BACKSPACE) {
             if (event.hasControlDownWithQuirk()) {
                 state.setQuery("");
@@ -446,16 +464,16 @@ public final class CataloguePanel {
         CatalogueLayout.Shelf shelf = now.shelf();
         boolean onShelf = now.catalogue().contains(x, y);
         boolean onCard = showsRecipePanel() && now.recipe().contains(x, y);
-        searchFocused = onShelf && shelf.search().contains(x, y);
+        focusSearch(onShelf && shelf.search().contains(x, y));
         if (!onShelf && !onCard) {
             return false;
         }
         pressTaken = true;
-        if (event.button() != 0 && event.button() != 1) {
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT && event.button() != InputConstants.MOUSE_BUTTON_RIGHT) {
             // A middle or side button on a panel is taken and does nothing, so it never reaches the inventory behind.
             return true;
         }
-        boolean right = event.button() == 1;
+        boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
         Hit hit = hitAt(x, y);
         if (hit != null) {
             lookUp(hit.item(), right ? CatalogueState.Mode.USES : CatalogueState.Mode.RECIPES);
