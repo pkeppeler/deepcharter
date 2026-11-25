@@ -224,8 +224,8 @@ public class SeamAscentTest {
     }
 
     /**
-     * A pod with a rider inside the zone of a ceiling has an ascent, keyed by the pod, and no entry among the approaches
-     * served to riders; outside the zone it has neither, and its descent track never mixed with the rise.
+     * A pod with a rider inside the zone of a ceiling has an ascent, keyed by the pod, and no entry among the
+     * approaches served to riders; outside the zone it has neither, and its descent track never mixed with the rise.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aRisingPodHasAnAscentThatIsNotServedAndEndsOutsideTheZone(GameTestHelper helper) {

@@ -44,12 +44,12 @@ import org.jspecify.annotations.Nullable;
  */
 public final class SeamStreaming {
     /**
-     * One vehicle's approach to the floor of a level with a level below it, or to the ceiling of one with a level above it, keyed by
-     * the root vehicle (the player when on foot), listing every player it carries. {@code lower} is the level the arrival area is
-     * in: the one below for {@link #approachOf}, the one above for {@link #ascentOf}. {@code descentPerTick} is the vehicle's
-     * closing speed on the seam over the last {@link LayerTuning#seamSpeedWindow()} ticks, in blocks a tick, as of the last tick it
-     * was read (0 when it sits or moves away): what the approach hands the swap. {@code ready} is whether the arrival area's chunks
-     * have loaded.
+     * One vehicle's approach to the floor of a level with a level below it, or to the ceiling of one with a level above
+     * it, keyed by the root vehicle (the player when on foot), listing every player it carries. {@code lower} is the
+     * level the arrival area is in: the one below for {@link #approachOf}, the one above for {@link #ascentOf}. {@code descentPerTick}
+     * is the vehicle's closing speed on the seam over the last {@link LayerTuning#seamSpeedWindow()}
+     * ticks, in blocks a tick, as of the last tick it was read (0 when it sits or moves away): what the approach hands
+     * the swap. {@code ready} is whether the arrival area's chunks have loaded.
      */
     public record Approach(
             UUID root,
@@ -67,7 +67,7 @@ public final class SeamStreaming {
         UP
     }
 
-    /** What a root vehicle is holding open under or over it: the ticket's level and chunk and when it was last taken. */
+    /** What a root vehicle holds open under or over it: the ticket's level and chunk, and when it was last taken. */
     private record Streaming(
             ResourceKey<Level> target,
             ChunkPos centre,
@@ -172,8 +172,8 @@ public final class SeamStreaming {
     }
 
     /**
-     * Every descent approach under way now: one per root vehicle that is streaming a level below. A rise is left out: it
-     * holds a ticket only, and nothing is sent to its riders.
+     * Every descent approach under way now: one per root vehicle that is streaming a level below. A rise is left out:
+     * it holds a ticket only, and nothing is sent to its riders.
      */
     public static List<Approach> approaches() {
         List<Approach> approaches = new ArrayList<>();
@@ -261,9 +261,9 @@ public final class SeamStreaming {
     }
 
     /**
-     * The level under {@code level} in the chain, or over it going {@link Direction#UP}: empty for the surface going up,
-     * the last level going down, a level outside the chain and a registered layer whose level is not loaded. That last
-     * is warned about once per level key, and never thrown, since this runs every tick.
+     * The level under {@code level} in the chain, or over it going {@link Direction#UP}: empty for the surface going
+     * up, the last level going down, a level outside the chain and a registered layer whose level is not loaded. That
+     * last is warned about once per level key, and never thrown, since this runs every tick.
      */
     private static Optional<ServerLevel> levelBeyond(ServerLevel level, Direction direction) {
         Optional<Band> band = LayerChain.layerAt(level, level.getMinY());
