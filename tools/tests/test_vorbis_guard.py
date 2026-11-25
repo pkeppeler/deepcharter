@@ -71,9 +71,7 @@ class ProbeTest(unittest.TestCase):
     """A broken or hung ffmpeg reads as no libvorbis, so the guarded tests skip instead of erroring."""
 
     def probe(self, **run):
-        with mock.patch.object(vorbis_guard.first_sounds.shutil, "which", return_value="/bin/ffmpeg"), mock.patch.object(
-            vorbis_guard.first_sounds.subprocess, "run", **run
-        ):
+        with mock.patch.object(vorbis_guard.first_sounds.subprocess, "run", **run):
             return vorbis_guard.first_sounds.has_libvorbis()
 
     def test_a_non_zero_exit_is_no_libvorbis(self):

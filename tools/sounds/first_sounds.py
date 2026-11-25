@@ -345,8 +345,6 @@ def ogg_channels(path):
 
 def has_libvorbis():
     """Whether an ffmpeg is on PATH with the libvorbis encoder: the sound tools' one test for it, and the tests' guard (#1332)."""
-    if not shutil.which("ffmpeg"):
-        return False
     try:
         probe = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], check=False, capture_output=True, text=True, timeout=10)
     except (subprocess.TimeoutExpired, OSError):
