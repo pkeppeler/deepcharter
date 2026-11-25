@@ -15,8 +15,8 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
  */
 public final class OreBlock extends Block {
     /**
-     * The rocks an ore can sit in: the layers' own, in layer order, then the strata layer 1 gained around its packed
-     * shale (#1277), added last so that no value moves.
+     * The rocks an ore can sit in: the layers' own, then the strata layer 1 gained around its packed shale (#1277). A world
+     * saves a host by its name, so a name never changes; the order of the values does not matter to a save.
      */
     public enum Host implements StringRepresentable {
         PACKED_SHALE(LayerBlocks.PACKED_SHALE),
@@ -74,8 +74,11 @@ public final class OreBlock extends Block {
      */
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return LayerBlocks.layerGroundOf(
-                        context.getLevel(), context.getClickedPos().getY())
+        return LayerBlocks.placedGroundOf(
+                        context.getLevel(),
+                        context.getClickedPos()
+                                .relative(context.getClickedFace().getOpposite()),
+                        context.getClickedPos().getY())
                 .map(ground -> in(ground.defaultBlockState()))
                 .orElseGet(this::defaultBlockState);
     }

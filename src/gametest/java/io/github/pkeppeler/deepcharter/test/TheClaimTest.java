@@ -263,9 +263,8 @@ public class TheClaimTest {
                     timber++;
                 }
             }
-            // A cave through the shaft: open blocks five or six out from its ladder, at the rows the ladder runs, which
-            // is past
-            // the shaft's walls, niches and sealed shell; the drift, at the foot's rows, is left out.
+            // A cave through the shaft: open blocks five or six out from its ladder, at the rows the ladder runs,
+            // which is past the shaft's walls, niches and sealed shell; the drift, at the foot's rows, is left out.
             for (BlockPos rung : BlockPos.betweenClosed(foot.offset(-6, 3, -6), foot.offset(6, 32, 6))) {
                 if (!ChunkPos.containing(rung).equals(chunk.getPos())
                         || !chunk.getBlockState(rung).is(Blocks.LADDER)) {

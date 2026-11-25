@@ -310,13 +310,16 @@ public class CampaignTerrainTest {
         for (int chunkX = SAMPLE_CHUNK_X; chunkX < SAMPLE_CHUNK_X + SAMPLE_CHUNKS; chunkX++) {
             for (int chunkZ = SAMPLE_CHUNK_Z; chunkZ < SAMPLE_CHUNK_Z + SAMPLE_CHUNKS; chunkZ++) {
                 ChunkAccess chunk = level.getChunk(chunkX, chunkZ);
-                for (var section : chunk.getSections()) {
+                for (int index = 0; index < chunk.getSectionsCount(); index++) {
+                    var section = chunk.getSection(index);
+                    // Layer 1's shafts are the one place a vanilla block (their ladders and candle stubs) is generated.
+                    boolean claim = bandOf(chunk.getSectionYFromSectionIndex(index) << 4) == CampaignBands.LAYER_1;
                     section.maybeHas(state -> {
                         String id =
                                 BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
                         if (id.startsWith("minecraft:")
                                 && !FLUIDS_AND_AIR.contains(id)
-                                && !CLAIM_SHAFT_BLOCKS.contains(id)) {
+                                && !(claim && CLAIM_SHAFT_BLOCKS.contains(id))) {
                             vanilla.add(id);
                         }
                         return false;

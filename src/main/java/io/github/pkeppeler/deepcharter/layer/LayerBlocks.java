@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.layer;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.util.Optional;
 import java.util.function.Function;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -16,6 +17,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.PushReaction;
 
 /**
@@ -186,20 +188,40 @@ public final class LayerBlocks {
     }
 
     /**
-     * The rock at height {@code y} of {@code band} in the campaign world: in layer 1 the rock of the zone that holds it
-     * (#1277), Topsoil Claims' hardpan, Stone Benches' packed shale and Deep Claim's black shale, and in every other
-     * layer {@link #layerGround(int)}. The material rule lays each stratum's contact a few blocks either side of its
-     * zone's edge, so near an edge this names the zone's rock, not always the block there.
+     * Rows under each zone edge of layer 1 where the contact between its strata lies before the contour noise and the
+     * surface depth move it (#1277). {@code worldgen/material_rule/claim_strata.json} lays the same contacts and rocks,
+     * which {@code ClaimFeaturesTest} holds to {@link #stratum}.
+     */
+    public static final int CLAIM_CONTACT_UNDER_EDGE = 6;
+
+    /**
+     * The rock at height {@code y} of {@code band} in the campaign world: in layer 1 Topsoil Claims' hardpan, Stone
+     * Benches' packed shale or Deep Claim's black shale, split at the strata's contacts before the noise moves them
+     * (#1277); in every other layer {@link #layerGround(int)}. The rule moves a contact up to a dozen rows, so within that
+     * of a contact this names the rock most of the wall is, not always the block there.
      */
     public static Block stratum(LayerChain.Band band, int y) {
         if (band.layer() != 1) {
             return layerGround(band.layer());
         }
-        return switch (Zones.index(band.minY(), band.height(), y)) {
-            case 0 -> HARDPAN;
-            case 1 -> PACKED_SHALE;
-            default -> BLACK_SHALE;
-        };
+        if (y >= Zones.span(band.minY(), band.height(), 0).low() - CLAIM_CONTACT_UNDER_EDGE) {
+            return HARDPAN;
+        }
+        if (y >= Zones.span(band.minY(), band.height(), 1).low() - CLAIM_CONTACT_UNDER_EDGE) {
+            return PACKED_SHALE;
+        }
+        return BLACK_SHALE;
+    }
+
+    /**
+     * The rock a block placed against {@code against} in {@code level} at height {@code y} sits in: the layer rock it
+     * is set against when that is the layer's ground (so an ore set in a wall near a strata contact takes the wall's
+     * rock), else {@link #layerGroundOf}.
+     */
+    public static Optional<Block> placedGroundOf(Level level, BlockPos against, int y) {
+        Optional<Block> ground = layerGroundOf(level, y);
+        BlockState wall = level.getBlockState(against);
+        return ground.isPresent() && wall.is(GROUND) ? Optional.of(wall.getBlock()) : ground;
     }
 
     /** The rock of layer {@code layer}, counted from 1; fails for a layer with no rock block yet. */

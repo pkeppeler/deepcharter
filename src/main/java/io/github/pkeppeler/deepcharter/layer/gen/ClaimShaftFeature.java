@@ -12,6 +12,9 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
@@ -30,6 +33,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A first-generation miner's shaft in layer 1 (#1277, LORE section 11): a hand-dug 3 x 3 hollow, {@code minDepth} to
@@ -103,6 +107,9 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
     private static final double RUNG_GONE = 0.12;
     private static final double[] PRAYER_CARD = {0.2, 0.35, 0.55};
 
+    /** The colony's fungal-wood planks, which name no constant: resolved once, and loud if the id is gone. */
+    private static @Nullable BlockState timber;
+
     /** The chance the drift also holds a salvage crate. */
     private static final double CRATE = 0.3;
 
@@ -168,7 +175,6 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
         Band band = LayerChain.layerBand(generator, level, layer, "A claim shaft");
         ChunkAccess chunk = level.getChunk(origin);
         Plan plan = plan(random, origin);
-        boolean campaign = generator.getBiomeSource() instanceof BandBiomeSource;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         // A top in open space (the room over the rock, a cave) moves down to the rock, where the shaft's mouth opens.
         int top = plan.top().getY();
@@ -188,11 +194,24 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
         if (bounds.minY() < floor || bounds.maxY() > Math.min(band.maxY(), chunk.getMinY() + chunk.getHeight() - 1)) {
             return false;
         }
-        Shaft shaft = new Shaft(chunk, band, campaign, placed, random);
+        Shaft shaft = new Shaft(chunk, band, placed, random);
         shaft.seal(bounds);
         shaft.carve(mouth);
         shaft.dress(mouth);
         return true;
+    }
+
+    private static BlockState timber() {
+        BlockState planks = timber;
+        if (planks == null) {
+            Identifier id = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "stalk_planks");
+            planks = BuiltInRegistries.BLOCK
+                    .getOptional(id)
+                    .orElseThrow(() -> new IllegalStateException("no block " + id + " to timber a claim shaft"))
+                    .defaultBlockState();
+            timber = planks;
+        }
+        return planks;
     }
 
     /**
@@ -207,16 +226,16 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
     private static final class Shaft {
         private final ChunkAccess chunk;
         private final Band band;
-        private final boolean campaign;
         private final Plan plan;
         private final RandomSource random;
         private final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         private final Direction ladderWall;
+        /** The columns carved at the foot, hollow and drift: the floor that takes what fell. */
+        private final List<BlockPos> foot = new ArrayList<>();
 
-        Shaft(ChunkAccess chunk, Band band, boolean campaign, Plan plan, RandomSource random) {
+        Shaft(ChunkAccess chunk, Band band, Plan plan, RandomSource random) {
             this.chunk = chunk;
             this.band = band;
-            this.campaign = campaign;
             this.plan = plan;
             this.random = random;
             this.ladderWall = plan.drift().getOpposite();
@@ -230,18 +249,27 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
             chunk.setBlockState(pos.set(x, y, z), state, Block.UPDATE_CLIENTS);
         }
 
-        /** The rock of the zone at {@code y}: a stratum of the campaign's layer 1, the layer's one rock elsewhere. */
-        private BlockState rock(int y) {
-            return (campaign ? LayerBlocks.stratum(band, y) : LayerBlocks.layerGround(band.layer()))
-                    .defaultBlockState();
-        }
-
+        /**
+         * Seals the shell: lava and gas in {@code bounds} become the layer rock found in the same row of the bounds, so a
+         * seal near a strata contact is the rock of the wall round it; a row with none takes the layer's own rock.
+         */
         void seal(BoundingBox bounds) {
-            for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
-                for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
-                    for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
+            for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
+                BlockState rock = LayerBlocks.layerGround(band.layer()).defaultBlockState();
+                findRock:
+                for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
+                    for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
+                        BlockState state = get(x, y, z);
+                        if (state.is(LayerBlocks.GROUND)) {
+                            rock = state;
+                            break findRock;
+                        }
+                    }
+                }
+                for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
+                    for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
                         if (RoomSeal.needsSealing(get(x, y, z))) {
-                            set(x, y, z, rock(y));
+                            set(x, y, z, rock);
                         }
                     }
                 }
@@ -263,6 +291,11 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
                     }
                 }
             }
+            for (int u = -HOLLOW; u <= HOLLOW; u++) {
+                for (int v = -HOLLOW; v <= HOLLOW; v++) {
+                    foot.add(new BlockPos(x + u, bottom, z + v));
+                }
+            }
             Direction drift = plan.drift();
             Direction side = drift.getClockWise();
             for (int out = HOLLOW + 1; out <= HOLLOW + DRIFT; out++) {
@@ -271,23 +304,18 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
                     if (out == HOLLOW + DRIFT && across != 0) {
                         continue;
                     }
+                    int dx = x + drift.getStepX() * out + side.getStepX() * across;
+                    int dz = z + drift.getStepZ() * out + side.getStepZ() * across;
                     for (int y = bottom; y < bottom + DRIFT_HEIGHT; y++) {
-                        set(
-                                x + drift.getStepX() * out + side.getStepX() * across,
-                                y,
-                                z + drift.getStepZ() * out + side.getStepZ() * across,
-                                AIR);
+                        set(dx, y, dz, AIR);
                     }
+                    foot.add(new BlockPos(dx, bottom, dz));
                 }
             }
-            // The floor: what fell, over the rock.
-            for (int u = -HOLLOW - DRIFT; u <= HOLLOW + DRIFT; u++) {
-                for (int v = -HOLLOW - DRIFT; v <= HOLLOW + DRIFT; v++) {
-                    if (get(x + u, bottom, z + v).isAir()
-                            && isRock(get(x + u, bottom - 1, z + v))
-                            && random.nextFloat() < 0.6F) {
-                        set(x + u, bottom - 1, z + v, LayerBlocks.PACKED_SHALE_RUBBLE.defaultBlockState());
-                    }
+            // The floor: what fell, over the rock, under the carved foot only.
+            for (BlockPos at : foot) {
+                if (isRock(get(at.getX(), bottom - 1, at.getZ())) && random.nextFloat() < 0.6F) {
+                    set(at.getX(), bottom - 1, at.getZ(), LayerBlocks.PACKED_SHALE_RUBBLE.defaultBlockState());
                 }
             }
         }
@@ -297,9 +325,7 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
             int z = plan.top().getZ();
             int top = plan.top().getY() - (mouth ? 0 : PLUG);
             int bottom = plan.bottom();
-            BlockState timber = BuiltInRegistries.BLOCK
-                    .getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "stalk_planks"))
-                    .defaultBlockState();
+            BlockState timber = timber();
             // Sets of timber in the walls, the top one at a mouth's rim.
             for (int y = mouth ? top : top - 1; y > bottom + 1; y -= SET_SPACING) {
                 for (int u = -WALL; u <= WALL; u++) {
@@ -346,10 +372,7 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
                         x + drift.getStepX() * corner - side.getStepX(),
                         bottom,
                         z + drift.getStepZ() * corner - side.getStepZ(),
-                        facing(
-                                BuiltInRegistries.BLOCK.getValue(
-                                        Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "salvage_crate")),
-                                drift));
+                        facing(SurfaceBlocks.SALVAGE_CRATE, drift));
             }
         }
 
@@ -361,8 +384,9 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
             Direction along = wall.getClockWise();
             int nx = x + wall.getStepX() * WALL;
             int nz = z + wall.getStepZ() * WALL;
+            // Rock for the niche's two rows and under them, so a stub never stands over a cave.
             for (int a = 0; a <= 1; a++) {
-                for (int dy = 0; dy <= 1; dy++) {
+                for (int dy = -1; dy <= 1; dy++) {
                     if (!isRock(get(nx + along.getStepX() * a, y + dy, nz + along.getStepZ() * a))) {
                         return;
                     }

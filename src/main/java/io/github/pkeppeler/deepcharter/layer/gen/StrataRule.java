@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.layer.gen;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -60,18 +61,32 @@ public record StrataRule(
                 .apply(instance, Contact::new));
     }
 
-    public static final MapCodec<StrataRule> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                    Contact.CODEC
-                            .listOf(1, Integer.MAX_VALUE)
-                            .fieldOf("contacts")
-                            .forGetter(StrataRule::contacts),
-                    BlockState.CODEC.fieldOf("bottom").forGetter(StrataRule::bottom),
-                    ResourceKey.codec(Registries.NOISE).fieldOf("noise").forGetter(StrataRule::noise),
-                    Codec.intRange(0, MAX_SHIFT * 4).fieldOf("amplitude").forGetter(StrataRule::amplitude),
-                    Codec.intRange(0, 4)
-                            .fieldOf("surface_depth_multiplier")
-                            .forGetter(StrataRule::surfaceDepthMultiplier))
-            .apply(instance, StrataRule::new));
+    public static final MapCodec<StrataRule> CODEC = RecordCodecBuilder.<StrataRule>mapCodec(instance -> instance.group(
+                            Contact.CODEC
+                                    .listOf(1, Integer.MAX_VALUE)
+                                    .fieldOf("contacts")
+                                    .forGetter(StrataRule::contacts),
+                            BlockState.CODEC.fieldOf("bottom").forGetter(StrataRule::bottom),
+                            ResourceKey.codec(Registries.NOISE).fieldOf("noise").forGetter(StrataRule::noise),
+                            Codec.intRange(0, MAX_SHIFT * 4)
+                                    .fieldOf("amplitude")
+                                    .forGetter(StrataRule::amplitude),
+                            Codec.intRange(0, 4)
+                                    .fieldOf("surface_depth_multiplier")
+                                    .forGetter(StrataRule::surfaceDepthMultiplier))
+                    .apply(instance, StrataRule::new))
+            .validate(rule -> descending(rule.contacts)
+                    ? DataResult.success(rule)
+                    : DataResult.error(() -> "a strata rule's contacts must run top first, got " + rule.contacts));
+
+    private static boolean descending(List<Contact> contacts) {
+        for (int i = 1; i < contacts.size(); i++) {
+            if (contacts.get(i).y() >= contacts.get(i - 1).y()) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     public StrataRule {
         contacts = List.copyOf(contacts);

@@ -71,6 +71,17 @@ public final class SurfaceWrites {
         WATCHED_WRITES.reset();
     }
 
+    // test-seam: ClaimFeaturesTest counts the pairs worldgen judges from an empty table, to hold the working set well
+    // under the table's cap.
+    public static int knownPairs() {
+        return known.length;
+    }
+
+    // test-seam: ClaimFeaturesTest empties the table before it counts.
+    public static synchronized void forgetKnown() {
+        known = new Verdict[0];
+    }
+
     // test-seam: the fast writes into the watched chunk position since watch.
     public static long watchedWrites() {
         return WATCHED_WRITES.sum();
