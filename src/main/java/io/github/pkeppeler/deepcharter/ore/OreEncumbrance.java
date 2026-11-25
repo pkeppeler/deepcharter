@@ -21,8 +21,8 @@ import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.component.ItemContainerContents;
 
 /**
- * Carried ore slows a player on foot (SPEC section 4), so that the pod is the hauler, and so does the solid fuel in a pack (a
- * {@link CargoWeight}, #1280). Ore in a shulker box or a bundle counts.
+ * Carried ore slows a player on foot (SPEC section 4), so that the pod is the hauler, and so does the solid fuel in a
+ * pack (a {@link CargoWeight}, #1280). Ore in a shulker box or a bundle counts.
  * This class is the one source of the slowdown: the Overburdened status ({@link OreRegistry#OVERBURDENED}) and the one-time line on a
  * player's first ore only show it (#853), and are set here from the same number, on the same tick.
  */
@@ -76,7 +76,10 @@ public final class OreEncumbrance {
         return mass;
     }
 
-    /** The mass the player carries of what is not ore: the weight of solid fuel and of anything else with a {@link CargoWeight}. */
+    /**
+     * The mass the player carries of what is not ore: the weight of solid fuel and of anything else with a {@link
+     * CargoWeight}.
+     */
     public static float carriedLooseMass(Player player) {
         float mass = 0f;
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
@@ -157,8 +160,8 @@ public final class OreEncumbrance {
     }
 
     /**
-     * Says once per player, and keeps that as a read mark, why they now move slowly: the ore line for a first ore, the fuel line
-     * for a first load that has no ore in it. Says nothing when the marks cannot be read.
+     * Says once per player, and keeps that as a read mark, why they now move slowly: the ore line for a first ore, the
+     * fuel line for a first load that has no ore in it. Says nothing when the marks cannot be read.
      */
     private static void explainFirstLoad(ServerPlayer player) {
         if (!ReadMarks.isReadable(player)) {

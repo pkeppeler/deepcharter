@@ -9,8 +9,10 @@ import java.util.List;
  * @param pricePerLitre dollars the pump charges for one litre (the original's price)
  * @param purchaseSteps the litres of the pump screen's buy buttons, besides FILL
  * @param reserveLitres what a reserve tank adds to the tank, and what it holds when it rescues a stranded pod
- * @param solidStack    how many of a solid fuel (coal, charcoal, biofuel) stack: a stack of 64 was 128 L in one slot (#1280)
- * @param weight        what a solid fuel weighs, in pod units, so a pack of it slows a person and cuts a pod's lift as ore does
+ * @param solidStack    how many of a solid fuel (coal, charcoal, biofuel) stack: a stack of 64 was 128 L in one slot
+ * (#1280)
+ * @param weight        what a solid fuel weighs, in pod units, so a pack of it slows a person and cuts a pod's lift as
+ * ore does
  * @param soot          the fouling of the engine by solid fuel
  */
 public record FuelTuning(
@@ -34,9 +36,11 @@ public record FuelTuning(
     }
 
     /**
-     * What soot does. A litre of fuel adds its fuel's {@code soot} (data, {@code pod_fuel/*.json}) litres of soot as it burns.
+     * What soot does. A litre of fuel adds its fuel's {@code soot} (data, {@code pod_fuel/*.json}) litres of soot as it
+     * burns.
      *
-     * @param graceLitres      the soot the engine takes before it burns more: the indicator and the first line come here
+     * @param graceLitres      the soot the engine takes before it burns more: the indicator and the first line come
+     * here
      * @param penaltyPerLitre  the extra share of fuel the engine burns for each litre of soot past the grace
      * @param maxPenalty       the most extra share it burns, however fouled
      * @param servicePerLitre  dollars the repair station charges to clear a litre of soot

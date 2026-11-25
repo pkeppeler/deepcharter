@@ -126,7 +126,10 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
         return rows;
     }
 
-    /** The row that clears the engine's soot (#1280): its price from the nearest pod's synced soot, and inactive when there is none. */
+    /**
+     * The row that clears the engine's soot (#1280): its price from the nearest pod's synced soot, and inactive when
+     * there is none.
+     */
     private Row serviceRow() {
         long cost = nearbyPod().map(EngineSoot::serviceCost).orElse(0L);
         long soot = Math.round(nearbyPod().map(EngineSoot::soot).orElse(0f));

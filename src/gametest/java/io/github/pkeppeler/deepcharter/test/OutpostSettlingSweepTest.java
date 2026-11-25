@@ -42,7 +42,10 @@ import net.minecraft.world.phys.Vec3;
  * tick and the sweep comes later.
  */
 public class OutpostSettlingSweepTest {
-    /** A stack of coal, which a container clamps to (#1280). Read when a test runs: the item's components are bound after the class loads. */
+    /**
+     * A stack of coal, which a container clamps to (#1280). Read when a test runs: the item's components are bound
+     * after the class loads.
+     */
     private static int coalStack() {
         return Items.COAL.getDefaultMaxStackSize();
     }

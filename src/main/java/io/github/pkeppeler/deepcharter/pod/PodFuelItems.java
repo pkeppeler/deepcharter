@@ -35,9 +35,9 @@ import net.minecraft.world.item.ItemStack;
 /**
  * The items that refuel a pod, defined in data: an item is fuel when it is in the {@link #TAG} tag, and the litres
  * it gives come from the table, one JSON file for each item. The file's path is the item's id:
- * {@code data/minecraft/pod_fuel/coal.json} holds {@code {"litres": 2.0, "soot": 0.5}} for {@code minecraft:coal}: the litres
- * one item gives, and the litres of soot each litre leaves in the engine as it burns ({@code soot} is optional, 0 for a clean
- * fuel). A datapack
+ * {@code data/minecraft/pod_fuel/coal.json} holds {@code {"litres": 2.0, "soot": 0.5}} for {@code minecraft:coal}: the
+ * litres one item gives, and the litres of soot each litre leaves in the engine as it burns ({@code soot} is optional,
+ * 0 for a clean fuel). A datapack
  * adds a fuel by adding the item to the tag and a file to the table, and replaces one with a file of the same path,
  * so the pack order decides, as it does for any data file.
  *
@@ -83,7 +83,10 @@ public final class PodFuelItems {
         return fuel == null ? OptionalDouble.empty() : OptionalDouble.of(fuel.litres());
     }
 
-    /** Server only. The litres of soot a litre of the stack's fuel leaves in the engine as it burns; 0 for a clean fuel or no fuel. */
+    /**
+     * Server only. The litres of soot a litre of the stack's fuel leaves in the engine as it burns; 0 for a clean fuel
+     * or no fuel.
+     */
     public static float sootOf(ItemStack stack) {
         Fuel fuel = stack.is(TAG) ? table.get(stack.getItem()) : null;
         return fuel == null ? 0f : fuel.soot();

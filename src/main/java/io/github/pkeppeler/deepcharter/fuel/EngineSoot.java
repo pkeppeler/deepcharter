@@ -19,27 +19,31 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Soot in a pod's engine (#1280). Burning coal and charcoal leaves soot, and a fouled engine burns more fuel until the repair
- * station services it; pump fuel and biofuel burn clean. The state is a versioned attachment ({@link #STATE}, ADR 0097).
+ * Soot in a pod's engine (#1280). Burning coal and charcoal leaves soot, and a fouled engine burns more fuel until the
+ * repair station services it; pump fuel and biofuel burn clean. The state is a versioned attachment ({@link #STATE},
+ * ADR 0097).
  *
- * <p>Refuelling with a solid fuel puts its litres, and the soot those litres will leave, in the tank's account; the pod's tick
- * burns litres off that account in proportion, so a tank of half coal and half pump fuel fouls half as fast. The burn is taken off
- * the solid fuel first, which makes the soot a pessimistic count for a mixed tank and exact for one filled with items.
+ * <p>Refuelling with a solid fuel puts its litres, and the soot those litres will leave, in the tank's account; the
+ * pod's tick burns litres off that account in proportion, so a tank of half coal and half pump fuel fouls half as fast.
+ * The burn is taken off the solid fuel first, which makes the soot a pessimistic count for a mixed tank and exact for
+ * one filled with items.
  *
- * <p>The tick path reads the state with {@link Versioned#readable}: unreadable soot is no soot, and nothing writes over it.
- * {@link #service} is an explicit change and throws on an unreadable state, naming the attachment; its caller asks
+ * <p>The tick path reads the state with {@link Versioned#readable}: unreadable soot is no soot, and nothing writes over
+ * it. {@link #service} is an explicit change and throws on an unreadable state, naming the attachment; its caller asks
  * {@link #isReadable} first.
  */
 public final class EngineSoot {
     public static final int VERSION = 1;
 
-    /** The read mark that records the one-time line the first time soot bites a pilot (the player's {@code ReadMarks}). */
+    /**
+     * The read mark that records the one-time line the first time soot bites a pilot (the player's {@code ReadMarks}).
+     */
     public static final Identifier FIRST_SOOT_MARK =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_soot");
 
     /**
-     * Litres of soot in the engine, the litres of solid fuel in the tank that have not burned, and the litres of soot those
-     * will leave when they do.
+     * Litres of soot in the engine, the litres of solid fuel in the tank that have not burned, and the litres of soot
+     * those will leave when they do.
      */
     public record State(float soot, float tankLitres, float tankSoot) {
         public static final State CLEAN = new State(0f, 0f, 0f);
@@ -83,7 +87,9 @@ public final class EngineSoot {
         return Versioned.readable(pod, STATE).orElse(State.CLEAN);
     }
 
-    /** Litres of soot in the engine; 0 when the state cannot be read. Either side: the client reads the synced value. */
+    /**
+     * Litres of soot in the engine; 0 when the state cannot be read. Either side: the client reads the synced value.
+     */
     public static float soot(PodEntity pod) {
         return state(pod).soot();
     }
@@ -93,7 +99,10 @@ public final class EngineSoot {
         return Math.max(0f, soot - FuelTuning.DEFAULT.soot().graceLitres());
     }
 
-    /** The extra share of fuel the engine burns for {@code soot}: 0 up to the grace, then the penalty a litre, to the cap. */
+    /**
+     * The extra share of fuel the engine burns for {@code soot}: 0 up to the grace, then the penalty a litre, to the
+     * cap.
+     */
     public static float extraBurn(float soot) {
         FuelTuning.Soot tuning = FuelTuning.DEFAULT.soot();
         return Math.min(tuning.maxPenalty(), sootPastGrace(soot) * tuning.penaltyPerLitre());
@@ -105,8 +114,9 @@ public final class EngineSoot {
     }
 
     /**
-     * Server only: {@code litres} of a fuel that leaves {@code sootPerLitre} of soot a litre went into the tank. A clean fuel
-     * (0) changes nothing, and so does an unreadable state, which is kept as it is: the refuel is a callback path.
+     * Server only: {@code litres} of a fuel that leaves {@code sootPerLitre} of soot a litre went into the tank. A
+     * clean fuel (0) changes nothing, and so does an unreadable state, which is kept as it is: the refuel is a callback
+     * path.
      */
     public static void refuelled(PodEntity pod, float litres, float sootPerLitre) {
         Optional<State> read = Versioned.readable(pod, STATE);
@@ -126,8 +136,9 @@ public final class EngineSoot {
     }
 
     /**
-     * Server only, from the pod's tick: {@code litres} burned. The solid fuel in the tank burns first, and its soot comes off the
-     * tank's account in proportion. Does nothing, and never throws, when nothing solid is in the tank or the state is unreadable.
+     * Server only, from the pod's tick: {@code litres} burned. The solid fuel in the tank burns first, and its soot
+     * comes off the tank's account in proportion. Does nothing, and never throws, when nothing solid is in the tank or
+     * the state is unreadable.
      */
     public static void burned(PodEntity pod, float litres) {
         Optional<State> read = Versioned.readable(pod, STATE);
@@ -153,12 +164,18 @@ public final class EngineSoot {
         return (long) Math.ceil(soot(pod) * FuelTuning.DEFAULT.soot().servicePerLitre());
     }
 
-    /** Server only: clears the engine's soot. What the tank's fuel will still leave is kept. Throws on an unreadable state. */
+    /**
+     * Server only: clears the engine's soot. What the tank's fuel will still leave is kept. Throws on an unreadable
+     * state.
+     */
     public static void service(PodEntity pod) {
         Versioned.modifyOrThrow(pod, STATE, state -> new State(0f, state.tankLitres(), state.tankSoot()));
     }
 
-    /** Says once per player, kept as a read mark, why the engine now burns more. Says nothing when the marks cannot be read. */
+    /**
+     * Says once per player, kept as a read mark, why the engine now burns more. Says nothing when the marks cannot be
+     * read.
+     */
     private static void explainFirstSoot(PodEntity pod) {
         if (pod.getControllingPassenger() instanceof ServerPlayer pilot
                 && ReadMarks.isReadable(pilot)

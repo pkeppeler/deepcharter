@@ -25,22 +25,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * What a trip earns on each fuel (#1280): the same trip, depth and ore, burned on pump fuel and on each solid fuel, in credits a
- * minute of effort. Lines start with {@code [fuel-economy]} and make the PR's table.
+ * What a trip earns on each fuel (#1280): the same trip, depth and ore, burned on pump fuel and on each solid fuel, in
+ * credits a minute of effort. Lines start with {@code [fuel-economy]} and make the PR's table.
  *
- * <p>The trip is {@link EarlyRunModel}'s: its ore, litres and seconds. The engine is the real one: {@link EngineSoot} fouls as the
- * litres burn and charges the service, and a fouled engine burns more, so the litres grow as the soot does. (A) The effort model is
- * the hands-on seconds to put one item in the pack ({@link #PREP_SECONDS}), and {@link #WALK_SECONDS} for the walk, the boarding, the
- * fuel and the sale that a colony trip pays whatever it burns. Fuel from the pump is paid for at the pump's price, and solid fuel
- * costs its service bill.
+ * <p>The trip is {@link EarlyRunModel}'s: its ore, litres and seconds. The engine is the real one: {@link EngineSoot}
+ * fouls as the litres burn and charges the service, and a fouled engine burns more, so the litres grow as the soot
+ * does. (A) The effort model is the hands-on seconds to put one item in the pack ({@link #PREP_SECONDS}), and {@link
+ * #WALK_SECONDS} for the walk, the boarding, the fuel and the sale that a colony trip pays whatever it burns. Fuel from
+ * the pump is paid for at the pump's price, and solid fuel costs its service bill.
  */
 public class FuelTripEconomyTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(FuelTripEconomyTest.class);
 
-    /** (A) Seconds of hands-on work for one item: fell a stalk and char it (charcoal), mine a colony coal block (coal), fell three stalks, cook three mash and craft (biofuel). */
+    /**
+     * (A) Seconds of hands-on work for one item: fell a stalk and char it (charcoal), mine a colony coal block (coal),
+     * fell three stalks, cook three mash and craft (biofuel).
+     */
     private static final Map<Item, Double> PREP_SECONDS =
             Map.of(Items.CHARCOAL, 10.0, Items.COAL, 6.0, FuelRegistry.BIOFUEL, 26.0);
-    /** (A) The seconds a colony trip spends off the pod: the walk to the pump and the processor, boarding, fuel and the sale. */
+    /**
+     * (A) The seconds a colony trip spends off the pod: the walk to the pump and the processor, boarding, fuel and the
+     * sale.
+     */
     private static final double WALK_SECONDS = 45;
     /** The litres of a slice of the burn; the engine fouls as it goes. */
     private static final float SLICE = 0.05f;

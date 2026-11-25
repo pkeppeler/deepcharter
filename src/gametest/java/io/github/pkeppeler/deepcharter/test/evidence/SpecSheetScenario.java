@@ -27,10 +27,10 @@ import net.minecraft.world.item.Items;
 
 /**
  * Evidence scenario "m2-spec-sheet" for #848: the scanner unit's spec sheet opened from the recipe console's SPEC SHEET button (still
- * {@code sheet-open}), then the sheet that pops up by itself the first time the player crafts biofuel, taken from three stalk mash in the
- * inventory's grid (still {@code first-craft-popup}), then the longest sheet there is, a part's, looked up by hand (still
- * {@code sheet-tiers}). The craft is the server's real crafting path, so the pop-up is what a player
- * sees, not a fixture.
+ * {@code sheet-open}), then the sheet that pops up by itself the first time the player crafts biofuel, taken from three
+ * stalk mash in the inventory's grid (still {@code first-craft-popup}), then the longest sheet there is, a part's,
+ * looked up by hand (still {@code sheet-tiers}). The craft is the server's real crafting path, so the pop-up is what a
+ * player sees, not a fixture.
  */
 public class SpecSheetScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;

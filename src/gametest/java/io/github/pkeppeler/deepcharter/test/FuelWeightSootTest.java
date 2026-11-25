@@ -28,8 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Solid fuel is bulky, heavy and sooty (#1280). Each test prints its numbers on a line that starts with {@code [fuel-economy]}, and
- * puts them in its failure message, so the PR can carry them as a table.
+ * Solid fuel is bulky, heavy and sooty (#1280). Each test prints its numbers on a line that starts with {@code
+ * [fuel-economy]}, and puts them in its failure message, so the PR can carry them as a table.
  */
 public class FuelWeightSootTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(FuelWeightSootTest.class);
@@ -119,7 +119,10 @@ public class FuelWeightSootTest {
         }
     }
 
-    /** Burns {@code litres} of the pod's tank the way its tick does, through the soot, and answers what the engine really burned. */
+    /**
+     * Burns {@code litres} of the pod's tank the way its tick does, through the soot, and answers what the engine
+     * really burned.
+     */
     private static float burn(PodEntity pod, float litres) {
         float burned = litres * EngineSoot.burnMultiplier(pod);
         EngineSoot.burned(pod, burned);

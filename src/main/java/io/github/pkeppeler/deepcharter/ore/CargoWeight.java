@@ -15,9 +15,9 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipProvider;
 
 /**
- * The weight of one item that is not ore, in pod units (the unit of {@link OreType#mass}). It is a default component of the item
- * and never set on a stack, so no save holds one. {@link OreEncumbrance} counts it with the ore a player carries, and a pod's lift
- * counts what its pilot carries, so ore and the solid fuels weigh the same way.
+ * The weight of one item that is not ore, in pod units (the unit of {@link OreType#mass}). It is a default component of
+ * the item and never set on a stack, so no save holds one. {@link OreEncumbrance} counts it with the ore a player
+ * carries, and a pod's lift counts what its pilot carries, so ore and the solid fuels weigh the same way.
  */
 public record CargoWeight(float mass) implements TooltipProvider {
     public static final Codec<CargoWeight> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -35,7 +35,10 @@ public record CargoWeight(float mass) implements TooltipProvider {
         consumer.accept(Component.translatable("deepcharter.ore.tooltip.heavy").withStyle(ChatFormatting.GRAY));
     }
 
-    /** The mass of the stack's own items, counted by this component; 0 for an item with none. Ore and containers are not counted here. */
+    /**
+     * The mass of the stack's own items, counted by this component; 0 for an item with none. Ore and containers are not
+     * counted here.
+     */
     public static float of(ItemStack stack) {
         CargoWeight weight = stack.get(OreRegistry.CARGO_WEIGHT);
         return weight == null ? 0f : weight.mass() * stack.getCount();

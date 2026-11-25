@@ -92,7 +92,10 @@ public final class RepairStation {
         return Optional.empty();
     }
 
-    /** Clears the soot of the parked pod's engine for {@link EngineSoot#serviceCost}; a clean engine costs nothing and is refused. */
+    /**
+     * Clears the soot of the parked pod's engine for {@link EngineSoot#serviceCost}; a clean engine costs nothing and
+     * is refused.
+     */
     private static Optional<Component> serviceEngine(TerminalAction.Context context) {
         Optional<PodEntity> parked = parkedPod(context);
         if (parked.isEmpty()) {
