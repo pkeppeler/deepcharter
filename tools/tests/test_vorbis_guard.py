@@ -1,6 +1,7 @@
 """Tests tools/tests/vorbis_guard.py (#1332): without libvorbis every test that writes mono Vorbis skips, or fails under CI=true."""
 import os
 import shutil
+import subprocess
 import unittest
 from unittest import mock
 
@@ -64,3 +65,27 @@ class PresentTest(unittest.TestCase):
             result = run((Guarded,), present=True, ci=ci)
             self.assertEqual((1, [], [], []), (result.testsRun, result.errors, result.failures, result.skipped), ci)
             self.assertEqual(["setUp", "test"], ran, ci)
+
+
+class ProbeTest(unittest.TestCase):
+    """A broken or hung ffmpeg reads as no libvorbis, so the guarded tests skip instead of erroring."""
+
+    def probe(self, **run):
+        with mock.patch.object(vorbis_guard.first_sounds.shutil, "which", return_value="/bin/ffmpeg"), mock.patch.object(
+            vorbis_guard.first_sounds.subprocess, "run", **run
+        ):
+            return vorbis_guard.first_sounds.has_libvorbis()
+
+    def test_a_non_zero_exit_is_no_libvorbis(self):
+        broken = subprocess.CompletedProcess([], 1, stdout=" libvorbis ", stderr="dyld: Library not loaded")
+        self.assertFalse(self.probe(return_value=broken))
+
+    def test_a_timeout_is_no_libvorbis(self):
+        self.assertFalse(self.probe(side_effect=subprocess.TimeoutExpired("ffmpeg", 10)))
+
+    def test_an_os_error_is_no_libvorbis(self):
+        self.assertFalse(self.probe(side_effect=OSError("exec format error")))
+
+    def test_a_listing_with_libvorbis_is_libvorbis(self):
+        listing = subprocess.CompletedProcess([], 0, stdout=" A..... libvorbis            libvorbis\n", stderr="")
+        self.assertTrue(self.probe(return_value=listing))

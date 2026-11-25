@@ -21,7 +21,7 @@ def needs_mono_vorbis(cls):
     def guarded_set_up(self):
         if not first_sounds.has_libvorbis():
             if os.environ.get("CI") == "true":
-                self.fail(f"{REASON}, and CI must run this test")
+                self.fail(f"{REASON}, and CI must run this test: install an ffmpeg with libvorbis (see tools/install-ffmpeg.sh)")
             self.skipTest(REASON)
         set_up(self)
 

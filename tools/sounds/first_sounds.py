@@ -347,8 +347,12 @@ def has_libvorbis():
     """Whether an ffmpeg is on PATH with the libvorbis encoder: the sound tools' one test for it, and the tests' guard (#1332)."""
     if not shutil.which("ffmpeg"):
         return False
-    listing = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], check=True, capture_output=True, text=True).stdout
-    return " libvorbis " in listing
+    try:
+        probe = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], check=False, capture_output=True, text=True, timeout=10)
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    # tools/install-ffmpeg.sh tests the same fact with `*libvorbis*`; keep the two in step.
+    return probe.returncode == 0 and " libvorbis " in probe.stdout
 
 
 def _encoder_args():
