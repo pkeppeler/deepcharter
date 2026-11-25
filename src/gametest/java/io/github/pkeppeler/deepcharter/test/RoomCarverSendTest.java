@@ -23,13 +23,20 @@ import net.minecraft.world.phys.Vec3;
  * view while the hold is pending must still be sent the chunk once it ends. Each test carves in a ticking chunk of layer rock, as the
  * evidence scenarios and the breach do, brings a player into view in the same tick, and waits for the server to have sent every chunk
  * of the room.
+ *
+ * <p>The carve waits until every chunk of the room can be sent. A chunk that ticks can still wait on the light of its own generation,
+ * and {@link LightSync} holds only a chunk that can be sent: one that cannot is sent by vanilla when it can, so it is not held, and a
+ * carve then would not test the hold (#1347).
  */
 public class RoomCarverSendTest {
     private static final int SECONDS = 30;
     private static final int LOCAL_FLOOR = 60; // fixed-pos: a layer-local Y, turned into a world Y by TestLayers.worldY
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 200;
 
-    /** Carves the box once its chunks tick, brings the player in the same tick, and fails naming the chunks that are never sent. */
+    /**
+     * Carves the box once its chunks tick and can be sent, brings the player in the same tick, and fails naming the chunks that are
+     * never sent.
+     */
     private static void carveThenArrive(GameTestHelper helper, int layer, BlockPos min, BlockPos max) {
         ServerLevel level = TestLayers.level(helper.getLevel().getServer(), layer);
         MockPlayer player = MockPlayers.join(helper, "send-" + min.getX());
@@ -40,8 +47,26 @@ public class RoomCarverSendTest {
                 .map(chunk -> new BlockPos(chunk.getMinBlockX(), min.getY(), chunk.getMinBlockZ()))
                 .toList();
         int[] ticking = {0};
-        FarChunks.awaitEntityTicking(helper, level, columns, index -> {
-            if (++ticking[0] == columns.size()) {
+        boolean[] carved = {false};
+        FarChunks.awaitEntityTicking(helper, level, columns, index -> ticking[0]++);
+        FarChunks.Deadline deadline = FarChunks.deadline(SECONDS);
+        TestTicks.each(helper, () -> {
+            if (ticking[0] < columns.size()) {
+                return;
+            }
+            if (!carved[0]) {
+                List<ChunkPos> unsendable = chunks.stream()
+                        .filter(chunk -> level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) == null)
+                        .toList();
+                if (!unsendable.isEmpty()) {
+                    deadline.await(
+                            helper,
+                            level,
+                            false,
+                            () -> unsendable + " in " + level.dimension() + " tick but never became sendable, so the"
+                                    + " carve could not begin");
+                    return;
+                }
                 RoomCarver.carve(level, min, max, Blocks.AIR.defaultBlockState());
                 if (LightSync.heldChunks().stream()
                         .noneMatch(line -> line.contains(chunks.get(0).toString()))) {
@@ -49,11 +74,7 @@ public class RoomCarverSendTest {
                             "the carve should hold " + chunks.get(0) + ", held: " + LightSync.heldChunks()));
                 }
                 player.teleportTo(level, Vec3.atBottomCenterOf(min), 0f, 0f);
-            }
-        });
-        FarChunks.Deadline deadline = FarChunks.deadline(SECONDS);
-        TestTicks.each(helper, () -> {
-            if (ticking[0] < columns.size()) {
+                carved[0] = true;
                 return;
             }
             List<ChunkPos> unsent = chunks.stream()
