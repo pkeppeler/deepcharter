@@ -1,8 +1,6 @@
-"""Every Deep Charter biome declares its own `minecraft:audio/background_music` (#1296).
+"""Every Deep Charter biome declares `minecraft:audio/background_music` (#1296); `{}` is silence.
 
-A biome without the attribute falls back to the dimension's, then to vanilla's game music, and a creative player gets vanilla's creative
-music on top. `{}` is silence. Pure Python so the CI `tool-tests` job (no JDK) runs it; `SoundAmbienceTest` checks what the loaded
-registry plays.
+Without it a biome falls back to vanilla's music, creative music included.
 """
 import json
 import tempfile

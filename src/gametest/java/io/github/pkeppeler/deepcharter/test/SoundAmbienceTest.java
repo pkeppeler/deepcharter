@@ -214,10 +214,7 @@ public class SoundAmbienceTest {
         helper.succeed();
     }
 
-    /**
-     * The unbuilt depth below the last built layer is no layer's zone, so nothing else covers it (#1296). With no
-     * music of its own it fell back to vanilla's, and a creative player to vanilla's creative music.
-     */
+    /** No layer covers the unbuilt depth, so it must set its own music or vanilla's plays (#1296). */
     @GameTest
     public void unbuiltDepthPlaysNoVanillaMusicInAnyMode(GameTestHelper helper) {
         var registry = helper.getLevel().getServer().registryAccess().lookupOrThrow(Registries.BIOME);
