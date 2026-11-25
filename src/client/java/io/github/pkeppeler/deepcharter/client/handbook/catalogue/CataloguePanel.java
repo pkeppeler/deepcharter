@@ -573,11 +573,11 @@ public final class CataloguePanel {
             return false;
         }
         pressTaken = true;
-        if (event.button() != 0 && event.button() != 1) {
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT && event.button() != InputConstants.MOUSE_BUTTON_RIGHT) {
             // A middle or side button on a panel is taken and does nothing, so it never reaches the inventory behind.
             return true;
         }
-        boolean right = event.button() == 1;
+        boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
         Hit hit = hitAt(x, y);
         if (hit != null) {
             lookUp(hit.item(), right ? CatalogueState.Mode.USES : CatalogueState.Mode.RECIPES);

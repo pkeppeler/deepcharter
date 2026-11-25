@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Serials;
+import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -55,7 +56,11 @@ final class ProspectorWrecks {
         }
     }
 
-    /** PROSPECTOR-0002's bay: three lamps gone dark, one burning, and Ines's log (N10) on a table. */
+    /**
+     * PROSPECTOR-0002's bay: three lamps gone dark, one burning, and Ines's log (N10) on a table. Its cabin phonograph stands in the corner
+     * (u 5, v 5) clear of the lamps, the table and the locker: it sings "Au clair de la lune" for a player who comes close (#861), the one
+     * place the tune is reliably found and learnt in safety. No other bay has one.
+     */
     static void light(StructurePlan p) {
         p.set(3, 0, 2, Blocks.LANTERN.defaultBlockState());
         p.set(3, 0, -2, Blocks.REDSTONE_LAMP.defaultBlockState());
@@ -63,5 +68,6 @@ final class ProspectorWrecks {
         p.set(-3, 0, 2, Blocks.REDSTONE_LAMP.defaultBlockState());
         p.set(0, 0, 4, Blocks.SPRUCE_PLANKS.defaultBlockState());
         p.set(0, 1, 4, NoteBlock.stateOf(NOTE));
+        p.set(5, 0, 5, PhonographRegistry.WRECK_PHONOGRAPH.defaultBlockState());
     }
 }
