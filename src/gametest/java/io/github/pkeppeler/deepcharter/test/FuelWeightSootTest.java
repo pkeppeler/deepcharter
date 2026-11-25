@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.fuel.FuelRegistry;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
@@ -18,18 +19,24 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.Inputs;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
+import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.saveddata.SavedDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -378,12 +385,17 @@ public class FuelWeightSootTest {
 
     /** A stone floor under the pod's footprint, its middle block returned. */
     private static BlockPos stoneFloor(GameTestHelper helper) {
-        for (int x = 1; x <= 3; x++) {
+        return stoneFloor(helper, 1);
+    }
+
+    /** A stone floor under a pod's footprint from {@code minX}, its middle block returned. */
+    private static BlockPos stoneFloor(GameTestHelper helper, int minX) {
+        for (int x = minX; x <= minX + 2; x++) {
             for (int z = 1; z <= 3; z++) {
                 helper.setBlock(new BlockPos(x, 1, z), Blocks.STONE);
             }
         }
-        return new BlockPos(2, 1, 2);
+        return new BlockPos(minX + 1, 1, 2);
     }
 
     /**
@@ -394,17 +406,75 @@ public class FuelWeightSootTest {
      */
     private static void sprintWith(
             GameTestHelper helper, RepairState repairs, PodEntity pod, MockPlayer pilot, int ticks) {
-        WorldData.with(helper.getLevel().getServer(), RepairState.TYPE, repairs, () -> {
-            pilot.setInput(Inputs.SPRINT);
-            try {
-                for (int tick = 0; tick < ticks; tick++) {
-                    pod.tickCount++;
-                    pod.tick();
-                }
-            } finally {
-                pilot.releaseInput();
+        WorldData.with(helper.getLevel().getServer(), RepairState.TYPE, repairs, () -> sprint(pod, pilot, ticks));
+    }
+
+    /** Ticks {@code pod} {@code ticks} times within this server tick, its pilot sprinting, as {@link #sprintWith}. */
+    private static void sprint(PodEntity pod, MockPlayer pilot, int ticks) {
+        pilot.setInput(Inputs.SPRINT);
+        try {
+            for (int tick = 0; tick < ticks; tick++) {
+                pod.tickCount++;
+                pod.tick();
             }
-        });
+        } finally {
+            pilot.releaseInput();
+        }
+    }
+
+    /**
+     * The launch gate on the drill's tick, against saved data this build cannot read: the repair state, then the
+     * charters with the repair station online. Either way the station refuses every action, so the gate must neither
+     * throw nor hold the pod.
+     */
+    @GameTest
+    public void aLimpPodAtTheColonyDrillsWhenTheRepairStateOrChartersAreUnreadable(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        drillsWithUnreadable(helper, 1, "unreadable-repairs", Runnable::run, RepairState.TYPE);
+        drillsWithUnreadable(
+                helper,
+                5,
+                "unreadable-charters",
+                body -> WorldData.with(server, RepairState.TYPE, stationOnline(), body),
+                CharterData.TYPE);
+        helper.succeed();
+    }
+
+    /**
+     * A limp pod on a stone floor from {@code minX}, its pilot sprinting with {@code unreadable} swapped for data this
+     * build cannot read inside {@code around}: the gate and the sprint must not throw, and the pod must drill.
+     */
+    private static void drillsWithUnreadable(
+            GameTestHelper helper, int minX, String pilotName, Consumer<Runnable> around, SavedDataType<?> unreadable) {
+        BlockPos below = stoneFloor(helper, minX);
+        PodEntity pod = helper.spawn(PodRegistry.POD, below.getX() + 0.5f, 2f, 2.5f);
+        MockPlayer pilot = MockPlayers.join(helper, pilotName);
+        try {
+            expect(helper, pilot.player().startRiding(pod), "the pilot should mount the pod");
+            pod.setAttached(
+                    EngineSoot.STATE,
+                    Versioned.of(new EngineSoot.State(FuelTuning.DEFAULT.soot().limpLitres() + 1f, 0f, 0f)));
+            Map<String, Runnable> paths = new LinkedHashMap<>();
+            paths.put(
+                    "launch gate",
+                    () -> expect(
+                            helper,
+                            !EngineSoot.launchRefused(pod),
+                            "the gate holds a limp pod at a station that cannot act"));
+            paths.put("sprint", () -> sprint(pod, pilot, DRILL_TICKS));
+            MinecraftServer server = helper.getLevel().getServer();
+            around.accept(() ->
+                    UnreadableChecks.assertSavedDataNoThrow(helper, "the limp launch gate", server, unreadable, paths));
+            expect(helper, EngineSoot.isLimp(pod), "the pod should still be limp");
+            expect(
+                    helper,
+                    pod.drilling() || !helper.getBlockState(below).is(Blocks.STONE),
+                    "with %s unreadable a limp pod should drill",
+                    unreadable.id());
+        } finally {
+            pilot.leave();
+            pod.discard();
+        }
     }
 
     @GameTest

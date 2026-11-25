@@ -10,8 +10,8 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
-import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.netty.buffer.ByteBuf;
 import java.util.Map;
 import java.util.Optional;
@@ -167,16 +167,16 @@ public final class EngineSoot {
 
     /**
      * Server only: whether the pod may not launch. It is limp at the colony, where the drill stops with a line until
-     * the engine is serviced or scraped, and only while the colony's repair station is online: both ways out are its
-     * actions, so before it is repaired (or when its state cannot be read) a limp pod launches, slow and thirsty (ADR
-     * 0097). Below the surface a limp pod drills, drives and climbs as it can.
+     * the engine is serviced or scraped, and only while the colony's repair station can act ({@link
+     * Terminals#canServe}): both ways out are its actions, so before it is repaired, or when its repair state or the
+     * charters cannot be read, a limp pod launches, slow and thirsty (ADR 0097). Below the surface a limp pod drills,
+     * drives and climbs as it can.
      */
     public static boolean launchRefused(PodEntity pod) {
         if (!limpAtColony(pod) || !(pod.level() instanceof ServerLevel level)) {
             return false;
         }
-        RepairState repairs = RepairState.get(level.getServer());
-        return repairs.isReadable() && repairs.online(TerminalTypes.REPAIR_STATION);
+        return Terminals.canServe(level.getServer(), TerminalTypes.REPAIR_STATION);
     }
 
     /**

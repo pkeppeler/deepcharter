@@ -26,9 +26,9 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The server-side API of terminals, and the one place a player's request reaches one. Every request is checked first, in this
- * order: the player is within {@link TerminalTuning#maxDistance()} blocks, the block is a terminal, the charter data is readable,
- * the player is on a charter (for a charter-only terminal), the repair data is readable (for a terminal that needs repair), and
- * then what the request needs of the repair state. Unreadable saved data is refused as {@code STATE_UNREADABLE}, never thrown.
+ * order: the player is within {@link TerminalTuning#maxDistance()} blocks, the block is a terminal, the charter data and (for a
+ * terminal that needs repair) the repair data are readable, the player is on a charter (for a charter-only terminal), and then
+ * what the request needs of the repair state. Unreadable saved data is refused as {@code STATE_UNREADABLE}, never thrown.
  * A refused request changes nothing, and the player is told why.
  * Call everything on the server thread.
  */
@@ -76,6 +76,24 @@ public final class Terminals {
                 yield Optional.empty();
             }
         };
+    }
+
+    /**
+     * Whether a terminal of {@code type} runs its actions now: its saved data is readable and it is online. When false
+     * it refuses every action (only a part goes in, and only while it is merely unrepaired), so a gate that holds a pod
+     * or player until it acts holds only while this is true. Safe on a tick path.
+     */
+    public static boolean canServe(MinecraftServer server, TerminalType type) {
+        return dataReadable(server, type) && RepairState.get(server).online(type);
+    }
+
+    /**
+     * Whether the saved data a request at a {@code type} terminal reads is readable: the charters, and the repair state
+     * for a terminal that needs repair.
+     */
+    private static boolean dataReadable(MinecraftServer server, TerminalType type) {
+        return Charters.isReadable(server)
+                && (!type.needsRepair() || RepairState.get(server).isReadable());
     }
 
     /**
@@ -140,16 +158,13 @@ public final class Terminals {
         }
         TerminalType type = terminal.type();
         MinecraftServer server = player.level().getServer();
-        if (!Charters.isReadable(server)) {
+        // Gameplay code never throws on unreadable saved data: it refuses, and the data stays as it was.
+        if (!dataReadable(server, type)) {
             return new Access.Denied(TerminalRefusal.STATE_UNREADABLE);
         }
         Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
         if (type.access() == TerminalType.Access.CHARTER_ONLY && charter.isEmpty()) {
             return new Access.Denied(TerminalRefusal.NOT_ON_A_CHARTER);
-        }
-        // Gameplay code never throws on unreadable saved data: it refuses, and the data stays as it was.
-        if (type.needsRepair() && !RepairState.get(server).isReadable()) {
-            return new Access.Denied(TerminalRefusal.STATE_UNREADABLE);
         }
         return new Access.Granted(type, charter);
     }
@@ -197,7 +212,7 @@ public final class Terminals {
     private static Optional<TerminalRefusal> run(
             ServerPlayer player, Access.Granted access, BlockPos pos, Identifier action, CompoundTag args) {
         MinecraftServer server = player.level().getServer();
-        if (!RepairState.get(server).online(access.type())) {
+        if (!canServe(server, access.type())) {
             return Optional.of(TerminalRefusal.UNREPAIRED);
         }
         Optional<TerminalAction> handler = TerminalActions.find(access.type(), action);
