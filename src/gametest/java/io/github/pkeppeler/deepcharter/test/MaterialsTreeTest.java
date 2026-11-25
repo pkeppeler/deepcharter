@@ -16,7 +16,10 @@ import java.util.OptionalInt;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -41,6 +44,8 @@ public class MaterialsTreeTest {
     private static final SlotDisplay PLANKS = item(Items.OAK_PLANKS);
     private static final SlotDisplay STICK = item(Items.STICK);
     private static final SlotDisplay LOG = item(Items.OAK_LOG);
+    // Items.COPPER_BLOCK is the weathering family, not one item.
+    private static final Item COPPER_BLOCK = BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace("copper_block"));
 
     private static SlotDisplay item(Item item) {
         return new SlotDisplay.ItemSlotDisplay(item);
@@ -60,6 +65,24 @@ public class MaterialsTreeTest {
                         List.of(ingredients),
                         new SlotDisplay.ItemStackSlotDisplay(new ItemStackTemplate(made, count)),
                         SlotDisplay.Empty.INSTANCE),
+                OptionalInt.empty(),
+                RecipeBookCategories.CRAFTING_MISC,
+                Optional.empty());
+        return KnownRecipe.of(entry, SlotDisplayContext.fromLevel(helper.getLevel()));
+    }
+
+    /** The shipped recipe {@code id} (vanilla or ours), as the client's recipe book would hold it. */
+    private static KnownRecipe shipped(GameTestHelper helper, String id) {
+        RecipeDisplayEntry entry = new RecipeDisplayEntry(
+                new RecipeDisplayId(0),
+                helper.getLevel()
+                        .getServer()
+                        .getRecipeManager()
+                        .byKey(ResourceKey.create(Registries.RECIPE, Identifier.parse(id)))
+                        .orElseThrow(() -> failure(helper, "no recipe %s", id))
+                        .value()
+                        .display()
+                        .getFirst(),
                 OptionalInt.empty(),
                 RecipeBookCategories.CRAFTING_MISC,
                 Optional.empty());
@@ -320,6 +343,107 @@ public class MaterialsTreeTest {
         KnownRecipe ladder = recipe(helper, Items.LADDER, 3, times(STICK, 6));
         MaterialsTree tree = MaterialsTree.of(ladder, known(ladder), stock(Items.LADDER, 9));
         expectMaterials(helper, tree, "ladders held do not make another", Items.STICK, 6, 0);
+        helper.succeed();
+    }
+    @GameTest
+    public void aStorageBlockAsAnIngredientIsUnpacked(GameTestHelper helper) {
+        // The anvil takes iron blocks. Ingots come from nuggets too, so the block is not the only thing they come from: packing
+        // ingots into a block is followed, and only unpacking a block or nuggets into ingots is the undoing.
+        KnownRecipe anvil = shipped(helper, "minecraft:anvil");
+        KnownRecipe block = shipped(helper, "minecraft:iron_block");
+        KnownRecipe nuggets = shipped(helper, "minecraft:iron_nugget");
+        KnownRecipe ingotFromBlock = shipped(helper, "minecraft:iron_ingot_from_iron_block");
+        KnownRecipe ingotFromNuggets = shipped(helper, "minecraft:iron_ingot_from_nuggets");
+        KnownRecipe smelted = shipped(helper, "minecraft:iron_ingot_from_smelting_raw_iron");
+
+        MaterialsTree unsmelted =
+                MaterialsTree.of(anvil, known(anvil, block, nuggets, ingotFromBlock, ingotFromNuggets), stock());
+        expectMaterials(helper, unsmelted, "three blocks of nine and four ingots", Items.IRON_INGOT, 31, 0);
+        expect(helper, node(helper, unsmelted, Items.IRON_BLOCK).recipe() == block, "the blocks are packed from ingots");
+
+        MaterialsTree smelting = MaterialsTree.of(
+                anvil, known(anvil, block, nuggets, ingotFromBlock, ingotFromNuggets, smelted), stock());
+        expectMaterials(helper, smelting, "with smelting known, down to raw iron", Items.RAW_IRON, 31, 0);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void nuggetsAsAnIngredientAreCutFromAnIngot(GameTestHelper helper) {
+        KnownRecipe lantern = shipped(helper, "minecraft:lantern");
+        KnownRecipe block = shipped(helper, "minecraft:iron_block");
+        KnownRecipe nuggets = shipped(helper, "minecraft:iron_nugget");
+        KnownRecipe ingotFromBlock = shipped(helper, "minecraft:iron_ingot_from_iron_block");
+        KnownRecipe ingotFromNuggets = shipped(helper, "minecraft:iron_ingot_from_nuggets");
+        MaterialsTree tree =
+                MaterialsTree.of(lantern, known(lantern, block, nuggets, ingotFromBlock, ingotFromNuggets), stock());
+        expectMaterials(
+                helper, tree, "eight nuggets are one ingot cut", Items.IRON_INGOT, 1, 0, Items.TORCH, 1, 0);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theRadiatorUnitsCopperBlockCountsHeldIngots(GameTestHelper helper) {
+        // The radiator unit takes a copper block and seven ingots; holding copper teaches the block, the nuggets and both
+        // ways back to ingots.
+        KnownRecipe radiator = shipped(helper, "deepcharter:radiator_unit");
+        KnownRecipe block = shipped(helper, "minecraft:copper_block");
+        KnownRecipe nuggets = shipped(helper, "minecraft:copper_nugget");
+        KnownRecipe ingotFromBlock = shipped(helper, "minecraft:copper_ingot");
+        KnownRecipe ingotFromNuggets = shipped(helper, "minecraft:copper_ingot_from_nuggets");
+        Function<Item, List<KnownRecipe>> known = known(radiator, block, nuggets, ingotFromBlock, ingotFromNuggets);
+
+        MaterialsTree held = MaterialsTree.of(radiator, known, stock(Items.COPPER_INGOT, 16, Items.REDSTONE, 1));
+        Node copperBlock = node(helper, held, COPPER_BLOCK);
+        expect(
+                helper,
+                copperBlock.recipe() == block && copperBlock.crafts() == 1,
+                "the copper block is packed from nine ingots, got %s",
+                copperBlock);
+        expectMaterials(
+                helper,
+                held,
+                "sixteen ingots held cover the block and the seven",
+                Items.COPPER_INGOT,
+                16,
+                16,
+                Items.REDSTONE,
+                1,
+                1);
+        expect(helper, held.allHeld(), "sixteen ingots and a redstone make a radiator unit");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aPairThatOnlyMakeEachOtherStopsBothWays(GameTestHelper helper) {
+        // The known limit of the undo rule: when the block and the ingot are each made only from the other, each recipe
+        // undoes the other, so neither is followed and the block stays a base material.
+        KnownRecipe radiator = shipped(helper, "deepcharter:radiator_unit");
+        KnownRecipe block = shipped(helper, "minecraft:copper_block");
+        KnownRecipe ingotFromBlock = shipped(helper, "minecraft:copper_ingot");
+        MaterialsTree tree =
+                MaterialsTree.of(radiator, known(radiator, block, ingotFromBlock), stock(Items.COPPER_INGOT, 16));
+        expect(helper, node(helper, tree, COPPER_BLOCK).recipe() == null, "the block is not packed");
+        expect(
+                helper,
+                tree.materials().stream()
+                        .anyMatch(material -> material.item() == COPPER_BLOCK && material.shortBy() == 1),
+                "the block is short by one, got %s",
+                describe(tree.materials()));
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theShownRecipeTakesItselfFromStock(GameTestHelper helper) {
+        // A recipe that copies its own result, the way a smithing template does (no template is obtainable here): a stick and
+        // a plank make two sticks.
+        KnownRecipe copy = recipe(helper, Items.STICK, 2, STICK, PLANKS);
+        MaterialsTree tree = MaterialsTree.of(copy, known(copy), stock(Items.STICK, 1, Items.OAK_PLANKS, 1));
+        Node cell = tree.root().children().getFirst();
+        expect(
+                helper,
+                cell.item() == Items.STICK && cell.fromStock() == 1 && cell.missing() == 0,
+                "the stick it takes is the one held, got %s",
+                cell);
         helper.succeed();
     }
 }

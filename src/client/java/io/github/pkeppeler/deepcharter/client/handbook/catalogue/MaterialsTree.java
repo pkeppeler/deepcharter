@@ -22,9 +22,11 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  * <li>A need is met first from what an earlier craft of the tree made too many of, then from the player's stock, and only the rest is
  * made: an intermediate the player holds is not broken down. The shown recipe's own result is never taken from stock.
- * <li>An intermediate is made by its first known recipe that neither undoes another known recipe (ingots from an iron block, when the
- * block is made from ingots) nor takes an item already being made further up this branch, so a recipe loop ends; with no such recipe
- * it is a base material.
+ * <li>An intermediate is made by its first known recipe that neither undoes another nor takes an item already being made further up
+ * this branch, so a recipe loop ends; with no such recipe it is a base material. A recipe for X undoes another when some cell takes
+ * only items made solely from X: each has a known recipe, and every one of them takes X. So ingots are not unpacked from an iron
+ * block made only from ingots, but an iron block is packed from ingots, since ingots also come from nuggets or smelting. The limit:
+ * when X and Y are each made only from the other, each recipe undoes the other and neither is followed, so both stay base materials.
  * <li>It is made as many times as the need takes, rounding up; what that makes beyond the need feeds later needs.
  * <li>A cell that takes several items (a tag) takes the one the player has most of, or with none held, the first that a known recipe
  * can make, or else the first.
@@ -130,12 +132,12 @@ public record MaterialsTree(Node root, List<Material> materials) {
             this.stock = new HashMap<>(stock);
         }
 
-        /** {@code needed} of {@code item}: from the leftovers, the stock, then its recipe. */
-        Node node(Item item, int needed) {
+        /** {@code needed} of {@code item}: from the leftovers, the stock, then, when {@code craft}, its recipe. */
+        private Node node(Item item, int needed, boolean craft) {
             int fromSpare = take(spare, item, needed);
             int fromStock = take(stock, item, needed - fromSpare);
             int rest = needed - fromSpare - fromStock;
-            KnownRecipe recipe = rest == 0 ? null : recipeFor(item);
+            KnownRecipe recipe = rest == 0 || !craft ? null : recipeFor(item);
             if (recipe == null) {
                 return new Node(item, needed, fromStock, fromSpare, null, 0, List.of());
             }
@@ -151,10 +153,8 @@ public record MaterialsTree(Node root, List<Material> materials) {
             for (KnownRecipe.Need need : recipe.needs()) {
                 Item choice = choose(need);
                 int count = need.count() * crafts;
-                children.add(
-                        branch.contains(choice)
-                                ? new Node(choice, count, 0, 0, null, 0, List.of())
-                                : node(choice, count));
+                // A cell that takes only an item being made (the shown recipe copying itself) is never crafted: the loop ends.
+                children.add(node(choice, count, !branch.contains(choice)));
             }
             branch.remove(item);
             spare.merge(item, crafts * makes - rest, Integer::sum);
@@ -178,14 +178,15 @@ public record MaterialsTree(Node root, List<Material> materials) {
         }
 
         /**
-         * Whether {@code recipe}, which makes {@code item}, undoes a known recipe: some cell of it takes only items a known recipe makes
-         * from {@code item} (ingots from an iron block, or from nuggets, when the block and the nuggets are made from ingots).
+         * Whether {@code recipe}, which makes {@code item}, undoes a known recipe: some cell of it takes only items made solely from
+         * {@code item}, each with a known recipe and every one taking {@code item} (ingots from an iron block, or from nuggets, when
+         * the block and the nuggets are made only from ingots).
          */
         private boolean undoes(KnownRecipe recipe, Item item) {
-            return recipe.needs().stream()
-                    .anyMatch(need -> need.choices().stream()
-                            .allMatch(choice -> known.apply(choice.getItem()).stream()
-                                    .anyMatch(back -> back.ingredientItems().contains(item))));
+            return recipe.needs().stream().anyMatch(need -> need.choices().stream().allMatch(choice -> {
+                List<KnownRecipe> backs = known.apply(choice.getItem());
+                return !backs.isEmpty() && backs.stream().allMatch(back -> back.ingredientItems().contains(item));
+            }));
         }
 
         /**
