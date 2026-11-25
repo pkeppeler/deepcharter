@@ -5,15 +5,20 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.SplittableRandom;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RailBlock;
+import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.storage.loot.LootTable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Draws one structure into one chunk. A structure is drawn in its own coordinates: {@code u} along its long axis, {@code v}
@@ -70,16 +75,33 @@ final class StructurePlan {
         }
     }
 
-    void set(int u, int y, int v, BlockState state) {
+    /** The world position of a place in the structure, or null where it lies in another chunk. */
+    private @Nullable BlockPos inChunk(int u, int y, int v) {
         int x = site.origin().getX() + (site.alongZ() ? v : u);
         int z = site.origin().getZ() + (site.alongZ() ? u : v);
         if (x < chunkPos.getMinBlockX()
                 || x > chunkPos.getMaxBlockX()
                 || z < chunkPos.getMinBlockZ()
                 || z > chunkPos.getMaxBlockZ()) {
+            return null;
+        }
+        return new BlockPos(x, site.origin().getY() + y, z);
+    }
+
+    /** A barrel that fills from {@code table} when it is first opened, the same for the same site every time. */
+    void lootBarrel(int u, int y, int v, ResourceKey<LootTable> table) {
+        set(u, y, v, Blocks.BARREL.defaultBlockState().setValue(BarrelBlock.FACING, Direction.UP));
+        BlockPos pos = inChunk(u, y, v);
+        if (pos != null && chunk.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity barrel) {
+            barrel.setLootTable(table, site.seed());
+        }
+    }
+
+    void set(int u, int y, int v, BlockState state) {
+        BlockPos pos = inChunk(u, y, v);
+        if (pos == null) {
             return;
         }
-        BlockPos pos = new BlockPos(x, site.origin().getY() + y, z);
         BlockState old = chunk.getBlockState(pos);
         if (old.is(ColonyBlocks.CONDUIT) || old.equals(state)) {
             return;

@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
@@ -34,7 +36,7 @@ public class RegolithFallTest {
                     return;
                 }
             }
-            throw helper.assertionException("the regolith vanished instead of landing under %s", HIGH.toShortString());
+            throw failure(helper, "the regolith vanished instead of landing under %s", HIGH.toShortString());
         });
     }
 
@@ -51,13 +53,13 @@ public class RegolithFallTest {
                     BlockPos.containing(around.minX, around.minY, around.minZ),
                     BlockPos.containing(around.maxX, around.maxY, around.maxZ))) {
                 if (helper.getLevel().getBlockState(cell).is(SurfaceBlocks.REGOLITH)) {
-                    throw helper.assertionException("regolith landed at %s, in or by the pod", cell.toShortString());
+                    throw failure(helper, "regolith landed at %s, in or by the pod", cell.toShortString());
                 }
             }
             if (helper.getLevel()
                     .getEntitiesOfClass(ItemEntity.class, around.inflate(2))
                     .isEmpty()) {
-                throw helper.assertionException("the refused regolith did not spill as an item");
+                throw failure(helper, "the refused regolith did not spill as an item");
             }
             helper.succeed();
         });

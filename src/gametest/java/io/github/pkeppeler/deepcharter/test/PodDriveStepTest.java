@@ -30,7 +30,12 @@ import net.minecraft.world.phys.Vec3;
  */
 public class PodDriveStepTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 700;
-    private static final int X = 4024;
+    /**
+     * Layer 1 columns x 4260-4269, z 2996-3148, all in chunk column 266: no other test stages here. PodDrillTest's nudge test
+     * shared x 4024 and in reverse order ran in one batch (#1178).
+     */
+    private static final int X = 4264;
+
     private static final int Z = 3000;
     private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final float EAST = -90f;
@@ -103,8 +108,25 @@ public class PodDriveStepTest {
             }
             if (finished == PODS) {
                 helper.succeed();
+            } else if (helper.getTick() >= MAX_TICKS - 2) {
+                throw failure(helper, "pods not done:%s", describe(arrivals, done, last));
             }
         });
+    }
+
+    /** Which pods never arrived or never finished, and where each one stopped. */
+    private static String describe(List<Arrival<PodEntity>> arrivals, boolean[] done, Vec3[] last) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < PODS; i++) {
+            if (!done[i]) {
+                text.append("\n  pod %s: %s, %s"
+                        .formatted(
+                                i,
+                                arrivals.get(i).isPresent() ? "arrived" : "never arrived",
+                                last[i] == null ? "no position yet" : "last at " + last[i]));
+            }
+        }
+        return text.toString();
     }
 
     /** Row {@code i}: a room with a stone bed and {@link #SLABS} slabs of stone for the pod to drill. */
