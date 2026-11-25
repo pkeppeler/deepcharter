@@ -26,9 +26,10 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The server-side API of terminals, and the one place a player's request reaches one. Every request is checked first, in this
- * order: the player is within {@link TerminalTuning#maxDistance()} blocks, the block is a terminal, the charter data and (for a
- * terminal that needs repair) the repair data are readable, the player is on a charter (for a charter-only terminal), and then
- * what the request needs of the repair state. Unreadable saved data is refused as {@code STATE_UNREADABLE}, never thrown.
+ * order: the player is within {@link TerminalTuning#maxDistance()} blocks, the block is a terminal, the charter data
+ * and (for a terminal that needs repair) the repair data are readable, the player is on a charter (for a charter-only
+ * terminal), and then what the request needs of the repair state. Unreadable saved data is refused as
+ * {@code STATE_UNREADABLE}, never thrown.
  * A refused request changes nothing, and the player is told why.
  * Call everything on the server thread.
  */
