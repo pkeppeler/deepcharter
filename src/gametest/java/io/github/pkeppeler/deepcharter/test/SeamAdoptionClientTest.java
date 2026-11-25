@@ -6,11 +6,14 @@ import static io.github.pkeppeler.deepcharter.test.support.SeamSite.HOLD_HEIGHT;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.layer.SeamClient;
 import io.github.pkeppeler.deepcharter.layer.SeamSender;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.ChunkPacketLog;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.SeamPodScene;
 import io.github.pkeppeler.deepcharter.test.support.SeamSite.Site;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
+import io.github.pkeppeler.deepcharter.test.support.TwoSeatPods;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,14 +37,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client GameTest of the seam's arrival data (#1185, ADR 0089), on the shipped layer_1 to layer_2 crossing, with a real client on a
- * dedicated server. Two crossings. In the first the client hovers inside the floor margin until its background level holds the arrival
- * area, then falls through: the client's level after the crossing is that level, and the section the camera is in is meshed, and the
- * chunk packets vanilla sent at the crossing are only those near the pocket. In the second there is no lead, so the crossing finds no
- * background level and falls back to the vanilla path: a fresh level, the camera's section meshed, and the whole area sent by vanilla.
- * Each logs a {@code SEAM-TIMING} line; no frame budget is asserted, since CI renders in software.
+ * Client GameTest of the seam's arrival data (#1185, ADR 0089), on the shipped layer_1 to layer_2 crossing, with a real
+ * client on a dedicated server. Two crossings. In the first the client rides a pod over the floor with a mock that
+ * refuses the swap, until its background level holds the arrival area, and the pod falls through: the whole pod is
+ * teleported (a vehicle never splits), the client's level after the crossing is the level it held, the section the
+ * camera is in is meshed, and the chunk packets vanilla sent at the crossing are only those near the pocket. In the
+ * second there is no lead, so the crossing finds no background level and falls back to the vanilla path: a fresh level,
+ * the camera's section meshed, and the whole area sent by vanilla. Each logs a {@code SEAM-TIMING} line; no frame
+ * budget is asserted, since CI renders in software.
  *
- * <p>Not run in the cloud container, which has no display: CI is the first run of it.
  */
 public class SeamAdoptionClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger("SeamAdoptionClientTest");
@@ -50,8 +54,6 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
     private static final double Z = 3000.5;
     /** Chunks the area sent ahead covers on a side. */
     private static final int AREA_SIDE = 2 * SeamSender.SEND_RADIUS + 1;
-    /** Client ticks the held level's light gets to drain after its last chunk arrives. */
-    private static final int LIGHT_DRAIN_TICKS = 40;
     /** Client ticks since the first test of the class, for the timing log: the level's game time is the server's, and restarts per level. */
     private static final AtomicLong CLIENT_TICKS = new AtomicLong();
 
@@ -106,50 +108,34 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
             // An event cannot be unregistered; it only counts.
             ClientTickEvents.END_CLIENT_TICK.register(client -> CROSSING.tick(client, CLIENT_TICKS.incrementAndGet()));
         }
+        TwoSeatPods.armClient(true);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             UUID clientId = two.server()
                     .computeOnServer(server -> realPlayer(server, two).getUUID());
             adopted(context, two, clientId);
             fallback(context, two, clientId);
         } finally {
+            TwoSeatPods.armClient(false);
             ChunkPacketLog.disarm();
         }
     }
 
     private static void adopted(ClientGameTestContext context, TwoPlayerServer two, UUID clientId) {
         Site site = two.server().computeOnServer(server -> siteAt(server, ADOPTED_X));
-        two.server().runOnServer(server -> {
-            site.carveShaft(site.x(), HOLD_HEIGHT + 2);
-            ServerPlayer player = player(server, clientId);
-            player.teleportTo(site.one(), site.x(), site.floorY() + HOLD_HEIGHT, site.z(), Set.of(), 0, 0, true);
-            player.setNoGravity(true);
-        });
-        int area = AREA_SIDE * AREA_SIDE;
-        ClientWait.until(
-                context,
-                "the background level to hold the " + area + " chunks of the arrival area",
-                client -> SeamClient.background()
-                        .filter(level -> level.getChunkSource().getLoadedChunksCount() >= area)
-                        .isPresent(),
-                client -> "background chunks "
-                        + SeamClient.background()
-                                .map(level -> level.getChunkSource().getLoadedChunksCount())
-                                .map(String::valueOf)
-                                .orElse("none (no level prepared)")
-                        + ", " + ClientWait.describe(client));
-        context.waitTicks(LIGHT_DRAIN_TICKS);
-        ClientLevel held =
-                context.computeOnClient(client -> SeamClient.background().orElseThrow());
+        // The pod carries a mock that refuses the swap, so the vehicle is teleported whole and the real client adopts
+        // the level it held.
+        PodEntity pod = SeamPodScene.seat(context, two, clientId, site, false);
+        SeamPodScene.Before before = SeamPodScene.holdArea(context, two, clientId, site, pod);
         ChunkPacketLog.arm();
         CROSSING.arm(site.two().dimension());
-        two.server().runOnServer(server -> player(server, clientId).setNoGravity(false));
+        SeamPodScene.drop(two, site, pod);
         ClientWait.until(
                 context,
                 "the client to fall into layer 2",
-                client -> client.player != null && TestLayers.isInDimensionOf(client.player, 2),
+                client -> SeamPodScene.inLayer(client, 2),
                 ClientWait::describe);
         require(
-                context.computeOnClient(client -> client.level == held),
+                context.computeOnClient(client -> client.level == before.held()),
                 "the client's level after the crossing is not the background level it was sent");
         waitCrossed(context);
         waitMeshed(context, "adopted");
@@ -176,6 +162,7 @@ public class SeamAdoptionClientTest implements FabricClientGameTest {
                 resent.isEmpty(),
                 "the crossing sent chunks of the area far from the pocket " + pocket + " the way vanilla does: "
                         + resent);
+        SeamPodScene.finish(two, pod);
     }
 
     private static ChunkPos pocketOf(Minecraft client) {
