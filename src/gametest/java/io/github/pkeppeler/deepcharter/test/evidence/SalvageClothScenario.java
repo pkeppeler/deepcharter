@@ -23,10 +23,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * Evidence scenario "salvage-cloth" for #1262: what a salvage crate drops (cloth, scrap iron, scrap copper, planks, sticks and
- * redstone) in the hotbar of the inventory, with the parts catalogue beside it turned to the page that lists the cloth by the
- * scrap and no cell hovered (still {@code inventory}), and nearest-neighbour zooms of the hotbar ({@code inventory-zoom}) and of the
- * catalogue's grid ({@code catalogue-zoom}), so the cloth's pixels can be judged next to its neighbours.
+ * Evidence scenario "salvage-cloth" for #1262: what a salvage crate drops (cloth, scrap iron, scrap copper, planks,
+ * sticks and redstone) in the hotbar of the inventory, with the parts catalogue beside it turned to the page that lists
+ * the cloth by the scrap and no cell hovered (still {@code inventory}), and nearest-neighbour zooms of the hotbar
+ * ({@code inventory-zoom}) and of the catalogue's grid ({@code catalogue-zoom}), so the cloth's pixels can be judged
+ * next to its neighbours.
  */
 public class SalvageClothScenario extends EvidenceScenario {
     /** The first hotbar slot in the inventory menu. */
