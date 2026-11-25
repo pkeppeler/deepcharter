@@ -215,8 +215,8 @@ public class SoundAmbienceTest {
     }
 
     /**
-     * The unbuilt depth below the last built layer is no layer's zone, so nothing else covers it (#1296). With no music of its own
-     * it fell back to vanilla's, and a creative player to vanilla's creative music.
+     * The unbuilt depth below the last built layer is no layer's zone, so nothing else covers it (#1296). With no music of
+     * its own it fell back to vanilla's, and a creative player to vanilla's creative music.
      */
     @GameTest
     public void unbuiltDepthPlaysNoVanillaMusicInAnyMode(GameTestHelper helper) {
