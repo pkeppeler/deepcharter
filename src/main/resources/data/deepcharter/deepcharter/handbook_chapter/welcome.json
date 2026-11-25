@@ -10,7 +10,7 @@
         "translate": "deepcharter.handbook.directive.welcome.gather_wood"
       },
       "targets": [
-        { "item": "deepcharter:fungal_stalk", "count": 1 }
+        { "any_of": ["#minecraft:logs", "#minecraft:planks"], "count": 1 }
       ]
     },
     {
@@ -28,11 +28,7 @@
         "translate": "deepcharter.handbook.directive.welcome.craft_stone_tools"
       },
       "targets": [
-        { "item": "minecraft:stone_pickaxe", "count": 1 },
-        { "item": "minecraft:stone_axe", "count": 1 },
-        { "item": "minecraft:stone_shovel", "count": 1 },
-        { "item": "minecraft:stone_sword", "count": 1 },
-        { "item": "minecraft:stone_hoe", "count": 1 }
+        { "any_of": ["minecraft:stone_pickaxe", "minecraft:stone_axe", "minecraft:stone_shovel", "minecraft:stone_sword", "minecraft:stone_hoe"], "count": 1 }
       ]
     },
     {
@@ -41,8 +37,7 @@
         "translate": "deepcharter.handbook.directive.welcome.gather_scrap"
       },
       "targets": [
-        { "item": "deepcharter:scrap_iron", "count": 1 },
-        { "item": "deepcharter:scrap_copper", "count": 1 }
+        { "any_of": ["deepcharter:scrap_iron", "deepcharter:scrap_copper"], "count": 1 }
       ]
     },
     {
@@ -69,8 +64,7 @@
         "translate": "deepcharter.handbook.directive.welcome.make_light"
       },
       "targets": [
-        { "item": "minecraft:torch", "count": 1 },
-        { "item": "minecraft:lantern", "count": 1 }
+        { "any_of": ["minecraft:torch", "minecraft:lantern"], "count": 1 }
       ]
     }
   ]

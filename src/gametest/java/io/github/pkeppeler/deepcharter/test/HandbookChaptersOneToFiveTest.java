@@ -196,10 +196,12 @@ public class HandbookChaptersOneToFiveTest {
             Set.of("minecraft:inventory_changed", "minecraft:recipe_crafted", "minecraft:crafter_recipe_crafted");
 
     /**
-     * Every directive whose advancement completes on an obtained or crafted item names the item the step asks for in
-     * {@code targets} (not its ingredients), so its index card shows it and a click opens its recipe (#1260). Each
-     * target is a registered item that the advancement itself accepts, so the card cannot show an item the step does
-     * not ask for. A new directive of that kind that names no item fails here.
+     * Every directive whose advancement completes on an obtained or crafted item names what the step asks for in
+     * {@code targets} (not its ingredients), so its index card shows it and a click opens the shown item's recipe
+     * (#1260). Every item or {@code any_of} choice is real and accepted by the advancement, and every item or tag the
+     * advancement accepts is covered by some slot, so the card neither shows what the step does not ask for nor leaves
+     * out what finishes it. A new directive of that kind that names no item fails here. Directives that a
+     * {@code deepcharter:directive} trigger completes name no item, so they are out of scope.
      */
     @GameTest
     public void everyItemDirectiveNamesTheRealItemsItAsksFor(GameTestHelper helper) {
@@ -215,16 +217,36 @@ public class HandbookChaptersOneToFiveTest {
                     throw helper.assertionException(
                             "directive %s is completed by an item but names no target item", entry.id());
                 }
-                for (HandbookChapter.Target target : entry.targets()) {
-                    Optional<Holder.Reference<Item>> item = BuiltInRegistries.ITEM.get(target.item());
-                    if (item.isEmpty()) {
-                        throw helper.assertionException(
-                                "directive %s targets %s, which is not a registered item", entry.id(), target.item());
+                Set<String> covered = new HashSet<>();
+                for (HandbookChapter.TargetSlot slot : entry.targets()) {
+                    List<HandbookChapter.Choice> choices = switch (slot) {
+                        case HandbookChapter.Target target -> List.of(new HandbookChapter.Choice(target.item(), false));
+                        case HandbookChapter.AnyOf any -> any.choices();
+                    };
+                    for (HandbookChapter.Choice choice : choices) {
+                        String written = (choice.tag() ? "#" : "") + choice.id();
+                        if (choice.items().isEmpty()) {
+                            throw helper.assertionException(
+                                    "directive %s names %s, which is no registered item or a tag with none",
+                                    entry.id(), written);
+                        }
+                        if (choice.tag()
+                                ? !accepted.contains(written)
+                                : accepted.stream()
+                                        .noneMatch(predicate -> accepts(
+                                                predicate, choice.items().getFirst()))) {
+                            throw helper.assertionException(
+                                    "directive %s names %s, which its advancement does not ask for (%s)",
+                                    entry.id(), written, accepted);
+                        }
+                        covered.add(written);
                     }
-                    if (accepted.stream().noneMatch(predicate -> accepts(predicate, item.get()))) {
+                }
+                for (String predicate : accepted) {
+                    if (!covered.contains(predicate)) {
                         throw helper.assertionException(
-                                "directive %s targets %s, which its advancement does not ask for (%s)",
-                                entry.id(), target.item(), accepted);
+                                "directive %s is finished by %s, but no target covers it (%s)",
+                                entry.id(), predicate, covered);
                     }
                 }
             }
@@ -238,16 +260,13 @@ public class HandbookChaptersOneToFiveTest {
     }
 
     /** Whether an advancement's item predicate, an item id or a {@code #tag}, takes {@code item}. */
-    private static boolean accepts(String predicate, Holder.Reference<Item> item) {
+    private static boolean accepts(String predicate, Item item) {
         return predicate.startsWith("#")
-                ? item.is(TagKey.create(Registries.ITEM, Identifier.parse(predicate.substring(1))))
-                : item.key().identifier().equals(Identifier.parse(predicate));
+                ? new ItemStack(item).is(TagKey.create(Registries.ITEM, Identifier.parse(predicate.substring(1))))
+                : BuiltInRegistries.ITEM.getKey(item).equals(Identifier.parse(predicate));
     }
 
-    /**
-     * The item predicates of the item triggers of the advancement a directive shares its id with; empty when it has
-     * none.
-     */
+    /** The item predicates of the item triggers of the advancement a directive shares its id with; empty when it has none. */
     private static List<String> acceptedItems(Identifier directive) {
         String path = "/data/" + directive.getNamespace() + "/advancement/" + directive.getPath() + ".json";
         List<String> accepted = new ArrayList<>();
@@ -265,13 +284,49 @@ public class HandbookChaptersOneToFiveTest {
                     throw new IllegalStateException(path + " has an item trigger with no items to match");
                 }
                 for (var predicate : conditions.getAsJsonArray("items")) {
-                    accepted.add(predicate.getAsJsonObject().get("items").getAsString());
+                    var items = predicate.getAsJsonObject().get("items");
+                    if (items.isJsonArray()) {
+                        items.getAsJsonArray().forEach(item -> accepted.add(item.getAsString()));
+                    } else {
+                        accepted.add(items.getAsString());
+                    }
                 }
             }
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
         return accepted;
+    }
+
+    /** A target is one item or an {@code any_of} of items and tags with one count; any other shape is refused. */
+    @GameTest
+    public void aTargetIsOneItemOrAnyOfSeveralAndNothingElse(GameTestHelper helper) {
+        JsonObject any = JsonParser.parseString(
+                        "{\"any_of\": [\"minecraft:torch\", \"#minecraft:logs\"], \"count\": 2}")
+                .getAsJsonObject();
+        HandbookChapter.TargetSlot slot = HandbookChapter.TargetSlot.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, any)
+                .getOrThrow();
+        if (!(slot instanceof HandbookChapter.AnyOf anyOf)
+                || anyOf.count() != 2
+                || anyOf.choices().size() != 2
+                || !anyOf.choices().get(1).tag()
+                || !anyOf.items().contains(Items.TORCH)
+                || !anyOf.items().contains(Items.OAK_LOG)) {
+            throw helper.assertionException("any_of should read as a torch or any log with count 2, got %s", slot);
+        }
+        for (String bad : List.of(
+                "{\"item\": \"minecraft:torch\", \"any_of\": [\"minecraft:stick\"], \"count\": 1}",
+                "{\"count\": 1}",
+                "{\"any_of\": [], \"count\": 1}")) {
+            if (HandbookChapter.TargetSlot.CODEC
+                    .parse(com.mojang.serialization.JsonOps.INSTANCE, JsonParser.parseString(bad))
+                    .result()
+                    .isPresent()) {
+                throw helper.assertionException("the target %s should be refused", bad);
+            }
+        }
+        helper.succeed();
     }
 
     /**

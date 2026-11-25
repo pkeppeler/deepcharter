@@ -117,6 +117,9 @@ public final class HandbookScreen extends Screen {
     /** Absent until {@link #init} has built the widgets. */
     private @Nullable Buttons buttons;
 
+    /** Ticks since the screen opened: the clock an any-of slot's icon cycles on. */
+    private int cycleTicks;
+
     /** The screen closing returns to; none returns to the game. */
     private @Nullable Screen parent;
 
@@ -543,6 +546,7 @@ public final class HandbookScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        cycleTicks++;
         if (flipTicks > 0) {
             flipTicks--;
         }
@@ -622,7 +626,7 @@ public final class HandbookScreen extends Screen {
             }
             QuestMap.CardItem item = card.itemAt(event.x(), event.y());
             if (item != null) {
-                CatalogueScreens.open(item.item());
+                CatalogueScreens.open(item.shown(cycleTicks));
                 return true;
             }
             if (card.box().contains(event.x(), event.y())) {
@@ -1094,7 +1098,8 @@ public final class HandbookScreen extends Screen {
         if (full) {
             HandbookChapter.Entry step = QuestMap.shown(chapter, memory.picked(chapter.number()));
             QuestMap.Card card = indexCard(chapter);
-            QuestMap.drawCard(graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter));
+            QuestMap.drawCard(
+                    graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter), cycleTicks);
         }
     }
 

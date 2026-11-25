@@ -35,7 +35,6 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
@@ -379,6 +378,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
                     "a click on the iron icon opens the inventory at iron's recipes, got " + lookup);
             context.setScreen(() -> null);
             everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(context);
+            anyOfStepIsOneSlotWhoseIconCyclesAndWhoseClickOpensTheShownRecipe(context);
         }
     }
 
@@ -431,15 +431,86 @@ public class QuestMapClientTest implements FabricClientGameTest {
             CataloguePanel panel = CatalogueScene.panel(context);
             CatalogueState.Lookup lookup =
                     context.computeOnClient(client -> panel.state().lookup());
-            Item expected =
-                    BuiltInRegistries.ITEM.getValue(step.targets().getFirst().item());
+            List<Item> accepted = step.targets().getFirst().items();
             require(
-                    lookup != null && lookup.item() == expected && lookup.mode() == CatalogueState.Mode.RECIPES,
-                    step.id() + ": a click on its first item opens the recipes of " + expected + ", got " + lookup);
+                    lookup != null && accepted.contains(lookup.item()) && lookup.mode() == CatalogueState.Mode.RECIPES,
+                    step.id() + ": a click on its first item opens the recipes of one of " + accepted + ", got "
+                            + lookup);
             context.setScreen(() -> null);
             clicked++;
         }
         require(clicked >= 7, "chapter 1 has at least seven item steps, clicked " + clicked);
+    }
+
+    /**
+     * A step that is done by any one of several items (#1260) is one slot with one shared count and an "any" cue, not a
+     * row of items to collect. Its icon cycles through the alternatives once every {@code cycleTicks}, and a click opens
+     * the recipes of the icon showing: the first click and the one a cycle later name different items, and the third
+     * is back on the first.
+     */
+    private static void anyOfStepIsOneSlotWhoseIconCyclesAndWhoseClickOpensTheShownRecipe(
+            ClientGameTestContext context) {
+        Identifier chapterId = chapterId(1);
+        HandbookChapter chapter = new HandbookChapter(
+                1,
+                Component.literal("Title 1"),
+                List.of(new HandbookChapter.Entry(
+                        directive(1, 1),
+                        Component.literal("Make a light"),
+                        List.of(new HandbookChapter.AnyOf(
+                                List.of(
+                                        new HandbookChapter.Choice(Identifier.parse("minecraft:torch"), false),
+                                        new HandbookChapter.Choice(Identifier.parse("minecraft:lantern"), false)),
+                                1)))));
+        HandbookScreen[] shown = new HandbookScreen[1];
+        context.runOnClient(client -> {
+            List<HandbookPage> pages = HandbookPages.of(Map.of(chapterId, chapter), Set.of());
+            HandbookScreen screen = new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
+            screen.init(WIDTH, HEIGHT);
+            for (int index = 0; index < pages.size(); index++) {
+                if (pages.get(index) instanceof HandbookPage.Chapter) {
+                    screen.goTo(index);
+                }
+            }
+            settle(screen);
+            List<String> texts = texts(screen);
+            require(
+                    texts.stream().filter(text -> text.matches("\\d+/\\d+")).count() == 1 && texts.contains("0/1"),
+                    "the any-of step shows one slot with one shared count: " + texts);
+            require(
+                    texts.contains(Component.translatable("deepcharter.handbook.quest.any")
+                            .getString()),
+                    "the slot carries the any cue: " + texts);
+            shown[0] = screen;
+        });
+        List<Item> seen = new ArrayList<>();
+        for (int click = 0; click < 3; click++) {
+            context.runOnClient(client -> {
+                Box count = drawn(shown[0], "0/1").box();
+                int iconSize = QuestMapTuning.current().itemIconSize();
+                shown[0].mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
+            });
+            ClientWait.screen(context, InventoryScreen.class);
+            context.waitTicks(3);
+            CataloguePanel panel = CatalogueScene.panel(context);
+            CatalogueState.Lookup lookup =
+                    context.computeOnClient(client -> panel.state().lookup());
+            require(
+                    lookup != null
+                            && lookup.mode() == CatalogueState.Mode.RECIPES
+                            && List.of(Items.TORCH, Items.LANTERN).contains(lookup.item()),
+                    "a click opens the recipes of the torch or the lantern, got " + lookup);
+            seen.add(Objects.requireNonNull(lookup, "checked above").item());
+            context.setScreen(() -> null);
+            context.runOnClient(client -> {
+                for (int tick = 0; tick < QuestMapTuning.current().cycleTicks(); tick++) {
+                    shown[0].tick();
+                }
+            });
+        }
+        require(
+                seen.get(0) != seen.get(1) && seen.get(0) == seen.get(2),
+                "the icon cycles between the two items, one cycle at a time, got " + seen);
     }
 
     /** On every page, a press, a drag and a scroll leave everything drawn where it was: nothing of the book pans, moves or zooms. */

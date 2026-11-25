@@ -13,7 +13,6 @@ import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookRemovePacket;
 import net.minecraft.resources.Identifier;
@@ -131,9 +130,7 @@ public final class KnownRecipes {
         held.forEach(item -> found.addAll(index.touching(item)));
         HandbookChapters.current(server, HandbookProgress.completedFor(server, player.getUUID()))
                 .ifPresent(step -> step.targets()
-                        .forEach(target -> BuiltInRegistries.ITEM
-                                .getOptional(target.item())
-                                .ifPresent(item -> found.addAll(index.producing(item)))));
+                        .forEach(slot -> slot.items().forEach(item -> found.addAll(index.producing(item)))));
         return found;
     }
 

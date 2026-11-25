@@ -27,11 +27,13 @@ import net.minecraft.resources.Identifier;
 
 /**
  * Client GameTest for #1260's controls pages: they follow the first contents page, every key a line names is the
- * player's binding read at draw time (a rebind changes what the page shows), and each page fits the default window.
+ * player's binding read at draw time (a rebind changes what the page shows), every named key is on a sheet, and each page fits the default window and the smallest GUI.
  */
 public class HandbookControlsClientTest implements FabricClientGameTest {
     private static final int WIDTH = 427;
     private static final int HEIGHT = 240;
+    private static final int SMALL_WIDTH = 213;
+    private static final int SMALL_HEIGHT = 120;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -39,7 +41,8 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         context.runOnClient(client -> {
             theControlsPagesFollowTheContents();
             aRebindChangesWhatThePageShows(client.options);
-            everyControlsPageFitsTheDefaultWindow();
+            everyControlsPageFitsTheDefaultWindowAndTheSmallestGui();
+            everyModKeyAndEveryPodInputKeyIsOnASheet(client.options);
         });
     }
 
@@ -109,7 +112,8 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
      */
     private static void aRebindChangesWhatThePageShows(Options options) {
         rebind(HandbookKeys.OPEN, InputConstants.KEY_J, 1, "[H]", "[J]");
-        rebind(options.keyUp, InputConstants.KEY_I, controlsPartOf("pod"), "[W]", "[I]");
+        rebind(options.keyUp, InputConstants.KEY_I, controlsPartOf("drive"), "[W]", "[I]");
+        rebind(options.keySprint, InputConstants.KEY_O, controlsPartOf("dig"), "[Left Control]", "[O]");
     }
 
     private static int controlsPartOf(String sheet) {
@@ -142,16 +146,43 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         }
     }
 
-    /** At the default window every line of every page is on the screen. */
-    private static void everyControlsPageFitsTheDefaultWindow() {
-        for (int part = 1; part <= HandbookControls.sheets(); part++) {
-            HandbookScreen screen = screenOn(part, WIDTH, HEIGHT);
-            for (Drawn drawn : DrawnText.of(screen)) {
-                require(
-                        DrawnText.leavesScreen(screen, drawn).isEmpty(),
-                        "controls page " + part + ": "
-                                + DrawnText.leavesScreen(screen, drawn).orElse(""));
+    /** At the default window and at the smallest real GUI, 213 x 120 (854 x 480 at scale 4), every line of every page is on the screen. */
+    private static void everyControlsPageFitsTheDefaultWindowAndTheSmallestGui() {
+        int[][] windows = {{WIDTH, HEIGHT}, {SMALL_WIDTH, SMALL_HEIGHT}};
+        for (int[] window : windows) {
+            for (int part = 1; part <= HandbookControls.sheets(); part++) {
+                HandbookScreen screen = screenOn(part, window[0], window[1]);
+                for (Drawn drawn : DrawnText.of(screen)) {
+                    require(
+                            DrawnText.leavesScreen(screen, drawn).isEmpty(),
+                            "controls page " + part + " at " + window[0] + " x " + window[1] + ": "
+                                    + DrawnText.leavesScreen(screen, drawn).orElse(""));
+                }
             }
+        }
+    }
+
+    /**
+     * Every key of the mod, and every vanilla key the pod's input path reads (driving, climbing and drilling down), is
+     * named on some sheet, so a new key cannot go unlisted.
+     */
+    private static void everyModKeyAndEveryPodInputKeyIsOnASheet(Options options) {
+        Set<KeyMapping> named = HandbookControls.mappings(options);
+        for (KeyMapping mapping : options.keyMappings) {
+            if (mapping.getCategory().equals(HandbookKeys.OPEN.getCategory())) {
+                require(
+                        named.contains(mapping),
+                        mapping.getName() + " is a key of the mod but is on no controls sheet");
+            }
+        }
+        for (KeyMapping mapping : List.of(
+                options.keyUp,
+                options.keyDown,
+                options.keyLeft,
+                options.keyRight,
+                options.keyJump,
+                options.keySprint)) {
+            require(named.contains(mapping), mapping.getName() + " drives the pod but is on no controls sheet");
         }
     }
 }

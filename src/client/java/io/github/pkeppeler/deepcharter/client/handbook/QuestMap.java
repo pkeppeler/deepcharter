@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Objects;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
@@ -332,8 +331,20 @@ final class QuestMap {
         }
     }
 
-    /** One target item on the card: where its icon sits, how many the step asks for and what the player holds. */
-    record CardItem(Item item, Rect box, int have, int need) {}
+    /**
+     * One slot on the card: where its icon sits, how many the step asks for and what the player holds. A slot of
+     * several {@code items} is an any-of: its icon shows each in turn ({@link #shown}) and its count is shared.
+     */
+    record CardItem(List<Item> items, Rect box, int have, int need) {
+        /** The item the icon shows {@code ticks} ticks into the screen's life: the alternatives, one per cycle. */
+        Item shown(int ticks) {
+            return items.get(ticks / Math.max(1, QuestMapTuning.current().cycleTicks()) % items.size());
+        }
+
+        boolean any() {
+            return items.size() > 1;
+        }
+    }
 
     /** The index card of a step, in screen pixels: its box, the link to the chapter's page, and each target item. */
     record Card(Rect box, int stepNumber, Rect link, List<CardItem> items) {
@@ -372,20 +383,20 @@ final class QuestMap {
         List<CardItem> items = new ArrayList<>();
         int perRow = Math.max(1, (w - q.cardItemInset() + q.cardItemPitch() / 2) / q.cardItemPitch());
         int itemsTop = y + q.cardTextTop() + lines * (font.lineHeight + 1) + q.cardItemsGap();
-        for (HandbookChapter.Target target : step.targets()) {
-            Item item = BuiltInRegistries.ITEM.getOptional(target.item()).orElse(null);
-            if (item == null) {
+        for (HandbookChapter.TargetSlot target : step.targets()) {
+            if (target.items().isEmpty()) {
                 continue;
             }
+            List<Item> slotItems = target.items();
             int index = items.size();
             items.add(new CardItem(
-                    item,
+                    slotItems,
                     new Rect(
                             x + q.cardItemInset() + index % perRow * q.cardItemPitch(),
                             itemsTop + index / perRow * q.cardItemRow(),
                             q.itemIconSize(),
                             q.itemIconSize()),
-                    done ? target.count() : have.applyAsInt(item),
+                    done ? target.count() : slotItems.stream().mapToInt(have).sum(),
                     target.count()));
         }
         int rows = (items.size() + perRow - 1) / perRow;
@@ -402,7 +413,8 @@ final class QuestMap {
             Card card,
             HandbookChapter.Entry step,
             Component stepLabel,
-            String link) {
+            String link,
+            int ticks) {
         HandbookScreenTuning t = HandbookScreenTuning.current();
         QuestMapTuning q = QuestMapTuning.current();
         Rect box = card.box();
@@ -449,12 +461,21 @@ final class QuestMap {
                 t.inkColor());
         for (CardItem item : card.items()) {
             Rect icon = item.box();
-            graphics.fakeItem(new ItemStack(item.item()), icon.x(), icon.y());
+            graphics.fakeItem(new ItemStack(item.shown(ticks)), icon.x(), icon.y());
             boolean met = item.have() >= item.need();
             int color = met ? t.faintInkColor() : t.inkColor();
             Component count = PaperDraw.ink(Component.literal(item.have() + "/" + item.need()), color);
             int textX = icon.right() + q.itemCountGap();
             graphics.text(font, count, textX, icon.y() + q.itemCountTop(), Colors.opaque(color), false);
+            if (item.any()) {
+                graphics.text(
+                        font,
+                        PaperDraw.ink(Component.translatable("deepcharter.handbook.quest.any"), t.faintInkColor()),
+                        textX + font.width(count) + q.anyCueGap(),
+                        icon.y() + q.itemCountTop(),
+                        Colors.opaque(t.faintInkColor()),
+                        false);
+            }
             if (met) {
                 int strikeY = icon.y() + q.itemCountTop() + font.lineHeight / 2 - q.strikeLift();
                 graphics.fill(icon.right() + 1, strikeY, textX + font.width(count), strikeY + 1, Colors.opaque(color));

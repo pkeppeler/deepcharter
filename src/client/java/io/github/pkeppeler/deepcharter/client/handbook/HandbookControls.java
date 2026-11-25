@@ -3,7 +3,9 @@ package io.github.pkeppeler.deepcharter.client.handbook;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
 import io.github.pkeppeler.deepcharter.client.pod.LiningKeys;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
@@ -29,18 +31,24 @@ public final class HandbookControls {
                     "handbook",
                     List.of(
                             new Row("open", List.of(options -> HandbookKeys.OPEN, options -> options.keyAdvancements)),
-                            new Row("turn", List.of()),
-                            new Row("card", List.of()))),
+                            new Row("turn", List.of()))),
+            new Sheet("cards", List.of(new Row("card", List.of()), new Row("any", List.of()))),
             new Sheet(
                     "catalogue",
-                    List.of(
-                            new Row("open", List.of(options -> options.keyInventory)),
-                            new Row("search", List.of()),
-                            new Row("look", List.of(options -> CatalogueKeys.RECIPES, options -> CatalogueKeys.USES)),
-                            new Row("star", List.of(options -> CatalogueKeys.FAVOURITE)),
-                            new Row("craftable", List.of()))),
+                    List.of(new Row("open", List.of(options -> options.keyInventory)), new Row("search", List.of()))),
             new Sheet(
-                    "pod",
+                    "lookup",
+                    List.of(
+                            new Row("look", List.of(options -> CatalogueKeys.RECIPES, options -> CatalogueKeys.USES)),
+                            new Row("star", List.of(options -> CatalogueKeys.FAVOURITE)))),
+            new Sheet("shelf", List.of(new Row("craftable", List.of()))),
+            new Sheet(
+                    "board",
+                    List.of(
+                            new Row("board", List.of(options -> options.keyUse)),
+                            new Row("leave", List.of(options -> options.keyShift)))),
+            new Sheet(
+                    "drive",
                     List.of(
                             new Row(
                                     "drive",
@@ -49,7 +57,12 @@ public final class HandbookControls {
                                             options -> options.keyLeft,
                                             options -> options.keyDown,
                                             options -> options.keyRight)),
-                            new Row("climb", List.of(options -> options.keyJump)),
+                            new Row("climb", List.of(options -> options.keyJump)))),
+            new Sheet(
+                    "dig", List.of(new Row("down", List.of(options -> options.keySprint)), new Row("side", List.of()))),
+            new Sheet(
+                    "crew",
+                    List.of(
                             new Row("line", List.of(options -> LiningKeys.LINE)),
                             new Row("sonar", List.of(options -> SonarKeys.PING, options -> SonarKeys.MARK)))),
             new Sheet("scanner", List.of(new Row("map", List.of()), new Row("reach", List.of()))));
@@ -70,6 +83,17 @@ public final class HandbookControls {
     static List<Component> lines(int part, Options options) {
         Sheet sheet = sheet(part);
         return sheet.rows().stream().map(row -> line(sheet, row, options)).toList();
+    }
+
+    /** Every binding a line of any sheet names, as {@code options} binds them now. */
+    public static Set<KeyMapping> mappings(Options options) {
+        Set<KeyMapping> mappings = new LinkedHashSet<>();
+        for (Sheet sheet : SHEETS) {
+            for (Row row : sheet.rows()) {
+                row.keys().forEach(key -> mappings.add(key.apply(options)));
+            }
+        }
+        return mappings;
     }
 
     private static Component line(Sheet sheet, Row row, Options options) {

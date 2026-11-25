@@ -62,6 +62,13 @@ public class QuestMapScenario extends EvidenceScenario {
                 }
             });
 
+            // two steps done, the current step is the stone tools: one any-of slot, its icon cycling through the tools
+            complete(context, singleplayer, 1, 2);
+            open(context, 1);
+            context.runOnClient(client -> client.gui.toastManager().clear());
+            hold(context);
+            screenshot(context, "quest-card-stone-tools");
+
             // four steps at once are a handover, not news; the fifth alone is the popup
             complete(context, singleplayer, 1, 4);
             complete(context, singleplayer, 1, 5);

@@ -50,6 +50,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param cardBottomPad space below the last row of needed items
  * @param itemIconSize size of an item icon on the card
  * @param itemCountGap space between an item icon and its count
+ * @param anyCueGap space between an any-of slot's count and its "any" cue
+ * @param cycleTicks how long an any-of slot's icon shows each alternative
  * @param itemCountTop distance from the top of an item icon to its count's text
  * @param stampLeft distance from the text column's left edge to the centre of the COMPLETE or COMING SOON stamp
  * @param stampTop distance from the sheet's first line to the centre of that stamp
@@ -137,6 +139,8 @@ public record QuestMapTuning(
         int cardBottomPad,
         int itemIconSize,
         int itemCountGap,
+        int anyCueGap,
+        int cycleTicks,
         int itemCountTop,
         int stampLeft,
         int stampTop,
@@ -227,6 +231,8 @@ public record QuestMapTuning(
                 d.integer("cardBottomPad", 0),
                 d.integer("itemIconSize", 1),
                 d.integer("itemCountGap", 0),
+                d.integer("anyCueGap", 0),
+                d.integer("cycleTicks", 1),
                 d.integer("itemCountTop", 0),
                 d.integer("stampLeft", 0),
                 d.integer("stampTop", 0),
