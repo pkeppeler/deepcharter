@@ -19,8 +19,11 @@
   "message.deepcharter.suit.draining": "SUIT DRAINING AT THIS DEPTH",
   "message.deepcharter.suit.exceeded": "SUIT RATING EXCEEDED: %s",
   "message.deepcharter.suit.fitted": "Suit fitted: %s tier %s. The Company notes it pays off from layer 3 down",
+  "message.deepcharter.suit.full": "SUIT ALREADY FULL",
   "message.deepcharter.suit.low": "SUIT LOW: %s SECONDS",
   "message.deepcharter.suit.not_next": "The Company fits one tier at a time, the next one only",
+  "message.deepcharter.suit.refilling": "SUIT ALREADY REFILLING",
+  "message.deepcharter.suit.reserve_unreadable": "Your suit's log cannot be read, so the canister stays sealed",
   "message.deepcharter.suit.top_tier": "That track is fitted to its top tier. The Company has nothing further to sell",
   "message.deepcharter.suit.tracks_unreadable": "Your suit's fitting log cannot be read, so nothing can be fitted",
   "message.deepcharter.suit.unknown_track": "The station does not fit that"

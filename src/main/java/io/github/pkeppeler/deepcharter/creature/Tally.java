@@ -40,7 +40,8 @@ import org.jspecify.annotations.Nullable;
  * and never breaks, never hurts a person or a hull, and never touches a block. A Tally that finds a pod holding ore, or a person carrying
  * some, trails it; one that has trailed it for {@link TallyTuning#trailTicks} (about 30 s) clamps to the cargo hatch, or to the person's pack,
  * and after a short hold takes one ore, the cheapest it finds, as a "quality sample" and flies off. The pod's cutter bites it on the hatch while the pod drills; on
- * foot, one blow breaks it, and a light in hand ({@link HandLights}) keeps one off. It drops nothing. Not saved: a Tally whose chunk unloads is gone.
+ * foot, one blow breaks it, and a light in hand ({@link HandLights}) keeps one off. It drops nothing. Not saved: a
+ * Tally whose chunk unloads is gone.
  */
 public final class Tally extends PathfinderMob {
     /** Whether the Tally holds a hatch or a pack. Synced, for the client's pose. */
@@ -134,7 +135,10 @@ public final class Tally extends PathfinderMob {
                 && !pod.cargo().entries().isEmpty();
     }
 
-    /** Whether a person on foot draws a Tally: carrying ore, in the dark (block light under the level at which a place counts as lit), with no light in hand ({@link HandLights#held}). */
+    /**
+     * Whether a person on foot draws a Tally: carrying ore, in the dark (block light under the level at which a place
+     * counts as lit), with no light in hand ({@link HandLights#held}).
+     */
     public static boolean draws(Player person) {
         return !person.isSpectator()
                 && !person.isCreative()

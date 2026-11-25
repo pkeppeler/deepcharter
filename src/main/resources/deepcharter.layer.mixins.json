@@ -3,9 +3,15 @@
   "package": "io.github.pkeppeler.deepcharter.layer.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "ChunkMapMixin",
+    "EntitySeamAccess",
     "EnvironmentAttributeSystemBuilderMixin",
     "EnvironmentAttributeSystemInvoker",
-    "PlayerChunkSenderMixin"
+    "BlockStateBaseMixin",
+    "PlayerChunkSenderMixin",
+    "ServerChunkCacheMixin",
+    "ServerPlayerGameModeMixin",
+    "ServerPlayerSeamAccess"
   ],
   "injectors": {
     "defaultRequire": 1

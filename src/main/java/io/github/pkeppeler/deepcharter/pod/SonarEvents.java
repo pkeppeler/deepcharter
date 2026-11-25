@@ -5,13 +5,13 @@ import net.fabricmc.fabric.api.event.EventFactory;
 import net.minecraft.core.BlockPos;
 
 /**
- * The hooks other features use to read and answer the navigator's sonar (#988). Both run on the server only.
+ * The hooks other features use to read and answer the navigator's sonar (#988, #924). Both run on the server only.
  *
  * <ul>
- *   <li>{@link #COLLECT}: what a ping returns. The blocks and the creatures in {@code deepcharter:sonar_echoes} are listeners of it; a creature
- *       signature (#924) is another, and picks one of the {@link SonarKind}s.</li>
- *   <li>{@link #PINGED}: the ping's noise, after the pod has paid and its echoes are set. Nothing in the game listens yet: #924 makes the
- *       Sleeper's creatures answer it, and adds the distance test with its first caller.</li>
+ *   <li>{@link #COLLECT}: what a ping returns. The blocks and the creatures in the {@link SonarTags} are listeners of it; another system adds a
+ *       kind of echo by adding its own.</li>
+ *   <li>{@link #PINGED}: the ping's noise, after the pod has paid and its echoes are set. {@link SonarLure} answers it for the creatures in
+ *       {@link SonarTags#HEARS}; {@link SonarPing#hears} is the distance test.</li>
  * </ul>
  */
 public final class SonarEvents {

@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
@@ -76,7 +77,7 @@ public class PodCargoFuelTest {
         MockPlayer pilot = MockPlayers.join(helper, "cargo-pilot");
         pilot.teleportTo(helper.getLevel(), pod.position(), SOUTH, 0f);
         if (!pilot.player().startRiding(pod)) {
-            throw helper.assertionException("the pilot could not mount the pod");
+            throw failure(helper, "the pilot could not mount the pod");
         }
         return pilot;
     }
@@ -103,22 +104,27 @@ public class PodCargoFuelTest {
         try {
             for (int i = 0; i < CARGO.slots(); i++) {
                 if (!pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 1f)) {
-                    throw helper.assertionException("ore %s of %s should fit", i + 1, CARGO.slots());
+                    throw failure(helper, "ore %s of %s should fit", i + 1, CARGO.slots());
                 }
             }
             if (CARGO.slots() != 7 || pod.cargoUsed() != 7) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the bay should have 7 slots, all used, got %s slots and %s used",
-                        CARGO.slots(), pod.cargoUsed());
+                        CARGO.slots(),
+                        pod.cargoUsed());
             }
             if (pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM), 1f)) {
-                throw helper.assertionException("a full bay must refuse another ore");
+                throw failure(helper, "a full bay must refuse another ore");
             }
             if (pod.cargoUsed() != 7
                     || pod.cargoMass() != 7f
                     || pod.cargo().entries().size() != 7) {
-                throw helper.assertionException(
-                        "a refused ore must change nothing, got used %s mass %s", pod.cargoUsed(), pod.cargoMass());
+                throw failure(
+                        helper,
+                        "a refused ore must change nothing, got used %s mass %s",
+                        pod.cargoUsed(),
+                        pod.cargoMass());
             }
             helper.succeed();
         } finally {
@@ -135,8 +141,12 @@ public class PodCargoFuelTest {
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.BRONZIUM));
             float expected = 3f + 30f + OreType.BRONZIUM.mass();
             if (pod.cargoMass() != expected || pod.cargoUsed() != 3) {
-                throw helper.assertionException(
-                        "mass should be %s over 3 slots, got %s over %s", expected, pod.cargoMass(), pod.cargoUsed());
+                throw failure(
+                        helper,
+                        "mass should be %s over 3 slots, got %s over %s",
+                        expected,
+                        pod.cargoMass(),
+                        pod.cargoUsed());
             }
             helper.succeed();
         } finally {
@@ -154,8 +164,7 @@ public class PodCargoFuelTest {
         helper.runAfterDelay(20, () -> {
             try {
                 if (pod.getY() - startY > 1e-6) {
-                    throw helper.assertionException(
-                            "a pod at exactly the limit should not lift, rose %s", pod.getY() - startY);
+                    throw failure(helper, "a pod at exactly the limit should not lift, rose %s", pod.getY() - startY);
                 }
                 helper.succeed();
             } finally {
@@ -188,9 +197,11 @@ public class PodCargoFuelTest {
             tag.putFloat("cargo_mass", 999f);
             copy.cargo().load(inputOf(level, tag), copy);
             if (copy.cargoUsed() != 2 || copy.cargoMass() != 10f) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "counts should derive from the 2 entries as 2/10, got %s/%s",
-                        copy.cargoUsed(), copy.cargoMass());
+                        copy.cargoUsed(),
+                        copy.cargoMass());
             }
             helper.succeed();
         } finally {
@@ -212,7 +223,7 @@ public class PodCargoFuelTest {
                 helper.succeed();
                 return;
             }
-            throw helper.assertionException("loading a save with no cargo key should throw");
+            throw failure(helper, "loading a save with no cargo key should throw");
         } finally {
             pod.discard();
         }
@@ -233,8 +244,10 @@ public class PodCargoFuelTest {
             pod.cargo().load(inputOf(level, tag), pod);
             if (pod.cargoUsed() != CARGO.slots() + 1
                     || pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 1f)) {
-                throw helper.assertionException(
-                        "8 ore should load into a 7-slot bay, which then refuses more, got %s used", pod.cargoUsed());
+                throw failure(
+                        helper,
+                        "8 ore should load into a 7-slot bay, which then refuses more, got %s used",
+                        pod.cargoUsed());
             }
             helper.succeed();
         } finally {
@@ -260,9 +273,11 @@ public class PodCargoFuelTest {
                 nan = true;
             }
             if (!crossed || !nan || pod.cargoUsed() != 0 || other.cargoUsed() != 0) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "a foreign pod and a NaN mass must both throw and change nothing, crossed %s nan %s",
-                        crossed, nan);
+                        crossed,
+                        nan);
             }
             helper.succeed();
         } finally {
@@ -285,11 +300,11 @@ public class PodCargoFuelTest {
                     .getDispatcher()
                     .execute("deepcharter pod dump", source(player, LevelBasedPermissionSet.GAMEMASTER));
             if (result != 0) {
-                throw helper.assertionException("dump with no pod should fail with 0, got %s", result);
+                throw failure(helper, "dump with no pod should fail with 0, got %s", result);
             }
             helper.succeed();
         } catch (CommandSyntaxException e) {
-            throw helper.assertionException("dump should be allowed for an op: %s", String.valueOf(e.getMessage()));
+            throw failure(helper, "dump should be allowed for an op: %s", String.valueOf(e.getMessage()));
         } finally {
             player.leave();
         }
@@ -308,20 +323,23 @@ public class PodCargoFuelTest {
                     .getDispatcher()
                     .execute("deepcharter pod dump", source(pilot, LevelBasedPermissionSet.GAMEMASTER));
             if (result != 2 || pod.cargoUsed() != 0 || pod.cargoMass() != 0f) {
-                throw helper.assertionException(
-                        "dump should empty 2 ore, got %s, left %s/%s", result, pod.cargoUsed(), pod.cargoMass());
+                throw failure(
+                        helper,
+                        "dump should empty 2 ore, got %s, left %s/%s",
+                        result,
+                        pod.cargoUsed(),
+                        pod.cargoMass());
             }
         } catch (CommandSyntaxException e) {
             cleanUp(helper, pod, pilot);
-            throw helper.assertionException("dump should be allowed for an op: %s", String.valueOf(e.getMessage()));
+            throw failure(helper, "dump should be allowed for an op: %s", String.valueOf(e.getMessage()));
         }
         double startY = pod.getY();
         pilot.setInput(JUMP);
         helper.runAfterDelay(15, () -> {
             try {
                 if (pod.getY() - startY < 1.0) {
-                    throw helper.assertionException(
-                            "after the dump command the pod should lift, rose %s", pod.getY() - startY);
+                    throw failure(helper, "after the dump command the pod should lift, rose %s", pod.getY() - startY);
                 }
                 helper.succeed();
             } finally {
@@ -349,8 +367,11 @@ public class PodCargoFuelTest {
                 refused = true;
             }
             if (!refused || pod.cargoUsed() != 1) {
-                throw helper.assertionException(
-                        "a non-op must be refused and the cargo kept, refused %s used %s", refused, pod.cargoUsed());
+                throw failure(
+                        helper,
+                        "a non-op must be refused and the cargo kept, refused %s used %s",
+                        refused,
+                        pod.cargoUsed());
             }
             helper.succeed();
         } finally {
@@ -374,12 +395,15 @@ public class PodCargoFuelTest {
             int result =
                     dispatcher.execute("deepcharter pod spawn", source(player, LevelBasedPermissionSet.GAMEMASTER));
             if (!refused || result != 1) {
-                throw helper.assertionException(
-                        "spawn must be refused to a non-op (%s) and run for an op (result %s)", refused, result);
+                throw failure(
+                        helper,
+                        "spawn must be refused to a non-op (%s) and run for an op (result %s)",
+                        refused,
+                        result);
             }
             helper.succeed();
         } catch (CommandSyntaxException e) {
-            throw helper.assertionException("spawn should be allowed for an op: %s", String.valueOf(e.getMessage()));
+            throw failure(helper, "spawn should be allowed for an op: %s", String.valueOf(e.getMessage()));
         } finally {
             player.leave();
         }
@@ -396,8 +420,11 @@ public class PodCargoFuelTest {
             useOnPod(player, pod);
             int left = player.player().getItemInHand(InteractionHand.MAIN_HAND).getCount();
             if (pod.fuel() <= 30f || left != 3) {
-                throw helper.assertionException(
-                        "a creative refuel should add fuel and keep the coal, fuel %s left %s", pod.fuel(), left);
+                throw failure(
+                        helper,
+                        "a creative refuel should add fuel and keep the coal, fuel %s left %s",
+                        pod.fuel(),
+                        left);
             }
             helper.succeed();
         } finally {
@@ -419,20 +446,26 @@ public class PodCargoFuelTest {
         helper.runAfterDelay(15, () -> {
             if (pod.getY() - startY > 1e-6) {
                 cleanUp(helper, pod, pilot);
-                throw helper.assertionException("an overloaded pod should not lift, rose %s", pod.getY() - startY);
+                throw failure(helper, "an overloaded pod should not lift, rose %s", pod.getY() - startY);
             }
             int dumped = pod.cargo().dump(pod);
             if (dumped != 2 || pod.cargoUsed() != 0 || pod.cargoMass() != 0f) {
                 cleanUp(helper, pod, pilot);
-                throw helper.assertionException(
-                        "dump should empty 2 ore, dumped %s, left %s/%s", dumped, pod.cargoUsed(), pod.cargoMass());
+                throw failure(
+                        helper,
+                        "dump should empty 2 ore, dumped %s, left %s/%s",
+                        dumped,
+                        pod.cargoUsed(),
+                        pod.cargoMass());
             }
             helper.runAfterDelay(15, () -> {
                 try {
                     if (pod.getY() - startY < 1.0 || !pod.flying()) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "after dumping the pod should lift, rose %s, flying %s",
-                                pod.getY() - startY, pod.flying());
+                                pod.getY() - startY,
+                                pod.flying());
                     }
                     helper.succeed();
                 } finally {
@@ -452,8 +485,7 @@ public class PodCargoFuelTest {
         helper.runAfterDelay(40, () -> {
             try {
                 if (pod.getY() - startY < 0.1) {
-                    throw helper.assertionException(
-                            "mass just under the limit should still lift, rose %s", pod.getY() - startY);
+                    throw failure(helper, "mass just under the limit should still lift, rose %s", pod.getY() - startY);
                 }
                 helper.succeed();
             } finally {
@@ -479,18 +511,21 @@ public class PodCargoFuelTest {
                         TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), output.buildResult()),
                         level,
                         EntitySpawnReason.LOAD)
-                .orElseThrow(() -> helper.assertionException("the saved pod did not load"));
+                .orElseThrow(() -> failure(helper, "the saved pod did not load"));
         try {
             if (!(loaded instanceof PodEntity copy)) {
-                throw helper.assertionException("loaded a %s instead of a pod", loaded);
+                throw failure(helper, "loaded a %s instead of a pod", loaded);
             }
             if (!copy.cargo().entries().equals(before) || copy.cargoUsed() != 3 || copy.cargoMass() != 39f) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "cargo did not survive save and load: %s, used %s mass %s",
-                        copy.cargo().entries(), copy.cargoUsed(), copy.cargoMass());
+                        copy.cargo().entries(),
+                        copy.cargoUsed(),
+                        copy.cargoMass());
             }
             if (copy.cargo().dump(copy) != 3 || copy.cargoUsed() != 0 || copy.cargoMass() != 0f) {
-                throw helper.assertionException("a loaded bay should dump like a live one");
+                throw failure(helper, "a loaded bay should dump like a live one");
             }
             helper.succeed();
         } finally {
@@ -504,14 +539,16 @@ public class PodCargoFuelTest {
         float moving = PodFuel.drainPercentPerTick(PodStats.base(), PodFuel.Activity.MOVING);
         float drilling = PodFuel.drainPercentPerTick(PodStats.base(), PodFuel.Activity.DRILLING);
         if (!(0f < idle && idle < moving && moving < drilling)) {
-            throw helper.assertionException(
-                    "drain should rise idle < moving < drilling, got %s %s %s", idle, moving, drilling);
+            throw failure(helper, "drain should rise idle < moving < drilling, got %s %s %s", idle, moving, drilling);
         }
         if (Math.abs(idle - expectedPercentPerTick(FUEL.idleLitresPerSecond())) > 1e-6
                 || Math.abs(drilling - expectedPercentPerTick(FUEL.drillingLitresPerSecond())) > 1e-6) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "rates should follow the tuning in litres of a %s L tank, got %s and %s",
-                    FUEL.tankLitres(), idle, drilling);
+                    FUEL.tankLitres(),
+                    idle,
+                    drilling);
         }
         helper.succeed();
     }
@@ -529,12 +566,19 @@ public class PodCargoFuelTest {
                 float movingBurn = FULL_FUEL - movingPod.fuel();
                 float expectedIdle = ticks * expectedPercentPerTick(FUEL.idleLitresPerSecond());
                 if (Math.abs(idleBurn - expectedIdle) > expectedIdle * 0.25f) {
-                    throw helper.assertionException(
-                            "an idle pod should burn about %s over %s ticks, burned %s", expectedIdle, ticks, idleBurn);
+                    throw failure(
+                            helper,
+                            "an idle pod should burn about %s over %s ticks, burned %s",
+                            expectedIdle,
+                            ticks,
+                            idleBurn);
                 }
                 if (movingBurn <= idleBurn) {
-                    throw helper.assertionException(
-                            "a moving pod should burn more than an idle one, moving %s idle %s", movingBurn, idleBurn);
+                    throw failure(
+                            helper,
+                            "a moving pod should burn more than an idle one, moving %s idle %s",
+                            movingBurn,
+                            idleBurn);
                 }
                 helper.succeed();
             } finally {
@@ -561,15 +605,20 @@ public class PodCargoFuelTest {
         }
         helper.succeedWhen(() -> {
             if (!pod.onGround() || pod.tickCount < 5) {
-                throw helper.assertionException("the pod has not landed");
+                throw failure(helper, "the pod has not landed");
             }
             float lost = PodTuning.DEFAULT.shell().fullHull() - pod.hull();
             float min = braked ? 0f : FREE_DROP_HULL_MIN;
             float max = braked ? 0f : FREE_DROP_HULL_MAX;
             if (lost < min || lost > max) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "a %s fall of %s blocks should cost %s to %s hull, it cost %s",
-                        braked ? "braked" : "free", DROP_BLOCKS, min, max, lost);
+                        braked ? "braked" : "free",
+                        DROP_BLOCKS,
+                        min,
+                        max,
+                        lost);
             }
         });
     }
@@ -588,7 +637,7 @@ public class PodCargoFuelTest {
     @GameTest
     public void beepThresholdIsTwentyOnePercent(GameTestHelper helper) {
         if (FUEL.lowFuelPercent() != 21f || !PodFuel.isLow(21f) || !PodFuel.isLow(5f) || PodFuel.isLow(21.5f)) {
-            throw helper.assertionException("low fuel should be 21%% and below, threshold %s", FUEL.lowFuelPercent());
+            throw failure(helper, "low fuel should be 21%% and below, threshold %s", FUEL.lowFuelPercent());
         }
         helper.succeed();
     }
@@ -600,9 +649,11 @@ public class PodCargoFuelTest {
         helper.runAfterDelay(10, () -> {
             try {
                 if (!pod.stranded() || pod.fuel() != 0f) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "an empty pod should be stranded with fuel 0, got stranded %s fuel %s",
-                            pod.stranded(), pod.fuel());
+                            pod.stranded(),
+                            pod.fuel());
                 }
                 helper.succeed();
             } finally {
@@ -619,7 +670,7 @@ public class PodCargoFuelTest {
         helper.runAfterDelay(5, () -> {
             if (!pod.stranded()) {
                 cleanUp(helper, pod, pilot);
-                throw helper.assertionException("the pod should have run dry by now");
+                throw failure(helper, "the pod should have run dry by now");
             }
             double startY = pod.getY();
             Vec3 start = pod.position();
@@ -631,8 +682,7 @@ public class PodCargoFuelTest {
                             || Math.abs(now.x - start.x) > 1e-6
                             || Math.abs(now.z - start.z) > 1e-6
                             || pod.flying()) {
-                        throw helper.assertionException(
-                                "a stranded pod should ignore input and fall, from %s to %s", start, now);
+                        throw failure(helper, "a stranded pod should ignore input and fall, from %s to %s", start, now);
                     }
                     helper.succeed();
                 } finally {
@@ -655,9 +705,13 @@ public class PodCargoFuelTest {
                     + (float) PodFuelItems.litresOf(new ItemStack(Items.COAL)).orElseThrow() / FUEL.tankLitres() * 100f;
             int left = player.player().getItemInHand(InteractionHand.MAIN_HAND).getCount();
             if (!result.consumesAction() || Math.abs(pod.fuel() - expected) > 0.5f || left != 2) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "coal should bring fuel to %s and use one item, got result %s fuel %s left %s",
-                        expected, result, pod.fuel(), left);
+                        expected,
+                        result,
+                        pod.fuel(),
+                        left);
             }
             helper.succeed();
         } finally {
@@ -676,8 +730,11 @@ public class PodCargoFuelTest {
             player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.CHARCOAL));
             useOnPod(player, pod);
             if (pod.stranded() || pod.fuel() <= 0f) {
-                throw helper.assertionException(
-                        "charcoal should restore a stranded pod, got stranded %s fuel %s", pod.stranded(), pod.fuel());
+                throw failure(
+                        helper,
+                        "charcoal should restore a stranded pod, got stranded %s fuel %s",
+                        pod.stranded(),
+                        pod.fuel());
             }
             helper.succeed();
         } finally {
@@ -700,8 +757,12 @@ public class PodCargoFuelTest {
                     || stick.consumesAction()
                     || pod.fuel() != 10f
                     || player.player().getItemInHand(InteractionHand.MAIN_HAND).getCount() != 2) {
-                throw helper.assertionException(
-                        "a full tank or a stick must not refuel, got %s and %s, fuel %s", full, stick, pod.fuel());
+                throw failure(
+                        helper,
+                        "a full tank or a stick must not refuel, got %s and %s, fuel %s",
+                        full,
+                        stick,
+                        pod.fuel());
             }
             helper.succeed();
         } finally {

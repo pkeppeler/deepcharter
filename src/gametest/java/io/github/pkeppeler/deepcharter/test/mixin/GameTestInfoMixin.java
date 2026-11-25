@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.ItemSpawns;
 import io.github.pkeppeler.deepcharter.test.support.PendingWork;
 import io.github.pkeppeler.deepcharter.test.support.SlowTests;
+import io.github.pkeppeler.deepcharter.test.support.TestCleanups;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import java.util.Collection;
 import net.minecraft.gametest.framework.GameTestInfo;
@@ -66,6 +67,7 @@ public abstract class GameTestInfoMixin implements PendingWork {
         FarChunks.release(bounds);
         BlockingLoads.release(bounds);
         ItemSpawns.release(bounds);
+        TestCleanups.run(bounds);
         ColumnCost.release(bounds);
     }
 
