@@ -104,8 +104,8 @@ public final class CatalogueEffects {
     public static List<Rect> boxes(Rect row, int centre, int count) {
         int tile = CatalogueLayout.EFFECT_TILE;
         int icon = CatalogueLayout.EFFECT_ICON;
-        boolean tiles = row.height() >= tile
-                && (count < 2 || pitch(row.width(), tile, TILE_PITCH, count) >= TILE_CLEAR_PITCH);
+        boolean tiles =
+                row.height() >= tile && (count < 2 || pitch(row.width(), tile, TILE_PITCH, count) >= TILE_CLEAR_PITCH);
         int side = tiles ? tile : icon;
         int pitch = pitch(row.width(), side, tiles ? TILE_PITCH : ICON_PITCH, count);
         int total = (count - 1) * pitch + side;
