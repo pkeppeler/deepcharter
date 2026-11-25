@@ -90,8 +90,8 @@ public class RoomCarverSendTest {
                     false,
                     () -> "RoomCarver held the sending of " + unsent + " in " + level.dimension()
                             + " and never released it: "
-                            + SECONDS + " s after carving " + min + " to " + max
-                            + " a player in view of it has not been sent it");
+                            + SECONDS + " s into the test, which carved " + min + " to " + max
+                            + ", and a player in view of it has not been sent it");
         });
     }
 
@@ -109,8 +109,9 @@ public class RoomCarverSendTest {
         carveThenArrive(
                 helper,
                 2,
-                new BlockPos(6600 - 6, TestLayers.worldY(2, LOCAL_FLOOR), 6600 - 6),
-                new BlockPos(6600 + 6, TestLayers.worldY(2, LOCAL_FLOOR) + 4, 6600 + 6));
+                // 6608 is a chunk corner (16 x 413), so the room spans chunks 412 and 413 on both axes.
+                new BlockPos(6608 - 6, TestLayers.worldY(2, LOCAL_FLOOR), 6608 - 6),
+                new BlockPos(6608 + 6, TestLayers.worldY(2, LOCAL_FLOOR) + 4, 6608 + 6));
     }
 
     /** A player who has the chunk before the carve gets block updates, not the chunk again: a resend to everyone would pass the tests above. */
