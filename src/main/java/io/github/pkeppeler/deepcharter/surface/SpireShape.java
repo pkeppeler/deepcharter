@@ -68,10 +68,6 @@ public final class SpireShape {
         }
     }
 
-    private static double unit(IntUnaryOperator random) {
-        return random.applyAsInt(1 << 16) / 65536.0;
-    }
-
     /**
      * A cluster rolled from {@code random} for a site with {@code room} rows of air over the mound; empty under {@link
      * #LEAST_ROOM}. Every spire stops two rows under the roof, and a low roof grows a squat cluster of three or four.
@@ -86,18 +82,18 @@ public final class SpireShape {
                 ? LEAST_COUNT + random.applyAsInt(2)
                 : LEAST_COUNT + random.applyAsInt(MOST_COUNT - LEAST_COUNT + 1);
         int clusterRadius = 2 + random.applyAsInt(MOST_CLUSTER_RADIUS - 1);
-        double splay = 20 * unit(random);
+        double splay = 20 * ParasolShape.unit(random);
         List<Spike> spikes = new ArrayList<>();
         Set<Cell> feet = new HashSet<>();
-        double turn = 2 * Math.PI * unit(random);
+        double turn = 2 * Math.PI * ParasolShape.unit(random);
         for (int i = 0; i < count; i++) {
             int x = 0;
             int z = 0;
             if (i > 0) {
                 boolean found = false;
                 for (int tries = 0; tries < 12 && !found; tries++) {
-                    double angle = turn + 2 * Math.PI * (i - 1) / (count - 1) + (unit(random) - 0.5) * 0.8;
-                    double distance = 1.5 + (clusterRadius - 1.5) * unit(random);
+                    double angle = turn + 2 * Math.PI * (i - 1) / (count - 1) + (ParasolShape.unit(random) - 0.5) * 0.8;
+                    double distance = 1.5 + (clusterRadius - 1.5) * ParasolShape.unit(random);
                     x = (int) Math.round(Math.cos(angle) * distance);
                     z = (int) Math.round(Math.sin(angle) * distance);
                     found = footFree(feet, x, z);
@@ -107,14 +103,16 @@ public final class SpireShape {
                 }
             }
             feet.add(new Cell(x, 0, z));
-            int height = i == 0 ? tallest : Math.max(3, (int) Math.round(tallest * (0.35 + 0.55 * unit(random))));
+            int height = i == 0
+                    ? tallest
+                    : Math.max(3, (int) Math.round(tallest * (0.35 + 0.55 * ParasolShape.unit(random))));
             int girth = i == 0 ? 3 + random.applyAsInt(2) : 2 + random.applyAsInt(2);
             girth = Math.min(girth, Math.max(1, height / 3));
             Direction way = i == 0 || (x == 0 && z == 0)
-                    ? Direction.from2DDataValue(random.applyAsInt(4))
+                    ? ParasolShape.horizontal(random)
                     : Direction.getApproximateNearest(x, 0, z);
             // Each spire splays its own amount, five degrees either side of the cluster's.
-            double angle = Math.clamp(splay + (unit(random) - 0.5) * 10, 0, 25);
+            double angle = Math.clamp(splay + (ParasolShape.unit(random) - 0.5) * 10, 0, 25);
             int lean = angle < 8 ? 0 : angle < 15 ? 5 : STEEPEST_LEAN;
             int leanAt = 1 + random.applyAsInt(3);
             int leans = lean == 0 ? 0 : Math.max(1, Math.min(2, (height - leanAt - 2) / lean));
@@ -125,7 +123,7 @@ public final class SpireShape {
             List<Integer> forks = new ArrayList<>();
             int forkCount = height >= 8 ? random.applyAsInt(3) : 0;
             for (int f = 0; f < forkCount; f++) {
-                int row = (int) Math.round(height * (0.4 + 0.35 * unit(random)));
+                int row = (int) Math.round(height * (0.4 + 0.35 * ParasolShape.unit(random)));
                 if (!forks.contains(row) && !forks.contains(row - 1) && !forks.contains(row + 1)) {
                     forks.add(row);
                 }
@@ -148,8 +146,8 @@ public final class SpireShape {
     }
 
     /**
-     * The same cluster a row shorter in every spire, for a site whose air does not have room for it; empty when one
-     * would be too short.
+     * The same cluster {@code rows} rows shorter in every spire, for a site whose air does not have room for it; empty
+     * when the tallest would be too short.
      */
     public static Optional<Params> shorter(Params params, int rows) {
         List<Spike> spikes = new ArrayList<>();
@@ -179,7 +177,10 @@ public final class SpireShape {
     /** One cell of a rod's path, with the row of the rod it is on. */
     private record Step(Cell cell, RodPiece piece, Direction way, int row) {}
 
-    /** The cells of a rod from {@code foot}, {@code height} rows, leaning as {@code spike} says. */
+    /**
+     * The cells of a rod from {@code foot}, {@code height} rows: {@code leans} cells toward {@code way} from row {@code
+     * leanAt}, each over {@code lean} rows, or straight where {@code lean} is 0.
+     */
     private static List<Step> path(Cell foot, int height, int lean, int leanAt, int leans, Direction way) {
         List<Step> steps = new ArrayList<>();
         Cell at = foot;
@@ -298,7 +299,7 @@ public final class SpireShape {
         while (!ways.isEmpty()) {
             Direction way = ways.remove(random.applyAsInt(ways.size()));
             Cell beside = from.cell().offset(way.getStepX(), 0, way.getStepZ());
-            int height = Math.max(3, (int) Math.round(above * (0.33 + 0.17 * unit(random))));
+            int height = Math.max(3, (int) Math.round(above * (0.33 + 0.17 * ParasolShape.unit(random))));
             List<Step> branch = new ArrayList<>();
             branch.add(new Step(beside, RodPiece.S1_0HI, way, 0));
             int lean = random.applyAsInt(2) == 0 ? STEEPEST_LEAN : 0;

@@ -157,13 +157,18 @@ public final class GiantFungus {
      * glowcap can grow. A part above the floor hangs from the rest.
      */
     private static boolean grounded(LevelAccessor level, BlockPos pos, GiantPiece piece, boolean optional) {
-        BlockPos below = pos.below();
         if (piece instanceof GiantPiece.Glowcap) {
             return LayerBlocks.GLOWCAP.defaultBlockState().canSurvive(level, pos);
         }
         if (!optional && !(piece instanceof GiantPiece.SpireBase || piece instanceof GiantPiece.Stem)) {
             return true;
         }
+        return standsOnGround(level, pos);
+    }
+
+    /** Whether the cell under {@code pos} is solid ground: not open, and sturdy on top. */
+    static boolean standsOnGround(LevelAccessor level, BlockPos pos) {
+        BlockPos below = pos.below();
         return !open(level.getBlockState(below)) && level.getBlockState(below).isFaceSturdy(level, below, Direction.UP);
     }
 

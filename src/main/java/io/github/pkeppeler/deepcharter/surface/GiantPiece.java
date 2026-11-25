@@ -58,9 +58,8 @@ public sealed interface GiantPiece {
 
     /**
      * A cell of a parasol's cap above the gills. Its top is a plane through {@code level} pixels at the middle of the
-     * cell, rising
-     * {@code riseX} pixels across the cell toward +x and {@code riseZ} toward +z (negative falls); a cell inside the
-     * cap is {@code level} 16 and flat. {@code umbo} cells are the dark knob at the middle of the cap.
+     * cell, rising {@code riseX} pixels across the cell toward +x and {@code riseZ} toward +z (negative falls); a cell
+     * inside the cap is {@code level} 16 and flat. {@code umbo} cells are the dark knob at the middle of the cap.
      */
     record Cap(int level, int riseX, int riseZ, boolean umbo) implements GiantPiece {
         @Override

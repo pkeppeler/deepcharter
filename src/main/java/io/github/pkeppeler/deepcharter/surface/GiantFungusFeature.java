@@ -273,15 +273,24 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     BlockPos cell = middle.offset(dx, 0, dz);
-                    BlockPos below = cell.below();
-                    if (!GiantFungus.open(level.getBlockState(cell))
-                            || GiantFungus.open(level.getBlockState(below))
-                            || !level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
+                    if (!GiantFungus.open(level.getBlockState(cell)) || !GiantFungus.standsOnGround(level, cell)) {
                         return false;
                     }
                 }
             }
             return true;
+        }
+
+        /**
+         * Grows {@code layout} fitted into the chunk as near {@code wantX}, {@code wantZ} as it goes, on the floor of
+         * its base's column nearest {@code near}'s row. Returns whether it grew.
+         */
+        private boolean grow(GiantLayout layout, int wantX, int wantZ, Floor near) {
+            Optional<Fit> fit = layout.fitInChunk(wantX, wantZ);
+            Optional<Floor> base = fit.flatMap(f -> floorNear(f, near, layout.maxY() + 1));
+            return base.isPresent()
+                    && GiantFungus.place(
+                            level, chunk, fit.get(), base.get().pos().getY());
         }
 
         boolean parasol(ParasolShape.Style style) {
@@ -295,12 +304,7 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
                 Optional<ParasolShape.Params> params =
                         ParasolShape.roll(ints, floor.get().room() - ParasolShape.CAP_ROWS, style);
                 for (int shrink = 0; params.isPresent() && shrink <= SHRINKS; shrink++) {
-                    GiantLayout layout = ParasolShape.layout(params.get(), ints);
-                    Optional<Fit> fit = layout.fitInChunk(wantX, wantZ);
-                    Optional<Floor> base = fit.flatMap(f -> floorNear(f, floor.get(), layout.maxY() + 1));
-                    if (base.isPresent()
-                            && GiantFungus.place(
-                                    level, chunk, fit.get(), base.get().pos().getY())) {
+                    if (grow(ParasolShape.layout(params.get(), ints), wantX, wantZ, floor.get())) {
                         return true;
                     }
                     // A ledge, a column or a lower roof in the cap's way: a shorter stem and a narrower cap, then
@@ -322,12 +326,7 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
                 Optional<SpireShape.Params> params =
                         SpireShape.roll(ints, floor.get().room());
                 for (int shrink = 0; params.isPresent() && shrink <= SHRINKS; shrink++) {
-                    GiantLayout layout = SpireShape.layout(params.get(), ints);
-                    Optional<Fit> fit = layout.fitInChunk(wantX, wantZ);
-                    Optional<Floor> base = fit.flatMap(f -> floorNear(f, floor.get(), layout.maxY() + 1));
-                    if (base.isPresent()
-                            && GiantFungus.place(
-                                    level, chunk, fit.get(), base.get().pos().getY())) {
+                    if (grow(SpireShape.layout(params.get(), ints), wantX, wantZ, floor.get())) {
                         return true;
                     }
                     params = SpireShape.shorter(params.get(), 3);

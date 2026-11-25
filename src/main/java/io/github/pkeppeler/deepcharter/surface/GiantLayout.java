@@ -22,9 +22,6 @@ import net.minecraft.core.Direction;
  * @param optional the cells a placer may leave out where the ground or the air forbids them (the flare, the glowcaps)
  */
 public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owners, Set<Cell> optional) {
-    /** The six faces of a cell. */
-    private static final int[][] FACES = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
-
     /** The cells of a chunk along one side. */
     public static final int CHUNK = 16;
 
@@ -82,8 +79,7 @@ public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owner
 
     /**
      * A layout fitted into a chunk: {@code layout}, which may be this one or its mirror image, with its base at {@code
-     * baseX} and
-     * {@code baseZ} in the chunk (0 to 15), so that every cell lies in the chunk.
+     * baseX} and {@code baseZ} in the chunk (0 to 15), so that every cell lies in the chunk.
      */
     public record Fit(GiantLayout layout, int baseX, int baseZ) {
         /** Where {@code cell} of the fitted layout lies in its chunk, along x. */
@@ -165,8 +161,8 @@ public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owner
             if (pieces.containsKey(cell)) {
                 return false;
             }
-            for (int[] face : FACES) {
-                Cell next = cell.offset(face[0], face[1], face[2]);
+            for (Direction face : Direction.values()) {
+                Cell next = cell.offset(face.getStepX(), face.getStepY(), face.getStepZ());
                 Integer other = owners.get(next);
                 if (other != null && other != owner && other != 0 && !optional.contains(next)) {
                     return false;

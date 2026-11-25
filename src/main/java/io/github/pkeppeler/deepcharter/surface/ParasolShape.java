@@ -33,7 +33,7 @@ public final class ParasolShape {
     public static final int LEAST_RADIUS = 4;
     /** A cap of this radius is a chunk wide (15 cells), so it fits only with its stem at the chunk's middle. */
     public static final int MOST_RADIUS = 7;
-    /** The fewest cells sideways a stem's curve moves its cap. */
+    /** The most cells sideways a stem's curve moves its cap. */
     public static final int MOST_DRIFT = 2;
 
     public static final double MOST_TILT_DEGREES = 12;
@@ -129,7 +129,7 @@ public final class ParasolShape {
         }
     }
 
-    private static double unit(IntUnaryOperator random) {
+    static double unit(IntUnaryOperator random) {
         return random.applyAsInt(1 << 16) / 65536.0;
     }
 
@@ -137,7 +137,7 @@ public final class ParasolShape {
         return low + (high - low) * unit(random);
     }
 
-    private static Direction horizontal(IntUnaryOperator random) {
+    static Direction horizontal(IntUnaryOperator random) {
         return Direction.from2DDataValue(random.applyAsInt(4));
     }
 
@@ -499,7 +499,7 @@ public final class ParasolShape {
             return;
         }
         Direction away = params.drift().isEmpty()
-                ? Direction.from2DDataValue(random.applyAsInt(4))
+                ? horizontal(random)
                 : params.drift().getFirst().getOpposite();
         int height = (int) Math.round(params.stemHeight() * between(random, 0.5, 0.7));
         Params small = new Params(
