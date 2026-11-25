@@ -59,7 +59,8 @@ import net.minecraft.world.phys.AABB;
  * <p>Growth only ever fills an air cell, so a placed block is never replaced and never deleted (SPEC section 10). A
  * cell grows only when it touches natural rock or growth, so it closes from the walls inward, and never when a lining
  * block ({@link #LINING}) is within {@link OvergrowthTuning#holdReach} blocks (a lined shaft stays open), when the
- * biome is not in the tag, or when an entity stands in it (a pod or a player is never walled into the cell it fills). /
+ * biome is not in the tag, or when an entity stands in it (a pod or a player is never walled into the cell it fills).
+ */
 public final class Overgrowth {
     private static final int VERSION = 1;
 
@@ -75,7 +76,8 @@ public final class Overgrowth {
      * The pending bore cells of a chunk (packed block positions: cut, and not yet grown over) and the game time of the
      * last visit. A mark is dropped when growth fills its cell, or when something that is neither rock nor growth does;
      * a cut of the growth marks it again, so a bore that is cut open grows over again. A chunk with no pending cell is
-     * not tracked. /
+     * not tracked.
+     */
     public record Bores(long lastVisit, Set<Long> cells) {
         static final Bores EMPTY = new Bores(0L, Set.of());
         public static final MapCodec<Bores> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
@@ -136,7 +138,8 @@ public final class Overgrowth {
     /**
      * True for what a bore is cut from: natural rock, the waste rock of the surface (dirt), Company rock (which is not
      * in {@code natural_rock}: the drill bites it through {@code undiggable}) and growth itself. Breach crust is not
-     * cut by this path ({@code BreachService}). /
+     * cut by this path ({@code BreachService}).
+     */
     public static boolean cutsBore(BlockState state) {
         return isWall(state) || state.is(LayerBlocks.OVERGROWTH);
     }
@@ -185,7 +188,8 @@ public final class Overgrowth {
     /**
      * Records that {@code pos} was cut out of rock or growth, which is also a visit to its chunk. Does nothing outside
      * the hollows biomes, or where the chunk's saved bores are of a version this build cannot read (they are never
-     * overwritten). Call it after the block is gone. /
+     * overwritten). Call it after the block is gone.
+     */
     public static void markBore(ServerLevel level, BlockPos pos) {
         if (!stored(level, pos).is(HOLLOWS)) {
             return;
@@ -279,7 +283,8 @@ public final class Overgrowth {
      * One growth pass over a chunk at game time {@code now}: when the chunk has gone unvisited for the delay, weighs
      * the {@link OvergrowthTuning#maxLooks} pending cells with the smallest scrambled key (the key changes each pass,
      * so the film spreads unevenly and every cell is weighed in time) and fills up to the pass's share of those that
-     * are free to grow. A filled cell, and a cell that a placed block has taken over, stop being pending. /
+     * are free to grow. A filled cell, and a cell that a placed block has taken over, stop being pending.
+     */
     public static void grow(ServerLevel level, LevelChunk chunk, long now) {
         Optional<Bores> read = Versioned.readable(chunk, BORES);
         if (read.isEmpty() || now - read.get().lastVisit() < OvergrowthTuning.DEFAULT.delayTicks()) {
@@ -321,7 +326,8 @@ public final class Overgrowth {
      * Lays the moss film in {@code pos}, an air cell, on the faces of the rock round it, leaving {@link
      * OvergrowthTuning#filmBarePercent} of the faces bare so the film is ragged. It does nothing where growth would
      * not: outside the hollows, within reach of one of {@code lining} (the lining blocks near the cell), or where a
-     * chunk is not loaded. {@code salt} varies which faces. /
+     * chunk is not loaded. {@code salt} varies which faces.
+     */
     private static void film(ServerLevel level, LoadedBlocks blocks, BlockPos pos, long salt, List<BlockPos> lining) {
         if (!blocks.getBlockState(pos).isAir()
                 || !blocks.canChange(pos)
@@ -369,7 +375,8 @@ public final class Overgrowth {
     /**
      * The film spills out round a cell that has just grown: each air cell within {@link OvergrowthTuning#filmReach} of
      * it takes a film with a chance that falls with distance, fixed by the cell, so the edge round a closed mouth is
-     * ragged and the same every time. /
+     * ragged and the same every time.
+     */
     private static void spill(ServerLevel level, LoadedBlocks blocks, BlockPos grown) {
         OvergrowthTuning tuning = OvergrowthTuning.DEFAULT;
         int spill = tuning.filmReach();
@@ -390,7 +397,8 @@ public final class Overgrowth {
      * True while something holds the film at {@code pos} at game time {@code now}: the cell is a pending bore cell of a
      * chunk that has gone unvisited for the delay (the film ahead of the fill), or growth stands within {@link
      * OvergrowthTuning#filmReach} of it. A visit, or a cut of the growth, lets go of it. A film never lets go because
-     * of a chunk it cannot see: an unloaded cell in reach counts as held. /
+     * of a chunk it cannot see: an unloaded cell in reach counts as held.
+     */
     public static boolean anchored(ServerLevel level, BlockPos pos, long now) {
         boolean pending = Versioned.readable(level.getChunkAt(pos), BORES)
                 .filter(bores -> bores.cells().contains(pos.asLong())

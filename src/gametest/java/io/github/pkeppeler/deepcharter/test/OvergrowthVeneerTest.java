@@ -39,7 +39,8 @@ import net.minecraft.world.phys.Vec3;
  * walls, spills round a closed mouth in ragged patches, hangs from ceilings, never blocks movement or the drill, and
  * goes when the growth it belongs to is cut or the bore is visited. A test has a column of its own: a stone box in
  * layer 1 with a 3 x 3 bore cut in it and a one-block-high cave over the bore's end, in the test biome {@code
- * deepcharter-test:hollows}. /
+ * deepcharter-test:hollows}.
+ */
 public class OvergrowthVeneerTest {
     private static final OvergrowthTuning TUNING = OvergrowthTuning.DEFAULT;
     private static final int Z = 6900;

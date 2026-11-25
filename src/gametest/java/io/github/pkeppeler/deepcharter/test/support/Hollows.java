@@ -13,7 +13,8 @@ import net.minecraft.world.level.block.Blocks;
 /**
  * A test or scenario's way into the Fungal Hollows' rule (#974) with no hollows in the world: {@link #BIOME} is a biome
  * of the test data that is the only member of the tag {@code deepcharter:fungal_hollows} there, and {@link #cut} cuts a
- * bore the way a drill does. /
+ * bore the way a drill does.
+ */
 public final class Hollows {
     /** The test data's one member of the tag (under {@code src/gametest/resources/data}). */
     public static final Identifier BIOME = Identifier.fromNamespaceAndPath("deepcharter-test", "hollows");
@@ -23,7 +24,8 @@ public final class Hollows {
     /**
      * Puts the box between the corners (both inclusive, any order) in {@code biome} with {@code /fillbiome}, and fails
      * if it did not take: the command reports a failure only in the log. Biomes are stored in 4-block cells, so the box
-     * is read at both corners. /
+     * is read at both corners.
+     */
     public static void fill(ServerLevel level, BlockPos a, BlockPos b, Identifier biome) {
         CommandSourceStack source =
                 level.getServer().createCommandSourceStack().withLevel(level).withSuppressedOutput();

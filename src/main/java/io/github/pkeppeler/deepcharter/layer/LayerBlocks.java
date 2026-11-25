@@ -55,7 +55,8 @@ public final class LayerBlocks {
 
     /**
      * The moss growth that closes an unvisited bore (#974, {@link Overgrowth}). A soft block with no drop: a hand cuts
-     * it in seconds, the drill bores it at extra fuel. /
+     * it in seconds, the drill bores it at extra fuel.
+     */
     public static final Block OVERGROWTH = registerBlock(
             id("overgrowth"),
             key -> new OvergrowthBlock(BlockBehaviour.Properties.of()
@@ -68,7 +69,8 @@ public final class LayerBlocks {
      * The moss film round the growth (#974, {@link OvergrowthVeneerBlock}): a thin layer on the faces of rock, with no
      * collision, no light cost and no drop, that goes before the fill, spills round a closed mouth and hangs from a
      * roof. It has no item: only {@link Overgrowth} places it. It glows faintly in the dark as a warning: {@code
-     * emissiveRendering} draws it at full brightness, while its light level stays 0, so it lights nothing. /
+     * emissiveRendering} draws it at full brightness, while its light level stays 0, so it lights nothing.
+     */
     public static final Block OVERGROWTH_VENEER = registerBlockOnly(
             id("overgrowth_veneer"),
             key -> new OvergrowthVeneerBlock(BlockBehaviour.Properties.of()

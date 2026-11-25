@@ -46,7 +46,8 @@ import net.minecraft.world.phys.Vec3;
  * while the lined one stays open. Close-up stills show the grown mouth face on, where the moss meets the rock, the film
  * of moss that creeps ahead of the growth and spills round the mouth in patches, the strands that hang from the roof
  * over it, and the growth on the ceiling seen from inside the bore. Then a pod drills into the growth. The place comes
- * from where the world puts the player and from {@link #LIVE_GAUGES_FLOOR_Y}, never a fixed position. /
+ * from where the world puts the player and from {@link #LIVE_GAUGES_FLOOR_Y}, never a fixed position.
+ */
 public class OvergrowthScenario extends EvidenceScenario {
     private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int TUNNEL = 12;
@@ -360,7 +361,8 @@ public class OvergrowthScenario extends EvidenceScenario {
      * The same growth in the real Fungal Hollows (#1133): layer 3's own caves and light, in the sample world. A bore is
      * cut into a wall of a cave of the hollows biome tag and left unvisited; the stills are the creep ahead of the
      * plug, the closed bore, and a wide shot of it in the cave's own light. The cave comes from a search of the layer's
-     * band round where the world puts the player, never a fixed place. /
+     * band round where the world puts the player, never a fixed place.
+     */
     private void realHollows(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos site) {
         Cave cave = singleplayer.getServer().computeOnServer(server -> {
             ServerLevel three = TestLayers.level(server, HOLLOWS_LAYER);
@@ -464,7 +466,8 @@ public class OvergrowthScenario extends EvidenceScenario {
      * A cave's wall that a bore can be cut into: a floor cell with open air round it and room to stand back from it,
      * and a block of natural rock {@value #HOLLOWS_BORE} deep, 3 wide and 3 high in front of it, in the hollows biome
      * tag. Searches the layer's band over the chunks round {@code site}; throws, naming where it looked, when there is
-     * none. /
+     * none.
+     */
     private static Cave findCave(ServerLevel level, BlockPos site) {
         LayerChain.Band band = TestLayers.band(level, HOLLOWS_LAYER);
         int reach = HOLLOWS_CHUNKS * 16 - HOLLOWS_BORE;
@@ -530,7 +533,8 @@ public class OvergrowthScenario extends EvidenceScenario {
     /**
      * True when fluid would run into the bore once it is cut: lava or water in the mouth, or beside, above or at the
      * end of a bore cell (fluid does not climb, so what lies under a cell is no threat). Fluid is never grown over, so
-     * a cell it fills stays pending for good. /
+     * a cell it fills stays pending for good.
+     */
     private static boolean fluidReaches(ServerLevel level, BlockPos feet, Direction run, List<BlockPos> cells) {
         Direction side = run.getClockWise();
         for (int across = -1; across <= 1; across++) {

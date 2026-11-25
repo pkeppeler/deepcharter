@@ -11,7 +11,8 @@ import net.minecraft.world.level.block.state.BlockState;
 /**
  * The moss growth of a bore left unvisited (#974): a soft full block. The only thing it does by itself is shed the odd
  * spore into the bore, so a pilot sees the film before the bore is closed. What grows it, and where, is {@link
- * Overgrowth}. /
+ * Overgrowth}.
+ */
 public final class OvergrowthBlock extends Block {
     /** One display tick in this many sheds a spore into an open side. */
     private static final int SPORE_ODDS = 30;

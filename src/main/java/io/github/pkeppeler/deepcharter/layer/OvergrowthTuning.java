@@ -23,7 +23,8 @@ package io.github.pkeppeler.deepcharter.layer;
  * @param spillNearPercent  chance in percent that an air cell next to a grown cell takes a film
  * @param spillFarPercent   chance in percent that an air cell further out, up to the reach, takes a film
  * @param filmBarePercent   share in percent of the rock faces of a filmed cell that are left bare, so the film is
- *     ragged /
+ *     ragged
+ */
 public record OvergrowthTuning(
         int delayTicks,
         int visitRadius,
@@ -46,7 +47,8 @@ public record OvergrowthTuning(
      * fuel through growth (about twice a slab of stone, because the growth is softer than stone); a hand cuts a cell in
      * 1.5 s with nothing in it and less with an axe. The moss film goes 2 blocks round a grown cell: 70% of the cells
      * beside it and 35% of those two out take one, a third of a filmed cell's rock faces stay bare, and a film asks
-     * every 2 s whether growth still holds it. /
+     * every 2 s whether growth still holds it.
+     */
     public static final OvergrowthTuning DEFAULT =
             new OvergrowthTuning(6000, 32, 100, 3, 2, 600, 48, 3f, 1.0f, 2, 40, 70, 35, 33);
 
