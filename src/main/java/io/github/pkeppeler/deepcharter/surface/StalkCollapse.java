@@ -124,8 +124,8 @@ final class StalkCollapse {
      * A block of a stalk, {@code removed}, was removed at {@code pos}: what was above it, and what hung from it and has nothing else to
      * hang from, sags and falls. A great block's removal takes the great block above it (and all that touches that) whatever else holds
      * it; a block beside or below it falls only if nothing joins it to the ground any more. An upright stalk never holds a great block
-     * up, and neither does a giant's root flare (#1218): a parasol's arms stand on its flares, and a player scraping its foot must not
-     * fell it.
+     * up, and neither does a giant's root flare (#1218): a parasol's arms stand on its flares, and a player
+     * scraping its foot must not fell it.
      */
     static void removed(ServerLevel level, BlockPos pos, BlockState removed) {
         if (stepping || collapses(level.getBlockState(pos))) {
