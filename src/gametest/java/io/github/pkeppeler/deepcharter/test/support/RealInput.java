@@ -15,9 +15,14 @@ public final class RealInput {
 
     /** A press and a release of {@code button} at the cursor, then one tick. */
     public static void click(ClientGameTestContext context, int button) {
+        click(context, button, 0);
+    }
+
+    /** A press and a release of {@code button} with {@code modifiers} held (an {@code InputConstants.MOD_*}) at the cursor, then one tick. */
+    public static void click(ClientGameTestContext context, int button, int modifiers) {
         for (int action : new int[] {InputConstants.PRESS, InputConstants.RELEASE}) {
-            context.runOnClient(client ->
-                    client.mouseHandler.onButton(client.getWindow().handle(), new MouseButtonInfo(button, 0), action));
+            context.runOnClient(client -> client.mouseHandler.onButton(
+                    client.getWindow().handle(), new MouseButtonInfo(button, modifiers), action));
         }
         context.waitTicks(1);
     }

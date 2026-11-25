@@ -86,6 +86,12 @@ public final class CatalogueScreens {
         return screen instanceof AbstractRecipeBookScreen<?>;
     }
 
+    /** Whether the window has room for the catalogue beside the inventory, which is when {@link #open} shows anything. */
+    static boolean canOpen() {
+        Minecraft client = Minecraft.getInstance();
+        return fits(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight(), true);
+    }
+
     /** The catalogue beside {@code screen}, or null when it has none. */
     public static @Nullable CataloguePanel panelOf(Screen screen) {
         return PANELS.get(screen);
@@ -102,11 +108,7 @@ public final class CatalogueScreens {
     public static void open(Item item) {
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
-        if (player == null
-                || !fits(
-                        client.getWindow().getGuiScaledWidth(),
-                        client.getWindow().getGuiScaledHeight(),
-                        true)) {
+        if (player == null || !canOpen()) {
             return;
         }
         Screen open = client.gui.screen();

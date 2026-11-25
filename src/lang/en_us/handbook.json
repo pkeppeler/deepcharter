@@ -171,6 +171,7 @@
   "deepcharter.catalogue.fill.ghost": "SHOW IN GRID",
   "deepcharter.catalogue.fill.here": "NOT HERE",
   "deepcharter.catalogue.fill.table": "NEEDS TABLE",
+  "deepcharter.catalogue.fill.status.refused": "COULDN'T FILL THE GRID",
   "deepcharter.catalogue.fill.status.here": "NOT MADE ON THIS SCREEN",
   "deepcharter.catalogue.fill.status.table": "NEEDS A CRAFTING TABLE",
   "deepcharter.catalogue.none.recipes": "NO KNOWN RECIPE",

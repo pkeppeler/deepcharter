@@ -12,10 +12,12 @@ import java.util.Objects;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
+import net.minecraft.client.gui.screens.inventory.FurnaceScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.inventory.CraftingMenu;
+import net.minecraft.world.inventory.FurnaceMenu;
 import net.minecraft.world.inventory.RecipeBookType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -31,8 +33,13 @@ public final class FillScenes {
     private FillScenes() {}
 
     public static @Nullable KnownRecipe crafting(CataloguePanel panel, Item item) {
+        return recipe(panel, item, RecipeBookType.CRAFTING);
+    }
+
+    /** The first recipe of {@code item} that the {@code book} makes, or null while the catalogue knows none. */
+    public static @Nullable KnownRecipe recipe(CataloguePanel panel, Item item, RecipeBookType book) {
         return panel.catalogue().recipesFor(item).stream()
-                .filter(recipe -> recipe.book() == RecipeBookType.CRAFTING)
+                .filter(recipe -> recipe.book() == book)
                 .findFirst()
                 .orElse(null);
     }
@@ -61,6 +68,21 @@ public final class FillScenes {
         return CatalogueScene.panel(context);
     }
 
+    /** Opens a furnace's menu on the server, with exactly {@code iron} iron ingots held. */
+    public static CataloguePanel furnaceHolding(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, int iron) {
+        context.setScreen(() -> null);
+        hold(context, singleplayer, iron);
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.openMenu(new SimpleMenuProvider(
+                    (id, inventory, who) -> new FurnaceMenu(id, inventory), Component.literal("Furnace")));
+        });
+        ClientWait.screen(context, FurnaceScreen.class);
+        context.waitTicks(3);
+        return CatalogueScene.panel(context);
+    }
+
     public static void hold(ClientGameTestContext context, TestSingleplayerContext singleplayer, int iron) {
         singleplayer.getServer().runCommand("clear @p");
         if (iron > 0) {
@@ -82,10 +104,16 @@ public final class FillScenes {
 
     /** Looks {@code item} up and steps to its crafting recipe, so the card shows the one the switch fills. */
     public static void showCrafting(ClientGameTestContext context, CataloguePanel panel, Item item) {
+        show(context, panel, item, RecipeBookType.CRAFTING);
+    }
+
+    /** Looks {@code item} up and steps to its first recipe of {@code book}, so the card shows the one the switch fills. */
+    public static void show(ClientGameTestContext context, CataloguePanel panel, Item item, RecipeBookType book) {
         context.runOnClient(client -> {
             CatalogueState state = panel.state();
             state.look(panel.catalogue(), item, CatalogueState.Mode.RECIPES);
-            KnownRecipe wanted = Objects.requireNonNull(crafting(panel, item), () -> "a crafting recipe of " + item);
+            KnownRecipe wanted =
+                    Objects.requireNonNull(recipe(panel, item, book), () -> "a " + book + " recipe of " + item);
             for (int step = 0; step < state.found(panel.catalogue()).size(); step++) {
                 if (wanted.equals(state.shownRecipe(panel.catalogue()))) {
                     break;
@@ -94,14 +122,19 @@ public final class FillScenes {
             }
             require(
                     wanted.equals(state.shownRecipe(panel.catalogue())),
-                    "the card shows the crafting recipe of " + item);
+                    "the card shows the " + book + " recipe of " + item);
         });
         context.waitTicks(2);
     }
 
     public static void pressFill(ClientGameTestContext context, CataloguePanel panel) {
+        pressFill(context, panel, 0);
+    }
+
+    /** Presses the switch with {@code modifiers} held, as a shift-press fills as many as it can. */
+    public static void pressFill(ClientGameTestContext context, CataloguePanel panel, int modifiers) {
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         CatalogueScene.hover(context, layout.card().fill());
-        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT, modifiers);
     }
 }

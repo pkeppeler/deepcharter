@@ -142,7 +142,8 @@ final class SpecSheetView {
             SpecSheet sheet,
             Plan plan,
             int mouseX,
-            int mouseY) {
+            int mouseY,
+            boolean recipesActive) {
         CatalogueLook look = CatalogueLook.current();
         CrtTuning crt = CrtTuning.current();
         PanelLook panel = PanelLook.current();
@@ -175,7 +176,7 @@ final class SpecSheetView {
                 layout.recipes(),
                 Component.translatable("deepcharter.catalogue.sheet.recipes").getString(),
                 false,
-                true,
+                recipesActive,
                 layout.recipes().contains(mouseX, mouseY));
         CatalogueHardware.legendSwitch(
                 graphics,

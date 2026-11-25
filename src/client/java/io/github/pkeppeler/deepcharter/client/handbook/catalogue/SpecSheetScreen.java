@@ -50,11 +50,17 @@ public final class SpecSheetScreen extends Screen {
         return now == null ? null : now.layout().recipes();
     }
 
+    /** Whether the Recipes link does anything: the window has room for the catalogue it opens. */
+    // test-seam: the client test reads whether the link is lit
+    public boolean recipesLinkActive() {
+        return CatalogueScreens.canOpen();
+    }
+
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         Placed now = Objects.requireNonNull(placed, "<built by init() when the screen opens>");
-        SpecSheetView.draw(graphics, font, now.layout(), sheet, now.plan(), mouseX, mouseY);
+        SpecSheetView.draw(graphics, font, now.layout(), sheet, now.plan(), mouseX, mouseY, CatalogueScreens.canOpen());
     }
 
     @Override
@@ -62,8 +68,12 @@ public final class SpecSheetScreen extends Screen {
         Placed now = Objects.requireNonNull(placed, "<built by init() when the screen opens>");
         switch (SpecSheetView.clickAt(now.layout(), event.x(), event.y())) {
             case RECIPES -> {
-                onClose();
-                CatalogueScreens.open(sheet.item());
+                // A window too small for the catalogue has nothing to show, so the link is dim and a press keeps the
+                // sheet.
+                if (CatalogueScreens.canOpen()) {
+                    onClose();
+                    CatalogueScreens.open(sheet.item());
+                }
             }
             case CLOSE -> onClose();
             case NONE -> {}

@@ -65,6 +65,8 @@ public class SpecSheetClientTest implements FabricClientGameTest {
     private static final int SMALLEST_WIDTH = 320;
     /** The narrowest GUI the catalogue's panels draw at, so the narrowest the sheet opens over them. */
     private static final int NARROWEST = 425;
+    /** A GUI scale that leaves the 854 by 480 window a GUI of 213 by 120, too small for the catalogue's consoles. */
+    private static final int SMALL_GUI_SCALE = 4;
 
     /** The first slot of the main inventory, below the hotbar. */
     private static final int INVENTORY_SLOT = 9;
@@ -309,6 +311,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
             CatalogueScene.openInventory(context);
             theSpecSheetButtonOpensTheSheet(context);
             theRecipesLinkOpensTheRecipes(context);
+            theRecipesLinkIsDeadInAWindowTooSmallForTheCatalogue(context);
             theSheetTakesEveryKeyAndHidesTheTooltipUnderIt(context, singleplayer);
             context.setScreen(() -> null);
             aSheetPopsUpWhenTheServerSays(context, singleplayer);
@@ -440,6 +443,34 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 there != null && there.item() == drill && there.mode() == CatalogueState.Mode.RECIPES,
                 "from a sheet of its own the link opens the inventory at the recipes, got " + there);
         context.runOnClient(client -> opened.state().clear());
+    }
+
+    /** A window too small for the catalogue has nothing for the link to open: it is drawn dim, and a click does nothing and keeps the sheet. */
+    private static void theRecipesLinkIsDeadInAWindowTooSmallForTheCatalogue(ClientGameTestContext context) {
+        context.setScreen(() -> null);
+        context.runOnClient(client -> client.getWindow().setGuiScale(SMALL_GUI_SCALE));
+        try {
+            context.runOnClient(client -> SpecSheetOpener.show(HangarParts.DRILL_HEAD));
+            ClientWait.screen(context, SpecSheetScreen.class);
+            context.waitTicks(2);
+            require(
+                    context.computeOnClient(client ->
+                            !((SpecSheetScreen) Objects.requireNonNull(client.gui.screen())).recipesLinkActive()),
+                    "setup: the window is too small for the catalogue, so the link is dim");
+            CatalogueScene.hover(
+                    context,
+                    Objects.requireNonNull(context.computeOnClient(
+                            client -> ((SpecSheetScreen) Objects.requireNonNull(client.gui.screen())).recipesLink())));
+            RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+            context.waitTicks(3);
+            require(
+                    context.computeOnClient(client -> client.gui.screen() instanceof SpecSheetScreen),
+                    "a click on the dead link does nothing: the sheet is still open");
+        } finally {
+            context.runOnClient(
+                    client -> client.getWindow().setGuiScale(client.getWindow().calculateScale(0, false)));
+            context.setScreen(() -> null);
+        }
     }
 
     /** Draws {@code screen} and holds the strings of {@code item}'s sheet to the sheet's glass. */
