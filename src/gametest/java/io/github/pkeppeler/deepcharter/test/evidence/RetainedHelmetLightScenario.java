@@ -82,14 +82,15 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
 
         private void setUp() {
             chamber.enterLayer(
+                    LENGTH,
+                    HALF_WIDTH,
+                    HEIGHT,
                     RetainedChamber.FLOOR.getX() + CAMERA_X,
                     RetainedChamber.FLOOR.getY() + 3,
                     RetainedChamber.FLOOR.getZ() + 0.5,
                     270f,
                     0f);
             chamber.serverDo(server -> {
-                ServerLevel level = RetainedChamber.layer(server);
-                RetainedChamber.buildChamber(level, LENGTH, HALF_WIDTH, HEIGHT);
                 ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
                 camera.setGameMode(GameType.CREATIVE);
                 camera.getAbilities().mayfly = true;
@@ -97,9 +98,13 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
                 camera.onUpdateAbilities();
                 camera.setNoGravity(true);
                 camera.setPermanentlyInvulnerable(true);
+            });
+            chamber.awaitEntityTicking(farFigurePos());
+            chamber.serverDo(server -> {
+                ServerLevel level = RetainedChamber.layer(server);
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 figure.setNoAi(true);
-                figure.setPos(RetainedChamber.at(CAMERA_X + FAR, 1, 0.5));
+                figure.setPos(farFigurePos());
                 level.addFreshEntity(figure);
                 figureId = figure.getId();
             });
@@ -108,6 +113,10 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
                     "the figure on the client",
                     client -> client.level != null && client.level.getEntity(figureId) instanceof LamplessFigure);
             ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+        }
+
+        private Vec3 farFigurePos() {
+            return RetainedChamber.at(CAMERA_X + FAR, 1, 0.5);
         }
 
         /** Puts the figure {@code distance} east of the camera, facing it, with or without a lamp, and the camera looking at it. */
@@ -167,11 +176,12 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
 
         /** The walker is taken away; a new figure stands in for the stills that follow. */
         private void resetFigure() {
+            chamber.awaitEntityTicking(farFigurePos());
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 figure.setNoAi(true);
-                figure.setPos(RetainedChamber.at(CAMERA_X + FAR, 1, 0.5));
+                figure.setPos(farFigurePos());
                 level.addFreshEntity(figure);
                 figureId = figure.getId();
             });
