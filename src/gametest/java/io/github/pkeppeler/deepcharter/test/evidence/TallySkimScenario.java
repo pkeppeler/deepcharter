@@ -168,7 +168,7 @@ public class TallySkimScenario extends EvidenceScenario {
         private void sendTally() {
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
-                Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+                Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
                 tally.setPos(RetainedChamber.at(TALLY_X, TALLY_HEIGHT, TALLY_Z));
                 level.addFreshEntity(tally);
                 tallyId = tally.getId();
