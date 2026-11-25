@@ -1,9 +1,12 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientReadMarks;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookControls;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookKeys;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookMemory;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
@@ -21,6 +24,7 @@ import java.util.List;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -31,7 +35,8 @@ import net.minecraft.server.level.ServerPlayer;
  * charter has done five of chapter 1's seven steps, the last of them just now (the step popup); the card of the sixth shows the
  * scanner unit it asks for. Then the first two chapters are done, and chapter 3's map, with the chapters after it redacted, is shown
  * whole. Every page carries the tabs: the stills show them on the Founder's letter (the intro), on a chapter text page and on the maps, and
- * a step with a very long line shows its popup grown to fit it (#962).
+ * a step with a very long line shows its popup grown to fit it (#962). Last, the controls pages, and the first of them again
+ * with the handbook key rebound (#1260).
  */
 public class QuestMapScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
@@ -82,6 +87,13 @@ public class QuestMapScenario extends EvidenceScenario {
             hold(context);
             screenshot(context, "quest-map-chapter-1");
 
+            // the scanner step done, the current step is the light: a torch or a lantern, two items to click
+            complete(context, singleplayer, 1, 6);
+            open(context, 1);
+            context.runOnClient(client -> client.gui.toastManager().clear());
+            hold(context);
+            screenshot(context, "quest-card-light");
+
             complete(context, singleplayer, 1, Integer.MAX_VALUE);
             complete(context, singleplayer, 2, Integer.MAX_VALUE);
             open(context, 3);
@@ -95,8 +107,30 @@ public class QuestMapScenario extends EvidenceScenario {
             context.runOnClient(client -> client.gui.toastManager().clear());
             hold(context);
             screenshot(context, "quest-map-chapter-4");
+
+            // the controls pages name each key as it is bound now: the handbook key is H, then J once rebound (#1260)
+            for (int part = 1; part <= HandbookControls.sheets(); part++) {
+                int sheet = part;
+                openAt(context, page -> page instanceof HandbookPage.Controls controls && controls.part() == sheet);
+                hold(context);
+                screenshot(context, "controls-" + part);
+            }
+            context.runOnClient(client -> rebind(HandbookKeys.OPEN, InputConstants.KEY_J));
+            try {
+                openAt(context, page -> page instanceof HandbookPage.Controls controls && controls.part() == 1);
+                hold(context);
+                screenshot(context, "controls-1-rebound");
+            } finally {
+                context.runOnClient(client -> rebind(
+                        HandbookKeys.OPEN, HandbookKeys.OPEN.getDefaultKey().getValue()));
+            }
             context.setScreen(() -> null);
         }
+    }
+
+    private static void rebind(KeyMapping mapping, int key) {
+        mapping.setKey(InputConstants.Type.KEYBOARD.getOrCreate(key));
+        KeyMapping.resetMapping();
     }
 
     /** Completes the first {@code count} directives of chapter {@code chapter} for the player's charter, and waits for the client to know. */
