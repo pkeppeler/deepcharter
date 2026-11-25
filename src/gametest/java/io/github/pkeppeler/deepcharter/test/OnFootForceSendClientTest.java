@@ -114,12 +114,12 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The most force-send lines one run may excuse as vanilla's stale-move race. Observed maximum: 1 (#1331: 0 in each
-     * of 10 runs of this check, and 1 in each of the 4 failing runs before it). Vanilla allows one line in 200 ticks,
-     * so the measured phase could hold about 6; a cap of 2 leaves margin and still fails a regression that makes the
-     * line on most landings.
+     * The most force-send lines one run may excuse as vanilla's stale-move race. Observed maximum: 2 (#1331: 0 to 2 in
+     * 12 runs of this check, and 1 in each of the 4 failing runs before it). Vanilla allows one line in 200 ticks, so
+     * the measured phase could hold about 6; a cap of 4 leaves margin and still fails a regression that makes the line
+     * on most landings.
      */
-    private static final int MAX_EXCUSED = 2;
+    private static final int MAX_EXCUSED = 4;
 
     /** Vanilla sends nothing in the first 200 ticks of a connection. */
     private static final int SILENT_TICKS = 260;
