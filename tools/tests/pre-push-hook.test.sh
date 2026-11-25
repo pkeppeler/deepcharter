@@ -205,13 +205,14 @@ check "shared hooks path: the main copy does not also run" "1" "$(wc -l <"$work/
 refs="refs/heads/b $sha refs/heads/b $zero$nl"
 if command -v flock >/dev/null; then
   lock=$work/held.lock
+  # hook_with <env assignment>...: run the copied hook in $work with the given env; output in $work/out.
+  hook_with() { (cd "$work" && printf '%s' "$refs" | env "$@" STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) >"$work/out" 2>&1; }
   flock "$lock" sleep 30 &
   holder=$!
   trap 'kill "$holder" 2>/dev/null || true; rm -rf "$work"' EXIT
   sleep 0.5
   : >"$work/calls"
-  (cd "$work" && printf '%s' "$refs" | DEEPCHARTER_GRADLE_LOCK="$lock" STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) \
-    >"$work/out" 2>&1 &
+  hook_with DEEPCHARTER_GRADLE_LOCK="$lock" &
   hook=$!
   sleep 2
   check "a held lock keeps the hook from running gradle" "0" "$(grep -c gradlew "$work/calls" || true)"
@@ -227,16 +228,14 @@ if command -v flock >/dev/null; then
   sleep 0.5
   : >"$work/calls"
   status=0
-  (cd "$work" && printf '%s' "$refs" | DEEPCHARTER_GRADLE_LOCK="$lock" DEEPCHARTER_GRADLE_LOCK_WAIT=1 STUB_LOG="$work/calls" PATH="$work/bin:$PATH" \
-    bash "$work/.githooks/pre-push" origin url) >"$work/out" 2>&1 || status=$?
+  hook_with DEEPCHARTER_GRADLE_LOCK="$lock" DEEPCHARTER_GRADLE_LOCK_WAIT=1 || status=$?
   kill "$holder" 2>/dev/null || true
   check "a lock held past the wait limit blocks the push" "1:0" "$status:$(grep -c gradlew "$work/calls" || true)"
   check "the timeout message names the lock and --no-verify" "yes" "$(grep -q "timed out.*$lock.*--no-verify" "$work/out" && echo yes || echo no)"
   check "the timeout is not reported as a compile failure" "no" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
   # A lock file flock cannot open is named as such.
   status=0
-  (cd "$work" && printf '%s' "$refs" | DEEPCHARTER_GRADLE_LOCK="$work/no/such/dir.lock" STUB_LOG="$work/calls" PATH="$work/bin:$PATH" \
-    bash "$work/.githooks/pre-push" origin url) >"$work/out" 2>&1 || status=$?
+  hook_with DEEPCHARTER_GRADLE_LOCK="$work/no/such/dir.lock" || status=$?
   check "an unopenable lock file blocks with its own message" "1:yes" "$status:$(grep -q 'cannot open the Gradle lock file' "$work/out" && echo yes || echo no)"
   # The default lock is shared by every worktree of the clone: it lives in the git common dir.
   : >"$work/calls"

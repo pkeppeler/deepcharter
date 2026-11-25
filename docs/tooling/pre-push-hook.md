@@ -10,7 +10,7 @@ It skips pushes that only delete a branch and pushes to `pr-media`. On failure i
 
 The Gradle step waits if another Gradle build holds the lock, and the hook says so. Press Ctrl-C and push with `--no-verify` to skip. The lock is `flock` on `$(git rev-parse --git-common-dir)/gradle-slot.lock`, one file for every worktree of the clone, or on `DEEPCHARTER_GRADLE_LOCK` when set. The compile step and the gate checks both take it. The wait ends after `DEEPCHARTER_GRADLE_LOCK_WAIT` seconds (default 1800) with a message naming the lock. Without `flock` (macOS has none) the hook runs Gradle unlocked.
 
-The SessionStart hook (`.claude/hooks/session-start.sh`) sets `core.hooksPath` to `.githooks` when it is unset, and leaves any set value alone. Once it is set, pushes on the Mac also run the hook: a Gradle step when Gradle inputs change, and no lock without `flock`. `git push --no-verify` skips it. To enable it by hand:
+The SessionStart hook (`.claude/hooks/session-start.sh`) sets `core.hooksPath` to `.githooks` when it is unset, and leaves any set value alone. To enable it by hand:
 
 ```
 git config core.hooksPath .githooks

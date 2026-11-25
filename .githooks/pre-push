@@ -56,6 +56,7 @@ if [[ -z $gradle_lock ]] && common=$(git rev-parse --git-common-dir 2>/dev/null)
   gradle_lock=$common/gradle-slot.lock
 fi
 # -o: the Gradle client and daemon do not inherit the lock fd. -w: give up after DEEPCHARTER_GRADLE_LOCK_WAIT seconds (exit 200) rather than hang.
+gradle_lock_wait=${DEEPCHARTER_GRADLE_LOCK_WAIT:-1800}
 with_gradle_lock() { # with_gradle_lock <command>...
   if [[ -z $gradle_lock ]] || ! command -v flock >/dev/null 2>&1; then "$@"; return; fi
   if ! { : >>"$gradle_lock"; } 2>/dev/null; then
@@ -63,9 +64,9 @@ with_gradle_lock() { # with_gradle_lock <command>...
     exit 1
   fi
   local rc=0
-  flock -o -w "${DEEPCHARTER_GRADLE_LOCK_WAIT:-1800}" -E 200 "$gradle_lock" "$@" || rc=$?
+  flock -o -w "$gradle_lock_wait" -E 200 "$gradle_lock" "$@" || rc=$?
   if [[ $rc -eq 200 ]]; then
-    echo "pre-push: timed out after ${DEEPCHARTER_GRADLE_LOCK_WAIT:-1800} s waiting for the Gradle lock $gradle_lock. Retry later, or skip the hook once with: git push --no-verify" >&2
+    echo "pre-push: timed out after $gradle_lock_wait s waiting for the Gradle lock $gradle_lock. Retry later, or skip the hook once with: git push --no-verify" >&2
     exit 1
   fi
   return "$rc"
