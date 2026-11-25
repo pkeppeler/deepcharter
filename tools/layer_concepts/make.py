@@ -7,7 +7,8 @@ Usage: tools/layer_concepts/make.py [--check]
        tools/py tools/textures/texgen.py --variant layer_grain   (and layer_form_1, _2, _3): draws a test pack's textures
 
   - the shipped rock of layers 1 to 3, the user's pick of round 2 (Grain): the texgen recipes tools/textures/recipes/layer_rock.json, and the
-    blockstates, models and item definitions of its blocks in the mod's assets: packed shale and green shale and their rubble, cubes; layer 3's
+    blockstates, models and item definitions of its blocks in the mod's assets: packed shale and green shale and their rubble, cubes, and the hardpan
+    and black shale of layer 1's strata (#1277), cubes too; layer 3's
     columnar basalt, round 1's hexagonal columns in Grain, which line the faces open to its caverns, and the dark basalt core between them (#504)
   - the lava of every layer, minecraft:block/lava_still and lava_flow, animated, under the mod's assets/minecraft (the one block texture of vanilla
     that the mod redraws)
@@ -116,6 +117,13 @@ CRUST_SEED = 61
 # mottles both did, so these are the seeds the user saw and picked).
 SHARED_NOISE = {(1, False): 90100, (1, True): 90107, (2, False): 90200, (2, True): 93207, (3, False): 91300, (3, True): 95307}
 
+# The strata of layer 1 (#1277): each zone of The Claim has a rock of its own, so a descent reads as progress in the wall and on the
+# scanner. Stone Benches keeps the packed shale; over it lies the pale, warm hardpan of Topsoil Claims and under it the cold black shale
+# of Deep Claim, which leads on to layer 2's grey-green. Each is layer 1's Grain in a ramp of its own, as many variants and ends as the
+# packed shale. By block: its ramp, the shared noise of its sides and of its ends (the first seeds from 91100 and 91300 that tile), and
+# the first seed of its variants.
+STRATA = {"hardpan": ("hardpan_rock", 91101, 91102, 1100), "black_shale": ("shale_black", 91300, 91302, 1300)}
+
 
 def stems(layer: int) -> tuple[str, str]:
     """The name of the rock and of the rubble of a layer, the stem of its textures and models."""
@@ -136,6 +144,16 @@ def rock_grids(layer: int) -> dict[str, art.Grid]:
     for i in range(RUBBLE_VARIANTS):
         out[f"{rubble}_{i}"] = fitted(lambda s: art.shards(shades, s), seed + 20 + i, seams.MAX_RUBBLE_INSIDE)
     out[f"{rubble}_end"] = fitted(lambda s: art.shards(shades, s), seed + 22, seams.MAX_RUBBLE_INSIDE)
+    return out
+
+
+def stratum_grids(block: str) -> dict[str, art.Grid]:
+    """Every tiling texture of one stratum of layer 1, by name: its sides and its ends."""
+    ramp, side, end, seed = STRATA[block]
+    shades, mid = art.ramp(ramp, 6), MID[1]
+    out = {f"{block}_{i}": fitted(lambda s: art.grained(shades, s, mid, side), seed + i) for i in range(ROCK_VARIANTS[1])}
+    for j in range(END_VARIANTS):
+        out[f"{block}_end_{j}"] = fitted(lambda s: art.grained(shades, s, mid, end), seed + 15 + j)
     return out
 
 
@@ -207,6 +225,7 @@ def column_grids() -> dict[str, art.Grid]:
 def shipped_recipes() -> dict[str, dict]:
     """The texgen recipes of the mod's rock of layers 1 to 3, by key (block/<name>): tools/textures/recipes/layer_rock.json."""
     grids = {name: grid for layer in SHIPPED_LAYERS for name, grid in rock_grids(layer).items()} | column_grids()
+    grids |= {name: grid for block in STRATA for name, grid in stratum_grids(block).items()}
     return {f"block/{name}": art.recipe(grid) for name, grid in grids.items()}
 
 
@@ -301,6 +320,12 @@ def shipped_files() -> dict[Path, bytes]:
             names = [n for n in models if re.fullmatch(rf"{block}_\d", n)]
             files[MOD_ASSETS / f"deepcharter/blockstates/{block}.json"] = _json({"variants": {"": shapes.variants(names, (0,))}})
             files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(f"{block}_0")}})
+    for block in STRATA:
+        names = [f"{block}_{i}" for i in range(ROCK_VARIANTS[1])]
+        for i, name in enumerate(names):
+            files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(shapes.cube(name, f"{block}_end_{i % END_VARIANTS}"))
+        files[MOD_ASSETS / f"deepcharter/blockstates/{block}.json"] = _json({"variants": {"": shapes.variants(names, (0,))}})
+        files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(names[0])}})
     models = column_models()
     for name, body in models.items():
         files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(body)
@@ -450,7 +475,7 @@ def problems(files: dict[Path, bytes], structures: dict[Path, bytes]) -> list[st
         for path in sorted(list(assets.glob("*/models/block/*.json")) + list(assets.glob("*/blockstates/*.json"))):
             if path not in made:
                 out.append(f"{path.relative_to(ROOT)}: no source makes it")
-    for block in (*(name for pair in BLOCKS.values() for name in pair), COLUMNS, CORE):
+    for block in (*(name for pair in BLOCKS.values() for name in pair), *STRATA, COLUMNS, CORE):
         for path in sorted([*MOD_ASSETS.glob(f"deepcharter/*/{block}*.json"), *MOD_ASSETS.glob(f"deepcharter/models/block/{block}_*.json")]):
             if path not in files:
                 out.append(f"{path.relative_to(ROOT)}: no source makes it")

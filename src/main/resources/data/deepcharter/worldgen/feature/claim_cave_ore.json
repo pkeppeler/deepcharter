@@ -1,0 +1,66 @@
+{
+  "type": "deepcharter:cave_ore",
+  "layer": 1,
+  "zones": [
+    [
+      {
+        "block": "deepcharter:ironium_ore",
+        "weight": 20
+      },
+      {
+        "block": "deepcharter:bronzium_ore",
+        "weight": 24
+      },
+      {
+        "block": "deepcharter:silverium_ore",
+        "weight": 10
+      },
+      {
+        "block": "deepcharter:goldium_ore",
+        "weight": 4
+      }
+    ],
+    [
+      {
+        "block": "deepcharter:ironium_ore",
+        "weight": 20
+      },
+      {
+        "block": "deepcharter:bronzium_ore",
+        "weight": 24
+      },
+      {
+        "block": "deepcharter:silverium_ore",
+        "weight": 10
+      },
+      {
+        "block": "deepcharter:goldium_ore",
+        "weight": 4
+      }
+    ],
+    [
+      {
+        "block": "deepcharter:ironium_ore",
+        "weight": 20
+      },
+      {
+        "block": "deepcharter:bronzium_ore",
+        "weight": 24
+      },
+      {
+        "block": "deepcharter:silverium_ore",
+        "weight": 12
+      },
+      {
+        "block": "deepcharter:goldium_ore",
+        "weight": 4
+      },
+      {
+        "block": "deepcharter:platinium_ore",
+        "weight": 3
+      }
+    ]
+  ],
+  "min_size": 3,
+  "max_size": 8
+}

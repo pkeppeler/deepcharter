@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "deepcharter:block/lunch_pail"
+    },
+    "facing=east": {
+      "model": "deepcharter:block/lunch_pail",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "deepcharter:block/lunch_pail",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "deepcharter:block/lunch_pail",
+      "y": 270
+    }
+  }
+}

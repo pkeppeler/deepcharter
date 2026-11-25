@@ -3,6 +3,8 @@ package io.github.pkeppeler.deepcharter.layer;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.gen.AirFaceLiningFeature;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
+import io.github.pkeppeler.deepcharter.layer.gen.CaveOreFeature;
+import io.github.pkeppeler.deepcharter.layer.gen.ClaimShaftFeature;
 import io.github.pkeppeler.deepcharter.layer.gen.GrainedCrustPass;
 import io.github.pkeppeler.deepcharter.layer.gen.InChunkOffsetPlacement;
 import io.github.pkeppeler.deepcharter.layer.gen.LayerRowsPlacement;
@@ -38,5 +40,7 @@ public final class LayerRegistry {
         LayerRowsPlacement.register();
         InChunkOffsetPlacement.register();
         AirFaceLiningFeature.register();
+        ClaimShaftFeature.register();
+        CaveOreFeature.register();
     }
 }

@@ -81,7 +81,11 @@
     [
       "deepcharter:fungal_stalks_cave"
     ],
-    []
+    [
+      "deepcharter:claim_shafts",
+      "deepcharter:claim_cave_ores",
+      "deepcharter:claim_salvage_caches"
+    ]
   ],
   "has_precipitation": false,
   "temperature": 0.5

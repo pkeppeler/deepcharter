@@ -1,0 +1,77 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "card": "deepcharter:block/prayer_card",
+    "particle": "deepcharter:block/prayer_card"
+  },
+  "elements": [
+    {
+      "from": [
+        4,
+        0,
+        14.5
+      ],
+      "to": [
+        12,
+        10,
+        15
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          0,
+          15
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            3,
+            12,
+            13
+          ],
+          "texture": "#card"
+        },
+        "south": {
+          "uv": [
+            4,
+            12,
+            12,
+            13
+          ],
+          "texture": "#card"
+        },
+        "west": {
+          "uv": [
+            4,
+            3,
+            4.5,
+            13
+          ],
+          "texture": "#card"
+        },
+        "east": {
+          "uv": [
+            11.5,
+            3,
+            12,
+            13
+          ],
+          "texture": "#card"
+        },
+        "up": {
+          "uv": [
+            4,
+            3,
+            12,
+            3.5
+          ],
+          "texture": "#card"
+        }
+      }
+    }
+  ]
+}

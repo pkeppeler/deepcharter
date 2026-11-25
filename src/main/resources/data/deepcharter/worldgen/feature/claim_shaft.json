@@ -1,0 +1,6 @@
+{
+  "type": "deepcharter:claim_shaft",
+  "layer": 1,
+  "min_depth": 12,
+  "max_depth": 30
+}

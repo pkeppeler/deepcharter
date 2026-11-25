@@ -177,6 +177,124 @@
         "y": 270
       }
     ],
+    "crack=0,host=hardpan": [
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2,
+        "y": 270
+      }
+    ],
+    "crack=0,host=black_shale": [
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2",
+        "weight": 2,
+        "y": 270
+      }
+    ],
     "crack=1,host=packed_shale": [
       {
         "model": "deepcharter:block/company_rock_joint_0_wide_1",
@@ -354,6 +472,124 @@
         "y": 270
       }
     ],
+    "crack=1,host=hardpan": [
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_1",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_1",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_1",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_1",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_1",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_1",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_1",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_1",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_1",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_1",
+        "weight": 2,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_1",
+        "weight": 2,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_1",
+        "weight": 2,
+        "y": 270
+      }
+    ],
+    "crack=1,host=black_shale": [
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_1",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_1",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_1",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_1",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_1",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_1",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_1",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_1",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_1",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_1",
+        "weight": 2,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_1",
+        "weight": 2,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_1",
+        "weight": 2,
+        "y": 270
+      }
+    ],
     "crack=2,host=packed_shale": [
       {
         "model": "deepcharter:block/company_rock_joint_0_wide_2",
@@ -473,6 +709,124 @@
       }
     ],
     "crack=2,host=basalt_core": [
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_2",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_2",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_2",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_2",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_2",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_2",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_2",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_2",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_2",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_2",
+        "weight": 2,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_2",
+        "weight": 2,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_2",
+        "weight": 2,
+        "y": 270
+      }
+    ],
+    "crack=2,host=hardpan": [
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_2",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_2",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_2",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_0_wide_2",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_2",
+        "weight": 4
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_2",
+        "weight": 4,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_2",
+        "weight": 4,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_1_wide_2",
+        "weight": 4,
+        "y": 270
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_2",
+        "weight": 2
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_2",
+        "weight": 2,
+        "y": 90
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_2",
+        "weight": 2,
+        "y": 180
+      },
+      {
+        "model": "deepcharter:block/company_rock_joint_2_wide_2",
+        "weight": 2,
+        "y": 270
+      }
+    ],
+    "crack=2,host=black_shale": [
       {
         "model": "deepcharter:block/company_rock_joint_0_wide_2",
         "weight": 4

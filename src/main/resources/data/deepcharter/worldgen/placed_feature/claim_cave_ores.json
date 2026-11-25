@@ -1,0 +1,21 @@
+{
+  "feature": "deepcharter:claim_cave_ore",
+  "placement": [
+    {
+      "type": "minecraft:count",
+      "count": 6
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "deepcharter:layer_rows",
+      "layer": 1,
+      "min": 16,
+      "max": 156
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

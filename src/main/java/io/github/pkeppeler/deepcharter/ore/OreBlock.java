@@ -14,11 +14,16 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
  * rock it replaces, and a placed ore takes the rock of the layer it is placed in.
  */
 public final class OreBlock extends Block {
-    /** The rocks an ore can sit in: the layers' own, in layer order. */
+    /**
+     * The rocks an ore can sit in: the layers' own, in layer order, then the strata layer 1 gained around its packed shale (#1277), added last
+     * so that no value moves.
+     */
     public enum Host implements StringRepresentable {
         PACKED_SHALE(LayerBlocks.PACKED_SHALE),
         GREEN_SHALE(LayerBlocks.GREEN_SHALE),
-        BASALT_CORE(LayerBlocks.BASALT_CORE);
+        BASALT_CORE(LayerBlocks.BASALT_CORE),
+        HARDPAN(LayerBlocks.HARDPAN),
+        BLACK_SHALE(LayerBlocks.BLACK_SHALE);
 
         private static final Host[] VALUES = values();
 

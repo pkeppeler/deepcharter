@@ -19,7 +19,8 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.PushReaction;
 
 /**
- * Blocks of the layer feature: the breach crust, the rock of layers 1 and 2 with its rubble, and the basalt of layer 3. Their looks (the
+ * Blocks of the layer feature: the breach crust, the rock of layers 1 and 2 with its rubble, layer 1's strata and the relics of its
+ * abandoned shafts, and the basalt of layer 3. Their looks (the
  * textures of the rock, the rubble and the basalt's columns) are blockstate variants in the resource pack, written by
  * {@code tools/layer_concepts/make.py}.
  */
@@ -69,6 +70,10 @@ public final class LayerBlocks {
 
     /** The rust-brown rock of layer 1, which the layer's noise settings fill the ground with. */
     public static final Block PACKED_SHALE = registerBlock(id("packed_shale"), LayerBlocks::rock);
+    /** The pale, warm hardpan of layer 1's Topsoil Claims (#1277), over the packed shale: the campaign's material rule lays it. */
+    public static final Block HARDPAN = registerBlock(id("hardpan"), LayerBlocks::rock);
+    /** The cold black shale of layer 1's Deep Claim (#1277), under the packed shale: the campaign's material rule lays it. */
+    public static final Block BLACK_SHALE = registerBlock(id("black_shale"), LayerBlocks::rock);
     /** The grey-green rock of layer 2, which the layer's noise settings fill the ground with. */
     public static final Block GREEN_SHALE = registerBlock(id("green_shale"), LayerBlocks::rock);
     /**
@@ -99,6 +104,32 @@ public final class LayerBlocks {
                     .noCollision()
                     .noOcclusion()
                     .lightLevel(state -> LayerTuning.DEFAULT.glowcapLight())));
+    /**
+     * A first-generation miner's lunch pail (#1277), left at the foot of an abandoned shaft of layer 1. It breaks by hand into itself.
+     */
+    public static final Block LUNCH_PAIL = registerBlock(
+            id("lunch_pail"),
+            key -> new ClaimRelicBlock(
+                    BlockBehaviour.Properties.of()
+                            .setId(key)
+                            .strength(0.5F)
+                            .sound(SoundType.LANTERN)
+                            .noOcclusion(),
+                    Block.box(4, 0, 4, 12, 8, 12)));
+    /**
+     * A prayer card (#1277), left leaning in a candle niche of an abandoned shaft of layer 1, among the candle stubs. It is never
+     * explained (LORE section 2, faith is quiet). It breaks by hand into itself.
+     */
+    public static final Block PRAYER_CARD = registerBlock(
+            id("prayer_card"),
+            key -> new ClaimRelicBlock(
+                    BlockBehaviour.Properties.of()
+                            .setId(key)
+                            .instabreak()
+                            .sound(SoundType.WOOL)
+                            .noCollision()
+                            .noOcclusion(),
+                    Block.box(4, 0, 13, 12, 10, 16)));
     /** Broken rock of layer 1, for the rubble heaps of its formation. */
     public static final Block PACKED_SHALE_RUBBLE = registerBlock(id("packed_shale_rubble"), LayerBlocks::rubble);
     /** Broken rock of layer 2, for the rubble heaps of its formation. */
@@ -138,9 +169,31 @@ public final class LayerBlocks {
         return layerGroundOf(level, y).orElse(Blocks.STONE);
     }
 
-    /** The rock of the layer that holds height {@code y} in {@code level}; empty where there is no layer (the surface, unbuilt depth, a test's level). Fails for a layer with no rock block yet. */
+    /**
+     * The rock of the layer that holds height {@code y} in {@code level}, and in the campaign world's layer 1 the rock of the zone's stratum
+     * ({@link #stratum}; a layer dimension has no strata); empty where there is no layer (the surface, unbuilt depth, a test's level). Fails
+     * for a layer with no rock block yet.
+     */
     public static Optional<Block> layerGroundOf(Level level, int y) {
-        return LayerChain.layerAt(level, y).map(band -> layerGround(band.layer()));
+        return LayerChain.layerAt(level, y)
+                .map(band -> LayerChain.isCampaign(level) ? stratum(band, y) : layerGround(band.layer()));
+    }
+
+    /**
+     * The rock at height {@code y} of {@code band} in the campaign world: in layer 1 the rock of the zone that holds it (#1277), Topsoil
+     * Claims' hardpan, Stone Benches' packed shale and Deep Claim's black shale, and in every other layer {@link #layerGround(int)}. The
+     * material rule lays each stratum's contact a few blocks either side of its zone's edge, so near an edge this names the zone's rock, not
+     * always the block there.
+     */
+    public static Block stratum(LayerChain.Band band, int y) {
+        if (band.layer() != 1) {
+            return layerGround(band.layer());
+        }
+        return switch (Zones.index(band.minY(), band.height(), y)) {
+            case 0 -> HARDPAN;
+            case 1 -> PACKED_SHALE;
+            default -> BLACK_SHALE;
+        };
     }
 
     /** The rock of layer {@code layer}, counted from 1; fails for a layer with no rock block yet. */
