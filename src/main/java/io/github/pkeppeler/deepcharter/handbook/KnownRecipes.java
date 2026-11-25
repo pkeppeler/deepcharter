@@ -36,9 +36,9 @@ import net.minecraft.world.item.crafting.display.RecipeDisplayId;
  * into a charter they found or join. Unknown recipes still craft: nothing here limits crafting.
  *
  * <p>The player's server-side recipe book holds exactly the recipes their charter knows (their own on no charter), and
- * the vanilla recipe-book packets carry it to the client. The book is made to match when it is first sent ({@link
- * #conform}), when the set grows, and when the player joins, founds or leaves a charter. {@link #knownFor} also filters
- * vanilla unlocks.
+ * the vanilla recipe-book packets carry it to the client. The book is made to match when it is first sent
+ * ({@link #conform}), when the set grows, and when the player joins, founds or leaves a charter. {@link #knownFor} also
+ * filters vanilla unlocks.
  *
  * <p>Saved data of a version this build cannot read is logged once: no recipe is known and the book is emptied, and the
  * saved data is kept ({@link #readableData}).

@@ -23,9 +23,10 @@ import net.minecraft.world.item.crafting.display.RecipeDisplay;
 /**
  * The items a player can obtain in the campaign world (ADR 0093). Every item outside the {@code minecraft} namespace is
  * obtainable; a vanilla item is obtainable only when the {@code deepcharter:obtainable} item tag lists it. A recipe
- * that needs or makes an item that is not obtainable is left out of the server's recipes ({@code
- * handbook/mixin/RecipeManagerMixin}), so it cannot be crafted, and the parts catalogue and the creative tabs show only
- * obtainable items. {@code ObtainableItemsTest} derives the list from the world and fails when the tag drifts from it.
+ * that needs or makes an item that is not obtainable is left out of the server's recipes
+ * ({@code handbook/mixin/RecipeManagerMixin}), so it cannot be crafted, and the parts catalogue and the creative tabs
+ * show only obtainable items. {@code ObtainableItemsTest} derives the list from the world and fails when the tag drifts
+ * from it.
  */
 public final class ObtainableItems {
     /** The vanilla items the campaign world yields. The tag is synced, so the client reads it too. */

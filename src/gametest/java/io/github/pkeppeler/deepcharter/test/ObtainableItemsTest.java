@@ -365,9 +365,9 @@ public class ObtainableItemsTest {
 
     /**
      * The blocks the campaign world's data names: its noise settings and the features and carvers of every biome of
-     * ours, encoded as data and read for every string that names a block. The creatures our biomes spawn go into {@code
-     * creatures}. Fails when a vanilla structure may generate in one of our biomes, since its pieces are not walked
-     * here.
+     * ours, encoded as data and read for every string that names a block. The creatures our biomes spawn go into
+     * {@code creatures}. Fails when a vanilla structure may generate in one of our biomes, since its pieces are not
+     * walked here.
      */
     private static Set<Block> worldgenBlocks(
             GameTestHelper helper, MinecraftServer server, Set<EntityType<?>> creatures) {

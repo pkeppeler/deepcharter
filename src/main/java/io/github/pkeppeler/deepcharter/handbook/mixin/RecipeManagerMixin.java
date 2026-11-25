@@ -23,10 +23,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Leaves out of the server's recipes every recipe that needs or makes an item the campaign world does not yield,
- * vanilla's included, so none of them crafts, unlocks or reaches a recipe book (ADR 0093). The constructor ({@code
- * <init>}) builds the recipe map before the reloaded tags are bound to the items, so the {@code RecipeMap.create} call
- * there only keeps the recipe registry, and {@code finalizeRecipeLoading}, which runs once the tags are bound and
- * before anything reads the recipes, builds the map again without those recipes.
+ * vanilla's included, so none of them crafts, unlocks or reaches a recipe book (ADR 0093). The constructor
+ * ({@code <init>}) builds the recipe map before the reloaded tags are bound to the items, so the
+ * {@code RecipeMap.create} call there only keeps the recipe registry, and {@code finalizeRecipeLoading}, which runs
+ * once the tags are bound and before anything reads the recipes, builds the map again without those recipes.
  */
 @Mixin(RecipeManager.class)
 public abstract class RecipeManagerMixin {
