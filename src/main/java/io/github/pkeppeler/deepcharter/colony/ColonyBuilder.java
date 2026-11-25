@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
  * Builds the colony once, at world spawn, the first time a server starts with this mod: a flattened pad of
  * {@link ColonyTuning#padSize()} blocks a side with the company town on it, placed from the structure pieces of the
  * {@link ColonyLayout} (ADR 0030, tools/colony/town.py): the square with the Host, the Works and its headframe, the hangar, the
- * Continuity Office, the chapel, the bunkhouse, the offices and the Lamp and Pick. North is -Z.
+ * Continuity Office, the chapel, the bunkhouse, the offices and the Lamp and Pick, with its phonograph ({@link ColonyPhonograph}). North is -Z.
  *
  * <p>The pad is centred on the world spawn, or on the nearest dry ground if the spawn is in water ({@link #findDryGround}).
  * The pad's ground is the plain's: the surface's regolith, with the packed regolith and rock of its layers scattered on the pad's
@@ -205,6 +205,7 @@ public final class ColonyBuilder {
                 centre.getY());
         layout.pieces().forEach(piece -> piece.place(level, centre));
         terminals(anchors);
+        set(ColonyPhonograph.position(anchors), ColonyPhonograph.state());
         // The pad's chunks are loaded already, so the Conduit's overworld part is set now and not when they load.
         forEachPadChunk(level, centre, chunk -> Conduit.place(level, chunk, started, LayerChain.SURFACE));
     }

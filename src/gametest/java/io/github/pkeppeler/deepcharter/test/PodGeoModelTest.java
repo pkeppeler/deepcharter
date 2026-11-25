@@ -24,7 +24,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 
@@ -411,7 +410,7 @@ public class PodGeoModelTest {
     private static String textureFailure(GameTestHelper helper, GeoModel model, byte[] png) throws IOException {
         try {
             model.checkTexture("broken.png", new ByteArrayInputStream(png));
-            throw helper.assertionException(Component.literal("expected the texture check to fail"));
+            throw failure(helper, "expected the texture check to fail");
         } catch (IllegalArgumentException e) {
             return Objects.requireNonNull(e.getMessage(), "the failure has no message");
         }

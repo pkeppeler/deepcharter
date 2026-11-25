@@ -113,6 +113,8 @@ Settled 2026-10-07. Canon and context: [LORE.md](../LORE.md); the handbook's rul
 >
 > *Directives (draft):* Find the Prospector. · Tow the Prospector to the colony. · Restore the Prospector. · Reach the floor of the Old Workings.
 >
+> *Margin, beside the paragraph:* If you hear the song and there's no radio, leave. —R.
+>
 > *Margin:* Ines's pod. Read her log, then decide if you still want the job. —R.
 
 ### The end of the official chapters
