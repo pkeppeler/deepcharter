@@ -61,11 +61,24 @@ public final class SpecSheetOpener {
     private static void tick(Minecraft client) {
         while (CatalogueKeys.SPEC_SHEET.consumeClick()) {
             Item item = latest;
-            if (item != null && client.player != null) {
+            if (item != null && client.player != null && !onItsWay(client, item)) {
                 show(item);
             }
         }
         drain(client);
+    }
+
+    /** Whether the sheet of {@code item} is queued or already shown, so a key tapped again asks for it twice. */
+    private static boolean onItsWay(Minecraft client, Item item) {
+        if (WAITING.contains(item)) {
+            return true;
+        }
+        Screen open = client.gui.screen();
+        if (open instanceof SpecSheetScreen screen) {
+            return screen.item() == item;
+        }
+        CataloguePanel panel = open == null ? null : CatalogueScreens.panelOf(open);
+        return panel != null && panel.sheetItem() == item;
     }
 
     /** Queues the sheet of {@code item} and shows it at once if nothing is in its way. */

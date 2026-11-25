@@ -45,7 +45,9 @@ import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
@@ -319,6 +321,8 @@ public class SpecSheetClientTest implements FabricClientGameTest {
             aFirstCraftOpensNoSheetAndShowsASlip(context, singleplayer);
             theSlipIsClearOfEveryToastAndTheDirectiveSlip(context, singleplayer);
             theKeyOpensTheMostRecentSheet(context, singleplayer);
+            aKeyPressedSeveralTimesOpensOneSheet(context);
+            aSheetWaitsForAScreenItCannotHold(context, singleplayer);
             sheetsAskedForInARowShowOneAfterTheOther(context);
             context.setScreen(() -> null);
         }
@@ -654,6 +658,67 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 client -> client.gui.screen() instanceof SpecSheetScreen screen && sheetScreenShows(screen, latest));
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         ClientWait.until(context, "the sheet put away", client -> client.gui.screen() == null);
+        context.runOnClient(client -> client.gui.toastManager().clear());
+    }
+
+    /** Presses the key {@code times} times within one client tick, as a player tapping it fast does. */
+    private static void tapTheKey(ClientGameTestContext context, int times) {
+        context.runOnClient(client -> {
+            for (int i = 0; i < times; i++) {
+                KeyMapping.click(CatalogueKeys.SPEC_SHEET.getDefaultKey());
+            }
+        });
+    }
+
+    /** Tapping the key again, while its sheet is open or queued, queues nothing: Escape leaves no sheet open. */
+    private static void aKeyPressedSeveralTimesOpensOneSheet(ClientGameTestContext context) {
+        context.setScreen(() -> null);
+        tapTheKey(context, 1);
+        ClientWait.screen(context, SpecSheetScreen.class);
+        // The taps land while the sheet is on its screen, and again a tick later.
+        tapTheKey(context, 2);
+        context.waitTicks(1);
+        tapTheKey(context, 1);
+        // tick-wait: an absence has nothing to await, so a queued second sheet is given the ticks to come up
+        context.waitTicks(10);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(context, "the sheet put away", client -> client.gui.screen() == null);
+        // tick-wait: an absence has nothing to await, so a queued second sheet is given the ticks to open
+        context.waitTicks(10);
+        require(
+                context.computeOnClient(client -> client.gui.screen() == null),
+                "one Escape leaves no sheet open and none re-opens after the taps");
+    }
+
+    /** A sheet the key queues never takes the place of a screen that cannot hold it, and shows once that closes. */
+    private static void aSheetWaitsForAScreenItCannotHold(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        Item part = ComponentItems.item(ComponentTrack.RADIATOR);
+        context.setScreen(() -> new PauseScreen(true));
+        ClientWait.screen(context, PauseScreen.class);
+        offer(singleplayer, part, true);
+        ClientWait.until(
+                context,
+                "the slip of the sheet",
+                client -> slipShowing(client, part).isPresent());
+        tapTheKey(context, 2);
+        // tick-wait: an absence has nothing to await, so the sheet is given the ticks to take the screen's place
+        context.waitTicks(10);
+        require(
+                context.computeOnClient(client -> client.gui.screen() instanceof PauseScreen),
+                "a sheet never takes the place of a screen it cannot hold");
+        context.setScreen(() -> null);
+        ClientWait.screen(context, SpecSheetScreen.class);
+        require(
+                context.computeOnClient(client -> sheetScreenShows(Objects.requireNonNull(client.gui.screen()), part)),
+                "and shows once that screen has closed");
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(context, "the waiting sheet closed", client -> client.gui.screen() == null);
+        // tick-wait: an absence has nothing to await, so a second tap's sheet is given the ticks to open
+        context.waitTicks(10);
+        require(
+                context.computeOnClient(client -> client.gui.screen() == null),
+                "the second tap queued no second copy of the sheet");
         context.runOnClient(client -> client.gui.toastManager().clear());
     }
 

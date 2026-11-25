@@ -22,12 +22,19 @@ import org.jspecify.annotations.Nullable;
  * closed). Any click or any key closes it, so the next sheet waiting ({@link SpecSheetOpener}) can follow.
  */
 public final class SpecSheetScreen extends Screen {
+    private final Item item;
     private final SpecSheet sheet;
     private @Nullable Placed placed;
 
     public SpecSheetScreen(Item item) {
         super(Component.translatable("deepcharter.catalogue.spec"));
+        this.item = item;
         this.sheet = SpecSheets.of(item);
+    }
+
+    /** The item whose sheet this screen shows. */
+    Item item() {
+        return item;
     }
 
     @Override

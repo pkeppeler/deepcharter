@@ -14,6 +14,7 @@ public final class CatalogueKeys {
     public static final KeyMapping RECIPES = key("recipes", InputConstants.KEY_R);
     public static final KeyMapping USES = key("uses", InputConstants.KEY_U);
     public static final KeyMapping FAVOURITE = key("favourite", InputConstants.KEY_A);
+    public static final KeyMapping SPEC_SHEET = key("spec_sheet", InputConstants.KEY_J);
 
     private CatalogueKeys() {}
 
@@ -29,5 +30,6 @@ public final class CatalogueKeys {
         KeyMappingHelper.registerKeyMapping(RECIPES);
         KeyMappingHelper.registerKeyMapping(USES);
         KeyMappingHelper.registerKeyMapping(FAVOURITE);
+        KeyMappingHelper.registerKeyMapping(SPEC_SHEET);
     }
 }
