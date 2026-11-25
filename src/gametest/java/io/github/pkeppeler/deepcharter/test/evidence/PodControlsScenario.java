@@ -24,9 +24,10 @@ import net.minecraft.world.level.block.Blocks;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Evidence scenario "pod-controls" (#1281, #1268): the pod steers like a boat under the chase camera that the pilot seat switches
- * to, and the drill turns it square to the grid. W drives forward, D and A turn it, S backs up without turning; then a first-person
- * turn, where the view turns with the pod; then W into a wall from an angle, where the pod turns to the grid and bores straight.
+ * Evidence scenario "pod-controls" (#1281, #1268): the pod steers like a boat under the chase camera that the pilot
+ * seat switches to, and the drill turns it square to the grid. W drives forward, D and A turn it, S backs up without
+ * turning; then a first-person turn, where the view turns with the pod; then W into a wall from an angle, where the pod
+ * turns to the grid and bores straight.
  */
 public class PodControlsScenario extends EvidenceScenario {
     private static final int X = 5800;

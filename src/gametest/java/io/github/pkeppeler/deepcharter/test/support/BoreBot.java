@@ -8,9 +8,10 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Input;
 
 /**
- * What the bore bots share: the pilot's inputs, the stuck-step constants, the four sides a bot steps to, and the pilot's look at the
- * lining. A bot steps to a side by turning the pod to face it and driving forward, as a pilot does with A and D and W; the turn is
- * staged ({@link Side#face}) and not steered, so the bore tables keep the timing they were measured with.
+ * What the bore bots share: the pilot's inputs, the stuck-step constants, the four sides a bot steps to, and the
+ * pilot's look at the lining. A bot steps to a side by turning the pod to face it and driving forward, as a pilot does
+ * with A and D and W; the turn is staged ({@link Side#face}) and not steered, so the bore tables keep the timing they
+ * were measured with.
  */
 public final class BoreBot {
     private BoreBot() {}
@@ -24,9 +25,9 @@ public final class BoreBot {
     public static final int SIDE_STEP = 2;
 
     /**
-     * A way to step aside: the input that drives the pod that way once it faces it, and the axis it moves along. The Kells bot steps
-     * with {@link #nextInDeclarationOrder()}, the Lava bot with {@link #turnedRight()}, {@link #turnedLeft()} and {@link #opposite()};
-     * changing either order moves that bot's measured table.
+     * A way to step aside: the input that drives the pod that way once it faces it, and the axis it moves along. The
+     * Kells bot steps with {@link #nextInDeclarationOrder()}, the Lava bot with {@link #turnedRight()}, {@link
+     * #turnedLeft()} and {@link #opposite()}; changing either order moves that bot's measured table.
      */
     public enum Side {
         EAST(1, 0),

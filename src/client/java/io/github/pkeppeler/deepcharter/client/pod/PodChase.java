@@ -10,17 +10,17 @@ import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The pilot's camera (#1281, #1268; ADR 0092). Taking the pilot seat switches to the third-person chase view, with no opt-out, and
- * leaving it restores the view the player had; F5 still cycles in between. While seated the view's yaw turns with the pod by the pod's
- * own turn each tick, as a vanilla boat adds its rotation to its rider's, so the mouse look the player has stays: it is not clamped, as
- * a boat's is. In the third-person view the angle also eases back behind a pod that is driving, once the mouse has been still for a
- * moment. Client thread only.
+ * The pilot's camera (#1281, #1268; ADR 0092). Taking the pilot seat switches to the third-person chase view, with no
+ * opt-out, and leaving it restores the view the player had; F5 still cycles in between. While seated the view's yaw
+ * turns with the pod by the pod's own turn each tick, as a vanilla boat adds its rotation to its rider's, so the mouse
+ * look the player has stays: it is not clamped, as a boat's is. In the third-person view the angle also eases back
+ * behind a pod that is driving, once the mouse has been still for a moment. Client thread only.
  */
 public final class PodChase {
     /** Ticks the mouse is still before the chase view starts to settle behind the pod. */
     static final int LOOK_HOLD_TICKS = 20;
 
-    /** Degrees a tick the chase view settles at: the pod's full steering turn is 10, so it never trails the turn it follows. */
+    /** Degrees a tick the chase view settles at: well under the 10 of the pod's full steering turn, so it eases. */
     static final float SETTLE_DEGREES = 4f;
 
     /** Blocks a tick the pod must be driving at for the chase view to settle behind it. */

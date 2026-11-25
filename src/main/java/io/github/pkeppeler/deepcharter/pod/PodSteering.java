@@ -8,14 +8,18 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Steering a pod as a boat is steered (ADR 0092): W drives along the pod's facing, S backs up without turning, A and D turn the pod's
- * yaw, and the pilot's view does not steer. Where it differs from a boat is the grid: the drill and a bore as wide as the pod turn it
- * square to the compass, so tunnels stay straight. Server only; all state is the pod's own yaw and its turn rate.
+ * Steering a pod as a boat is steered (ADR 0092): W drives along the pod's facing, S backs up without turning, A and D
+ * turn the pod's yaw, and the pilot's view does not steer. Where it differs from a boat is the grid: the drill and a
+ * bore as wide as the pod turn it square to the compass, so tunnels stay straight. Server only; all state is the pod's
+ * own yaw and its turn rate.
  */
 final class PodSteering {
     private PodSteering() {}
 
-    /** The speed along the pod's facing the keys ask for: forward, a slower reverse, the creep of a bare A or D, or none. */
+    /**
+     * The speed along the pod's facing the keys ask for: forward, a slower reverse, the creep of a bare A or D, or
+     * none.
+     */
     static double throttle(Input input, PodStats stats) {
         PodSteeringTuning tuning = PodSteeringTuning.DEFAULT;
         double top = stats.horizontalSpeed();
@@ -28,7 +32,10 @@ final class PodSteering {
         return 0;
     }
 
-    /** Turns the pod by one tick of the boat's steering: A and D build up the turn rate, and the rate lingers after the key is let go. */
+    /**
+     * Turns the pod by one tick of the boat's steering: A and D build up the turn rate, and the rate lingers after the
+     * key is let go.
+     */
     static void steer(PodEntity pod, Input input) {
         PodSteeringTuning tuning = PodSteeringTuning.DEFAULT;
         float turn = pod.turnRate() * tuning.turnDamping();
@@ -42,7 +49,10 @@ final class PodSteering {
         pod.setYRot(Mth.wrapDegrees(pod.getYRot() + turn));
     }
 
-    /** Stops the turn: an unpiloted or unpowered pod keeps its yaw, and a pod the grid holds drops the rate it had built up. */
+    /**
+     * Stops the turn: an unpiloted or unpowered pod keeps its yaw, and a pod the grid holds drops the rate it had
+     * built up.
+     */
     static void stopTurning(PodEntity pod) {
         pod.setTurnRate(0f);
     }
@@ -52,7 +62,10 @@ final class PodSteering {
         return Direction.fromYRot(pod.getYRot());
     }
 
-    /** Turns the pod toward {@code cardinal}, one tick of {@link PodSteeringTuning#alignDegrees}; true once it is square to it. */
+    /**
+     * Turns the pod toward {@code cardinal}, one tick of {@link PodSteeringTuning#alignDegrees}; true once it is
+     * square to it.
+     */
     static boolean align(PodEntity pod, Direction cardinal) {
         PodSteeringTuning tuning = PodSteeringTuning.DEFAULT;
         stopTurning(pod);
@@ -66,15 +79,18 @@ final class PodSteering {
         return false;
     }
 
-    /** Whether the pod is pressed against rock straight ahead along {@code facing}, the push that starts a sideways bore. */
+    /**
+     * Whether the pod is pressed against rock straight ahead along {@code facing}, the push that starts a sideways
+     * bore.
+     */
     static boolean pressedAgainstRock(PodEntity pod, Direction facing) {
         AABB ahead = pod.getBoundingBox().move(facing.getStepX() * 0.05, 0, facing.getStepZ() * 0.05);
         return pod.level().getBlockCollisions(pod, ahead).iterator().hasNext();
     }
 
     /**
-     * Whether the pod stands on the ground in a bore as wide as itself: rock beside it on both sides, along the way it faces nearest.
-     * Only blocks in loaded chunks count.
+     * Whether the pod stands on the ground in a bore as wide as itself: rock beside it on both sides, along the way it
+     * faces nearest. Only blocks in loaded chunks count.
      */
     static boolean inBore(PodEntity pod) {
         if (!pod.onGround()) {

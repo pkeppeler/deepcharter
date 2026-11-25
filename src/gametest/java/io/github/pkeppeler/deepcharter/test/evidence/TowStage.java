@@ -74,7 +74,10 @@ final class TowStage {
         watcher(level, two).teleportTo(level, from.x, from.y, from.z, Set.of(), yaw, pitch, true);
     }
 
-    /** Turns the mock pilot's tower to face {@code yaw}: a pod drives along its own facing, whatever its pilot looks at. */
+    /**
+     * Turns the mock pilot's tower to face {@code yaw}: a pod drives along its own facing, whatever its pilot looks
+     * at.
+     */
     static void turn(TwoPlayerServer two, float yaw) {
         TestEntities.vehicle(two.mock().player()).setYRot(yaw);
     }

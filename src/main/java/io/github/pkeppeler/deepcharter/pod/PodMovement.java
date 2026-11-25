@@ -6,8 +6,9 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server-authoritative pod movement: treads on the ground, a rotor to climb. The server reads the pilot's vanilla input, so there is
- * no packet of our own; clients only see the pod move. W, S, A and D steer it as a boat is steered ({@link PodSteering}).
+ * Server-authoritative pod movement: treads on the ground, a rotor to climb. The server reads the pilot's vanilla
+ * input, so there is no packet of our own; clients only see the pod move. W, S, A and D steer it as a boat is steered
+ * ({@link PodSteering}).
  */
 public final class PodMovement {
     private PodMovement() {}
@@ -31,7 +32,7 @@ public final class PodMovement {
         // and so does a bore as wide as the pod (PodSteering), so neither takes A and D.
         if (pilot == null || pod.drilling()) {
             PodSteering.stopTurning(pod);
-        } else if (hasMovementKey(input) && PodSteering.inBore(pod)) {
+        } else if ((hasMovementKey(input) || pod.turnRate() != 0f) && PodSteering.inBore(pod)) {
             PodSteering.align(pod, PodSteering.nearestCardinal(pod));
         } else {
             PodSteering.steer(pod, input);

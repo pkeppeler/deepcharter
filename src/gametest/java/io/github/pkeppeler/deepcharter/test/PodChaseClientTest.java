@@ -17,10 +17,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 
 /**
- * Client GameTest for #1281 (and #1268): the pilot's camera. Taking the seat switches to the third-person chase view and leaving it
- * brings back the view the player had; F5 still cycles while seated. In first person the view turns with the pod, as a vanilla boat's
- * rider does, and the angle between the view and the pod stays where the mouse put it. In third person the camera settles behind a
- * pod that drives.
+ * Client GameTest for #1281 (and #1268): the pilot's camera. Taking the seat switches to the third-person chase view
+ * and leaving it brings back the view the player had; F5 still cycles while seated. In first person the view turns with
+ * the pod, as a vanilla boat's rider does, and the angle between the view and the pod stays where the mouse put it. In
+ * third person the camera settles behind a pod that drives.
  */
 public class PodChaseClientTest implements FabricClientGameTest {
     /** How far the player has looked away from the pod's nose with the mouse. */

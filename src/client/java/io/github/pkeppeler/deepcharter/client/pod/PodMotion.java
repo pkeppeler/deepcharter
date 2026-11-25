@@ -47,9 +47,10 @@ public final class PodMotion {
     private float walk;
 
     /**
-     * Advances to the state's frame and writes the pose into it. {@code mountRestPitch} is the drill mount's idle angle in the model,
-     * and {@code drillSpinScale} its share of the full drill spin ({@link GeoModel#drillSpinScale(String)}). The pod is drawn facing
-     * its entity yaw at {@code partialTick} between ticks: the server steers it (A and D, the grid), so the model follows.
+     * Advances to the state's frame and writes the pose into it. {@code mountRestPitch} is the drill mount's idle angle
+     * in the model, and {@code drillSpinScale} its share of the full drill spin ({@link
+     * GeoModel#drillSpinScale(String)}). The pod is drawn facing its entity yaw at {@code partialTick} between ticks:
+     * the server steers it (A and D, the grid), so the model follows.
      */
     public void advance(
             PodEntity pod, PodGeoRenderState state, float mountRestPitch, float drillSpinScale, float partialTick) {
