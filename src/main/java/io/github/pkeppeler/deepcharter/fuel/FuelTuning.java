@@ -85,7 +85,7 @@ public record FuelTuning(
             }
             if (scrapeTicks < 1 || !(scrapeLeavesLitres > graceLitres && scrapeLeavesLitres < limpLitres)) {
                 throw new IllegalArgumentException(
-                        "a flue scrape takes time and leaves the engine between the grace and" + " the limit, got "
+                        "a flue scrape takes time and leaves the engine between the grace and the limit, got "
                                 + scrapeTicks + " ticks, " + scrapeLeavesLitres + " L");
             }
         }

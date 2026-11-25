@@ -99,8 +99,8 @@ public final class EngineSoot {
     private EngineSoot() {}
 
     static void init() {
-        // Output is a stat, so the speed, the climb and every reader of PodStats (the client's smoothing included) see
-        // it.
+        // Output is a stat, so the speed, the climb and every reader of PodStats (the client's smoothing included)
+        // see it.
         PodStats.MODIFY.register((pod, stats) -> {
             float output = output(soot(pod));
             return output >= 1f

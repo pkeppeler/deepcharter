@@ -134,14 +134,7 @@ public final class RepairStation {
         } else {
             EngineSoot.service(pod, quote.get().litres());
         }
-        pod.level()
-                .playSound(
-                        null,
-                        pod.getX(),
-                        pod.getY(),
-                        pod.getZ(),
-                        DeepSound.REPAIR_NANOBOTS.event(),
-                        SoundSource.PLAYERS);
+        Consumables.play(pod, DeepSound.REPAIR_NANOBOTS);
         return Optional.empty();
     }
 

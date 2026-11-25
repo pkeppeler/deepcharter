@@ -22,7 +22,6 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundSource;
 
 /**
  * The free flue scrape (#1280): the repair station's way out of limp mode for a pilot who cannot pay for a service.
@@ -132,14 +131,7 @@ public final class FlueScrape {
         }
         stop(pod);
         if (EngineSoot.scrape(pod)) {
-            pod.level()
-                    .playSound(
-                            null,
-                            pod.getX(),
-                            pod.getY(),
-                            pod.getZ(),
-                            DeepSound.REPAIR_NANOBOTS.event(),
-                            SoundSource.PLAYERS);
+            Consumables.play(pod, DeepSound.REPAIR_NANOBOTS);
             scraper.sendOverlayMessage(
                     Component.translatable("message.deepcharter.repair.scrape_done", Math.round(EngineSoot.soot(pod))));
         }

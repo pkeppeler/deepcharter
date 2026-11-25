@@ -80,7 +80,7 @@ public final class OreEncumbrance {
      * The mass the player carries of what is not ore: the weight of solid fuel and of anything else with a {@link
      * CargoWeight}.
      */
-    public static float carriedLooseMass(Player player) {
+    private static float carriedLooseMass(Player player) {
         float mass = 0f;
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
             mass += massOf(player.getInventory().getItem(slot), false);

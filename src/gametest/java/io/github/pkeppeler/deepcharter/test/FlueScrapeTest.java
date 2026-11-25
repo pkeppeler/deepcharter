@@ -3,7 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
-import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
@@ -21,11 +21,11 @@ import io.github.pkeppeler.deepcharter.test.support.Failures;
 import io.github.pkeppeler.deepcharter.test.support.Inputs;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestCharters;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -54,7 +54,7 @@ public class FlueScrapeTest {
     private static final CompoundTag NO_ARGS = new CompoundTag();
 
     /** A repaired station, the pilot standing in its reach on a charter that owns the pod parked over a stone floor. */
-    private record Scene(BlockPos station, MockPlayer pilot, Charter charter, PodEntity pod) {}
+    private record Scene(BlockPos station, MockPlayer pilot, CharterId charter, PodEntity pod) {}
 
     /**
      * Builds the scene, the pod's soot at {@code soot} and the account at {@code account} dollars, and runs {@code
@@ -73,23 +73,14 @@ public class FlueScrapeTest {
         BlockPos station = helper.absolutePos(relative);
         MockPlayer pilot = MockPlayers.join(helper, name);
         pilot.player().setGameMode(GameType.SURVIVAL);
-        expect(
-                helper,
-                Charters.found(
-                                server,
-                                pilot.player().getUUID(),
-                                "Flue " + UUID.randomUUID().toString().substring(0, 8))
-                        .isEmpty(),
-                "founding the charter should succeed");
-        Charter charter =
-                Charters.charterOfOrThrow(server, pilot.player().getUUID()).orElseThrow();
+        CharterId charter = TestCharters.found(helper, server, pilot.player());
         pilot.teleportTo(helper.getLevel(), Vec3.atBottomCenterOf(station.south(2)), 0, 0);
         PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(FLOOR.getX() + 0.5, 2, FLOOR.getZ() + 0.5));
-        PodComponents.register(pod, charter.id());
+        PodComponents.register(pod, charter);
         pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(soot, 0f, 0f)));
         expect(
                 helper,
-                account == 0 || Charters.deposit(server, charter.id(), account).isEmpty(),
+                account == 0 || Charters.deposit(server, charter, account).isEmpty(),
                 "funding the account should succeed");
         Scene scene = new Scene(station, pilot, charter, pod);
         RepairState fresh = new RepairState();
@@ -113,8 +104,7 @@ public class FlueScrapeTest {
     }
 
     private static long account(GameTestHelper helper, Scene scene) {
-        return Charters.findOrThrow(
-                        helper.getLevel().getServer(), scene.charter().id())
+        return Charters.findOrThrow(helper.getLevel().getServer(), scene.charter())
                 .orElseThrow()
                 .account();
     }

@@ -153,12 +153,12 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     private List<Row> sootRows() {
         List<Row> rows = new ArrayList<>();
         Optional<PodEntity> shown = nearbyPod();
-        if (shown.isEmpty() || Math.round(EngineSoot.soot(shown.get())) < 1) {
+        long soot = shown.map(pod -> Math.round(EngineSoot.soot(pod))).orElse(0);
+        if (soot < 1) {
             return rows;
         }
         PodEntity pod = shown.get();
         long account = ClientCharter.view().map(charter -> charter.balance()).orElse(0L);
-        long soot = Math.round(EngineSoot.soot(pod));
         rows.add(EngineSoot.quote(pod, account)
                 .map(quote -> new Row(
                         quote.all()
