@@ -696,6 +696,7 @@ public class ColonyTest {
             if (pod[0] == null && ticking[0] == 5) {
                 PodEntity created = TestEntities.create(PodRegistry.POD, level);
                 created.setPos(start);
+                created.setYRot(EAST);
                 level.addFreshEntity(created);
                 if (!pilot.player().startRiding(created)) {
                     throw failure(helper, "the pilot could not mount the pod");

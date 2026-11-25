@@ -65,6 +65,7 @@ public class PodDriveStepTest {
             room(level, i);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(start(i));
+            pod.setYRot(EAST);
             level.addFreshEntity(pod);
             if (!pilots.get(i).player().startRiding(pod)) {
                 throw failure(helper, "the pilot could not mount pod %s", i);

@@ -78,6 +78,7 @@ public class PodFuelTripTest {
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(pad), () -> {
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(pad);
+            pod.setYRot(-90f);
             level.addFreshEntity(pod);
             if (!pilot.player().startRiding(pod)) {
                 throw helper.assertionException("the pilot could not mount the pod");

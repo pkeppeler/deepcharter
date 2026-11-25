@@ -26,8 +26,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Pod drilling (SPEC section 7): sprint bores down, pushing into a wall bores sideways, never up. The bore is the
- * pod's footprint, one slab at a time.
+ * Pod drilling (SPEC section 7): sprint bores down, driving forward into a wall bores sideways, never up. The bore is the
+ * pod's footprint, one slab at a time, and the pod turns square to the compass first so the bore stays straight (ADR 0092).
  */
 public final class PodDrill {
     private static final double ALIGNED = 1e-6;
@@ -90,7 +90,10 @@ public final class PodDrill {
         }
         pod.setDrilling(true);
         pod.setDrillDirection(wanted);
-        if (!centred) {
+        // The turn to the grid and the slide to the centre both finish before the first tick of the slab counts.
+        boolean squared =
+                PodSteering.align(pod, wanted.getAxis().isHorizontal() ? wanted : PodSteering.nearestCardinal(pod));
+        if (!centred || !squared) {
             return;
         }
         if (slab.hasCompanyRock()) {
@@ -114,15 +117,19 @@ public final class PodDrill {
         pod.setDrillProgress(null);
     }
 
-    /** Down on sprint, a horizontal direction on a push into a wall; null when the pod is not on the ground or is not asked to drill. */
+    /**
+     * Down on sprint with no direction key held; a horizontal direction on W pressed against rock, the compass direction the pod
+     * faces nearest. S, A and D alone never drill. Null when the pod is not on the ground or is not asked to drill.
+     */
     private static @Nullable Direction wantedDirection(PodEntity pod) {
         if (!pod.onGround() || !(pod.getControllingPassenger() instanceof ServerPlayer pilot)) {
             return null;
         }
         Input input = pilot.getLastClientInput();
-        Direction drive = PodMovement.driveDirection(input, pilot.getYRot());
-        if (drive != null) {
-            return pod.horizontalCollision ? drive : null;
+        if (input.forward() || input.backward() || input.left() || input.right()) {
+            Direction facing = PodSteering.nearestCardinal(pod);
+            boolean pushing = input.forward() && !input.backward() && pod.horizontalCollision;
+            return pushing && PodSteering.pressedAgainstRock(pod, facing) ? facing : null;
         }
         return input.sprint() ? Direction.DOWN : null;
     }

@@ -34,6 +34,9 @@ public class PodEntity extends Entity {
     // Neither saved nor synced: the burning fuse of a blasting charge (PodCharge); a pod that unloads loses it. Server
     // only.
     private PodCharge.@Nullable Fuse fuse;
+    // Neither saved nor synced: the degrees a tick the pod is turning by, which A and D build up (PodSteering). Server
+    // only.
+    private float turnRate;
 
     public PodEntity(EntityType<? extends PodEntity> type, Level level) {
         super(type, level);
@@ -55,6 +58,15 @@ public class PodEntity extends Entity {
 
     void setDrillProgress(PodDrill.@Nullable Progress progress) {
         drillProgress = progress;
+    }
+
+    /** The degrees a tick the pod is turning by. Written only by PodSteering. */
+    float turnRate() {
+        return turnRate;
+    }
+
+    void setTurnRate(float turnRate) {
+        this.turnRate = turnRate;
     }
 
     /** The blasting charge this pod has set and that is still burning, or null. Written only by PodCharge. */

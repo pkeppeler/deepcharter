@@ -196,6 +196,7 @@ final class ChassisChecks {
         PodEntity[] pod = {null};
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> {
             pod[0] = spawn(level, start);
+            pod[0].setYRot(EAST);
             expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
             pilot.setInput(FORWARD);
         });
