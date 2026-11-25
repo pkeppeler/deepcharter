@@ -3,20 +3,12 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
-import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.minecraft.client.gui.screens.DeathScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -28,8 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
 /**
  * Mock-up footage for the death sequence (#1337): a pilot on foot, low on health, walks down a narrow layer-1 drift under a
  * regolith roof. The props under the roof give, the loose regolith comes down on them and they suffocate. Every tick is one
- * frame (20 fps, real time), and the frame stops on the tick before the vanilla death screen, where the mock-up's own death
- * sequence is cut in. {@code events.txt} beside the frames lists the frame of each sound the audio track is rebuilt from.
+ * frame, and the frames stop on the tick before the vanilla death screen, where the mock-up's own death sequence is cut in.
  */
 public class DeathMockupScenario extends EvidenceScenario {
     private static final int X = 5000;
@@ -46,8 +37,7 @@ public class DeathMockupScenario extends EvidenceScenario {
     private static final int DEATH_LIMIT_TICKS = 300;
     private static final int STOP_AT_X = X + 3;
 
-    private final List<String> events = new ArrayList<>();
-    private int tick;
+    private final DeathFootage footage = new DeathFootage(this);
 
     @Override
     protected String name() {
@@ -75,78 +65,40 @@ public class DeathMockupScenario extends EvidenceScenario {
             });
             context.waitTicks(10);
 
-            for (int i = 0; i < 20; i++) {
-                step(context);
-            }
-            event("walk_start");
+            footage.steps(context, 20);
+            footage.event("walk_start");
             context.getInput().holdKey(options -> options.keyUp);
             for (int i = 0; i < WALK_LIMIT_TICKS; i++) {
-                step(context);
-                if (pilot(singleplayer).getX() >= STOP_AT_X) {
+                footage.step(context);
+                if (DeathFootage.pilot(singleplayer).getX() >= STOP_AT_X) {
                     break;
                 }
             }
             context.getInput().releaseKey(options -> options.keyUp);
-            event("walk_stop");
-            for (int i = 0; i < 14; i++) {
-                step(context);
-            }
+            footage.event("walk_stop");
+            footage.steps(context, 14);
 
             // The first prop gives at the far end: a crack and a trickle, then the roof over the pilot goes.
-            event("crack");
+            footage.event("crack");
             breakProps(singleplayer, CAVE_EAST, CAVE_EAST);
-            for (int i = 0; i < 12; i++) {
-                step(context);
-            }
-            event("collapse");
+            footage.steps(context, 12);
+            footage.event("collapse");
             breakProps(singleplayer, CAVE_WEST, CAVE_EAST - 1);
 
             float last = START_HEALTH;
             for (int i = 0; i < DEATH_LIMIT_TICKS; i++) {
-                boolean dead = context.computeOnClient(client ->
-                        client.gui.screen() instanceof DeathScreen || ClientSession.player(client).isDeadOrDying());
-                if (dead) {
-                    event("death");
+                if (DeathFootage.dead(context)) {
+                    footage.event("death");
                     break;
                 }
-                step(context);
-                float health = pilot(singleplayer).getHealth();
+                footage.step(context);
+                float health = DeathFootage.pilot(singleplayer).getHealth();
                 if (health < last) {
-                    event("hurt " + health);
+                    footage.event("hurt " + health);
                     last = health;
                 }
             }
-            writeEvents();
-        }
-    }
-
-    private void step(ClientGameTestContext context) {
-        context.waitTicks(1);
-        frame(context);
-        tick++;
-    }
-
-    private static ServerPlayer pilot(TestSingleplayerContext singleplayer) {
-        return singleplayer
-                .getServer()
-                .computeOnServer(server -> server.getPlayerList().getPlayers().getFirst());
-    }
-
-    private void event(String what) {
-        events.add(tick + " " + what);
-        // The CI recording keeps only the media, so the log carries the event frames too.
-        System.out.println("death-mockup event: frame " + tick + " " + what);
-    }
-
-    private void writeEvents() {
-        String root = System.getenv("DEEPCHARTER_EVIDENCE_DIR");
-        if (root == null) {
-            return;
-        }
-        try {
-            Files.write(Path.of(root).toAbsolutePath().resolve(name()).resolve("events.txt"), events);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            footage.writeEvents();
         }
     }
 
