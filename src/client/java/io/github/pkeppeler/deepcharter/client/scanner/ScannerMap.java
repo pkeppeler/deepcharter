@@ -42,8 +42,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>A cell drawn in fewer screen pixels than {@link ScannerLook#oreMarkBelowPixels()} cannot show a texture. There an ore cell is one flat mark of its
  * ore's colour (see {@link #oreMark}), which stays easy to spot, and rock takes the darker small-cell shade; every other cell keeps its texture.
- * Two quadrants of a rock cell are lightened and two darkened by a pattern its block's place picks ({@link #grain}), so uniform rock is not
- * one repeated tile.
+ * Two quadrants of a textured rock cell are lightened and two darkened by a pattern its block's place picks ({@link #grain}), so uniform
+ * rock is not one repeated tile.
  *
  * <p>A cell's pixels are read from the active resource pack's texture file for the sprite that {@link ScannerSprites} names, because the block
  * atlas lives on the graphics card and cannot be read back. The first frame of an animated texture is the cell's. Each texture is
@@ -176,12 +176,9 @@ final class ScannerMap {
                 } else if (small && found instanceof Cell.Ore ore) {
                     fillTile(image, x, y, pixels, oreMark(look, ore));
                 } else {
-                    int grain = found instanceof Cell.Rock ? grain(look, slice.pos(ahead, up), pixels) : 0;
                     Optional<int[]> tile = tile(ScannerSprites.of(slice, found, ahead, up), pixels, look.airColor());
                     if (tile.isEmpty()) {
-                        int[] flat = new int[pixels * pixels];
-                        Arrays.fill(flat, flatColour(look, found));
-                        copyTile(image, x, y, pixels, flat, 0, 0, grain, look.rockGrainLevels());
+                        fillTile(image, x, y, pixels, flatColour(look, found));
                     } else {
                         copyTile(
                                 image,
@@ -191,7 +188,7 @@ final class ScannerMap {
                                 tile.get(),
                                 overlay(look, found, small),
                                 pixels >= look.oreOutlineMinPixels() ? outline(look, found) : 0,
-                                grain,
+                                found instanceof Cell.Rock ? grain(look, slice.pos(ahead, up), pixels) : 0,
                                 look.rockGrainLevels());
                     }
                 }
