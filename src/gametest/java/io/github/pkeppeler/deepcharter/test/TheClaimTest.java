@@ -36,12 +36,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The dig from the colony through layer 1, The Claim (#1277): natural caves that open up with depth, from Topsoil
- * Claims down to the Deep Claim, under a surface band's underground that stays solid; a rock of its own for each zone
- * (Topsoil Claims' hardpan, Stone Benches' packed shale, Deep Claim's black shale) with a contact that waves either
- * side of the zone's edge; first-generation shafts dressed as the lore has them (LORE section 11); and every one of
- * these features writing inside its own chunk (ADR 0088). The world is {@code deepcharter:campaign_full}, the shipped
- * overworld, sampled in a square of chunks far from the colony and the structure sites.
+ * The dig from the colony through layer 1, The Claim (#1277): natural caves that open up with depth, from the surface
+ * band's underground down to the Deep Claim; a rock of its own for each zone (Topsoil Claims' hardpan, Stone Benches'
+ * packed shale, Deep Claim's black shale) with a contact that waves either side of the zone's edge; first-generation
+ * shafts dressed as the lore has them (LORE section 11); and every one of these features writing inside its own chunk
+ * (ADR 0088). The world is {@code deepcharter:campaign_full}, the shipped overworld, sampled in a square of chunks far
+ * from the colony and the structure sites.
  */
 public class TheClaimTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(TheClaimTest.class);
@@ -58,8 +58,8 @@ public class TheClaimTest {
     private static final CampaignBands.Band LAYER = CampaignBands.LAYER_1;
 
     /**
-     * The surface band's underground, which has no caves: under the deepest ground (the great pit's floor) and over its
-     * floor.
+     * The surface band's underground that the caves reach: under the deepest ground (the great pit's floor) and over
+     * its floor.
      */
     private static final int SURFACE_CAVES_LOW = CampaignBands.SURFACE.minY() + 8;
 
@@ -82,8 +82,8 @@ public class TheClaimTest {
     private static final List<String> FEATURES = List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches");
 
     /**
-     * Caves open up with depth. The surface band's underground has none (a cost call, #1300); the share of open
-     * blocks under each column's rock top grows from Topsoil Claims to the Deep Claim and stays small everywhere:
+     * Caves open up with depth. The share of open blocks under each column's rock top grows from the surface band's
+     * underground, where there are a few, through Topsoil Claims to the Deep Claim, and stays small everywhere:
      * pockets, fissures and passages, nothing like layer 3's halls.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
@@ -118,7 +118,8 @@ public class TheClaimTest {
                 percent(share[1]),
                 percent(share[2]),
                 percent(share[3]));
-        expect(helper, open[0] == 0, "the surface band's underground should be solid: %s open", percent(share[0]));
+        expect(helper, share[0] >= 0.002, "the surface band's underground has almost no caves: %s", percent(share[0]));
+        expect(helper, share[0] < share[1], "the surface's underground should have fewer caves than Topsoil Claims");
         expect(helper, share[1] >= 0.01, "Topsoil Claims has almost no caves: %s", percent(share[1]));
         expect(
                 helper,
