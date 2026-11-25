@@ -104,6 +104,9 @@ public class TallySkimScenario extends EvidenceScenario {
 
         private void setUp() {
             chamber.enterLayer(
+                    LENGTH,
+                    HALF_WIDTH,
+                    HEIGHT,
                     RetainedChamber.FLOOR.getX() + POD_X,
                     RetainedChamber.FLOOR.getY() + 3,
                     RetainedChamber.FLOOR.getZ() + POD_Z,
@@ -111,7 +114,6 @@ public class TallySkimScenario extends EvidenceScenario {
                     12f);
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
-                RetainedChamber.buildChamber(level, LENGTH, HALF_WIDTH, HEIGHT);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 Charters.found(server, player.getUUID(), "Demo Charter");
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
@@ -166,6 +168,7 @@ public class TallySkimScenario extends EvidenceScenario {
         }
 
         private void sendTally() {
+            chamber.awaitEntityTicking(RetainedChamber.at(TALLY_X, TALLY_HEIGHT, TALLY_Z));
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
                 Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
