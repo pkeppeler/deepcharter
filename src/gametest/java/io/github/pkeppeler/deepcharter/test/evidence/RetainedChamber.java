@@ -51,6 +51,15 @@ final class RetainedChamber {
                 ctx,
                 "the player in layer " + LAYER,
                 client -> client.level != null && TestLayers.clientIsIn(client, LAYER) && client.gui.screen() == null);
+        // A teleported-to chunk is loaded before it ticks entities, and an entity added to it then is not in the level
+        // (getEntity finds nothing): a slow server (headless, software rendering) is still there when the scenario adds
+        // its pod, so the wait is on the server, not on the client's view of the player.
+        BlockPos arrival = BlockPos.containing(x, y, z);
+        ClientWait.until(
+                ctx,
+                "the arrival chunk entity-ticking on the server",
+                () -> serverGet(server -> layer(server).isPositionEntityTicking(arrival)),
+                () -> "the chunk at " + arrival.toShortString() + " is not entity-ticking");
     }
 
     /** A stone chamber with its floor block at {@link #FLOOR}: {@code length} blocks along x, {@code 2 * halfWidth + 1} across, {@code height} high, sealed. */
