@@ -21,6 +21,8 @@ final class TestSiteTable {
     static void fill() {
         claim("ActiveStateTest", 0, -3536, -3521, 3536, 3551);
 
+        row("AirCanisterTest", UNBUILT, 7805, 7815, 20, 3, 7395, 7405);
+
         claim("BandFiguresTest", 0, 24059, 24069, 23995, 24005);
         claim("BandFiguresTest", 0, 24255, 24257, 23999, 24001);
         row("BandFiguresTest", 1, 23995, 24005, 128, 3, 23995, 24005);
@@ -100,6 +102,7 @@ final class TestSiteTable {
         claim("DrifterSpawnTest", 1, 25007, 25057, 25008, 25024);
         claim("DrifterSpawnTest", 1, 25888, 25908, 25888, 25908);
         claim("DrifterSpawnTest", 2, 25007, 25057, 25008, 25024);
+        claim("DrifterSpawnTest", 3, 25007, 25057, 25008, 25024);
         claim("DrifterSpawnTest", 2, 25488, 25503, 25488, 25503);
         claim("DrifterSpawnTest", 2, 25692, 25711, 25692, 25711);
 
@@ -272,6 +275,11 @@ final class TestSiteTable {
         row("PodNearLethalLandingTest", 1, 22000, 22014, 64, 6, 22000, 22008);
 
         row("PodSonarTest", 1, 6973, 7027, 64, 19, 6973, 7027);
+        claim("PodSonarTest", 1, 8189, 8243, 6973, 7027);
+        claim("PodSonarTest", 1, 8273, 8327, 6973, 7027);
+        claim("PodSonarTest", 1, 8573, 8627, 6973, 7027);
+        claim("PodSonarTest", 1, 8637, 8691, 6973, 7027);
+        claim("PodSonarTest", 1, 8701, 8755, 6973, 7027);
 
         row("PodSounderTest", 1, 5993, 6007, 48, 21, 3593, 3607);
 
@@ -353,6 +361,8 @@ final class TestSiteTable {
         claim("SuitTimerTest", 1, 6443, 6453, 7395, 7405);
         claim("SuitTimerTest", 2, 6491, 6501, 7395, 7405);
         row("SuitTimerTest", UNBUILT, 6595, 6605, 100, 7, 7395, 7405);
+
+        row("SuitTracksTest", UNBUILT, 7595, 7605, 50, 4, 7395, 7405);
 
         claim("SurfaceBreachTest", 0, 2499, 2501, 2499, 2501);
         claim("SurfaceBreachTest", 0, 2599, 2601, 2599, 2601);
