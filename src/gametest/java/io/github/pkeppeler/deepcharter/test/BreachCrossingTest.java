@@ -184,7 +184,7 @@ public class BreachCrossingTest {
     }
 
     @GameTest
-    public void handsCannotBreakTheCrustButADrillCan(GameTestHelper helper) {
+    public void bareHandsCannotBreakTheCrustButADrillCan(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
         BlockPos pos = new BlockPos(1600, TestLayers.band(one, 1).minY() + 1, 1600);
         MockPlayer mock = MockPlayers.join(helper, "breach-hands");
@@ -192,10 +192,10 @@ public class BreachCrossingTest {
         mock.player().setGameMode(GameType.SURVIVAL);
         one.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos)) {
-            throw failure(helper, "a player broke the crust by hand");
+            throw failure(helper, "a bare-handed player broke the crust");
         }
         if (!one.getBlockState(pos).is(LayerBlocks.BREACH_CRUST)) {
-            throw failure(helper, "the crust is gone after a refused hand-break");
+            throw failure(helper, "the crust is gone after a refused bare-hand break");
         }
         // Other blocks are unaffected.
         BlockPos stone = pos.east();
@@ -205,7 +205,7 @@ public class BreachCrossingTest {
         }
         mock.player().setGameMode(GameType.ADVENTURE);
         if (mock.player().gameMode.destroyBlock(pos) || !one.getBlockState(pos).is(LayerBlocks.BREACH_CRUST)) {
-            throw failure(helper, "an adventure player broke the crust by hand");
+            throw failure(helper, "a bare-handed adventure player broke the crust");
         }
         mock.player().setGameMode(GameType.CREATIVE);
         if (!mock.player().gameMode.destroyBlock(pos) || !one.getBlockState(pos).isAir()) {

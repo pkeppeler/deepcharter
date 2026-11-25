@@ -9,7 +9,8 @@
     "ClientPacketListenerAccess",
     "ClientPacketListenerRespawnMixin",
     "ClientPacketListenerSeamSwapMixin",
-    "MinecraftSeamAccess"
+    "MinecraftSeamAccess",
+    "MultiPlayerGameModeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

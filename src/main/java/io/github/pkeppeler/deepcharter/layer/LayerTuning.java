@@ -37,6 +37,7 @@ import java.util.Arrays;
  * @param seamMissedWindowTicks ticks after a crossing that the server keeps the chunks it skipped, for a client that reports them missing
  * @param seamSwapRadius    chunks out from the arrival chunk that a rider must hold before the crossing may be a swap
  *     (#1229); at most the chunks the server can send ahead, {@code seamRadius} less 1
+ * @param handBreak       what it takes to brute-force a pod-only block with a hand tool (#858, ADR 0069)
  */
 public record LayerTuning(
         int seaLevel,
@@ -65,10 +66,37 @@ public record LayerTuning(
         int seamRecentreChunks,
         int seamBytesPerTick,
         int seamMissedWindowTicks,
-        int seamSwapRadius) {
+        int seamSwapRadius,
+        HandBreakTuning handBreak) {
     public static final LayerTuning DEFAULT = new LayerTuning(
-            63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 1.0 / 3, 6, 0.32, 160, 10, 3.9, 4, 20, 100, 2,
-            49_152, 100, 3);
+            63,
+            3.28,
+            3,
+            2,
+            4,
+            384,
+            24,
+            56,
+            10f,
+            15,
+            100,
+            5f,
+            4f,
+            4f,
+            1.0 / 3,
+            6,
+            0.32,
+            160,
+            10,
+            3.9,
+            4,
+            20,
+            100,
+            2,
+            49_152,
+            100,
+            3,
+            HandBreakTuning.DEFAULT);
 
     public LayerTuning {
         if (glowcapLight < 0 || glowcapLight > 15) {
