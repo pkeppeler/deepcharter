@@ -35,3 +35,7 @@ Issue [#1160](https://github.com/pkeppeler/deepcharter/issues/1160), part of [#1
 - Layer 1's ratchet in `CampaignCostTest` is deleted (it measures under the 1.15x bar). Layer 2 does not use the path and keeps its ratchet. Measurements are in the PR. If layer 1 flakes over the bar on a CI VM, re-measure; do not restore the ratchet.
 - The world is byte-identical: `CampaignWorldHashTest` gives the same lines (blocks, biomes, heightmaps) with the switch on and off; `SurfaceWritesTest` compares both paths on the same writes.
 - A Minecraft update that adds a side effect to `ProtoChunk.setBlockState` is not seen by the guard. The mixin's target is the only thing that fails loudly; re-read `ProtoChunk.setBlockState` when the version moves.
+
+## Amended
+
+2026-11-25, [#1277](https://github.com/pkeppeler/deepcharter/issues/1277): the one-pair cache is now each thread's last eight pairs. Layer 1's strata make a column write a few pairs in turn, and the worker threads each write their own chunk's, so one pair shared by every thread missed on most writes: layer 1 cost about 1.4 times as much per row with three rocks as with one, and the same with the cache per thread is within noise of one rock (numbers in the PR).

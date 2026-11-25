@@ -34,12 +34,18 @@ public final class SurfaceWrites {
     private static volatile @Nullable ChunkPos watched;
 
     /**
-     * The last pair {@link #judge} ruled on, and the tag generation it read. A column writes one pair row after row, and the
-     * heightmap predicates test tags (a hash lookup each), which cost more than the lock this path skips.
+     * A pair {@link #judge} ruled on, and the tag generation it read. The heightmap predicates test tags (a hash lookup each), which
+     * cost more than the lock this path skips, so verdicts are kept.
      */
     private record Verdict(int generation, BlockState was, BlockState now, boolean neutral) {}
 
-    private static volatile @Nullable Verdict last;
+    private static final int PAIRS = 8;
+
+    /**
+     * The pairs this thread judged last, the latest first. A column writes a few pairs in turn (layer 1's strata, #1277) and each
+     * worker thread writes its own chunk's, so one pair shared by every thread was a miss on most writes and doubled layer 1's cost.
+     */
+    private static final ThreadLocal<@Nullable Verdict[]> SEEN = ThreadLocal.withInitial(() -> new Verdict[PAIRS]);
 
     private SurfaceWrites() {}
 
@@ -109,13 +115,16 @@ public final class SurfaceWrites {
     /** Whether writing {@code now} over {@code was} leaves every side effect of {@code ProtoChunk.setBlockState} a no-op. */
     public static boolean neutral(BlockState was, BlockState now) {
         int generation = TAGS_GENERATION.get();
-        Verdict seen = last;
-        if (seen != null && seen.generation == generation && seen.was == was && seen.now == now) {
-            return seen.neutral;
+        @Nullable Verdict[] seen = SEEN.get();
+        for (@Nullable Verdict verdict : seen) {
+            if (verdict != null && verdict.generation == generation && verdict.was == was && verdict.now == now) {
+                return verdict.neutral;
+            }
         }
         boolean neutral = judge(was, now);
         // The generation read before judging: a reload in between makes this a miss on its next read.
-        last = new Verdict(generation, was, now, neutral);
+        System.arraycopy(seen, 0, seen, 1, PAIRS - 1);
+        seen[0] = new Verdict(generation, was, now, neutral);
         return neutral;
     }
 
