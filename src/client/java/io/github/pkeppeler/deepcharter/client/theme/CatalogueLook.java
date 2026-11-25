@@ -52,6 +52,10 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param sheetGap pixels between the blocks of a spec sheet: the item cell, what it is, and its ratings
  * @param sheetLineGap pixels between two lines of a spec sheet's text
  * @param sheetValueGap the least pixels between a rating's name and its figure
+ * @param buttonWidth the width of the show/hide button, which takes the place of the vanilla recipe-book button
+ * @param buttonHeight its height
+ * @param buttonCell the side of one of the small cells drawn on the button's face
+ * @param buttonCellGap pixels between those cells
  */
 public record CatalogueLook(
         int maxPanelWidth,
@@ -98,7 +102,11 @@ public record CatalogueLook(
         int sheetMinHeight,
         int sheetGap,
         int sheetLineGap,
-        int sheetValueGap) {
+        int sheetValueGap,
+        int buttonWidth,
+        int buttonHeight,
+        int buttonCell,
+        int buttonCellGap) {
     /**
      * The casing round a glass and the hardware on it, drawn in the pack's metal greens.
      *
@@ -283,7 +291,11 @@ public record CatalogueLook(
                 d.integer("sheetMinHeight", 40, 400),
                 d.integer("sheetGap", 0, 32),
                 d.integer("sheetLineGap", 0, 8),
-                d.integer("sheetValueGap", 0, 32));
+                d.integer("sheetValueGap", 0, 32),
+                d.integer("buttonWidth", 12, 64),
+                d.integer("buttonHeight", 12, 64),
+                d.integer("buttonCell", 1, 8),
+                d.integer("buttonCellGap", 0, 4));
         if (look.minPanelWidth() > look.maxPanelWidth()) {
             throw d.conflict("minPanelWidth must not exceed maxPanelWidth", "minPanelWidth", "maxPanelWidth");
         }

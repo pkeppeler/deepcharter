@@ -166,9 +166,21 @@ public final class CataloguePanel {
         return catalogue;
     }
 
+    /** Whether the panels are drawn and take input: they have room, and the player has not put them away. */
+    // test-seam: the client test reads whether the panels are out
+    public boolean panelsShown() {
+        return layout != null && !state.hidden();
+    }
+
+    /** Puts the panels away, or brings them back: the button's press and the key. The search lets go of the keyboard either way. */
+    void toggleHidden() {
+        state.toggleHidden();
+        focusSearch(false);
+    }
+
     /** The recipe panel is drawn only while an item is looked up. */
     public boolean showsRecipePanel() {
-        return layout != null && state.lookup() != null;
+        return panelsShown() && state.lookup() != null;
     }
 
     // test-seam: whether the search field has the keyboard, which the client test reads
@@ -375,7 +387,7 @@ public final class CataloguePanel {
     /** What the mouse is over in a panel, or null. */
     private @Nullable Hit hitAt(double x, double y) {
         CatalogueLayout now = layout;
-        if (now == null) {
+        if (now == null || state.hidden()) {
             return null;
         }
         CatalogueLook look = look();
@@ -415,7 +427,7 @@ public final class CataloguePanel {
             return hit.item();
         }
         CatalogueLayout now = layout;
-        if (now == null) {
+        if (now == null || state.hidden()) {
             return null;
         }
         for (Slot slot : screen.getMenu().slots) {
@@ -435,6 +447,10 @@ public final class CataloguePanel {
 
     /** R or U on {@code item} from outside the screen's keys: the quest map's "recipe one click away" calls this through {@code CatalogueScreens}. */
     void lookUp(Item item, CatalogueState.Mode mode) {
+        // A recipe asked for is a recipe to show, so the panels that were put away come back for it.
+        if (state.hidden()) {
+            state.toggleHidden();
+        }
         state.look(catalogue, item, mode);
     }
 
@@ -457,6 +473,13 @@ public final class CataloguePanel {
         }
         if (searchFocused) {
             return searchKey(event);
+        }
+        if (CatalogueKeys.TOGGLE.matches(event)) {
+            toggleHidden();
+            return true;
+        }
+        if (state.hidden()) {
+            return false;
         }
         // Ctrl+F, or Cmd+F on a Mac (hasControlDownWithQuirk is the shortcut key of the platform).
         if (event.hasControlDownWithQuirk() && event.key() == InputConstants.KEY_F) {
@@ -515,7 +538,7 @@ public final class CataloguePanel {
     }
 
     boolean charTyped(CharacterEvent event) {
-        if (layout == null || !searchFocused) {
+        if (!panelsShown() || !searchFocused) {
             return false;
         }
         if (event.isAllowedChatCharacter()) {
@@ -536,6 +559,9 @@ public final class CataloguePanel {
             closeSheet();
             pressTaken = true;
             return true;
+        }
+        if (state.hidden()) {
+            return false;
         }
         double x = event.x();
         double y = event.y();
@@ -601,6 +627,9 @@ public final class CataloguePanel {
         if (sheet != null) {
             return true;
         }
+        if (state.hidden()) {
+            return false;
+        }
         int direction = vertical > 0 ? -1 : 1;
         if (now.catalogue().contains(x, y)) {
             CatalogueLayout.Shelf shelf = now.shelf();
@@ -633,13 +662,15 @@ public final class CataloguePanel {
         SpecSheet shownSheet = sheet;
         Placed sheetAt = placed;
         Hit hit = shownSheet == null ? hitAt(mouseX, mouseY) : null;
-        graphics.nextStratum();
-        drawShelf(graphics, now, look, hit);
-        if (showsRecipePanel()) {
-            drawCard(graphics, now, look, hit);
-        }
-        if (hit != null) {
-            drawNameStrip(graphics, now, look, hit);
+        if (!state.hidden()) {
+            graphics.nextStratum();
+            drawShelf(graphics, now, look, hit);
+            if (showsRecipePanel()) {
+                drawCard(graphics, now, look, hit);
+            }
+            if (hit != null) {
+                drawNameStrip(graphics, now, look, hit);
+            }
         }
         if (shownSheet != null && sheetAt != null) {
             SpecSheetView.draw(graphics, font, sheetAt.layout(), shownSheet, sheetAt.plan(), mouseX, mouseY);

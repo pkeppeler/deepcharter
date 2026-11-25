@@ -142,7 +142,7 @@ public final class CatalogueScreens {
         // The panels replace the recipe book, so its button goes only while they are drawn: a window too small for them
         // keeps the book.
         if (panel.layout() != null) {
-            hideBookButton(screen);
+            addToggleButton(screen, panel, hideBookButton(screen));
         }
         Item wanted = pending;
         if (wanted != null) {
@@ -178,15 +178,29 @@ public final class CatalogueScreens {
 
     private static final int BOOK_BUTTON_HEIGHT = 18;
 
-    /** Hides the vanilla recipe-book button: it stays in the screen's lists and can neither be seen, hovered nor pressed. */
-    private static void hideBookButton(Screen screen) {
+    /**
+     * Hides the vanilla recipe-book button: it stays in the screen's lists and can neither be seen, hovered nor pressed. Returns the
+     * button, or null when the screen has none.
+     */
+    private static @Nullable AbstractWidget hideBookButton(Screen screen) {
+        AbstractWidget hidden = null;
         for (AbstractWidget widget : Screens.getWidgets(screen)) {
             if (widget instanceof ImageButton
                     && widget.getWidth() == BOOK_BUTTON_WIDTH
                     && widget.getHeight() == BOOK_BUTTON_HEIGHT) {
                 widget.visible = false;
                 widget.active = false;
+                hidden = widget;
             }
+        }
+        return hidden;
+    }
+
+    /** Puts the catalogue's show/hide button where the hidden recipe-book button stands, which vanilla keeps clear of the slots. */
+    private static void addToggleButton(Screen screen, CataloguePanel panel, @Nullable AbstractWidget book) {
+        if (book != null) {
+            Screens.getWidgets(screen)
+                    .add(new CatalogueToggleButton(book.getX(), book.getY(), panel.state(), b -> panel.toggleHidden()));
         }
     }
 

@@ -82,5 +82,10 @@
   "sheetMinHeight": 90,
   "sheetGap": 4,
   "sheetLineGap": 1,
-  "sheetValueGap": 6
+  "sheetValueGap": 6,
+
+  "buttonWidth": 20,
+  "buttonHeight": 18,
+  "buttonCell": 2,
+  "buttonCellGap": 1
 }
