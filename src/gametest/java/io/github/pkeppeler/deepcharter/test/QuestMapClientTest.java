@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
@@ -24,6 +25,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -33,8 +35,10 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 
 /**
@@ -267,6 +271,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
             case HandbookPage.Slip slip -> 0;
             case HandbookPage.Letter letter -> 0;
             case HandbookPage.Contents contents -> 0;
+            case HandbookPage.Controls controls -> 0;
             case HandbookPage.ChapterText text -> text.number();
             case HandbookPage.Chapter map -> map.number();
             case HandbookPage.Pencil pencil -> throw new AssertionError("these pages hold no pencil sheet");
@@ -373,7 +378,67 @@ public class QuestMapClientTest implements FabricClientGameTest {
                     lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.RECIPES,
                     "a click on the iron icon opens the inventory at iron's recipes, got " + lookup);
             context.setScreen(() -> null);
+            everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(context);
         }
+    }
+
+    /**
+     * In the real game, with the shipped chapter 1: each step that asks for an item shows exactly the items it names, with a count each
+     * (never the ingredients), and a click on the first of them opens that item's recipes in the parts catalogue (#1260).
+     */
+    private static void everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(ClientGameTestContext context) {
+        Map<Identifier, HandbookChapter> shipped = context.computeOnClient(client -> {
+            Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
+            HandbookChapters.all(Objects.requireNonNull(client.getConnection()).registryAccess()).stream()
+                    .filter(entry -> !entry.key().identifier().getPath().equals("sample"))
+                    .forEach(entry -> chapters.put(entry.key().identifier(), entry.value()));
+            return chapters;
+        });
+        List<HandbookChapter.Entry> steps = shipped.values().iterator().next().directives();
+        int clicked = 0;
+        for (int i = 0; i < steps.size(); i++) {
+            HandbookChapter.Entry step = steps.get(i);
+            if (step.targets().isEmpty()) {
+                continue;
+            }
+            Set<Identifier> before = new HashSet<>();
+            steps.subList(0, i).forEach(earlier -> before.add(earlier.id()));
+            context.runOnClient(client -> {
+                List<HandbookPage> pages = HandbookPages.of(shipped, before);
+                HandbookScreen screen =
+                        new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
+                screen.init(WIDTH, HEIGHT);
+                for (int index = 0; index < pages.size(); index++) {
+                    if (pages.get(index) instanceof HandbookPage.Chapter map && map.number() == 1) {
+                        screen.goTo(index);
+                    }
+                }
+                settle(screen);
+                List<Drawn> counts = DrawnText.of(screen).stream()
+                        .filter(entry -> entry.text().matches("\\d+/\\d+"))
+                        .toList();
+                require(
+                        counts.size() == step.targets().size(),
+                        step.id() + " shows one counted item for each target, " + step.targets() + ", got "
+                                + counts.stream().map(Drawn::text).toList());
+                Box count = counts.getFirst().box();
+                int iconSize = QuestMapTuning.current().itemIconSize();
+                screen.mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
+            });
+            ClientWait.screen(context, InventoryScreen.class);
+            context.waitTicks(3);
+            CataloguePanel panel = CatalogueScene.panel(context);
+            CatalogueState.Lookup lookup =
+                    context.computeOnClient(client -> panel.state().lookup());
+            Item expected =
+                    BuiltInRegistries.ITEM.getValue(step.targets().getFirst().item());
+            require(
+                    lookup != null && lookup.item() == expected && lookup.mode() == CatalogueState.Mode.RECIPES,
+                    step.id() + ": a click on its first item opens the recipes of " + expected + ", got " + lookup);
+            context.setScreen(() -> null);
+            clicked++;
+        }
+        require(clicked >= 7, "chapter 1 has at least seven item steps, clicked " + clicked);
     }
 
     /** On every page, a press, a drag and a scroll leave everything drawn where it was: nothing of the book pans, moves or zooms. */

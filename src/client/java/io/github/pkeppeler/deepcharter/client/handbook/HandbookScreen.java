@@ -689,6 +689,7 @@ public final class HandbookScreen extends Screen {
             case HandbookPage.Slip slip -> drawSlip(graphics);
             case HandbookPage.Letter letter -> drawLetter(graphics);
             case HandbookPage.Contents contents -> drawContents(graphics, contents);
+            case HandbookPage.Controls controls -> drawControls(graphics, controls);
             case HandbookPage.ChapterText text -> drawChapterText(graphics, text);
             case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
             case HandbookPage.Pencil pencil -> drawPencil(graphics, pencil);
@@ -860,6 +861,31 @@ public final class HandbookScreen extends Screen {
             case HandbookPage.Chapter chapter -> chapter.number();
             default -> throw new IllegalArgumentException("page " + pageIndex + " is not a chapter page");
         };
+    }
+
+    /** A page of the controls: its label and title, then each line, with the keys the player has bound now. */
+    private void drawControls(GuiGraphicsExtractor graphics, HandbookPage.Controls controls) {
+        int y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("controls.label", controls.part(), controls.parts()),
+                textLeft,
+                paperTop + tuning().topMargin(),
+                textWidth,
+                tuning().faintInkColor());
+        y = PaperDraw.wrapped(
+                graphics,
+                font,
+                Component.translatable(HandbookControls.titleKey(controls.part())),
+                textLeft,
+                y + 3,
+                textWidth,
+                tuning().inkColor());
+        y = titleRule(graphics, y);
+        for (Component line : HandbookControls.lines(controls.part(), Minecraft.getInstance().options)) {
+            y = PaperDraw.wrapped(graphics, font, line, textLeft, y, textWidth, tuning().inkColor())
+                    + tuning().paragraphGap();
+        }
     }
 
     /** A page of the text of a chapter: its label and title, the text, and the margin note beside it if the language file has one. */

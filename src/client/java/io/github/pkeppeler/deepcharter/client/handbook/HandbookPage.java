@@ -33,6 +33,9 @@ public sealed interface HandbookPage {
      */
     record Contents(int part, int parts, int firstChapter, int count) implements HandbookPage {}
 
+    /** One page of the controls, after the contents: sheet {@code part} of {@code parts}, each counted from 1 ({@link HandbookControls}). */
+    record Controls(int part, int parts) implements HandbookPage {}
+
     /**
      * A chapter. {@code number} counts from 1 in handbook order. {@code visibility} says how much of it the player may read: a
      * {@link HandbookVisibility#CLASSIFIED} chapter still has its page, but the screen draws no title and no directive.
