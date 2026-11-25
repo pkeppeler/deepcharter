@@ -117,7 +117,10 @@ final class ScannerMap {
                 textureHeight);
     }
 
-    /** Drops the picture and everything kept for it, when the player has left the world: the texture can be large and nothing draws it until the next scan. Render thread only. */
+    /**
+     * Drops the picture and everything kept for it, when the player has left the world: the texture can be large and
+     * nothing draws it until the next scan. Render thread only.
+     */
     static void release() {
         if (texture != null) {
             releasedOnRenderThread = RenderSystem.isOnRenderThread();
