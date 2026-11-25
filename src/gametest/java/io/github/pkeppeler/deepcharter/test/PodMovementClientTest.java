@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.OpenGround;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -42,12 +43,23 @@ public class PodMovementClientTest implements FabricClientGameTest {
 
     /**
      * Ticks in a row the trail may stay over {@link #MAX_LAG_BLOCKS} (#1356): the {@link #LATE_MOVES} ticks the late moves are
-     * missing, then the ticks the client's slide takes to bring their {@code LATE_MOVES} ticks of speed back under the margin, the slide
-     * closing 1/{@code steps} of its gap a tick. A pod that really lags stays over for the rest of the drive.
+     * missing, then the ticks the client's slide takes to bring their {@code LATE_MOVES} ticks of speed strictly under the margin
+     * ({@link TrailJudge#slideTicks}). This window catches a lag that holds: a pod that trails for longer than late moves explain.
      */
-    static final int MAX_TICKS_OVER = LATE_MOVES
-            + (int) Math.ceil(Math.log(LATE_MOVES * SPEED / MARGIN_BLOCKS)
-                    / Math.log(PodGlideTuning.DEFAULT.steps() / (PodGlideTuning.DEFAULT.steps() - 1.0)));
+    static final int MAX_TICKS_OVER =
+            LATE_MOVES + TrailJudge.slideTicks(LATE_MOVES * SPEED, MARGIN_BLOCKS, PodGlideTuning.DEFAULT.steps());
+
+    /**
+     * Ticks over {@link #MAX_LAG_BLOCKS} in the whole drive, in a row or not: two independent late spells. This total catches a lag
+     * that keeps coming back, dipping under the bound between spells so that no run outlasts {@link #MAX_TICKS_OVER}.
+     */
+    static final int MAX_TICKS_OVER_IN_ALL = 2 * MAX_TICKS_OVER;
+
+    /**
+     * The worst single tick: {@link #LATE_MOVES} ticks of speed over {@link #MAX_LAG_BLOCKS}, the most late moves add. This bound
+     * catches a spike late moves cannot explain, however short.
+     */
+    static final double MAX_WORST_BLOCKS = MAX_LAG_BLOCKS + LATE_MOVES * SPEED;
 
     static final int DRIVE_TICKS = 40;
     private static final Logger LOGGER = LoggerFactory.getLogger(PodMovementClientTest.class);
@@ -128,18 +140,12 @@ public class PodMovementClientTest implements FabricClientGameTest {
                 context.waitTick();
                 trail[tick] = lagBlocks(context, two, ownPodId);
             }
-            double lag = trail[DRIVE_TICKS - 1];
-            double worstLag = Arrays.stream(trail).max().orElseThrow();
-            int ticksOver = TrailJudge.longestRunOver(trail, MAX_LAG_BLOCKS);
+            Optional<String> fault = TrailJudge.fault(trail);
             LOGGER.info(
-                    "PodMovementClientTest: client pod trailed the server pod by {} blocks at tick {}, worst {}, over {} for {} ticks in a"
-                            + " row at most (allowed {}): {}",
-                    lag,
+                    "PodMovementClientTest: client pod trailed the server pod by {} blocks at tick {}, {}: {}",
+                    trail[DRIVE_TICKS - 1],
                     DRIVE_TICKS,
-                    worstLag,
-                    MAX_LAG_BLOCKS,
-                    ticksOver,
-                    MAX_TICKS_OVER,
+                    TrailJudge.summary(trail),
                     Arrays.toString(trail));
             context.getInput().releaseKey(options -> options.keyUp);
 
@@ -155,11 +161,9 @@ public class PodMovementClientTest implements FabricClientGameTest {
                     !(mockEnd.subtract(mockStart).horizontalDistance() < 2),
                     "The client should see the mock pilot's pod move, it moved " + mockStart.distanceTo(mockEnd));
             require(
-                    ticksOver <= MAX_TICKS_OVER,
-                    "The client's pod trailed the server's by over " + MAX_LAG_BLOCKS + " blocks for " + ticksOver
-                            + " ticks in a row, more than the " + MAX_TICKS_OVER + " that late moves explain (at tick "
-                            + DRIVE_TICKS + ": " + lag + ", worst: " + worstLag + ", every tick: "
-                            + Arrays.toString(trail) + ")");
+                    fault.isEmpty(),
+                    "The client's pod trailed the server's more than late moves explain, " + fault.orElse("")
+                            + " (every tick: " + Arrays.toString(trail) + ")");
         }
     }
 

@@ -17,6 +17,74 @@ public class TrailJudgeTest {
     /** A trail a real lag holds: one more tick of moves behind the server (the CI value of #1356). */
     private static final double LAGGING = 0.80001461872767;
 
+    /**
+     * The worst trail of every passing real run: a late spell mid-drive, then late moves to the very end of the drive
+     * ({@code PacketJitter} {@code lag(1)} from tick 35, #1363).
+     */
+    private static final double[] REAL_LATE_TO_THE_END = {
+        0.0,
+        0.0,
+        0.20000000298023224,
+        0.4000000059604645,
+        0.5000244230031967,
+        0.550061047077179,
+        0.5749817043542862,
+        0.5874664485454559,
+        0.5937332361936569,
+        0.5968910455703735,
+        0.598494365811348,
+        0.5991983711719513,
+        0.5995747894048691,
+        0.5997874140739441,
+        0.5999181419610977,
+        0.6000079214572906,
+        0.5999551564455032,
+        0.5999531894922256,
+        0.599976621568203,
+        0.6000127531588078,
+        0.6000552345067263,
+        0.6000977158546448,
+        0.700000062584877,
+        0.7499756515026093,
+        0.6799426934866872,
+        0.6400202121212466,
+        0.6199613166786424,
+        0.6099562845099564,
+        0.6049781839782291,
+        0.602513549264982,
+        0.6013056474609746,
+        0.6006040417990874,
+        0.6002776545207595,
+        0.6001388764342117,
+        0.6000939029435539,
+        0.6000958317508411,
+        0.6000977605581284,
+        0.7000001072883606,
+        0.7499756962060928,
+        0.7749879062175751
+    };
+
+    /**
+     * The window is the first slide tick strictly under the margin, whichever side of the float widening the speed falls: 2 late
+     * moves at 0.2 land exactly on 0.05 at tick 3, so tick 4.
+     */
+    @GameTest
+    public void slideTicksCountsTheFirstTickStrictlyUnder(GameTestHelper helper) {
+        int steps = 2;
+        for (double speed : new double[] {0.2, 0.2f}) {
+            int ticks = TrailJudge.slideTicks(2 * speed, 0.05, steps);
+            if (ticks != 4) {
+                throw failure(
+                        helper,
+                        "2 late moves at speed %s with %s slide steps: %s ticks, expected 4",
+                        speed,
+                        steps,
+                        ticks);
+            }
+        }
+        helper.succeed();
+    }
+
     @GameTest
     public void lateMovesPassAndALagThatKeepsOnFails(GameTestHelper helper) {
         int ticks = PodMovementClientTest.DRIVE_TICKS;
@@ -41,6 +109,23 @@ public class TrailJudgeTest {
                 over(steady(ticks), 23, ticks - 23),
                 false);
         expect(helper, "a lag for the whole drive", over(steady(ticks), 0, ticks), false);
+        double[] lockDippingEverySixth = over(steady(ticks), 10, ticks - 10);
+        for (int tick = 15; tick < ticks; tick += 6) {
+            lockDippingEverySixth[tick] = STEADY;
+        }
+        expect(helper, "a lag from tick 10 to the end, back to steady every 6th tick", lockDippingEverySixth, false);
+        double[] alternating = steady(ticks);
+        for (int tick = 0; tick < ticks; tick += 2) {
+            alternating[tick] = LAGGING;
+        }
+        expect(helper, "a lag on every other tick", alternating, false);
+        expect(helper, "1.5 blocks for 3 ticks", fill(steady(ticks), 20, 3, 1.5), false);
+        expect(helper, "late moves to the end (a real run, worst 0.775)", REAL_LATE_TO_THE_END, true);
+        expect(
+                helper,
+                "exactly at the bound for the whole drive",
+                fill(steady(ticks), 0, ticks, PodMovementClientTest.MAX_LAG_BLOCKS),
+                true);
         helper.succeed();
     }
 
@@ -51,20 +136,21 @@ public class TrailJudgeTest {
     }
 
     private static double[] over(double[] trail, int from, int ticks) {
-        Arrays.fill(trail, from, from + ticks, LAGGING);
+        return fill(trail, from, ticks, LAGGING);
+    }
+
+    private static double[] fill(double[] trail, int from, int ticks, double blocks) {
+        Arrays.fill(trail, from, from + ticks, blocks);
         return trail;
     }
 
     private static void expect(GameTestHelper helper, String what, double[] trail, boolean passes) {
-        int run = TrailJudge.longestRunOver(trail, PodMovementClientTest.MAX_LAG_BLOCKS);
-        if ((run <= PodMovementClientTest.MAX_TICKS_OVER) != passes) {
+        if (TrailJudge.fault(trail).isEmpty() != passes) {
             throw failure(
                     helper,
-                    "%s: a trail over %s for %s ticks in a row (allowed %s) should %s: %s",
+                    "%s: a trail %s should %s: %s",
                     what,
-                    PodMovementClientTest.MAX_LAG_BLOCKS,
-                    run,
-                    PodMovementClientTest.MAX_TICKS_OVER,
+                    TrailJudge.summary(trail),
                     passes ? "pass" : "fail",
                     Arrays.toString(trail));
         }
