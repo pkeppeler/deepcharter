@@ -14,6 +14,7 @@ public final class HandbookInit {
         NoteReadout.init();
         ProgressCarry.register();
         KnownRecipes.register();
+        PencilPaths.register();
         SpecSheetPopups.init();
     }
 }

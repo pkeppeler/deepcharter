@@ -234,6 +234,12 @@ val checkGeckoLib = tasks.register<CheckGeckoLib>("checkGeckoLib") {
 }
 tasks.named("jar") { dependsOn(checkGeckoLib) }
 
+// CREDITS.md ships in the jar as CREDITS_<archive name>, the way Loom names a LICENSE: the recordings' licence asks for their credit to travel with them.
+tasks.jar {
+	val credits = "CREDITS_${project.base.archivesName.get()}"
+	from("CREDITS.md") { rename { credits } }
+}
+
 // The same check on the copy that ships: the jar nested in our mod jar must be the one jar there, with the pinned sha512 (audit
 // condition 4: Loom's include must not add a second jar or a different one).
 abstract class CheckNestedGeckoLib : DefaultTask() {
@@ -275,7 +281,9 @@ apply(from = "gradle/record-holder-gate.gradle.kts")
 apply(from = "gradle/keep-clear-gate.gradle.kts")
 apply(from = "gradle/null-marked-gate.gradle.kts")
 apply(from = "gradle/gametest.gradle.kts")
+apply(from = "gradle/gametest-preset.gradle.kts")
 apply(from = "gradle/colour-gate.gradle.kts")
+apply(from = "gradle/input-literal-gate.gradle.kts")
 apply(from = "gradle/test-only-gate.gradle.kts")
 apply(from = "gradle/clientlock.gradle.kts")
 apply(from = "gradle/lambdynamiclights.gradle.kts")
@@ -315,7 +323,7 @@ spotless {
 
 // RELAXED: Error Prone's unused checks would flag every injector method and its Mixin-supplied parameters; any other unused code is still reported.
 val mixinHandlers = (listOf("Inject", "Redirect", "ModifyArg", "ModifyArgs", "ModifyVariable", "ModifyConstant")
-	.map { "org.spongepowered.asm.mixin.injection.$it" } + "com.llamalad7.mixinextras.injector.ModifyExpressionValue")
+	.map { "org.spongepowered.asm.mixin.injection.$it" } + listOf("ModifyExpressionValue", "wrapoperation.WrapOperation").map { "com.llamalad7.mixinextras.injector.$it" })
 	.joinToString(",")
 
 // Error Prone runs on every source set; -Werror fails on any warning.

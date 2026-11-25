@@ -66,7 +66,7 @@ public class ScannerFittingTest {
                                 player.getUUID(),
                                 "Fit " + UUID.randomUUID().toString().substring(0, 8))
                         .isPresent()) {
-            throw helper.assertionException("founding a charter should succeed");
+            throw failure(helper, "founding a charter should succeed");
         }
         return new Scene(mock, player, new ArrayList<>());
     }
@@ -90,7 +90,7 @@ public class ScannerFittingTest {
         if (Charters.found(
                         server, founder, "Other " + UUID.randomUUID().toString().substring(0, 8))
                 .isPresent()) {
-            throw helper.assertionException("founding the other charter should succeed");
+            throw failure(helper, "founding the other charter should succeed");
         }
         return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
     }

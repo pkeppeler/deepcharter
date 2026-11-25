@@ -17,7 +17,8 @@ public final class OreBlock extends Block {
     /** The rocks an ore can sit in: the layers' own, in layer order. */
     public enum Host implements StringRepresentable {
         PACKED_SHALE(LayerBlocks.PACKED_SHALE),
-        GREEN_SHALE(LayerBlocks.GREEN_SHALE);
+        GREEN_SHALE(LayerBlocks.GREEN_SHALE),
+        BASALT_CORE(LayerBlocks.BASALT_CORE);
 
         private static final Host[] VALUES = values();
 

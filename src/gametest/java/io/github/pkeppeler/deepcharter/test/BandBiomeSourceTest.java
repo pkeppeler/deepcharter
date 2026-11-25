@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import com.mojang.datafixers.util.Pair;
+import io.github.pkeppeler.deepcharter.layer.FloorCrust;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource.Layer;
@@ -48,19 +49,39 @@ public class BandBiomeSourceTest {
         // Layers top to bottom, as the shipped data lists them. Each case: surface_min_y and the layers.
         List<Case> cases = List.of(
                 // Everything on cell edges, a gap between the layers.
-                new Case(0, List.of(new Layer(-400, 240, upper), new Layer(-800, 300, lower))),
+                new Case(
+                        0,
+                        List.of(
+                                new Layer(-400, 240, upper, FloorCrust.DRAW),
+                                new Layer(-800, 300, lower, FloorCrust.DRAW))),
                 // The lowest layer's minY, the gap's edges and the surface off the 4-block grid.
-                new Case(-51, List.of(new Layer(-403, 241, upper), new Layer(-1001, 301, lower))),
-                new Case(-50, List.of(new Layer(-402, 242, upper), new Layer(-999, 299, lower))),
-                new Case(-49, List.of(new Layer(-401, 243, upper), new Layer(-998, 298, lower))),
+                new Case(
+                        -51,
+                        List.of(
+                                new Layer(-403, 241, upper, FloorCrust.DRAW),
+                                new Layer(-1001, 301, lower, FloorCrust.DRAW))),
+                new Case(
+                        -50,
+                        List.of(
+                                new Layer(-402, 242, upper, FloorCrust.DRAW),
+                                new Layer(-999, 299, lower, FloorCrust.DRAW))),
+                new Case(
+                        -49,
+                        List.of(
+                                new Layer(-401, 243, upper, FloorCrust.DRAW),
+                                new Layer(-998, 298, lower, FloorCrust.DRAW))),
                 // A layer that ends exactly at the surface, with a short layer below it.
-                new Case(-37, List.of(new Layer(-337, 300, upper), new Layer(-361, 20, lower))),
+                new Case(
+                        -37,
+                        List.of(
+                                new Layer(-337, 300, upper, FloorCrust.DRAW),
+                                new Layer(-361, 20, lower, FloorCrust.DRAW))),
                 // One layer, a surface just above it.
-                new Case(-1, List.of(new Layer(-301, 297, lower))),
+                new Case(-1, List.of(new Layer(-301, 297, lower, FloorCrust.DRAW))),
                 // No layer: everything below the surface is unbuilt.
                 new Case(-7, List.of()),
                 // A surface above zero.
-                new Case(21, List.of(new Layer(-83, 100, upper))));
+                new Case(21, List.of(new Layer(-83, 100, upper, FloorCrust.DRAW))));
 
         // The one-entry surface answers its single biome whatever the sampler reads.
         Climate.Sampler sampler = flatSampler();

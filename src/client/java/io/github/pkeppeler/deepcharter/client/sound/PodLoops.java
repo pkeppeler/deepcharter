@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.sound;
 
+import io.github.pkeppeler.deepcharter.client.layer.SeamSwapEvents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodSeats;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
@@ -66,6 +67,8 @@ public final class PodLoops {
     public static void init() {
         ClientTickEvents.END_CLIENT_TICK.register(PodLoops::tick);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset(null));
+        // A swap keeps the pods and everything playing: the loops follow the pod into the new level.
+        SeamSwapEvents.SWAPPED.register((from, to) -> trackedLevel = to);
     }
 
     /** Ends every loop and forgets every pod: the pods of the old level are not the pods of {@code level}. */

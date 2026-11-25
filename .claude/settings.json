@@ -16,6 +16,7 @@
       "Bash(screencapture *)",
       "Bash(brew install *)",
       "Bash(python3 -I *)",
+      "Bash(tools/py *)",
       "Bash(node *)",
       "Bash(npm ci*)",
       "Bash(npm run *)",

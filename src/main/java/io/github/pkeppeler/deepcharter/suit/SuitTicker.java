@@ -37,7 +37,7 @@ import net.minecraft.world.level.Level;
  * no tick carries every player's) it decides what the suit is doing ({@link #second}): where the person is, what the depth there asks of a
  * suit, and what shelter they are in; pays the reserve out or takes it back; and warns before the reserve is spent.
  *
- * <p>It never throws: a suit whose saved data this build cannot read is left alone (no drain, no harm), and the player's own client shows
+ * <p>It never throws: a suit, or the tracks that rate it, whose saved data this build cannot read is left alone (no drain, no harm), and the player's own client shows
  * that its log is unreadable.
  */
 public final class SuitTicker {
@@ -71,7 +71,7 @@ public final class SuitTicker {
     }
 
     /** What the suit does this second: how, at what rate, on which axes, and in which hall it leaks. */
-    private record Plan(Mode mode, float rate, int axes, Optional<Outpost> hall) {
+    private record Plan(Mode mode, float rate, int shortfall, Optional<Outpost> hall) {
         static Plan of(Mode mode) {
             return new Plan(mode, 0f, 0, Optional.empty());
         }
@@ -108,8 +108,13 @@ public final class SuitTicker {
         if (read.isEmpty()) {
             return;
         }
+        Optional<SuitTracks> bought = Versioned.readable(player, SuitRegistry.TRACKS);
+        if (bought.isEmpty()) {
+            return;
+        }
         SuitState before = read.get();
-        Plan plan = plan(player, hallRow);
+        SuitTracks tracks = bought.get();
+        Plan plan = plan(player, tracks.ratings(), hallRow);
         SuitTuning tuning = SuitTuning.DEFAULT;
         float reserve = before.reserve();
         Mode mode = plan.mode();
@@ -118,12 +123,16 @@ public final class SuitTicker {
         } else if (mode.drains()) {
             reserve -= plan.rate();
         }
-        reserve = SuitState.sane(reserve);
+        reserve = Math.min(SuitState.sane(reserve), tracks.capacity(tuning));
         if (mode.drains() && reserve <= 0f) {
             mode = Mode.BREACHED;
         }
-        SuitState after =
-                new SuitState(reserve, before.explained(), mode, plan.axes(), mode.drains() ? plan.rate() : 0f);
+        SuitState after = new SuitState(
+                reserve,
+                before.explained(),
+                mode,
+                mode.drains() ? plan.rate() : 0f,
+                mode.drains() ? plan.shortfall() : 0);
         if (mode.drains()) {
             after = warn(player, before, after, plan);
         }
@@ -135,8 +144,13 @@ public final class SuitTicker {
         }
     }
 
+    /** What the suit would do this second for {@code player}, without doing it: the mode {@link #second} would write. */
+    static Mode modeNow(ServerPlayer player, SuitTracks tracks) {
+        return plan(player, tracks.ratings(), OutpostHabitability::requiredAt).mode();
+    }
+
     /** Where the person is decides what the suit does: seated, sheltered, leaking, exposed, or none of them. */
-    private static Plan plan(ServerPlayer player, BiFunction<Level, Outpost, Optional<Ratings>> hallRow) {
+    private static Plan plan(ServerPlayer player, Ratings suit, BiFunction<Level, Outpost, Optional<Ratings>> hallRow) {
         if (OnFoot.seated(player) && player.getVehicle() instanceof PodEntity pod) {
             return Plan.of(PodEvents.isPowered(pod) ? Mode.POD_REFILL : Mode.POD_HOLD);
         }
@@ -156,19 +170,20 @@ public final class SuitTicker {
             }
             // Water seeps in through a shell that is short on flooding, and a flooded hall is as wet as the depth.
             boolean wet = player.isUnderWater() || status.shortOn().contains(RatingAxis.FLOODING);
-            return drain(Mode.LEAKING, row.orElse(tuning.uncharted()), wet, tuning.leakShare(), hall);
+            return drain(Mode.LEAKING, row.orElse(tuning.uncharted()), suit, wet, tuning.leakShare(), hall);
         }
         Ratings asked = DepthRatings.requiredAt(level, player.getBlockY()).orElse(tuning.uncharted());
-        return drain(Mode.EXPOSED, asked, player.isUnderWater(), 1f, Optional.empty());
+        return drain(Mode.EXPOSED, asked, suit, player.isUnderWater(), 1f, Optional.empty());
     }
 
-    private static Plan drain(Mode mode, Ratings asked, boolean wet, float share, Optional<Outpost> hall) {
+    private static Plan drain(
+            Mode mode, Ratings asked, Ratings suit, boolean wet, float share, Optional<Outpost> hall) {
         SuitTuning tuning = SuitTuning.DEFAULT;
         if (!SuitDrain.asks(asked)) {
             return Plan.of(Mode.INERT);
         }
-        float rate = share * SuitDrain.perSecond(asked, tuning.stock(), wet, tuning);
-        return new Plan(mode, rate, SuitDrain.axes(asked, tuning.stock(), wet), hall);
+        float rate = share * SuitDrain.perSecond(asked, suit, wet, tuning);
+        return new Plan(mode, rate, SuitDrain.shortfall(asked, suit, wet), hall);
     }
 
     /** The first line, the amber and the red warnings and the breach, each said when its time comes, and the beeps between them. */
@@ -244,7 +259,7 @@ public final class SuitTicker {
     /** Every tick: the air of a person in a suit with reserve, and the harm of a breached one. */
     private static void perTick(ServerPlayer player) {
         Optional<SuitState> read = Versioned.readable(player, SuitRegistry.SUIT);
-        if (read.isEmpty()) {
+        if (read.isEmpty() || Versioned.readable(player, SuitRegistry.TRACKS).isEmpty()) {
             return;
         }
         SuitState state = read.get();
@@ -264,12 +279,16 @@ public final class SuitTicker {
         }
     }
 
-    /** A new life starts with a full suit that is doing nothing yet; what the person was told stays told. */
+    /**
+     * A new life starts with a full suit (to its own capacity) that is doing nothing yet; what the person was told stays told.
+     */
     private static void refill(ServerPlayer player) {
+        Optional<SuitTracks> tracks = Versioned.readable(player, SuitRegistry.TRACKS);
         Versioned.readable(player, SuitRegistry.SUIT)
+                .filter(state -> tracks.isPresent())
                 .ifPresent(state -> player.setAttached(
                         SuitRegistry.SUIT,
-                        Versioned.of(
-                                new SuitState(SuitTuning.DEFAULT.capacity(), state.explained(), Mode.INERT, 0, 0f))));
+                        Versioned.of(new SuitState(
+                                tracks.get().capacity(SuitTuning.DEFAULT), state.explained(), Mode.INERT, 0f, 0))));
     }
 }

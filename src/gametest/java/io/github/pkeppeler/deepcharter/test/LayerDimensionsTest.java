@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -258,10 +259,12 @@ public class LayerDimensionsTest {
                 throw helper.assertionException("player placed at y=%s, outside the layer", pos.y);
             }
             try {
-                server.getCommands().getDispatcher().execute("deepcharter layer goto 3", source);
-                throw helper.assertionException("goto 3 should fail: only 2 layers exist");
+                int past = CampaignBands.lastLayer() + 1;
+                server.getCommands().getDispatcher().execute("deepcharter layer goto " + past, source);
+                throw helper.assertionException(
+                        "goto %s should fail: only %s layers exist", past, CampaignBands.lastLayer());
             } catch (CommandSyntaxException outOfRange) {
-                if (!String.valueOf(outOfRange.getMessage()).contains("No layer 3")) {
+                if (!String.valueOf(outOfRange.getMessage()).contains("No layer " + (CampaignBands.lastLayer() + 1))) {
                     throw helper.assertionException(
                             "expected the no-such-layer failure, got %s", String.valueOf(outOfRange.getMessage()));
                 }

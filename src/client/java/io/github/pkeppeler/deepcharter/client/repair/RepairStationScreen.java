@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.repair;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
@@ -17,6 +18,10 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
+import io.github.pkeppeler.deepcharter.suit.SuitShop;
+import io.github.pkeppeler.deepcharter.suit.SuitTrack;
+import io.github.pkeppeler.deepcharter.suit.SuitTracks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -28,6 +33,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -51,8 +57,12 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     private static final int CLOSE_WIDTH = 90;
     private static final int[] REPAIR_STEPS = {10, 25, 50};
 
-    /** One button of the list: what it says, and the action it sends. */
-    private record Row(Component label, Identifier action, CompoundTag args) {}
+    /** One button of the list: what it says, the action it sends, and whether it can be pressed (a track at its top tier cannot). */
+    private record Row(Component label, Identifier action, CompoundTag args, boolean active) {
+        Row(Component label, Identifier action, CompoundTag args) {
+            this(label, action, args, true);
+        }
+    }
 
     /** One line of text beside the list, where it is drawn: in the theme's phosphor colour, or its dim colour when {@code dim}. */
     public record TextLine(String text, int x, int y, boolean dim) {}
@@ -97,10 +107,8 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                 Component.translatable("screen.deepcharter.repair.total"),
                 RepairStation.REPAIR_TOTAL,
                 new CompoundTag()));
+        rows.addAll(suitRows());
         for (Consumable consumable : Consumable.values()) {
-            if (!consumable.sold()) {
-                continue;
-            }
             CompoundTag args = new CompoundTag();
             args.putString(RepairStation.ITEM_KEY, consumable.itemId().toString());
             String name = new ItemStack(RepairRegistry.item(consumable))
@@ -112,6 +120,51 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                             "screen.deepcharter.repair.buy_pack", name, consumable.perPurchase(), consumable.price())
                     : Component.translatable("screen.deepcharter.repair.buy", name, consumable.price());
             rows.add(new Row(label, RepairStation.BUY, args));
+        }
+        return rows;
+    }
+
+    /**
+     * One row for each suit track (#1064): the next tier and its price, from the tracks the server sent, or the track's name and "(TOP)"
+     * with nothing to press once it is fully fitted. A suit log that cannot be read shows one inactive row that says so.
+     */
+    private static List<Row> suitRows() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        List<Row> rows = new ArrayList<>();
+        if (player == null) {
+            return rows;
+        }
+        Optional<SuitTracks> held = Versioned.readable(player, SuitRegistry.TRACKS);
+        if (held.isEmpty()) {
+            rows.add(new Row(
+                    Component.translatable("hud.deepcharter.suit.unreadable"),
+                    SuitShop.SUIT_BUY,
+                    new CompoundTag(),
+                    false));
+            return rows;
+        }
+        for (SuitTrack track : SuitTrack.values()) {
+            Component name = Component.translatable("hud.deepcharter.suit.track." + track.id());
+            int current = held.get().tier(track);
+            if (current >= track.maxTier()) {
+                rows.add(new Row(
+                        Component.translatable("screen.deepcharter.repair.suit_top", name),
+                        SuitShop.SUIT_BUY,
+                        new CompoundTag(),
+                        false));
+                continue;
+            }
+            CompoundTag args = new CompoundTag();
+            args.putString(SuitShop.TRACK_KEY, track.id());
+            args.putInt(SuitShop.TIER_KEY, current + 1);
+            rows.add(new Row(
+                    Component.translatable(
+                            "screen.deepcharter.repair.suit",
+                            name,
+                            current + 1,
+                            String.format(Locale.ROOT, "%,d", track.price(current + 1))),
+                    SuitShop.SUIT_BUY,
+                    args));
         }
         return rows;
     }
@@ -186,6 +239,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                     row.label(),
                     pressed ->
                             ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), row.action(), row.args())));
+            button.active = row.active();
             addRenderableWidget(scroll.shown(button));
         }
         addRenderableWidget(new CrtButton(

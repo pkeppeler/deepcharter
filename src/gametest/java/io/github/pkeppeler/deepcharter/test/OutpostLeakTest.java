@@ -45,7 +45,7 @@ public class OutpostLeakTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 400;
     private static final float EPSILON = 0.001f;
-    private static final float CAPACITY = SuitTuning.DEFAULT.capacity();
+    private static final float CAPACITY = SuitTuning.DEFAULT.capacities().getFirst();
     private static final float DRY_RATE = 5.5f;
     /** A row the kit's plates (2 on every axis) hold on the suit's axes and fall short of on quake. */
     private static final Ratings QUAKE_ABOVE_THE_KIT = new Ratings(2, 2, 2, 3);

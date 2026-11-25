@@ -24,7 +24,7 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIsNotNone(count, "no CLIENT_SHARDS")
         shards = [int(n) for n in matrix[1].split(",")]
         self.assertEqual(shards, list(range(1, int(count[1]) + 1)))
-        self.assertGreaterEqual(len(shards), 2)
+        self.assertEqual(len(shards), 4, "#1325: three shards left the slowest within 25 s of its 20-minute budget")
 
     def test_the_job_hands_its_shard_and_the_count_to_the_action(self):
         self.assertIn("client-shard: ${{ matrix.shard }}/${{ env.CLIENT_SHARDS }}", self.shard_job())
@@ -76,6 +76,11 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertEqual(30, limit)
         self.assertEqual(1200, self.deadline_for("sharded"))
         self.assertLess(self.deadline_for("sharded"), limit * 60)
+
+    def test_a_step_warns_at_80_percent_of_its_budget(self):
+        self.assertIn("warn_seconds=$((max_seconds * 8 / 10))", ACTION)
+        self.assertIn('if [ "$SECONDS" -ge "$warn_seconds" ] && [ -z "$warned" ]; then', ACTION)
+        self.assertIn("echo \"::warning::Client GameTests passed 80% of their", ACTION)
 
     def test_a_whole_suite_run_gets_3000_seconds_inside_a_60_minute_job(self):
         # Pre-shard workflows (still on queued PRs) run the whole suite in one 60-minute job, as does record-evidence.yml (#1135).

@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -188,7 +189,9 @@ public class LayerTerrainTest {
     /** A layer past the named ones has no zone, and never throws: callers pass any player Y every tick. */
     @GameTest
     public void anUnnamedLayerHasNoZone(GameTestHelper helper) {
-        if (Zones.of(3, 0, 192, 100).isPresent() || Zones.of(0, 0, 192, 100).isPresent()) {
+        int unnamed = CampaignBands.lastLayer() + 1;
+        if (Zones.of(unnamed, 0, 192, 100).isPresent()
+                || Zones.of(0, 0, 192, 100).isPresent()) {
             throw failure(helper, "a layer without names has a zone");
         }
         if (Zones.of(1, 0, 192, 100).isEmpty()) {
@@ -197,12 +200,12 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** The names must cover every layer in the chain; this is the start-up check, run here as well. */
+    /** The names must cover every layer in the chain, as the campaign world lays it out; this is the start-up check, run here as well. */
     @GameTest
     public void zoneNamesCoverEveryLayerInTheChain(GameTestHelper helper) {
-        Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()));
+        Zones.requireNamesFor(CampaignBands.lastLayer());
         try {
-            Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()) + 1);
+            Zones.requireNamesFor(CampaignBands.lastLayer() + 1);
         } catch (IllegalStateException expected) {
             helper.succeed();
             return;
@@ -232,9 +235,12 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** Below layer 1 rock is out of reach of hands (SPEC section 9); layer 1 is not. */
+    /**
+     * Below layer 1 rock is pod-only (SPEC section 9, ADR 0069): an empty hand cannot break it; layer 1's is ordinary.
+     * {@link HandBreakTest} covers the tools that can.
+     */
     @GameTest
-    public void handsCannotBreakDeepRock(GameTestHelper helper) {
+    public void bareHandsCannotBreakDeepRock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-hands");
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
@@ -245,7 +251,7 @@ public class LayerTerrainTest {
         two.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
         two.setBlock(pos.east(), Blocks.DIRT.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(Blocks.STONE)) {
-            throw failure(helper, "a survival player broke rock by hand in layer 2");
+            throw failure(helper, "a bare-handed survival player broke rock in layer_2");
         }
         if (!mock.player().gameMode.destroyBlock(pos.east())) {
             throw failure(helper, "the guard stopped dirt, which is not rock");
@@ -253,11 +259,11 @@ public class LayerTerrainTest {
         two.setBlock(pos.west(), Blocks.IRON_ORE.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos.west())
                 || !two.getBlockState(pos.west()).is(Blocks.IRON_ORE)) {
-            throw failure(helper, "a survival player broke iron ore by hand in layer 2");
+            throw failure(helper, "a bare-handed survival player broke iron ore in layer_2");
         }
         mock.player().setGameMode(GameType.ADVENTURE);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(Blocks.STONE)) {
-            throw failure(helper, "an adventure player broke rock by hand in layer 2");
+            throw failure(helper, "a bare-handed adventure player broke rock in layer_2");
         }
         mock.player().setGameMode(GameType.CREATIVE);
         if (!mock.player().gameMode.destroyBlock(pos)) {
@@ -272,9 +278,9 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** The attack callback runs on the client too, so a refused swing starts no crack animation. */
+    /** The attack callback runs on the client too, so a swing with no tool starts no crack animation. */
     @GameTest
-    public void startingToBreakDeepRockByHandIsRefused(GameTestHelper helper) {
+    public void startingToBreakDeepRockWithABareHandIsRefused(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-attack");
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
