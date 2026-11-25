@@ -14,8 +14,8 @@ import java.util.List;
  */
 public final class ScannerGrain {
     /**
-     * The patterns, each lightening two quadrants of a cell and darkening the other two: bit {@code q} lightens quadrant
-     * {@code q} (0 top left, 1 top right, 2 bottom left, 3 bottom right).
+     * The patterns, each lightening two quadrants of a cell and darkening the other two: bit {@code q} lightens
+     * quadrant {@code q} (0 top left, 1 top right, 2 bottom left, 3 bottom right).
      */
     public static final List<Integer> PATTERNS = List.of(0b0011, 0b1100, 0b0101, 0b1010, 0b1001, 0b0110);
 

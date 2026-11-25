@@ -8,8 +8,8 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 
 /**
- * #1272: the scanner's rock grain moves no cell's mean colour, so a band of rock keeps its contrast with the next and an
- * ore mark with the rock round it. Pure arithmetic, so it runs without a client.
+ * #1272: the scanner's rock grain moves no cell's mean colour, so a band of rock keeps its contrast with the next
+ * and an ore mark with the rock round it. Pure arithmetic, so it runs without a client.
  */
 public class ScannerGrainTest {
     private static final int LEVELS = 6;

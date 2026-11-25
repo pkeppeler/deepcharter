@@ -338,8 +338,8 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
     }
 
     /**
-     * At least {@code least} of the depth labels in {@code drawn} are there, and each is the altimeter's reading for the
-     * row it is centred on, the map's top row at {@code top} with cells {@code cell} GUI pixels.
+     * At least {@code least} of the depth labels in {@code drawn} are there, and each is the altimeter's reading
+     * for the row it is centred on, the map's top row at {@code top} with cells {@code cell} GUI pixels.
      */
     private static List<String> checkLabels(
             Minecraft client, List<DrawnText.Drawn> drawn, BlockPos feet, int cell, int top, int least) {

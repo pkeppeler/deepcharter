@@ -17,10 +17,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * The depth ruler down the left edge of what shows of the scanner's map (#1272): a tick every
  * {@link ScannerLook#rulerTickBlocks()} blocks of depth, a longer one with the depth beside it every
- * {@link ScannerLook#rulerLabelBlocks()}, and a mark on the player's row. The pod stays centred, so the ruler scrolls up
- * past it as the pod digs, and a descent through uniform rock shows. A label is the altimeter's number for its row
- * ({@link Altimeter#readingNumber}), so the two always agree; the unit is left off to keep the label narrow over the
- * map.
+ * {@link ScannerLook#rulerLabelBlocks()}, and a mark on the player's row. The pod stays centred, so the ruler
+ * scrolls up past it as the pod digs, and a descent through uniform rock shows. A label is the altimeter's number for
+ * its row ({@link Altimeter#readingNumber}), so the two always agree; the unit is left off to keep the label narrow
+ * over the map.
  */
 final class ScannerRuler {
     private static final int NONE = 0;

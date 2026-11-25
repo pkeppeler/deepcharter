@@ -31,8 +31,8 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
     public static final int FAR_BEHIND = -30;
 
     /**
-     * Stone beyond tier 1's reach on the right, the one the far gold is compared with: the depth ruler's labels lie over
-     * the left of the map (#1272), and on the row of a label they cover {@link #FAR_BEHIND}.
+     * Stone beyond tier 1's reach on the right, the one the far gold is compared with: the depth ruler's labels lie
+     * over the left of the map (#1272), and on the row of a label they cover {@link #FAR_BEHIND}.
      */
     private static final int FAR_STONE_AHEAD = FAR_AHEAD + 2;
 
