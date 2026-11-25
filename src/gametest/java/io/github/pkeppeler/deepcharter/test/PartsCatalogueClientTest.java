@@ -1187,10 +1187,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.waitTicks(1);
     }
 
-    /**
-     * The field under SDL's rules: the typing assertions inject {@code textInput} themselves, so only the SDL-active
-     * assertions prove the fix.
-     */
+    /** The field under SDL's rules: the other typing assertions inject {@code textInput} themselves, so only these prove #1269. */
     private static void theSearchTakesWhatSdlDelivers(
             ClientGameTestContext context, AbstractContainerScreen<?> screen, CataloguePanel panel, String where) {
         UUID player =
@@ -1271,7 +1268,6 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.runOnClient(client -> {
             long window = client.getWindow().handle();
             // The runner's holdControl does not reach the key event's modifiers, so the shortcut key is set on it.
-            // The runner's own pairing: the key, and the scancode the key mappings match.
             KeyEvent event = new KeyEvent(
                     key,
                     SDLKeyboard.SDL_GetKeyFromScancode(key, (short) 0, false),

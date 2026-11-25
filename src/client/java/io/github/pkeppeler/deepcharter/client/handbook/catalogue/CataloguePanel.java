@@ -165,7 +165,7 @@ public final class CataloguePanel {
         return searchFocused;
     }
 
-    /** Gives the search field the keyboard, or takes it away; SDL sends no text until text input is on (what {@code EditBox} does too). */
+    /** SDL sends no text until text input is on, so focus starts it and unfocus stops it, as {@code EditBox} does. */
     private void focusSearch(boolean focused) {
         CatalogueLayout now = layout;
         searchFocused = focused && now != null;
