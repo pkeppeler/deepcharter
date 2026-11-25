@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
+import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityClient;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
@@ -13,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -26,15 +28,23 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.DeathScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.client.sounds.WeighedSoundEvents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Util;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 
 /**
@@ -43,7 +53,8 @@ import net.minecraft.world.level.GameType;
  * three times on the last sound, each pass lower, each with the needle, then the laugh; nothing shows or answers before RETURN TO WORK,
  * which comes when the laugh ends; a container closed or a screen opened and shut over it while the person is dead neither brings back
  * vanilla's death screen nor cuts the laugh; Esc then shows DISCONNECT; a click on RETURN TO WORK brings the person back alive, and the
- * world's sounds with them; a second death is No. 2 and plays again; leaving the world mid-sequence lifts the silence.
+ * world's sounds with them; a second death is No. 2 and plays again; leaving the world mid-sequence lifts the silence. And what the crew
+ * see of a death: another player's body still, unflashed and then see-through.
  */
 public class ContinuityClientTest implements FabricClientGameTest {
     private static final Identifier ANVIL = SoundEvents.ANVIL_LAND.location();
@@ -99,6 +110,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
             });
+            context.runOnClient(ContinuityClientTest::checkTheStillBody);
             long beforeAnvil = context.computeOnClient(client -> Util.getMillis());
             anvil(singleplayer);
             ClientWait.until(
@@ -251,6 +263,46 @@ public class ContinuityClientTest implements FabricClientGameTest {
         require(
                 passes.get(2).millis() <= laughs.getFirst().millis(),
                 "the laugh comes after the last pass, heard " + sequence);
+    }
+
+    /**
+     * What the crew see of a death ({@code AvatarRendererMixin}): another player's render state while they die. Alive, they are drawn as
+     * vanilla draws them. In the first half of the dying time the body stands still and solid, with no fall and no red flash, still in
+     * its armour. In the second half it is see-through, and nothing it wears or holds, and no name, is drawn over it.
+     */
+    private static void checkTheStillBody(Minecraft client) {
+        ClientLevel level = Objects.requireNonNull(client.level, "<in the world>");
+        LocalPlayer me = Objects.requireNonNull(client.player, "<in the world>");
+        RemotePlayer crewmate = new RemotePlayer(level, new GameProfile(UUID.randomUUID(), "Crewmate"));
+        crewmate.setPos(me.getX() + 2, me.getY(), me.getZ());
+        crewmate.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
+        crewmate.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_PICKAXE));
+        crewmate.setCustomName(Component.literal("Crewmate"));
+        crewmate.setCustomNameVisible(true);
+
+        AvatarRenderState alive = state(client, crewmate);
+        require(!alive.isInvisible && !alive.chestEquipment.isEmpty(), "a living crewmate is drawn whole");
+        require(alive.nameTag != null, "a living crewmate's name is drawn");
+
+        crewmate.hurtTime = 5;
+        crewmate.deathTime = 5;
+        AvatarRenderState solid = state(client, crewmate);
+        require(solid.deathTime == 0f, "a dying body does not fall, its death time reads " + solid.deathTime);
+        require(!solid.hasRedOverlay, "a dying body does not flash red");
+        require(!solid.isInvisible, "a body in the first half of its dying is solid");
+        require(!solid.chestEquipment.isEmpty(), "and still in its armour");
+
+        crewmate.deathTime = 15;
+        AvatarRenderState fading = state(client, crewmate);
+        require(fading.deathTime == 0f && !fading.hasRedOverlay, "the fading body neither falls nor flashes");
+        require(fading.isInvisible && !fading.isInvisibleToPlayer, "the second half is drawn see-through");
+        require(
+                fading.chestEquipment.isEmpty() && fading.rightHandItemState.isEmpty() && fading.nameTag == null,
+                "nothing it wears or holds, and no name, is drawn over the fading body");
+    }
+
+    private static AvatarRenderState state(Minecraft client, RemotePlayer player) {
+        return (AvatarRenderState) client.getEntityRenderDispatcher().extractEntity(player, 0f);
     }
 
     /** A sound of the game's own, not the sequence's: one the silence refuses while it holds. */
