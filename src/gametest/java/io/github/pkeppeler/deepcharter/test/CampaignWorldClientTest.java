@@ -59,7 +59,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Client GameTest for the cutover of #803 (slice 8 of #214): in a default-preset world the overworld is the campaign world. It checks the
  * level (from -2032, 2352 tall, the {@code deepcharter:bands} biome source), the colony (at the origin, its pad at y 63, players
- * respawn in the Continuity Office), the Conduit (from -512 up to its stack), the world-format stamp (2), the sites of the chunks the
+ * respawn in the Continuity Office), the Conduit (from the deepest layer's floor up to its stack), the world-format stamp ({@link WorldFormat#CURRENT}), the sites of the chunks the
  * build loaded, that the presets give the same world (ADR 0036), that a saved world reopens with no experimental-settings screen, and
  * that a dedicated server runs it. The one-argument {@code TestLayers.dimension} has no server and is gone; its server form returns the
  * overworld here, the branch no server GameTest reaches (their overworld is flat).
@@ -71,9 +71,9 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
     private static final int OVERWORLD_MIN_Y = -2032; // fixed-pos: the shipped overworld's floor, which this test pins
     private static final int OVERWORLD_HEIGHT = 2352;
     private static final int PAD_GROUND_Y = 63; // fixed-pos: ADR 0036's pad ground, which this test pins
-    private static final int STAMP = 2;
+    /** The Conduit runs through every layer (ADR 0016): its floor is the deepest layer's. */
     private static final int DEEPEST_CONDUIT_Y =
-            -512; // fixed-pos: the Conduit's floor in the issue, which this test pins
+            CampaignBands.layer(CampaignBands.lastLayer()).minY();
     /** The columns read for the presets' fingerprint: on the pad, on its slope and far out. */
     private static final int[][] COLUMNS = {{0, 0}, {40, -25}, {-90, 60}, {300, 300}, {-700, 450}, {1200, -900}};
     /** Spacing cells either side of the origin whose sites touch the pad's chunks. */
@@ -221,7 +221,7 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
         return out.toString();
     }
 
-    /** From -512 up to the stack, and not below or above it; the stamp is 2. */
+    /** From the deepest layer's floor up to the stack, and not below or above it; the stamp is the current format. */
     private static String theConduit(MinecraftServer server) {
         StringBuilder out = new StringBuilder();
         ColonySite.Placed colony = Colony.placed(server).orElse(null);
@@ -258,11 +258,11 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
                     .append(top)
                     .append(" are missing; ");
         }
-        if (!WorldFormat.get(server).format().equals(OptionalInt.of(STAMP))) {
+        if (!WorldFormat.get(server).format().equals(OptionalInt.of(WorldFormat.CURRENT))) {
             out.append("the world-format stamp is ")
                     .append(WorldFormat.get(server).format())
                     .append(", not ")
-                    .append(STAMP)
+                    .append(WorldFormat.CURRENT)
                     .append("; ");
         }
         return out.toString();
@@ -378,12 +378,41 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
         Vec3 away = new Vec3(office.getX() + 150.5, 150, office.getZ() + 150.5);
         server.runOnServer(s -> {
             ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
-            player.setGameMode(GameType.SURVIVAL);
+            // Creative while the chunk loads: a survival player falls the 150 blocks to the ground and dies
+            player.setGameMode(GameType.CREATIVE);
             player.teleportTo(s.overworld(), away.x, away.y, away.z, Set.of(), 0f, 0f, true);
+        });
+        // The arrival chunk is loaded before it ticks entities, and a pod added to it then is not in the level: the
+        // wreck would have no crew to kill.
+        BlockPos awayPos = BlockPos.containing(away);
+        ClientWait.until(
+                context,
+                "the arrival chunk entity-ticking on the server",
+                () -> server.computeOnServer(s -> s.overworld().isPositionEntityTicking(awayPos)),
+                () -> server.computeOnServer(s -> {
+                    ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+                    return "the chunk at " + awayPos.toShortString() + " is entity-ticking "
+                            + s.overworld().isPositionEntityTicking(awayPos) + ", loaded "
+                            + s.overworld().getChunkSource().hasChunk(awayPos.getX() >> 4, awayPos.getZ() >> 4)
+                            + "; the player is at " + player.blockPosition().toShortString() + " in "
+                            + player.gameMode();
+                }));
+        server.runOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            player.setGameMode(GameType.SURVIVAL);
             PodEntity pod = TestEntities.create(PodRegistry.POD, s.overworld());
             pod.setPos(away);
-            s.overworld().addFreshEntity(pod);
+            boolean added = s.overworld().addFreshEntity(pod);
             player.startRiding(pod, true, false);
+            boolean held = s.overworld().getEntity(pod.getUUID()) == pod;
+            if (!added || !held) {
+                throw new AssertionError("the pod should be in the level before the wreck: addFreshEntity returned "
+                        + added + ", the level holds it " + held);
+            }
+            if (player.getVehicle() != pod) {
+                throw new AssertionError(
+                        "the pilot should ride the pod before the wreck, rides " + player.getVehicle());
+            }
             pod.damageHull(pod.maxHull());
             if (!player.isDeadOrDying()) {
                 throw new AssertionError("a wreck should have killed the pilot");

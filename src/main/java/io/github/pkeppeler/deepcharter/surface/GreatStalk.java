@@ -9,6 +9,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
 
@@ -30,14 +31,17 @@ public final class GreatStalk {
     /**
      * Grows a great stalk with {@code origin} as the corner of its 3x3 footprint, unless the ground or the air does not allow one: every
      * trunk cell must be air, and those at the lowest level over solid ground, or nothing grows. A cap or a root with no room is left out,
-     * with whatever then hangs from nothing. Returns whether it grew.
+     * with whatever then hangs from nothing. With {@code inChunk} a cell outside the chunk of {@code origin} has no room either, so the
+     * stalk never reaches into a neighbour that may be decorated before or after it (#972). Returns whether it grew.
      */
-    public static boolean place(WorldGenLevel level, RandomSource random, BlockPos origin) {
+    public static boolean place(WorldGenLevel level, RandomSource random, BlockPos origin, boolean inChunk) {
         GreatStalkLayout layout = GreatStalkBraid.layout(random::nextInt);
         Set<Cell> blocked = new HashSet<>();
+        ChunkPos home = ChunkPos.containing(origin);
         for (Cell cell : layout.parts().keySet()) {
             BlockPos pos = origin.offset(cell.x(), cell.y(), cell.z());
-            boolean room = level.getBlockState(pos).isAir();
+            boolean room = (!inChunk || ChunkPos.containing(pos).equals(home))
+                    && level.getBlockState(pos).isAir();
             boolean grounded =
                     cell.y() > 0 || level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP);
             if (!room || !grounded) {
