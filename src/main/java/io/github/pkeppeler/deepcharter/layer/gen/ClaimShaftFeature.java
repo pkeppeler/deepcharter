@@ -124,6 +124,7 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
      * Every vanilla block a shaft places, none of which its config names, so the obtainable-items gate (ADR 0093)
      * reads them here.
      */
+    // test-seam: ADR 0093's gate (ObtainableItemsTest) reads what a shaft places from here, its config names none
     public static final List<Block> VANILLA_PLACED = List.of(RUNG, CANDLE_STUB);
 
     public static void register() {
