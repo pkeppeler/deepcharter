@@ -47,6 +47,11 @@ public class PodBraceScenario extends EvidenceScenario {
     private static final float HULL = 8f;
     private static final float CRUST = 24f;
     private static final int ORE = 4;
+    /**
+     * Air under the crust: one row, so the pod crosses on a 2-block drop, under its hard-landing speed. The 8-row pocket of the
+     * crossing tests is a 9-block drop that takes about 27 hull, and the braced pod crosses with 8 (#1374).
+     */
+    private static final int POCKET_ROWS = 1;
 
     @Override
     protected String name() {
@@ -182,7 +187,7 @@ public class PodBraceScenario extends EvidenceScenario {
                 Z - RADIUS,
                 Z + RADIUS,
                 LayerBlocks.BREACH_CRUST);
-        RoomCarver.carvePocketBelow(level, 1, X - RADIUS, X + RADIUS, Z - RADIUS, Z + RADIUS);
+        RoomCarver.carvePocketBelow(level, 1, X - RADIUS, X + RADIUS, Z - RADIUS, Z + RADIUS, POCKET_ROWS);
         RoomCarver.carve(level, X - RADIUS, X + RADIUS, CRUST_TOP_Y, FLOOR_Y - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
         RoomCarver.carve(
                 level,
