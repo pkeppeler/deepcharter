@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
-import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
@@ -56,7 +55,6 @@ public class DeathMockupScenario extends EvidenceScenario {
                 player.teleportTo(one, X - 6 + 0.5, FLOOR_Y, Z + 0.5, Set.of(), EAST, LOOK_PITCH, true);
             });
             awaitWorld(context);
-            ClientWait.until(context, "the player in layer 1", client -> TestLayers.clientIsIn(client, 1));
             context.waitTicks(60);
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
