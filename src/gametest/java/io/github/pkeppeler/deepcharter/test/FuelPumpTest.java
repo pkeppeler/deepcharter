@@ -61,9 +61,9 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses, biofuel refuels
- * (its crops are not in the campaign world, so its recipe is not loaded, ADR 0093 and #1288), and a reserve tank adds 25 litres of
- * capacity and clears Stranded.
+ * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses,
+ * biofuel refuels (its crops are not in the campaign world, so its recipe is not loaded, ADR 0093 and #1288), and a
+ * reserve tank adds 25 litres of capacity and clears Stranded.
  */
 public class FuelPumpTest {
     private static final float EPSILON = 0.001f;
@@ -404,8 +404,8 @@ public class FuelPumpTest {
     }
 
     /**
-     * The crops biofuel takes never grow in the campaign world, so its recipe is not loaded (ADR 0093) and four of them craft
-     * nothing. #1288 gives it an ingredient the world yields and makes this a crafting test again.
+     * The crops biofuel takes never grow in the campaign world, so its recipe is not loaded (ADR 0093) and four of them
+     * craft nothing. #1288 gives it an ingredient the world yields and makes this a crafting test again.
      */
     @GameTest
     public void biofuelIsNotCraftedFromCropsTheWorldLacksAndRefuels(GameTestHelper helper) {

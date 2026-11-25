@@ -21,11 +21,11 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.display.RecipeDisplay;
 
 /**
- * The items a player can obtain in the campaign world (ADR 0093). Every item outside the {@code minecraft} namespace is obtainable;
- * a vanilla item is obtainable only when the {@code deepcharter:obtainable} item tag lists it. A recipe that needs or makes an item
- * that is not obtainable is left out of the server's recipes ({@code handbook/mixin/RecipeManagerMixin}), so it cannot be crafted,
- * and the parts catalogue and the creative tabs show only obtainable items. {@code ObtainableItemsTest} derives the list from the
- * world and fails when the tag drifts from it.
+ * The items a player can obtain in the campaign world (ADR 0093). Every item outside the {@code minecraft} namespace is
+ * obtainable; a vanilla item is obtainable only when the {@code deepcharter:obtainable} item tag lists it. A recipe
+ * that needs or makes an item that is not obtainable is left out of the server's recipes ({@code
+ * handbook/mixin/RecipeManagerMixin}), so it cannot be crafted, and the parts catalogue and the creative tabs show only
+ * obtainable items. {@code ObtainableItemsTest} derives the list from the world and fails when the tag drifts from it.
  */
 public final class ObtainableItems {
     /** The vanilla items the campaign world yields. The tag is synced, so the client reads it too. */
@@ -45,8 +45,8 @@ public final class ObtainableItems {
     }
 
     /**
-     * {@code recipes} without the ones that need or make an item that is not obtainable. Call once the reloaded tags are bound to the
-     * items, which is after the recipes load.
+     * {@code recipes} without the ones that need or make an item that is not obtainable. Call once the reloaded tags
+     * are bound to the items, which is after the recipes load.
      */
     public static HolderLookup<Recipe<?>> loadable(HolderLookup<Recipe<?>> recipes) {
         List<Holder<Item>> obtainable = new ArrayList<>();
@@ -78,8 +78,9 @@ public final class ObtainableItems {
     }
 
     /**
-     * Whether every ingredient of {@code recipe} takes an obtainable item (a tag needs one member, not all) and every item it makes is
-     * obtainable. A special recipe (map cloning, dyeing) names neither and is kept: what it takes is not obtainable either.
+     * Whether every ingredient of {@code recipe} takes an obtainable item (a tag needs one member, not all) and every
+     * item it makes is obtainable. A special recipe (map cloning, dyeing) names neither and is kept: what it takes is
+     * not obtainable either.
      */
     private static boolean keeps(Recipe<?> recipe, List<Holder<Item>> obtainable) {
         for (Ingredient ingredient : recipe.placementInfo().ingredients()) {

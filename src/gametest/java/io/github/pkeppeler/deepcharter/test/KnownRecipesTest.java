@@ -40,10 +40,11 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.gamerules.GameRules;
 
 /**
- * Server GameTests for #845: a charter knows the recipes its quest step asks for and the ones its members' items touch, the server
- * sends each player only their charter's, a player on no charter has their own, and they carry into a charter and back out of it.
- * Recipes used: the bucket and the chest, which share no item (the world has no diamond, so the diamond pickaxe is not loaded, ADR 0093); the redstone and copper ingot recipes, which the scanner
- * step of chapter 1 asks for.
+ * Server GameTests for #845: a charter knows the recipes its quest step asks for and the ones its members' items touch,
+ * the server sends each player only their charter's, a player on no charter has their own, and they carry into a
+ * charter and back out of it. Recipes used: the bucket and the chest, which share no item (the world has no diamond, so
+ * the diamond pickaxe is not loaded, ADR 0093); the redstone and copper ingot recipes, which the scanner step of
+ * chapter 1 asks for.
  */
 public class KnownRecipesTest {
     private static final Identifier BUCKET = Identifier.withDefaultNamespace("bucket");

@@ -166,8 +166,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     }
 
     /**
-     * A tag ingredient lists only the items the campaign world yields (#1263, ADR 0093): "any planks" shows oak, which salvage crates
-     * drop, and not jungle or pale oak, which the world has none of. Resolved with the world's tags, as the real catalogue is.
+     * A tag ingredient lists only the items the campaign world yields (#1263, ADR 0093): "any planks" shows oak, which
+     * salvage crates drop, and not jungle or pale oak, which the world has none of. Resolved with the world's tags, as
+     * the real catalogue is.
      */
     private static void aTagIngredientListsOnlyObtainableItems(Minecraft client) {
         ClientLevel level = Objects.requireNonNull(client.level, "a world is loaded");
@@ -194,7 +195,10 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 "the catalogue lists oak planks and not jungle planks, got " + listed);
     }
 
-    /** The creative tabs, built as the creative screen builds them, hold no vanilla item the world lacks, and keep one it yields. */
+    /**
+     * The creative tabs, built as the creative screen builds them, hold no vanilla item the world lacks, and keep one
+     * it yields.
+     */
     private static void theCreativeTabsShowOnlyObtainableItems(Minecraft client) {
         ClientLevel level = Objects.requireNonNull(client.level, "a world is loaded");
         CreativeModeTab.ItemDisplayParameters parameters =

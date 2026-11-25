@@ -99,17 +99,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Server GameTests for #1263 (ADR 0093): a recipe that needs or makes an item the campaign world has none of is not loaded, so it
- * cannot be crafted, while a tag ingredient with one listed member keeps its recipe; and the list in the
+ * Server GameTests for #1263 (ADR 0093): a recipe that needs or makes an item the campaign world has none of is not
+ * loaded, so it cannot be crafted, while a tag ingredient with one listed member keeps its recipe; and the list in the
  * {@code deepcharter:obtainable} item tag is what the world yields, derived here from the world itself.
  *
- * <p>The derivation starts from every item of ours, the blocks the world is made of (the campaign noise settings and the features of
- * our biomes, the colony's structure files, the layer structures as they generate, the colony's fill), the creatures our biomes and our code spawn, and the loot tables we ship,
- * and closes over: breaking a block (its loot table, with a tool that can harvest it), crafting (a recipe whose every ingredient has an
- * obtainable item and whose station is obtainable makes its results obtainable), placing a block item and breaking it again, a tool's
- * block transform (stripping a log), copper weathering, a bucket of a fluid the world holds, and the composter. It fails, naming the
- * source to teach it, when the world holds something it does not walk: a vanilla structure in one of our biomes, or a loot table of
- * ours it cannot roll.
+ * <p>The derivation starts from every item of ours, the blocks the world is made of (the campaign noise settings and
+ * the features of our biomes, the colony's structure files, the layer structures as they generate, the colony's fill),
+ * the creatures our biomes and our code spawn, and the loot tables we ship, and closes over: breaking a block (its loot
+ * table, with a tool that can harvest it), crafting (a recipe whose every ingredient has an obtainable item and whose
+ * station is obtainable makes its results obtainable), placing a block item and breaking it again, a tool's block
+ * transform (stripping a log), copper weathering, a bucket of a fluid the world holds, and the composter. It fails,
+ * naming the source to teach it, when the world holds something it does not walk: a vanilla structure in one of our
+ * biomes, or a loot table of ours it cannot roll.
  */
 public class ObtainableItemsTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(ObtainableItemsTest.class);
@@ -118,11 +119,14 @@ public class ObtainableItemsTest {
     /** Seeds 1 to this: seed 0 means "no seed" to a loot context. A drop of under about 5 % a roll may go unseen. */
     private static final int SEEDS = 64;
     /**
-     * Seeds for a tool after the first that harvests a block: another tool changes a drop only where the table matches it (shears
-     * take a cobweb whole), which is no chance roll.
+     * Seeds for a tool after the first that harvests a block: another tool changes a drop only where the table matches
+     * it (shears take a cobweb whole), which is no chance roll.
      */
     private static final int OTHER_TOOL_SEEDS = 8;
-    /** A block with at most this many states is broken in each of them (a bed drops from its head half only); one with more, in its default. */
+    /**
+     * A block with at most this many states is broken in each of them (a bed drops from its head half only); one with
+     * more, in its default.
+     */
     private static final int ALL_STATES_UP_TO = 32;
 
     private static final Identifier LIST_FILE =
@@ -146,7 +150,10 @@ public class ObtainableItemsTest {
                 .isPresent();
     }
 
-    /** Puts {@code stacks} in the 2 x 2 grid of the player's inventory, row by row, and reads what the result slot offers. */
+    /**
+     * Puts {@code stacks} in the 2 x 2 grid of the player's inventory, row by row, and reads what the result slot
+     * offers.
+     */
     private static ItemStack craftInHand(ServerPlayer player, List<ItemStack> stacks) {
         InventoryMenu menu = player.inventoryMenu;
         for (int index = 0; index < stacks.size(); index++) {
@@ -209,8 +216,8 @@ public class ObtainableItemsTest {
     }
 
     /**
-     * Recipes of ours the campaign world cannot feed: biofuel takes crops that never grow there. #1288 gives it an ingredient the
-     * world yields, or removes it, and deletes this entry.
+     * Recipes of ours the campaign world cannot feed: biofuel takes crops that never grow there. #1288 gives it an
+     * ingredient the world yields, or removes it, and deletes this entry.
      */
     private static final Set<String> UNFED = Set.of("deepcharter:biofuel");
 
@@ -240,14 +247,15 @@ public class ObtainableItemsTest {
     // ---------------------------------------------------------------- the drift gate
 
     /**
-     * A layer structure site and the band of the level it stands in. The Prospector's wreck site holds its Note (N10), which an
-     * ordinary wreck site does not, so a Note there is no sign it is unfinished.
+     * A layer structure site and the band of the level it stands in. The Prospector's wreck site holds its Note (N10),
+     * which an ordinary wreck site does not, so a Note there is no sign it is unfinished.
      */
     private record Site(ServerLevel level, LayerChain.Band band, StructureSite site, boolean prospector) {}
 
     /**
-     * The gate: the list is what the world yields, both ways. The layer structures are read as they generate, so the chunks of one
-     * site of each kind (and the Prospector's) are made full first and polled under a wall-clock deadline until each stands.
+     * The gate: the list is what the world yields, both ways. The layer structures are read as they generate, so the
+     * chunks of one site of each kind (and the Prospector's) are made full first and polled under a wall-clock deadline
+     * until each stands.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theListIsWhatTheCampaignWorldYields(GameTestHelper helper) {
@@ -356,9 +364,10 @@ public class ObtainableItemsTest {
     }
 
     /**
-     * The blocks the campaign world's data names: its noise settings and the features and carvers of every biome of ours, encoded as
-     * data and read for every string that names a block. The creatures our biomes spawn go into {@code creatures}. Fails when a vanilla
-     * structure may generate in one of our biomes, since its pieces are not walked here.
+     * The blocks the campaign world's data names: its noise settings and the features and carvers of every biome of
+     * ours, encoded as data and read for every string that names a block. The creatures our biomes spawn go into {@code
+     * creatures}. Fails when a vanilla structure may generate in one of our biomes, since its pieces are not walked
+     * here.
      */
     private static Set<Block> worldgenBlocks(
             GameTestHelper helper, MinecraftServer server, Set<EntityType<?>> creatures) {
@@ -517,7 +526,10 @@ public class ObtainableItemsTest {
             return obtainable;
         }
 
-        /** Every loot table of ours that no block names: the wreck's locker. A table of another kind fails, to be taught here. */
+        /**
+         * Every loot table of ours that no block names: the wreck's locker. A table of another kind fails, to be taught
+         * here.
+         */
         private void rollOurTables() {
             Set<ResourceKey<LootTable>> ofBlocks = new HashSet<>();
             BuiltInRegistries.BLOCK.forEach(block -> block.getLootTable().ifPresent(ofBlocks::add));
@@ -577,7 +589,9 @@ public class ObtainableItemsTest {
             }
         }
 
-        /** The states a block can be in here: never waterlogged, since water comes only from a fluid the world holds. */
+        /**
+         * The states a block can be in here: never waterlogged, since water comes only from a fluid the world holds.
+         */
         private static List<BlockState> statesOf(Block block) {
             List<BlockState> states = block.getStateDefinition().getPossibleStates().stream()
                     .filter(state -> !state.hasProperty(BlockStateProperties.WATERLOGGED)
@@ -599,7 +613,10 @@ public class ObtainableItemsTest {
             return tools;
         }
 
-        /** Breaking each state of the block with each tool that may harvest it, which survival allows (a hardness of -1 does not). */
+        /**
+         * Breaking each state of the block with each tool that may harvest it, which survival allows (a hardness of -1
+         * does not).
+         */
         private void breakBlock(Block block, List<ItemStack> tools) {
             Optional<ResourceKey<LootTable>> key = block.getLootTable();
             if (key.isEmpty()) {
@@ -646,8 +663,9 @@ public class ObtainableItemsTest {
         }
 
         /**
-         * A tool that transforms blocks (an axe strips a log), used on the top of every state of every block: the block it leaves is
-         * then broken like any other, and what the transform drops is picked up. One tool of each transform is enough.
+         * A tool that transforms blocks (an axe strips a log), used on the top of every state of every block: the block
+         * it leaves is then broken like any other, and what the transform drops is picked up. One tool of each
+         * transform is enough.
          */
         private void transforms() {
             Map<Holder<BlockTransformer>, ItemStack> byTransform = new java.util.LinkedHashMap<>();
@@ -687,9 +705,9 @@ public class ObtainableItemsTest {
         }
 
         /**
-         * Every recipe, the ones this build leaves out included: one whose every ingredient has an obtainable item, made at an
-         * obtainable station (a crafting recipe that fits the inventory's 2 x 2 grid needs none), makes its results obtainable.
-         * A special recipe (map cloning, dyeing) has no ingredient list to read and is skipped.
+         * Every recipe, the ones this build leaves out included: one whose every ingredient has an obtainable item,
+         * made at an obtainable station (a crafting recipe that fits the inventory's 2 x 2 grid needs none), makes its
+         * results obtainable. A special recipe (map cloning, dyeing) has no ingredient list to read and is skipped.
          */
         private void craft() {
             server.reloadableRegistries()

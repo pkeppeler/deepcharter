@@ -13,10 +13,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * Evidence scenario "m3-catalogue-planks" for #1263: the player holds the oak planks a salvage crate drops, which teaches every
- * recipe that takes any planks; the parts catalogue shows the chest's recipe (still {@code chest-recipe}), then is searched for
- * "planks" (still {@code planks-search}). Before #1263 the search listed every wood in the game; after it, only the woods the
- * campaign world yields.
+ * Evidence scenario "m3-catalogue-planks" for #1263: the player holds the oak planks a salvage crate drops, which
+ * teaches every recipe that takes any planks; the parts catalogue shows the chest's recipe (still {@code
+ * chest-recipe}), then is searched for "planks" (still {@code planks-search}). Before #1263 the search listed every
+ * wood in the game; after it, only the woods the campaign world yields.
  */
 public class CataloguePlanksScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
