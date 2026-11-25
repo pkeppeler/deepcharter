@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTether;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.ForceSendProbe;
 import io.github.pkeppeler.deepcharter.test.support.ForceSends;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -19,7 +20,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -50,6 +53,10 @@ import org.slf4j.LoggerFactory;
  * near. So is a lagging server, which makes the line on plain stone too (#1343): the render distance is small, so the
  * server generates nothing far off, and the player is counted only once the client holds every chunk in view and the
  * server is calm. Each step records the server's slowest tick, so a red run tells lag from a block disagreement.
+ *
+ * <p>A landing can still make the line over any floor, by a race in vanilla ({@link #landingRace}). So {@code
+ * ForceSendProbe} records each line with the move packets before it and the blocks round the player on the server and
+ * the client, and a line passes only when it is that race and both sides hold the same blocks.
  *
  * <p>The control: the server removes the stone patch without telling the client, and the player drops onto it again.
  * The line must come, so a zero above is not the appender or the line's wording failing.
@@ -98,9 +105,14 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
     private static final AtomicLong LONGEST_GAP = new AtomicLong();
     private static final AtomicLong LAST_TICK_END = new AtomicLong();
     private static volatile boolean watching;
+    /** Each force-send line, as the server and then the client saw it, while {@link #watching}. */
+    private static final ConcurrentLinkedQueue<Seen> FORCE_SENDS = new ConcurrentLinkedQueue<>();
+
+    private static volatile int switchTick;
 
     static {
         ServerTickEvents.END_SERVER_TICK.register(OnFootForceSendClientTest::watchTick);
+        ClientTickEvents.END_CLIENT_TICK.register(OnFootForceSendClientTest::probeClient);
     }
 
     /** Vanilla sends nothing in the first 200 ticks of a connection. */
@@ -128,6 +140,8 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                     count(context, singleplayer.getServer());
                 } finally {
                     watching = false;
+                    ForceSendProbe.watch(false);
+                    FORCE_SENDS.clear();
                 }
             });
         }
@@ -165,9 +179,13 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             context.waitTicks(LINE_COOLDOWN_TICKS); // tick-wait: a setup line's cooldown would hide a measured line
             awaitCalm(context, server);
         }
-        server.runOnServer(s -> player(s).setGameMode(GameType.SURVIVAL));
+        switchTick = server.computeOnServer(s -> {
+            player(s).setGameMode(GameType.SURVIVAL);
+            return s.getTickCount();
+        });
         int before = ForceSends.total();
         startWatching();
+        ForceSendProbe.watch(true);
         LOGGER.info("Counting force-send lines from here; {} in the setup", setup);
         Steps steps = new Steps(before);
         ClientWait.until(
@@ -235,9 +253,12 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         steps.end("settle");
         int total = ForceSends.total() - before;
         LOGGER.info("Force-send lines and slowest server tick per step: {}", steps);
+        List<Seen> seen = List.copyOf(FORCE_SENDS);
+        long disagreements = seen.stream().filter(line -> !line.landingRace()).count();
         require(
-                total == 0,
-                total + " force-send lines (" + onTheBlocks + " before the tether; " + steps
+                total == seen.size() && disagreements == 0,
+                total + " force-send lines, " + seen.size() + " seen by the probe, " + disagreements
+                        + " not vanilla's landing race (" + onTheBlocks + " before the tether; " + steps + "; " + seen
                         + ") for a real client on foot in a carved bore, and " + setup + " in the setup");
 
         // No line since the count began, and a setup line was waited out before it, so vanilla's cooldown is clear.
@@ -248,6 +269,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_INVISIBLE));
         int beforeControl = ForceSends.total();
+        FORCE_SENDS.clear();
         dropOnto(context, server, floor, stone);
         int setupLines = setup;
         ClientWait.until(
@@ -255,6 +277,11 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                 "a force-send line for a client landing on a block the server removed unseen",
                 () -> ForceSends.total() > beforeControl,
                 () -> "no line; " + setupLines + " in the setup");
+        ClientWait.until(
+                context,
+                "the probe naming the removed block as a disagreement",
+                () -> FORCE_SENDS.stream().anyMatch(line -> !line.landingRace()),
+                () -> "seen: " + FORCE_SENDS);
     }
 
     /** Clips the player to the pod from the bore's mouth, at full health, so they drop down the bore. */
@@ -353,6 +380,58 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         SLOWEST_TICK.set(0);
         LONGEST_GAP.set(0);
         watching = true;
+    }
+
+    /**
+     * A force-send line as the probe saw it.
+     *
+     * @param landingRace the client and server hold the same blocks round the player, and the server took the landing
+     *     packet with the one before it and no tick between: see {@link #landingRace(ForceSendProbe.Shot)}
+     */
+    private record Seen(String text, boolean landingRace) {
+        @Override
+        public String toString() {
+            return (landingRace ? "landing race: " : "DISAGREEMENT: ") + text;
+        }
+    }
+
+    /**
+     * Whether the line came from vanilla's landing race, not a block. Vanilla's check reads the collision of the
+     * server's last move of the player. Between two move packets the server simulates the player for a tick, and on a
+     * landing that tick's move hits the floor. When the last in-air packet and the landing packet reach the server in
+     * one tick (the integrated server's connection races its tick), that move is missing: the server's last move
+     * was in the air, and the line comes over any floor.
+     */
+    private static boolean landingRace(ForceSendProbe.Shot shot) {
+        List<ForceSendProbe.Move> moves = shot.moves();
+        if (moves.size() < 2) {
+            return false;
+        }
+        ForceSendProbe.Move air = moves.get(moves.size() - 2);
+        ForceSendProbe.Move landing = moves.getLast();
+        return air.tick() == landing.tick() && !air.onGround() && landing.onGround();
+    }
+
+    /** Adds the client's blocks, read this tick, to each force-send the server recorded. */
+    private static void probeClient(Minecraft client) {
+        ForceSendProbe.Shot shot;
+        while ((shot = ForceSendProbe.poll()) != null) {
+            List<String> clientBlocks = new ArrayList<>();
+            if (client.level != null) {
+                for (BlockPos pos : shot.positions()) {
+                    clientBlocks.add(ForceSendProbe.describe(client.level, pos));
+                }
+            }
+            String text = "force-send at tick " + shot.tick() + " (" + (shot.tick() - switchTick)
+                    + " after the switch to survival): moves " + shot.moves() + ", box " + shot.box() + "; server "
+                    + shot.serverBlocks() + "; client " + clientBlocks + ", client player at "
+                    + (client.player == null
+                            ? "none"
+                            : client.player.position() + " onGround " + client.player.onGround());
+            Seen seen = new Seen(text, landingRace(shot) && shot.serverBlocks().equals(clientBlocks));
+            LOGGER.info("{}", seen);
+            FORCE_SENDS.add(seen);
+        }
     }
 
     /** Records each server tick's time and the wall-clock gap since the last one, while {@link #watching}. */

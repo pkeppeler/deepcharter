@@ -8,6 +8,7 @@
     "ChunkMapAccess",
     "ChunkMapSaveMixin",
     "ChunkMapUnloadMixin",
+    "ForceSendProbeMixin",
     "GameTestBatchFactoryMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
