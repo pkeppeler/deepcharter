@@ -4,12 +4,14 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 import io.github.pkeppeler.deepcharter.sound.phonograph.Recording;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -217,8 +219,19 @@ public class LootTableDropsTest {
         helper.succeed();
     }
 
-    /** A rare find is measured over many more seeds than the common drops. */
-    private static final int RARE_SEEDS = 4000;
+    /** The two recordings that are the colony's alone (LORE guardrail 6: a child's rhyme is not for the deep): in no loot table. */
+    private static final Set<Recording> COLONY_ONLY = Set.of(Recording.EDISON_DOLL, Recording.VOLTA_NURSERY_RHYME);
+
+    /** The recordings a wreck locker or a salvage crate can hold: every one but the colony's own. */
+    private static final Set<Recording> FOUND = Arrays.stream(Recording.values())
+            .filter(recording -> !COLONY_ONLY.contains(recording))
+            .collect(Collectors.toUnmodifiableSet());
+
+    /**
+     * A rare find is measured over many more seeds than the common drops: enough that each of the recordings (eight since #946) comes up
+     * about 60 times in the crates, whose cylinder is the rarer.
+     */
+    private static final int RARE_SEEDS = 12000;
 
     /** The salvage crate's cylinder: a few in a hundred crates, a single one, and any of the recordings. */
     @GameTest(maxTicks = 400)
@@ -290,15 +303,20 @@ public class LootTableDropsTest {
                     "%s drops a cylinder in %s of %s rolls (%s), expected between %s and %s",
                     table, cylinders, rolls, share, least, most);
         }
-        if (!found.keySet().equals(Set.of(Recording.values()))) {
-            throw helper.assertionException("%s drops the recordings %s, expected every one of them", table, found);
+        if (!found.keySet().equals(FOUND)) {
+            throw helper.assertionException(
+                    "%s drops the recordings %s, expected every one but the colony's own: %s", table, found, FOUND);
         }
-        // Each recording is as likely as the next: a third of the cylinders, give or take, so a doubled weight fails.
+        // Each recording is as likely as the next: one in however many there are, give or take 40 per cent. A doubled
+        // weight is 78 per
+        // cent over and a halved one 47 per cent under, so either fails, and so does a table that drops only the first
+        // few.
+        double each = 1.0 / FOUND.size();
         for (Map.Entry<Recording, Integer> entry : found.entrySet()) {
             double of = (double) entry.getValue() / cylinders;
-            if (of < 0.25 || of > 0.42) {
+            if (of < each * 0.6 || of > each * 1.4) {
                 throw helper.assertionException(
-                        "%s drops %s in %s of its cylinders, expected a third", table, entry.getKey(), of);
+                        "%s drops %s in %s of its cylinders, expected about %s", table, entry.getKey(), of, each);
             }
         }
     }
