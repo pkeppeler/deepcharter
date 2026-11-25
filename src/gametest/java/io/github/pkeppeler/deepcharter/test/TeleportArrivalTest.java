@@ -60,8 +60,8 @@ public class TeleportArrivalTest {
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "teleport_arrival");
 
     /**
-     * Ticks from the teleport to the client's answer, which moves the pilot's own chunk tickets to the arrival: a 250 ms
-     * round trip. Without the arrival ticket, any answer more than 1 tick late let the chunk drop (#1353).
+     * Ticks from the teleport to the client's answer, which moves the pilot's own chunk tickets to the arrival: a
+     * 250 ms round trip. Without the arrival ticket, any answer more than 1 tick late let the chunk drop (#1353).
      */
     private static final int ANSWER_DELAY = 5;
 
