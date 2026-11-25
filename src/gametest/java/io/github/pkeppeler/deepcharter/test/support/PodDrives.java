@@ -4,7 +4,6 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
-import io.github.pkeppeler.deepcharter.pod.PodGlideTuning;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
@@ -416,13 +415,13 @@ public final class PodDrives {
 
     /**
      * A drive that stops during a stall (the keys released, or the ground reached): the drawn pods never go past where the server put them
-     * by more than a coast ({@link #coastReach} of speed; none for a landing, since a coast stops short of the ground), each frame step
+     * by more than a coast ({@link DriveJudge#coastReach} of speed; none for a landing, since a coast stops short of the ground), each frame step
      * stays under the lunge bound, the way back is under {@link #MAX_BOUNCE_SHARE} of a frame's speed, and they end on the server's.
      */
     private static void expectStopped(
             Drive drive, Stall stall, Rig rig, ClientGameTestContext context, Subject ownPod, Subject watched) {
         boolean landing = stall.dropBlocks() > 0;
-        double coast = landing ? 0 : coastReach() * drive.speed();
+        double coast = landing ? 0 : DriveJudge.coastReach() * drive.speed();
         double bounceBound = MAX_BOUNCE_SHARE * drive.speed() / FRAMES;
         double stepBound = STEP_MARGIN * drive.speed() / FRAMES;
         for (Subject subject : List.of(ownPod, watched)) {
@@ -459,12 +458,6 @@ public final class PodDrives {
                     what + ": the drawn pod stepped back " + -backward + " blocks in one frame");
         }
         expectSettled(drive.name(), rig, context);
-    }
-
-    /** Ticks of its speed a whole coast draws: the full-speed ticks and the tail's share of the last. */
-    public static double coastReach() {
-        PodGlideTuning tuning = PodGlideTuning.DEFAULT;
-        return tuning.coastTicks() - 1 + tuning.coastTailShare();
     }
 
     public static Vec3 onClient(ClientGameTestContext context, int podId) {
@@ -521,7 +514,7 @@ public final class PodDrives {
         double backwardTolerance =
                 drive.late() == null ? BACKWARD_TOLERANCE : MAX_BOUNCE_SHARE * drive.speed() / FRAMES;
         double speed = drive.speed();
-        double reach = coastReach() * speed - DriveJudge.POSITION_QUANTUM;
+        double reach = DriveJudge.coastReach() * speed - DriveJudge.POSITION_QUANTUM;
         boolean climbing = drive.climbing();
         double longest = 0;
         double shortestTick = Double.MAX_VALUE;

@@ -80,6 +80,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - A control assertion must be shown to fail without the feature in every scenario it runs; a case that passes by closeness to a dark control is a log row, not an assertion.
 - A cadence or cap test drives the production tick path (the look, the roll, the count, the cap); a test that samples a helper the tick calls, or asserts arithmetic on tuning constants, is a log of the numbers and not a test of the cadence (`DrifterSpawnTest.theTickPlacesDriftersByPodsUpToTheZoneCap`).
 - Prove a regression test with a mutation check: break the code under test in your worktree, see it go red, revert (#627's first case was vacuous).
+- A test Javadoc that names the mutations it catches states only mutations that were run red; a reviewer re-runs at least one.
 
 - Gradle runs with the configuration cache on in every worktree: `gradlew` gives each checkout its own daemon registry (`.gradle/daemon-registry`, #1120), so a configuration cache entry never names another worktree's scripts, and `--no-configuration-cache` is not needed for concurrent worktrees. Memory model: one daemon (`-Xmx2G`) per active worktree, gone 10 minutes after its last build. A Gradle started another way (an IDE, a bare `gradle`) shares one daemon again. `tools/tests/gradle-worktree-isolation.test.sh` guards this.
 - A test guard that skips on a missing local tool fails under `CI=true` instead, or names the CI step that guarantees the tool (as `tools/install-ffmpeg.sh` does for libvorbis).

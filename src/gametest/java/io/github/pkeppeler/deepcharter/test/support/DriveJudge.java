@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
-/** The floor comparison of {@link PodDrives}, apart from the game so {@code DriveJudgeTest} runs the same code. */
+import io.github.pkeppeler.deepcharter.pod.PodGlideTuning;
+
+/** The floor comparison and the coast's reach of {@link PodDrives}, apart from the client so server GameTests run the same code. */
 public final class DriveJudge {
     private DriveJudge() {}
 
@@ -12,5 +14,11 @@ public final class DriveJudge {
 
     public static boolean reaches(double measured, double floor) {
         return measured >= floor - POSITION_QUANTUM;
+    }
+
+    /** Ticks of its speed a whole coast draws: the full-speed ticks and the tail's share of the last. */
+    public static double coastReach() {
+        PodGlideTuning tuning = PodGlideTuning.DEFAULT;
+        return tuning.coastTicks() - 1 + tuning.coastTailShare();
     }
 }

@@ -1,12 +1,12 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.DriveJudge.coastReach;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.INPUT_LAG_TICKS;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.SETTLE_TICKS;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.SETTLE_TOLERANCE;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.STEP_MARGIN;
-import static io.github.pkeppeler.deepcharter.test.support.PodDrives.coastReach;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.onClient;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.put;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.serverPosition;
