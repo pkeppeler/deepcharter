@@ -81,8 +81,16 @@ public class GiantFungiScenario extends EvidenceScenario {
 
     private static final int BUILD_BELOW = 4;
     private static final int BUILD_ABOVE = 36;
-    /** The top-down camera stands this high over the floor. */
-    private static final int TOP_DOWN_RISE = 40;
+    /**
+     * The top-down camera stands this high over the chunk outlines, at the least: near enough that the fog leaves
+     * their colours, far enough that both chunks fill the frame.
+     */
+    private static final int TOP_DOWN_OVER = 17;
+    /** The box of the top-down still, cleared of the giants the world grew and put back after it. */
+    private static final int TOP_DOWN_RADIUS = 26;
+
+    private static final int TOP_DOWN_BELOW = 8;
+    private static final int TOP_DOWN_ABOVE = 48;
 
     /**
      * The parasol and spires seeds shown close, far and in the before and after: an open parasol with a curve, a forked
@@ -328,9 +336,9 @@ public class GiantFungiScenario extends EvidenceScenario {
 
     /**
      * A parasol fitted against the east side of the stage's chunk and a spire cluster against the west side of the
-     * chunk east of it, seen from straight above: each whole, in its own chunk. The two chunks are outlined in the
-     * world, red and yellow, in their border cells a row under the parasol's gills, so the chunk edge runs between the
-     * red and the yellow line.
+     * chunk east of it, seen from straight above, north up: each whole, in its own chunk. The giants the world grew
+     * there are cleared first. The two chunks are outlined in the world, red and yellow, in their border cells a row
+     * under the parasol's gills, so the chunk edge runs between the red and the yellow line.
      */
     private void topDown(ClientGameTestContext context, TestServerContext server, Spot stage) {
         ChunkPos chunk = ChunkPos.containing(stage.tall());
@@ -342,14 +350,23 @@ public class GiantFungiScenario extends EvidenceScenario {
         BlockPos spiresBase = new BlockPos(
                 east.getMinBlockX() + spires.baseX(), stage.tall().getY(), east.getMinBlockZ() + spires.baseZ());
         int outlineY = parasolBase.getY() + GiantMockups.gillsRow(parasol.layout()) - 1;
-        BlockPos eye = new BlockPos(east.getMinBlockX(), stage.tall().getY() + TOP_DOWN_RISE, chunk.getMinBlockZ() + 8);
-        Snapshot under = server.computeOnServer(s -> Snapshot.around(
-                TestLayers.level(s, LAYER), eye.atY(stage.tall().getY()), 26, BUILD_BELOW, BUILD_ABOVE));
+        int top = Math.max(
+                parasolBase.getY() + parasol.layout().maxY(),
+                spiresBase.getY() + spires.layout().maxY());
+        BlockPos middle = new BlockPos(east.getMinBlockX(), stage.tall().getY(), chunk.getMinBlockZ() + 8);
+        BlockPos eye = middle.atY(Math.max(outlineY + TOP_DOWN_OVER, top + 4));
+        Snapshot under = server.computeOnServer(s ->
+                Snapshot.around(TestLayers.level(s, LAYER), middle, TOP_DOWN_RADIUS, TOP_DOWN_BELOW, TOP_DOWN_ABOVE));
         try {
             server.runOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 LOGGER.info(
-                        "[giant-fungi] top down: parasol {} cells, spires {} cells, outlines {} and {} cells at Y {}",
+                        "[giant-fungi] top down: {} grown cells cleared, parasol {} cells, spires {} cells, outlines {}"
+                                + " and {} cells at Y {}",
+                        GiantMockups.clear(
+                                level,
+                                middle.offset(-TOP_DOWN_RADIUS, -TOP_DOWN_BELOW, -TOP_DOWN_RADIUS),
+                                middle.offset(TOP_DOWN_RADIUS, TOP_DOWN_ABOVE, TOP_DOWN_RADIUS)),
                         GiantMockups.grow(level, parasol.layout(), parasolBase),
                         GiantMockups.grow(level, spires.layout(), spiresBase),
                         GiantMockups.outline(
@@ -361,7 +378,8 @@ public class GiantFungiScenario extends EvidenceScenario {
             });
             awaitLight(context, server);
             nightVision(server, true);
-            shootOne(context, server, eye, new float[] {0f, 90f}, "top-down-chunks");
+            // Facing north, so east is to the right.
+            shootOne(context, server, eye, new float[] {180f, 90f}, "top-down-chunks");
         } finally {
             nightVision(server, false);
             server.runOnServer(s -> {

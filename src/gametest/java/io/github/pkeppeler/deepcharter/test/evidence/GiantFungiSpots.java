@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.surface.ParasolShape;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -78,6 +79,8 @@ final class GiantFungiSpots {
     private static final int TALL_FAR = 20;
     private static final int TALL_CLEAR_CAP = 34;
     private static final int TALL_CLEAR_LEAST = 12;
+    /** The free height a stage needs at its tall focus: the tallest parasol's stem and its cap. */
+    private static final int STAGE_CLEAR = ParasolShape.MOST_STEM + ParasolShape.CAP_ROWS;
     /** Only the best candidates are tried for a focus, in order of score. */
     private static final int TRIED = 200;
 
@@ -166,14 +169,20 @@ final class GiantFungiSpots {
             if (focus.isEmpty()) {
                 continue;
             }
-            BlockPos tall = focus.get();
-            int clear = clearHeight(level, tall);
-            Optional<BlockPos> roomier = tallFocus(level, probe);
-            if (roomier.isPresent()) {
-                tall = roomier.get();
-                clear = clearHeight(level, tall);
+            // The forms are grown at the tall focus, so a view with no room for the tallest of them is no stage.
+            Optional<BlockPos> tall = tallFocus(level, probe);
+            if (tall.isEmpty() || clearHeight(level, tall.get()) < STAGE_CLEAR) {
+                continue;
             }
-            return Optional.of(new Spot(name, c.feet(), c.yaw(), c.floorY(), focus.get(), tall, clear, c.score()));
+            return Optional.of(new Spot(
+                    name,
+                    c.feet(),
+                    c.yaw(),
+                    c.floorY(),
+                    focus.get(),
+                    tall.get(),
+                    clearHeight(level, tall.get()),
+                    c.score()));
         }
         LOGGER.info(
                 "[giant-fungi] no camera spot in {} (Y {} to {}) round {}, {}: {} candidates, {} glowcaps",
@@ -470,7 +479,7 @@ final class GiantFungiSpots {
             return sum.scale(1.0 / cells.size());
         }
 
-        /** Up to {@link #PAIR_SAMPLES} of its cells, spread through it, that a camera is checked against. */
+        /** {@link #PAIR_SAMPLES} of its cells, spread through it from its foot to its top, a camera is checked on. */
         List<BlockPos> samples() {
             List<BlockPos> sorted = new ArrayList<>(cells);
             sorted.sort(Comparator.comparingInt((BlockPos pos) -> pos.getY())
@@ -484,18 +493,26 @@ final class GiantFungiSpots {
         }
     }
 
+    /** A camera on a pair of giants: where it stands, where it looks, and how well it sees them. */
+    private record PairView(BlockPos feet, Vec3 target, int score) {}
+
     /** The cells of a giant a camera is checked against. */
-    private static final int PAIR_SAMPLES = 12;
+    private static final int PAIR_SAMPLES = 16;
     /** A pair's camera stands this near to this far from the middle of each giant: inside the Garden's 40-block fog. */
     private static final int PAIR_NEAR = 12;
 
-    private static final int PAIR_FAR = 28;
-    /** The most degrees apart the two giants are seen, so both fit the frame with room round them. */
-    private static final double PAIR_SPREAD = 50;
+    private static final int PAIR_FAR = 30;
+    /**
+     * The most degrees across and up the two giants take in the frame: the default 70-degree field is 70 high and
+     * about 100 wide at the evidence frame's 16:9, less a margin round them.
+     */
+    private static final double PAIR_ACROSS = 84;
+
+    private static final double PAIR_UP = 60;
     /** Candidate cameras for a pair stand every this many blocks. */
     private static final int PAIR_GRID = 2;
 
-    /** The form of a giant's block, or empty for a block of none. */
+    /** The form of a giant's block: empty for a block of none, and "" for the flare, which every form but one has. */
     private static Optional<String> form(BlockState state) {
         Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (!id.getNamespace().equals("deepcharter")) {
@@ -514,11 +531,16 @@ final class GiantFungiSpots {
         return path.equals("fungal_flare") ? Optional.of("") : Optional.empty();
     }
 
+    /** Whether {@code state} is a block of a giant fungus. */
+    static boolean giant(BlockState state) {
+        return form(state).isPresent();
+    }
+
     /**
      * A camera on two giants the world grew in neighbouring chunks of zone {@code zone} round ({@code x}, {@code z}),
-     * of two forms, both {@link #PAIR_NEAR} to {@link #PAIR_FAR} blocks off and at most {@link #PAIR_SPREAD} degrees
-     * apart; of those, the one that sees the most of the less seen giant, then of both. It looks at the middle of the
-     * two. Empty if no two such giants have a camera.
+     * of two forms, both {@link #PAIR_NEAR} to {@link #PAIR_FAR} blocks off and whole in the frame; of those, the one
+     * that sees the most of the less seen giant, then of both. It looks at the middle of the two as the frame sees
+     * them. Empty if no two such giants have a camera.
      */
     static Optional<MixView> pair(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
         Zones.Span span = Zones.span(band.minY(), band.height(), zone);
@@ -528,7 +550,7 @@ final class GiantFungiSpots {
                 .getPath();
         Map<ChunkPos, List<BlockPos>> cells = new HashMap<>();
         Map<ChunkPos, String> forms = new HashMap<>();
-        for (BlockPos pos : scan(level, x, z, span, state -> form(state).isPresent())) {
+        for (BlockPos pos : scan(level, x, z, span, GiantFungiSpots::giant)) {
             ChunkPos chunk = ChunkPos.containing(pos);
             cells.computeIfAbsent(chunk, key -> new ArrayList<>()).add(pos);
             String form = form(level.getBlockState(pos)).orElseThrow();
@@ -542,9 +564,8 @@ final class GiantFungiSpots {
                 grown.add(new Grown(chunk, forms.get(chunk), list));
             }
         });
-        LOGGER.info("[giant-fungi] {}: {} giants round {}, {}", name, grown.size(), x, z);
-        MixView best = null;
-        int bestScore = 0;
+        PairView best = null;
+        String bestPair = "";
         for (int i = 0; i < grown.size(); i++) {
             for (int j = i + 1; j < grown.size(); j++) {
                 Grown a = grown.get(i);
@@ -554,30 +575,31 @@ final class GiantFungiSpots {
                 if (a.form().equals(b.form()) || apartX > 1 || apartZ > 1) {
                     continue;
                 }
-                Optional<MixView> view = pairCamera(level, span, name, a, b, x, z);
-                if (view.isPresent() && view.get().giants() > bestScore) {
+                Optional<PairView> view = pairCamera(level, span, a, b, x, z);
+                if (view.isPresent() && (best == null || view.get().score() > best.score())) {
                     best = view.get();
-                    bestScore = view.get().giants();
+                    bestPair = a.form() + " in " + a.chunk() + " and " + b.form() + " in " + b.chunk();
                 }
             }
         }
-        return Optional.ofNullable(best);
+        LOGGER.info("[giant-fungi] {}: {} giants round {}, {}; pair {}", name, grown.size(), x, z, bestPair);
+        return best == null ? Optional.empty() : Optional.of(new MixView(name, best.feet(), best.target(), 2));
     }
 
     /**
-     * The best camera on {@code a} and {@code b}, if any sees some of each, standing in the region scanned round
-     * ({@code x}, {@code z}); its {@code giants} is a score, the cells seen of the less seen giant first.
+     * The best camera on {@code a} and {@code b}, if any sees some of each with both whole in the frame, standing in
+     * the region scanned round ({@code x}, {@code z}).
      */
-    private static Optional<MixView> pairCamera(
-            ServerLevel level, Zones.Span span, String name, Grown a, Grown b, int x, int z) {
+    private static Optional<PairView> pairCamera(ServerLevel level, Zones.Span span, Grown a, Grown b, int x, int z) {
         int reach = SEARCH_RADIUS + GLOW_FAR;
         Vec3 middleA = a.middle();
         Vec3 middleB = b.middle();
         Vec3 middle = middleA.add(middleB).scale(0.5);
         List<BlockPos> samplesA = a.samples();
         List<BlockPos> samplesB = b.samples();
-        MixView best = null;
-        int bestScore = 0;
+        List<BlockPos> both = new ArrayList<>(a.cells());
+        both.addAll(b.cells());
+        PairView best = null;
         int cx0 = (int) Math.floor(middle.x);
         int cz0 = (int) Math.floor(middle.z);
         for (int cx = cx0 - PAIR_FAR; cx <= cx0 + PAIR_FAR; cx += PAIR_GRID) {
@@ -588,28 +610,58 @@ final class GiantFungiSpots {
                 if (!inRegion || toA < PAIR_NEAR || toA > PAIR_FAR || toB < PAIR_NEAR || toB > PAIR_FAR) {
                     continue;
                 }
-                double bearingA = Math.toDegrees(Math.atan2(-(middleA.x - cx - 0.5), middleA.z - cz - 0.5));
-                double bearingB = Math.toDegrees(Math.atan2(-(middleB.x - cx - 0.5), middleB.z - cz - 0.5));
-                if (Math.abs(Mth.wrapDegrees(bearingA - bearingB)) > PAIR_SPREAD) {
-                    continue;
-                }
                 for (int y = span.high() - ZONE_INSET; y >= span.low() + ZONE_INSET; y--) {
                     if (!isFloor(level, new BlockPos(cx, y, cz), HEADROOM)) {
                         continue;
                     }
                     BlockPos feet = new BlockPos(cx, y + FEET_RISE, cz);
                     Vec3 eye = new Vec3(cx + 0.5, feet.getY() + EYE, cz + 0.5);
+                    Optional<Vec3> aim = frame(eye, both);
+                    if (aim.isEmpty()) {
+                        continue;
+                    }
                     int seenA = seen(level, eye, samplesA);
                     int seenB = seen(level, eye, samplesB);
                     int score = Math.min(seenA, seenB) * 100 + seenA + seenB;
-                    if (Math.min(seenA, seenB) > 0 && score > bestScore) {
-                        bestScore = score;
-                        best = new MixView(name + " (" + a.form() + ", " + b.form() + ")", feet, middle, score);
+                    if (Math.min(seenA, seenB) > 0 && (best == null || score > best.score())) {
+                        best = new PairView(feet, aim.get(), score);
                     }
                 }
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /**
+     * The point the eye at {@code eye} looks at to have every one of {@code cells} in the frame, in the middle of their
+     * spread across and up; empty if they spread wider than {@link #PAIR_ACROSS} or higher than {@link #PAIR_UP}.
+     */
+    private static Optional<Vec3> frame(Vec3 eye, List<BlockPos> cells) {
+        Vec3 middle = Vec3.ZERO;
+        for (BlockPos cell : cells) {
+            middle = middle.add(Vec3.atCenterOf(cell).scale(1.0 / cells.size()));
+        }
+        double heading = Math.atan2(middle.z - eye.z, middle.x - eye.x);
+        double left = 0;
+        double right = 0;
+        double low = Double.MAX_VALUE;
+        double high = -Double.MAX_VALUE;
+        for (BlockPos cell : cells) {
+            Vec3 d = Vec3.atCenterOf(cell).subtract(eye);
+            double across = Mth.wrapDegrees(Math.toDegrees(Math.atan2(d.z, d.x) - heading));
+            left = Math.min(left, across);
+            right = Math.max(right, across);
+            double up = Math.toDegrees(Math.atan2(d.y, Math.hypot(d.x, d.z)));
+            low = Math.min(low, up);
+            high = Math.max(high, up);
+        }
+        if (right - left > PAIR_ACROSS || high - low > PAIR_UP) {
+            return Optional.empty();
+        }
+        double yaw = heading + Math.toRadians((left + right) / 2);
+        double pitch = Math.toRadians((low + high) / 2);
+        return Optional.of(eye.add(
+                Math.cos(yaw) * Math.cos(pitch) * 10, Math.sin(pitch) * 10, Math.sin(yaw) * Math.cos(pitch) * 10));
     }
 
     private static int seen(ServerLevel level, Vec3 eye, List<BlockPos> samples) {
