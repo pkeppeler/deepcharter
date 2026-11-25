@@ -23,8 +23,10 @@ import net.minecraft.world.level.chunk.LevelChunk;
 /**
  * A pod stays on its pilot's client while a send of its chunk is pending (#1302, ADR 0092): {@code LightSync} re-sends
  * the chunks round a carve to a player who holds them, vanilla's {@code isChunkTracked} is false while one is queued,
- * and a pod that changes section then was dropped, with no move packet from its rider to bring it back. The redirect
- * only keeps a pod a rider tracks already ({@code TrackedEntityMixin}); a first tracking is vanilla's.
+ * and a pod that changes section then was dropped from its pilot's client, unmounting them. A real client's next move
+ * packet after the send tracks it again; the mock sends none, so the test asserts on the remove-entity itself, which
+ * is the visible drop. The redirect only keeps a pod a rider tracks already ({@code TrackedEntityMixin}); a first
+ * tracking is vanilla's.
  */
 public class RiddenPodTrackingTest {
     /** Past the sites of {@code SeamSwapTest}, which starts at 40. */

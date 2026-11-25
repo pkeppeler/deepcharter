@@ -14,8 +14,10 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 /**
  * Keeps a vehicle tracked for its own riders while a send of its chunk is pending (#1302, ADR 0092). Target: the call
  * to {@code ChunkMap.isChunkTracked} in {@code ChunkMap$TrackedEntity.updatePlayer}. {@code isChunkTracked} is false
- * while the chunk is queued to be sent, which {@code LightSync} makes it for a chunk it re-sends round a carve; a pod
- * ridden by that player then dropped off the client, and a rider sends no move packet that would track it again.
+ * while the chunk is queued to be sent, which {@code LightSync} makes it for a chunk it re-sends round a carve. A pod
+ * that changes section then was untracked for its own rider: the client got a remove-entity, dropped the pod and
+ * unmounted the pilot. The rider's next move packet ({@code ChunkMap.move}) tracks it again, but only once the chunk
+ * is sent, so the pod is gone for the whole wait and comes back with a fresh add and mount.
  *
  * <p>Only a vehicle the rider is tracking already stays tracked: one whose chunk was never sent is added when the chunk
  * is, as vanilla does, so no entity reaches a client before the chunk it stands in.
