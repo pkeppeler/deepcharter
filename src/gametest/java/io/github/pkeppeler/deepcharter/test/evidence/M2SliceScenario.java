@@ -1327,11 +1327,7 @@ public class M2SliceScenario extends EvidenceScenario {
         private void insertParts(List<Item> parts) {
             RepairScreen screen = ctx.computeOnClient(client -> ClientSession.screen(client, RepairScreen.class));
             for (Item part : parts) {
-                Slot held = ctx.computeOnClient(client -> screen.getMenu().slots.stream()
-                        .filter(slot -> slot.container instanceof Inventory
-                                && slot.getItem().is(part))
-                        .findFirst()
-                        .orElseThrow(() -> new AssertionError("the player carries no " + part)));
+                Slot held = ctx.computeOnClient(client -> SlotClicks.inventorySlot(screen.getMenu(), part));
                 SlotClicks.shiftClick(ctx, screen, held);
                 ctx.waitTicks(8);
                 snap(2);

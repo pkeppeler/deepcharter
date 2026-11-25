@@ -30,6 +30,12 @@ public record SlotRule(
         public Ghost {
             icon = icon.copy();
         }
+
+        /** A copy of the icon: a stack is mutable, and the rule is shared. */
+        @Override
+        public ItemStack icon() {
+            return icon.copy();
+        }
     }
 
     public SlotRule {

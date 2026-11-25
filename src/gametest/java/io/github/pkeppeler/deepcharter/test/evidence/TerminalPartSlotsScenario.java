@@ -19,7 +19,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -135,11 +134,7 @@ public class TerminalPartSlotsScenario extends EvidenceScenario {
      * one.
      */
     private static Slot inventorySlot(ClientGameTestContext context, RepairScreen screen, Item item) {
-        return context.computeOnClient(client -> screen.getMenu().slots.stream()
-                .filter(slot -> slot.container instanceof Inventory
-                        && (item == Items.AIR ? !slot.hasItem() : slot.getItem().is(item)))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("no inventory slot holds " + item)));
+        return context.computeOnClient(client -> SlotClicks.inventorySlot(screen.getMenu(), item));
     }
 
     private void hold(ClientGameTestContext context) {
