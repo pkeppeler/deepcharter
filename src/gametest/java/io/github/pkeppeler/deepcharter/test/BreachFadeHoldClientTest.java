@@ -46,7 +46,7 @@ public class BreachFadeHoldClientTest implements FabricClientGameTest {
         }
     }
 
-    /** A crossing plays the breach's own sound, to the pilot alone, and the vanilla explosion it used to play never starts (#1293). */
+    /** A crossing plays the breach's own sound to the pilot, and never the vanilla explosion it used to play (#1293). */
     private static void aCrossingSoundsAsTheCrustGivingWayNotAsAnExplosion(Minecraft client) {
         List<Identifier> started = new ArrayList<>();
         SoundEventListener listener = (sound, events, range) -> started.add(sound.getIdentifier());

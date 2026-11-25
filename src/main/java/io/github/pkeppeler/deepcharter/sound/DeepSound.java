@@ -7,9 +7,10 @@ import net.minecraft.sounds.SoundEvent;
 /**
  * Every Deep Charter sound event. The path is also the key in {@code sounds.json} and the id
  * in {@code tools/audio-pack-map.txt}; add a constant, a map line and a sound together
- * ({@code SoundEventsTest} fails if they drift apart). A sound the original game has no counterpart of (the drone beds {@code ambient.*} and the Lamp
- * Hymn {@code hymn.*}, #249, the cave-in {@code cave_in.*}, #1293, the wax cylinders' recordings {@code phonograph.*}, #864, and the two variants of "Au clair de la lune" {@code song.*}, #861) has no map line: the private audio pack leaves
- * it alone ({@code SoundEventsTest} names those prefixes).
+ * ({@code SoundEventsTest} fails if they drift apart). A sound the original game has no counterpart of (the drone beds
+ * {@code ambient.*} and the Lamp Hymn {@code hymn.*}, #249, the cave-in {@code cave_in.*}, #1293, the wax cylinders'
+ * recordings {@code phonograph.*}, #864, and the two variants of "Au clair de la lune" {@code song.*}, #861) has no map
+ * line: the private audio pack leaves it alone ({@code SoundEventsTest} names those prefixes).
  */
 public enum DeepSound {
     POD_ENGINE_IDLE("pod.engine_idle"),

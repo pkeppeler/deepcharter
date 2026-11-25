@@ -179,8 +179,10 @@ public class SoundEventsTest {
     }
 
     /**
-     * The drone beds, the Lamp Hymn (#249), the cave-in (#1293), the wax cylinders' recordings (#864, made by tools/sounds/first_sounds.py) and the ambience's
-     * fragments (#866, tools/sounds/ambience.py) and the two variants of "Au clair de la lune" (#861, {@code song.*}, made by first_sounds.py) are ours alone: the original game has nothing to map them to.
+     * The drone beds, the Lamp Hymn (#249), the cave-in (#1293), the wax cylinders' recordings (#864, made by
+     * tools/sounds/first_sounds.py), the ambience's fragments (#866, tools/sounds/ambience.py) and the two variants of
+     * "Au clair de la lune" (#861, {@code song.*}, made by first_sounds.py) are ours alone: the original game has
+     * nothing to map them to.
      */
     private static boolean hasNoOriginal(DeepSound sound) {
         String path = sound.event().location().getPath();
