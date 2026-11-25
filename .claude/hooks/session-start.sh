@@ -13,7 +13,15 @@ R=pkeppeler/deepcharter
 # under a second). SESSION_START_PR_BUDGET (seconds) is a test seam for the 6 s.
 t() { perl -e 'alarm shift; exec @ARGV' "${T:-10}" "$@" 2>/dev/null; }
 
+# Make the pre-push hook active in every session: an unset core.hooksPath becomes .githooks. A set value stays, even a different one.
+# The setting lives in the clone's shared config, so every worktree gets it; the relative path resolves per worktree (docs/tooling/pre-push-hook.md).
+hooks_note=
+if [ -z "$(git config --get core.hooksPath 2>/dev/null)" ]; then
+  git config core.hooksPath .githooks 2>/dev/null || hooks_note="(could not set core.hooksPath to .githooks: git config failed)"
+fi
+
 {
+  [ -z "$hooks_note" ] || { echo "$hooks_note"; echo; }
   # Public-repo guard: the interaction limit must stay collaborators_only with more than 14 days left.
   limits=$(T=8 t gh api "repos/$R/interaction-limits") || limits=""
   if [ -z "$limits" ]; then
