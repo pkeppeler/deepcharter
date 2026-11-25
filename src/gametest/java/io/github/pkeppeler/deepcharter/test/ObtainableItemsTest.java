@@ -6,14 +6,14 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 import io.github.pkeppeler.deepcharter.handbook.ObtainableItems;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
-import io.github.pkeppeler.deepcharter.colony.Colony;
-import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -54,6 +55,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.attribute.EnvironmentAttributes;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.inventory.InventoryMenu;
@@ -70,10 +75,12 @@ import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.WeatheringCopper;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.carver.WorldCarver;
@@ -97,12 +104,12 @@ import org.slf4j.LoggerFactory;
  * {@code deepcharter:obtainable} item tag is what the world yields, derived here from the world itself.
  *
  * <p>The derivation starts from every item of ours, the blocks the world is made of (the campaign noise settings and the features of
- * our biomes, the colony's structure files, the layer structures as they generate, the colony's fill) and the loot tables we ship,
+ * our biomes, the colony's structure files, the layer structures as they generate, the colony's fill), the creatures our biomes and our code spawn, and the loot tables we ship,
  * and closes over: breaking a block (its loot table, with a tool that can harvest it), crafting (a recipe whose every ingredient has an
  * obtainable item and whose station is obtainable makes its results obtainable), placing a block item and breaking it again, a tool's
  * block transform (stripping a log), copper weathering, a bucket of a fluid the world holds, and the composter. It fails, naming the
- * source to teach it, when the world holds something it does not walk: a vanilla structure or a mob spawn in one of our biomes, or a
- * loot table of ours it cannot roll.
+ * source to teach it, when the world holds something it does not walk: a vanilla structure in one of our biomes, or a loot table of
+ * ours it cannot roll.
  */
 public class ObtainableItemsTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(ObtainableItemsTest.class);
@@ -130,8 +137,12 @@ public class ObtainableItemsTest {
     }
 
     private static boolean loaded(MinecraftServer server, String path) {
+        return loaded(server, Identifier.withDefaultNamespace(path));
+    }
+
+    private static boolean loaded(MinecraftServer server, Identifier id) {
         return server.getRecipeManager()
-                .byKey(ResourceKey.create(Registries.RECIPE, Identifier.withDefaultNamespace(path)))
+                .byKey(ResourceKey.create(Registries.RECIPE, id))
                 .isPresent();
     }
 
@@ -139,7 +150,8 @@ public class ObtainableItemsTest {
     private static ItemStack craftInHand(ServerPlayer player, List<ItemStack> stacks) {
         InventoryMenu menu = player.inventoryMenu;
         for (int index = 0; index < stacks.size(); index++) {
-            menu.getSlot(InventoryMenu.CRAFT_SLOT_START + index).set(stacks.get(index).copy());
+            menu.getSlot(InventoryMenu.CRAFT_SLOT_START + index)
+                    .set(stacks.get(index).copy());
         }
         return menu.getSlot(InventoryMenu.RESULT_SLOT).getItem();
     }
@@ -147,8 +159,14 @@ public class ObtainableItemsTest {
     @GameTest
     public void aRecipeThatMakesAnUnlistedItemIsNotLoadedAndCannotBeCrafted(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        expect(helper, !loaded(server, "jungle_planks"), "the jungle planks recipe is loaded, but the world has no jungle");
-        expect(helper, !loaded(server, "diamond_pickaxe"), "the diamond pickaxe recipe is loaded, but the world has no diamond");
+        expect(
+                helper,
+                !loaded(server, "jungle_planks"),
+                "the jungle planks recipe is loaded, but the world has no jungle");
+        expect(
+                helper,
+                !loaded(server, "diamond_pickaxe"),
+                "the diamond pickaxe recipe is loaded, but the world has no diamond");
         ServerPlayer player = MockPlayers.join(helper, "Crafter").player();
 
         ItemStack result = craftInHand(player, List.of(new ItemStack(Items.JUNGLE_LOG)));
@@ -160,7 +178,10 @@ public class ObtainableItemsTest {
     @GameTest
     public void aRecipeThatNeedsAnUnlistedItemIsNotLoadedThoughItMakesAListedOne(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        expect(helper, ObtainableItems.isObtainable(new ItemStack(Items.STICK)), "sticks are listed (salvage crates drop them)");
+        expect(
+                helper,
+                ObtainableItems.isObtainable(new ItemStack(Items.STICK)),
+                "sticks are listed (salvage crates drop them)");
         expect(
                 helper,
                 !loaded(server, "stick_from_bamboo_item"),
@@ -171,14 +192,27 @@ public class ObtainableItemsTest {
     @GameTest
     public void aTagIngredientWithOneListedMemberKeepsItsRecipe(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        expect(helper, loaded(server, "chest"), "the chest takes any planks and oak planks are listed, so it is loaded");
+        expect(
+                helper,
+                loaded(server, "chest"),
+                "the chest takes any planks and oak planks are listed, so it is loaded");
         ServerPlayer player = MockPlayers.join(helper, "Carpenter").player();
 
         ItemStack result = craftInHand(player, List.of(new ItemStack(Items.OAK_LOG)));
 
-        expect(helper, result.is(Items.OAK_PLANKS), "an oak log in the grid offers %s, should offer oak planks", result);
+        expect(
+                helper,
+                result.is(Items.OAK_PLANKS),
+                "an oak log in the grid offers %s, should offer oak planks",
+                result);
         helper.succeed();
     }
+
+    /**
+     * Recipes of ours the campaign world cannot feed: biofuel takes crops that never grow there. #1288 gives it an ingredient the
+     * world yields, or removes it, and deletes this entry.
+     */
+    private static final Set<String> UNFED = Set.of("deepcharter:biofuel");
 
     @GameTest
     public void everyRecipeOfOursIsLoaded(GameTestHelper helper) {
@@ -190,8 +224,11 @@ public class ObtainableItemsTest {
                 .filter(key -> key.identifier().getNamespace().equals(DeepCharter.MOD_ID))
                 .filter(key -> server.getRecipeManager().byKey(key).isEmpty())
                 .map(key -> key.identifier().toString())
+                .filter(id -> !UNFED.contains(id))
                 .sorted()
                 .toList();
+        UNFED.forEach(id -> expect(
+                helper, !loaded(server, Identifier.parse(id)), "%s is loaded now: delete it from UNFED (#1288)", id));
         expect(
                 helper,
                 missing.isEmpty(),
@@ -202,8 +239,11 @@ public class ObtainableItemsTest {
 
     // ---------------------------------------------------------------- the drift gate
 
-    /** A layer structure site and the band of the level it stands in. */
-    private record Site(ServerLevel level, LayerChain.Band band, StructureSite site) {}
+    /**
+     * A layer structure site and the band of the level it stands in. The Prospector's wreck site holds its Note (N10), which an
+     * ordinary wreck site does not, so a Note there is no sign it is unfinished.
+     */
+    private record Site(ServerLevel level, LayerChain.Band band, StructureSite site, boolean prospector) {}
 
     /**
      * The gate: the list is what the world yields, both ways. The layer structures are read as they generate, so the chunks of one
@@ -222,13 +262,14 @@ public class ObtainableItemsTest {
                 sites.add(new Site(
                         level,
                         band,
-                        StructureSite.in(level.getSeed(), kind, band.minY(), band.height(), CELL, CELL, conduit)));
+                        StructureSite.in(level.getSeed(), kind, band.minY(), band.height(), CELL, CELL, conduit),
+                        false));
             }
         }
         ServerLevel wrecks = TestLayers.level(helper, StructureKind.WRECK.layer());
         LayerStructures.prospector(wrecks)
-                .ifPresent(site -> sites.add(
-                        new Site(wrecks, TestLayers.band(wrecks, StructureKind.WRECK.layer()), site)));
+                .ifPresent(site ->
+                        sites.add(new Site(wrecks, TestLayers.band(wrecks, StructureKind.WRECK.layer()), site, true)));
         for (Site site : sites) {
             for (var chunk : LayerStructuresTest.chunksOf(site.site())) {
                 site.level().getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
@@ -244,27 +285,36 @@ public class ObtainableItemsTest {
                         site.band().height(),
                         site.site(),
                         LayerStructuresTest.census(site.level(), site.site()));
+                if (site.prospector()) {
+                    unmet = unmet.stream()
+                            .filter(line -> !line.startsWith("Notes"))
+                            .toList();
+                }
                 if (!unmet.isEmpty()) {
                     standing.add(site.site().kind() + " " + unmet);
                 }
             }
             if (!standing.isEmpty()) {
                 deadline.await(
-                        helper,
-                        wrecks,
-                        false,
-                        () -> String.format("the layer structures did not stand: %s", standing));
+                        helper, wrecks, false, () -> String.format("the layer structures did not stand: %s", standing));
                 return;
             }
             Set<Block> world = new LinkedHashSet<>();
+            Set<EntityType<?>> creatures = new LinkedHashSet<>();
             sites.forEach(site -> world.addAll(blocksIn(site)));
-            world.addAll(worldgenBlocks(helper, server));
+            world.addAll(worldgenBlocks(helper, server, creatures));
             world.addAll(colonyBlocks(server));
             world.add(ColonyBuilder.FILL);
-            BuiltInRegistries.BLOCK.listElements()
+            BuiltInRegistries.BLOCK
+                    .listElements()
                     .filter(holder -> holder.key().identifier().getNamespace().equals(DeepCharter.MOD_ID))
                     .forEach(holder -> world.add(holder.value()));
-            Set<Item> derived = new Derivation(helper, world).run();
+            // Creatures our code spawns (drifters, the Tally) are not in a biome's spawns.
+            BuiltInRegistries.ENTITY_TYPE
+                    .listElements()
+                    .filter(holder -> holder.key().identifier().getNamespace().equals(DeepCharter.MOD_ID))
+                    .forEach(holder -> creatures.add(holder.value()));
+            Set<Item> derived = new Derivation(helper, world, creatures).run();
             compare(helper, derived);
             helper.succeed();
         });
@@ -307,24 +357,29 @@ public class ObtainableItemsTest {
 
     /**
      * The blocks the campaign world's data names: its noise settings and the features and carvers of every biome of ours, encoded as
-     * data and read for every string that names a block. Fails when a vanilla structure may generate in, or a mob spawn in, one of our
-     * biomes, since neither is walked here.
+     * data and read for every string that names a block. The creatures our biomes spawn go into {@code creatures}. Fails when a vanilla
+     * structure may generate in one of our biomes, since its pieces are not walked here.
      */
-    private static Set<Block> worldgenBlocks(GameTestHelper helper, MinecraftServer server) {
+    private static Set<Block> worldgenBlocks(
+            GameTestHelper helper, MinecraftServer server, Set<EntityType<?>> creatures) {
         HolderLookup.Provider registries = server.registryAccess();
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, registries);
         List<JsonElement> encoded = new ArrayList<>();
-        NoiseGeneratorSettings campaign = registries.lookupOrThrow(Registries.NOISE_SETTINGS)
+        NoiseGeneratorSettings campaign = registries
+                .lookupOrThrow(Registries.NOISE_SETTINGS)
                 .getOrThrow(ResourceKey.create(
                         Registries.NOISE_SETTINGS, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "campaign")))
                 .value();
-        encoded.add(NoiseGeneratorSettings.DIRECT_CODEC.encodeStart(ops, campaign).getOrThrow());
-        List<Holder.Reference<Biome>> ours = registries.lookupOrThrow(Registries.BIOME)
+        encoded.add(
+                NoiseGeneratorSettings.DIRECT_CODEC.encodeStart(ops, campaign).getOrThrow());
+        List<Holder.Reference<Biome>> ours = registries
+                .lookupOrThrow(Registries.BIOME)
                 .listElements()
                 .filter(holder -> holder.key().identifier().getNamespace().equals(DeepCharter.MOD_ID))
                 .toList();
         for (Holder.Reference<Biome> biome : ours) {
-            for (HolderSet<PlacedFeature> step : biome.value().getGenerationSettings().features()) {
+            for (HolderSet<PlacedFeature> step :
+                    biome.value().getGenerationSettings().features()) {
                 for (Holder<PlacedFeature> placed : step) {
                     Feature feature = placed.value().feature().value();
                     encoded.add(Feature.DIRECT_CODEC.encodeStart(ops, feature).getOrThrow());
@@ -333,15 +388,20 @@ public class ObtainableItemsTest {
             biome.value()
                     .getGenerationSettings()
                     .getCarvers()
-                    .forEach(carver -> encoded.add(
-                            WorldCarver.DIRECT_CODEC.encodeStart(ops, carver.value()).getOrThrow()));
+                    .forEach(carver -> encoded.add(WorldCarver.DIRECT_CODEC
+                            .encodeStart(ops, carver.value())
+                            .getOrThrow()));
+            MobSpawnSettings spawns = Objects.requireNonNullElse(
+                    biome.value()
+                            .getAttributes()
+                            .applyModifier(
+                                    EnvironmentAttributes.NATURAL_MOB_SPAWNS,
+                                    EnvironmentAttributes.NATURAL_MOB_SPAWNS.defaultValue()),
+                    MobSpawnSettings.EMPTY);
             for (MobCategory category : MobCategory.values()) {
-                expect(
-                        helper,
-                        biome.value().getMobSettings().getMobsInCategory(category).isEmpty(),
-                        "%s spawns %s mobs, whose drops this derivation does not walk",
-                        biome.key().identifier(),
-                        category);
+                spawns.getMobsToSpawn(category)
+                        .unwrap()
+                        .forEach(spawn -> creatures.add(spawn.value().type()));
             }
         }
         registries.lookupOrThrow(Registries.STRUCTURE).listElements().forEach(structure -> {
@@ -382,9 +442,10 @@ public class ObtainableItemsTest {
         files.forEach((path, resource) -> {
             try (InputStream in = resource.open()) {
                 CompoundTag structure = NbtIo.readCompressed(in, NbtAccounter.unlimitedHeap());
-                structure.getListOrEmpty("palette").forEach(entry -> blocks.add(NbtUtils.readBlockState(
-                                lookup, (CompoundTag) entry)
-                        .getBlock()));
+                structure
+                        .getListOrEmpty("palette")
+                        .forEach(entry -> blocks.add(NbtUtils.readBlockState(lookup, (CompoundTag) entry)
+                                .getBlock()));
             } catch (IOException e) {
                 throw new UncheckedIOException("reading " + path, e);
             }
@@ -402,6 +463,7 @@ public class ObtainableItemsTest {
                 | Block.UPDATE_KNOWN_SHAPE
                 | Block.UPDATE_SKIP_ON_PLACE
                 | Block.UPDATE_SUPPRESS_DROPS;
+
         private final GameTestHelper helper;
         private final ServerLevel level;
         private final MinecraftServer server;
@@ -412,8 +474,9 @@ public class ObtainableItemsTest {
         private final Set<Block> blocks = new LinkedHashSet<>();
         private final Set<String> rolled = new HashSet<>();
         private final Set<String> transformed = new HashSet<>();
+        private final Set<EntityType<?>> creatures;
 
-        Derivation(GameTestHelper helper, Set<Block> world) {
+        Derivation(GameTestHelper helper, Set<Block> world, Set<EntityType<?>> creatures) {
             this.helper = helper;
             this.level = helper.getLevel();
             this.server = level.getServer();
@@ -421,13 +484,16 @@ public class ObtainableItemsTest {
             this.at = helper.absolutePos(new BlockPos(2, 2, 2));
             this.context = SlotDisplayContext.fromLevel(level);
             blocks.addAll(world);
-            BuiltInRegistries.ITEM.listElements()
+            this.creatures = Set.copyOf(creatures);
+            BuiltInRegistries.ITEM
+                    .listElements()
                     .filter(holder -> !holder.key().identifier().getNamespace().equals(Identifier.DEFAULT_NAMESPACE))
                     .forEach(holder -> obtainable.add(holder.value()));
         }
 
         Set<Item> run() {
             rollOurTables();
+            creatures.forEach(this::killCreature);
             boolean grew = true;
             while (grew) {
                 int items = obtainable.size();
@@ -477,14 +543,46 @@ public class ObtainableItemsTest {
                     });
         }
 
+        /** What a creature drops when a player kills it: its loot table. One with none (a pod) drops nothing here. */
+        private void killCreature(EntityType<?> type) {
+            Optional<ResourceKey<LootTable>> key = type.getDefaultLootTable();
+            if (key.isEmpty()) {
+                return;
+            }
+            Entity creature = type.create(level, EntitySpawnReason.COMMAND);
+            if (creature == null) {
+                return;
+            }
+            creature.setPos(Vec3.atCenterOf(at));
+            LootParams params = new LootParams.Builder(level)
+                    .withParameter(LootContextParams.THIS_ENTITY, creature)
+                    .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(at))
+                    .withParameter(
+                            LootContextParams.DAMAGE_SOURCE,
+                            level.damageSources().playerAttack(player))
+                    .withOptionalParameter(LootContextParams.ATTACKING_ENTITY, player)
+                    .withOptionalParameter(LootContextParams.DIRECT_ATTACKING_ENTITY, player)
+                    .withOptionalParameter(LootContextParams.LAST_DAMAGE_PLAYER, player)
+                    .create(LootContextParamSets.ENTITY);
+            LootTable table = server.reloadableRegistries().getLootTable(key.get());
+            for (long seed = 1; seed <= SEEDS; seed++) {
+                table.getRandomItems(params, seed).forEach(this::obtain);
+            }
+            creature.discard();
+        }
+
         private void obtain(ItemStack stack) {
             if (!stack.isEmpty()) {
                 obtainable.add(stack.getItem());
             }
         }
 
+        /** The states a block can be in here: never waterlogged, since water comes only from a fluid the world holds. */
         private static List<BlockState> statesOf(Block block) {
-            List<BlockState> states = block.getStateDefinition().getPossibleStates();
+            List<BlockState> states = block.getStateDefinition().getPossibleStates().stream()
+                    .filter(state -> !state.hasProperty(BlockStateProperties.WATERLOGGED)
+                            || !state.getValue(BlockStateProperties.WATERLOGGED))
+                    .toList();
             return states.size() <= ALL_STATES_UP_TO ? states : List.of(block.defaultBlockState());
         }
 
@@ -605,7 +703,8 @@ public class ObtainableItemsTest {
                             return;
                         }
                         for (Ingredient ingredient : recipe.placementInfo().ingredients()) {
-                            if (ingredient.items().map(Holder::value).noneMatch(obtainable::contains)) {
+                            if (ingredient.display().resolveForStacks(context).stream()
+                                    .noneMatch(stack -> obtainable.contains(stack.getItem()))) {
                                 return;
                             }
                         }
@@ -628,7 +727,8 @@ public class ObtainableItemsTest {
         private static boolean fitsTheInventoryGrid(RecipeDisplay display) {
             return switch (display) {
                 case ShapedCraftingRecipeDisplay shaped -> shaped.width() <= 2 && shaped.height() <= 2;
-                case ShapelessCraftingRecipeDisplay shapeless -> shapeless.ingredients().size() <= 4;
+                case ShapelessCraftingRecipeDisplay shapeless ->
+                    shapeless.ingredients().size() <= 4;
                 default -> false;
             };
         }

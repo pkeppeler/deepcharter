@@ -1,10 +1,9 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -24,9 +23,9 @@ import net.minecraft.world.item.crafting.display.RecipeDisplay;
 /**
  * The items a player can obtain in the campaign world (ADR 0093). Every item outside the {@code minecraft} namespace is obtainable;
  * a vanilla item is obtainable only when the {@code deepcharter:obtainable} item tag lists it. A recipe that needs or makes an item
- * that is not obtainable is never loaded ({@code handbook/mixin/RecipeManagerMixin}), so it cannot be crafted, and the parts
- * catalogue and the creative tabs show only obtainable items. {@code ObtainableItemsTest} derives the list from the world and fails
- * when the tag drifts from it.
+ * that is not obtainable is left out of the server's recipes ({@code handbook/mixin/RecipeManagerMixin}), so it cannot be crafted,
+ * and the parts catalogue and the creative tabs show only obtainable items. {@code ObtainableItemsTest} derives the list from the
+ * world and fails when the tag drifts from it.
  */
 public final class ObtainableItems {
     /** The vanilla items the campaign world yields. The tag is synced, so the client reads it too. */
@@ -35,29 +34,26 @@ public final class ObtainableItems {
 
     private ObtainableItems() {}
 
-    private static boolean isVanilla(Holder<Item> item) {
-        return BuiltInRegistries.ITEM.getKey(item.value()).getNamespace().equals(Identifier.DEFAULT_NAMESPACE);
+    private static boolean isObtainable(Holder<Item> item) {
+        return !BuiltInRegistries.ITEM.getKey(item.value()).getNamespace().equals(Identifier.DEFAULT_NAMESPACE)
+                || item.is(LISTED);
     }
 
     /** Whether the stack's item is obtainable, by the tags bound to it: on the client, the ones the server sent. */
     public static boolean isObtainable(ItemStack stack) {
-        return !isVanilla(stack.typeHolder()) || stack.is(LISTED);
+        return isObtainable(stack.typeHolder());
     }
 
     /**
-     * {@code recipes} without the ones that need or make an item that is not obtainable. Read while the server loads its recipes,
-     * before the reloaded tags are bound to the items, so the list is read from {@code registries}, which carries them, and not from
-     * {@link #isObtainable}.
+     * {@code recipes} without the ones that need or make an item that is not obtainable. Call once the reloaded tags are bound to the
+     * items, which is after the recipes load.
      */
-    public static HolderLookup<Recipe<?>> loadable(HolderLookup<Recipe<?>> recipes, HolderLookup.Provider registries) {
-        Set<Item> listed = registries
-                .lookupOrThrow(Registries.ITEM)
-                .get(LISTED)
-                .stream()
-                .flatMap(HolderSet::stream)
-                .map(Holder::value)
-                .collect(Collectors.toSet());
-        Predicate<Holder<Item>> obtainable = item -> !isVanilla(item) || listed.contains(item.value());
+    public static HolderLookup<Recipe<?>> loadable(HolderLookup<Recipe<?>> recipes) {
+        List<Holder<Item>> obtainable = new ArrayList<>();
+        BuiltInRegistries.ITEM
+                .listElements()
+                .filter(ObtainableItems::isObtainable)
+                .forEach(obtainable::add);
         return new HolderLookup<>() {
             @Override
             public Stream<Holder.Reference<Recipe<?>>> listElements() {
@@ -82,19 +78,19 @@ public final class ObtainableItems {
     }
 
     /**
-     * Whether every ingredient of {@code recipe} has an obtainable item (a tag needs one member, not all) and every item it makes is
+     * Whether every ingredient of {@code recipe} takes an obtainable item (a tag needs one member, not all) and every item it makes is
      * obtainable. A special recipe (map cloning, dyeing) names neither and is kept: what it takes is not obtainable either.
      */
-    private static boolean keeps(Recipe<?> recipe, Predicate<Holder<Item>> obtainable) {
+    private static boolean keeps(Recipe<?> recipe, List<Holder<Item>> obtainable) {
         for (Ingredient ingredient : recipe.placementInfo().ingredients()) {
-            if (ingredient.items().noneMatch(obtainable)) {
+            if (obtainable.stream().noneMatch(ingredient::acceptsItem)) {
                 return false;
             }
         }
         for (RecipeDisplay display : recipe.display()) {
             // A result is an item, never a tag, so it resolves with no registries.
             for (ItemStack result : display.result().resolveForStacks(ContextMap.EMPTY)) {
-                if (!result.isEmpty() && !obtainable.test(result.typeHolder())) {
+                if (!result.isEmpty() && !isObtainable(result)) {
                     return false;
                 }
             }
