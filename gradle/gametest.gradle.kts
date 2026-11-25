@@ -100,6 +100,16 @@ object GametestScan {
 	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
 	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
+	// A carve makes LightSync queue a ring re-send, and while it is pending a pod added or moved for its rider is untracked, so the client pilot
+	// ends up on foot (#1249, #1303). A client GameTest or scenario that carves and then seats a pilot (`startRiding`) or places a pod
+	// (`<pod>.setPos`, `<pod>.teleportTo`) in one runOnServer or computeOnServer block has no wait between them: carve in one block, call
+	// ClientWait.lightSettled, then seat in the next. A seat the carve cannot affect carries the marker below, with a reason, on its statement or the comment line above it.
+	// Heuristic: a carve and a seat in different methods are not seen.
+	private const val LIGHT_SETTLED_MARKER = "// light-settled-ok:"
+	private val serverBlockCall = Regex("""\b(?:runOnServer|computeOnServer)\s*\(""")
+	private val roomCarve = Regex("""\bRoomCarver\s*\.\s*carve\w*\s*\(""")
+	private val podSeat = Regex("""\bstartRiding\s*\(|\b\w*[pP]od\w*\s*\.\s*(?:setPos|teleportTo)\s*\(""")
+
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
 	// seen, so the gate refuses the literal (#1026).
@@ -191,6 +201,26 @@ object GametestScan {
 			if ((inPoll || noDeadline) && !marked(markedNear, rawLines, line, LIGHT_WAIT_MARKER)) {
 				val where = if (inPoll) "inside thenWaitUntil or succeedWhen, which count ticks" else "in a test method that awaits no FarChunks.Deadline"
 				problems.add("$className:${line + 1} reads block light $where, and the light engine runs on Util.backgroundExecutor(), which other tests' chunk work can starve; wait for it under FarChunks.Deadline (poll from TestTicks.each, see #1042 and #1048), or mark a read that is not a wait with '$LIGHT_WAIT_MARKER <reason>'")
+			}
+		}
+		return problems
+	}
+
+	private fun lightSettledProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val blocks = serverBlockCall.findAll(text).map { it.range.last to closing(text, it.range.last) }.filter { it.second > 0 }.toList()
+		val carves = roomCarve.findAll(text).map { it.range.first }.toList()
+		val problems = mutableListOf<String>()
+		for (seat in podSeat.findAll(text)) {
+			val at = seat.range.first
+			val block = blocks.filter { at > it.first && at < it.second }.maxByOrNull { it.first } ?: continue
+			val line = lineOf(text, at)
+			if (carves.any { it > block.first && it < at } && !marked(markedNear, rawLines, line, LIGHT_SETTLED_MARKER)) {
+				problems.add("$className:${line + 1} seats a pod after a RoomCarver carve in one server block, so a chunk re-send queued by the carve can leave the rider's pod untracked (#1303); carve in one runOnServer, call ClientWait.lightSettled, then seat in the next, or mark a seat the carve cannot affect with '$LIGHT_SETTLED_MARKER <reason>'")
 			}
 		}
 		return problems
@@ -395,6 +425,9 @@ object GametestScan {
 				}
 			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
+			if (isClientSide) {
+				problems.addAll(lightSettledProblems(className, text, rawLines, markedNear))
+			}
 			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
 				problems.addAll(lightWaitProblems(className, text, rawLines, markedNear))
 			}
