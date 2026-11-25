@@ -10,5 +10,6 @@ public final class HandbookClientInit {
     public static void init() {
         HandbookClientRegistry.register();
         VanillaToasts.init();
+        ObtainableCreativeTabs.init();
     }
 }
