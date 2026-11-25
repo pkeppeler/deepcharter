@@ -70,7 +70,7 @@ public final class LayerBlocks {
 
     /** The rust-brown rock of layer 1, which the layer's noise settings fill the ground with. */
     public static final Block PACKED_SHALE = registerBlock(id("packed_shale"), LayerBlocks::rock);
-    /** The pale, warm hardpan of layer 1's Topsoil Claims (#1277), over the packed shale: the campaign's material rule lays it. */
+    /** The khaki hardpan of layer 1's Topsoil Claims (#1277), over the packed shale: the campaign's material rule lays it. */
     public static final Block HARDPAN = registerBlock(id("hardpan"), LayerBlocks::rock);
     /** The cold black shale of layer 1's Deep Claim (#1277), under the packed shale: the campaign's material rule lays it. */
     public static final Block BLACK_SHALE = registerBlock(id("black_shale"), LayerBlocks::rock);

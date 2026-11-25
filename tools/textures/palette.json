@@ -1,5 +1,5 @@
 {
-  "description": "Prosperity at dusk (docs/design/art-direction.md): worn Company steel and brass, rust at the rivets, rust-red ground, and three lights (warm white, sodium amber, the deep's cold). The rock of layers 1 to 3 (shale1 rust-brown packed regolith going to dark shale, with layer 1's strata over and under it: hardpan_rock the pale warm hardpan of Topsoil Claims and shale_black the cold black shale of Deep Claim; shale2 grey-green shale, basalt3 the cold blue-black basalt of layer 3's columns) and the lava that runs in them (lavaglow) are the layers' own. Ramps run dark to light; their shadows lean cool and their lights lean warm.",
+  "description": "Prosperity at dusk (docs/design/art-direction.md): worn Company steel and brass, rust at the rivets, rust-red ground, and three lights (warm white, sodium amber, the deep's cold). The rock of layers 1 to 3 (shale1 rust-brown packed regolith going to dark shale, with layer 1's strata over and under it: hardpan_rock the khaki hardpan of Topsoil Claims, olive enough that Ironium and Goldium flecks stand out of it and shale_black the cold black shale of Deep Claim; shale2 grey-green shale, basalt3 the cold blue-black basalt of layer 3's columns) and the lava that runs in them (lavaglow) are the layers' own. Ramps run dark to light; their shadows lean cool and their lights lean warm.",
   "colours": {
     "void": "#0a090b",
     "steel": ["#121418", "#1c2026", "#282e36", "#363e48", "#48525e", "#616d7a", "#8794a0"],
@@ -17,7 +17,7 @@
     "ore_shadow": ["#16110f", "#241b17"],
     "crust": ["#130b0a", "#21120f", "#321b15", "#45251b", "#5c3124", "#77412d"],
     "shale1": ["#140b08", "#23140d", "#38211a", "#4f3022", "#6a4430", "#8a5e42"],
-    "hardpan_rock": ["#1f150a", "#33220f", "#4b3315", "#66461b", "#835c24", "#a37630"],
+    "hardpan_rock": ["#18170b", "#282613", "#3a381c", "#504d28", "#686533", "#848043"],
     "shale_black": ["#0f1115", "#1a1d24", "#282c36", "#3c4250", "#4f5667", "#666e82"],
     "shale2": ["#090d0b", "#111814", "#1a241f", "#26362d", "#344a3e", "#476152"],
     "basalt3": ["#080a10", "#12161f", "#1d232e", "#2a313e", "#394252", "#4b576b"],
