@@ -366,10 +366,10 @@ class Ledger:
         for kind, text in self.lines:
             for ch in text:
                 self.schedule.append((t, ch))
-                t += 1 / 40 if kind == "dim" else (1 / 26 if kind == "txt" else 1 / 9)
-            t += 0.12 if kind == "dim" else 0.32
+                t += 1 / 60 if kind == "dim" else (1 / 38 if kind == "txt" else 1 / 11)
+            t += 0.08 if kind == "dim" else 0.22
         self.typed_until = t
-        self.duration = t + 1.6
+        self.duration = t + 1.4
 
     def frame(self, t, power=1.0):
         gui_w, gui_h = W, H
@@ -482,6 +482,10 @@ def ledger_segment(cut, ledger, under=None, under_db=-20, runout_db=None):
     cut.add(ledger.duration, lambda t, i, n: ledger.frame(t, min(1.0, t / 0.12)))
 
 
+def end_frame_s(frames):
+    return len(frames) * TICK
+
+
 def build(args):
     frames = sorted(os.path.join(args.frames, f) for f in os.listdir(args.frames) if f.endswith(".png"))
     events = []
@@ -491,10 +495,11 @@ def build(args):
     death = next(f for f, n in events if n == "death")
     frames = frames[:death]
     game = game_audio(events, len(frames), args.mc)
-    start = max(0.0, (next(f for f, n in events if n == "walk_start") - 8) * TICK)
-    end_s = len(frames) * TICK
+    walk = next(f for f, n in events if n == "walk_start")
+    start = max(0.0, (walk - 8) * TICK, end_frame_s(frames) - args.gameplay_seconds)
+    end_s = end_frame_s(frames)
     replay_src = game[int((end_s - args.replay_seconds) * SR) :]
-    replay = cylinder(replay_src) * db(-4)
+    replay = cylinder(replay_src) * db(1)
     ledger = Ledger(args.name)
     os.makedirs(args.out, exist_ok=True)
     variants = args.only.split(",") if args.only else ["v1", "v2", "v3", "v4"]
@@ -596,6 +601,7 @@ def main():
     p.add_argument("--mc", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--name", default="Player")
+    p.add_argument("--gameplay-seconds", type=float, default=5.5)
     p.add_argument("--replay-seconds", type=float, default=2.6)
     p.add_argument("--skip-seconds", type=float, default=0.42)
     p.add_argument("--only", default="")
