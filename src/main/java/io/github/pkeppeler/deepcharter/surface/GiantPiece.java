@@ -58,7 +58,7 @@ public sealed interface GiantPiece {
         RIGHT;
 
         /** The side of a core facing {@code facing} that this arm is on. */
-        Direction side(Direction facing) {
+        public Direction side(Direction facing) {
             return switch (this) {
                 case NONE -> throw new IllegalStateException("the core is on no side of itself");
                 case FRONT -> facing;

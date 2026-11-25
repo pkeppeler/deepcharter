@@ -40,6 +40,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -92,7 +93,7 @@ public class GiantFungusTest {
             ParasolShape.Params p = parasol(seed);
             stages.merge(p.stage(), 1, Integer::sum);
             radii[p.radius()]++;
-            twins += p.twin() ? 1 : 0;
+            twins += ParasolShape.layout(p, random(seed + 1)).owners().containsValue(2) ? 1 : 0;
             expect(helper, p.stemHeight() >= 12 && p.stemHeight() <= 26, "seed %s: stem %s", seed, p.stemHeight());
             expect(helper, p.radius() >= 4 && p.radius() <= 7, "seed %s: radius %s", seed, p.radius());
             expect(helper, p.drift().size() <= 2, "seed %s: drift %s", seed, p.drift());
@@ -120,7 +121,7 @@ public class GiantFungusTest {
         // Bell 20%, open 60%, old 20%; a ring 80%; a twin 15%.
         expect(helper, near(stages.getOrDefault(ParasolShape.Stage.OPEN, 0), 0.6), "open stages %s", stages);
         expect(helper, near(stages.getOrDefault(ParasolShape.Stage.BELL, 0), 0.2), "bells %s", stages);
-        expect(helper, near(twins, 0.15), "%s twins", twins);
+        expect(helper, false, "TEMP %s twins grew", twins);
         expect(
                 helper,
                 radii[6] + radii[7] > radii[4] + radii[5],
@@ -461,7 +462,7 @@ public class GiantFungusTest {
                 }
             }
         }
-        expect(helper, 2 * largest + 90 < 2048, "the largest parasol is %s blocks", largest);
+        expect(helper, false, "TEMP the largest parasol is %s blocks", largest);
         helper.succeed();
     }
 
@@ -661,6 +662,79 @@ public class GiantFungusTest {
                         .mirrored(Direction.Axis.X)
                         .equals(new GiantPiece.Cap(8, -4, -8, false)),
                 "a cap's rise across x does not turn");
+        // An arm on the left of a stem facing east is on the right once the stem faces west.
+        GiantPiece.Stem left = new GiantPiece.Stem(RodPiece.STRAIGHT, Direction.EAST, GiantPiece.Arm.LEFT);
+        expect(
+                helper,
+                left.mirrored(Direction.Axis.X)
+                        .equals(new GiantPiece.Stem(RodPiece.STRAIGHT, Direction.WEST, GiantPiece.Arm.RIGHT)),
+                "a left arm facing east mirrored across x is %s",
+                left.mirrored(Direction.Axis.X));
+        helper.succeed();
+    }
+
+    /**
+     * Every arm of a parasol's stem is beside its core (#1218): the cell on the side it names, seen facing its way, is
+     * a core cell that leans as it does, or the ring. In a layout as rolled and mirrored either way.
+     */
+    @GameTest
+    public void everyArmIsBesideItsCore(GameTestHelper helper) {
+        int arms = 0;
+        for (long seed = 0; seed < 100; seed++) {
+            GiantLayout rolled = parasolLayout(seed);
+            for (GiantLayout layout :
+                    List.of(rolled, rolled.mirrored(Direction.Axis.X), rolled.mirrored(Direction.Axis.Z))) {
+                for (Map.Entry<Cell, GiantPiece> entry : layout.pieces().entrySet()) {
+                    if (!(entry.getValue() instanceof GiantPiece.Stem arm) || arm.arm() == GiantPiece.Arm.NONE) {
+                        continue;
+                    }
+                    arms++;
+                    Direction toCore = arm.arm().side(arm.facing()).getOpposite();
+                    Cell at = entry.getKey();
+                    GiantPiece core = layout.pieces()
+                            .get(new Cell(at.x() + toCore.getStepX(), at.y(), at.z() + toCore.getStepZ()));
+                    boolean beside = core instanceof GiantPiece.Ring
+                            ? arm.piece() == RodPiece.STRAIGHT
+                            : core instanceof GiantPiece.Stem stem
+                                    && stem.arm() == GiantPiece.Arm.NONE
+                                    && stem.piece() == arm.piece()
+                                    && (stem.piece() == RodPiece.STRAIGHT || stem.facing() == arm.facing());
+                    expect(helper, beside, "seed %s: the arm %s at %s is beside %s", seed, arm, at, core);
+                }
+            }
+        }
+        expect(helper, arms > 0, "no parasol has an arm");
+        helper.succeed();
+    }
+
+    /**
+     * An arm's box, the part of a thick stem a player bumps into, reaches the face of its cell toward its core, so the
+     * stem has no gap in it a player could walk into (#1218).
+     */
+    @GameTest
+    public void anArmsBoxTouchesItsCore(GameTestHelper helper) {
+        for (GiantPiece.Arm arm : GiantPiece.Arm.values()) {
+            if (arm == GiantPiece.Arm.NONE) {
+                continue;
+            }
+            for (Direction facing : Direction.Plane.HORIZONTAL) {
+                BlockState state = GiantFungus.state(new GiantPiece.Stem(RodPiece.STRAIGHT, facing, arm));
+                AABB box =
+                        state.getShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).bounds();
+                Direction toCore = arm.side(facing).getOpposite();
+                double reach = toCore.getAxisDirection() == Direction.AxisDirection.POSITIVE
+                        ? box.max(toCore.getAxis())
+                        : 1 - box.min(toCore.getAxis());
+                expect(
+                        helper,
+                        reach == 1,
+                        "a %s arm facing %s reaches %s of its cell toward its core, %s",
+                        arm,
+                        facing,
+                        reach,
+                        box);
+            }
+        }
         helper.succeed();
     }
 
@@ -846,6 +920,57 @@ public class GiantFungusTest {
                         clear(level, parasol, parasolBase);
                         clear(level, spires, spireBase);
                         level.getEntitiesOfClass(ItemEntity.class, new AABB(parasolBase).inflate(80))
+                                .forEach(Entity::discard);
+                    }
+                    helper.succeed();
+                });
+    }
+
+    /**
+     * Breaking a parasol's foot flare, on the floor under one of its stem's arms, takes only the flare: the stem stands
+     * on its core, so a player scraping the foot does not fell the giant (#1218).
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + COLLAPSE_TICKS + 40)
+    public void aBrokenFlareLeavesTheParasolStanding(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos base = helper.absolutePos(new BlockPos(0, 2, 0)).above(SKY);
+        GiantLayout parasol = parasolLayout(11);
+        Cell flare = new Cell(1, 0, 0);
+        expect(helper, parasol.pieces().get(flare) instanceof GiantPiece.Flare, "no flare at %s", flare);
+        expect(
+                helper,
+                parasol.pieces().get(new Cell(1, 1, 0)) instanceof GiantPiece.Stem,
+                "no arm of the stem stands over the flare at %s",
+                flare);
+        boolean[] grown = {false};
+        FarChunks.awaitAllEntityTicking(helper, level, chunksUnder(parasol, base), () -> {
+            grow(level, parasol, base);
+            level.destroyBlock(base.offset(flare.x(), flare.y(), flare.z()), false);
+            grown[0] = true;
+        });
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    if (!grown[0]) {
+                        throw helper.assertionException("the parasol's chunks are not entity-ticking yet");
+                    }
+                })
+                .thenIdle(COLLAPSE_TICKS)
+                .thenExecute(() -> {
+                    try {
+                        parasol.pieces().forEach((cell, piece) -> {
+                            boolean standing = !level.getBlockState(base.offset(cell.x(), cell.y(), cell.z()))
+                                    .isAir();
+                            expect(
+                                    helper,
+                                    standing != cell.equals(flare),
+                                    "parasol cell %s, a %s, standing %s",
+                                    cell,
+                                    piece,
+                                    standing);
+                        });
+                    } finally {
+                        clear(level, parasol, base);
+                        level.getEntitiesOfClass(ItemEntity.class, new AABB(base).inflate(40))
                                 .forEach(Entity::discard);
                     }
                     helper.succeed();
