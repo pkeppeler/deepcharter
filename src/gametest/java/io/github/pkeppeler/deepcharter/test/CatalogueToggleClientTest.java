@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -417,7 +418,6 @@ public class CatalogueToggleClientTest implements FabricClientGameTest {
     private static void aSpecSheetWorksWhileHidden(ClientGameTestContext context) {
         CatalogueScene.openInventory(context);
         CataloguePanel panel = CatalogueScene.panel(context);
-        CatalogueLayout layout = CatalogueScene.layout(context, panel);
         setHidden(context, true);
         try {
             context.runOnClient(client -> SpecSheetOpener.show(DRILL));
@@ -431,12 +431,12 @@ public class CatalogueToggleClientTest implements FabricClientGameTest {
                                     .anyMatch(drawn -> drawn.text().equals(title)))
                             && context.computeOnClient(client -> panel.sheetGlass()) != null,
                     "and draws its title '" + title + "'");
-            CatalogueScene.hover(context, layout.inventory());
-            context.getInput().pressMouse(LEFT_MOUSE);
-            context.waitTicks(1);
+            CatalogueScene.hover(
+                    context, Objects.requireNonNull(context.computeOnClient(client -> panel.sheetCloseSwitch())));
+            RealInput.click(context, LEFT_MOUSE);
             require(
                     context.computeOnClient(client -> panel.sheetItem()) == null,
-                    "a click puts the sheet away while the panels are hidden");
+                    "the close switch puts the sheet away while the panels are hidden");
             require(hidden(context), "and the panels are still hidden after it");
             require(
                     context.computeOnClient(client -> DrawnText.of(shown(client)).stream()

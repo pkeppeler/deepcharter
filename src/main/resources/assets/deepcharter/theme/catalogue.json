@@ -89,5 +89,8 @@
   "buttonCell": 2,
   "buttonCellGap": 1,
   "buttonColumns": 3,
-  "buttonRows": 2
+  "buttonRows": 2,
+
+  "ghostColor": "#5000E5A0",
+  "missingColor": "#90FF2A20"
 }

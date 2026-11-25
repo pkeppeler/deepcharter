@@ -58,6 +58,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param buttonCellGap pixels between those cells
  * @param buttonColumns how many columns of cells the button's face has
  * @param buttonRows how many rows
+ * @param ghostColor the veil over a ghost item in the crafting grid, the recipe the player has all the ingredients of but has not filled in
+ * @param missingColor the veil over a ghost item the player lacks, which marks that slot of the grid as missing
  */
 public record CatalogueLook(
         int maxPanelWidth,
@@ -110,7 +112,9 @@ public record CatalogueLook(
         int buttonCell,
         int buttonCellGap,
         int buttonColumns,
-        int buttonRows) {
+        int buttonRows,
+        int ghostColor,
+        int missingColor) {
     /**
      * The casing round a glass and the hardware on it, drawn in the pack's metal greens.
      *
@@ -301,7 +305,9 @@ public record CatalogueLook(
                 d.integer("buttonCell", 1, 8),
                 d.integer("buttonCellGap", 0, 4),
                 d.integer("buttonColumns", 1, 6),
-                d.integer("buttonRows", 1, 6));
+                d.integer("buttonRows", 1, 6),
+                d.color("ghostColor"),
+                d.color("missingColor"));
         if (look.minPanelWidth() > look.maxPanelWidth()) {
             throw d.conflict("minPanelWidth must not exceed maxPanelWidth", "minPanelWidth", "maxPanelWidth");
         }

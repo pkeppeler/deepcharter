@@ -149,7 +149,7 @@ public record CatalogueLayout(
      * @param needRows how many have/need rows fit
      * @param needBottom the y under which no have/need row may reach
      * @param spec the spec sheet switch, a plate with its legend
-     * @param vents the vents under the switch
+     * @param fill the switch that puts the recipe in the crafting grid, or shows it there, a plate with its legend under the spec sheet's
      */
     public record Card(
             int left,
@@ -161,7 +161,7 @@ public record CatalogueLayout(
             int needRows,
             int needBottom,
             Rect spec,
-            List<Rect> vents) {
+            Rect fill) {
         /**
          * The card with its title {@code extra} pixels taller (a name that takes more lines than one): the station, the grid and the
          * have/need rows move down by it, and fewer rows may fit.
@@ -178,7 +178,7 @@ public record CatalogueLayout(
                     Math.max(0, (needBottom - top) / needRow),
                     needBottom,
                     spec,
-                    vents);
+                    fill);
         }
     }
 
@@ -302,12 +302,7 @@ public record CatalogueLayout(
         int needBottom = glass.bottom() - look.contentBottom();
         int needRows = Math.max(0, (needBottom - needTop) / look.needRow());
         int lower = upper + c.deckRow() + c.deckRowGap();
-        int slotsHeight = c.ventHeight();
-        Rect vents = new Rect(
-                glass.x() + c.knobSize() + c.deckGap(),
-                lower + (c.deckRow() - slotsHeight) / 2,
-                glass.width() - 2 * (c.knobSize() + c.deckGap()),
-                slotsHeight);
-        return new Card(left, right, titleY, stationY, gridY, needTop, needRows, needBottom, spec, List.of(vents));
+        Rect fill = new Rect(glass.x(), lower, glass.width(), c.deckRow());
+        return new Card(left, right, titleY, stationY, gridY, needTop, needRows, needBottom, spec, fill);
     }
 }

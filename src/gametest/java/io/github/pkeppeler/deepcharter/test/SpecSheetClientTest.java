@@ -22,10 +22,12 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
+import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -196,9 +198,9 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 text.box().x(), text.box().y(), text.box().width(), text.box().height());
     }
 
-    /** The close switch's legend is drawn on its plate, under the glass. */
+    /** The legends of the Recipes link and the close switch are drawn on their plates, under the glass. */
     private static boolean isOnThePlate(Drawn text) {
-        return text.text().equals("CLOSE");
+        return text.text().equals("CLOSE") || text.text().equals("RECIPES");
     }
 
     private static void theRatingsAreTheGamesOwnNumbers() {
@@ -303,6 +305,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
             CatalogueScene.openInventory(context);
             theSpecSheetButtonOpensTheSheet(context);
+            theRecipesLinkOpensTheRecipes(context);
             theSheetTakesEveryKeyAndHidesTheTooltipUnderIt(context, singleplayer);
             context.setScreen(() -> null);
             aSheetPopsUpWhenTheServerSays(context, singleplayer);
@@ -353,13 +356,87 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(2);
         require(context.computeOnClient(client -> panel.sheetItem()) == drill, "the button opens it again");
-        CatalogueScene.hover(context, layout.inventory());
-        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
-        context.waitTicks(2);
-        require(context.computeOnClient(client -> panel.sheetItem()) == null, "a click anywhere puts the sheet away");
+        // A click on the sheet's text does not lose it; the close switch puts it away.
+        CatalogueScene.hover(context, Objects.requireNonNull(context.computeOnClient(client -> panel.sheetGlass())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(
+                context.computeOnClient(client -> panel.sheetItem()) == drill,
+                "a click on the sheet's glass leaves the sheet open");
+        CatalogueScene.hover(
+                context, Objects.requireNonNull(context.computeOnClient(client -> panel.sheetCloseSwitch())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(context.computeOnClient(client -> panel.sheetItem()) == null, "the close switch puts the sheet away");
         require(
                 context.computeOnClient(client -> client.gui.screen()) == screen,
                 "the click is the sheet's own, and the inventory stays open");
+
+        // A click off the console, on the screen's edge, puts it away too.
+        context.runOnClient(client -> SpecSheetOpener.show(drill));
+        ClientWait.until(context, "the sheet again", client -> panel.sheetItem() == drill);
+        ClientCursor.moveTo(context, 2, 2);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(
+                context.computeOnClient(client -> panel.sheetItem()) == null,
+                "a click off the sheet's console puts it away");
+    }
+
+    /** The Recipes link of a sheet shows the item's recipes in the catalogue: over the inventory, over hidden panels, and from a sheet of its own. */
+    private static void theRecipesLinkOpensTheRecipes(ClientGameTestContext context) {
+        Item drill = HangarParts.DRILL_HEAD;
+        CatalogueScene.openInventory(context);
+        CataloguePanel panel = CatalogueScene.panel(context);
+        context.runOnClient(client -> panel.state().clear());
+        context.runOnClient(client -> SpecSheetOpener.show(drill));
+        ClientWait.until(context, "the sheet over the inventory", client -> panel.sheetItem() == drill);
+        require(
+                context.computeOnClient(client -> panel.state().lookup()) == null,
+                "setup: nothing is looked up before the link");
+        CatalogueScene.hover(
+                context, Objects.requireNonNull(context.computeOnClient(client -> panel.sheetRecipesLink())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(context.computeOnClient(client -> panel.sheetItem()) == null, "the Recipes link puts the sheet away");
+        CatalogueState.Lookup lookup =
+                context.computeOnClient(client -> panel.state().lookup());
+        require(
+                lookup != null && lookup.item() == drill && lookup.mode() == CatalogueState.Mode.RECIPES,
+                "and shows the item's recipes, got " + lookup);
+        require(context.computeOnClient(client -> panel.showsRecipePanel()), "in the recipe console");
+
+        // Over panels that were put away, the link brings them back.
+        context.runOnClient(client -> {
+            panel.state().clear();
+            panel.state().toggleHidden();
+        });
+        context.runOnClient(client -> SpecSheetOpener.show(drill));
+        ClientWait.until(context, "the sheet over the hidden panels", client -> panel.sheetItem() == drill);
+        require(context.computeOnClient(client -> !panel.panelsShown()), "setup: the panels are put away");
+        CatalogueScene.hover(
+                context, Objects.requireNonNull(context.computeOnClient(client -> panel.sheetRecipesLink())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(
+                context.computeOnClient(client -> panel.panelsShown() && panel.showsRecipePanel()),
+                "the link unhides the panels and shows the recipes");
+        context.runOnClient(client -> panel.state().clear());
+
+        // A sheet of its own, with no inventory open: the link opens the inventory at the recipes.
+        context.setScreen(() -> null);
+        context.runOnClient(client -> SpecSheetOpener.show(drill));
+        ClientWait.screen(context, SpecSheetScreen.class);
+        context.waitTicks(2);
+        CatalogueScene.hover(
+                context,
+                Objects.requireNonNull(context.computeOnClient(
+                        client -> ((SpecSheetScreen) Objects.requireNonNull(client.gui.screen())).recipesLink())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        ClientWait.screen(context, InventoryScreen.class);
+        context.waitTicks(3);
+        CataloguePanel opened = CatalogueScene.panel(context);
+        CatalogueState.Lookup there =
+                context.computeOnClient(client -> opened.state().lookup());
+        require(
+                there != null && there.item() == drill && there.mode() == CatalogueState.Mode.RECIPES,
+                "from a sheet of its own the link opens the inventory at the recipes, got " + there);
+        context.runOnClient(client -> opened.state().clear());
     }
 
     /** Draws {@code screen} and holds the strings of {@code item}'s sheet to the sheet's glass. */

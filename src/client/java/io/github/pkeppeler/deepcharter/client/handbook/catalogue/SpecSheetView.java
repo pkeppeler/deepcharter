@@ -31,6 +31,24 @@ final class SpecSheetView {
 
     private SpecSheetView() {}
 
+    /** What a click on a placed sheet does. */
+    enum Click {
+        /** The Recipes link: show the item's recipes in the catalogue. */
+        RECIPES,
+        /** The close switch, or anywhere off the sheet's console: put the sheet away. */
+        CLOSE,
+        /** Anywhere else on the console: nothing, so a stray click never loses the sheet. */
+        NONE
+    }
+
+    /** What a click at ({@code x}, {@code y}) does to a sheet laid out as {@code layout}. */
+    static Click clickAt(SpecSheetLayout layout, double x, double y) {
+        if (layout.recipes().contains(x, y)) {
+            return Click.RECIPES;
+        }
+        return layout.close().contains(x, y) || !layout.casing().contains(x, y) ? Click.CLOSE : Click.NONE;
+    }
+
     /** How a planned line is drawn. */
     enum Style {
         BRIGHT,
@@ -148,6 +166,17 @@ final class SpecSheetView {
         graphics.nextStratum();
         CatalogueHardware.glassFront(graphics, look, panel, layout.glass());
         graphics.nextStratum();
+        CatalogueHardware.legendSwitch(
+                graphics,
+                font,
+                look,
+                panel,
+                crt,
+                layout.recipes(),
+                Component.translatable("deepcharter.catalogue.sheet.recipes").getString(),
+                false,
+                true,
+                layout.recipes().contains(mouseX, mouseY));
         CatalogueHardware.legendSwitch(
                 graphics,
                 font,
