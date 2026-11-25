@@ -46,10 +46,10 @@ public final class SeamStreaming {
     /**
      * One vehicle's approach to the floor of a level with a level below it, or to the ceiling of one with a level above
      * it, keyed by the root vehicle (the player when on foot), listing every player it carries. {@code lower} is the
-     * level the arrival area is in: the one below for {@link #approachOf}, the one above for {@link #ascentOf}. {@code descentPerTick}
-     * is the vehicle's closing speed on the seam over the last {@link LayerTuning#seamSpeedWindow()}
-     * ticks, in blocks a tick, as of the last tick it was read (0 when it sits or moves away): what the approach hands
-     * the swap. {@code ready} is whether the arrival area's chunks have loaded.
+     * level the arrival area is in: the one below for {@link #approachOf}, the one above for {@link #ascentOf}.
+     * {@code descentPerTick} is the vehicle's closing speed on the seam over the last
+     * {@link LayerTuning#seamSpeedWindow()} ticks, in blocks a tick, as of the last tick it was read (0 when it sits or
+     * moves away): what the approach hands the swap. {@code ready} is whether the arrival area's chunks have loaded.
      */
     public record Approach(
             UUID root,
