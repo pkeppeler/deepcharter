@@ -180,9 +180,7 @@ final class ScannerMap {
                                 tile.get(),
                                 overlay(look, found, small),
                                 pixels >= look.oreOutlineMinPixels() ? outline(look, found) : 0,
-                                found instanceof Cell.Rock
-                                        ? ScannerGrain.pattern(look, slice.posLong(ahead, up), pixels)
-                                        : 0,
+                                found instanceof Cell.Rock ? ScannerGrain.pattern(slice.posLong(ahead, up)) : 0,
                                 look.rockGrainLevels());
                     }
                 }

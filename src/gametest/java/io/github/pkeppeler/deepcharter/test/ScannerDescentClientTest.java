@@ -44,8 +44,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * #1272: digging straight down through uniform rock, the scanner must show the pod descending. The pod sits in a shaft
- * cut in a slab of stone that fills the whole scan area, and is moved one block down; on main the two pictures were the
- * same.
+ * cut in a slab of stone that fills the whole scan area, and is moved one block down.
  *
  * <ul>
  *   <li>The rendered map differs between the two depths.
@@ -196,8 +195,8 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the client's pod at " + feet.toShortString(),
-                // The first runs of this test saw the client's player without a vehicle for a moment after the move, so
-                // the wait asks for the seat instead of assuming it; a rider that never sits again times out here.
+                // The client's player can be without a vehicle for a moment after the move, so the wait asks for the
+                // seat instead of assuming it; a rider that never sits again times out here.
                 client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                         && pod.blockPosition().equals(feet));
         context.waitTicks(2 * TUNING.rescanTicks() + 2);

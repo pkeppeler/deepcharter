@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.client.scanner;
 
-import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import it.unimi.dsi.fastutil.HashCommon;
 import java.util.List;
 
@@ -21,14 +20,8 @@ public final class ScannerGrain {
 
     private ScannerGrain() {}
 
-    /**
-     * The pattern of the block whose {@code BlockPos.asLong} is {@code pos}, for a cell {@code pixels} square;
-     * {@code 0}, none, for a cell too small to split or a look with {@link ScannerLook#rockGrainLevels()} 0.
-     */
-    static int pattern(ScannerLook look, long pos, int pixels) {
-        if (look.rockGrainLevels() == 0 || pixels < 2) {
-            return 0;
-        }
+    /** The pattern of the block whose {@code BlockPos.asLong} is {@code pos}. */
+    static int pattern(long pos) {
         return PATTERNS.get(Math.floorMod(HashCommon.murmurHash3(pos), PATTERNS.size()));
     }
 
