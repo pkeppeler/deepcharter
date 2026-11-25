@@ -19,10 +19,11 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
 
 /**
- * What the charter knows, as the catalogue shows it. The known recipes are the client's recipe book, which the server fills with exactly
- * the charter's known recipes (ADR 0070); a <em>known item</em> is an item such a recipe makes, or an item that may sit in one of its
- * ingredient cells (every item of a tag), the rule the server uses to teach a recipe. An item with no known recipe is not listed, and a
- * recipe the book lacks is never shown, so the catalogue reveals nothing the book does not.
+ * What the charter knows, as the catalogue shows it. The known recipes are the client's recipe book, which the server
+ * fills with exactly the charter's known recipes (ADR 0070); a <em>known item</em> is an item such a recipe makes, or
+ * an item that may sit in one of its ingredient cells (every item of a tag that the campaign world yields, ADR 0093).
+ * An item with no known recipe is not listed, and a recipe the book lacks is never shown, so the catalogue reveals
+ * nothing the book does not.
  */
 public final class PartsCatalogue {
     /** Company parts first, then by id, so the catalogue opens on the parts and not on a screenful of vanilla blocks. */

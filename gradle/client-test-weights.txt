@@ -3,6 +3,7 @@
 # A name is simple, or fully qualified when two classes share a simple name (the full name wins). A class not listed counts as 10 s, so a new class needs no entry here and the shards still cover every
 # class; an entry for a class that no longer exists is ignored. Stale numbers only unbalance the shards, never
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
+# PodDriveLateClientTest and PodDriveSmoothClientTest: the mean of three local runs after #1112 split the class; refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
 BlockReadoutClientTest 16
@@ -50,7 +51,8 @@ PodAttachmentClientTest 11
 PodBraceClientTest 17
 PodComponentsClientTest 13
 PodDrillClientTest 18
-PodDriveSmoothClientTest 165
+PodDriveLateClientTest 79
+PodDriveSmoothClientTest 117
 PodEngineSoundClientTest 31
 PodGeckoLibClientTest 15
 PodHeatShieldClientTest 14
