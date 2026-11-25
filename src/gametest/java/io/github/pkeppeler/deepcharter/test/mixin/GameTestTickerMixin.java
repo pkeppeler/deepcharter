@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Releases a done test's pending work however it finished ({@code GameTestInfo.tick} returns early for a test finished outside it), and
- * scans the running tests with {@code EntityTickingGate}.
+ * Releases a done test's pending work however it finished ({@code GameTestInfo.tick} returns early for a test finished
+ * outside it), and scans the running tests with {@code EntityTickingGate}.
  */
 @Mixin(value = GameTestTicker.class, remap = false)
 public abstract class GameTestTickerMixin {

@@ -25,9 +25,10 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server GameTests for {@link EntityTickingGate} (#1089): a pod driven east out of an awaited chunk into the next, which is loaded but
- * not entity-ticking. Each case has a chunk column no other test forces. A case that must fail is a {@code required = false} subject
- * the gate fails, and a {@code ...Fails...} test beside it reads the outcome; the environment keeps them in one batch.
+ * Server GameTests for {@link EntityTickingGate} (#1089): a pod driven east out of an awaited chunk into the next,
+ * which is loaded but not entity-ticking. Each case has a chunk column no other test forces. A case that must fail is a
+ * {@code required = false} subject the gate fails, and a {@code ...Fails...} test beside it reads the outcome; the
+ * environment keeps them in one batch.
  */
 public class EntityTickingGateTest {
     private static final String ENVIRONMENT = "deepcharter-test:entity_ticking_gate";
@@ -65,8 +66,8 @@ public class EntityTickingGateTest {
     }
 
     /**
-     * Drives a pod east to {@code border + stopAt}, with its pilot, out of the awaited chunk {@code column}, into the chunk beyond it, and
-     * runs {@code after} once the pod has stopped or the game has stopped it, a few ticks later.
+     * Drives a pod east to {@code border + stopAt}, with its pilot, out of the awaited chunk {@code column}, into the
+     * chunk beyond it, and runs {@code after} once the pod has stopped or the game has stopped it, a few ticks later.
      */
     private static void driveEast(GameTestHelper helper, int column, double stopAt, Consumer<PodEntity> after) {
         ServerLevel level = helper.getLevel();
@@ -124,7 +125,10 @@ public class EntityTickingGateTest {
                 .thenExecute(() -> after.accept(TestEntities.require(level, got(pod).getId(), PodEntity.class)));
     }
 
-    /** Reads the outcome of the test the gate must have failed: waits for it, then checks its message names the chunk and the fix. */
+    /**
+     * Reads the outcome of the test the gate must have failed: waits for it, then checks its message names the chunk
+     * and the fix.
+     */
     private static void expectGateFailure(
             GameTestHelper helper, AtomicReference<@Nullable AABB> subject, int column, String what) {
         FarChunks.Deadline deadline = FarChunks.deadline();
@@ -146,7 +150,10 @@ public class EntityTickingGateTest {
         });
     }
 
-    /** Fails by design: a pod drives into a chunk the game does not tick. {@link #theGateFailsAPodDrivenIntoAChunkThatDoesNotTick} reads it. */
+    /**
+     * Fails by design: a pod drives into a chunk the game does not tick. {@link
+     * #theGateFailsAPodDrivenIntoAChunkThatDoesNotTick} reads it.
+     */
     @GameTest(maxTicks = MAX_TICKS, environment = ENVIRONMENT, required = false)
     public void subjectAPodDrivenAcrossTheBorder(GameTestHelper helper) {
         CROSSING.set(helper.getBounds());
@@ -202,7 +209,10 @@ public class EntityTickingGateTest {
         });
     }
 
-    /** The opt-out is the test's own: once it finished, the gate has forgotten it, or the next test at its bounds would inherit it. */
+    /**
+     * The opt-out is the test's own: once it finished, the gate has forgotten it, or the next test at its bounds would
+     * inherit it.
+     */
     @GameTest(maxTicks = MAX_TICKS, environment = ENVIRONMENT)
     public void theOptOutIsForgottenWhenItsTestFinishes(GameTestHelper helper) {
         FarChunks.Deadline deadline = FarChunks.deadline();
@@ -217,7 +227,10 @@ public class EntityTickingGateTest {
         });
     }
 
-    /** A {@code setPos} across the border is a reposition, not a drive: nothing the pod did stalled it, so the gate leaves it alone. */
+    /**
+     * A {@code setPos} across the border is a reposition, not a drive: nothing the pod did stalled it, so the gate
+     * leaves it alone.
+     */
     @GameTest(maxTicks = MAX_TICKS, environment = ENVIRONMENT)
     public void aRepositionAcrossTheBorderIsNotADrive(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -263,7 +276,10 @@ public class EntityTickingGateTest {
                 });
     }
 
-    /** Two tests hold the chunk the pod drives out of, so neither owns the pod: the gate blames neither. This one drives and passes. */
+    /**
+     * Two tests hold the chunk the pod drives out of, so neither owns the pod: the gate blames neither. This one drives
+     * and passes.
+     */
     @GameTest(maxTicks = MAX_TICKS, environment = ENVIRONMENT)
     public void aPodDrivenOutOfAChunkTwoTestsHoldIsNobodysToBlame(GameTestHelper helper) {
         driveEast(helper, SHARED_COLUMN, OVERSHOOT, pod -> {
@@ -275,7 +291,10 @@ public class EntityTickingGateTest {
         });
     }
 
-    /** The second holder of that chunk drives nothing and must pass: it stays running until the drive is over, so the gate could blame it. */
+    /**
+     * The second holder of that chunk drives nothing and must pass: it stays running until the drive is over, so the
+     * gate could blame it.
+     */
     @GameTest(maxTicks = MAX_TICKS, environment = ENVIRONMENT)
     public void theOtherHolderOfTheChunkIsNotBlamedForTheDrive(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -289,7 +308,10 @@ public class EntityTickingGateTest {
         });
     }
 
-    /** Who owns a position: the one test whose bounds contain it, else the one that holds its chunk; none, or two of either, is nobody. */
+    /**
+     * Who owns a position: the one test whose bounds contain it, else the one that holds its chunk; none, or two of
+     * either, is nobody.
+     */
     @GameTest(environment = ENVIRONMENT)
     public void aPositionHasAnOwnerOnlyWhenOneTestClaimsIt(GameTestHelper helper) {
         AABB here = new AABB(0, 0, 0, 10, 10, 10);

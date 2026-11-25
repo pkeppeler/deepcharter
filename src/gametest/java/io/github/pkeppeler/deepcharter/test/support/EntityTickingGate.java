@@ -24,18 +24,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Fails the running test whose pod, or the player riding it, drives into a chunk that is not entity-ticking (#1089): the game stops
- * such an entity dead at the border. {@code GameTestTickerMixin} calls {@link #scan} once per server tick.
+ * Fails the running test whose pod, or the player riding it, drives into a chunk that is not entity-ticking (#1089):
+ * the game stops such an entity dead at the border. {@code GameTestTickerMixin} calls {@link #scan} once per server
+ * tick.
  *
- * <p>An entity is the test's own when its chunk lies in the test's structure bounds or in a chunk the test holds ({@link FarChunks});
- * one that belongs to no test or to two is nobody's. A move is a drive when {@code getDeltaMovement()} explains its length; a
- * {@code setPos} or a teleport is not. A test about a chunk that must not tick calls {@link FarChunks#allowUnticked}.
+ * <p>An entity is the test's own when its chunk lies in the test's structure bounds or in a chunk the test holds
+ * ({@link FarChunks}); one that belongs to no test or to two is nobody's. A move is a drive when {@code
+ * getDeltaMovement()} explains its length; a {@code setPos} or a teleport is not. A test about a chunk that must not
+ * tick calls {@link FarChunks#allowUnticked}.
  */
 public final class EntityTickingGate {
-    /** Blocks of slack on top of the velocity: a move is the velocity before friction, gravity and a clip against a wall. */
+    /**
+     * Blocks of slack on top of the velocity: a move is the velocity before friction, gravity and a clip against a
+     * wall.
+     */
     private static final double SLACK = 0.05;
 
-    /** How many times its velocity an entity may move in one tick and still be driven (friction and gravity change the velocity). */
+    /**
+     * How many times its velocity an entity may move in one tick and still be driven (friction and gravity change the
+     * velocity).
+     */
     private static final double VELOCITY_FACTOR = 1.5;
 
     /** Where an entity was at the last scan, and how fast it was going. */
@@ -46,7 +54,10 @@ public final class EntityTickingGate {
 
     private static final Set<AABB> ALLOWED = new HashSet<>();
 
-    /** The bounds of the tests whose failure {@code EntityTickingGateTest} will read; only these have their message kept. */
+    /**
+     * The bounds of the tests whose failure {@code EntityTickingGateTest} will read; only these have their message
+     * kept.
+     */
     private static final Set<AABB> EXPECTED = new HashSet<>();
 
     /** The message the gate failed each of {@link #EXPECTED} with. */
@@ -71,13 +82,19 @@ public final class EntityTickingGate {
         return ALLOWED.contains(testBounds);
     }
 
-    /** Keeps the message the gate fails the test with these bounds with, for {@link #failureOf}. For {@code EntityTickingGateTest}. */
+    /**
+     * Keeps the message the gate fails the test with these bounds with, for {@link #failureOf}. For {@code
+     * EntityTickingGateTest}.
+     */
     public static void expectFailure(AABB testBounds) {
         EXPECTED.add(testBounds);
         FAILED.remove(testBounds);
     }
 
-    /** The message the gate failed the test with these bounds with, once it has; the entry is dropped when it is read. For {@code EntityTickingGateTest}. */
+    /**
+     * The message the gate failed the test with these bounds with, once it has; the entry is dropped when it is read.
+     * For {@code EntityTickingGateTest}.
+     */
     public static @Nullable String failureOf(AABB testBounds) {
         String message = FAILED.remove(testBounds);
         if (message != null) {
@@ -87,8 +104,8 @@ public final class EntityTickingGate {
     }
 
     /**
-     * What is wrong with a move of {@code who} from {@code from} to {@code to}, if anything: a drive into a chunk that is not
-     * entity-ticking. A move longer than {@code speed} explains is a reposition, and is not a drive.
+     * What is wrong with a move of {@code who} from {@code from} to {@code to}, if anything: a drive into a chunk that
+     * is not entity-ticking. A move longer than {@code speed} explains is a reposition, and is not a drive.
      */
     private static Optional<String> problem(ServerLevel level, Entity who, Vec3 from, Vec3 to, double speed) {
         BlockPos entered = BlockPos.containing(to);
@@ -98,13 +115,17 @@ public final class EntityTickingGate {
         }
         return Optional.of(String.format(
                 "%s drove from %s into chunk %s of %s, which is not entity-ticking, so the game stops it at the border."
-                        + " Await every chunk the drive will enter with FarChunks.awaitAllEntityTicking(helper, level, positions, then)"
+                        + " Await every chunk the drive will enter with"
+                        + " FarChunks.awaitAllEntityTicking(helper, level, positions, then)"
                         + " and start the drive in `then`; a test about a chunk that must not tick calls"
                         + " FarChunks.allowUnticked(helper, reason)",
                 who.getName().getString(), from, chunk, level.dimension()));
     }
 
-    /** Checks every pod and player in the levels of the running tests, and fails the test that owns the first to drive into a chunk that is not ticking. */
+    /**
+     * Checks every pod and player in the levels of the running tests, and fails the test that owns the first to drive
+     * into a chunk that is not ticking.
+     */
     public static void scan(Collection<GameTestInfo> running) {
         List<Running> tests = new ArrayList<>();
         Set<ServerLevel> levels = new HashSet<>();
@@ -134,7 +155,8 @@ public final class EntityTickingGate {
                 if (owner == null) {
                     if (!level.isPositionEntityTicking(BlockPos.containing(now))) {
                         LOGGER.info(
-                                "{} moved from {} into a chunk that is not entity-ticking, and no running test holds either chunk",
+                                "{} moved from {} into a chunk that is not entity-ticking,"
+                                        + " and no running test holds either chunk",
                                 entity.getName().getString(),
                                 before.pos());
                     }
@@ -165,7 +187,10 @@ public final class EntityTickingGate {
         return found;
     }
 
-    /** The one running test of {@code level} that owns the entity, by where it was, else by where it is; null when none or several do. */
+    /**
+     * The one running test of {@code level} that owns the entity, by where it was, else by where it is; null when none
+     * or several do.
+     */
     private static @Nullable Running owner(List<Running> tests, ServerLevel level, Vec3 before, Vec3 now) {
         Running byBefore = ownerOf(tests, level, before);
         return byBefore != null ? byBefore : ownerOf(tests, level, now);
@@ -188,8 +213,9 @@ public final class EntityTickingGate {
     public record Claim(AABB bounds, boolean holdsChunk) {}
 
     /**
-     * The index of the one claim that owns {@code at}, or -1 when none or several do. The tests whose bounds contain it own it; if none
-     * does, the tests that hold its chunk do. One test only: two owners are nobody's, so no neighbour is blamed.
+     * The index of the one claim that owns {@code at}, or -1 when none or several do. The tests whose bounds contain it
+     * own it; if none does, the tests that hold its chunk do. One test only: two owners are nobody's, so no neighbour
+     * is blamed.
      */
     public static int ownerOf(List<Claim> claims, Vec3 at) {
         List<Integer> inBounds = new ArrayList<>();
