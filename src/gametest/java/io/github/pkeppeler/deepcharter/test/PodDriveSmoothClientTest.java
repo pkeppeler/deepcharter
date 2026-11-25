@@ -190,7 +190,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /** Ticks a pinned drive holds the keys before the pin, and after it. */
     private static final int PIN_AFTER_TICKS = 30;
 
-    private static final int PINNED_TICKS = 40;
+    /** Ticks a pinned pod is watched beyond the ones ADR 0082's settle needs ({@link #pinnedTicks}). */
+    private static final int PIN_SLACK_TICKS = 1;
 
     private static final int WALL_AHEAD = 8;
     private static final int WALL_SLABS = 3;
@@ -921,6 +922,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     private static void expectPinnedPodSettles(ClientGameTestContext context, Rig rig) {
         returnToStart(context, rig);
         double coast = coastReach() * PodTuning.DEFAULT.movement().horizontalSpeed() * SPEED_SCALE;
+        int pinnedTicks = pinnedTicks(coast);
         double past = 0;
         Vec3 pin;
         Vec3 drawn;
@@ -930,7 +932,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             pin = serverPosition(rig.two(), rig.ownPodId());
             pinnedAt = pin;
             pinnedPodId = rig.ownPodId();
-            for (int tick = 0; tick < PINNED_TICKS; tick++) {
+            for (int tick = 0; tick < pinnedTicks; tick++) {
                 context.waitTick();
                 past = Math.max(past, onClient(context, rig.ownPodId()).z - pin.z);
             }
@@ -947,13 +949,24 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                 past,
                 coast + SETTLE_TOLERANCE,
                 drawn.distanceTo(pin),
-                PINNED_TICKS);
+                pinnedTicks);
         require(
                 past <= coast + SETTLE_TOLERANCE,
                 "the drawn pod went " + past + " blocks past where the server pinned it");
         require(
                 drawn.distanceTo(pin) <= SETTLE_TOLERANCE,
                 "the drawn pod is " + drawn.distanceTo(pin) + " blocks from where the server pinned it");
+    }
+
+    /**
+     * Ticks a pod pinned {@code past} blocks behind where it is drawn is watched: the settle delay, then the ticks that giving back
+     * {@code settleShare} of the gap a tick takes to bring it within {@link #SETTLE_TOLERANCE}, and {@link #PIN_SLACK_TICKS}. A faster
+     * pod coasts further past the pin, so it is watched longer (40 ticks at the stock speed).
+     */
+    private static int pinnedTicks(double past) {
+        PodGlideTuning tuning = PodGlideTuning.DEFAULT;
+        double settling = Math.log(SETTLE_TOLERANCE / past) / Math.log(1 - tuning.settleShare());
+        return tuning.settleDelayTicks() + (int) Math.ceil(settling) + PIN_SLACK_TICKS;
     }
 
     private static Vec3 onClient(ClientGameTestContext context, int podId) {
