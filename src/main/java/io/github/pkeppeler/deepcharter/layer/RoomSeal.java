@@ -1,8 +1,10 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -36,5 +38,22 @@ public final class RoomSeal {
     /** True for a block that worldgen leaves in rock and that wakes when a neighbour changes: a fluid or a gas pocket. */
     public static boolean needsSealing(BlockState state) {
         return !state.getFluidState().isEmpty() || state.is(HazardBlocks.GAS_POCKET);
+    }
+
+    /**
+     * The first layer rock in row {@code y} from {@code minX}, {@code minZ} to {@code maxX}, {@code maxZ}, x outermost,
+     * so a seal near layer 1's strata contacts (#1277) is the rock of the wall round it.
+     */
+    public static Optional<BlockState> rockOfRow(BlockGetter level, int y, int minX, int maxX, int minZ, int maxZ) {
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                BlockState state = level.getBlockState(pos.set(x, y, z));
+                if (state.is(LayerBlocks.GROUND)) {
+                    return Optional.of(state);
+                }
+            }
+        }
+        return Optional.empty();
     }
 }

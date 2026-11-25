@@ -250,22 +250,14 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
         }
 
         /**
-         * Seals the shell: lava and gas in {@code bounds} become the layer rock found in the same row of the bounds, so
-         * a seal near a strata contact is the rock of the wall round it; a row with none takes the layer's own rock.
+         * Seals the shell: lava and gas in {@code bounds} become the layer rock found in the same row of the bounds
+         * ({@link RoomSeal#rockOfRow}); a row with none takes the layer's own rock.
          */
         void seal(BoundingBox bounds) {
             for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
-                BlockState rock = LayerBlocks.layerGround(band.layer()).defaultBlockState();
-                findRock:
-                for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
-                    for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
-                        BlockState state = get(x, y, z);
-                        if (state.is(LayerBlocks.GROUND)) {
-                            rock = state;
-                            break findRock;
-                        }
-                    }
-                }
+                BlockState rock = RoomSeal.rockOfRow(
+                                chunk, y, bounds.minX(), bounds.maxX(), bounds.minZ(), bounds.maxZ())
+                        .orElseGet(() -> LayerBlocks.layerGround(band.layer()).defaultBlockState());
                 for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
                     for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
                         if (RoomSeal.needsSealing(get(x, y, z))) {

@@ -73,29 +73,17 @@ final class StructurePlan {
                         continue;
                     }
                     if (ground == null) {
-                        ground = rockOfRow(y, minX, maxX, minZ, maxZ);
+                        int row = y;
+                        ground = RoomSeal.rockOfRow(chunk, y, minX, maxX, minZ, maxZ)
+                                .orElseGet(() -> LayerBlocks.layerGroundOf(level, row)
+                                        .orElseGet(() -> LayerBlocks.layerGround(band.layer()))
+                                        .defaultBlockState());
                     }
                     chunk.setBlockState(pos, ground, FLAGS);
                     level.getLightEngine().checkBlock(pos);
                 }
             }
         }
-    }
-
-    /** The first layer rock in row {@code y} of the shell's part in this chunk, else the layer's rock at that row. */
-    private BlockState rockOfRow(int y, int minX, int maxX, int minZ, int maxZ) {
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (int x = minX; x <= maxX; x++) {
-            for (int z = minZ; z <= maxZ; z++) {
-                BlockState state = chunk.getBlockState(pos.set(x, y, z));
-                if (state.is(LayerBlocks.GROUND)) {
-                    return state;
-                }
-            }
-        }
-        return LayerBlocks.layerGroundOf(level, y)
-                .orElseGet(() -> LayerBlocks.layerGround(band.layer()))
-                .defaultBlockState();
     }
 
     /** The world position of a place in the structure, in any chunk. */

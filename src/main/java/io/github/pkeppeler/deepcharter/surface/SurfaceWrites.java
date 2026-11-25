@@ -45,9 +45,8 @@ public final class SurfaceWrites {
 
     /**
      * Every pair judged so far, oldest first, shared by every worker thread and replaced whole when a pair is added. A
-     * column writes a few pairs in turn (layer 1's strata, #1277) and each thread writes its own chunk's, so the one
-     * last pair this used to keep missed on most writes and doubled layer 1's cost; a table read through one volatile
-     * field is as cheap as that one pair on a hit.
+     * column writes a few pairs in turn (layer 1's strata, #1277) and each thread writes its own chunk's, so one kept
+     * pair would miss on most writes; a table read through one volatile field is as cheap as one pair on a hit.
      */
     private static volatile Verdict[] known = new Verdict[0];
 
