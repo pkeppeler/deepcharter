@@ -1,5 +1,6 @@
 {
   "deepcharter.continuity.chat": "▌CONTINUITY EVENT — %s (No. %s) — %s, %s",
+  "deepcharter.continuity.chat_no_depth": "▌CONTINUITY EVENT — %s (No. %s) — %s",
   "deepcharter.continuity.cause.attacked": "ATTACKED",
   "deepcharter.continuity.cause.blast": "BLAST",
   "deepcharter.continuity.cause.buried": "BURIED",

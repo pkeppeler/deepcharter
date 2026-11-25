@@ -15,17 +15,14 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Draws the skull of the Company's own words as a CRT shows it (#1337, the user's pick C4, after {@code draw_typographic} and {@code crt}
- * of the mock-up): {@link SkullShape} as a mask over a grid of the terminal font's letters, which cycle through the Company's line; the
- * bones a shade dimmer; a faint outline; a glow; rows torn sideways, harder the louder the laugh; letters that shuffle on loud frames; a
- * rolling band; and an arrival that tears in from static. The skull's grid is worked out once per jaw position and screen size.
+ * of the mock-up): {@link SkullShape} as a mask over a dense grid of narrow terminal letters, which cycle through the Company's line; the
+ * eye sockets, nose and open mouth cut out as dark holes with a margin; the bones a shade dimmer; a faint outline; a soft phosphor bloom
+ * under the letters and a halo round them; rows torn sideways, harder the louder the laugh; letters that shuffle on loud frames; a rolling
+ * band; and an arrival that tears in from static. The skull's grid is worked out once per jaw position and screen size.
  */
 final class SkullArt {
-    /** Jaw positions the mask is worked out for; the laugh's loudness picks the nearest. */
-    private static final int JAW_STEPS = 16;
     /** The static the skull arrives from, one letter a cell. */
     private static final String STATIC = ".:;'`,-~";
-    /** The brightest the laugh makes the picture, on top of its flicker. */
-    private static final double LOUD_GAIN = 0.06;
 
     /** One jaw position's grid: what each cell is ({@link SkullShape#SKULL} and the like), and the outline's pixels. */
     @SuppressWarnings("ArrayRecordComponent") // built once per jaw position and only read; never compared
@@ -33,6 +30,7 @@ final class SkullArt {
 
     private final RandomSource random = RandomSource.create();
     private final Map<Integer, Grid> grids = new HashMap<>();
+    private @Nullable ContinuityLook gridLook;
     private int gridSize = -1;
     private float gridCellWidth = -1;
 
@@ -59,16 +57,19 @@ final class SkullArt {
         int left = (width - size) / 2;
         int top = (height - size) / 2;
         float cellHeight = size / (float) look.rows();
-        float scale = cellHeight / font.lineHeight;
-        float cellWidth = Math.max(1f, CrtText.width(font, "M") * scale);
-        Grid grid = grid(size, cellWidth, look.rows(), Math.round(loudness * JAW_STEPS));
+        float cellWidth = Math.max(1f, (float) (cellHeight * look.cellAspect()));
+        // The letters are squeezed to their cell: as wide as a cell, and glyphFill cells tall a line.
+        float scaleX = cellWidth / Math.max(1, font.width(CrtText.terminal("M")));
+        float scaleY = (float) (cellHeight * look.glyphFill() / font.lineHeight);
+        Grid grid = grid(look, size, cellWidth, Math.round(loudness * look.jawSteps()));
 
         double brightness = Math.clamp(
-                life * (1 + look.flicker() * (random.nextDouble() * 2 - 1) + LOUD_GAIN * loudness), 0.0, 1.0);
+                life * (1 + look.flicker() * (random.nextDouble() * 2 - 1) + look.loudGain() * loudness), 0.0, 1.0);
         int skull = dimmed(crt.phosphorColor(), brightness);
         int bone = dimmed(look.boneColor(), brightness);
         int glow = dimmed(crt.glowColor(), brightness);
         int outline = dimmed(look.outlineColor(), brightness);
+        int bloom = dimmed(look.bloomColor(), brightness);
         double arrival = look.arrivalSeconds() <= 0 ? 1 : Math.min(1, since / look.arrivalSeconds());
 
         dots(graphics, grid.skullOutline(), left, top, outline);
@@ -82,16 +83,36 @@ final class SkullArt {
         }
         int shuffle = loudness > look.shuffleLoudness() ? random.nextInt(3) : 0;
         int staticCols = (int) (width / cellWidth) + 1;
+        boolean[] arrived = new boolean[grid.rows()];
+        for (int row = 0; row < grid.rows(); row++) {
+            arrived[row] = arrival >= 1 || random.nextDouble() < arrival;
+        }
+        if (look.bloomLayers() > 0) {
+            for (int row = 0; row < grid.rows(); row++) {
+                if (arrived[row]) {
+                    bloom(graphics, grid, row, left + tear[row], top + row * cellHeight, cellWidth, cellHeight, look, bloom);
+                }
+            }
+        }
         char[] skullRow = new char[grid.cols()];
         char[] boneRow = new char[grid.cols()];
         for (int row = 0; row < grid.rows(); row++) {
             float y = top + row * cellHeight;
-            if (arrival < 1 && random.nextDouble() >= arrival) {
+            if (!arrived[row]) {
                 char[] noise = new char[staticCols];
                 for (int c = 0; c < staticCols; c++) {
                     noise[c] = STATIC.charAt(random.nextInt(STATIC.length()));
                 }
-                row(graphics, font, new String(noise), 0, y, scale, dimmed(look.staticColor(), random.nextDouble()), 0);
+                row(
+                        graphics,
+                        font,
+                        new String(noise),
+                        0,
+                        y,
+                        scaleX,
+                        scaleY,
+                        dimmed(look.staticColor(), random.nextDouble()),
+                        0);
                 continue;
             }
             boolean any = false;
@@ -103,11 +124,48 @@ final class SkullArt {
                 any |= cell != SkullShape.NONE;
             }
             if (any) {
-                row(graphics, font, new String(boneRow), left + tear[row], y, scale, bone, glow);
-                row(graphics, font, new String(skullRow), left + tear[row], y, scale, skull, glow);
+                row(graphics, font, new String(boneRow), left + tear[row], y, scaleX, scaleY, bone, glow);
+                row(graphics, font, new String(skullRow), left + tear[row], y, scaleX, scaleY, skull, glow);
             }
         }
         band(graphics, width, height, since, look);
+    }
+
+    /**
+     * The phosphor's bloom under one row: each run of lit cells gets {@code bloomLayers} translucent boxes, each reaching {@code
+     * bloomSpread} further out than the last, so the glow is brightest in the mass of letters and fades off its edges, as the mock-up's
+     * blurred under-pass does. The holes' margin keeps their middle dark.
+     */
+    private static void bloom(
+            GuiGraphicsExtractor graphics,
+            Grid grid,
+            int row,
+            float left,
+            float y,
+            float cellWidth,
+            float cellHeight,
+            ContinuityLook look,
+            int color) {
+        int cols = grid.cols();
+        int col = 0;
+        while (col < cols) {
+            if (grid.cells()[row * cols + col] == SkullShape.NONE) {
+                col++;
+                continue;
+            }
+            int start = col;
+            while (col < cols && grid.cells()[row * cols + col] != SkullShape.NONE) {
+                col++;
+            }
+            int x0 = Math.round(left + start * cellWidth);
+            int x1 = Math.round(left + col * cellWidth);
+            int y0 = Math.round(y);
+            int y1 = Math.round(y + cellHeight);
+            for (int layer = 1; layer <= look.bloomLayers(); layer++) {
+                int reach = layer * look.bloomSpread();
+                graphics.fill(x0 - reach, y0 - reach / 2, x1 + reach, y1 + reach / 2, color);
+            }
+        }
     }
 
     /** A row of letters at ({@code x}, {@code y}), scaled, with a halo one pixel out in each direction when {@code glow} is not 0. */
@@ -117,23 +175,31 @@ final class SkullArt {
             String letters,
             float x,
             float y,
-            float scale,
+            float scaleX,
+            float scaleY,
             int color,
             int glow) {
         Component styled = CrtText.terminal(letters);
         if (glow != 0) {
             for (int[] offset : new int[][] {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
-                at(graphics, font, styled, x + offset[0], y + offset[1], scale, glow);
+                at(graphics, font, styled, x + offset[0], y + offset[1], scaleX, scaleY, glow);
             }
         }
-        at(graphics, font, styled, x, y, scale, color);
+        at(graphics, font, styled, x, y, scaleX, scaleY, color);
     }
 
     private static void at(
-            GuiGraphicsExtractor graphics, Font font, Component text, float x, float y, float scale, int color) {
+            GuiGraphicsExtractor graphics,
+            Font font,
+            Component text,
+            float x,
+            float y,
+            float scaleX,
+            float scaleY,
+            int color) {
         graphics.pose().pushMatrix();
         graphics.pose().translate(x, y);
-        graphics.pose().scale(scale, scale);
+        graphics.pose().scale(scaleX, scaleY);
         graphics.text(font, text, 0, 0, color, false);
         graphics.pose().popMatrix();
     }
@@ -163,22 +229,34 @@ final class SkullArt {
         return Colors.withAlpha(color, (int) Math.round((color >>> 24) * Math.clamp(brightness, 0.0, 1.0)));
     }
 
-    private Grid grid(int size, float cellWidth, int rows, int jawStep) {
-        if (size != gridSize || cellWidth != gridCellWidth) {
+    private Grid grid(ContinuityLook look, int size, float cellWidth, int jawStep) {
+        if (look != gridLook || size != gridSize || cellWidth != gridCellWidth) {
             grids.clear();
+            gridLook = look;
             gridSize = size;
             gridCellWidth = cellWidth;
         }
-        return grids.computeIfAbsent(jawStep, step -> build(size, cellWidth, rows, step / (double) JAW_STEPS));
+        return grids.computeIfAbsent(jawStep, step -> build(look, size, cellWidth, step / (double) look.jawSteps()));
     }
 
-    private static Grid build(int size, float cellWidth, int rows, double jaw) {
+    private static Grid build(ContinuityLook look, int size, float cellWidth, double jaw) {
         SkullShape shape = new SkullShape(jaw);
+        int rows = look.rows();
         int cols = Math.max(1, (int) (size / cellWidth));
+        double cellX = cellWidth / size;
+        double cellY = 1.0 / rows;
+        double marginX = cellX * (0.5 + look.holeMargin());
+        double marginY = cellY * (0.5 + look.holeMargin());
         byte[] cells = new byte[cols * rows];
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
-                cells[row * cols + col] = (byte) shape.cell((col + 0.5) * cellWidth / size, (row + 0.5) / rows);
+                double x = (col + 0.5) * cellX;
+                double y = (row + 0.5) * cellY;
+                int cell = shape.cell(x, y);
+                if (cell == SkullShape.SKULL && nearHole(shape, x, y, marginX, marginY)) {
+                    cell = SkullShape.NONE;
+                }
+                cells[row * cols + col] = (byte) cell;
             }
         }
         PixelList skullOutline = new PixelList();
@@ -197,6 +275,18 @@ final class SkullArt {
             }
         }
         return new Grid(cols, rows, cells, skullOutline.toArray(), boneOutline.toArray());
+    }
+
+    /** Whether a hole of the skull reaches into the box of half-size {@code mx} by {@code my} round ({@code x}, {@code y}). */
+    private static boolean nearHole(SkullShape shape, double x, double y, double mx, double my) {
+        for (int i = -1; i <= 1; i++) {
+            for (int j = -1; j <= 1; j++) {
+                if (shape.inHole(x + i * mx, y + j * my)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** The pixels of {@code line} at {@code size}, one a pixel of length; with {@code under} set, none the skull covers. */

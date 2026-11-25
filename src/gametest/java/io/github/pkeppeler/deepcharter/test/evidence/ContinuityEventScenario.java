@@ -21,6 +21,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Util;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -29,6 +30,7 @@ import net.minecraft.world.level.block.Blocks;
  * Evidence scenario "death-sequence" for #1337: a pod worn down to its last few points of hull sits in a lit layer-1 chamber when the
  * floor under it gives way to lava. The lava burns the hull to nothing, the pod is a wreck and its pilot dies with it (a hull loss). The
  * recording runs on through the Continuity Event: the cut to black, the skull tearing in and laughing, RETURN TO WORK, and the return.
+ * The skull's stills are taken by the clock from the death: once it has been up a while, and mid-laugh with the jaw open.
  * The client records no sound, so the frames show the picture only; the client GameTest checks the sound.
  */
 public final class ContinuityEventScenario extends EvidenceScenario {
@@ -39,6 +41,13 @@ public final class ContinuityEventScenario extends EvidenceScenario {
     private static final float HULL_LEFT = 28f;
     private static final int DEATH_LIMIT_TICKS = 600;
     private static final int SEQUENCE_LIMIT_TICKS = 400;
+    /** The skull has been up for a second and a half: the theme's cut of 0.35 s, then 1.5 s. */
+    private static final long SKULL_STILL_MILLIS = 1850;
+    /**
+     * Mid-laugh, the jaw open: the laugh starts about 1.07 s after the death (the cut, then the three passes of the skip less the
+     * overlap), and its envelope holds near 0.7 from 1.48 s to 1.68 s into it ({@code continuity/laugh_envelope.json}).
+     */
+    private static final long LAUGH_STILL_MILLIS = 2650;
 
     @Override
     protected String name() {
@@ -103,13 +112,23 @@ public final class ContinuityEventScenario extends EvidenceScenario {
             if (!inSequence(context)) {
                 throw new AssertionError("the pilot did not die in the lava");
             }
+            // The stills are taken by the client's clock from the death, as the sequence itself runs, never by ticks.
+            long died = clock(context);
             boolean skull = false;
+            boolean laugh = false;
             for (int i = 0; i < SEQUENCE_LIMIT_TICKS && !buttonShown(context); i++) {
                 step(context);
-                if (!skull && i == 30) {
+                long since = clock(context) - died;
+                if (!skull && since >= SKULL_STILL_MILLIS) {
                     screenshot(context, "2-the-skull");
                     skull = true;
+                } else if (!laugh && since >= LAUGH_STILL_MILLIS) {
+                    screenshot(context, "3-the-laugh");
+                    laugh = true;
                 }
+            }
+            if (!skull || !laugh) {
+                throw new AssertionError("the sequence ended before its stills: the skull " + skull + ", the laugh " + laugh);
             }
             if (!buttonShown(context)) {
                 throw new AssertionError("RETURN TO WORK never came");
@@ -117,7 +136,7 @@ public final class ContinuityEventScenario extends EvidenceScenario {
             for (int i = 0; i < 20; i++) {
                 step(context);
             }
-            screenshot(context, "3-return-to-work");
+            screenshot(context, "4-return-to-work");
 
             Button button = context.computeOnClient(client -> ClientChecks.button(shown(client), "RETURN TO WORK"));
             ClientCursor.moveTo(
@@ -133,13 +152,18 @@ public final class ContinuityEventScenario extends EvidenceScenario {
             for (int i = 0; i < 40; i++) {
                 step(context);
             }
-            screenshot(context, "4-back-at-work");
+            screenshot(context, "5-back-at-work");
         }
     }
 
     private void step(ClientGameTestContext context) {
         context.waitTicks(1); // tick-wait: one frame a tick, the recording's frame rate
         frame(context);
+    }
+
+    /** The client's clock, the one the sequence runs on. */
+    private static long clock(ClientGameTestContext context) {
+        return context.computeOnClient(client -> Util.getMillis());
     }
 
     private static boolean inSequence(ClientGameTestContext context) {

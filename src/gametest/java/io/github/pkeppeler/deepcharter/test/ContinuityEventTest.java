@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import com.mojang.serialization.Codec;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.continuity.ContinuityCause;
 import io.github.pkeppeler.deepcharter.continuity.ContinuityEventPayload;
 import io.github.pkeppeler.deepcharter.continuity.ContinuityEvents;
 import io.github.pkeppeler.deepcharter.continuity.ContinuityRecord;
@@ -12,13 +13,18 @@ import io.github.pkeppeler.deepcharter.continuity.ContinuityRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -35,7 +41,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.damagesource.DamageSources;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.item.FallingBlockEntity;
+import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.projectile.hurtingprojectile.LargeFireball;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -49,6 +62,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class ContinuityEventTest {
     private static final String CHAT_KEY = "deepcharter.continuity.chat";
+    private static final String NO_DEPTH_KEY = "deepcharter.continuity.chat_no_depth";
     private static final int FLOOR_Y = 1; // fixed-pos: a row of the test's own structure, relative to it, not a world Y
 
     /** The saved form of the record, its version and its clamps, by literal values; a future version reads as unreadable. */
@@ -336,6 +350,45 @@ public class ContinuityEventTest {
                 .thenSucceed();
     }
 
+    /**
+     * Outside the campaign's bands the altimeter means nothing, so the line ends at the cause: a death in the Nether names no depth, and
+     * a death on the surface does.
+     */
+    @GameTest
+    public void aDeathOutsideTheCampaignNamesNoDepth(GameTestHelper helper) {
+        MockPlayer mock = MockPlayers.join(helper, "continuity-nether");
+        ServerPlayer player = mock.player();
+        player.setGameMode(GameType.SURVIVAL);
+        ServerLevel nether = Objects.requireNonNull(helper.getLevel().getServer().getLevel(Level.NETHER), "no nether");
+        helper.startSequence()
+                .thenExecute(() -> {
+                    // fixed-pos: a place in the Nether's own rows, only somewhere that is not the campaign; nothing reads it
+                    mock.teleportTo(nether, Vec3.atBottomCenterOf(new BlockPos(0, 100, 0)), 0f, 0f);
+                    player.hurtServer(nether, nether.damageSources().lava(), 1000f);
+                })
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    List<TranslatableContents> lines = linesFor(mock, "continuity-nether", NO_DEPTH_KEY);
+                    expect(
+                            helper,
+                            lines.size() == 1 && lines.getFirst().getArgs().length == 3,
+                            "a death in the Nether gets one line with no depth, the chat was %s",
+                            mock.chatMessages());
+                    expect(
+                            helper,
+                            linesFor(mock, "continuity-nether").isEmpty(),
+                            "and no line with a depth, the chat was %s",
+                            mock.chatMessages());
+                    expect(
+                            helper,
+                            key(lines.getFirst().getArgs()[2]).equals(Optional.of("deepcharter.continuity.cause.burned")),
+                            "the line still names the cause, it was %s",
+                            lines.getFirst());
+                    player.setGameMode(GameType.SPECTATOR);
+                })
+                .thenSucceed();
+    }
+
     /** With {@code showDeathMessages} off there is no line at all, and the death still counts. */
     @GameTest
     public void noLineWhenDeathMessagesAreOff(GameTestHelper helper) {
@@ -366,6 +419,73 @@ public class ContinuityEventTest {
                 .thenSucceed();
     }
 
+    /**
+     * Every cause {@code ContinuityCause.of} files, through the damage sources the game makes, in the order its javadoc claims: a hull
+     * loss before anything; being stuck in a wall is BURIED, not CRUSHED; a mob's fireball is a burn, not an attack; a creeper's blast is
+     * a blast; only what is left with a living attacker is ATTACKED. The entities are made and never added to the level.
+     */
+    @GameTest
+    public void eachCauseIsFiledInItsOrder(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        DamageSources sources = level.damageSources();
+        Zombie attacker = TestEntities.create(EntityTypes.ZOMBIE, level);
+        Creeper creeper = TestEntities.create(EntityTypes.CREEPER, level);
+        LargeFireball fireball = TestEntities.create(EntityTypes.FIREBALL, level);
+        FallingBlockEntity block = TestEntities.create(EntityTypes.FALLING_BLOCK, level);
+        Map<String, ContinuityCause> table = new LinkedHashMap<>();
+        table.put("hull loss", ContinuityCause.of(sources.source(WreckRegistry.HULL_LOSS)));
+        table.put("hull loss with an attacker", ContinuityCause.of(sources.source(WreckRegistry.HULL_LOSS, attacker)));
+        table.put("suit exposure", ContinuityCause.of(sources.source(SuitRegistry.EXPOSURE)));
+        table.put("in a wall", ContinuityCause.of(sources.inWall()));
+        table.put("falling block", ContinuityCause.of(sources.fallingBlock(block)));
+        table.put("anvil", ContinuityCause.of(sources.anvil(block)));
+        table.put("stalactite", ContinuityCause.of(sources.fallingStalactite(block)));
+        table.put("stalagmite", ContinuityCause.of(sources.stalagmite()));
+        table.put("cramming", ContinuityCause.of(sources.cramming()));
+        table.put("into a wall", ContinuityCause.of(sources.flyIntoWall()));
+        table.put("lava", ContinuityCause.of(sources.lava()));
+        table.put("in fire", ContinuityCause.of(sources.inFire()));
+        table.put("on fire", ContinuityCause.of(sources.onFire()));
+        table.put("fireball", ContinuityCause.of(sources.fireball(fireball, attacker)));
+        table.put("drown", ContinuityCause.of(sources.drown()));
+        table.put("creeper", ContinuityCause.of(sources.explosion(creeper, creeper)));
+        table.put("freeze", ContinuityCause.of(sources.freeze()));
+        table.put("fall", ContinuityCause.of(sources.fall()));
+        table.put("starve", ContinuityCause.of(sources.starve()));
+        table.put("void", ContinuityCause.of(sources.fellOutOfWorld()));
+        table.put("border", ContinuityCause.of(sources.outOfBorder()));
+        table.put("mob attack", ContinuityCause.of(sources.mobAttack(attacker)));
+        table.put("magic", ContinuityCause.of(sources.magic()));
+        table.put("generic", ContinuityCause.of(sources.generic()));
+        Map<String, ContinuityCause> expected = new LinkedHashMap<>();
+        expected.put("hull loss", ContinuityCause.HULL_LOSS);
+        expected.put("hull loss with an attacker", ContinuityCause.HULL_LOSS);
+        expected.put("suit exposure", ContinuityCause.SUIT_BREACH);
+        expected.put("in a wall", ContinuityCause.BURIED);
+        expected.put("falling block", ContinuityCause.CRUSHED);
+        expected.put("anvil", ContinuityCause.CRUSHED);
+        expected.put("stalactite", ContinuityCause.CRUSHED);
+        expected.put("stalagmite", ContinuityCause.CRUSHED);
+        expected.put("cramming", ContinuityCause.CRUSHED);
+        expected.put("into a wall", ContinuityCause.CRUSHED);
+        expected.put("lava", ContinuityCause.BURNED);
+        expected.put("in fire", ContinuityCause.BURNED);
+        expected.put("on fire", ContinuityCause.BURNED);
+        expected.put("fireball", ContinuityCause.BURNED);
+        expected.put("drown", ContinuityCause.DROWNED);
+        expected.put("creeper", ContinuityCause.BLAST);
+        expected.put("freeze", ContinuityCause.FROZEN);
+        expected.put("fall", ContinuityCause.FELL);
+        expected.put("starve", ContinuityCause.STARVED);
+        expected.put("void", ContinuityCause.LOST);
+        expected.put("border", ContinuityCause.LOST);
+        expected.put("mob attack", ContinuityCause.ATTACKED);
+        expected.put("magic", ContinuityCause.UNSPECIFIED);
+        expected.put("generic", ContinuityCause.UNSPECIFIED);
+        expect(helper, table.equals(expected), "the causes were filed as %s, not %s", table, expected);
+        helper.succeed();
+    }
+
     /** The sounds {@code listener} was sent that were played within a block of {@code at}. */
     private static List<Identifier> heardAt(MockPlayer listener, Vec3 at) {
         return listener.soundsHeardAtPlaces().stream()
@@ -386,11 +506,16 @@ public class ContinuityEventTest {
                 : Optional.empty();
     }
 
-    /** The Continuity Event lines about {@code name} in what {@code listener} was sent. */
+    /** The Continuity Event lines with a depth about {@code name} in what {@code listener} was sent. */
     private static List<TranslatableContents> linesFor(MockPlayer listener, String name) {
+        return linesFor(listener, name, CHAT_KEY);
+    }
+
+    /** The lines of {@code key} about {@code name} in what {@code listener} was sent. */
+    private static List<TranslatableContents> linesFor(MockPlayer listener, String name, String key) {
         return listener.chatMessages().stream()
                 .filter(message -> message.getContents() instanceof TranslatableContents t
-                        && t.getKey().equals(CHAT_KEY)
+                        && t.getKey().equals(key)
                         && t.getArgs()[0] instanceof Component person
                         && person.getString().equals(name))
                 .map(message -> (TranslatableContents) message.getContents())

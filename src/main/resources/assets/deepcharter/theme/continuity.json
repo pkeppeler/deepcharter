@@ -13,6 +13,14 @@
   "fadeSeconds": 0.4,
   "rows": 44,
   "boxFraction": 0.92,
+  "cellAspect": 0.57,
+  "glyphFill": 1.4,
+  "holeMargin": 0.35,
+  "jawSteps": 16,
+  "loudGain": 0.06,
+  "bloomLayers": 3,
+  "bloomSpread": 2,
+  "bloomColor": "#147CFC9A",
   "tearRows": 9,
   "tearPixels": 14,
   "shuffleLoudness": 0.5,
@@ -22,5 +30,11 @@
   "bandColor": "#1C7CFC9A",
   "boneColor": "#53A967",
   "outlineColor": "#592E7A45",
-  "staticColor": "#2E7A45"
+  "staticColor": "#2E7A45",
+  "buttonWidth": 120,
+  "buttonHeight": 20,
+  "smallButtonWidth": 72,
+  "smallButtonHeight": 14,
+  "buttonGap": 8,
+  "bodySolidTicks": 10.0
 }

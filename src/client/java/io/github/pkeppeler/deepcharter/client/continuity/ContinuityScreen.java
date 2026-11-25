@@ -33,16 +33,11 @@ import org.jspecify.annotations.Nullable;
  *       DISCONNECT, and a second Esc (or a click on it) leaves the world.
  * </ol>
  *
- * Time runs on the client's clock from the moment the screen opens, so the sounds keep to the beat at any frame rate. The screen closes
- * itself when the respawn swaps the player.
+ * Time runs on the client's clock from the moment the screen first opens, so the sounds keep to the beat at any frame rate. The sequence
+ * outlives the screen being shown: {@link ContinuityClient} plays it on each tick, hands this same screen back whenever vanilla would
+ * show its death screen again, and ends it ({@link #end}) when the respawn swaps the player or the client leaves the world.
  */
 public final class ContinuityScreen extends Screen {
-    private static final int BUTTON_WIDTH = 120;
-    private static final int BUTTON_HEIGHT = 20;
-    private static final int SMALL_WIDTH = 72;
-    private static final int SMALL_HEIGHT = 14;
-    private static final int GAP = 8;
-
     private final LocalPlayer dead;
     private final String line;
     private final SkullArt art = new SkullArt();
@@ -122,30 +117,30 @@ public final class ContinuityScreen extends Screen {
 
     @Override
     protected void init() {
+        ContinuityLook look = ContinuityLook.current();
         if (openedAt < 0) {
             openedAt = Util.getMillis();
             Silence.begin(minecraft);
-            ContinuityLook look = ContinuityLook.current();
             plan = Plan.of(
                     RecentSounds.INSTANCE.last(
                             openedAt, Math.round(look.replaySeconds() * 1000), (float) look.loudVolume()),
                     LaughEnvelope.load(minecraft.getResourceManager()),
                     look);
         }
-        int x = (width - BUTTON_WIDTH) / 2;
-        int y = (height - BUTTON_HEIGHT) / 2;
+        int x = (width - look.buttonWidth()) / 2;
+        int y = (height - look.buttonHeight()) / 2;
         returnButton = addRenderableWidget(new CrtButton(
                 x,
                 y,
-                BUTTON_WIDTH,
-                BUTTON_HEIGHT,
+                look.buttonWidth(),
+                look.buttonHeight(),
                 Component.translatable("deepcharter.continuity.return_to_work"),
                 this::returnToWork));
         disconnectButton = addRenderableWidget(new CrtButton(
-                (width - SMALL_WIDTH) / 2,
-                y + BUTTON_HEIGHT + GAP,
-                SMALL_WIDTH,
-                SMALL_HEIGHT,
+                (width - look.smallButtonWidth()) / 2,
+                y + look.buttonHeight() + look.buttonGap(),
+                look.smallButtonWidth(),
+                look.smallButtonHeight(),
                 Component.translatable("deepcharter.continuity.disconnect"),
                 button -> disconnect()));
         returnButton.visible = buttonShown;
@@ -160,19 +155,34 @@ public final class ContinuityScreen extends Screen {
         return Objects.requireNonNull(plan, "<made by init() when the screen opens>");
     }
 
-    /** Plays what is due by now: each pass of the skip and its needle, the laugh, then shows the button. */
-    private void advance() {
+    /** Whether this is {@code player}'s sequence: the respawn gives the client a new player, and the sequence ends with the old one. */
+    boolean belongsTo(LocalPlayer player) {
+        return player == dead;
+    }
+
+    /**
+     * Plays what is due by now: the latest pass of the skip that has begun and its needle (passes a stall skipped over are not caught up,
+     * so they never play on top of each other), the laugh, then shows the button. Nothing before the screen first opens.
+     */
+    void advance() {
+        if (plan == null) {
+            return;
+        }
         Plan plan = plan();
         double now = now();
-        while (passesPlayed < plan.passStarts().length && now >= plan.passStarts()[passesPlayed]) {
+        int due = passesPlayed;
+        while (due < plan.passStarts().length && now >= plan.passStarts()[due]) {
+            due++;
+        }
+        if (due > passesPlayed && now < plan.skipEnd()) {
             stopPass();
             RecentSounds.Heard last = plan.last().orElseThrow();
-            float pitch = (float) (last.pitch() * Math.pow(plan.look().skipPitch(), passesPlayed + 1));
+            float pitch = (float) (last.pitch() * Math.pow(plan.look().skipPitch(), due));
             pass = SequenceSound.replay(last, pitch);
             play(pass);
             play(SequenceSound.atListener(DeepSound.CONTINUITY_NEEDLE.event().location(), 1f, 1f));
-            passesPlayed++;
         }
+        passesPlayed = due;
         if (passesPlayed > 0 && now >= plan.skipEnd()) {
             stopPass();
         }
@@ -197,17 +207,6 @@ public final class ContinuityScreen extends Screen {
             minecraft.getSoundManager().stop(pass);
             pass = null;
         }
-    }
-
-    @Override
-    public void tick() {
-        super.tick();
-        if (minecraft.player != dead) {
-            // The respawn gave the client a new player: the person is back at work.
-            onClose();
-            return;
-        }
-        advance();
     }
 
     @Override
@@ -257,14 +256,18 @@ public final class ContinuityScreen extends Screen {
         return false;
     }
 
-    @Override
-    public void removed() {
+    /**
+     * The sequence is over: the silence lifts and its sounds stop. Called by {@link ContinuityClient} on the respawn or on leaving the
+     * world, never when another screen merely covers this one for a while.
+     */
+    void end() {
         Silence.end();
-        stopPass();
-        if (laugh != null) {
-            minecraft.getSoundManager().stop(laugh);
+        if (plan != null) {
+            stopPass();
+            if (laugh != null) {
+                minecraft.getSoundManager().stop(laugh);
+            }
         }
-        super.removed();
     }
 
     private void returnToWork(Button button) {

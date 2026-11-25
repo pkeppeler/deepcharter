@@ -110,15 +110,7 @@ final class SkullShape {
     /** What the point ({@code x}, {@code y}) of the unit square is: {@link #SKULL}, {@link #BONE} or {@link #NONE}. */
     int cell(double x, double y) {
         if (inside(head, x, y) || inside(jaw, x, y)) {
-            for (double[][] hole : holes) {
-                if (inside(hole, x, y)) {
-                    return NONE;
-                }
-            }
-            if (mouthOpen && x > MOUTH_LEFT && x < MOUTH_RIGHT && y > MOUTH_TOP && y < mouthBottom) {
-                return NONE;
-            }
-            return SKULL;
+            return inHole(x, y) ? NONE : SKULL;
         }
         for (double[][] shaft : shafts) {
             if (inside(shaft, x, y)) {
@@ -131,6 +123,16 @@ final class SkullShape {
             }
         }
         return NONE;
+    }
+
+    /** Whether the point is in one of the skull's holes: an eye socket, the nose, or the gap of the open mouth. */
+    boolean inHole(double x, double y) {
+        for (double[][] hole : holes) {
+            if (inside(hole, x, y)) {
+                return true;
+            }
+        }
+        return mouthOpen && x > MOUTH_LEFT && x < MOUTH_RIGHT && y > MOUTH_TOP && y < mouthBottom;
     }
 
     /** Whether the point is under the skull, which hides the bones' outline where they cross behind it. */

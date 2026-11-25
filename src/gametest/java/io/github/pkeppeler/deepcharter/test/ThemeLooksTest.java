@@ -272,6 +272,14 @@ public class ThemeLooksTest {
                         0.4,
                         44,
                         0.92,
+                        0.57,
+                        1.4,
+                        0.35,
+                        16,
+                        0.06,
+                        3,
+                        2,
+                        0x147CFC9A,
                         9,
                         14,
                         0.5,
@@ -281,7 +289,13 @@ public class ThemeLooksTest {
                         0x1C7CFC9A,
                         0xFF53A967,
                         0x592E7A45,
-                        0xFF2E7A45),
+                        0xFF2E7A45,
+                        120,
+                        20,
+                        72,
+                        14,
+                        8,
+                        10.0),
                 ContinuityLook.of(area("continuity", null)));
         helper.succeed();
     }
@@ -720,6 +734,9 @@ public class ThemeLooksTest {
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"rows\": 4 }")), "rows");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"skipPasses\": 9 }")), "skipPasses");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"boneColor\": 5 }")), "boneColor");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cellAspect\": 3 }")), "cellAspect");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"jawSteps\": 0 }")), "jawSteps");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"bodySolidTicks\": 21 }")), "bodySolidTicks");
         rejected(
                 helper,
                 () -> ContinuityLook.of(

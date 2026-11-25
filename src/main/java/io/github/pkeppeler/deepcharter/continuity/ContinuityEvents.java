@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.continuity;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.Altimeter;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import java.util.Optional;
 import java.util.UUID;
@@ -68,18 +69,23 @@ public final class ContinuityEvents {
 
     /**
      * The chat line that replaces vanilla's death message, for every cause: {@code ▌CONTINUITY EVENT — <name> (No. N) — <cause>,
-     * <depth>}. Read after {@link #died}, so N is this event's number.
+     * <depth>}. Read after {@link #died}, so N is this event's number. The depth is given only in the campaign's own bands, the surface
+     * and the layers, as {@code DeepestPoint} counts them: anywhere else (the Nether, the End, under the last layer) the altimeter's
+     * reading means nothing, and the line ends at the cause.
      */
     public static Component message(ServerPlayer player, DamageSource source) {
         Component number = Versioned.readable(player, ContinuityRegistry.RECORD)
                 .map(record -> (Component) Component.literal(Integer.toString(record.events())))
                 .orElseGet(() -> Component.translatable("deepcharter.continuity.unknown_number"));
+        Component cause = Component.translatable(ContinuityCause.of(source).key());
+        ServerLevel level = player.level();
+        int y = player.getBlockY();
+        if (LayerChain.bandAt(level, y).isEmpty()) {
+            return Component.translatable(
+                    "deepcharter.continuity.chat_no_depth", player.getDisplayName(), number, cause);
+        }
         return Component.translatable(
-                "deepcharter.continuity.chat",
-                player.getDisplayName(),
-                number,
-                Component.translatable(ContinuityCause.of(source).key()),
-                Altimeter.reading(player.level(), player.getBlockY()));
+                "deepcharter.continuity.chat", player.getDisplayName(), number, cause, Altimeter.reading(level, y));
     }
 
     /**

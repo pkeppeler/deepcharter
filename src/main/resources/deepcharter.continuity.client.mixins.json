@@ -4,8 +4,8 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "AvatarRendererMixin",
-    "ClientPacketListenerCombatKillMixin",
     "GameRendererMixin",
+    "GuiSetScreenMixin",
     "SoundEngineMixin"
   ],
   "injectors": {
