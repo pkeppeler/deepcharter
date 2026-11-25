@@ -170,7 +170,6 @@ def stem_models() -> dict[str, dict]:
     have held: the hi half's back arm is in the lo half's cell, and the lo half's front arm in the hi half's."""
     out = {}
     textures = {"stem": tex("parasol_stem"), "particle": tex("parasol_stem")}
-    # The lo half's cell is the hi half's back cell, and the hi half's cell the lo half's front cell.
     halves = {lo: ("back", hi) for lo, hi in SPLITS.items()} | {hi: ("front", lo) for lo, hi in SPLITS.items()}
     for piece in PIECES:
         if piece == "fork":

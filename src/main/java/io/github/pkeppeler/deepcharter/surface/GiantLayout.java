@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.core.Direction;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The cells of one giant fungus (#1202), relative to its base (the cell at the foot of its stem or the middle of its
@@ -137,11 +136,6 @@ public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owner
 
         boolean has(Cell cell) {
             return pieces.containsKey(cell);
-        }
-
-        @Nullable
-        GiantPiece piece(Cell cell) {
-            return pieces.get(cell);
         }
 
         void put(Cell cell, GiantPiece piece, int owner) {

@@ -9,7 +9,9 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntUnaryOperator;
@@ -261,7 +263,7 @@ public final class ParasolShape {
      * each side of its core from the row over the foot up; returns the cell under the middle of its cap.
      */
     private static Cell grow(GiantLayout.Builder cells, Params params, Cell foot, int owner, boolean thick) {
-        List<Cell> core = new ArrayList<>();
+        Map<Cell, GiantPiece.Stem> core = new LinkedHashMap<>();
         Cell at = foot;
         int row = 0;
         List<Direction> drift = params.drift();
@@ -274,8 +276,9 @@ public final class ParasolShape {
                     if (row >= params.stemHeight()) {
                         break;
                     }
-                    cells.put(at, new GiantPiece.Stem(piece, way, GiantPiece.Arm.NONE), owner);
-                    core.add(at);
+                    GiantPiece.Stem stem = new GiantPiece.Stem(piece, way, GiantPiece.Arm.NONE);
+                    cells.put(at, stem, owner);
+                    core.put(at, stem);
                     if (piece.stepsAside()) {
                         at = at.offset(way.getStepX(), 0, way.getStepZ());
                     } else {
@@ -286,11 +289,10 @@ public final class ParasolShape {
                 stepsDone++;
                 continue;
             }
-            GiantPiece piece = row == params.ringRow()
-                    ? new GiantPiece.Ring()
-                    : new GiantPiece.Stem(RodPiece.STRAIGHT, Direction.NORTH, GiantPiece.Arm.NONE);
-            cells.put(at, piece, owner);
-            core.add(at);
+            GiantPiece.Stem straight = new GiantPiece.Stem(RodPiece.STRAIGHT, Direction.NORTH, GiantPiece.Arm.NONE);
+            cells.put(at, row == params.ringRow() ? new GiantPiece.Ring() : straight, owner);
+            // The ring's arms are straight ones.
+            core.put(at, straight);
             at = at.offset(0, 1, 0);
             row++;
         }
@@ -305,26 +307,20 @@ public final class ParasolShape {
      * An arm on each side of every cell of the core above {@code footRow}, where the core itself is not: a cell of a
      * split row has its other half beside it, which draws the arm that would be there.
      */
-    private static void arms(GiantLayout.Builder cells, List<Cell> core, int footRow, int owner) {
-        for (Cell cell : core) {
+    private static void arms(GiantLayout.Builder cells, Map<Cell, GiantPiece.Stem> core, int footRow, int owner) {
+        core.forEach((cell, stem) -> {
             if (cell.y() == footRow) {
-                continue;
-            }
-            RodPiece piece = RodPiece.STRAIGHT;
-            Direction facing = Direction.NORTH;
-            if (cells.piece(cell) instanceof GiantPiece.Stem stem) {
-                piece = stem.piece();
-                facing = stem.facing();
+                return;
             }
             for (GiantPiece.Arm arm :
                     List.of(GiantPiece.Arm.FRONT, GiantPiece.Arm.BACK, GiantPiece.Arm.LEFT, GiantPiece.Arm.RIGHT)) {
-                Direction side = arm.side(facing);
+                Direction side = arm.side(stem.facing());
                 Cell next = cell.offset(side.getStepX(), 0, side.getStepZ());
                 if (!cells.has(next)) {
-                    cells.put(next, new GiantPiece.Stem(piece, facing, arm), owner);
+                    cells.put(next, new GiantPiece.Stem(stem.piece(), stem.facing(), arm), owner);
                 }
             }
-        }
+        });
     }
 
     /**
@@ -498,16 +494,14 @@ public final class ParasolShape {
                     continue;
                 }
                 boolean corner = Math.abs(dx) == out && Math.abs(dz) == out;
+                Direction inX = dx > 0 ? Direction.WEST : Direction.EAST;
+                Direction inZ = dz > 0 ? Direction.NORTH : Direction.SOUTH;
                 Direction toward;
                 if (corner) {
-                    // Named by the face whose clockwise neighbour is the other: toward the stem in x, then in z.
-                    Direction inX = dx > 0 ? Direction.WEST : Direction.EAST;
-                    Direction inZ = dz > 0 ? Direction.NORTH : Direction.SOUTH;
+                    // Named by the face whose clockwise neighbour is the other.
                     toward = inX.getClockWise() == inZ ? inX : inZ;
-                } else if (Math.abs(dx) == out) {
-                    toward = dx > 0 ? Direction.WEST : Direction.EAST;
                 } else {
-                    toward = dz > 0 ? Direction.NORTH : Direction.SOUTH;
+                    toward = Math.abs(dx) == out ? inX : inZ;
                 }
                 cells.putOptional(new Cell(dx, 0, dz), new GiantPiece.Flare(toward, corner, out == 1));
             }
