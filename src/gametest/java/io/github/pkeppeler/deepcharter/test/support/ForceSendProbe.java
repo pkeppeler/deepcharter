@@ -136,7 +136,7 @@ public final class ForceSendProbe {
                 blocks));
     }
 
-    /** Whether a block of {@code level} collides with {@code entity} just under {@code box}, as a floor under its feet. */
+    /** Whether a block of {@code level} collides with {@code entity} just under {@code box}: a floor under its feet. */
     public static boolean supports(CollisionGetter level, Entity entity, AABB box) {
         return !level.noBlockCollision(entity, box.expandTowards(0, -SUPPORT_DEPTH, 0));
     }
