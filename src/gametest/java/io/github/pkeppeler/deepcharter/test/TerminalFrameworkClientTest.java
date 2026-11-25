@@ -47,7 +47,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for #59 and #1265: an offline terminal opens its repair screen, with a ghost in each part slot; a
- * part dragged into its slot, then one shift-clicked, go in through the server, and the online screen opens when the
+ * part picked up and placed in its slot, then one shift-clicked, go in through the server, and the online screen opens when the
  * last is in; a locked terminal's slots refuse its parts with the reason on screen, and take them once the terminal
  * before it is repaired while the screen is open; a refusal only the server makes shows on screen; and the server
  * refuses an open request from too far.
@@ -68,7 +68,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
             farRequestIsRefused(context, scene);
             repairScreenOpensWithAGhostPerPart(context, scene);
             lockedTerminalRefusesItsParts(context, singleplayer, scene);
-            partsGoInByDragAndShiftClick(context, singleplayer, scene);
+            partsGoInByPlaceAndShiftClick(context, singleplayer, scene);
             onlineScreenOpensOnceRepaired(context, scene);
             aRepairWhileOpenUnlocksTheSlots(context, singleplayer, scene);
             aServerOnlyRefusalShowsOnScreen(context, singleplayer);
@@ -179,7 +179,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         context.setScreen(() -> null);
     }
 
-    private static void partsGoInByDragAndShiftClick(
+    private static void partsGoInByPlaceAndShiftClick(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
         request(context, scene.pump());
         RepairScreen screen = awaitRepairScreen(context);

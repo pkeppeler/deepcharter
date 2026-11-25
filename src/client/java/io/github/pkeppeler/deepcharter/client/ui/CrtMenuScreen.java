@@ -15,7 +15,7 @@ import net.minecraft.world.inventory.Slot;
  * The CRT screen of a {@link SlottedMenu}: the terminal's backdrop or machine panel, its title, a typed intro, a frame
  * round every slot, and under the scanlines the items. An empty typed slot shows its rule's ghost, the item that goes
  * there under a veil, with its name beside it; the menu's last refusal shows under the typed slots. The menu's slot
- * positions are measured from the top left of the content area ({@link #contentLeft}, {@link #contentTop}).
+ * positions are measured from the top left of the content area.
  *
  * <p>Colours come from {@link CrtTuning}, so a resource pack restyles the screen as it does every terminal.
  */
