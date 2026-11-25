@@ -17,7 +17,7 @@ The user grants creative liberty over dig mechanics, hazards, pod upgrades and c
 - **Motherload's loop.** Danger rises with depth. Money buys counterplay, and each purchase changes how you dig. A good mechanic gives a shop decision a reason to exist.
 - **The lore's vibe.** Mystery, thalassophobia (dread of the deep, dark and unknown below), darkness. Dread should come from what you can almost see: a crack spreading, heat in the wall ahead, a sound below. Avoid random instant death.
 - **Readable danger.** The player can always perceive a hazard before it hurts them, provided they bought the right sensor or are paying attention. A death should feel earned.
-- **Show the cause.** Anything that slows, hurts or blocks the player shows why, the first time and while it lasts: a one-time line (and a tooltip on the item behind it) when it first bites, and a status icon while it holds. A player who cannot tell why they are slow thinks the game is broken. Ore weight shows an Ore-laden status, an ore tooltip and a first-ore line (#853).
+- **Show the cause.** Anything that slows, hurts or blocks the player shows why, the first time and while it lasts: a one-time line (and a tooltip on the item behind it) when it first bites, and a status icon while it holds. A player who cannot tell why they are slow thinks the game is broken. Ore and fuel weight show an Ore/Fuel status, an ore tooltip and a first-ore line (#853).
 - **A ladder, not a switch.** Counterplay grows in three stages:
   1. by hand: slow, teaches the danger;
   2. a pod upgrade that automates it: costs cargo, money or speed;

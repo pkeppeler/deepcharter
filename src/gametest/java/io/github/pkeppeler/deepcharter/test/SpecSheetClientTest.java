@@ -259,9 +259,10 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         require(
                 textsOf(item("goldium")).contains("$250"),
                 "goldium reads the $250 a terminal pays, it draws " + textsOf(item("goldium")));
+        String coalStack = Integer.toString(Items.COAL.getDefaultMaxStackSize());
         require(
-                textsOf(Items.COAL).containsAll(List.of("STOCK ITEM", "POD FUEL", "YES", "64")),
-                "coal is stock, pod fuel, and stacks to 64, it draws " + textsOf(Items.COAL));
+                textsOf(Items.COAL).containsAll(List.of("STOCK ITEM", "POD FUEL", "YES", coalStack)),
+                "coal is stock, pod fuel, and stacks to " + coalStack + ", it draws " + textsOf(Items.COAL));
         require(
                 textsOf(Items.IRON_PICKAXE).contains("250"),
                 "an iron pickaxe reads its 250 durability, it draws " + textsOf(Items.IRON_PICKAXE));
