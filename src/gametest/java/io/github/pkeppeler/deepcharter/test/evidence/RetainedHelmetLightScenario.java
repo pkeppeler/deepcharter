@@ -82,15 +82,15 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
 
         private void setUp() {
             chamber.enterLayer(
+                    LENGTH,
+                    HALF_WIDTH,
+                    HEIGHT,
                     RetainedChamber.FLOOR.getX() + CAMERA_X,
                     RetainedChamber.FLOOR.getY() + 3,
                     RetainedChamber.FLOOR.getZ() + 0.5,
                     270f,
                     0f);
-            chamber.awaitEntityTicking(farFigurePos());
             chamber.serverDo(server -> {
-                ServerLevel level = RetainedChamber.layer(server);
-                RetainedChamber.buildChamber(level, LENGTH, HALF_WIDTH, HEIGHT);
                 ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
                 camera.setGameMode(GameType.CREATIVE);
                 camera.getAbilities().mayfly = true;
@@ -98,6 +98,10 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
                 camera.onUpdateAbilities();
                 camera.setNoGravity(true);
                 camera.setPermanentlyInvulnerable(true);
+            });
+            chamber.awaitEntityTicking(farFigurePos());
+            chamber.serverDo(server -> {
+                ServerLevel level = RetainedChamber.layer(server);
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 figure.setNoAi(true);
                 figure.setPos(farFigurePos());

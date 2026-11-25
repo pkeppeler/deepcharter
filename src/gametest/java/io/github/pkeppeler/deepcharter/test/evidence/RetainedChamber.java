@@ -41,10 +41,15 @@ final class RetainedChamber {
         this.world = world;
     }
 
-    /** Takes the player into the chamber's layer, with the mobs of the world off. Call once the world is up. */
-    void enterLayer(double x, double y, double z, float yaw, float pitch) {
+    /**
+     * Carves the chamber (see {@link #buildChamber}) and takes the player into it, in one server step. The terrain
+     * there is noise with lava in it, and the waits that follow last seconds: a player teleported into uncarved rock
+     * suffocates or burns before they end. Call once the world is up.
+     */
+    void enterLayer(int length, int halfWidth, int height, double x, double y, double z, float yaw, float pitch) {
         ctx.waitTicks(40); // tick-wait: the world's spawn settles before the player is moved
         serverDo(server -> {
+            buildChamber(layer(server), length, halfWidth, height);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.teleportTo(layer(server), x, y, z, Set.of(), yaw, pitch, true);
         });
