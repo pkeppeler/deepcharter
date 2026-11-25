@@ -6,12 +6,16 @@ import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalInt;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.LadderBlock;
+import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootTable;
 
@@ -169,7 +173,12 @@ public enum StructureKind {
                     }
                 }
             }
-            p.lootBarrel(5, 0, -5, WRECK_LOCKER);
+            // The crew's locker: a barrel that fills from the table when first opened, the same for the same site.
+            p.set(5, 0, -5, Blocks.BARREL.defaultBlockState().setValue(BarrelBlock.FACING, Direction.UP));
+            BlockPos locker = p.inChunk(5, 0, -5);
+            if (locker != null && p.chunk.getBlockEntity(locker) instanceof RandomizableContainerBlockEntity barrel) {
+                barrel.setLootTable(WRECK_LOCKER, p.site.seed());
+            }
         }
     };
 

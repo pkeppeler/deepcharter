@@ -5,19 +5,15 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.SplittableRandom;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RailBlock;
-import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.storage.loot.LootTable;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -32,9 +28,9 @@ import org.jspecify.annotations.Nullable;
 final class StructurePlan {
     private static final int FLAGS = Block.UPDATE_SKIP_ON_PLACE;
 
-    private final StructureSite site;
+    final StructureSite site;
     private final ServerLevel level;
-    private final LevelChunk chunk;
+    final LevelChunk chunk;
     private final Band band;
     private final ChunkPos chunkPos;
 
@@ -76,7 +72,8 @@ final class StructurePlan {
     }
 
     /** The world position of a place in the structure, or null where it lies in another chunk. */
-    private @Nullable BlockPos inChunk(int u, int y, int v) {
+    @Nullable
+    BlockPos inChunk(int u, int y, int v) {
         int x = site.origin().getX() + (site.alongZ() ? v : u);
         int z = site.origin().getZ() + (site.alongZ() ? u : v);
         if (x < chunkPos.getMinBlockX()
@@ -86,17 +83,6 @@ final class StructurePlan {
             return null;
         }
         return new BlockPos(x, site.origin().getY() + y, z);
-    }
-
-    /** A barrel that fills from {@code table} when it is first opened, the same for the same site every time. */
-    // const-param: u, y and v are the structure's own drawing coordinates, as in set() and roll(); each structure puts
-    // its barrel where its plan has room, and the wreck bay is the only one with a locker so far
-    void lootBarrel(int u, int y, int v, ResourceKey<LootTable> table) {
-        set(u, y, v, Blocks.BARREL.defaultBlockState().setValue(BarrelBlock.FACING, Direction.UP));
-        BlockPos pos = inChunk(u, y, v);
-        if (pos != null && chunk.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity barrel) {
-            barrel.setLootTable(table, site.seed());
-        }
     }
 
     void set(int u, int y, int v, BlockState state) {
