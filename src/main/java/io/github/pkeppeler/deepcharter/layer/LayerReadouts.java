@@ -1,35 +1,37 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import java.util.Optional;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * The block readout's hints for what the layer feature owns (#859): the breach crust, and the rock that only a pod drill breaks. The rock reads
- * "pod drill only" where {@link LayerRock} refuses a hand, which is below layer 1 and nowhere else. A creative player is exempt from both rules, so
- * they read no hint.
+ * The block readout's hints for what the layer feature owns (#859): the breach crust, and the rock that only a pod
+ * drill breaks. Every pod-only block ({@link HandBreak#isPodOnly}: the crust, Company rock, and rock below layer 1)
+ * reads "pod drill only", and says the pick would burn out when the viewer holds a diamond or better tool, or be
+ * destroyed when they hold a lesser one (#858, ADR 0069). A creative player is exempt from the rule, so they read
+ * no hint. Company rock reads its own hint ("Charges, or the best drill", from the ore feature, which registers after
+ * this one) to a viewer who holds no tool, since that says what does break it.
  */
 final class LayerReadouts {
     private static final Component POD_DRILL_ONLY = Component.translatable("hint.deepcharter.pod_drill_only");
+    private static final Component PICK_WOULD_BURN_OUT =
+            Component.translatable("hint.deepcharter.pod_drill_only_burns");
+    private static final Component PICK_WOULD_BE_DESTROYED =
+            Component.translatable("hint.deepcharter.pod_drill_only_destroys");
 
     private LayerReadouts() {}
 
     static void init() {
-        BlockReadouts.SHARED.addHint((state, level, pos, viewer) ->
-                !viewer.isCreative() && (state.is(LayerBlocks.BREACH_CRUST) || outOfReachOfHands(level, pos, state))
-                        ? Optional.of(POD_DRILL_ONLY)
-                        : Optional.empty());
-    }
-
-    /**
-     * {@link LayerRock#isOutOfReachOfHands}, for a level the client may have with a dimension type given inline by a data pack, which
-     * {@link LayerChain#bandAt} refuses: such a level is no layer, and a readout drawn every tick must not throw.
-     */
-    private static boolean outOfReachOfHands(Level level, BlockPos pos, BlockState state) {
-        return state.is(LayerRock.DEEP_ROCK)
-                && level.dimensionTypeRegistration().unwrapKey().isPresent()
-                && LayerRock.isOutOfReachOfHands(level, pos, state);
+        BlockReadouts.SHARED.addHint((state, level, pos, viewer) -> {
+            if (!HandBreak.governs(viewer, level, pos, state)) {
+                return Optional.empty();
+            }
+            return switch (HandBreak.wearOf(viewer.getMainHandItem())) {
+                case SHARE -> Optional.of(PICK_WOULD_BURN_OUT);
+                case DESTROYED -> Optional.of(PICK_WOULD_BE_DESTROYED);
+                case FREE -> Optional.of(POD_DRILL_ONLY);
+                case NONE -> state.is(HazardBlocks.COMPANY_ROCK) ? Optional.empty() : Optional.of(POD_DRILL_ONLY);
+            };
+        });
     }
 }
