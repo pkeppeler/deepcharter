@@ -21,7 +21,8 @@ import org.jspecify.annotations.Nullable;
  * <p>The rules, in the order the tree is walked (depth first, ingredients in the order {@link KnownRecipe#needs} lists them):
  * <ul>
  * <li>A need is met first from what an earlier craft of the tree made too many of, then from the player's stock, and only the rest is
- * made: an intermediate the player holds is not broken down. The shown recipe's own result is never taken from stock.
+ * made: an intermediate the player holds is not broken down. The shown recipe's own result is never taken from stock in place of
+ * the craft, but a cell of it that takes that result (a smithing template copying itself) is met from stock and never crafted.
  * <li>An intermediate is made by its first known recipe that neither undoes another nor takes an item already being made further up
  * this branch, so a recipe loop ends; with no such recipe it is a base material. A recipe for X undoes another when some cell takes
  * only items made solely from X: each has a known recipe, and every one of them takes X. So ingots are not unpacked from an iron
@@ -153,8 +154,8 @@ public record MaterialsTree(Node root, List<Material> materials) {
             for (KnownRecipe.Need need : recipe.needs()) {
                 Item choice = choose(need);
                 int count = need.count() * crafts;
-                // A cell that takes only an item being made (the shown recipe copying itself) is never crafted: the
-                // loop ends.
+                // A cell taking only an item being made (the shown recipe copying itself) is not crafted: the loop
+                // ends there.
                 children.add(node(choice, count, !branch.contains(choice)));
             }
             branch.remove(item);

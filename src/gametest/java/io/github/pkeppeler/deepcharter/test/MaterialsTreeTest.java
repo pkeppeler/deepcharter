@@ -349,9 +349,8 @@ public class MaterialsTreeTest {
 
     @GameTest
     public void aStorageBlockAsAnIngredientIsUnpacked(GameTestHelper helper) {
-        // The anvil takes iron blocks. Ingots come from nuggets too, so the block is not the only thing they come from:
-        // packing
-        // ingots into a block is followed, and only unpacking a block or nuggets into ingots is the undoing.
+        // The anvil takes iron blocks. Ingots come from nuggets too, not only from the block, so packing ingots into a
+        // block is followed; only unpacking a block or nuggets into ingots is the undoing.
         KnownRecipe anvil = shipped(helper, "minecraft:anvil");
         KnownRecipe block = shipped(helper, "minecraft:iron_block");
         KnownRecipe nuggets = shipped(helper, "minecraft:iron_nugget");
@@ -388,9 +387,8 @@ public class MaterialsTreeTest {
 
     @GameTest
     public void theRadiatorUnitsCopperBlockCountsHeldIngots(GameTestHelper helper) {
-        // The radiator unit takes a copper block and seven ingots; holding copper teaches the block, the nuggets and
-        // both
-        // ways back to ingots.
+        // The radiator unit takes a copper block and seven ingots. Holding copper teaches the block, the nuggets and
+        // both ways back to ingots.
         KnownRecipe radiator = shipped(helper, "deepcharter:radiator_unit");
         KnownRecipe block = shipped(helper, "minecraft:copper_block");
         KnownRecipe nuggets = shipped(helper, "minecraft:copper_nugget");
@@ -440,9 +438,8 @@ public class MaterialsTreeTest {
 
     @GameTest
     public void theShownRecipeTakesItselfFromStock(GameTestHelper helper) {
-        // A recipe that copies its own result, the way a smithing template does (no template is obtainable here): a
-        // stick and
-        // a plank make two sticks.
+        // A recipe that copies its own result, the way a smithing template does (no template is obtainable here):
+        // a stick and a plank make two sticks.
         KnownRecipe copy = recipe(helper, Items.STICK, 2, STICK, PLANKS);
         MaterialsTree tree = MaterialsTree.of(copy, known(copy), stock(Items.STICK, 1, Items.OAK_PLANKS, 1));
         Node cell = tree.root().children().getFirst();
