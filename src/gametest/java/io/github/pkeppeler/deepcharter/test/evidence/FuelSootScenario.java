@@ -1,16 +1,19 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.RepairStationClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScreenScroll;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
+import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -23,12 +26,15 @@ import net.minecraft.world.level.GameType;
 /**
  * Evidence scenario "fuel-soot" for #1280: a player carries two stacks of coal (the Ore/Fuel status), refuels the pod
  * with charcoal, and the engine soots: the sooted line, then limp mode. At the colony a pod in limp mode will not
- * launch (sprint drills; the line says why). The repair station's SERVICE ENGINE clears the soot and the pod drills
- * again.
+ * launch (sprint drills; the line says why). At the repair station with no money, the paid row has nothing to press
+ * and SCRAPE FLUE, free, counts down a minute and leaves the engine just under the limit. A first haul's money buys a
+ * part service in whole litres, more money the rest, and the pod drills again.
  */
 public class FuelSootScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
     private static final int HOLD_FRAMES = 8;
+    /** Frames over the minute of the flue scrape, one every 1.5 s of it. */
+    private static final int SCRAPE_FRAMES = 40;
 
     @Override
     protected String name() {
@@ -131,24 +137,76 @@ public class FuelSootScenario extends EvidenceScenario {
             screenshot(context, "launch-refused");
             context.getInput().releaseKey(options -> options.keySprint);
 
-            // Service it at the station.
+            // At the station with no money: the paid row has nothing to press, the free scrape does.
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.stopRiding();
+                long account = Charters.findOrThrow(server, scene.charter().id())
+                        .orElseThrow()
+                        .account();
+                Charters.spend(server, scene.charter().id(), account).ifPresent(refusal -> {
+                    throw new AssertionError("emptying the account: " + refusal);
+                });
             });
             context.waitTicks(10);
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.station())));
             ClientWait.screen(context, RepairStationScreen.class);
-            hold(context);
-            long cost = (long) Math.ceil((limp + 1) * FuelTuning.DEFAULT.soot().servicePerLitre());
-            String label = "SERVICE ENGINE (" + Math.round(limp + 1) + " L SOOT, $" + cost + ")";
             RepairStationScreen screen =
                     context.computeOnClient(client -> ClientSession.screen(client, RepairStationScreen.class));
-            // Rows: three hull repairs, then the service.
-            context.runOnClient(client -> ScreenScroll.scrollTo(screen, 1));
+            // Rows: three hull repairs and REPAIR ALL, then the service and the scrape.
+            context.runOnClient(client -> ScreenScroll.scrollTo(screen, 2));
+            ClientWait.until(
+                    context,
+                    "the broke station's soot rows",
+                    client -> labels(screen).contains("SERVICE: $10 A LITRE")
+                            && labels(screen).contains("SCRAPE FLUE (FREE, SLOW)"));
             hold(context);
-            screenshot(context, "service-row");
-            RepairStationClientTest.clickRow(context, label);
+            screenshot(context, "broke-rows");
+
+            // The free scrape: a minute's wait at the station, counted down on the row.
+            RepairStationClientTest.clickRow(context, "SCRAPE FLUE (FREE, SLOW)");
+            float leaves = FuelTuning.DEFAULT.soot().scrapeLeavesLitres();
+            for (int i = 0; i < SCRAPE_FRAMES; i++) {
+                context.waitTicks(FuelTuning.DEFAULT.soot().scrapeTicks() / SCRAPE_FRAMES);
+                frame(context);
+                if (i == 2) {
+                    screenshot(context, "scraping");
+                }
+            }
+            ClientWait.until(
+                    context,
+                    "the flue scraped",
+                    () -> singleplayer.getServer().computeOnServer(server -> EngineSoot.soot(scene.pod()) == leaves),
+                    () -> "soot " + singleplayer.getServer().computeOnServer(server -> EngineSoot.soot(scene.pod())));
+            hold(context);
+            screenshot(context, "scraped");
+
+            // A first haul's money: a part service buys the whole litres it pays for.
+            deposit(singleplayer, scene, 35);
+            String part = "SERVICE 3/" + Math.round(leaves) + " L ($30)";
+            ClientWait.until(
+                    context, "the part service row", client -> labels(screen).contains(part));
+            context.runOnClient(client -> ScreenScroll.scrollTo(screen, 2));
+            hold(context);
+            screenshot(context, "part-service-row");
+            RepairStationClientTest.clickRow(context, part);
+            ClientWait.until(
+                    context,
+                    "the part service",
+                    () -> singleplayer
+                            .getServer()
+                            .computeOnServer(server -> EngineSoot.soot(scene.pod()) == leaves - 3),
+                    () -> "soot " + singleplayer.getServer().computeOnServer(server -> EngineSoot.soot(scene.pod())));
+            hold(context);
+            screenshot(context, "part-serviced");
+
+            // More money: the rest, for a clean engine.
+            deposit(singleplayer, scene, 1_000);
+            String rest = "SERVICE ALL " + Math.round(leaves - 3) + " L ($"
+                    + Math.round(leaves - 3) * FuelTuning.DEFAULT.soot().servicePerLitre() + ")";
+            ClientWait.until(
+                    context, "the full service row", client -> labels(screen).contains(rest));
+            RepairStationClientTest.clickRow(context, rest);
             ClientWait.until(
                     context,
                     "the engine serviced",
@@ -172,6 +230,23 @@ public class FuelSootScenario extends EvidenceScenario {
             screenshot(context, "drills-again");
             context.getInput().releaseKey(options -> options.keySprint);
         }
+    }
+
+    private static void deposit(
+            TestSingleplayerContext singleplayer, RepairStationClientTest.Scene scene, long amount) {
+        singleplayer
+                .getServer()
+                .runOnServer(server -> Charters.deposit(server, scene.charter().id(), amount)
+                        .ifPresent(refusal -> {
+                            throw new AssertionError("funding: " + refusal);
+                        }));
+    }
+
+    /** The labels of the rows the station shows now. */
+    private static List<String> labels(RepairStationScreen screen) {
+        return ClientChecks.buttons(screen).stream()
+                .map(button -> button.getMessage().getString())
+                .toList();
     }
 
     private void hold(ClientGameTestContext context) {
