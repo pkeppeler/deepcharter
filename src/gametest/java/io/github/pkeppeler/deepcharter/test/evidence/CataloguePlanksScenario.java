@@ -14,8 +14,8 @@ import net.minecraft.world.item.Items;
 
 /**
  * Evidence scenario "m3-catalogue-planks" for #1263: the player holds the oak planks a salvage crate drops, which teaches every
- * recipe that takes any planks, and the parts catalogue is searched for "planks" (still {@code planks-search}), then the chest's
- * recipe is shown (still {@code chest-recipe}). Before #1263 the search listed every wood in the game; after it, only the woods the
+ * recipe that takes any planks; the parts catalogue shows the chest's recipe (still {@code chest-recipe}), then is searched for
+ * "planks" (still {@code planks-search}). Before #1263 the search listed every wood in the game; after it, only the woods the
  * campaign world yields.
  */
 public class CataloguePlanksScenario extends EvidenceScenario {
@@ -50,20 +50,11 @@ public class CataloguePlanksScenario extends EvidenceScenario {
         }
     }
 
+    /** The chest's recipe first: the search is typed last, as it keeps the keys (R would type into it). */
     private void recordStills(ClientGameTestContext context, CataloguePanel panel) {
         CatalogueScene.clearSearch(context, panel);
         context.waitTicks(2); // tick-wait: the list follows the cleared search
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
-        CatalogueScene.hover(context, layout.shelf().search());
-        context.getInput().pressMouse(LEFT_MOUSE);
-        context.getInput().typeChars("planks");
-        context.waitTicks(2); // tick-wait: the list follows the typed search
-        CatalogueScene.parkCursor(context, layout);
-        hold(context);
-        screenshot(context, "planks-search");
-
-        CatalogueScene.clearSearch(context, panel);
-        context.waitTicks(2); // tick-wait: the list follows the cleared search
         int perPage = layout.shelf().perPage();
         int index = CatalogueScene.indexOf(context, panel, Items.CHEST);
         CatalogueScene.showPage(context, panel, perPage, index / perPage);
@@ -72,6 +63,16 @@ public class CataloguePlanksScenario extends EvidenceScenario {
         ClientWait.until(context, "the recipe console", client -> panel.showsRecipePanel());
         hold(context);
         screenshot(context, "chest-recipe");
+
+        CatalogueScene.clearSearch(context, panel);
+        context.waitTicks(2); // tick-wait: the list follows the cleared search
+        CatalogueScene.hover(context, layout.shelf().search());
+        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().typeChars("planks");
+        context.waitTicks(2); // tick-wait: the list follows the typed search
+        CatalogueScene.parkCursor(context, layout);
+        hold(context);
+        screenshot(context, "planks-search");
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
     }
 
