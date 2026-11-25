@@ -183,8 +183,8 @@ def cells(x, y, z, seed):
 
 @dataclass
 class Texel:
-    """Where a texel lies: its place in model space at rest, the way the face looks, and where it is on its face (0 to
-    1)."""
+    """Where a texel lies: its place in model space at rest, the way the face looks, and where it is on its
+    face (0 to 1)."""
 
     x: float
     y: float
@@ -200,9 +200,9 @@ class Texel:
 class Cube:
     """A box, or a plane when one size is 0. `paint` colours a texel: it returns the skin (r, g, b, a) and the glow (r,
     g, b, a) or None.
-    
-        `density` is texels to a model pixel; `cap_density` is the same for the top and bottom faces, for a slab whose
-    caps are hardly seen.
+
+    `density` is texels to a model pixel; `cap_density` is the same for the top and bottom faces, for a slab whose caps
+    are hardly seen.
     """
 
     origin: tuple
@@ -214,6 +214,7 @@ class Cube:
     cap_density: float = None
     faces: tuple = field(default=None)
     uv: dict = field(default_factory=dict)
+    # Set from the model (#1204): only the sac lays its faces out as GeckoLib does, until #1320 moves the other forms.
     engine_uv: bool = False
 
     def __post_init__(self):

@@ -2,8 +2,9 @@
 """Writes the three Drifters (#1203): a jellyfish, a spore sac and a chain, each with its model, texture, glowmask and
 animations.
 
-Usage: tools/py tools/drifter.py           write the files into src/main/resources tools/py tools/drifter.py --check
-exit 1 if a written file differs from what this script makes
+Usage:
+  tools/py tools/drifter.py           write the files into src/main/resources
+  tools/py tools/drifter.py --check   exit 1 if a written file differs from what this script makes
 
 The forms are in tools/drifter_forms/: one module each over the shared kit. Each is rounded planes and thin slabs
 whose texture is painted by where a texel lies on the creature, so the detail is in the skin and the glow, not in

@@ -16,6 +16,9 @@ BLOCK = 16
 FORMS = tuple(drifter.FORMS)
 # The share of the atlas that glows at full bright, at most: the glow is a few lights, not a sheet.
 BRIGHT_SHARE = 0.12
+# The most bones and cubes a form may have, about a quarter over what each has: a form is a few hundred cubes, not a
+# few thousand, so that it stays cheap to draw.
+BUDGET = {"jellyfish": (52, 198), "sac": (29, 320), "chain": (20, 80)}
 
 
 def bones(ident):
@@ -164,12 +167,15 @@ class Look(unittest.TestCase):
     def test_the_chains_halos_do_not_wash_out_its_links(self):
         glow = form("chain")[2]
         model = form("chain")[0]
+        found = False
         for i in range(8):
             for cube in model.bones[f"bulb_{i}"]["cubes"]:
                 if cube.size[2] == 0 and cube.density == 3.0 and cube.paint.__qualname__.startswith("halo_painter"):
+                    found = True
                     x, y, w, h = cube.uv[cube.faces[0]]
                     peak = max(glow.pixels[(j * glow.size + k) * 4 + 3] for j in range(y, y + h) for k in range(x, x + w))
                     self.assertLessEqual(peak, 135, f"the halo of link {i} is a light, not a cloud")
+        self.assertTrue(found, "the halo painters were found")
 
     def test_the_glowmask_is_sparse(self):
         for ident in FORMS:
@@ -193,6 +199,38 @@ class Look(unittest.TestCase):
 
 def chain_centre(i):
     return drifter.chain.centre(i)
+
+
+class Budget(unittest.TestCase):
+    def test_no_form_is_over_its_bone_and_cube_budget(self):
+        for ident, (most_bones, most_cubes) in BUDGET.items():
+            with self.subTest(form=ident):
+                model = form(ident)[0]
+                self.assertLessEqual(len(model.bones), most_bones)
+                self.assertLessEqual(len(model.cubes()), most_cubes)
+
+
+class EngineUv(unittest.TestCase):
+    def test_every_face_lies_where_geckolib_puts_it(self):
+        # Expected values come from GeckoLib 5.5.7's VertexSet and GeometryQuadUvs, the loader they were checked
+        # against.
+        cube = kit.Cube((0, 0, 0), (2, 4, 6), None, engine_uv=True)
+        expected = {
+            "north": ((0.5, 3, 0), (0, 0, -1)),
+            "south": ((1.5, 3, 6), (0, 0, 1)),
+            "east": ((0, 3, 4.5), (-1, 0, 0)),
+            "west": ((2, 3, 1.5), (1, 0, 0)),
+            "up": ((0.5, 4, 4.5), (0, 1, 0)),
+            "down": ((0.5, 0, 1.5), (0, -1, 0)),
+        }
+        for face, want in expected.items():
+            with self.subTest(face=face):
+                self.assertEqual(want, cube.face_point(face, 0.25, 0.25))
+
+    def test_only_the_sac_lays_its_faces_out_as_the_engine_does(self):
+        for ident in FORMS:
+            with self.subTest(form=ident):
+                self.assertEqual({ident == "sac"}, {cube.engine_uv for cube in form(ident)[0].cubes()})
 
 
 class Files(unittest.TestCase):
