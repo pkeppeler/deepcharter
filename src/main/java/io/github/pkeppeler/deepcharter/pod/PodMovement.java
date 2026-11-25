@@ -8,7 +8,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Server-authoritative pod movement: treads on the ground, a rotor to climb. The server reads the pilot's vanilla
  * input, so there is no packet of our own; clients only see the pod move. W, S, A and D steer it as a boat is steered
- * ({@link PodSteering}).
+ * ({@link PodSteering}), and sprint with W boosts it ({@link PodSprint}).
  */
 public final class PodMovement {
     private PodMovement() {}
@@ -37,7 +37,9 @@ public final class PodMovement {
         }
         PodSteering.noteTurnKey(pod, input);
         Vec3 facing = Vec3.directionFromRotation(0, pod.getYRot());
-        double throttle = pilot == null ? 0 : PodSteering.throttle(input, stats);
+        boolean boosting = pilot != null && PodSprint.wants(pod, input);
+        PodSprint.set(pod, pilot, boosting);
+        double throttle = pilot == null ? 0 : PodSteering.throttle(input, stats, boosting);
         double vx = facing.x * throttle;
         double vz = facing.z * throttle;
 
