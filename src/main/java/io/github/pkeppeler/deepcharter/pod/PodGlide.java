@@ -185,12 +185,9 @@ final class PodGlide extends AbstractInterpolationHandler {
     }
 
     /**
-     * A capped catch-up step of a pod {@code distance} behind a target the server moves on by {@code speed} a tick (ADR 0082). A cap
-     * and then a sliver would draw the sliver's tick short when no move follows it, so the gap is split evenly. Split as if the target
-     * stood still, a step settles on exactly {@code speed} and never closes the gap; split against the moving target, the fewest
-     * steps under the cap that reach it, each step closes some of the gap. That step may leave the pod less than a tick short, a
-     * sliver again when a move is late, so it is held to leave at least a tick, and never below the still split's step, which ends
-     * on the target in whole steps.
+     * A capped catch-up step of a pod {@code distance} behind a target the server moves on by {@code speed} a tick: the even split
+     * against the moving target, held to leave at least a tick of speed and never below the even split against a still one (ADR 0082,
+     * "The even split chases a moving target").
      */
     private static double splitCatchUp(double distance, double cap, double speed) {
         double still = distance / Math.ceil(distance / cap);

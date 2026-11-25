@@ -124,8 +124,7 @@ public class PodGlideTraceTest {
 
     /**
      * Three moves one, two and one tick late. A pod that has coasted and sits within a tick of a target the moves keep advancing would
-     * arrive on it and draw the tick short (0.0668 in tick 36); it draws the whole tick. A local {@code
-     * PodDriveLateClientTest} no longer meets it.
+     * arrive on it and draw the tick short (0.0668 in tick 36); it draws the whole tick.
      */
     private static final int[] WITHIN_A_TICK = {
         0, 2, 2, 3, 5, 5, 6, 8, 8, 9, 11, 11, 12, 14, 14, 15, 17, 17, 18, 20, 20, 21, 23, 23, 24, 26, 26, 27, 29, 29,
@@ -194,8 +193,8 @@ public class PodGlideTraceTest {
     /** {@code PodGlide.splitCatchUp} divides by the cap less the speed, so a catch-up of 1 or less is refused, not drawn as NaN. */
     @GameTest
     public void aCatchUpNoFasterThanTheSpeedIsRefused(GameTestHelper helper) {
+        PodGlideTuning stock = PodGlideTuning.DEFAULT;
         for (double catchUp : new double[] {1.0, 0.5, Double.NaN}) {
-            PodGlideTuning stock = PodGlideTuning.DEFAULT;
             try {
                 new PodGlideTuning(
                         stock.steps(),
