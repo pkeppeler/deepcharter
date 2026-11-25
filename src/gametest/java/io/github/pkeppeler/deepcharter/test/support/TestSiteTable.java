@@ -276,10 +276,10 @@ final class TestSiteTable {
 
         row("PodSonarTest", 1, 6973, 7027, 64, 19, 6973, 7027);
         claim("PodSonarTest", 1, 8189, 8243, 6973, 7027);
-        claim("PodSonarTest", 1, 8273, 8327, 6973, 7027);
+        claim("PodSonarTest", 1, 8273, 8361, 6973, 7027);
         claim("PodSonarTest", 1, 8573, 8627, 6973, 7027);
         claim("PodSonarTest", 1, 8637, 8691, 6973, 7027);
-        claim("PodSonarTest", 1, 8701, 8755, 6973, 7027);
+        claim("PodSonarTest", 1, 8701, 8773, 6973, 7027);
 
         row("PodSounderTest", 1, 5993, 6007, 48, 21, 3593, 3607);
 
