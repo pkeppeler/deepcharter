@@ -61,6 +61,9 @@ public final class ContinuityClient {
                 ? new ContinuityScreen(player, numbers.number(), numbers.employee())
                 : new ContinuityScreen(player, 0, ContinuityEvents.employeeNumber(player.getUUID()));
         live = screen;
+        // The silence belongs to the live sequence, which alone ends it: a screen built anywhere else (a layout test)
+        // leaves the sound be.
+        Silence.begin(Minecraft.getInstance());
         return screen;
     }
 

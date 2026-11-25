@@ -138,7 +138,6 @@ public final class ContinuityScreen extends Screen {
         ContinuityLook look = ContinuityLook.current();
         if (openedAt < 0) {
             openedAt = Util.getMillis();
-            Silence.begin(minecraft);
             plan = Plan.of(
                     RecentSounds.INSTANCE.last(
                             openedAt, Math.round(look.replaySeconds() * 1000), (float) look.loudVolume()),
