@@ -991,8 +991,11 @@ public class M2SliceScenario extends EvidenceScenario {
             still("37-note-n10-on-the-table");
             useKey();
             awaitServer(server -> Notes.foundFor(server, real(server).getUUID()).contains(Notes.id(10)));
+            // The click opens the Note in the handbook; the player reads it and closes it before driving.
+            ClientWait.screen(ctx, HandbookScreen.class);
             snap(HOLD_FRAMES);
             still("38-note-n10-found");
+            ctx.setScreen(() -> null);
 
             // The tow cable: the pilot uses it on the wreck.
             say("13. The tow cable goes on the wreck. SHORTCUT: the cable is handed over, not crafted.");
@@ -1037,9 +1040,10 @@ public class M2SliceScenario extends EvidenceScenario {
             });
             ClientWait.until(
                     ctx,
-                    "the player riding a pod in the overworld",
+                    "the player riding a pod in the overworld with no screen open",
                     client -> ClientLight.clientLevel(client).dimension().equals(Level.OVERWORLD)
-                            && ClientSession.player(client).getVehicle() instanceof PodEntity);
+                            && ClientSession.player(client).getVehicle() instanceof PodEntity
+                            && client.gui.screen() == null);
             ctx.runOnClient(client -> {
                 ClientSession.player(client).setYRot(-90f);
                 ClientSession.player(client).setXRot(10f);
