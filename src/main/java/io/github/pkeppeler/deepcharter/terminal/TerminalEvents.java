@@ -35,8 +35,8 @@ public final class TerminalEvents {
 
     /**
      * A terminal action ran and changed what it was asked to (a part going in is not an action), just after the
-     * player's
-     * screen is refreshed. A listener that throws stops the call, but the action has taken effect and the screen is current.
+     * player's screen is refreshed. A listener that throws stops the call, but the action has taken effect and the
+     * screen is current.
      */
     public static final Event<Acted> ACTED =
             EventFactory.createArrayBacked(Acted.class, listeners -> (server, type, player, action) -> {

@@ -11,11 +11,9 @@ import net.minecraft.world.item.ItemStack;
  * What one typed slot of a {@link SlottedMenu} takes, and how it shows when empty. Both sides build the same rule: the
  * client's predicts a click, the server's decides it.
  *
- * @param fits     whether a stack is the kind this slot is for (a part, a fuel); shift-click tries only the slots it
- * fits
+ * @param fits     whether a stack is the kind this slot is for (a part, a fuel); shift-click tries only these
  * @param unfit    why a stack that does not fit is refused
- * @param check    why a stack that fits is refused now (a lock, a full tank, an earlier repair), or empty when it goes
- * in
+ * @param check    why a stack that fits is refused now (a lock, a full tank, an earlier repair), or empty if not
  * @param ghost    what an empty slot shows, or empty for a plain slot
  * @param locks    a filled slot cannot be emptied: no click, shift-click, swap or throw takes from it
  * @param maxStack the most items the slot holds

@@ -27,12 +27,9 @@ import net.minecraft.world.item.Items;
 
 /**
  * Evidence scenario "terminal-part-slots" for #1265: a charter opens the offline fuel pump, whose two part slots show
- * their
- * parts as ghosts. A stick dragged onto the motor's slot is refused with the reason on screen; the pump motor is
- * dragged into
- * its slot; the fuel valve is shift-clicked into its own; and the pump comes online. Stills of the empty slots, the
- * refusal,
- * the motor in, and the online screen.
+ * their parts as ghosts. A stick dragged onto the motor's slot is refused with the reason on screen; the pump motor is
+ * dragged into its slot; the fuel valve is shift-clicked into its own; and the pump comes online. Stills of the empty
+ * slots, the refusal, the motor in, and the online screen.
  */
 public class TerminalPartSlotsScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;

@@ -35,9 +35,8 @@ public final class Terminals {
 
     /**
      * Opens the terminal at {@code pos} for {@code player}. A working terminal sends the client its {@link
-     * TerminalView}; an
-     * unrepaired one opens its {@link RepairMenu}, where the parts go in. The upper half of a terminal opens its lower
-     * half.
+     * TerminalView}; an unrepaired one opens its {@link RepairMenu}, where the parts go in. The upper half of a
+     * terminal opens its lower half.
      */
     public static Optional<TerminalRefusal> open(ServerPlayer player, BlockPos clicked) {
         BlockPos pos = TerminalBlock.lowerHalf(player.level(), clicked);
@@ -143,8 +142,8 @@ public final class Terminals {
 
     /**
      * Puts one {@code part} from the player's inventory into the unrepaired terminal at {@code pos}: the right-click
-     * shortcut
-     * of the {@link RepairMenu}, which holds the same rules. A refusal takes nothing, and the player is told why.
+     * shortcut of the {@link RepairMenu}, which holds the same rules. A refusal takes nothing, and the player is told
+     * why.
      */
     public static Optional<TerminalRefusal> insert(ServerPlayer player, BlockPos clicked, Item part) {
         BlockPos pos = TerminalBlock.lowerHalf(player.level(), clicked);
@@ -174,9 +173,8 @@ public final class Terminals {
     }
 
     /**
-     * Records {@code part}, already taken from the player, as in the terminal at {@code pos}, and fires
-     * {@link TerminalEvents#REPAIRED} if it was the last. Call only after {@link #insertRefusal} found nothing on this
-     * tick.
+     * Records {@code part}, already taken from the player, as in the terminal at {@code pos}, and fires {@link
+     * TerminalEvents#REPAIRED} if it was the last. Call only after {@link #insertRefusal} found nothing on this tick.
      */
     static void commit(ServerPlayer player, BlockPos pos, Item part) {
         if (!(access(player, pos) instanceof Access.Granted access)) {

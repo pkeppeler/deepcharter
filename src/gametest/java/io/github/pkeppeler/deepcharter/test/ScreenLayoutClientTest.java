@@ -93,25 +93,28 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 
 /**
- * Client GameTest for #381: every mod screen fits the default window (854 x 480 at GUI scale 2, so 427 x 240), with the largest realistic
- * content. Each widget lies inside the screen and no two widgets overlap; a failure names the screen, the widget and the overflow in pixels.
+ * Client GameTest for #381: every mod screen fits the default window (854 x 480 at GUI scale 2, so 427 x 240), with the
+ * largest realistic content. Each widget lies inside the screen and no two widgets overlap; a failure names the screen,
+ * the widget and the overflow in pixels.
  *
- * <p>The screens are found, not listed. The terminal screens come from {@link TerminalTypes#all()} through {@link TerminalScreens#create},
- * so a new terminal is built the way the game builds it (the generic {@code TerminalScreen} is the online one of a type
- * that registers none; an
- * unrepaired terminal opens the repair menu, a container screen); the container screens come from the menu types the
- * mod registered and the screen
- * each registered with {@code MenuScreens}. A terminal type that adds a feature, or a menu type, with no fixture below fails the test and
- * says so, so a new one cannot be skipped. Only the screens nothing registers are named by hand ({@link #standalone}), and
- * {@code tools/tests/test_screen_layout_gate.py} fails when a screen class is neither registered nor named in this file.
+ * <p>The screens are found, not listed. The terminal screens come from {@link TerminalTypes#all()} through {@link
+ * TerminalScreens#create}, so a new terminal is built the way the game builds it (the generic {@code TerminalScreen} is
+ * the online one of a type that registers none; an unrepaired terminal opens the repair menu, a container screen); the
+ * container screens come from the menu types the mod registered and the screen each registered with {@code
+ * MenuScreens}. A terminal type that adds a feature, or a menu type, with no fixture below fails the test and says so,
+ * so a new one cannot be skipped. Only the screens nothing registers are named by hand ({@link #standalone}), and
+ * {@code tools/tests/test_screen_layout_gate.py} fails when a screen class is neither registered nor named in this
+ * file.
  *
- * <p>The text a screen draws itself ({@code graphics.text}, {@code CrtDraw.glowText}) is checked too (#411): {@link DrawnText} renders the screen
- * once into a recorder, and each string must lie inside the screen (or inside a declared scroll region) and must not overlap an interactive widget. Text
- * a widget draws on itself is the widget's, and is left out. A failure names the screen, the string and the overflow in pixels. The typewriters are
- * finished first, so the full text is drawn.
+ * <p>The text a screen draws itself ({@code graphics.text}, {@code CrtDraw.glowText}) is checked too (#411): {@link
+ * DrawnText} renders the screen once into a recorder, and each string must lie inside the screen (or inside a declared
+ * scroll region) and must not overlap an interactive widget. Text a widget draws on itself is the widget's, and is left
+ * out. A failure names the screen, the string and the overflow in pixels. The typewriters are finished first, so the
+ * full text is drawn.
  *
- * <p>No screen needs a scroll region declared: the repair station builds buttons for the rows that fit only, so its widgets are checked as they are.
- * The handbook is paged and the work order list pages, and each page is a variant here.
+ * <p>No screen needs a scroll region declared: the repair station builds buttons for the rows that fit only, so its
+ * widgets are checked as they are. The handbook is paged and the work order list pages, and each page is a variant
+ * here.
  */
 public class ScreenLayoutClientTest implements FabricClientGameTest {
     private static final int WIDTH = 427;

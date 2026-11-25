@@ -11,8 +11,8 @@ import net.minecraft.client.gui.screens.Screen;
 
 /**
  * Which screen a working terminal opens: the screen its feature registered with {@link #register}, or the generic
- * online
- * {@link TerminalScreen} when there is none. An unrepaired terminal sends no view: it opens its {@link RepairScreen}.
+ * online {@link TerminalScreen} when there is none. An unrepaired terminal sends no view: it opens its {@link
+ * RepairScreen}.
  */
 public final class TerminalScreens {
     private static final Map<TerminalType, Function<TerminalView, ? extends Screen>> ONLINE = new HashMap<>();

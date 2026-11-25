@@ -27,14 +27,12 @@ import org.jspecify.annotations.Nullable;
 /**
  * An unrepaired terminal's screen: one locked slot per part of its type, over the player's inventory. A part dragged or
  * shift-clicked into its slot leaves the player and goes into the world's {@link RepairState} at once, so closing the
- * screen
- * keeps it; when the last goes in, {@link TerminalEvents#REPAIRED} fires, the menu closes and the terminal opens
+ * screen keeps it; when the last goes in, {@link TerminalEvents#REPAIRED} fires, the menu closes and the terminal opens
  * online.
  *
  * <p>The slots show the repair state and are never a store of their own: the server refreshes them from it on every
- * broadcast, and a part in one cannot be taken out. The server checks every placement with the rules of
- * {@link Terminals#insert} (distance, charter, readable data, the repair order); the client predicts with what it was
- * sent.
+ * broadcast, and a part in one cannot be taken out. The server checks every placement with the rules of {@link
+ * Terminals#insert} (distance, charter, readable data, the repair order); the client predicts with what it was sent.
  */
 public final class RepairMenu extends SlottedMenu {
     /** Where the first part slot sits in the screen's image: below the title and two lines of the terminal's text. */
