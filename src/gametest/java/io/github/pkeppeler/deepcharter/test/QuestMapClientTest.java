@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
@@ -24,6 +25,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -35,6 +37,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 
 /**
@@ -61,7 +64,6 @@ public class QuestMapClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         context.runOnClient(client -> {
             theMapShowsTheStepsTheCardAndTheRoadAhead();
-            theNextChapterShowsFaintStepsWhenTheyFit();
             nothingBeyondTheNextChapterIsReadable();
             everyPageShowsTheTabsAndSelectsItsSection();
             chapterTabsOpenTheirChapterMaps();
@@ -100,9 +102,9 @@ public class QuestMapClientTest implements FabricClientGameTest {
                         Component.literal("Do thing " + chapter + "." + n),
                         scanner
                                 ? List.of(
-                                        new HandbookChapter.Need(IRON, 4),
-                                        new HandbookChapter.Need(Identifier.parse("minecraft:copper_ingot"), 2),
-                                        new HandbookChapter.Need(Identifier.parse("minecraft:redstone"), 2))
+                                        new HandbookChapter.Target(IRON, 4),
+                                        new HandbookChapter.Target(Identifier.parse("minecraft:copper_ingot"), 2),
+                                        new HandbookChapter.Target(Identifier.parse("minecraft:redstone"), 2))
                                 : List.of()));
             }
             chapters.put(
@@ -214,43 +216,14 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 "the card links to the chapter's first page, p. " + (firstPage(1) + 1) + ": " + texts);
         require(
                 texts.containsAll(List.of("0/4", "0/2")),
-                "the card counts each item needed against what is held: " + texts);
+                "the card counts each target item against what is held: " + texts);
         require(
-                texts.contains(Component.translatable("deepcharter.handbook.quest.ahead", 2, "Title 2")
-                        .getString()),
-                "the next chapter is named under the flowchart: " + texts);
+                texts.stream().noneMatch(text -> text.contains("Title 2") || text.contains("Do thing 2")),
+                "the map does not preview the next chapter: " + texts);
         require(
                 texts.contains(Component.translatable("deepcharter.handbook.chapter.stamp.classified")
                         .getString()),
                 "the redaction bars carry the CLASSIFIED stamp");
-    }
-
-    /**
-     * Where the sheet has room the next chapter's steps show too, in faint ink with no checkbox. Chapter 1 of the fixture above has a
-     * three-line margin note and no room for them (it keeps the next chapter's title only), so this is chapter 2 of the shipped step
-     * counts, whose next chapter fits whole.
-     */
-    private static void theNextChapterShowsFaintStepsWhenTheyFit() {
-        Map<Identifier, HandbookChapter> chapters = shippedLike();
-        List<HandbookPage> pages = HandbookPages.of(chapters, doneBefore(chapters, 2));
-        HandbookScreen screen = new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
-        screen.init(WIDTH, HEIGHT);
-        for (int index = 0; index < pages.size(); index++) {
-            if (pages.get(index) instanceof HandbookPage.Chapter map && map.number() == 2) {
-                screen.goTo(index);
-            }
-        }
-        settle(screen);
-        List<String> texts = texts(screen);
-        for (int n = 1; n <= 2; n++) {
-            String step = "Do thing 3." + n;
-            require(
-                    texts.stream().anyMatch(text -> text.startsWith(step)),
-                    "the next chapter's step " + n + " shows when it fits: " + texts);
-            require(
-                    texts.stream().noneMatch(text -> text.startsWith("[") && text.contains(step)),
-                    "the next chapter's steps carry no checkbox: " + texts);
-        }
     }
 
     private static void nothingBeyondTheNextChapterIsReadable() {
@@ -297,6 +270,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
             case HandbookPage.Slip slip -> 0;
             case HandbookPage.Letter letter -> 0;
             case HandbookPage.Contents contents -> 0;
+            case HandbookPage.Controls controls -> 0;
             case HandbookPage.ChapterText text -> text.number();
             case HandbookPage.Chapter map -> map.number();
             case HandbookPage.Pencil pencil -> throw new AssertionError("these pages hold no pencil sheet");
@@ -403,7 +377,140 @@ public class QuestMapClientTest implements FabricClientGameTest {
                     lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.RECIPES,
                     "a click on the iron icon opens the inventory at iron's recipes, got " + lookup);
             context.setScreen(() -> null);
+            everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(context);
+            anyOfStepIsOneSlotWhoseIconCyclesAndWhoseClickOpensTheShownRecipe(context);
         }
+    }
+
+    /**
+     * In the real game, with the shipped chapter 1: each step that asks for an item shows exactly the items it names,
+     * with a count each (never the ingredients), and a click on the first of them opens that item's recipes in the
+     * parts catalogue (#1260).
+     */
+    private static void everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(ClientGameTestContext context) {
+        Map<Identifier, HandbookChapter> shipped = context.computeOnClient(client -> {
+            Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
+            HandbookChapters.all(Objects.requireNonNull(client.getConnection()).registryAccess()).stream()
+                    .filter(entry -> !entry.key().identifier().getPath().equals("sample"))
+                    .forEach(entry -> chapters.put(entry.key().identifier(), entry.value()));
+            return chapters;
+        });
+        List<HandbookChapter.Entry> steps = shipped.values().iterator().next().directives();
+        int clicked = 0;
+        for (int i = 0; i < steps.size(); i++) {
+            HandbookChapter.Entry step = steps.get(i);
+            if (step.targets().isEmpty()) {
+                continue;
+            }
+            Set<Identifier> before = new HashSet<>();
+            steps.subList(0, i).forEach(earlier -> before.add(earlier.id()));
+            context.runOnClient(client -> {
+                List<HandbookPage> pages = HandbookPages.of(shipped, before);
+                HandbookScreen screen =
+                        new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
+                screen.init(WIDTH, HEIGHT);
+                for (int index = 0; index < pages.size(); index++) {
+                    if (pages.get(index) instanceof HandbookPage.Chapter map && map.number() == 1) {
+                        screen.goTo(index);
+                    }
+                }
+                settle(screen);
+                List<Drawn> counts = DrawnText.of(screen).stream()
+                        .filter(entry -> entry.text().matches("\\d+/\\d+"))
+                        .toList();
+                require(
+                        counts.size() == step.targets().size(),
+                        step.id() + " shows one counted item for each target, " + step.targets() + ", got "
+                                + counts.stream().map(Drawn::text).toList());
+                Box count = counts.getFirst().box();
+                int iconSize = QuestMapTuning.current().itemIconSize();
+                screen.mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
+            });
+            ClientWait.screen(context, InventoryScreen.class);
+            context.waitTicks(3);
+            CataloguePanel panel = CatalogueScene.panel(context);
+            CatalogueState.Lookup lookup =
+                    context.computeOnClient(client -> panel.state().lookup());
+            List<Item> accepted = step.targets().getFirst().items();
+            require(
+                    lookup != null && accepted.contains(lookup.item()) && lookup.mode() == CatalogueState.Mode.RECIPES,
+                    step.id() + ": a click on its first item opens the recipes of one of " + accepted + ", got "
+                            + lookup);
+            context.setScreen(() -> null);
+            clicked++;
+        }
+        require(clicked >= 7, "chapter 1 has at least seven item steps, clicked " + clicked);
+    }
+
+    /**
+     * A step that is done by any one of several items (#1260) is one slot with one shared count and an "any" cue, not a
+     * row of items to collect. Its icon cycles through the alternatives once every {@code cycleTicks}, and a click
+     * opens the recipes of the icon showing: the first click and the one a cycle later name different items, and the
+     * third is back on the first.
+     */
+    private static void anyOfStepIsOneSlotWhoseIconCyclesAndWhoseClickOpensTheShownRecipe(
+            ClientGameTestContext context) {
+        Identifier chapterId = chapterId(1);
+        HandbookChapter chapter = new HandbookChapter(
+                1,
+                Component.literal("Title 1"),
+                List.of(new HandbookChapter.Entry(
+                        directive(1, 1),
+                        Component.literal("Make a light"),
+                        List.of(new HandbookChapter.AnyOf(
+                                List.of(
+                                        new HandbookChapter.Choice(Identifier.parse("minecraft:torch"), false),
+                                        new HandbookChapter.Choice(Identifier.parse("minecraft:lantern"), false)),
+                                1)))));
+        HandbookScreen[] shown = new HandbookScreen[1];
+        context.runOnClient(client -> {
+            List<HandbookPage> pages = HandbookPages.of(Map.of(chapterId, chapter), Set.of());
+            HandbookScreen screen = new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
+            screen.init(WIDTH, HEIGHT);
+            for (int index = 0; index < pages.size(); index++) {
+                if (pages.get(index) instanceof HandbookPage.Chapter) {
+                    screen.goTo(index);
+                }
+            }
+            settle(screen);
+            List<String> texts = texts(screen);
+            require(
+                    texts.stream().filter(text -> text.matches("\\d+/\\d+")).count() == 1 && texts.contains("0/1"),
+                    "the any-of step shows one slot with one shared count: " + texts);
+            require(
+                    texts.contains(Component.translatable("deepcharter.handbook.quest.any")
+                            .getString()),
+                    "the slot carries the any cue: " + texts);
+            shown[0] = screen;
+        });
+        List<Item> seen = new ArrayList<>();
+        for (int click = 0; click < 3; click++) {
+            context.runOnClient(client -> {
+                Box count = drawn(shown[0], "0/1").box();
+                int iconSize = QuestMapTuning.current().itemIconSize();
+                shown[0].mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
+            });
+            ClientWait.screen(context, InventoryScreen.class);
+            context.waitTicks(3);
+            CataloguePanel panel = CatalogueScene.panel(context);
+            CatalogueState.Lookup lookup =
+                    context.computeOnClient(client -> panel.state().lookup());
+            require(
+                    lookup != null
+                            && lookup.mode() == CatalogueState.Mode.RECIPES
+                            && List.of(Items.TORCH, Items.LANTERN).contains(lookup.item()),
+                    "a click opens the recipes of the torch or the lantern, got " + lookup);
+            seen.add(Objects.requireNonNull(lookup, "checked above").item());
+            context.setScreen(() -> null);
+            context.runOnClient(client -> {
+                for (int tick = 0; tick < QuestMapTuning.current().cycleTicks(); tick++) {
+                    shown[0].tick();
+                }
+            });
+        }
+        require(
+                seen.get(0) != seen.get(1) && seen.get(0) == seen.get(2),
+                "the icon cycles between the two items, one cycle at a time, got " + seen);
     }
 
     /** On every page, a press, a drag and a scroll leave everything drawn where it was: nothing of the book pans, moves or zooms. */
@@ -618,16 +725,6 @@ public class QuestMapClientTest implements FabricClientGameTest {
                                 .anyMatch(entry ->
                                         entry.text().equals(line) && entry.box().height() >= font.lineHeight),
                         where + " draws the margin note line '" + line + "' whole: " + texts(screen));
-            }
-            if (chapter < chapters.size()) {
-                String title = Component.translatable(
-                                "deepcharter.handbook.quest.ahead", chapter + 1, "Title " + (chapter + 1))
-                        .getString();
-                require(
-                        drawn.stream()
-                                .anyMatch(entry -> entry.text().equals(title)
-                                        && entry.box().height() >= font.lineHeight),
-                        where + " draws the next chapter's title '" + title + "' whole: " + texts(screen));
             }
             List<Drawn> noteLines =
                     drawn.stream().filter(entry -> whole.contains(entry.text())).toList();
