@@ -311,11 +311,8 @@ public class PodDrillTest {
         box(level, x - 2, x - 2, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
         box(level, x + 1, x + 1, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
         // Facing south, square in the corridor; D is pressed for two ticks once it stands. D turns clockwise, so the
-        // next compass
-        // direction is
-        // west; the turn is under way after the key is let go. The pod faces open side space once turned, so a held D
-        // would
-        // go on steering freely there, as it does anywhere out of a bore.
+        // next compass direction is west; the turn is under way after the key is let go. The pod faces open side
+        // space once turned, so a held D would go on steering freely there, as it does anywhere out of a bore.
         Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z - 2.5), 0f, "drill-branch", Input.EMPTY);
         float west = 90f;
         boolean[] drove = {false};
