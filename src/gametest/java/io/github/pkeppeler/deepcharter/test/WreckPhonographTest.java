@@ -40,9 +40,9 @@ public class WreckPhonographTest {
     private static final BlockPos PLACE = new BlockPos(3, 1, 3);
 
     /**
-     * Any player within the trigger range starts the song, and a batch lays its tests out side by side, 5 blocks apart: the next test's
-     * mock players join 11 blocks from this block (#1368). So each test that reads whether it plays has an environment of its own, and
-     * runs in a batch with no other test's player beside it.
+     * Any player within the trigger range starts the song, and a batch lays its tests out side by side, 5 blocks
+     * apart: the next test's mock players join 11 blocks from this block (#1368). So each test that reads whether it
+     * plays has an environment of its own, and runs in a batch with no other test's player beside it.
      */
     private static final String TRIGGER = "deepcharter-test:wreck_phonograph_trigger";
 
