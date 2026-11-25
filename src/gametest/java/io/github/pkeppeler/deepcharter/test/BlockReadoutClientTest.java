@@ -14,6 +14,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import io.github.pkeppeler.deepcharter.test.support.VanillaHudRows;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -33,6 +35,9 @@ import net.minecraft.world.level.block.Blocks;
  * real client. It reads the HUD's state, not its pixels.
  */
 public class BlockReadoutClientTest implements FabricClientGameTest {
+    /** The GUI scales the box is checked at: the window has them all, from the smallest to the largest vanilla offers. */
+    private static final int GUI_SCALES = 4;
+
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
@@ -122,10 +127,11 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
             require(
                     kept.x() == (width - expectedWidth) / 2
                             && kept.width() == expectedWidth
-                            && kept.y() == height / 2 + look.offsetY()
+                            && kept.y() == look.stackTop(height, client.font.lineHeight)
                             && kept.height() == expectedHeight,
                     "the kept box " + kept + " is centred, " + expectedWidth + " wide (the wider line) and "
-                            + expectedHeight + " high (its lines), below the crosshair");
+                            + expectedHeight + " high (its lines), at the stack's top above the hotbar");
+            expectTheBoxClearsVanilla(client, readout);
             require(width % 2 == 1, "this check needs an odd GUI width to catch the half-pixel overflow, got " + width);
             List<Drawn> drawn = drawn(client);
             require(drawn.size() == lines, "the readout should draw " + lines + " strings, drew " + drawn);
@@ -140,6 +146,31 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
                                 + " it keeps clear");
             }
         });
+    }
+
+    /**
+     * The readout's box, worked out for the GUI sizes the window gives at scales 1 to 4, overlaps none of vanilla's rows above the hotbar (the
+     * held item's name and the action bar above it among them).
+     */
+    private static void expectTheBoxClearsVanilla(Minecraft client, Readout readout) {
+        for (int scale = 1; scale <= GUI_SCALES; scale++) {
+            int guiWidth = Math.ceilDiv(client.getWindow().getWidth(), scale);
+            int guiHeight = Math.ceilDiv(client.getWindow().getHeight(), scale);
+            List<HudKeepClear.Rect> mine = new ArrayList<>(HudKeepClear.rects(client, guiWidth, guiHeight));
+            mine.removeIf(rect -> !rect.what().equals("block readout"));
+            require(
+                    mine.size() == 1,
+                    "the block readout keeps one box clear at GUI scale " + scale + ", listed " + mine);
+            HudKeepClear.Rect box = mine.getFirst();
+            require(
+                    VanillaHudRows.clashes(box, guiWidth, guiHeight).isEmpty(),
+                    "at GUI scale " + scale + " (" + guiWidth + " x " + guiHeight + ") the block readout box " + box
+                            + " overlaps vanilla's " + VanillaHudRows.clashes(box, guiWidth, guiHeight) + " for "
+                            + readout.name().getString());
+            require(
+                    box.bottom() <= guiHeight - ReadoutLook.CLEAR_OF_VANILLA,
+                    "at GUI scale " + scale + " the box " + box + " reaches below the held item's name");
+        }
     }
 
     private static List<Drawn> drawn(Minecraft client) {

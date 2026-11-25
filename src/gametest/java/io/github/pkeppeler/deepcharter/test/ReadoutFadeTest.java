@@ -15,7 +15,7 @@ import net.minecraft.network.chat.Component;
  * needed; {@code BlockReadoutClientTest} checks the real HUD.
  */
 public class ReadoutFadeTest {
-    private static final ReadoutLook LOOK = new ReadoutLook(14, 2, 1.0, 0xFF00FF00, 0xFFFFFF00, 4, 6, 2);
+    private static final ReadoutLook LOOK = new ReadoutLook(77, 2, 1.0, 0xFF00FF00, 0xFFFFFF00, 4, 6, 2);
     private static final Optional<Readout> STONE =
             Optional.of(new Readout(Component.literal("Stone"), Optional.empty()));
     private static final Optional<Readout> DIRT = Optional.of(new Readout(Component.literal("Dirt"), Optional.empty()));
@@ -91,7 +91,7 @@ public class ReadoutFadeTest {
 
     @GameTest
     public void aBlockMustHoldTheCrosshairForTheSettleTicksBeforeItReplacesTheOne(GameTestHelper helper) {
-        ReadoutLook slow = new ReadoutLook(14, 2, 1.0, 0xFF00FF00, 0xFFFFFF00, 4, 1, 5);
+        ReadoutLook slow = new ReadoutLook(77, 2, 1.0, 0xFF00FF00, 0xFFFFFF00, 4, 1, 5);
         ReadoutFade<Readout> fade = new ReadoutFade<>();
         for (int i = 0; i < 10; i++) {
             fade.tick(STONE, slow);

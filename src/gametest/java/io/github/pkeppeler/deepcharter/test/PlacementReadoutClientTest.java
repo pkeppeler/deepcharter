@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.PlacementStage;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.test.support.VanillaHudRows;
 import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -137,9 +138,12 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
                     kept.x() == (width - expectedWidth) / 2 && kept.width() == expectedWidth,
                     "the kept box " + kept + " is centred and as wide as the wider line, " + expectedWidth);
             require(
-                    kept.y() == height / 2 + look.offsetY() + (int) Math.ceil(2 * line * (float) look.scale())
+                    kept.y() == look.placementTop(height, client.font.lineHeight)
                             && kept.height() == (int) Math.ceil((client.font.lineHeight + line) * (float) look.scale()),
                     "the kept box " + kept + " is two lines under the block readout and holds both lines");
+            require(
+                    VanillaHudRows.clashes(kept, width, height).isEmpty(),
+                    "the kept box " + kept + " overlaps vanilla's " + VanillaHudRows.clashes(kept, width, height));
             Box box = new Box(kept.x(), kept.y(), kept.width(), kept.height());
             for (Drawn text : drawn(client)) {
                 require(
