@@ -481,7 +481,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     drive.keys().forEach(key -> context.getInput().releaseKey(key));
                     two.server().runOnServer(server -> two.mock().releaseInput());
                 }
-                if (late != null && !late.lags() && late.stallTicks() == SHORT_STALL_TICKS && tick >= 30) {
+                if (late != null && late.stallTicks() <= LAGGED_STALL_TICKS && !late.stops() && tick >= 30) {
                     System.setProperty("pgt", "1");
                 } else {
                     System.clearProperty("pgt");
@@ -498,9 +498,9 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     }
                     drilled[0] |= watchedPod instanceof PodEntity pod && pod.drilling();
                 });
-                if (late != null && !late.lags() && late.stallTicks() == SHORT_STALL_TICKS && tick >= 30) {
+                if (late != null && late.stallTicks() <= LAGGED_STALL_TICKS && !late.stops() && tick >= 30) {
                     int n = watched.frames().size();
-                    LOGGER.info("TRACE tick {} moveless {} pilotDz {} watchedDz {}", tick, context.computeOnClient(c -> PacketJitter.movelessTicks()),
+                    LOGGER.info("TRACE {} tick {} moveless {} pilotDz {} watchedDz {}", late.stallTicks(), tick, context.computeOnClient(c -> PacketJitter.movelessTicks()),
                             pilot.frames().get(n - 1).z - pilot.frames().get(n - 1 - FRAMES).z,
                             watched.frames().get(n - 1).z - watched.frames().get(n - 1 - FRAMES).z);
                 }
