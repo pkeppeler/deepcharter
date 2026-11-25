@@ -542,9 +542,9 @@ public class DesignTourScenario extends EvidenceScenario {
         }
 
         /**
+         * Throws an {@link AssertionError} naming the still when the world has moved the subject
          * ({@link TourShots#problem}). A building that moves in the overhaul then fails the tour loudly, and does
          * not make it shoot the wrong thing.
-         * it shoot the wrong thing.
          */
         private void verify(String stillName, int layer, Vec3 eye, Vec3 target, Subject subject) {
             String problem =
