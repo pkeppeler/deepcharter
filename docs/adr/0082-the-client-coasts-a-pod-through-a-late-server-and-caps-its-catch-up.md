@@ -83,10 +83,18 @@ A pod that arrived on its target and coasted one tick on is 819.3000 quanta past
 A 1-D model of `PodGlide` under `PacketJitter`, matched to a per-tick client trace to the last digit, judged every pattern of one to three ticks of extra lateness on five moves around each late drive. Three hitches were left after the late-move rule above, each fixed:
 
 - The go-on step was a whole tick, the tail share, or nothing, so a pod a rounding step short of the tail's reach stood. It now draws what is left of the reach and stands at its end.
-- A capped catch-up drew the cap and then a sliver of the gap, and a coast after that sliver made a short tick. Capped steps of a moving pod now split the gap evenly, each still under the cap.
+- A capped catch-up drew the cap and then a sliver of the gap, and a coast after that sliver made a short tick. Capped steps of a moving pod now split the gap evenly, each still under the cap, counting the target's own advance ([below](#the-even-split-chases-a-moving-target)).
 - A coasted pod within a tick of its target, while the moves advance, draws the whole tick past it, and that part counts against the reach. A move that does not advance (a pushed pod the server slows faster than the speed it reported) arrives on its target as before, so a knockback or a tow release is not dead-reckoned past it.
 
 A client test meets the first two only when CI's server happens to run late in that pattern, so `PodGlideTraceTest` replays one trace of the model for each through the real `PodGlide`; each fails without its fix.
+
+### The even split chases a moving target
+
+The first even split, `gap / ceil(gap / cap)`, treated the target as standing still. A driven pod's target moves on by the reported speed each tick, so a gap between two and three caps (0.54 to 0.81 blocks at the stock speed) split in three steps of a third: at a gap of 0.6 that is exactly the speed, and the gap never closed. After a slip of a few late moves closed by a burst, the pod trailed the server by 0.8 for the rest of the drive instead of 0.6, and `PodMovementClientTest` failed CI at 0.80001.
+
+- The step is the even split against the moving target: the fewest steps under the cap that reach it, `(gap + (n - 1) × speed) / n`. Every such step is more than the speed while the gap is, so the gap closes.
+- It is held to leave the pod at least a tick of speed short of its target, since a late move would otherwise leave the rest as a sliver, and never below the still split's step, which ends on the target in whole steps. A step is therefore more than the speed while the gap is over two ticks of it, the steady trail.
+- The model's sweep of 122,778 lateness patterns finds no floor failure at 1.0× and 1.4× speed, and after every late spell it tried (stalls, late moves, slips of one to three ticks for up to 15 ticks, under the jitter or not) the trail is back within `PodMovementClientTest`'s margin of its steady value six ticks after the spell ends, sooner than on `main`. Split against the moving target alone fails the floor in 533 patterns at 1.0×; the still split alone fails the recovery after 474 of the 1,344 spells. `PodGlideTraceTest` replays one trace of each.
 
 ### A pod at the reach is not held to the floor
 

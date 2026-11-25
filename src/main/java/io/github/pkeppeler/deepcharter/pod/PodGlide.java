@@ -18,7 +18,7 @@ import org.jspecify.annotations.Nullable;
  *   <li>With no move to follow, the pod coasts on at the speed the server last reported, for {@link PodGlideTuning#coastTicks()} ticks (the last at
  *       {@link PodGlideTuning#coastTailShare()} of it), so it does not freeze. The coast stops short of any block, so a pod that hit a wall or the ground is never drawn inside it.
  *   <li>When the moves arrive in a burst, the pod catches up at {@link PodGlideTuning#catchUp()} times its speed (and at no less than a
- *       share of its gap), so it does not lunge, in even steps, so the last is not a sliver.
+ *       share of its gap), so it does not lunge, in even steps that close on a target the server moves on, so the last is not a sliver.
  *   <li>A pod that coasted past where the server put it goes on while the server reports it moving and the moves that come keep
  *       advancing (a late server), within the coast's reach past the server's position, and stands when that is used up. Once the
  *       server reports it still, a move that does not advance comes, or {@link PodGlideTuning#settleDelayTicks()} ticks pass with no
@@ -164,9 +164,7 @@ final class PodGlide extends AbstractInterpolationHandler {
             double cap = Math.max(pace, distance / tuning.catchUpTicks());
             step = Math.min(Math.max(distance * share, flow), cap);
             if (moving && step >= cap && distance > cap) {
-                // Capped steps of a moving pod split the gap evenly: a cap and a sliver would draw the sliver's tick
-                // short, a hitch in the drive, when no move follows it.
-                step = distance / Math.ceil(distance / cap);
+                step = splitCatchUp(distance, cap, speed);
             }
         }
         boolean arrives = distance <= step + ARRIVED;
@@ -184,6 +182,21 @@ final class PodGlide extends AbstractInterpolationHandler {
             snapping = false;
         }
         active = true;
+    }
+
+    /**
+     * A capped catch-up step of a pod {@code distance} behind a target the server moves on by {@code speed} a tick (ADR 0082). A cap
+     * and then a sliver would draw the sliver's tick short when no move follows it, so the gap is split evenly. Split as if the target
+     * stood still, a step settles on exactly {@code speed} and never closes the gap; split against the moving target, the fewest
+     * steps under the cap that reach it, each step closes some of the gap. That step may leave the pod less than a tick short, a
+     * sliver again when a move is late, so it is held to leave at least a tick, and never below the still split's step, which ends
+     * on the target in whole steps.
+     */
+    private static double splitCatchUp(double distance, double cap, double speed) {
+        double still = distance / Math.ceil(distance / cap);
+        double steps = Math.ceil((distance - speed) / (cap - speed));
+        double chasing = (distance + (steps - 1) * speed) / steps;
+        return Math.max(still, Math.min(chasing, distance - speed));
     }
 
     private void turn(double share) {
