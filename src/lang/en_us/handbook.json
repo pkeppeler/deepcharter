@@ -160,7 +160,7 @@
   "deepcharter.handbook.appendix.title.part": "%s (%s/%s)",
   "deepcharter.catalogue.counter.recipes": "R %s/%s",
   "deepcharter.catalogue.counter.uses": "U %s/%s",
-  "deepcharter.catalogue.craftable": "CRAFTABLE NOW",
+  "deepcharter.catalogue.craftable": "CRAFTABLE (%s)",
   "deepcharter.catalogue.empty": "NO ENTRIES",
   "deepcharter.catalogue.favourites": "FAVOURITES",
   "deepcharter.catalogue.none.recipes": "NO KNOWN RECIPE",

@@ -7,7 +7,7 @@ import net.minecraft.world.item.Item;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What one open catalogue is set to: the search, the craftable-now filter, the page, the favourites row's scroll and the recipe lookup.
+ * What the catalogue is set to, for the client session: the search, the craftable-now filter, the page, the favourites row's scroll and the recipe lookup.
  * No drawing and no input here, so the rules of the filter and the lookup are testable on their own.
  */
 public final class CatalogueState {
@@ -42,9 +42,9 @@ public final class CatalogueState {
         return craftableOnly;
     }
 
+    /** Flips the filter. The page stays; {@link #page(int)} brings it inside the new page count. */
     public void toggleCraftableOnly() {
         craftableOnly = !craftableOnly;
-        page = 0;
     }
 
     /** The known items that match the search and, with the filter on, can be made at {@code bench} from {@code contents} now. */
@@ -57,6 +57,17 @@ public final class CatalogueState {
             }
         }
         return shown;
+    }
+
+    /** How many known items can be made at {@code bench} from {@code contents} now, whatever the search and the filter say. */
+    public int craftableCount(PartsCatalogue catalogue, StackedItemContents contents, Bench bench) {
+        int count = 0;
+        for (Item item : catalogue.items()) {
+            if (catalogue.craftable(item, contents, bench)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /** How many pages {@code total} items make at {@code perPage} to a page; at least one. */
