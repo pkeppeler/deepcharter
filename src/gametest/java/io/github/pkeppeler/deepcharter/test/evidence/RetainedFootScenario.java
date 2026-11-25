@@ -11,7 +11,6 @@ import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -157,7 +156,7 @@ public class RetainedFootScenario extends EvidenceScenario {
         }
 
         private void sendFigure() {
-            chamber.awaitEntityTicking(BlockPos.containing(RetainedChamber.at(FIGURE_X, 1, FIGURE_Z)));
+            chamber.awaitEntityTicking(RetainedChamber.at(FIGURE_X, 1, FIGURE_Z));
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);

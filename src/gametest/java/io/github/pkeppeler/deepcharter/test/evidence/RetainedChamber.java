@@ -52,18 +52,20 @@ final class RetainedChamber {
                 ctx,
                 "the player in layer " + LAYER,
                 client -> client.level != null && TestLayers.clientIsIn(client, LAYER) && client.gui.screen() == null);
-        awaitEntityTicking(BlockPos.containing(x, y, z));
+        awaitEntityTicking(new Vec3(x, y, z));
     }
 
     /**
-     * Waits on the server until the chunk at {@code pos} is entity-ticking, and says so when it had to wait, so a failure after
-     * it can be read. Call it before a scenario adds an entity there. A chunk a player has just teleported to is loaded at
-     * once, unloaded in the tick that swaps the arrival ticket for the player's own, and loaded again. The unload hides the
-     * entities already added (the pod, which the player rides, stays in the level, not removed, but {@code getEntity} no longer
-     * finds it), and they are tracked again only when the chunk's entity-ticking promotion reaches the entity manager, which on
-     * a slow server (headless, software rendering) took more than 25 ticks.
+     * Waits on the server until the chunk at {@code at} is entity-ticking, and says so when it had to wait, so a
+     * failure after it can be read. Call it before a scenario adds an entity there. A chunk a player has just
+     * teleported to is loaded at once, unloaded in the tick that swaps the arrival ticket for the player's own, and
+     * loaded again. The unload hides the entities already added (the pod, which the player rides, stays in the level,
+     * not removed, but {@code getEntity} no longer finds it), and they are tracked again only when the chunk's
+     * entity-ticking promotion reaches the entity manager, which on a slow server (headless, software rendering) took
+     * more than 25 ticks.
      */
-    void awaitEntityTicking(BlockPos pos) {
+    void awaitEntityTicking(Vec3 at) {
+        BlockPos pos = BlockPos.containing(at);
         long started = System.nanoTime();
         int[] polls = {0};
         ClientWait.until(

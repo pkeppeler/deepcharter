@@ -10,7 +10,6 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -101,7 +100,7 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
                 camera.setPermanentlyInvulnerable(true);
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 figure.setNoAi(true);
-                figure.setPos(RetainedChamber.at(CAMERA_X + FAR, 1, 0.5));
+                figure.setPos(farFigurePos());
                 level.addFreshEntity(figure);
                 figureId = figure.getId();
             });
@@ -112,8 +111,8 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
             ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         }
 
-        private BlockPos farFigurePos() {
-            return BlockPos.containing(RetainedChamber.at(CAMERA_X + FAR, 1, 0.5));
+        private Vec3 farFigurePos() {
+            return RetainedChamber.at(CAMERA_X + FAR, 1, 0.5);
         }
 
         /** Puts the figure {@code distance} east of the camera, facing it, with or without a lamp, and the camera looking at it. */
@@ -178,7 +177,7 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
                 ServerLevel level = RetainedChamber.layer(server);
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 figure.setNoAi(true);
-                figure.setPos(RetainedChamber.at(CAMERA_X + FAR, 1, 0.5));
+                figure.setPos(farFigurePos());
                 level.addFreshEntity(figure);
                 figureId = figure.getId();
             });

@@ -17,7 +17,6 @@ import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -167,7 +166,7 @@ public class TallySkimScenario extends EvidenceScenario {
         }
 
         private void sendTally() {
-            chamber.awaitEntityTicking(BlockPos.containing(RetainedChamber.at(TALLY_X, TALLY_HEIGHT, TALLY_Z)));
+            chamber.awaitEntityTicking(RetainedChamber.at(TALLY_X, TALLY_HEIGHT, TALLY_Z));
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
                 Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
