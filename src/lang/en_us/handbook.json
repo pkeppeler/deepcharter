@@ -114,6 +114,7 @@
   "deepcharter.handbook.controls.lookup.title": "Looking things up",
   "deepcharter.handbook.controls.lookup.look": "Point at an item: %s shows its recipes, %s its uses.",
   "deepcharter.handbook.controls.lookup.star": "Point at an item and press %s to star it.",
+  "deepcharter.handbook.controls.lookup.sheet": "%s opens the newest spec sheet.",
   "deepcharter.handbook.controls.shelf.title": "The shelf",
   "deepcharter.handbook.controls.shelf.craftable": "CRAFTABLE NOW lists what you can make here.",
   "deepcharter.handbook.controls.board.title": "The Mole: aboard",
