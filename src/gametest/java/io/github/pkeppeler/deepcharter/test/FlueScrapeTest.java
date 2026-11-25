@@ -39,9 +39,9 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for the free flue scrape (#1280): the way out of limp mode at the colony for a charter with no
- * money. The bootstrap case is a first-tank pilot with $0 whose coal-fed pod went limp: the paid service clears nothing,
- * the scrape takes its time and leaves the engine under the limit, and the pod then drills. A scrape is refused for an
- * engine that is not limp, and one cut short clears nothing.
+ * money. The bootstrap case is a first-tank pilot with $0 whose coal-fed pod went limp: the paid service clears
+ * nothing, the scrape takes its time and leaves the engine under the limit, and the pod then drills. A scrape is
+ * refused for an engine that is not limp, and one cut short clears nothing.
  *
  * <p>The station needs a repaired chain, a world-global record swapped only for one tick ({@link WorldData}), so each
  * test presses its buttons on its first tick and then only watches the pod's own ticks, which read no such record.
