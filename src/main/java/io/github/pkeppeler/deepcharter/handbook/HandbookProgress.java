@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementProgress;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,6 +22,7 @@ import net.minecraft.server.level.ServerPlayer;
  * new member inherits what is done. A player on no charter has progress of their own ({@link PersonalHandbookData}), which
  * carries into a charter they found ({@link ProgressCarry}). A directive is complete when the advancement with its id is done for one online member.
  * Our own code reaches that through {@link Directives#fire}; a vanilla criterion reaches it by the poll in {@link #sweep}.
+ * A directive {@link #sweep} records that finishes a chapter fires {@link HandbookEvents#CHAPTER_COMPLETED}.
  *
  * <p>A player's directive advancements mirror their current charter, or their own progress on none: on join, on founding or joining
  * a charter, and on leaving one, the player is given the advancements of the directives the charter has done and loses the
@@ -82,8 +84,10 @@ public final class HandbookProgress {
         }
         Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
         if (charter.isEmpty()) {
+            Set<Identifier> before = completedFor(server, player.getUUID());
             if (recordPersonal(server, player)) {
                 HandbookSyncPayload.send(server, player);
+                announceChapters(server, before, completedFor(server, player.getUUID()), List.of(player.getUUID()));
             }
             return;
         }
@@ -102,6 +106,36 @@ public final class HandbookProgress {
         }
         if (changed) {
             charter.get().roster().forEach(member -> HandbookSyncPayload.send(server, member));
+            announceChapters(
+                    server,
+                    done,
+                    data.completed(charter.get().id()),
+                    charter.get().roster());
+        }
+    }
+
+    /**
+     * Fires {@link HandbookEvents#CHAPTER_COMPLETED} for each online one of {@code players} and each chapter that {@code after} completes
+     * and {@code before} did not. Only {@link #sweep} calls this, so progress carried or mirrored, which it never records, completes no
+     * chapter.
+     */
+    private static void announceChapters(
+            MinecraftServer server, Set<Identifier> before, Set<Identifier> after, List<UUID> players) {
+        for (Holder.Reference<HandbookChapter> chapter : HandbookChapters.all(server)) {
+            List<Identifier> directives = chapter.value().directives().stream()
+                    .map(HandbookChapter.Entry::id)
+                    .toList();
+            if (directives.isEmpty() || !after.containsAll(directives) || before.containsAll(directives)) {
+                continue;
+            }
+            for (UUID id : players) {
+                ServerPlayer online = server.getPlayerList().getPlayer(id);
+                if (online != null) {
+                    HandbookEvents.CHAPTER_COMPLETED
+                            .invoker()
+                            .onChapterCompleted(server, online, chapter.key().identifier());
+                }
+            }
         }
     }
 

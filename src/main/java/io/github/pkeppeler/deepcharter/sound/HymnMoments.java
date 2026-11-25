@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.sound;
 
 import io.github.pkeppeler.deepcharter.charter.CharterEvents;
+import io.github.pkeppeler.deepcharter.handbook.HandbookEvents;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import java.util.HashMap;
@@ -22,12 +23,14 @@ import net.minecraft.world.entity.Entity;
  *   <li>a charter is founded: the founder has arrived at the colony;
  *   <li>a player joins a charter: the same arrival;
  *   <li>a player goes down a breach: the hymn of the layer reached;
- *   <li>a player climbs out of the layers into the colony: the colony hymn again.
+ *   <li>a player climbs out of the layers into the colony: the colony hymn again;
+ *   <li>the last directive of a handbook chapter is done: a short phrase of the colony hymn ({@link DeepSound#HYMN_CHAPTER}) to each
+ *       online member of the charter, or to the player alone on none.
  * </ul>
  *
  * A climb from one layer to another is silent. Pods and other riders play nothing. A hymn is never stacked on itself: a player who
  * crosses again while their hymn still plays hears no second one, and a crossing to a different version stops the old one and starts
- * the new one.
+ * the new one. The chapter phrase gives way: a player whose hymn (or phrase) is still playing is not given it at all.
  */
 public final class HymnMoments {
     /** The version for each depth, the colony first: the index is the layer, counted from the surface at 0. */
@@ -57,14 +60,20 @@ public final class HymnMoments {
                 (server, charter) -> charter.director().ifPresent(director -> arrived(server, director)));
         CharterEvents.JOINED.register((server, charter, player) -> arrived(server, player));
         BreachEvents.CROSSED.register(HymnMoments::onCrossed);
+        HandbookEvents.CHAPTER_COMPLETED.register((server, player, chapter) -> onChapterCompleted(player));
         ServerPlayConnectionEvents.DISCONNECT.register(
-                (handler, server) -> PLAYING.remove(handler.getPlayer().getUUID()));
+                (handler, server) -> forget(handler.getPlayer().getUUID()));
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> stopped());
     }
 
     /** Forgets every hymn: the map is static, so an integrated server restarted in one client session would inherit the last one's. */
     static void stopped() {
         PLAYING.clear();
+    }
+
+    /** Forgets the hymn {@code player} was hearing: they left, so it stopped, and their next moment plays in full. */
+    static void forget(UUID player) {
+        PLAYING.remove(player);
     }
 
     private static void arrived(MinecraftServer server, UUID player) {
@@ -83,6 +92,13 @@ public final class HymnMoments {
         }
     }
 
+    private static void onChapterCompleted(ServerPlayer player) {
+        Playing last = PLAYING.get(player.getUUID());
+        if (last == null || player.level().getServer().getTickCount() >= last.endsAtTick()) {
+            play(player, DeepSound.HYMN_CHAPTER);
+        }
+    }
+
     private static void play(ServerPlayer player, DeepSound hymn) {
         int now = player.level().getServer().getTickCount();
         Playing last = PLAYING.get(player.getUUID());
@@ -93,8 +109,12 @@ public final class HymnMoments {
             SoundPackets.stopFor(player, last.hymn());
         }
         SoundPackets.playTo(player, hymn);
-        PLAYING.put(
-                player.getUUID(),
-                new Playing(hymn, now + SoundTuning.DEFAULT.hymnTicks().get(HYMNS.indexOf(hymn))));
+        PLAYING.put(player.getUUID(), new Playing(hymn, now + ticksOf(hymn)));
+    }
+
+    private static int ticksOf(DeepSound hymn) {
+        return hymn == DeepSound.HYMN_CHAPTER
+                ? SoundTuning.DEFAULT.chapterPhraseTicks()
+                : SoundTuning.DEFAULT.hymnTicks().get(HYMNS.indexOf(hymn));
     }
 }

@@ -6,12 +6,18 @@ import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundSource;
 
 /**
  * The sound of a terminal button, played to the player who pressed it and to no one else: the sale and purchase sounds of the
  * actions below, and the error sound of every refusal. An action not listed here makes no sound of its own.
+ *
+ * <p>A terminal that comes online (its last part goes in) is heard by everyone near: the power-on and a rising chord, played in the
+ * world where the repairing player stands, within reach of the terminal. The chord's file opens on as much quiet as the power-on's
+ * click and hum-up, so the two start together and the chord follows.
  */
 public final class TerminalSounds {
     private static final Map<Identifier, DeepSound> ACTIONS = Map.ofEntries(
@@ -36,5 +42,12 @@ public final class TerminalSounds {
             }
         });
         TerminalEvents.REFUSED.register((player, refusal) -> SoundPackets.playTo(player, DeepSound.UI_ERROR));
+        TerminalEvents.REPAIRED.register((server, type, charter, player) -> {
+            for (DeepSound sound : List.of(DeepSound.TERMINAL_POWER_ON, DeepSound.TERMINAL_ONLINE)) {
+                player.level()
+                        .playSound(
+                                null, player.getX(), player.getY(), player.getZ(), sound.event(), SoundSource.BLOCKS);
+            }
+        });
     }
 }

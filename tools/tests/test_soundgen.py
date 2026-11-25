@@ -65,6 +65,17 @@ class HymnLengthTest(unittest.TestCase):
         made = [math.ceil(len(recipes.render(f"hymn/{name}").left) / recipes.RATE * 20) for name in ("colony", "layer_1", "layer_2")]
         self.assertEqual(made, ticks)
 
+    def test_the_game_knows_how_long_the_chapter_phrase_plays(self):
+        # The chapter phrase follows the hymns' rule (#1267): HymnMoments counts SoundTuning.chapterPhraseTicks, which must match the file.
+        java = (Path(__file__).resolve().parents[2] / "src/main/java/io/github/pkeppeler/deepcharter/sound/SoundTuning.java").read_text()
+        fields = re.search(r"record SoundTuning\((.*?)\)\s*\{", java, re.S).group(1)
+        names = [field.split()[-1] for field in re.split(r",(?![^<]*>)", fields)]
+        values = re.split(r",(?![^(]*\))", re.search(r"new SoundTuning\((.*?)\);", java, re.S).group(1))
+        ticks = int(values[names.index("chapterPhraseTicks")])
+        made = math.ceil(len(recipes.render("hymn/chapter").left) / recipes.RATE * 20)
+        self.assertEqual(made, ticks)
+        self.assertTrue(3 * 20 <= ticks <= 5 * 20, f"the phrase lasts {ticks} ticks, not 3 to 5 seconds")
+
 
 class GateTest(unittest.TestCase):
     def setUp(self):
