@@ -26,20 +26,23 @@ def read(path):
     return json.loads(path.read_text())
 
 
+def split_id(name):
+    return name.split(":") if ":" in name else ("minecraft", name)
+
+
 def textures(name):
-    """The model's texture map merged down its parent chain, the child's entries winning."""
     if name in VANILLA:
         return dict(VANILLA[name])
-    namespace, path = name.split(":") if ":" in name else ("minecraft", name)
+    namespace, path = split_id(name)
     assert namespace == "deepcharter", f"{name}: a vanilla model or parent missing from VANILLA; add its textures"
     model = read(ASSETS / "models" / f"{path}.json")
     return {**(textures(model["parent"]) if "parent" in model else {}), **model.get("textures", {})}
 
 
-def resolve(name, key="particle"):
-    """The texture id `key` ends at, or None when a reference in the chain is undefined."""
+def resolve(name):
+    """The texture id `particle` ends at, or None when a reference in the chain is undefined."""
     mapping, seen = textures(name), set()
-    value = mapping.get(key)
+    value = mapping.get("particle")
     while value is not None and value.startswith("#") and value not in seen:
         seen.add(value)
         value = mapping.get(value[1:])
@@ -70,7 +73,7 @@ class BlockModelParticleTests(unittest.TestCase):
             with self.subTest(name):
                 texture = resolve(name)
                 self.assertIsNotNone(texture, f"{name}: particle does not resolve")
-                namespace, path = texture.split(":") if ":" in texture else ("minecraft", texture)
+                namespace, path = split_id(texture)
                 if namespace == "deepcharter":
                     self.assertTrue((ASSETS / "textures" / f"{path}.png").exists(), f"{name}: {texture} has no png")
 
