@@ -27,16 +27,15 @@ public final class PodMovement {
                 : null;
         Input input = pilot == null ? Input.EMPTY : pilot.getLastClientInput();
 
-        // Steer first: the throttle drives along the facing it gives. The drill turns the pod to the grid while it
-        // works,
-        // and so does a bore as wide as the pod (PodSteering), so neither takes A and D.
+        // Steer first: the throttle drives along the facing it gives. The drill and a bore as wide as the pod
+        // hold the grid, so neither takes A and D freely (PodSteering).
         if (pilot == null || pod.drilling()) {
             PodSteering.stopTurning(pod);
-        } else if ((hasMovementKey(input) || pod.turnRate() != 0f) && PodSteering.inBore(pod)) {
-            PodSteering.align(pod, PodSteering.nearestCardinal(pod));
-        } else {
+            pod.setTurnTarget(null);
+        } else if (!PodSteering.boreTurn(pod, input)) {
             PodSteering.steer(pod, input);
         }
+        PodSteering.noteTurnKey(pod, input);
         Vec3 facing = Vec3.directionFromRotation(0, pod.getYRot());
         double throttle = pilot == null ? 0 : PodSteering.throttle(input, stats);
         double vx = facing.x * throttle;
@@ -62,9 +61,5 @@ public final class PodMovement {
         if (pod.verticalCollision && (pod.verticalCollisionBelow ? after < 0 : after > 0)) {
             pod.setDeltaMovement(pod.getDeltaMovement().multiply(1, 0, 1));
         }
-    }
-
-    private static boolean hasMovementKey(Input input) {
-        return input.forward() || input.backward() || input.left() || input.right();
     }
 }

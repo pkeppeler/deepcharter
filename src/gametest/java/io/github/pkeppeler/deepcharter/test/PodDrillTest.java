@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_LEFT;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.RIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
@@ -289,6 +290,56 @@ public class PodDrillTest {
                             "in a bore as wide as the pod it should stand square to it, yaw %s at %s",
                             pod.getYRot(),
                             pod.position());
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /** In a pod-wide bore one press of D turns the pod a quarter to the next compass direction, and W then bores that branch. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPressOfDInATightBoreTurnsAQuarterAndWBoresTheBranch(GameTestHelper helper) {
+        int x = ALIGN_X + 256;
+        int floor = FLOOR;
+        int height = Chassis.MOLE.boreHeight();
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        box(level, x - 2, x - 2, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        box(level, x + 1, x + 1, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        // Facing south, square in the corridor; D is pressed for two ticks once it stands. D turns clockwise, so the
+        // next compass
+        // direction is
+        // west; the turn is under way after the key is let go. The pod faces open side space once turned, so a held D
+        // would
+        // go on steering freely there, as it does anywhere out of a bore.
+        Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z - 2.5), 0f, "drill-branch", Input.EMPTY);
+        float west = 90f;
+        boolean[] drove = {false};
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            // Landed first: a bore holds a pod that stands on the ground.
+            if (pod.tickCount == 5) {
+                rig.pilot.setInput(RIGHT);
+            }
+            if (pod.tickCount == 7) {
+                rig.pilot.releaseInput();
+            }
+            if (pod.tickCount == 30) {
+                if (pod.getYRot() != west) {
+                    throw failure(
+                            helper, "one press of D should turn the pod a quarter to the west, yaw %s", pod.getYRot());
+                }
+                rig.pilot.setInput(FORWARD);
+                drove[0] = true;
+            }
+            if (drove[0]
+                    && count(level, x - 2, x - 2, floor, floor + height - 1, Z - 3, Z + 3, Blocks.AIR) == 2 * height) {
+                if (pod.getYRot() != west) {
+                    throw failure(helper, "the branch should leave the pod facing west, yaw %s", pod.getYRot());
                 }
                 pod.discard();
                 helper.succeed();

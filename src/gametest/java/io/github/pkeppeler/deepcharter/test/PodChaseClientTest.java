@@ -4,15 +4,19 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.client.pod.PodChase;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
+import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 
@@ -32,6 +36,10 @@ public class PodChaseClientTest implements FabricClientGameTest {
     private static final float YAW_TOLERANCE = 3f;
 
     private static final float SETTLED = 8f;
+    /** A first-person drive longer than the mouse's 20 still ticks plus a settle, short of the end of the open ground. */
+    private static final int NEVER_SETTLES_TICKS = 50;
+    /** A height in layer 1 that is open air, to move the pilot to. */
+    private static final int HIGH_LOCAL_Y = 150;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -59,6 +67,7 @@ public class PodChaseClientTest implements FabricClientGameTest {
 
             firstPersonTurnsWithThePod(context);
             thirdPersonSettlesBehindTheDrive(context);
+            firstPersonNeverSettlesWhileDriving(context);
 
             two.server()
                     .runOnServer(server ->
@@ -71,6 +80,8 @@ public class PodChaseClientTest implements FabricClientGameTest {
             require(
                     camera(context) == CameraType.THIRD_PERSON_FRONT,
                     "leaving the pod should restore the view the player had before it, it is " + camera(context));
+
+            leavingByDimensionSwapAndByDeathRestoresTheView(context, two);
         }
     }
 
@@ -97,6 +108,77 @@ public class PodChaseClientTest implements FabricClientGameTest {
                         + "), keeping its angle to the nose " + relativeBefore + ", but it is " + relativeAfter);
     }
 
+    /** The first-person view is the pilot's own: a pod that drives (backing, as the open ground ahead is spent) never swings it round behind, however long the mouse is still. */
+    private static void firstPersonNeverSettlesWhileDriving(ClientGameTestContext context) {
+        setCamera(context, CameraType.FIRST_PERSON);
+        context.waitTicks(30);
+        float before = relativeYaw(context);
+        context.getInput().holdKey(options -> options.keyDown);
+        context.waitTicks(NEVER_SETTLES_TICKS);
+        context.getInput().releaseKey(options -> options.keyDown);
+        float after = relativeYaw(context);
+        require(
+                Math.abs(Mth.wrapDegrees(after - before)) < YAW_TOLERANCE,
+                "driving must not settle a first-person view, it went from " + before + " to " + after
+                        + " degrees off the nose");
+    }
+
+    /** A pilot moved to another level, and a pilot who dies, both lose the seat: the view they had comes back. */
+    private static void leavingByDimensionSwapAndByDeathRestoresTheView(
+            ClientGameTestContext context, TwoPlayerServer two) {
+        UUID mock = two.mock().player().getUUID();
+        boardNewPod(context, two, mock);
+        require(
+                camera(context) == CameraType.THIRD_PERSON_BACK,
+                "boarding again should chase, it is " + camera(context));
+        two.server().runOnServer(server -> {
+            ServerLevel layer = TestLayers.level(server, 1);
+            realPlayer(server, mock)
+                    .teleportTo(layer, 0.5, TestLayers.worldY(1, HIGH_LOCAL_Y), 0.5, Set.of(), 0f, 0f, true);
+        });
+        ClientWait.until(
+                context,
+                "the player in layer 1, out of the pod",
+                client -> TestLayers.clientIsIn(client, 1)
+                        && !(ClientSession.player(client).getVehicle() instanceof PodEntity));
+        context.waitTicks(3);
+        require(
+                camera(context) == CameraType.THIRD_PERSON_FRONT,
+                "moving to another level should restore the view the player had, it is " + camera(context));
+
+        boardNewPod(context, two, mock);
+        require(
+                camera(context) == CameraType.THIRD_PERSON_BACK,
+                "boarding in layer 1 should chase, it is " + camera(context));
+        two.server().runOnServer(server -> realPlayer(server, mock).kill(TestLayers.level(server, 1)));
+        ClientWait.until(
+                context,
+                "the dead pilot out of the pod",
+                client -> !(ClientSession.player(client).getVehicle() instanceof PodEntity));
+        context.waitTicks(3);
+        require(
+                camera(context) == CameraType.THIRD_PERSON_FRONT,
+                "dying in the seat should restore the view the player had, it is " + camera(context));
+    }
+
+    /** Seats the real player in a new pod beside them, with no gravity, and waits for the client to chase. */
+    private static void boardNewPod(ClientGameTestContext context, TwoPlayerServer two, UUID mock) {
+        two.server().runOnServer(server -> {
+            ServerPlayer real = realPlayer(server, mock);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, real.level());
+            pod.setPos(real.position());
+            pod.setNoGravity(true);
+            real.level().addFreshEntity(pod);
+            require(real.startRiding(pod), "the player could not mount the new pod");
+        });
+        ClientWait.until(
+                context,
+                "the client chasing a pod",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity
+                        && client.options.getCameraType() == CameraType.THIRD_PERSON_BACK);
+        context.waitTicks(3);
+    }
+
     /** A pod that drives pulls a third-person camera that looks away round behind it. */
     private static void thirdPersonSettlesBehindTheDrive(ClientGameTestContext context) {
         setCamera(context, CameraType.THIRD_PERSON_BACK);
@@ -107,9 +189,9 @@ public class PodChaseClientTest implements FabricClientGameTest {
         context.waitTicks(2);
         float before = Math.abs(relativeYaw(context));
         require(before > SETTLED, "the test should start with the camera looking away from the pod, it is " + before);
-        context.getInput().holdKey(options -> options.keyUp);
+        context.getInput().holdKey(options -> options.keyDown);
         context.waitTicks(SETTLE_DRIVE_TICKS);
-        context.getInput().releaseKey(options -> options.keyUp);
+        context.getInput().releaseKey(options -> options.keyDown);
         float after = Math.abs(relativeYaw(context));
         require(
                 after < SETTLED,

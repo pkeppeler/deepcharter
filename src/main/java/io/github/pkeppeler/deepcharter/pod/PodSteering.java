@@ -8,7 +8,7 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Steering a pod as a boat is steered (ADR 0092): W drives along the pod's facing, S backs up without turning, A and D
+ * Steering a pod as a boat is steered (ADR 0093): W drives along the pod's facing, S backs up without turning, A and D
  * turn the pod's yaw, and the pilot's view does not steer. Where it differs from a boat is the grid: the drill and a
  * bore as wide as the pod turn it square to the compass, so tunnels stay straight. Server only; all state is the pod's
  * own yaw and its turn rate.
@@ -47,6 +47,39 @@ final class PodSteering {
         }
         pod.setTurnRate(turn);
         pod.setYRot(Mth.wrapDegrees(pod.getYRot() + turn));
+    }
+
+    /**
+     * The grid's hold on a pod in a bore as wide as itself: it squares itself and ignores steering, except that one press of A or D,
+     * made while it is roughly square, turns it a quarter to the next compass direction (D clockwise), eased by the align rate, so a
+     * tunnel can branch. False when the grid has no hold and the pod steers freely.
+     */
+    static boolean boreTurn(PodEntity pod, Input input) {
+        Direction target = pod.turnTarget();
+        if (target == null) {
+            boolean held = input.forward() || input.backward() || input.left() || input.right() || pod.turnRate() != 0f;
+            if (!held || !inBore(pod)) {
+                return false;
+            }
+            Direction nearest = nearestCardinal(pod);
+            float off = Math.abs(Mth.wrapDegrees(nearest.toYRot() - pod.getYRot()));
+            boolean pressed = input.left() != input.right() && !pod.turnKeyHeld();
+            if (pressed && off <= PodSteeringTuning.DEFAULT.alignDegrees()) {
+                target = input.right() ? nearest.getClockWise() : nearest.getCounterClockWise();
+                pod.setTurnTarget(target);
+            } else {
+                target = nearest;
+            }
+        }
+        if (align(pod, target)) {
+            pod.setTurnTarget(null);
+        }
+        return true;
+    }
+
+    /** Records whether A or D is held, for the next tick's press. */
+    static void noteTurnKey(PodEntity pod, Input input) {
+        pod.setTurnKeyHeld(input.left() != input.right());
     }
 
     /**

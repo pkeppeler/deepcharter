@@ -2,7 +2,9 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK_LEFT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_BACK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_RIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
@@ -218,6 +220,50 @@ public class PodMovementTest {
                     }
                 });
             });
+        });
+    }
+
+    /** The boat reverses with S whatever A or D do, and turns while it does: so does the pod (unlike W with S, which cancels). */
+    @GameTest(maxTicks = 100)
+    public void backWithLeftReversesWhileTurning(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        Vec3 start = rig.pod.position();
+        rig.pilot.setInput(BACK_LEFT);
+        helper.runAfterDelay(10, () -> {
+            try {
+                Vec3 moved = rig.pod.position().subtract(start);
+                float turned = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+                if (moved.z > -0.2 || turned > -10f) {
+                    throw failure(
+                            helper,
+                            "S with A backs the pod up (north) and turns it left, moved %s, turned %s",
+                            moved,
+                            turned);
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    @GameTest
+    public void forwardAndBackTogetherCancel(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        Vec3 start = rig.pod.position();
+        rig.pilot.setInput(FORWARD_BACK);
+        helper.runAfterDelay(10, () -> {
+            try {
+                if (rig.pod.position().distanceTo(start) > EPSILON) {
+                    throw failure(
+                            helper,
+                            "W with S is no throttle, the pod moved %s",
+                            rig.pod.position().subtract(start));
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
         });
     }
 

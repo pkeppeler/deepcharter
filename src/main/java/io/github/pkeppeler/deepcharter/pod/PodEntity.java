@@ -37,6 +37,11 @@ public class PodEntity extends Entity {
     // Neither saved nor synced: the degrees a tick the pod is turning by, which A and D build up (PodSteering). Server
     // only.
     private float turnRate;
+    // Neither saved nor synced: the compass direction a quarter turn in a bore is turning the pod to, and whether A or
+    // D was held
+    // last tick, so that one press starts one quarter turn (PodSteering). Server only.
+    private @Nullable Direction turnTarget;
+    private boolean turnKeyHeld;
 
     public PodEntity(EntityType<? extends PodEntity> type, Level level) {
         super(type, level);
@@ -67,6 +72,25 @@ public class PodEntity extends Entity {
 
     void setTurnRate(float turnRate) {
         this.turnRate = turnRate;
+    }
+
+    /** The compass direction a quarter turn in a bore is under way to, or null. Written only by PodSteering. */
+    @Nullable
+    Direction turnTarget() {
+        return turnTarget;
+    }
+
+    void setTurnTarget(@Nullable Direction turnTarget) {
+        this.turnTarget = turnTarget;
+    }
+
+    /** Whether A or D was held on the last tick. Written only by PodSteering. */
+    boolean turnKeyHeld() {
+        return turnKeyHeld;
+    }
+
+    void setTurnKeyHeld(boolean turnKeyHeld) {
+        this.turnKeyHeld = turnKeyHeld;
     }
 
     /** The blasting charge this pod has set and that is still burning, or null. Written only by PodCharge. */
