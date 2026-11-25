@@ -63,7 +63,7 @@ public record ReadoutLook(
      * The y of the bottom edge of the placement readout, for a font {@code lineHeight} high: above the block readout's
      * two lines and a gap, so that both can show at once and neither moves the other.
      */
-    public int placementBottom(int guiHeight, int lineHeight) {
+    private int placementBottom(int guiHeight, int lineHeight) {
         return blockBottom(guiHeight) - (int) Math.ceil((2 * lineHeight + 2 * lineGap) * scale);
     }
 

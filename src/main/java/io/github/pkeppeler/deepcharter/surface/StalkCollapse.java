@@ -41,8 +41,7 @@ import net.minecraft.world.level.block.state.BlockState;
 final class StalkCollapse {
     /** The most blocks one collapse takes, so that no chain of touching great stalks makes a collapse cost a lot. */
     private static final int MOST_BLOCKS = 1024;
-    // A great stalk is at most 90 blocks (its yield, tested), far under this, so a walk never reaches it for
-    // one.
+    // A great stalk is at most 90 blocks (its yield, tested), far under this.
 
     private static final Direction[] JOINS = {
         Direction.UP, Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
@@ -52,14 +51,6 @@ final class StalkCollapse {
     private static final Direction[] HELD_BY = {
         Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
     };
-
-    /**
-     * True while a collapse changes blocks: the blocks it sets to air are removals that must not start a collapse of
-     * their own. A burst sets air with {@code UPDATE_CLIENTS} only, which vanilla does not announce as a removal, so
-     * today the guard is idle; it holds if that flag ever gains {@code UPDATE_NEIGHBORS} (a test pins one cough per
-     * collapse). The server thread is the only one that changes blocks, so no lock.
-     */
-    private static boolean bursting;
 
     private StalkCollapse() {}
 
@@ -109,7 +100,7 @@ final class StalkCollapse {
      * ground any more. An upright stalk never holds a great block up.
      */
     static void removed(ServerLevel level, BlockPos pos, BlockState removed) {
-        if (bursting || collapses(level.getBlockState(pos))) {
+        if (collapses(level.getBlockState(pos))) {
             return;
         }
         List<BlockPos> anchors = new ArrayList<>();
@@ -137,16 +128,11 @@ final class StalkCollapse {
             return;
         }
         boolean great = anchors.stream().anyMatch(anchor -> great(level.getBlockState(anchor)));
-        bursting = true;
-        try {
-            for (BlockPos fall : claimed) {
-                BlockState state = level.getBlockState(fall);
-                if (collapses(state)) {
-                    burst(level, fall, state, great);
-                }
+        for (BlockPos fall : claimed) {
+            BlockState state = level.getBlockState(fall);
+            if (collapses(state)) {
+                burst(level, fall, state, great);
             }
-        } finally {
-            bursting = false;
         }
         cough(level, pos, great);
     }
