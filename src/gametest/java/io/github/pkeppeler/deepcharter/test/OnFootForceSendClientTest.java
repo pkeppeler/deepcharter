@@ -9,9 +9,11 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTether;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.ForceSends;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -41,10 +43,11 @@ import net.minecraft.world.level.block.Blocks;
  * apart between client and server: a client holding the jump key on a plain stone slab in the End logged the line
  * too, with none of our blocks near.
  *
- * <p>The setup is not counted either. The player is a spectator until the client holds the carved bore and its light
- * is settled, and only then on foot and counted. In one run of four, with the player teleported on foot into the
- * bore's fresh chunks while the server ran 130 ticks behind, one line came before the tether. Vanilla logs at most one
- * line in 200 ticks per player, so a setup line would hide a measured one: the count waits that out first.
+ * <p>Nor is a lagging server. A real client dropped on plain stone logged the line in 2 runs of 14, each 12 to 13 s
+ * after the server fell over 130 ticks behind; lag is tracked in #1343. So the player is a spectator until the client
+ * holds the carved bore, its light is settled and the server is calm, and only then on foot and counted: this test
+ * pins that our blocks make no disagreement on a calm server. Vanilla logs at most one line in 200 ticks per player,
+ * so a setup line would hide a measured one: the count waits that out first.
  *
  * <p>The control: the server then removes the stone patch without telling the client, and the player drops onto it
  * again. The client lands on a block the server lacks, and the line must come, so a zero above is not the appender or
@@ -54,13 +57,22 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
     private static final int X = 29000;
     private static final int DROP = 12;
     private static final int STAND_TICKS = 60;
-    private static final int LONG_STAND_TICKS = 700;
-    private static final int LAPS = 10;
+    /** Past one of vanilla's 200-tick windows between lines. */
+    private static final int LONG_STAND_TICKS = 220;
+
+    private static final int LAPS = 4;
     private static final int LAP_TICKS = 15;
     private static final int TETHER_TRIPS = 3;
     private static final int SETTLE_TICKS = 40;
     /** More than vanilla's 200 ticks between two lines for one player. */
     private static final int LINE_COOLDOWN_TICKS = 220;
+    /** One server tick's budget at 20 ticks a second. */
+    private static final long TICK_BUDGET_NANOS = 50_000_000L;
+    /**
+     * How long the server may take to calm down. Short enough that a server that never does fails here, naming its tick
+     * times, before the client-test watchdog's limit.
+     */
+    private static final int CALM_SECONDS = 30;
     /** The walls of the room above the bore, and how far the pod stands from its centre. */
     private static final int ROOM_RADIUS = 8;
 
@@ -114,6 +126,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             if (setup > 0) {
                 context.waitTicks(LINE_COOLDOWN_TICKS); // tick-wait: a setup line's cooldown would hide a measured line
             }
+            awaitCalm(context, server);
             server.runOnServer(s -> player(s).setGameMode(GameType.SURVIVAL));
             int before = ForceSends.total();
 
@@ -122,7 +135,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                 context.waitTicks(STAND_TICKS); // tick-wait: standing on the block, with the position reminders
             }
             dropOnto(context, server, floor, PATCHES.getLast());
-            context.waitTicks(LONG_STAND_TICKS); // tick-wait: three cooldown windows of standing
+            context.waitTicks(LONG_STAND_TICKS); // tick-wait: a cooldown window of standing
             for (int lap = 0; lap < LAPS; lap++) {
                 context.getInput().holdKeyFor(options -> options.keyUp, LAP_TICKS);
                 context.getInput().holdKeyFor(options -> options.keyLeft, LAP_TICKS);
@@ -227,6 +240,32 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                 "the player landing on " + patch.block(),
                 client -> client.player != null && client.player.onGround() && client.player.getY() < floor + 2,
                 client -> "client player at " + (client.player == null ? "none" : client.player.position()));
+    }
+
+    /**
+     * Waits until every tick in the server's record of its last 100 (5 s) took under {@link #TICK_BUDGET_NANOS}: lag
+     * alone can make the line (#1343), and this test is about our blocks.
+     */
+    private static void awaitCalm(ClientGameTestContext context, TestServerContext server) {
+        FarChunks.Deadline deadline = FarChunks.deadline(CALM_SECONDS);
+        while (!server.computeOnServer(s -> slowTicksMillis(s).isEmpty())) {
+            if (deadline.expired()) {
+                throw new AssertionError("The server never settled in " + CALM_SECONDS
+                        + " s: ticks over 50 ms in its last 100, in ms: "
+                        + server.computeOnServer(OnFootForceSendClientTest::slowTicksMillis));
+            }
+            context.waitTicks(1); // tick-wait: one tick between polls of a wall-clock wait
+        }
+    }
+
+    private static List<Long> slowTicksMillis(MinecraftServer server) {
+        List<Long> slow = new ArrayList<>();
+        for (long nanos : server.getTickTimesNanos()) {
+            if (nanos >= TICK_BUDGET_NANOS) {
+                slow.add(nanos / 1_000_000L);
+            }
+        }
+        return slow;
     }
 
     private static ServerPlayer player(MinecraftServer server) {
