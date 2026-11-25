@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.TextInputManager;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetView.Placed;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
@@ -13,6 +14,8 @@ import io.github.pkeppeler.deepcharter.handbook.SpecSheets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -31,6 +34,7 @@ import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
 
@@ -45,7 +49,9 @@ import org.jspecify.annotations.Nullable;
 public final class CataloguePanel {
     /** Item icons are 16 pixels. */
     private static final int ICON = 16;
-    /** The dots a name loses its tail to when it is too long for its line. */
+    /** The most the craftable switch counts out; more reads "99+". */
+    private static final int MOST_COUNTED = 99;
+    /** The dots a text loses its tail to when it is too long for its line. */
     private static final String ELLIPSIS = "..";
 
     /** What is under the mouse in a panel (not in the inventory): the item and the cell it is in. */
@@ -53,7 +59,7 @@ public final class CataloguePanel {
 
     private final AbstractRecipeBookScreen<?> screen;
     private final Bench bench;
-    private final CatalogueState state = new CatalogueState();
+    private final CatalogueState state;
     private final Font font = Minecraft.getInstance().font;
     private @Nullable CatalogueLayout layout;
     /** The spec sheet that covers the screen, or null. */
@@ -73,6 +79,10 @@ public final class CataloguePanel {
     private String shownQuery = "";
     private boolean shownFilter;
     private int contentsStamp;
+    private int craftableCount;
+    /** The items {@link PartsCatalogue#tableOnly} holds for, as of the last tick. */
+    private Set<Item> tableOnly = Set.of();
+
     private int shownStamp = -1;
     private List<Item> favouritesCache = List.of();
     private boolean searchFocused;
@@ -81,8 +91,10 @@ public final class CataloguePanel {
     private int mouseX = -1;
     private int mouseY = -1;
 
-    CataloguePanel(AbstractRecipeBookScreen<?> screen) {
+    /** A panel for {@code screen} over {@code state}, which is the client's own and so carries from one screen to the next. */
+    CataloguePanel(AbstractRecipeBookScreen<?> screen, CatalogueState state) {
         this.screen = screen;
+        this.state = state;
         this.bench = Bench.of(screen.getMenu());
         refresh();
     }
@@ -94,6 +106,9 @@ public final class CataloguePanel {
         screenWidth = width;
         screenHeight = height;
         planSheet();
+        if (searchFocused) {
+            focusSearch(layout != null);
+        }
     }
 
     /** Shows the spec sheet of {@code item} over the screen, until a click or Escape puts it away. */
@@ -161,6 +176,20 @@ public final class CataloguePanel {
         return searchFocused;
     }
 
+    /** SDL sends no text until text input is on, so focus starts it and unfocus stops it, as {@code EditBox} does. */
+    private void focusSearch(boolean focused) {
+        CatalogueLayout now = layout;
+        searchFocused = focused && now != null;
+        TextInputManager input = Minecraft.getInstance().textInputManager();
+        if (now != null && searchFocused) {
+            Rect search = now.shelf().search();
+            input.setTextInputArea(search.x(), search.y(), search.right(), search.bottom());
+            input.startTextInput(this);
+        } else {
+            input.stopTextInput(this);
+        }
+    }
+
     void tick() {
         ticks++;
         refresh();
@@ -181,6 +210,8 @@ public final class CataloguePanel {
         contents = new StackedItemContents();
         player.getInventory().fillStackedContents(contents);
         contentsStamp++;
+        craftableCount = state.craftableCount(catalogue, contents, bench);
+        tableOnly = catalogue.tableOnlyItems(contents, bench);
         favouritesCache = CatalogueFavourites.shared().items(player.getUUID());
     }
 
@@ -214,6 +245,42 @@ public final class CataloguePanel {
         return shownCache;
     }
 
+    /** The legend of the craftable switch: its words and the count, which stops at "99+" so the legend stays on its plate. */
+    // test-seam: the client test holds the legend of a count over 99 to its plate
+    public static String craftableLegend(int count) {
+        return count > MOST_COUNTED
+                ? text("craftable.many")
+                : Component.translatable("deepcharter.catalogue.craftable", count)
+                        .getString();
+    }
+
+    // test-seam: the count the switch's legend shows
+    public int craftableCount() {
+        return craftableCount;
+    }
+
+    /** Whether {@code item} is made only at a crafting table by what the player holds, which its cell is marked with an icon for. */
+    public boolean marksTable(Item item) {
+        return tableOnly.contains(item);
+    }
+
+    /** The lines the strip that names {@code item} draws over the catalogue's glass. */
+    // test-seam: the client test reads the lines the strip must draw
+    public List<String> nameLines(Item item) {
+        return stripLines(item, layoutOrThrow().catalogueGlass());
+    }
+
+    /** The lines the recipe console's title draws, or none while nothing is looked up. */
+    // test-seam: the client test reads the lines the title must draw
+    public List<String> titleLines() {
+        CatalogueLayout now = layout;
+        return now == null ? List.of() : titleLines(now.card());
+    }
+
+    private CatalogueLayout layoutOrThrow() {
+        return Objects.requireNonNull(layout, "the panels are laid out");
+    }
+
     // test-seam: the client test reads what the grid lists, which is the list it draws
     public List<Item> shownItems() {
         return shown();
@@ -234,6 +301,35 @@ public final class CataloguePanel {
 
     private List<Item> favourites() {
         return favouritesCache;
+    }
+
+    /** The name the recipe console is titled with: what the shown recipe makes, or the item looked up, in capitals. */
+    private @Nullable String title() {
+        CatalogueState.Lookup lookup = state.lookup();
+        if (lookup == null) {
+            return null;
+        }
+        KnownRecipe recipe = state.shownRecipe(catalogue);
+        ItemStack named = recipe != null ? recipe.results().getFirst() : new ItemStack(lookup.item());
+        return named.getHoverName().getString().toUpperCase(Locale.ROOT);
+    }
+
+    private List<String> titleLines(CatalogueLayout.Card card) {
+        String title = title();
+        return title == null ? List.of() : TextWrap.lines(this::termWidth, title, card.right() - card.left());
+    }
+
+    /** The recipe console's content, moved down by each line its title takes beyond the first. */
+    private CatalogueLayout.Card card(CatalogueLayout now) {
+        int lines = titleLines(now.card()).size();
+        return lines <= 1 ? now.card() : now.card().lowered((lines - 1) * font.lineHeight, look().needRow());
+    }
+
+    /** The lines of the name strip of {@code item} on {@code glass}: its whole name, on as many lines as the glass needs. */
+    private List<String> stripLines(Item item, Rect glass) {
+        String name = new ItemStack(item).getHoverName().getString().toUpperCase(Locale.ROOT);
+        int inset = look().nameStripPad() + 1;
+        return TextWrap.lines(this::termWidth, name, glass.width() - 2 * look().pad() - 2 * inset);
     }
 
     /** The cell of {@code item} in the recipe panel's grid, result and have/need rows, as laid out for the shown recipe. */
@@ -303,7 +399,7 @@ public final class CataloguePanel {
         }
         KnownRecipe recipe = showsRecipePanel() ? state.shownRecipe(catalogue) : null;
         if (recipe != null) {
-            for (Hit hit : recipeHits(now.card(), look, recipe)) {
+            for (Hit hit : recipeHits(card(now), look, recipe)) {
                 if (hit.cell().contains(x, y)) {
                     return hit;
                 }
@@ -364,7 +460,7 @@ public final class CataloguePanel {
         }
         // Ctrl+F, or Cmd+F on a Mac (hasControlDownWithQuirk is the shortcut key of the platform).
         if (event.hasControlDownWithQuirk() && event.key() == InputConstants.KEY_F) {
-            searchFocused = true;
+            focusSearch(true);
             return true;
         }
         if (event.isEscape() && showsRecipePanel()) {
@@ -396,7 +492,7 @@ public final class CataloguePanel {
     private boolean searchKey(KeyEvent event) {
         String query = state.query();
         if (event.isEscape() || event.isConfirmation()) {
-            searchFocused = false;
+            focusSearch(false);
         } else if (event.key() == InputConstants.KEY_BACKSPACE) {
             if (event.hasControlDownWithQuirk()) {
                 state.setQuery("");
@@ -446,16 +542,16 @@ public final class CataloguePanel {
         CatalogueLayout.Shelf shelf = now.shelf();
         boolean onShelf = now.catalogue().contains(x, y);
         boolean onCard = showsRecipePanel() && now.recipe().contains(x, y);
-        searchFocused = onShelf && shelf.search().contains(x, y);
+        focusSearch(onShelf && shelf.search().contains(x, y));
         if (!onShelf && !onCard) {
             return false;
         }
         pressTaken = true;
-        if (event.button() != 0 && event.button() != 1) {
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT && event.button() != InputConstants.MOUSE_BUTTON_RIGHT) {
             // A middle or side button on a panel is taken and does nothing, so it never reaches the inventory behind.
             return true;
         }
-        boolean right = event.button() == 1;
+        boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
         Hit hit = hitAt(x, y);
         if (hit != null) {
             lookUp(hit.item(), right ? CatalogueState.Mode.USES : CatalogueState.Mode.RECIPES);
@@ -464,7 +560,11 @@ public final class CataloguePanel {
         } else {
             CatalogueLayout.Card card = now.card();
             CatalogueState.Lookup lookup = state.lookup();
-            Rect title = new Rect(card.left(), card.titleY(), card.right() - card.left(), font.lineHeight);
+            Rect title = new Rect(
+                    card.left(),
+                    card.titleY(),
+                    card.right() - card.left(),
+                    titleLines(card).size() * font.lineHeight);
             if (lookup != null && card.spec().contains(x, y)) {
                 SpecSheetHook.open(lookup.item());
             } else if (title.contains(x, y)) {
@@ -552,25 +652,18 @@ public final class CataloguePanel {
     /**
      * The name of the hovered item in a strip of its own, in the terminal font on the phosphor black with a phosphor border, where the
      * game's purple tooltip would clash with the panels. Over the cell, or under it when there is no room above, and kept inside the glass
-     * of the panel the cell is on, off its bezel: a name wider than the glass is cut with an ellipsis.
+     * of the panel the cell is on, off its bezel. A name wider than the glass goes on a second line, and a third: it is never cut.
      */
     private void drawNameStrip(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look, Hit hit) {
         CrtTuning crt = CrtTuning.current();
         Rect glass = now.catalogueGlass().contains(hit.cell().x(), hit.cell().y())
                 ? now.catalogueGlass()
                 : now.recipeGlass();
-        String name = new ItemStack(hit.item()).getHoverName().getString().toUpperCase(Locale.ROOT);
+        List<String> lines = stripLines(hit.item(), glass);
         int inset = look.nameStripPad() + 1;
-        int room = glass.width() - 2 * look.pad() - 2 * inset;
-        if (termWidth(name) > room) {
-            String cut = name;
-            while (termWidth(cut + "...") > room && !cut.isEmpty()) {
-                cut = cut.substring(0, cut.length() - 1);
-            }
-            name = cut + "...";
-        }
-        int width = termWidth(name) + 2 * inset;
-        int height = font.lineHeight + 2 * inset;
+        int widest = lines.stream().mapToInt(this::termWidth).max().orElse(0);
+        int width = widest + 2 * inset;
+        int height = lines.size() * font.lineHeight + 2 * inset;
         int left = glass.x() + look.pad();
         int x = Math.clamp(hit.cell().x(), left, Math.max(left, glass.right() - look.pad() - width));
         int y = hit.cell().y() - look.nameStripGap() - height;
@@ -580,7 +673,15 @@ public final class CataloguePanel {
         graphics.nextStratum();
         graphics.fill(x, y, x + width, y + height, crt.backgroundColor());
         CrtDraw.border(graphics, x, y, x + width, y + height, crt.phosphorColor());
-        CrtDraw.glowText(graphics, font, CrtText.terminal(name), x + inset, y + inset, crt.phosphorColor());
+        for (int i = 0; i < lines.size(); i++) {
+            CrtDraw.glowText(
+                    graphics,
+                    font,
+                    CrtText.terminal(lines.get(i)),
+                    x + inset,
+                    y + inset + i * font.lineHeight,
+                    crt.phosphorColor());
+        }
     }
 
     private void drawShelf(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look, @Nullable Hit hit) {
@@ -640,7 +741,7 @@ public final class CataloguePanel {
                 panel,
                 crt,
                 craftable,
-                text("craftable"),
+                craftableLegend(craftableCount),
                 state.craftableOnly(),
                 true,
                 craftable.contains(mouseX, mouseY));
@@ -703,6 +804,19 @@ public final class CataloguePanel {
         boolean lit = (hit != null && hit.cell().equals(cell)) || (lookup != null && lookup.item() == item);
         slot(graphics, cell, lit, crt);
         graphics.item(new ItemStack(item), cell.x() + look.iconInset(), cell.y() + look.iconInset());
+        if (marksTable(item)) {
+            tableIcon(graphics, look, cell.right() - look.tableIconSize(), cell.bottom() - look.tableIconSize());
+        }
+    }
+
+    /** A crafting table, small, at ({@code x}, {@code y}): what marks an item or a recipe that only a crafting table makes. */
+    private static void tableIcon(GuiGraphicsExtractor graphics, CatalogueLook look, int x, int y) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y);
+        float scale = look.tableIconSize() / (float) ICON;
+        graphics.pose().scale(scale, scale);
+        graphics.item(new ItemStack(Items.CRAFTING_TABLE), 0, 0);
+        graphics.pose().popMatrix();
     }
 
     private static void slot(GuiGraphicsExtractor graphics, Rect cell, boolean lit, CrtTuning crt) {
@@ -716,7 +830,7 @@ public final class CataloguePanel {
     private void drawCard(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look, @Nullable Hit hit) {
         CrtTuning crt = CrtTuning.current();
         PanelLook panel = PanelLook.current();
-        CatalogueLayout.Card card = now.card();
+        CatalogueLayout.Card card = card(now);
         CatalogueState.Lookup lookup = state.lookup();
         if (lookup == null) {
             return;
@@ -727,16 +841,7 @@ public final class CataloguePanel {
         CatalogueHardware.body(graphics, look, now.recipe(), now.recipeGlass(), card.vents());
         graphics.nextStratum();
 
-        String title = recipe != null
-                ? recipe.results().getFirst().getHoverName().getString()
-                : new ItemStack(lookup.item()).getHoverName().getString();
-        CrtDraw.header(
-                graphics,
-                font,
-                CrtText.terminal(fit(title.toUpperCase(Locale.ROOT), width)),
-                card.left(),
-                card.titleY(),
-                card.right());
+        CatalogueHardware.title(graphics, font, titleLines(card), card.left(), card.titleY(), card.right());
         if (recipe == null) {
             String none = text(lookup.mode() == CatalogueState.Mode.RECIPES ? "none.recipes" : "none.uses");
             dim(graphics, fit(none, width), card.left(), card.stationY(), panel);
@@ -782,6 +887,14 @@ public final class CataloguePanel {
         glow(graphics, "->", card.left() + look.arrowX(), card.gridY() + look.arrowY(), crt);
         Rect result = resultCell(card, look);
         slot(graphics, result, true, crt);
+        if (recipe.needsTable()) {
+            // Over the result: made only in the crafting table's 3 x 3 grid.
+            tableIcon(
+                    graphics,
+                    look,
+                    result.x() + (result.width() - look.tableIconSize()) / 2,
+                    result.y() - look.tableIconSize() - 1);
+        }
         ItemStack made = recipe.results().getFirst();
         graphics.item(made, result.x() + look.iconInset(), result.y() + look.iconInset());
         graphics.itemDecorations(font, made, result.x() + look.iconInset(), result.y() + look.iconInset());

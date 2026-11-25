@@ -1950,6 +1950,25 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
 
+## Hand tools against pod-only blocks (#858, A)
+
+**Problem.** Crust, Company rock and rock below layer 1 were refused to hands by a cancelled break the client was not told about, so a strong pick ghost-broke a block that then came back, and nothing said why. The rule is one intended way to play with no hard block: brute force is possible, futile, and the game says so ([ADR 0069](../adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
+
+**Ladder.**
+1. **By hand: ruinous.** Any tool (a pickaxe, axe, shovel, hoe, sword or spear) breaks one block in 60 s, in any layer, whatever its enchantments. 60 s is a floor: a stop more than 20 ticks short of it is refused and charges nothing. An Unbreakable tool breaks it for free. A diamond or netherite tool spends half its durability, flat. A lesser tool (wood, stone, iron, gold, copper) is destroyed as the block goes: its durability is spent over the 60 s so it reaches its last point on the last tick, never before. Sparks, a grinding sound and a "burning out" or "this will destroy your pick" line show the cost; the first swing says a pod drill is the way. Nothing drops, and an item that is no tool, a bare hand or a fishing rod, still cannot break the block.
+2. **A pod drill** (and the charges) clears the same blocks with no cost to a pick: the intended way.
+3. **Mastery** is the pod's own ladder, unchanged: Company rock still wants a charge or a tier 3 drill, and the hand route only ever clears one block at a time.
+
+**Trade-offs.**
+- A diamond or netherite pick pays for two blocks. A wooden or iron pick pays for one, and is gone.
+- Stopping early wastes what was spent; Mending cannot refund it and Unbreaking cannot lower it.
+- It makes the default build marginally easier: any pick can now pass Company rock, which no tool could before. That is fine: a block costs half a diamond pick or a whole lesser one, so a straight shaft by hand is far dearer than the charges of [Company Rock and the straight shaft](#company-rock-and-the-straight-shaft-509-a).
+- Drops are never given, so brute force is not an ore exploit. The break still fires the hand-break events, so (A) brute-forcing a gas pocket vents it and the hazard still bites; a protection mod's veto refuses the break and charges nothing.
+
+**Knobs (`HandBreakTuning` in `LayerTuning`).** `breakTicks` (1200), `stopSlackTicks` (20), `tools` (the tag `deepcharter:hand_break/tools`), `durableShare` (0.5), `durableTools` (the tag `deepcharter:hand_break/durable`: diamond and netherite tools; a pack adds to it), `sparkTicks` (4), `soundTicks` (10), `messageTicks` (40).
+
+**Open questions.** Whether a block should drop its stone after the first deep layer; whether a pod crewmate's pick should count when the pod is the pilot's.
+
 ## The navigator's sonar (#988, A)
 
 **Problem.** The Prospector's second seat has been a passenger seat since #507. SPEC section 8 gives it a job: the navigator, who sees what the pilot cannot, and is loud for it. This is the first crew seat with its own tool, and the ground #924 (creature signatures) and the Sleeper's answer to noise build on.

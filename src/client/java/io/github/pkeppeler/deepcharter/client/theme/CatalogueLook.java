@@ -45,6 +45,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param nameStripPad pixels between the border of the strip that names the hovered item and its text
  * @param nameStripGap pixels between the hovered cell and that strip
  * @param caretHeight the thickness of the search field's caret, the underline after the text; at least the scanline spacing, so a scanline never takes it
+ * @param tableIconSize the side of the small crafting-table icon that marks an item or a recipe made only at the table
  * @param sheetWidth the width of a spec sheet's console; a window narrower than it gets the window's width
  * @param sheetHeight the tallest a spec sheet's console gets; a window shorter than it gets the window's height
  * @param sheetMinHeight the shortest a spec sheet's console is: it is as tall as its content, and no shorter than this
@@ -91,6 +92,7 @@ public record CatalogueLook(
         int nameStripPad,
         int nameStripGap,
         int caretHeight,
+        int tableIconSize,
         int sheetWidth,
         int sheetHeight,
         int sheetMinHeight,
@@ -275,6 +277,7 @@ public record CatalogueLook(
                 d.integer("nameStripPad", 0, 16),
                 d.integer("nameStripGap", 0, 16),
                 d.integer("caretHeight", 1, 8),
+                d.integer("tableIconSize", 4, 16),
                 d.integer("sheetWidth", 40, 400),
                 d.integer("sheetHeight", 40, 400),
                 d.integer("sheetMinHeight", 40, 400),

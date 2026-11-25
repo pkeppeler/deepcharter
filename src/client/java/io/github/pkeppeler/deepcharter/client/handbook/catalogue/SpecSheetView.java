@@ -43,13 +43,13 @@ final class SpecSheetView {
     /**
      * Everything a sheet draws as text.
      *
-     * @param title the item's name, in capitals
+     * @param title the item's name, in capitals, a line for each the width takes
      * @param cell the item's cell
      * @param lines the lines under the title
      * @param usedBottom the y under the last of the text
      * @param complete whether every line of the sheet fits
      */
-    record Plan(String title, Rect cell, List<Line> lines, int usedBottom, boolean complete) {}
+    record Plan(List<String> title, Rect cell, List<Line> lines, int usedBottom, boolean complete) {}
 
     /** A sheet placed on a screen: the console, and the text on its glass. */
     record Placed(SpecSheetLayout layout, Plan plan) {}
@@ -69,12 +69,16 @@ final class SpecSheetView {
     static Plan plan(SpecSheet sheet, SpecSheetLayout layout, CatalogueLook look, Font font) {
         boolean complete = true;
         int width = layout.right() - layout.left();
-        String title =
-                fit(font, new ItemStack(sheet.item()).getHoverName().getString().toUpperCase(Locale.ROOT), width);
+        List<String> title = TextWrap.lines(
+                text -> termWidth(font, text),
+                new ItemStack(sheet.item()).getHoverName().getString().toUpperCase(Locale.ROOT),
+                width);
         List<Line> lines = new ArrayList<>();
         int pitch = font.lineHeight + look.sheetLineGap();
 
-        Rect cell = new Rect(layout.left(), layout.bodyTop(), look.slotSize(), look.slotSize());
+        // Each line of the title past the first pushes the body down.
+        int bodyTop = layout.bodyTop() + (title.size() - 1) * font.lineHeight;
+        Rect cell = new Rect(layout.left(), bodyTop, look.slotSize(), look.slotSize());
         int kindX = cell.right() + look.sheetGap();
         lines.add(new Line(
                 fit(font, sheet.kind().getString(), layout.right() - kindX),
@@ -128,7 +132,7 @@ final class SpecSheetView {
         CatalogueHardware.body(graphics, look, layout.casing(), layout.glass(), List.of());
         graphics.nextStratum();
 
-        CrtDraw.header(graphics, font, CrtText.terminal(plan.title()), layout.left(), layout.titleY(), layout.right());
+        CatalogueHardware.title(graphics, font, plan.title(), layout.left(), layout.titleY(), layout.right());
         Rect cell = plan.cell();
         CrtDraw.border(graphics, cell.x(), cell.y(), cell.right(), cell.bottom(), crt.phosphorColor());
         graphics.item(new ItemStack(sheet.item()), cell.x() + look.iconInset(), cell.y() + look.iconInset());

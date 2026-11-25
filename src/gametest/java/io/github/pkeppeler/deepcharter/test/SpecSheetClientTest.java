@@ -55,7 +55,6 @@ import net.minecraft.world.item.Items;
  * after another screen has closed.
  */
 public class SpecSheetClientTest implements FabricClientGameTest {
-    private static final int LEFT_MOUSE = 0;
     /** The default window, 854 by 480 at GUI scale 2. */
     private static final int WIDTH = 427;
 
@@ -323,7 +322,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         require(context.computeOnClient(client -> panel.sheetItem()) == null, "no sheet is open before the button");
         CatalogueScene.hover(context, layout.card().spec());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(2);
         require(
                 context.computeOnClient(client -> panel.sheetItem()) == drill,
@@ -351,11 +350,11 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 "the recipe panel the sheet was opened from is as it was");
 
         CatalogueScene.hover(context, layout.card().spec());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(2);
         require(context.computeOnClient(client -> panel.sheetItem()) == drill, "the button opens it again");
         CatalogueScene.hover(context, layout.inventory());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(2);
         require(context.computeOnClient(client -> panel.sheetItem()) == null, "a click anywhere puts the sheet away");
         require(
