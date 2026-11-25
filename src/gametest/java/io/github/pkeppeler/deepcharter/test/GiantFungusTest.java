@@ -13,8 +13,10 @@ import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Cell;
 import io.github.pkeppeler.deepcharter.surface.ParasolShape;
 import io.github.pkeppeler.deepcharter.surface.RodPiece;
 import io.github.pkeppeler.deepcharter.surface.SpireShape;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import java.lang.reflect.Proxy;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.EnumMap;
@@ -625,53 +627,88 @@ public class GiantFungusTest {
      * A giant falls as a great stalk does ({@code StalkCollapse}): break a parasol's stem low down and its cap comes
      * down with it, the flare and glowcaps on the floor stay; break one spire of a cluster and it falls, and the others
      * stand.
+     *
+     * <p>The collapse steps on scheduled ticks, which run only in a ticking chunk, and the spires stand 40 blocks off
+     * the test, so both giants are grown once every chunk they span is entity-ticking.
      */
-    @GameTest(maxTicks = COLLAPSE_TICKS + 40)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + COLLAPSE_TICKS + 40)
     public void aGiantFallsAsAStalkDoes(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos parasolBase = helper.absolutePos(new BlockPos(0, 2, 0)).above(SKY);
         BlockPos spireBase = parasolBase.offset(40, 0, 0);
         GiantLayout parasol = parasolLayout(11);
         GiantLayout spires = spireLayout(11);
-        grow(level, parasol, parasolBase);
-        grow(level, spires, spireBase);
         Cell stem = new Cell(0, 2, 0);
         expect(helper, parasol.pieces().get(stem) instanceof GiantPiece.Stem, "the parasol's stem is not at %s", stem);
         Cell foot = spires.pieces().keySet().stream()
                 .filter(cell -> cell.y() == 1 && spires.owners().getOrDefault(cell, 0) == 2)
                 .findFirst()
                 .orElseThrow();
-        level.destroyBlock(parasolBase.offset(stem.x(), stem.y(), stem.z()), false);
-        level.destroyBlock(spireBase.offset(foot.x(), foot.y(), foot.z()), false);
-        helper.runAfterDelay(COLLAPSE_TICKS, () -> {
-            try {
-                parasol.pieces().forEach((cell, piece) -> {
-                    boolean standing = !level.getBlockState(parasolBase.offset(cell.x(), cell.y(), cell.z()))
-                            .isAir();
-                    // A twin (part 2) stands on its own stem.
-                    boolean broken = parasol.owners().getOrDefault(cell, 0) == 1 && cell.y() >= stem.y();
-                    expect(helper, standing != broken, "parasol cell %s, a %s, standing %s", cell, piece, standing);
-                });
-                spires.pieces().forEach((cell, piece) -> {
-                    boolean standing = !level.getBlockState(spireBase.offset(cell.x(), cell.y(), cell.z()))
-                            .isAir();
-                    boolean broken = spires.owners().getOrDefault(cell, 0) == 2 && cell.y() >= foot.y();
-                    expect(
-                            helper,
-                            standing != broken,
-                            "spire cell %s of part %s, standing %s",
-                            cell,
-                            spires.owners().get(cell),
-                            standing);
-                });
-            } finally {
-                clear(level, parasol, parasolBase);
-                clear(level, spires, spireBase);
-                level.getEntitiesOfClass(ItemEntity.class, new AABB(parasolBase).inflate(80))
-                        .forEach(Entity::discard);
-            }
-            helper.succeed();
+        List<BlockPos> chunks = new ArrayList<>(chunksUnder(parasol, parasolBase));
+        chunks.addAll(chunksUnder(spires, spireBase));
+        boolean[] grown = {false};
+        FarChunks.awaitAllEntityTicking(helper, level, chunks, () -> {
+            grow(level, parasol, parasolBase);
+            grow(level, spires, spireBase);
+            level.destroyBlock(parasolBase.offset(stem.x(), stem.y(), stem.z()), false);
+            level.destroyBlock(spireBase.offset(foot.x(), foot.y(), foot.z()), false);
+            grown[0] = true;
         });
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    if (!grown[0]) {
+                        throw helper.assertionException("the giants' chunks are not entity-ticking yet");
+                    }
+                })
+                .thenIdle(COLLAPSE_TICKS)
+                .thenExecute(() -> {
+                    try {
+                        parasol.pieces().forEach((cell, piece) -> {
+                            boolean standing = !level.getBlockState(parasolBase.offset(cell.x(), cell.y(), cell.z()))
+                                    .isAir();
+                            // A twin (part 2) stands on its own stem.
+                            boolean broken = parasol.owners().getOrDefault(cell, 0) == 1 && cell.y() >= stem.y();
+                            expect(
+                                    helper,
+                                    standing != broken,
+                                    "parasol cell %s, a %s, standing %s",
+                                    cell,
+                                    piece,
+                                    standing);
+                        });
+                        spires.pieces().forEach((cell, piece) -> {
+                            boolean standing = !level.getBlockState(spireBase.offset(cell.x(), cell.y(), cell.z()))
+                                    .isAir();
+                            boolean broken = spires.owners().getOrDefault(cell, 0) == 2 && cell.y() >= foot.y();
+                            expect(
+                                    helper,
+                                    standing != broken,
+                                    "spire cell %s of part %s, standing %s",
+                                    cell,
+                                    spires.owners().get(cell),
+                                    standing);
+                        });
+                    } finally {
+                        clear(level, parasol, parasolBase);
+                        clear(level, spires, spireBase);
+                        level.getEntitiesOfClass(ItemEntity.class, new AABB(parasolBase).inflate(80))
+                                .forEach(Entity::discard);
+                    }
+                    helper.succeed();
+                });
+    }
+
+    /** A block of each chunk the pad under {@code layout} at {@code base} spans, at the pad's row. */
+    private static List<BlockPos> chunksUnder(GiantLayout layout, BlockPos base) {
+        List<BlockPos> chunks = new ArrayList<>();
+        BlockPos low = base.offset(layout.minX() - 1, -1, layout.minZ() - 1);
+        BlockPos high = base.offset(layout.maxX() + 1, -1, layout.maxZ() + 1);
+        for (int chunkX = low.getX() >> 4; chunkX <= high.getX() >> 4; chunkX++) {
+            for (int chunkZ = low.getZ() >> 4; chunkZ <= high.getZ() >> 4; chunkZ++) {
+                chunks.add(new BlockPos(chunkX << 4, low.getY(), chunkZ << 4));
+            }
+        }
+        return chunks;
     }
 
     private static GiantFungusFeature feature(double great, double parasol, double spires, int rarity) {
