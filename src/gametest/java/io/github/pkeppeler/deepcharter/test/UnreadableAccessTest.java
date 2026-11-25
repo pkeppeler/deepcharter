@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterSyncPayload;
 import io.github.pkeppeler.deepcharter.charter.CharterView;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.ColonyDisplays;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.fuel.ReserveTank;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
@@ -120,6 +121,7 @@ public class UnreadableAccessTest {
             UnreadableChecks.makeUnreadable(pod, PodTowing.STATE);
             UnreadableChecks.makeUnreadable(pod, WreckRegistry.STATE);
             UnreadableChecks.makeUnreadable(pod, ReserveTank.STATE);
+            UnreadableChecks.makeUnreadable(pod, EngineSoot.STATE);
             Map<String, Runnable> paths = new LinkedHashMap<>();
             paths.put("stats", () -> PodStats.of(pod));
             paths.put("components", () -> {
@@ -138,7 +140,21 @@ public class UnreadableAccessTest {
             });
             paths.put("wreck", () -> Wrecks.isWreck(pod));
             paths.put("reserve tank", () -> ReserveTank.isInstalled(pod));
-            paths.put("tick", pod::tick);
+            paths.put("engine soot", () -> {
+                EngineSoot.soot(pod);
+                EngineSoot.burnMultiplier(pod);
+                EngineSoot.output(EngineSoot.soot(pod));
+                EngineSoot.launchRefused(pod);
+                EngineSoot.refuelled(pod, 1f, 1f);
+                EngineSoot.burned(pod, 1f);
+                EngineSoot.flush(pod);
+            });
+            paths.put("tick with fuel in the tank", () -> {
+                pod.setFuel(60f);
+                for (int i = 0; i < 20; i++) {
+                    pod.tick();
+                }
+            });
             paths.put("hull break", () -> pod.setHull(0f));
             UnreadableChecks.assertNoThrow(helper, "pod attachments", paths);
             helper.succeed();
