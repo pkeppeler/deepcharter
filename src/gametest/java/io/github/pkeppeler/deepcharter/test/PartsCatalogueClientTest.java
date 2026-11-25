@@ -1243,8 +1243,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             CatalogueLayout layout = CatalogueScene.layout(context, panel);
             CatalogueLook look = CatalogueLook.current();
             CatalogueLayout.Shelf shelf = layout.shelf();
-            // A cell of the grid, a favourite, and the first ingredient and the result of the drill head's 3 x 3
-            // recipe.
+            // A cell of the grid, a favourite, and the first ingredient and the result of the drill head's 3 x
+            // 3 recipe.
             Item other = context.computeOnClient(client -> panel.shownItems().stream()
                     .filter(item -> item != DRILL && item != Items.IRON_INGOT)
                     .findFirst()

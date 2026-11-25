@@ -102,8 +102,8 @@ public final class HandBreak {
      * dimension type given inline) count as layer 1. It never throws.
      */
     public static int layerOf(Level level, BlockPos pos) {
-        // A dimension type a data pack gives inline has no key, which LayerChain rejects: such a level is outside the
-        // chain.
+        // A dimension type a data pack gives inline has no key, which LayerChain rejects: such a level is outside
+        // the chain.
         if (!level.dimension().equals(Level.OVERWORLD)
                 && !LayerChain.isCampaign(level)
                 && level.dimensionTypeRegistration().unwrapKey().isEmpty()) {

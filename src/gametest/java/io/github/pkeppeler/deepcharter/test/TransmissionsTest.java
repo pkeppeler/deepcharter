@@ -896,8 +896,8 @@ public class TransmissionsTest {
                 throw helper.assertionException("crossing into layer 2 should send t11, sent %s", delivered);
             }
             // The zone poll may have fired layer 1's zone transmissions on the way down: the account holds each bonus
-            // sent live, once. Founding replayed the repairs other tests fired into the shared world, and a replay pays
-            // nothing.
+            // sent live, once. Founding replayed the repairs other tests fired into the shared world, and a replay
+            // pays nothing.
             long paid = delivered.stream()
                     .map(TransmissionCatalog::require)
                     .filter(transmission -> !transmission.replay())
