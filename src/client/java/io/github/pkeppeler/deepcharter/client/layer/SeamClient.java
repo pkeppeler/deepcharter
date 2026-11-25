@@ -303,9 +303,7 @@ public final class SeamClient {
         if (problem != null) {
             DeepCharter.LOGGER.warn(
                     "The swap into {} cannot be taken: {}", payload.dimension().identifier(), problem);
-            swapFailed = true;
-            ClientPlayNetworking.send(
-                    new SeamRefusePayload(payload.dimension(), payload.generation(), SeamRefuseReason.SWAP_FAILED));
+            refuseSwap(payload);
             return;
         }
         try {
@@ -315,10 +313,15 @@ public final class SeamClient {
             // player, which builds the level again from nothing.
             DeepCharter.LOGGER.error(
                     "The swap into {} failed half way", payload.dimension().identifier(), failure);
-            swapFailed = true;
-            ClientPlayNetworking.send(
-                    new SeamRefusePayload(payload.dimension(), payload.generation(), SeamRefuseReason.SWAP_FAILED));
+            refuseSwap(payload);
         }
+    }
+
+    /** Tells the server this client could not take the swap, and fades the breach that follows it. */
+    private static void refuseSwap(SeamSwapPayload payload) {
+        swapFailed = true;
+        ClientPlayNetworking.send(
+                new SeamRefusePayload(payload.dimension(), payload.generation(), SeamRefuseReason.SWAP_FAILED));
     }
 
     /** Moves the player and what it rides into the held level and shows that level: the part of a swap that mutates. */
@@ -402,12 +405,8 @@ public final class SeamClient {
         if (!carried.equals(new HashSet<>(payload.carried()))) {
             return "the client carries " + carried + ", the server " + payload.carried();
         }
-        if (to.getChunkSource()
-                        .getChunk(
-                                BlockPos.containing(payload.arrival()).getX() >> 4,
-                                BlockPos.containing(payload.arrival()).getZ() >> 4,
-                                false)
-                == null) {
+        BlockPos arrival = BlockPos.containing(payload.arrival());
+        if (to.getChunkSource().getChunk(arrival.getX() >> 4, arrival.getZ() >> 4, false) == null) {
             return "the held level lacks the arrival chunk";
         }
         return null;

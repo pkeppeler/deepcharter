@@ -221,7 +221,7 @@ public final class SeamPodScene {
         ClientWait.until(
                 context,
                 "the light of the arrival area to settle on the server",
-                () -> two.server().computeOnServer(server -> areaSettled(site)),
+                () -> two.server().computeOnServer(server -> watched(site).isEmpty()),
                 () -> "watched chunks " + two.server().computeOnServer(server -> watched(site)));
         context.waitTicks(LIGHT_DRAIN_TICKS);
         UUID mockId = two.mock().player().getUUID();
@@ -247,10 +247,6 @@ public final class SeamPodScene {
             }
         }
         return watched;
-    }
-
-    private static boolean areaSettled(Site site) {
-        return watched(site).isEmpty();
     }
 
     /** Lets the pod go and puts it under the floor, as one tick of a fall at speed would. */
@@ -310,14 +306,14 @@ public final class SeamPodScene {
     }
 
     /**
-     * Whether the client's player rides the vehicle {@code uuid}, which carries {@code riders} entities: it, the mock
-     * and nothing else.
+     * Whether the client's player rides the vehicle {@code uuid}, which carries two entities: it, the mock and nothing
+     * else.
      */
-    public static boolean ridesWith(Minecraft client, UUID uuid, int riders) {
+    public static boolean ridesWith(Minecraft client, UUID uuid) {
         Entity vehicle = vehicleOf(client);
         return vehicle != null
                 && vehicle.getUUID().equals(uuid)
-                && vehicle.getPassengers().size() == riders
+                && vehicle.getPassengers().size() == 2
                 && vehicle.getPassengers().contains(client.player);
     }
 

@@ -215,7 +215,7 @@ public final class SeamSender {
     }
 
     private static void endCrossing(ServerLevel to, Set<UUID> riders) {
-        long until = (long) to.getServer().getTickCount() + LayerTuning.DEFAULT.seamMissedWindowTicks();
+        long until = missedWindowEnd(to);
         Iterator<Map.Entry<UUID, RiderSeam>> seams = STATE.entrySet().iterator();
         while (seams.hasNext()) {
             Map.Entry<UUID, RiderSeam> entry = seams.next();
@@ -257,17 +257,21 @@ public final class SeamSender {
         return true;
     }
 
+    /** The server tick at which a crossing into {@code level} stops being recoverable by a client that reports it failed. */
+    static long missedWindowEnd(ServerLevel level) {
+        return (long) level.getServer().getTickCount() + LayerTuning.DEFAULT.seamMissedWindowTicks();
+    }
+
     /** Records that {@code rider} was swapped into {@code to} on the generation it last accepted. */
     static void noteSwap(ServerPlayer rider, ServerLevel to) {
-        long until = (long) to.getServer().getTickCount() + LayerTuning.DEFAULT.seamMissedWindowTicks();
-        SWAPPED.put(rider.getUUID(), new Swapped(to.dimension(), generationOf(rider), until));
+        SWAPPED.put(rider.getUUID(), new Swapped(to.dimension(), generationOf(rider), missedWindowEnd(to)));
     }
 
     /**
      * Whether the crossing of {@code player} into {@code level} left the chunk unsent, because the player holds it
      * already.
      */
-    public static boolean skippedAtCrossing(ServerPlayer player, ServerLevel level, ChunkPos pos) {
+    static boolean skippedAtCrossing(ServerPlayer player, ServerLevel level, ChunkPos pos) {
         Skipped skipped = RECENT.get(player.getUUID());
         return skipped != null
                 && skipped.level().equals(level.dimension())
@@ -275,7 +279,7 @@ public final class SeamSender {
     }
 
     /** The generation of the prepare most recently sent to {@code rider}, or 0 when it has no seam. */
-    public static int generationOf(ServerPlayer rider) {
+    static int generationOf(ServerPlayer rider) {
         RiderSeam seam = STATE.get(rider.getUUID());
         return seam == null ? 0 : seam.generation;
     }

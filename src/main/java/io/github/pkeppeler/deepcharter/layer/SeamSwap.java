@@ -50,9 +50,9 @@ public final class SeamSwap {
     private SeamSwap() {}
 
     /**
-     * Re-reads the chunk tracking of each rider just swapped or recovered, as a move of the player does: the vehicle it rides is paired
-     * with it once the chunk of the vehicle is sent (a chunk that changed since it was sent is sent again), and vanilla
-     * looks again only when someone changes section, which a vehicle at rest never does.
+     * Re-reads the chunk tracking of each rider just swapped or recovered, as a move of the player does: the vehicle it
+     * rides is paired with it once the chunk of the vehicle is sent (a chunk that changed since it was sent is sent
+     * again), and vanilla looks again only when someone changes section, which a vehicle at rest never does.
      */
     static void tick(MinecraftServer server) {
         if (PAIRING.isEmpty()) {
@@ -164,9 +164,7 @@ public final class SeamSwap {
         }
         to.resetEmptyTime();
         for (ServerPlayer rider : riders) {
-            PAIRING.put(
-                    rider.getUUID(),
-                    (long) to.getServer().getTickCount() + LayerTuning.DEFAULT.seamMissedWindowTicks());
+            PAIRING.put(rider.getUUID(), SeamSender.missedWindowEnd(to));
         }
         // Fabric fires the entity event around Entity.teleportCrossDimension, which ServerPlayer's own teleport does
         // not go through, and fires the player event from there: a player gets only the second.
@@ -207,7 +205,6 @@ public final class SeamSwap {
         playerList.sendAllPlayerInfo(rider);
         playerList.sendActivePlayerEffects(rider);
         rider.sendPostEffects();
-        PAIRING.put(
-                rider.getUUID(), (long) level.getServer().getTickCount() + LayerTuning.DEFAULT.seamMissedWindowTicks());
+        PAIRING.put(rider.getUUID(), SeamSender.missedWindowEnd(level));
     }
 }

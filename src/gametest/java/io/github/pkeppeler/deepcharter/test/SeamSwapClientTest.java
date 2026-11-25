@@ -133,7 +133,7 @@ public class SeamSwapClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the client back on the pod, with the mock",
-                client -> SeamPodScene.ridesWith(client, before.vehicleUuid(), 2),
+                client -> SeamPodScene.ridesWith(client, before.vehicleUuid()),
                 ClientWait::describe);
         logTiming(context, "fallback", fellBackMillis, counts);
         SeamPodScene.finish(two, pod);
@@ -155,7 +155,7 @@ public class SeamSwapClientTest implements FabricClientGameTest {
                         && SeamPodScene.inLayer(client, 2)
                         && client.getConnection() != null
                         && client.getConnection().hasClientLoaded()
-                        && SeamPodScene.ridesWith(client, before.vehicleUuid(), 2),
+                        && SeamPodScene.ridesWith(client, before.vehicleUuid()),
                 ClientWait::describe);
         long recoveredMillis = (System.nanoTime() - startNanos) / 1_000_000;
         SwapProbes.Counts counts = SwapProbes.disarm();

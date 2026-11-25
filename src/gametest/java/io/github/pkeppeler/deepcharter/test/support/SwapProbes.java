@@ -56,11 +56,6 @@ public final class SwapProbes {
     /** Stops counting and returns the counts. */
     public static synchronized Counts disarm() {
         armed = false;
-        return counts();
-    }
-
-    /** The counts so far, whether or not armed. */
-    public static synchronized Counts counts() {
         return new Counts(loadingScreens, respawns, soundStops, everUnloaded);
     }
 
