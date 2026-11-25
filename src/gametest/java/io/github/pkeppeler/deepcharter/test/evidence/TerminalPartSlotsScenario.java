@@ -37,6 +37,8 @@ public class TerminalPartSlotsScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 8;
     /** Frames a dragged item takes to cross from its inventory slot to a part slot. */
     private static final int DRAG_FRAMES = 10;
+    /** Where the cursor waits while the intro types: off the window, so no slot shows a tooltip. */
+    private static final double OFF_SCREEN = -10_000;
 
     @Override
     protected String name() {
@@ -66,7 +68,7 @@ public class TerminalPartSlotsScenario extends EvidenceScenario {
             ClientWait.screen(context, RepairScreen.class);
             RepairScreen screen = context.computeOnClient(client -> ClientSession.screen(client, RepairScreen.class));
             Slot motorSlot = screen.getMenu().ruleSlots().get(0);
-            ClientCursor.moveTo(context, 0, 0);
+            context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN); // no slot hovered, so no tooltip
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);

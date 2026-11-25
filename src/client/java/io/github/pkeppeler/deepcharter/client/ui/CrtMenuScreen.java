@@ -36,6 +36,7 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
     }
 
     /** The intro's typewriter, which types on each tick. */
+    // test-seam: a client test waits for the intro to type out before it reads the screen, as with TerminalViewScreen
     public final Typewriter typewriter() {
         return intro;
     }
