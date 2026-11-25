@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import java.util.List;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.protocol.game.ServerboundClientTickEndPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -83,7 +83,8 @@ public final class FootClient {
             packets++;
         }
         lastSentGround = onGround;
-        // The end of the client tick: it is what lets the server take the next position packet (receivedPositionThisTick).
+        // The end of the client tick: it is what lets the server take the next position packet
+        // (receivedPositionThisTick).
         player.connection.handleClientTickEnd(new ServerboundClientTickEndPacket());
     }
 }

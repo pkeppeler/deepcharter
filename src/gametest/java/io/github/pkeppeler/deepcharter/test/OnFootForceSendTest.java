@@ -20,83 +20,85 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * Server GameTests for a player on foot in a carved bore of the campaign world (#1317): vanilla logs "standing on air - force-sending
- * blocks below" when the client reports on-ground while the server's last move found nothing below, and each line makes the client
- * rebuild sections. Columns 28000 to 28999 are this class's.
+ * Server GameTests for the line vanilla logs when a player on foot reports on-ground with no collision under the server's last move,
+ * "standing on air - force-sending blocks below" (#1317). A mock player stands in for the client with {@link FootClient}'s physics, so
+ * the bore, the fall and the standing are the campaign world's own. Columns 28000 to 28999 are this class's.
+ *
+ * <p>Vanilla sends nothing in the first 200 ticks of a connection and then at most one line in 200, so a run is longer than that
+ * and its jumps start after {@link #JUMPS_FROM_TICK}.
  */
 public class OnFootForceSendTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final int DROP = 24;
+    private static final int RUN_TICKS = 700;
+    private static final int JUMPS_FROM_TICK = 100;
 
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
-    public void probeJumpingDownACarvedBoreForcesNoSend(GameTestHelper helper) {
-        run(helper, "foot-probe", 28000, false);
+    public void aPlayerFallingIntoACarvedBoreAndStandingThereForcesNoSend(GameTestHelper helper) {
+        run(helper, "foot-bore", 28000, List.of(), 0);
     }
 
+    /** The control: a block only the client holds is what the line is for, so the counter and the packets must see it. */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
-    public void probeControlAClientBlockTheServerHasAsAirForcesSends(GameTestHelper helper) {
-        run(helper, "foot-control", 28100, true);
+    public void aBlockOnlyTheClientHoldsForcesSends(GameTestHelper helper) {
+        VoxelShape ledge = Shapes.create(-2, 6, -2, 3, 7, 3);
+        run(helper, "foot-ledge", 28100, List.of(ledge), 1);
     }
 
-    private static String diag(MockPlayer mock) {
-        try {
-            var listener = mock.player().connection;
-            var f = listener.getClass().getDeclaredField("awaitingPositionFromClient");
-            f.setAccessible(true);
-            var g = listener.getClass().getDeclaredField("awaitingTeleport");
-            g.setAccessible(true);
-            String extra = "";
-            for (String n : new String[] {"waitingForRespawn", "clientLoadedTimeoutTimer", "receivedMovePacketCount", "knownMovePacketCount", "lastGoodY", "firstGoodY"}) {
-                var h = listener.getClass().getDeclaredField(n);
-                h.setAccessible(true);
-                extra += " " + n + "=" + h.get(listener);
-            }
-            return extra + " awaitPos=" + f.get(listener) + " awaitId=" + g.get(listener) + " passenger=" + mock.player().isPassenger() + " tick=" + mock.player().tickCount;
-        } catch (ReflectiveOperationException e) {
-            return e.toString();
-        }
-    }
-
-    private static void run(GameTestHelper helper, String name, int column, boolean phantom) {
+    /**
+     * Drops a mock from the top of a carved bore onto a stone bed and lets it stand and jump there for {@link #RUN_TICKS} ticks.
+     * {@code ledges} are shapes the client holds that the server has as air, in blocks from the bore's floor and centre.
+     *
+     * @param atLeast the lines the run must log: 0 for none at all, otherwise the least that proves the check is reached
+     */
+    private static void run(GameTestHelper helper, String name, int column, List<VoxelShape> ledges, int atLeast) {
         ServerLevel level = helper.getLevel();
         double x = column + 0.5;
-        double z = column + 0.5;
         int floor = CampaignBands.LAYER_1.minY() + 40;
         MockPlayer mock = MockPlayers.join(helper, name);
         mock.player().setGameMode(GameType.SURVIVAL);
         mock.player().setPermanentlyInvulnerable(true);
-        mock.teleportTo(level, new Vec3(x, floor + DROP, z), 0, 0);
+        mock.teleportTo(level, new Vec3(x, floor + DROP, x), 0, 0);
         ForceSends sends = ForceSends.start(name);
         FootClient[] client = {null};
         long[] start = {-1};
-        FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(x, floor, z), () -> {
+        FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(x, floor, x), () -> {
             RoomCarver.carve(level, column - 4, column + 3, floor - 1, floor - 1, column - 4, column + 3, Blocks.STONE);
-            RoomCarver.carve(level, column - 4, column + 3, floor, floor + DROP + 4, column - 4, column + 3, Blocks.AIR);
-            mock.teleportTo(level, new Vec3(x, floor + DROP, z), 0, 0);
+            RoomCarver.carve(
+                    level, column - 4, column + 3, floor, floor + DROP + 4, column - 4, column + 3, Blocks.AIR);
+            mock.teleportTo(level, new Vec3(x, floor + DROP, x), 0, 0);
             mock.acknowledgeTeleports();
-            client[0] = new FootClient(mock, phantom ? List.of(Shapes.create(column - 2, floor + 6, column - 2, column + 3, floor + 7, column + 3)) : List.of());
+            List<VoxelShape> shapes = ledges.stream()
+                    .map(ledge -> ledge.move(column + 0.5, floor, column + 0.5))
+                    .toList();
+            client[0] = new FootClient(mock, shapes);
+            // The acknowledgement counts as a position packet this tick, and a second one disconnects the player.
             start[0] = helper.getTick() + 2;
         });
         TestTicks.each(helper, () -> {
             if (client[0] == null || helper.getTick() < start[0]) {
                 return;
             }
-            long t = helper.getTick() - start[0];
-            client[0].tick(t > 100 && t % 30 == 0);
-            if (t < 12 && name.equals("foot-probe")) {
-                System.out.println("TICK " + t + " client=" + client[0].position() + " server=" + mock.player().position() + " online=" + mock.isOnline() + " diag=" + diag(mock));
+            long age = helper.getTick() - start[0];
+            client[0].tick(age > JUMPS_FROM_TICK && age % 30 == 0);
+            if (age < RUN_TICKS) {
+                return;
             }
-            if (t == 700) {
-                System.out.println("DIAG " + diag(mock));
-                System.out.println("FORCESENDS " + name + " count=" + sends.count() + " packets=" + client[0].packets()
-                        + " at=" + client[0].position() + " server=" + mock.player().position() + " srvGround=" + mock.player().onGround() + " vcb=" + mock.player().verticalCollisionBelow);
-                if ((sends.count() > 0) != phantom) {
-                    throw failure(helper, "%d force-sends, client at %s", sends.count(), client[0].position());
-                }
-                helper.succeed();
+            int lines = sends.count();
+            boolean wanted = atLeast == 0 ? lines == 0 : lines >= atLeast;
+            if (!wanted) {
+                throw failure(
+                        helper,
+                        "%d force-send lines, wanted %s, with the client at %s and the server at %s",
+                        lines,
+                        atLeast == 0 ? "none" : "at least " + atLeast,
+                        client[0].position(),
+                        mock.player().position());
             }
+            helper.succeed();
         });
     }
 }
