@@ -89,10 +89,11 @@ public class TerminalPartSlotsScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the motor in, on the server",
-                    client -> singleplayer
+                    () -> singleplayer
                             .getServer()
                             .computeOnServer(server -> RepairState.get(server).inserted(TerminalTypes.FUEL_PUMP))
-                            .contains(motor));
+                            .contains(motor),
+                    () -> "not yet");
             hold(context);
             screenshot(context, "motor-in");
 

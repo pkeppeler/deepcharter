@@ -177,11 +177,12 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the motor in its slot, on the server",
-                client -> singleplayer
+                () -> singleplayer
                         .getServer()
                         .computeOnServer(server -> RepairState.get(server).inserted(TerminalTypes.FUEL_PUMP))
                         .contains(motor),
-                client -> "slot " + screen.getMenu().ruleSlots().get(0).getItem());
+                () -> context.computeOnClient(
+                        client -> "slot " + screen.getMenu().ruleSlots().get(0).getItem()));
         require(
                 context.computeOnClient(client -> client.gui.screen() == screen
                         && screen.getMenu().ruleSlots().get(0).getItem().is(motor)
