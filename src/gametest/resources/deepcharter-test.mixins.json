@@ -11,6 +11,7 @@
     "GameTestBatchFactoryMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
+    "LightEngineGateMixin",
     "LightSyncSendMixin",
     "MainShutdownHookMixin",
     "MinecraftServerAccess",
@@ -29,6 +30,7 @@
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
+    "SoundManagerStopProbeMixin",
     "SpriteAnimationStateMixin"
   ],
   "injectors": {

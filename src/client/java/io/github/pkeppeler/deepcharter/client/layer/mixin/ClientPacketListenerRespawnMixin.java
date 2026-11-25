@@ -28,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPacketListener.class)
 public abstract class ClientPacketListenerRespawnMixin {
     @Inject(
-            method = "handleRespawn",
+            method = "handleRespawn(Lnet/minecraft/network/protocol/game/ClientboundRespawnPacket;)V",
             at =
                     @At(
                             value = "INVOKE",
@@ -40,7 +40,7 @@ public abstract class ClientPacketListenerRespawnMixin {
     }
 
     @WrapOperation(
-            method = "handleRespawn",
+            method = "handleRespawn(Lnet/minecraft/network/protocol/game/ClientboundRespawnPacket;)V",
             at = @At(value = "NEW", target = "net/minecraft/client/multiplayer/ClientLevel$ClientLevelData"))
     private ClientLevel.ClientLevelData deepcharter$adoptLevelData(
             Difficulty difficulty, boolean hardcore, boolean flat, Operation<ClientLevel.ClientLevelData> original) {
@@ -49,7 +49,7 @@ public abstract class ClientPacketListenerRespawnMixin {
     }
 
     @WrapOperation(
-            method = "handleRespawn",
+            method = "handleRespawn(Lnet/minecraft/network/protocol/game/ClientboundRespawnPacket;)V",
             at = @At(value = "NEW", target = "net/minecraft/client/multiplayer/ClientLevel"))
     private ClientLevel deepcharter$adoptLevel(
             ClientPacketListener connection,
@@ -82,7 +82,9 @@ public abstract class ClientPacketListenerRespawnMixin {
         return adopting;
     }
 
-    @Inject(method = "handleRespawn", at = @At("RETURN"))
+    @Inject(
+            method = "handleRespawn(Lnet/minecraft/network/protocol/game/ClientboundRespawnPacket;)V",
+            at = @At("RETURN"))
     private void deepcharter$endClaim(ClientboundRespawnPacket packet, CallbackInfo ci) {
         SeamClient.endClaim(packet.commonPlayerSpawnInfo().dimension());
         BreachEffects.respawned();

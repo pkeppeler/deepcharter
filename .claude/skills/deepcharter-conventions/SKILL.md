@@ -72,6 +72,8 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
   Javadoc on a nullability annotation needs a non-obvious why. Pass a checked value as a parameter instead of re-reading a global and asserting. Make the null state unrepresentable instead of writing an accessor that only asserts.
   Marking package B makes B's signatures non-null for every marked caller, so a PR can pass its own CI and break `main` once another merges: before queueing a batch of NullAway PRs, run the integration compile on the merged tree. NullAway stops at the first source set with errors (main, then client, then gametest), so rebuild until the whole build is clean, and probe a zero-finding package with a temporary `String s = null;`.
 
+A server-thread wait (`Future.get`) in a tick path takes one deadline for the whole operation, not one per item, and a timeout falls back to the safe path, not an exception that strands state. The light engine's futures are completed by the server thread itself, so never wait on one from it.
+
 Do not spell out counts of enum members or registry entries in prose ("the seven ores"): they drift. Name them, or point at the code.
 
 A per-tick hook must not throw on a missing level: look it up with `server.getLevel(...)` and handle null.
