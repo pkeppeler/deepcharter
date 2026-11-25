@@ -175,7 +175,8 @@ public final class CatalogueScene {
     }
 
     /** The 16 x 16 cell on the screen of the first slot of {@code screen} that {@code which} picks, for a hover. */
-    public static Rect slotCell(ClientGameTestContext context, AbstractContainerScreen<?> screen, Predicate<Slot> which) {
+    public static Rect slotCell(
+            ClientGameTestContext context, AbstractContainerScreen<?> screen, Predicate<Slot> which) {
         return context.computeOnClient(client -> {
             int left = ContainerScreenFields.intField(screen, "leftPos");
             int top = ContainerScreenFields.intField(screen, "topPos");

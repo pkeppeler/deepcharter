@@ -10,6 +10,8 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import java.util.List;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /**
  * What the catalogue's units are made of: the casing with its groove and rivets, the shadowed lip round the glass, the bulge of the glass
@@ -21,7 +23,80 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
  * scanlines stop at those corners ({@link CrtDraw#roundedScanlines}, cut to {@link PanelLook#glassRadius()}), as the shared CRT glass's do.
  */
 final class CatalogueHardware {
+    /** Item icons are 16 pixels. */
+    static final int ICON = 16;
+    /** The dots a text loses its tail to when it is too long for its line. */
+    private static final String ELLIPSIS = "..";
+
     private CatalogueHardware() {}
+
+    /** A cell's frame on the glass: dim, or lit and filled while it is hovered or its item is the one looked up. */
+    static void slot(GuiGraphicsExtractor graphics, Rect cell, boolean lit, CrtTuning crt) {
+        if (lit) {
+            graphics.fill(cell.x(), cell.y(), cell.right(), cell.bottom(), crt.hoverFillColor());
+        }
+        CrtDraw.border(
+                graphics, cell.x(), cell.y(), cell.right(), cell.bottom(), lit ? crt.phosphorColor() : crt.dimColor());
+    }
+
+    /** A crafting table, small, at ({@code x}, {@code y}): what marks an item or a recipe that only a crafting table makes. */
+    static void tableIcon(GuiGraphicsExtractor graphics, CatalogueLook look, int x, int y) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y);
+        float scale = look.tableIconSize() / (float) ICON;
+        graphics.pose().scale(scale, scale);
+        graphics.item(new ItemStack(Items.CRAFTING_TABLE), 0, 0);
+        graphics.pose().popMatrix();
+    }
+
+    /**
+     * A strip of terminal text with its top left at ({@code x}, {@code y}): {@code lines} in phosphor on the phosphor black, in a phosphor
+     * border {@code inset} pixels out from the text. Where a name or a note is shown over a console, in place of the game's purple tooltip.
+     */
+    static void strip(GuiGraphicsExtractor graphics, Font font, List<String> lines, int x, int y, int inset) {
+        CrtTuning crt = CrtTuning.current();
+        int width = lines.stream().mapToInt(line -> termWidth(font, line)).max().orElse(0) + 2 * inset;
+        int height = lines.size() * font.lineHeight + 2 * inset;
+        graphics.nextStratum();
+        graphics.fill(x, y, x + width, y + height, crt.backgroundColor());
+        CrtDraw.border(graphics, x, y, x + width, y + height, crt.phosphorColor());
+        for (int i = 0; i < lines.size(); i++) {
+            glow(graphics, font, lines.get(i), x + inset, y + inset + i * font.lineHeight);
+        }
+    }
+
+    /** {@code text} in dim phosphor, the terminal font, at ({@code x}, {@code y}). */
+    static void dim(GuiGraphicsExtractor graphics, Font font, String text, int x, int y) {
+        graphics.text(font, CrtText.terminal(text), x, y, PanelLook.current().dimTextColor(), false);
+    }
+
+    /** {@code text} in glowing phosphor, the terminal font, at ({@code x}, {@code y}). */
+    static void glow(GuiGraphicsExtractor graphics, Font font, String text, int x, int y) {
+        CrtDraw.glowText(
+                graphics,
+                font,
+                CrtText.terminal(text),
+                x,
+                y,
+                CrtTuning.current().phosphorColor());
+    }
+
+    /** How wide {@code text} is in the terminal font. */
+    static int termWidth(Font font, String text) {
+        return font.width(CrtText.terminal(text));
+    }
+
+    /** {@code text} cut to {@code width} with {@link #ELLIPSIS} in place of its tail when it is wider. */
+    static String fit(Font font, String text, int width) {
+        if (termWidth(font, text) <= width) {
+            return text;
+        }
+        String cut = text;
+        while (!cut.isEmpty() && termWidth(font, cut + ELLIPSIS) > width) {
+            cut = cut.substring(0, cut.length() - 1);
+        }
+        return cut.stripTrailing() + ELLIPSIS;
+    }
 
     /** A console's title, a line for each {@code lines} holds, the last of them on the header rule. */
     static void title(GuiGraphicsExtractor graphics, Font font, List<String> lines, int left, int top, int right) {

@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.KnownRecipe;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.PartsCatalogue;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.RecipeConsoleScreen;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
@@ -57,9 +58,12 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the player's inventory", client -> client.player != null && client.level != null);
-            // The iron in the hotbar, the drill head in the main inventory: what a slot of each holds. Slots of their own, clear of
+            // The iron in the hotbar, the drill head in the main inventory: what a slot of each holds. Slots of their
+            // own, clear of
             // the handbook every player is given on joining.
-            singleplayer.getServer().runCommand("item replace entity @p container." + HOTBAR_SLOT + " with minecraft:iron_ingot");
+            singleplayer
+                    .getServer()
+                    .runCommand("item replace entity @p container." + HOTBAR_SLOT + " with minecraft:iron_ingot");
             singleplayer
                     .getServer()
                     .runCommand("item replace entity @p container." + MAIN_INVENTORY_SLOT + " with "
@@ -67,12 +71,16 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the iron in the hotbar and the drill head in the main inventory",
-                    client -> ClientSession.player(client).getInventory().getItem(HOTBAR_SLOT).is(Items.IRON_INGOT)
+                    client -> ClientSession.player(client)
+                                    .getInventory()
+                                    .getItem(HOTBAR_SLOT)
+                                    .is(Items.IRON_INGOT)
                             && ClientSession.player(client)
                                     .getInventory()
                                     .getItem(MAIN_INVENTORY_SLOT)
                                     .is(DRILL));
-            // What the server taught from what the player holds is put back to the fixtures, so the unknown item stays unknown.
+            // What the server taught from what the player holds is put back to the fixtures, so the unknown item stays
+            // unknown.
             context.waitTicks(5);
             context.runOnClient(client -> {
                 CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook());
@@ -125,22 +133,20 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
                 context.computeOnClient(client -> CatalogueScreens.panelOf(chest)) == null,
                 "a chest has no catalogue beside it, so this is the case the issue is about");
 
-        Rect chestSlot =
-                CatalogueScene.slotCell(context, chest, slot -> !(slot.container instanceof Inventory) && slot.index == 0);
+        Rect chestSlot = CatalogueScene.slotCell(
+                context, chest, slot -> !(slot.container instanceof Inventory) && slot.index == 0);
         CatalogueScene.hover(context, chestSlot);
         RealInput.key(context, InputConstants.KEY_R, 0);
         RecipeConsoleScreen console = console(context, "R on a chest slot");
-        // The fixtures make the drill head two ways.
-        requireShows(context, console, "DRILL HEAD", "R 1/2", "R on a chest slot");
+        requireShows(context, console, DRILL, CatalogueState.Mode.RECIPES, "R on a chest slot");
 
         RealInput.key(context, InputConstants.KEY_ESCAPE, 0);
         ClientWait.until(context, "the chest back", client -> client.gui.screen() == chest);
         require(
-                singleplayer.getServer().computeOnServer(server -> server.getPlayerList()
-                                .getPlayers()
-                                .getFirst()
-                                .containerMenu
-                        instanceof ChestMenu),
+                singleplayer
+                        .getServer()
+                        .computeOnServer(server ->
+                                server.getPlayerList().getPlayers().getFirst().containerMenu instanceof ChestMenu),
                 "the chest is still open on the server after the console closed");
         require(
                 context.computeOnClient(client -> ClientSession.player(client).containerMenu == chest.getMenu()),
@@ -152,8 +158,7 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
         CatalogueScene.hover(context, hotbar);
         RealInput.key(context, InputConstants.KEY_U, 0);
         RecipeConsoleScreen uses = console(context, "U on a hotbar slot of the chest");
-        // Three of the fixtures take iron; the console is titled with what the first of them makes.
-        requireShows(context, uses, firstUseTitle(context, Items.IRON_INGOT), "U 1/3", "U on a hotbar slot of the chest");
+        requireShows(context, uses, Items.IRON_INGOT, CatalogueState.Mode.USES, "U on a hotbar slot of the chest");
         RealInput.key(context, InputConstants.KEY_E, 0);
         ClientWait.until(context, "the chest back after E", client -> client.gui.screen() == chest);
         context.setScreen(() -> null);
@@ -201,42 +206,48 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
         context.setScreen(() -> null);
     }
 
-    /** The title of the first use of {@code item} the charter knows: what that recipe makes, in capitals. */
-    private static String firstUseTitle(ClientGameTestContext context, Item item) {
-        return context.computeOnClient(client -> PartsCatalogue.of(
-                        ClientSession.player(client).getRecipeBook(),
-                        SlotDisplayContext.fromLevel(Objects.requireNonNull(client.level)))
-                .usesOf(item)
-                .getFirst()
-                .results()
-                .getFirst()
-                .getHoverName()
-                .getString()
-                .toUpperCase(Locale.ROOT));
-    }
-
     private static RecipeConsoleScreen console(ClientGameTestContext context, String what) {
         ClientWait.until(
-                context, "the recipe console after " + what, client -> client.gui.screen() instanceof RecipeConsoleScreen);
+                context,
+                "the recipe console after " + what,
+                client -> client.gui.screen() instanceof RecipeConsoleScreen);
         return context.computeOnClient(client -> (RecipeConsoleScreen) Objects.requireNonNull(client.gui.screen()));
     }
 
-    /** The console shows what the player asked for: titled with the item, and its counter in the mode asked (R or U). */
+    /**
+     * The console shows what the player asked for: titled with what the first recipe found makes, and its counter in the mode asked (R or
+     * U) over every recipe the charter knows now (the server may have taught more than the fixtures by then).
+     */
     private static void requireShows(
-            ClientGameTestContext context, RecipeConsoleScreen console, String title, String counter, String what) {
-        List<String> drawn = texts(context, console);
+            ClientGameTestContext context,
+            RecipeConsoleScreen console,
+            Item item,
+            CatalogueState.Mode mode,
+            String what) {
+        List<KnownRecipe> found = context.computeOnClient(client -> {
+            PartsCatalogue known = PartsCatalogue.of(
+                    ClientSession.player(client).getRecipeBook(),
+                    SlotDisplayContext.fromLevel(Objects.requireNonNull(client.level)));
+            return mode == CatalogueState.Mode.RECIPES ? known.recipesFor(item) : known.usesOf(item);
+        });
         require(
-                drawn.contains(title) && drawn.contains(counter),
+                found.size() > 1,
+                what + ": the charter knows more than one, so the counter is drawn, got " + found.size());
+        String title = context.computeOnClient(client ->
+                found.getFirst().results().getFirst().getHoverName().getString().toUpperCase(Locale.ROOT));
+        String counter = (mode == CatalogueState.Mode.RECIPES ? "R" : "U") + " 1/" + found.size();
+        List<String> drawn = texts(context, console);
+        // A long title takes two lines, drawn as two strings.
+        require(
+                String.join(" ", drawn).contains(title) && drawn.contains(counter),
                 what + " shows '" + title + "' at '" + counter + "', drew " + drawn);
     }
 
     private static List<String> texts(ClientGameTestContext context, Screen screen) {
         return context.computeOnClient(client -> {
             var window = client.getWindow();
-            return DrawnText.of(
-                            screen,
-                            (int) client.mouseHandler.getScaledXPos(window),
-                            (int) client.mouseHandler.getScaledYPos(window))
+            return DrawnText.of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
+                            client.mouseHandler.getScaledYPos(window))
                     .stream()
                     .map(DrawnText.Drawn::text)
                     .toList();

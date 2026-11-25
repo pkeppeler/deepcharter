@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
+import static io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueHardware.ICON;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.TextInputManager;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
@@ -31,16 +33,13 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Util;
 import net.minecraft.util.context.ContextMap;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.AbstractCraftingMenu;
 import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
@@ -54,24 +53,18 @@ import org.jspecify.annotations.Nullable;
  * tests ({@code DrawnText}), and the bounds they check are the panels'.
  */
 public final class CataloguePanel {
-    /** Item icons are 16 pixels. */
-    private static final int ICON = 16;
     /** The most the craftable switch counts out; more reads "99+". */
     private static final int MOST_COUNTED = 99;
-    /** The dots a text loses its tail to when it is too long for its line. */
-    private static final String ELLIPSIS = "..";
-    /** How long a note about the fill switch stays over the recipe console. */
-    private static final int STATUS_TICKS = 80;
+    /** How long a note about the fill switch stays over the recipe console, and the note of an item with nothing known by a slot. */
+    static final int STATUS_TICKS = 80;
     /** How many ticks a fill press is given to change the grid before the server is taken to have refused it. */
     private static final int FILL_WAIT_TICKS = 10;
-
-    /** What is under the mouse in a panel (not in the inventory): the item and the cell it is in. */
-    private record Hit(Item item, Rect cell) {}
 
     private final AbstractRecipeBookScreen<?> screen;
     private final Bench bench;
     private final CatalogueState state;
     private final Font font = Minecraft.getInstance().font;
+    private final RecipeConsole console;
     private @Nullable CatalogueLayout layout;
     /** The spec sheet that covers the screen, or null. */
     private @Nullable SpecSheet sheet;
@@ -129,6 +122,7 @@ public final class CataloguePanel {
         this.screen = screen;
         this.state = state;
         this.bench = Bench.of(screen.getMenu());
+        this.console = new RecipeConsole(state, font);
         refresh();
     }
 
@@ -413,14 +407,14 @@ public final class CataloguePanel {
     /** The lines the strip that names {@code item} draws over the catalogue's glass. */
     // test-seam: the client test reads the lines the strip must draw
     public List<String> nameLines(Item item) {
-        return stripLines(item, layoutOrThrow().catalogueGlass());
+        return RecipeConsole.stripLines(font, item, layoutOrThrow().catalogueGlass());
     }
 
     /** The lines the recipe console's title draws, or none while nothing is looked up. */
     // test-seam: the client test reads the lines the title must draw
     public List<String> titleLines() {
         CatalogueLayout now = layout;
-        return now == null ? List.of() : titleLines(now.card());
+        return now == null ? List.of() : console.titleLines(catalogue, now.card());
     }
 
     private CatalogueLayout layoutOrThrow() {
@@ -449,77 +443,8 @@ public final class CataloguePanel {
         return favouritesCache;
     }
 
-    /** The name the recipe console is titled with: what the shown recipe makes, or the item looked up, in capitals. */
-    private @Nullable String title() {
-        CatalogueState.Lookup lookup = state.lookup();
-        if (lookup == null) {
-            return null;
-        }
-        KnownRecipe recipe = state.shownRecipe(catalogue);
-        ItemStack named = recipe != null ? recipe.results().getFirst() : new ItemStack(lookup.item());
-        return named.getHoverName().getString().toUpperCase(Locale.ROOT);
-    }
-
-    private List<String> titleLines(CatalogueLayout.Card card) {
-        String title = title();
-        return title == null ? List.of() : TextWrap.lines(this::termWidth, title, card.right() - card.left());
-    }
-
-    /** The recipe console's content, moved down by each line its title takes beyond the first. */
-    private CatalogueLayout.Card card(CatalogueLayout now) {
-        int lines = titleLines(now.card()).size();
-        return lines <= 1 ? now.card() : now.card().lowered((lines - 1) * font.lineHeight, look().needRow());
-    }
-
-    /** The lines of the name strip of {@code item} on {@code glass}: its whole name, on as many lines as the glass needs. */
-    private List<String> stripLines(Item item, Rect glass) {
-        String name = new ItemStack(item).getHoverName().getString().toUpperCase(Locale.ROOT);
-        int inset = look().nameStripPad() + 1;
-        return TextWrap.lines(this::termWidth, name, glass.width() - 2 * look().pad() - 2 * inset);
-    }
-
-    /** The cell of {@code item} in the recipe panel's grid, result and have/need rows, as laid out for the shown recipe. */
-    private List<Hit> recipeHits(CatalogueLayout.Card card, CatalogueLook look, KnownRecipe recipe) {
-        List<Hit> hits = new ArrayList<>();
-        for (int i = 0; i < recipe.cells().size(); i++) {
-            ItemStack stack = cycled(recipe.cells().get(i));
-            if (!stack.isEmpty()) {
-                hits.add(new Hit(stack.getItem(), recipeCell(card, look, recipe, i)));
-            }
-        }
-        hits.add(new Hit(recipe.results().getFirst().getItem(), resultCell(card, look)));
-        List<KnownRecipe.Need> needs = recipe.needs();
-        for (int i = 0; i < Math.min(needs.size(), card.needRows()); i++) {
-            hits.add(new Hit(
-                    cycled(needs.get(i).choices()).getItem(),
-                    new Rect(card.left(), card.needTop() + i * look.needRow(), ICON, ICON)));
-        }
-        return hits;
-    }
-
-    private static Rect recipeCell(CatalogueLayout.Card card, CatalogueLook look, KnownRecipe recipe, int index) {
-        return new Rect(
-                card.left() + (index % recipe.columns()) * look.recipeCell(),
-                card.gridY() + (index / recipe.columns()) * look.recipeCell(),
-                look.slotSize(),
-                look.slotSize());
-    }
-
-    private static Rect resultCell(CatalogueLayout.Card card, CatalogueLook look) {
-        return new Rect(card.left() + look.resultX(), card.gridY() + look.resultY(), look.slotSize(), look.slotSize());
-    }
-
-    /** The item of a cell that takes several (a tag) which is shown now: each in turn, so the player sees what a tag allows. */
-    private static ItemStack cycled(List<ItemStack> choices) {
-        if (choices.isEmpty()) {
-            return ItemStack.EMPTY;
-        }
-        long step = Util.getMillis() / CatalogueLook.current().cycleMillis();
-        return choices.get((int) (step % choices.size()));
-    }
-
     /** What the mouse is over in a panel, or null. */
-    private @Nullable Hit hitAt(double x, double y) {
+    private RecipeConsole.@Nullable Hit hitAt(double x, double y) {
         CatalogueLayout now = layout;
         if (now == null || state.hidden()) {
             return null;
@@ -532,7 +457,7 @@ public final class CataloguePanel {
         for (int i = 0; i < perPage && first + i < shown.size(); i++) {
             Rect cell = gridCell(shelf, look, i);
             if (cell.contains(x, y)) {
-                return new Hit(shown.get(first + i), cell);
+                return new RecipeConsole.Hit(shown.get(first + i), cell);
             }
         }
         List<Item> favourites = favourites();
@@ -540,23 +465,15 @@ public final class CataloguePanel {
         for (int i = 0; i < shelf.columns() && offset + i < favourites.size(); i++) {
             Rect cell = favouriteCell(shelf, look, i);
             if (cell.contains(x, y)) {
-                return new Hit(favourites.get(offset + i), cell);
+                return new RecipeConsole.Hit(favourites.get(offset + i), cell);
             }
         }
-        KnownRecipe recipe = showsRecipePanel() ? state.shownRecipe(catalogue) : null;
-        if (recipe != null) {
-            for (Hit hit : recipeHits(card(now), look, recipe)) {
-                if (hit.cell().contains(x, y)) {
-                    return hit;
-                }
-            }
-        }
-        return null;
+        return showsRecipePanel() ? console.hitAt(catalogue, now.card(), x, y) : null;
     }
 
     /** The item under the mouse, in a panel or in the inventory behind them. */
     public @Nullable Item hoveredItem() {
-        Hit hit = hitAt(mouseX, mouseY);
+        RecipeConsole.Hit hit = hitAt(mouseX, mouseY);
         if (hit != null) {
             return hit.item();
         }
@@ -721,7 +638,7 @@ public final class CataloguePanel {
             int x = now.inventory().x() + slot.x;
             int y = now.inventory().y() + slot.y;
             graphics.fill(x, y, x + ICON, y + ICON, veil);
-            graphics.fakeItem(cycled(cell.choices()), x, y);
+            graphics.fakeItem(RecipeConsole.cycled(cell.choices()), x, y);
             graphics.fill(x, y, x + ICON, y + ICON, veil);
         }
         if (screen.getMenu() instanceof AbstractCraftingMenu crafting) {
@@ -739,28 +656,19 @@ public final class CataloguePanel {
         if (shown == null) {
             return;
         }
-        String message = shown.message();
-        CrtTuning crt = CrtTuning.current();
         Rect glass = now.recipeGlass();
         int inset = look.nameStripPad() + 1;
-        List<String> lines = TextWrap.lines(this::termWidth, message, glass.width() - 2 * look.pad() - 2 * inset);
-        int widest = lines.stream().mapToInt(this::termWidth).max().orElse(0);
-        int width = widest + 2 * inset;
+        List<String> lines =
+                TextWrap.lines(this::termWidth, shown.message(), glass.width() - 2 * look.pad() - 2 * inset);
+        int width = lines.stream().mapToInt(this::termWidth).max().orElse(0) + 2 * inset;
         int height = lines.size() * font.lineHeight + 2 * inset;
-        int x = glass.x() + (glass.width() - width) / 2;
-        int y = glass.bottom() - look.contentBottom() - height;
-        graphics.nextStratum();
-        graphics.fill(x, y, x + width, y + height, crt.backgroundColor());
-        CrtDraw.border(graphics, x, y, x + width, y + height, crt.phosphorColor());
-        for (int i = 0; i < lines.size(); i++) {
-            CrtDraw.glowText(
-                    graphics,
-                    font,
-                    CrtText.terminal(lines.get(i)),
-                    x + inset,
-                    y + inset + i * font.lineHeight,
-                    crt.phosphorColor());
-        }
+        CatalogueHardware.strip(
+                graphics,
+                font,
+                lines,
+                glass.x() + (glass.width() - width) / 2,
+                glass.bottom() - look.contentBottom() - height,
+                inset);
     }
 
     // ---------------------------------------------------------------- input
@@ -801,6 +709,10 @@ public final class CataloguePanel {
             state.clear();
             return true;
         }
+        if (CatalogueKeys.BACK.matches(event) && showsRecipePanel()) {
+            state.back();
+            return true;
+        }
         Item item = hoveredItem();
         if (item == null) {
             return false;
@@ -814,11 +726,16 @@ public final class CataloguePanel {
             return true;
         }
         if (CatalogueKeys.FAVOURITE.matches(event)) {
-            CatalogueFavourites.shared().toggle(player(), item);
-            favouritesCache = CatalogueFavourites.shared().items(player());
+            toggleFavourite(item);
             return true;
         }
         return false;
+    }
+
+    /** Stars {@code item}, or takes its star off: the favourite key and the recipe console's star. */
+    private void toggleFavourite(Item item) {
+        CatalogueFavourites.shared().toggle(player(), item);
+        favouritesCache = CatalogueFavourites.shared().items(player());
     }
 
     private boolean searchKey(KeyEvent event) {
@@ -898,25 +815,20 @@ public final class CataloguePanel {
             return true;
         }
         boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
-        Hit hit = hitAt(x, y);
+        RecipeConsole.Hit hit = hitAt(x, y);
+        CatalogueState.Lookup lookup = state.lookup();
         if (hit != null) {
             lookUp(hit.item(), right ? CatalogueState.Mode.USES : CatalogueState.Mode.RECIPES);
         } else if (onShelf) {
             shelfClick(shelf, x, y);
-        } else {
-            CatalogueLayout.Card card = now.card();
-            CatalogueState.Lookup lookup = state.lookup();
-            Rect title = new Rect(
-                    card.left(),
-                    card.titleY(),
-                    card.right() - card.left(),
-                    titleLines(card).size() * font.lineHeight);
-            if (lookup != null && card.spec().contains(x, y)) {
-                SpecSheetHook.open(lookup.item());
-            } else if (lookup != null && card.fill().contains(x, y)) {
-                fillClicked(event.hasShiftDown());
-            } else if (title.contains(x, y)) {
-                state.clear();
+        } else if (lookup != null) {
+            switch (console.controlAt(catalogue, now.card(), x, y)) {
+                case BACK -> state.back();
+                case STAR -> toggleFavourite(lookup.item());
+                case SPEC -> SpecSheetHook.open(lookup.item());
+                case FILL -> fillClicked(event.hasShiftDown());
+                case TITLE -> state.clear();
+                case NONE -> {}
             }
         }
         return true;
@@ -983,7 +895,7 @@ public final class CataloguePanel {
         // Nothing under a sheet is lit or named: the sheet covers the screen.
         SpecSheet shownSheet = sheet;
         Placed sheetAt = placed;
-        Hit hit = shownSheet == null ? hitAt(mouseX, mouseY) : null;
+        RecipeConsole.Hit hit = shownSheet == null ? hitAt(mouseX, mouseY) : null;
         dropStale();
         if (shownSheet == null) {
             drawGhost(graphics, now, look);
@@ -997,10 +909,16 @@ public final class CataloguePanel {
             graphics.nextStratum();
             drawShelf(graphics, now, look, hit);
             if (showsRecipePanel()) {
-                drawCard(graphics, now, look, hit);
+                drawCard(graphics, now, hit);
             }
             if (hit != null) {
-                drawNameStrip(graphics, now, look, hit);
+                RecipeConsole.nameStrip(
+                        graphics,
+                        font,
+                        now.catalogueGlass().contains(hit.cell().x(), hit.cell().y())
+                                ? now.catalogueGlass()
+                                : now.recipeGlass(),
+                        hit);
             }
             if (showsRecipePanel()) {
                 drawFillStatus(graphics, now, look);
@@ -1014,42 +932,8 @@ public final class CataloguePanel {
         }
     }
 
-    /**
-     * The name of the hovered item in a strip of its own, in the terminal font on the phosphor black with a phosphor border, where the
-     * game's purple tooltip would clash with the panels. Over the cell, or under it when there is no room above, and kept inside the glass
-     * of the panel the cell is on, off its bezel. A name wider than the glass goes on a second line, and a third: it is never cut.
-     */
-    private void drawNameStrip(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look, Hit hit) {
-        CrtTuning crt = CrtTuning.current();
-        Rect glass = now.catalogueGlass().contains(hit.cell().x(), hit.cell().y())
-                ? now.catalogueGlass()
-                : now.recipeGlass();
-        List<String> lines = stripLines(hit.item(), glass);
-        int inset = look.nameStripPad() + 1;
-        int widest = lines.stream().mapToInt(this::termWidth).max().orElse(0);
-        int width = widest + 2 * inset;
-        int height = lines.size() * font.lineHeight + 2 * inset;
-        int left = glass.x() + look.pad();
-        int x = Math.clamp(hit.cell().x(), left, Math.max(left, glass.right() - look.pad() - width));
-        int y = hit.cell().y() - look.nameStripGap() - height;
-        if (y < glass.y()) {
-            y = hit.cell().bottom() + look.nameStripGap();
-        }
-        graphics.nextStratum();
-        graphics.fill(x, y, x + width, y + height, crt.backgroundColor());
-        CrtDraw.border(graphics, x, y, x + width, y + height, crt.phosphorColor());
-        for (int i = 0; i < lines.size(); i++) {
-            CrtDraw.glowText(
-                    graphics,
-                    font,
-                    CrtText.terminal(lines.get(i)),
-                    x + inset,
-                    y + inset + i * font.lineHeight,
-                    crt.phosphorColor());
-        }
-    }
-
-    private void drawShelf(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look, @Nullable Hit hit) {
+    private void drawShelf(
+            GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look, RecipeConsole.@Nullable Hit hit) {
         CrtTuning crt = CrtTuning.current();
         PanelLook panel = PanelLook.current();
         CatalogueLayout.Shelf shelf = now.shelf();
@@ -1091,6 +975,9 @@ public final class CataloguePanel {
         int offset = state.favouriteOffset(favourites.size(), shelf.columns());
         for (int i = 0; i < shelf.columns() && offset + i < favourites.size(); i++) {
             drawCell(graphics, favouriteCell(shelf, look, i), look, favourites.get(offset + i), hit);
+        }
+        if (favourites.isEmpty()) {
+            drawFavouritesHint(graphics, shelf, panel);
         }
 
         graphics.nextStratum();
@@ -1134,6 +1021,21 @@ public final class CataloguePanel {
         CatalogueHardware.counter(graphics, font, look, panel, crt, shelf.counter(), (page + 1) + "/" + pages);
     }
 
+    /** What the empty favourites row says instead: the favourite key, as bound now, and the recipe console's star. */
+    private void drawFavouritesHint(GuiGraphicsExtractor graphics, CatalogueLayout.Shelf shelf, PanelLook panel) {
+        String key =
+                CatalogueKeys.FAVOURITE.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT);
+        String hint = Component.translatable("deepcharter.catalogue.favourites.hint", key, RecipeConsole.star(false))
+                .getString();
+        Rect row = shelf.favourites();
+        int rows = Math.max(1, (row.bottom() - shelf.favouritesY()) / font.lineHeight);
+        List<String> lines = TextWrap.lines(this::termWidth, hint, row.width());
+        for (int i = 0; i < Math.min(rows, lines.size()); i++) {
+            String line = i == rows - 1 && lines.size() > rows ? fit(lines.get(i) + " ..", row.width()) : lines.get(i);
+            dim(graphics, line, shelf.left(), shelf.favouritesY() + i * font.lineHeight, panel);
+        }
+    }
+
     private void drawSearch(
             GuiGraphicsExtractor graphics, Rect search, CatalogueLook look, CrtTuning crt, PanelLook panel) {
         int textX = search.x() + look.searchPad();
@@ -1163,194 +1065,51 @@ public final class CataloguePanel {
         }
     }
 
-    private void drawCell(GuiGraphicsExtractor graphics, Rect cell, CatalogueLook look, Item item, @Nullable Hit hit) {
-        CrtTuning crt = CrtTuning.current();
+    private void drawCell(
+            GuiGraphicsExtractor graphics, Rect cell, CatalogueLook look, Item item, RecipeConsole.@Nullable Hit hit) {
         CatalogueState.Lookup lookup = state.lookup();
         boolean lit = (hit != null && hit.cell().equals(cell)) || (lookup != null && lookup.item() == item);
-        slot(graphics, cell, lit, crt);
+        CatalogueHardware.slot(graphics, cell, lit, CrtTuning.current());
         graphics.item(new ItemStack(item), cell.x() + look.iconInset(), cell.y() + look.iconInset());
         if (marksTable(item)) {
-            tableIcon(graphics, look, cell.right() - look.tableIconSize(), cell.bottom() - look.tableIconSize());
+            CatalogueHardware.tableIcon(
+                    graphics, look, cell.right() - look.tableIconSize(), cell.bottom() - look.tableIconSize());
         }
     }
 
-    /** A crafting table, small, at ({@code x}, {@code y}): what marks an item or a recipe that only a crafting table makes. */
-    private static void tableIcon(GuiGraphicsExtractor graphics, CatalogueLook look, int x, int y) {
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(x, y);
-        float scale = look.tableIconSize() / (float) ICON;
-        graphics.pose().scale(scale, scale);
-        graphics.item(new ItemStack(Items.CRAFTING_TABLE), 0, 0);
-        graphics.pose().popMatrix();
-    }
-
-    private static void slot(GuiGraphicsExtractor graphics, Rect cell, boolean lit, CrtTuning crt) {
-        if (lit) {
-            graphics.fill(cell.x(), cell.y(), cell.right(), cell.bottom(), crt.hoverFillColor());
-        }
-        CrtDraw.border(
-                graphics, cell.x(), cell.y(), cell.right(), cell.bottom(), lit ? crt.phosphorColor() : crt.dimColor());
-    }
-
-    private void drawCard(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look, @Nullable Hit hit) {
-        CrtTuning crt = CrtTuning.current();
-        PanelLook panel = PanelLook.current();
-        CatalogueLayout.Card card = card(now);
+    private void drawCard(GuiGraphicsExtractor graphics, CatalogueLayout now, RecipeConsole.@Nullable Hit hit) {
         CatalogueState.Lookup lookup = state.lookup();
-        if (lookup == null) {
-            return;
-        }
-        KnownRecipe recipe = state.shownRecipe(catalogue);
-        int width = card.right() - card.left();
-        graphics.nextStratum();
-        CatalogueHardware.body(graphics, look, now.recipe(), now.recipeGlass(), List.of());
-        graphics.nextStratum();
-
-        CatalogueHardware.title(graphics, font, titleLines(card), card.left(), card.titleY(), card.right());
-        if (recipe == null) {
-            String none = text(lookup.mode() == CatalogueState.Mode.RECIPES ? "none.recipes" : "none.uses");
-            dim(graphics, fit(none, width), card.left(), card.stationY(), panel);
-        } else {
-            dim(graphics, fit(recipe.station(), width), card.left(), card.stationY(), panel);
-            drawRecipe(graphics, card, look, recipe, hit, crt, panel);
-        }
-
-        graphics.nextStratum();
-        CatalogueHardware.glassFront(graphics, look, panel, now.recipeGlass());
-        graphics.nextStratum();
-        Rect spec = card.spec();
-        CatalogueHardware.legendSwitch(
-                graphics,
-                font,
-                look,
-                panel,
-                crt,
-                spec,
-                text("spec"),
-                false,
-                recipe != null,
-                recipe != null && spec.contains(mouseX, mouseY));
         RecipeFill.Fit fit = fillFit();
-        Rect fill = card.fill();
-        CatalogueHardware.legendSwitch(
+        console.draw(
                 graphics,
-                font,
-                look,
-                panel,
-                crt,
-                fill,
-                fillLegend(),
-                fit == RecipeFill.Fit.FILL,
-                fit == RecipeFill.Fit.FILL || fit == RecipeFill.Fit.GHOST,
-                recipe != null && fill.contains(mouseX, mouseY));
-    }
-
-    private void drawRecipe(
-            GuiGraphicsExtractor graphics,
-            CatalogueLayout.Card card,
-            CatalogueLook look,
-            KnownRecipe recipe,
-            @Nullable Hit hit,
-            CrtTuning crt,
-            PanelLook panel) {
-        for (int i = 0; i < recipe.cells().size(); i++) {
-            Rect cell = recipeCell(card, look, recipe, i);
-            boolean lit = hit != null && hit.cell().equals(cell);
-            slot(graphics, cell, lit, crt);
-            ItemStack stack = cycled(recipe.cells().get(i));
-            if (!stack.isEmpty()) {
-                graphics.item(stack, cell.x() + look.iconInset(), cell.y() + look.iconInset());
-            }
-        }
-        glow(graphics, "->", card.left() + look.arrowX(), card.gridY() + look.arrowY(), crt);
-        Rect result = resultCell(card, look);
-        slot(graphics, result, true, crt);
-        if (recipe.needsTable()) {
-            // Over the result: made only in the crafting table's 3 x 3 grid.
-            tableIcon(
-                    graphics,
-                    look,
-                    result.x() + (result.width() - look.tableIconSize()) / 2,
-                    result.y() - look.tableIconSize() - 1);
-        }
-        ItemStack made = recipe.results().getFirst();
-        graphics.item(made, result.x() + look.iconInset(), result.y() + look.iconInset());
-        graphics.itemDecorations(font, made, result.x() + look.iconInset(), result.y() + look.iconInset());
-
-        List<KnownRecipe> found = state.found(catalogue);
-        CatalogueState.Lookup lookup = state.lookup();
-        if (found.size() > 1 && lookup != null) {
-            String key = lookup.mode() == CatalogueState.Mode.RECIPES ? "counter.recipes" : "counter.uses";
-            String counter = Component.translatable("deepcharter.catalogue." + key, lookup.index() + 1, found.size())
-                    .getString();
-            dim(graphics, counter, card.right() - termWidth(counter), card.gridY() + look.counterY(), panel);
-        }
-
-        Inventory inventory = Minecraft.getInstance().player == null
-                ? null
-                : Minecraft.getInstance().player.getInventory();
-        List<KnownRecipe.Need> needs = recipe.needs();
-        int rows = Math.min(needs.size(), card.needRows());
-        for (int i = 0; i < rows; i++) {
-            KnownRecipe.Need need = needs.get(i);
-            int y = card.needTop() + i * look.needRow();
-            graphics.item(cycled(need.choices()), card.left(), y);
-            int have = inventory == null ? 0 : held(inventory, need);
-            String figures = have + "/" + need.count();
-            int x = card.left() + look.needTextX();
-            if (have < need.count()) {
-                CrtDraw.glowText(
-                        graphics, font, CrtText.terminal(figures), x, y + look.needTextY(), crt.phosphorColor());
-            } else {
-                dim(graphics, figures, x, y + look.needTextY(), panel);
-            }
-        }
-        if (needs.size() > rows && rows > 0) {
-            int y = card.needTop() + rows * look.needRow() - look.needRow();
-            String more = "+" + (needs.size() - rows);
-            dim(graphics, more, card.right() - termWidth(more), y + look.needTextY(), panel);
-        }
-    }
-
-    /** How many of what {@code need} takes the player holds, any of a tag counted. */
-    private static int held(Inventory inventory, KnownRecipe.Need need) {
-        int have = 0;
-        for (ItemStack stack : inventory.getNonEquipmentItems()) {
-            for (ItemStack choice : need.choices()) {
-                if (stack.is(choice.getItem())) {
-                    have += stack.getCount();
-                    break;
-                }
-            }
-        }
-        return have;
+                catalogue,
+                now.recipe(),
+                now.recipeGlass(),
+                now.card(),
+                hit,
+                mouseX,
+                mouseY,
+                lookup != null && favourites().contains(lookup.item()),
+                true,
+                new RecipeConsole.FillSwitch(
+                        fillLegend(),
+                        fit == RecipeFill.Fit.FILL,
+                        fit == RecipeFill.Fit.FILL || fit == RecipeFill.Fit.GHOST));
     }
 
     private void dim(GuiGraphicsExtractor graphics, String text, int x, int y, PanelLook panel) {
         graphics.text(font, CrtText.terminal(text), x, y, panel.dimTextColor(), false);
     }
 
-    private void glow(GuiGraphicsExtractor graphics, String text, int x, int y, CrtTuning crt) {
-        CrtDraw.glowText(graphics, font, CrtText.terminal(text), x, y, crt.phosphorColor());
-    }
-
     private int termWidth(String text) {
-        return font.width(CrtText.terminal(text));
+        return CatalogueHardware.termWidth(font, text);
     }
 
-    /** {@code text} cut to {@code width} with {@link #ELLIPSIS} in place of its tail when it is wider. */
     private String fit(String text, int width) {
-        if (termWidth(text) <= width) {
-            return text;
-        }
-        String cut = text;
-        while (!cut.isEmpty() && termWidth(cut + ELLIPSIS) > width) {
-            cut = cut.substring(0, cut.length() - 1);
-        }
-        return cut.stripTrailing() + ELLIPSIS;
+        return CatalogueHardware.fit(font, text, width);
     }
 
     private static String text(String key) {
-        return Component.translatable("deepcharter.catalogue." + key).getString();
+        return RecipeConsole.text(key);
     }
 }

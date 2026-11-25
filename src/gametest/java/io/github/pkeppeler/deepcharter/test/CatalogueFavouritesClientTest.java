@@ -55,9 +55,10 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
                 CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook());
                 CatalogueScreens.resetState();
             });
-            UUID player =
-                    context.computeOnClient(client -> ClientSession.player(client).getUUID());
-            // A star left in the shared file by an aborted run is not this test's: take every one off through the real API.
+            UUID player = context.computeOnClient(
+                    client -> ClientSession.player(client).getUUID());
+            // A star left in the shared file by an aborted run is not this test's: take every one off through the real
+            // API.
             unstarAll(context, player);
             try {
                 CatalogueScene.openInventory(context);
@@ -81,10 +82,8 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
     }
 
     private static Path favouritesFile(ClientGameTestContext context) {
-        return context.computeOnClient(client -> client.gameDirectory
-                .toPath()
-                .resolve("config")
-                .resolve(DeepCharter.MOD_ID + "-parts-catalogue.json"));
+        return context.computeOnClient(client ->
+                client.gameDirectory.toPath().resolve("config").resolve(DeepCharter.MOD_ID + "-parts-catalogue.json"));
     }
 
     /** The favourites of {@code player} as the file on disk holds them, read by a reader of its own. */
@@ -95,10 +94,8 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
     private static List<Drawn> drawn(ClientGameTestContext context, Screen screen) {
         return context.computeOnClient(client -> {
             var window = client.getWindow();
-            return DrawnText.of(
-                    screen,
-                    (int) client.mouseHandler.getScaledXPos(window),
-                    (int) client.mouseHandler.getScaledYPos(window));
+            return DrawnText.of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
+                    client.mouseHandler.getScaledYPos(window));
         });
     }
 
@@ -141,17 +138,13 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
                 drawn.stream().anyMatch(text -> text.text().equals("FAVOURITES")),
                 "the favourites row keeps its label with none starred, drew "
                         + drawn.stream().map(Drawn::text).toList());
-        String key = context.computeOnClient(client -> CatalogueKeys.FAVOURITE
-                .getTranslatedKeyMessage()
-                .getString()
-                .toUpperCase(Locale.ROOT));
-        String hint = context.computeOnClient(client -> Component.translatable(
-                        "deepcharter.catalogue.favourites.hint", key)
-                .getString());
+        String key = context.computeOnClient(client ->
+                CatalogueKeys.FAVOURITE.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT));
+        String hint = context.computeOnClient(
+                client -> Component.translatable("deepcharter.catalogue.favourites.hint", key, HOLLOW_STAR)
+                        .getString());
         String shown = textIn(drawn, row(layout));
-        require(
-                shown.equals(hint),
-                "the empty row says how to star an item, '" + hint + "', drew '" + shown + "'");
+        require(shown.equals(hint), "the empty row says how to star an item, '" + hint + "', drew '" + shown + "'");
         require(
                 shown.contains(key) && shown.contains(HOLLOW_STAR),
                 "the hint names the key bound now and the star, drew '" + shown + "'");
@@ -179,18 +172,14 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
         CatalogueScene.hover(context, star);
         RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
         require(onDisk(context, player).isEmpty(), "a click on the star takes the star off, on disk at once");
-        require(
-                textIn(drawn(context, screen(context)), star).equals(HOLLOW_STAR),
-                "and the star is drawn hollow");
+        require(textIn(drawn(context, screen(context)), star).equals(HOLLOW_STAR), "and the star is drawn hollow");
         require(
                 context.computeOnClient(client -> panel.state().lookup()) != null,
                 "the click on the star leaves the recipe shown");
 
         RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
         require(onDisk(context, player).equals(List.of(DRILL)), "a second click stars it again, on disk");
-        require(
-                textIn(drawn(context, screen(context)), star).equals(FULL_STAR),
-                "and the star is full again");
+        require(textIn(drawn(context, screen(context)), star).equals(FULL_STAR), "and the star is full again");
 
         int cell = CatalogueLook.current().slotSize();
         Rect first = new Rect(layout.shelf().left(), layout.shelf().favouritesY(), cell, cell);

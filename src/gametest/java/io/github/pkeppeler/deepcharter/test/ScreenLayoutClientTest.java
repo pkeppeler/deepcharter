@@ -14,6 +14,8 @@ import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.RecipeConsoleScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.outpost.IncidentReportScreen;
@@ -36,6 +38,8 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability;
 import io.github.pkeppeler.deepcharter.outpost.Ratings;
 import io.github.pkeppeler.deepcharter.outpost.VisitCause;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.suit.OutpostRisks;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
@@ -43,6 +47,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalFeatureProbe;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -72,6 +77,7 @@ import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -805,6 +811,16 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         cases.add(new Case("incident report", () -> new IncidentReportScreen(longestIncidentReport(), null)));
         // The longest sheet there is: a part with a stock tier and six bought ones.
         cases.add(new Case("spec sheet", () -> new SpecSheetScreen(ComponentItems.item(ComponentTrack.DRILL))));
+        // The recipe console a chest's R opens, at the longest recipe of the fixtures: the nanobots' 3 x 3 grid and
+        // long name.
+        cases.add(new Case("recipe console", () -> {
+            ClientRecipeBook book =
+                    ClientSession.player(Minecraft.getInstance()).getRecipeBook();
+            book.add(CatalogueFixtures.nanobots());
+            book.rebuildCollections();
+            return new RecipeConsoleScreen(
+                    null, RepairRegistry.item(Consumable.HULL_NANOBOTS), CatalogueState.Mode.RECIPES);
+        }));
         // The notes the game ships, all found: the longest real one is what the page must hold.
         List<HandbookNote> notes =
                 ShippedNotes.ids().stream().map(ClientNotes::entry).toList();

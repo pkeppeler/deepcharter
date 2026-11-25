@@ -138,7 +138,8 @@ public class CatalogueHistoryClientTest implements FabricClientGameTest {
         return context.computeOnClient(client -> panel.state().lookup());
     }
 
-    private static void requireAt(ClientGameTestContext context, CataloguePanel panel, Item item, Mode mode, String what) {
+    private static void requireAt(
+            ClientGameTestContext context, CataloguePanel panel, Item item, Mode mode, String what) {
         CatalogueState.Lookup now = lookup(context, panel);
         require(
                 now != null && now.item() == item && now.mode() == mode,
@@ -155,10 +156,8 @@ public class CatalogueHistoryClientTest implements FabricClientGameTest {
     private static List<Drawn> drawn(ClientGameTestContext context, Screen screen) {
         return context.computeOnClient(client -> {
             var window = client.getWindow();
-            return DrawnText.of(
-                    screen,
-                    (int) client.mouseHandler.getScaledXPos(window),
-                    (int) client.mouseHandler.getScaledYPos(window));
+            return DrawnText.of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
+                    client.mouseHandler.getScaledYPos(window));
         });
     }
 
@@ -174,7 +173,8 @@ public class CatalogueHistoryClientTest implements FabricClientGameTest {
 
     private static void backspaceAndTheKnobWalkTheHistory(ClientGameTestContext context) {
         CatalogueScene.openInventory(context);
-        Screen screen = Objects.requireNonNull(context.computeOnClient(client -> client.gui.screen()), "a screen is open");
+        Screen screen =
+                Objects.requireNonNull(context.computeOnClient(client -> client.gui.screen()), "a screen is open");
         CataloguePanel panel = CatalogueScene.panel(context);
         context.waitTicks(2); // tick-wait: the catalogue lists the fixtures it now knows
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
@@ -218,19 +218,26 @@ public class CatalogueHistoryClientTest implements FabricClientGameTest {
         press(context, again, Items.REDSTONE, InputConstants.KEY_U);
         CatalogueScene.parkCursor(context, CatalogueScene.layout(context, again));
         RealInput.key(context, InputConstants.KEY_BACKSPACE, 0);
-        requireAt(context, again, HUB, Mode.USES, "the reopened inventory goes back to the recipe put away before it closed");
+        requireAt(
+                context,
+                again,
+                HUB,
+                Mode.USES,
+                "the reopened inventory goes back to the recipe put away before it closed");
         RealInput.key(context, InputConstants.KEY_BACKSPACE, 0);
         requireAt(context, again, DRILL, Mode.RECIPES, "and on through what the closed inventory showed");
         context.setScreen(() -> null);
     }
 
-    private static void theChestConsoleGoesBackToo(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+    private static void theChestConsoleGoesBackToo(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         ContainerScreen chest = CatalogueScene.openChest(context, singleplayer, List.of(new ItemStack(HUB)));
         Rect slot = CatalogueScene.slotCell(
                 context, chest, candidate -> !(candidate.container instanceof Inventory) && candidate.index == 0);
         CatalogueScene.hover(context, slot);
         RealInput.key(context, InputConstants.KEY_R, 0);
-        ClientWait.until(context, "the chest's recipe console", client -> client.gui.screen() instanceof RecipeConsoleScreen);
+        ClientWait.until(
+                context, "the chest's recipe console", client -> client.gui.screen() instanceof RecipeConsoleScreen);
         RecipeConsoleScreen console =
                 context.computeOnClient(client -> (RecipeConsoleScreen) Objects.requireNonNull(client.gui.screen()));
         Rect knob = Objects.requireNonNull(

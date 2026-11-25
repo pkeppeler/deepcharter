@@ -830,6 +830,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                     layout.shelf().counter()));
             plates.add(layout.card().spec());
             plates.add(layout.card().fill());
+            plates.add(layout.card().back());
             for (Drawn text : drawn) {
                 Rect box = new Rect(
                         text.box().x(),
@@ -869,6 +870,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 require(
                         labelInside(drawn, "SPEC SHEET", layout.card().spec()),
                         "the spec sheet label lies inside its button " + when);
+                require(
+                        labelInside(drawn, "<", layout.card().back()),
+                        "the back knob's arrow lies inside the knob " + when);
                 KnownRecipe shownRecipe = panel.state().shownRecipe(panel.catalogue());
                 if (shownRecipe != null) {
                     require(
