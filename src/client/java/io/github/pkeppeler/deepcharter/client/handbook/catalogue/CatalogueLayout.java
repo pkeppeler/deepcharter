@@ -13,6 +13,10 @@ import org.jspecify.annotations.Nullable;
  * as {@link CatalogueLook#maxPanelWidth()} allows; a band under {@link CatalogueLook#minPanelWidth()} hides both. The layout is
  * {@linkplain #of hidden} (null) when the window has no room for them, because the content has no room to fit.
  *
+ * <p>The active effects of the inventory stand in a row over the three, in the strip the window leaves above them: vanilla draws them
+ * right of the inventory image, where the catalogue stands, and the sides have no room to move them to. A window with no such strip
+ * hides the panels, so vanilla's recipe book and effect list come back.
+ *
  * @param catalogue the catalogue's casing
  * @param catalogueGlass the glass of the catalogue
  * @param shelf what is drawn on the catalogue's glass and under it
@@ -20,13 +24,25 @@ import org.jspecify.annotations.Nullable;
  * @param recipeGlass the glass of the recipe console
  * @param card what is drawn on the recipe console's glass and under it
  * @param inventory the inventory image the consoles stand beside
+ * @param effects the row the inventory's active effects stand in, over the image and both consoles
  */
 public record CatalogueLayout(
-        Rect catalogue, Rect catalogueGlass, Shelf shelf, Rect recipe, Rect recipeGlass, Card card, Rect inventory) {
+        Rect catalogue,
+        Rect catalogueGlass,
+        Shelf shelf,
+        Rect recipe,
+        Rect recipeGlass,
+        Card card,
+        Rect inventory,
+        Rect effects) {
     /** The width of the inventory image of the screens the catalogue stands beside (vanilla's default). */
     public static final int IMAGE_WIDTH = 176;
     /** The height of that image. */
     public static final int IMAGE_HEIGHT = 166;
+    /** The side of an effect's tile, vanilla's {@code effect_background} sprite. */
+    public static final int EFFECT_TILE = 32;
+    /** Pixels between the effects' row and the consoles under it. */
+    public static final int EFFECTS_GAP = 1;
 
     /** A rectangle on the screen. */
     public record Rect(int x, int y, int width, int height) {
@@ -131,7 +147,7 @@ public record CatalogueLayout(
 
     /**
      * The layout on a screen {@code width} by {@code height}, or null when the window is too narrow for the units' bands or too short for
-     * them.
+     * them and the row of effects over them.
      */
     public static @Nullable CatalogueLayout of(
             int width, int height, CatalogueLook look, CrtTuning crt, int lineHeight) {
@@ -142,10 +158,11 @@ public record CatalogueLayout(
         if (leftWidth < look.minPanelWidth() || rightWidth < look.minPanelWidth()) {
             return null;
         }
-        if (height < look.consoleHeight() + 2 * look.screenEdge()) {
+        int inventoryTop = (height - IMAGE_HEIGHT) / 2;
+        int effectsTop = inventoryTop - EFFECTS_GAP - EFFECT_TILE;
+        if (height < look.consoleHeight() + 2 * look.screenEdge() || effectsTop < look.screenEdge()) {
             return null;
         }
-        int inventoryTop = (height - IMAGE_HEIGHT) / 2;
         Rect inventory = new Rect(inventoryLeft, inventoryTop, IMAGE_WIDTH, IMAGE_HEIGHT);
 
         Rect recipe =
@@ -154,8 +171,9 @@ public record CatalogueLayout(
         Card card = card(recipeGlass, look, crt, lineHeight);
         Rect casing = new Rect(rightX, inventoryTop, rightWidth, look.consoleHeight());
         Rect glass = glass(casing, look, look.casing().consoleDeck());
+        Rect effects = new Rect(recipe.x(), effectsTop, casing.right() - recipe.x(), EFFECT_TILE);
         return new CatalogueLayout(
-                casing, glass, shelf(glass, look, crt, lineHeight), recipe, recipeGlass, card, inventory);
+                casing, glass, shelf(glass, look, crt, lineHeight), recipe, recipeGlass, card, inventory, effects);
     }
 
     static Rect glass(Rect casing, CatalogueLook look, int deck) {

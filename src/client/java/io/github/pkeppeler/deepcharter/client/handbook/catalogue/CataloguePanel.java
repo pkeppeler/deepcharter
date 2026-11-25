@@ -21,6 +21,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -663,6 +664,10 @@ public final class CataloguePanel {
         Placed sheetAt = placed;
         Hit hit = shownSheet == null ? hitAt(mouseX, mouseY) : null;
         if (!state.hidden()) {
+            if (screen instanceof InventoryScreen) {
+                CatalogueEffects.extract(
+                        graphics, now.effects(), now.inventory().x() + CatalogueLayout.IMAGE_WIDTH / 2, mouseX, mouseY);
+            }
             graphics.nextStratum();
             drawShelf(graphics, now, look, hit);
             if (showsRecipePanel()) {

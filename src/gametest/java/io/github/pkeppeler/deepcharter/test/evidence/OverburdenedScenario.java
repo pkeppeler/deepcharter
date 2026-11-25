@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields
 
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ChatLines;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -16,14 +17,23 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.Slot;
 
 /**
- * Evidence scenario "overburdened" for #853: a player picks up their first ore. The HUD shows the Overburdened icon and the one-time line
- * in the chat; the inventory lists the status with its level, and the ore's tooltip says it is heavy and where to haul it.
+ * Evidence scenario "overburdened" for #853 and #1290: a player picks up their first ore. The HUD shows the Overburdened icon and the
+ * one-time line in the chat; the inventory lists the status with its level, and the ore's tooltip says it is heavy and where to haul it.
+ * The inventory is shown with the parts catalogue open ({@code overburdened-inventory}) and put away
+ * ({@code overburdened-inventory-catalogue-hidden}), at GUI scale 2 (427 wide) and at scale 1 ({@code ...-wide}, 854 wide), beside a
+ * second effect.
  */
 public class OverburdenedScenario extends EvidenceScenario {
     /** The first hotbar slot in the inventory menu. */
     private static final int HOTBAR_START = 36;
 
     private static final int HALF_SLOT = 8;
+    /** The advancement toasts of the first items held fade by now. */
+    private static final int TOAST_TICKS = 60;
+    /** The window's default GUI scale (427 by 240), and the scale that doubles its width. */
+    private static final int DEFAULT_SCALE = 2;
+
+    private static final int WIDE_SCALE = 1;
 
     @Override
     protected String name() {
@@ -39,6 +49,7 @@ public class OverburdenedScenario extends EvidenceScenario {
                 player.getInventory().clearContent();
                 player.getInventory().setItem(0, OreRegistry.stack(OreType.GOLDIUM));
             });
+            singleplayer.getServer().runCommand("effect give @p minecraft:speed infinite 0");
             ClientWait.until(
                     context,
                     "the status and the first-ore line on the client",
@@ -49,10 +60,26 @@ public class OverburdenedScenario extends EvidenceScenario {
             frame(context);
             context.setScreen(() -> new InventoryScreen(ClientSession.player(Minecraft.getInstance())));
             ClientWait.screen(context, InventoryScreen.class);
-            hover(context);
-            screenshot(context, "overburdened-inventory");
-            frame(context);
+            context.waitTicks(TOAST_TICKS);
+            inventoryStills(context, "overburdened-inventory");
+            context.runOnClient(client -> client.options.guiScale().set(WIDE_SCALE));
+            context.waitTicks(2); // tick-wait: the screen lays itself out again at the new GUI size
+            inventoryStills(context, "overburdened-inventory-wide");
+            context.runOnClient(client -> client.options.guiScale().set(DEFAULT_SCALE));
         }
+    }
+
+    /** The inventory with the catalogue open and the cursor on the first hotbar slot, then with the catalogue put away. */
+    private void inventoryStills(ClientGameTestContext context, String still) {
+        context.runOnClient(client -> client.gui.toastManager().clear());
+        hover(context);
+        screenshot(context, still);
+        frame(context);
+        context.runOnClient(client -> CatalogueScene.panelNow(client).state().toggleHidden());
+        context.waitTicks(2); // tick-wait: the panels are gone and vanilla's list is the one drawn
+        screenshot(context, still + "-catalogue-hidden");
+        frame(context);
+        context.runOnClient(client -> CatalogueScene.panelNow(client).state().toggleHidden());
     }
 
     private static void hover(ClientGameTestContext context) {

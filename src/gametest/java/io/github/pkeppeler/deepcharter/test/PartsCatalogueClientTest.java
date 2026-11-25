@@ -504,10 +504,11 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         return Optional.ofNullable(CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), 9));
     }
 
-    /** The shortest GUI the consoles draw at: they stand level with the inventory. */
+    /** The shortest GUI the consoles draw at: they stand level with the inventory, under the row of its effects. */
     private static int shortest() {
         CatalogueLook look = CatalogueLook.current();
-        return look.consoleHeight() + 2 * look.screenEdge();
+        return look.consoleHeight()
+                + 2 * (look.screenEdge() + CatalogueLayout.EFFECTS_GAP + CatalogueLayout.EFFECT_TILE);
     }
 
     private static void thePanelsFitAtEveryWindowSize() {
