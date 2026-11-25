@@ -62,9 +62,9 @@ You fight your way to the Furnace and break its body, but that does not kill it.
 - Seal motto: *NIHIL REDDITUR* ("nothing is returned"), presented as a no-refunds policy.
 - Slogan: *Deeper Together!*
 
-**The name.** H. COLOM reversed, letter by letter, is MOLOCH, and the story does not hide it ([ADR 0098](adr/0098-the-name-is-in-plain-sight-the-secret-is-the-title-and-the-hiring.md)). A playtester decoded it in two minutes, so it is dramatic irony: the player knows, and the characters act as if nobody does. The secret the story protects is that "H. Colom" is a title worn by a former Director, and that it is hiring (the next bullets). The name's beats, none of them a puzzle:
+**The name.** H. COLOM reversed, letter by letter, is MOLOCH, and the story does not hide it ([ADR 0098](adr/0098-the-name-is-in-plain-sight-the-secret-is-the-title-and-the-hiring.md)). It is dramatic irony: the player knows, and the characters act as if nobody does. The secret the story protects is that "H. Colom" is a title worn by a former Director, and that it is hiring (the next bullets). The name's beats, none of them a puzzle:
 
-| Where | Clue | Channel |
+| Where | Beat | Channel |
 |-------|------|---------|
 | Layer 1 (the handbook, from hour one) | Beside the Founder's letter: *"Twenty years here and nobody knows what the H stands for. —R."* A wink for sharp players. | Margin note |
 | Layer 5 | Every Company transmission echoes with its sender reversed: `H. COLOM & CO. ↩ .OC & MOLOC .H`. The game drops the pretence. | Transmission header |
@@ -285,7 +285,6 @@ Combat details are in [CREATURES.md](CREATURES.md#7-the-finale), from the creatu
 4. **Signing** (the Director only, at the Boardroom table). Final and permanent.
    - The Director becomes the Chairman. The deed binds to him, impossible to lose, and his suit lamp goes dark for good. Both follow him even if he leaves the charter.
    - The wreck's wealth and a recurring dividend are credited to the **charter's shared account**, not to the Director alone, from the labour of the Retained, who never rest. The crew lives off it too. Every dividend notice asks for more.
-   - Evil is a private deal. A Director who signs over the crew is a betrayal story, not a wipe.
    - The Furnace relights. The Retained turn to face their new Chairman. Moloch wears a new mask.
    - For that charter, the altimeter reads YOU ARE ON COMPANY PREMISES everywhere, including the surface.
    - Last exchange: Hal asks, *"Is it Friday?"* The Company answers, *"No."*
