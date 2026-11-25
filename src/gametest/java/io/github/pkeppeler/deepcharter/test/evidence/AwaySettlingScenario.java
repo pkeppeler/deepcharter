@@ -84,7 +84,7 @@ public class AwaySettlingScenario extends EvidenceScenario {
                 one.setBlock(barrel, Blocks.BARREL.defaultBlockState(), 3);
                 Container storage = SettlingRooms.containerAt(one, barrel);
                 for (int slot = 0; slot < BARREL_STACKS; slot++) {
-                    storage.setItem(slot, new ItemStack(Items.COAL, 64));
+                    storage.setItem(slot, new ItemStack(Items.COAL, Items.COAL.getDefaultMaxStackSize()));
                 }
                 // The hall stays loaded for the sweep when the pilot has gone.
                 // force-ok: an evidence scenario has no GameTestHelper to release through; the world is discarded when

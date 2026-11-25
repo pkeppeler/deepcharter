@@ -99,7 +99,7 @@ final class Consumables {
         return Optional.empty();
     }
 
-    private static void play(PodEntity pod, DeepSound sound) {
+    static void play(PodEntity pod, DeepSound sound) {
         pod.level().playSound(null, pod.getX(), pod.getY(), pod.getZ(), sound.event(), SoundSource.PLAYERS);
     }
 }
