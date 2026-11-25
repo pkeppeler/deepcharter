@@ -18,8 +18,8 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 
 /**
- * A stack of 64 coal saved before the stack size became 16 (#1280) loads as it was: vanilla does not clamp a loaded stack.
- * It can still be shift-clicked, split and dropped, and no coal is made or lost on the way.
+ * A stack of 64 coal saved before the stack size became 16 (#1280) loads as it was: vanilla does not clamp a loaded
+ * stack. It can still be shift-clicked, split and dropped, and no coal is made or lost on the way.
  */
 public class FuelOldStacksTest {
     private static final int OLD_STACK = 64;

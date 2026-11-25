@@ -36,8 +36,8 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 
 /**
- * The engine's soot is a persistent pod attachment (ADR 0097): it is saved with literal values, an unreadable one is kept
- * through a tick and a refuel, and it crosses a breach with the pod.
+ * The engine's soot is a persistent pod attachment (ADR 0097): it is saved with literal values, an unreadable one is
+ * kept through a tick and a refuel, and it crosses a breach with the pod.
  */
 public class EngineSootPersistenceTest {
     private static final String ATTACHMENTS_KEY = "fabric:attachments";

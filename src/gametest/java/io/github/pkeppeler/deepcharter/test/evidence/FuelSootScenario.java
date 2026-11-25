@@ -21,9 +21,10 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 
 /**
- * Evidence scenario "fuel-soot" for #1280: a player carries two stacks of coal (the Ore/Fuel status), refuels the pod with
- * charcoal, and the engine soots: the sooted line, then limp mode. At the colony a pod in limp mode will not launch (sprint
- * drills; the line says why). The repair station's SERVICE ENGINE clears the soot and the pod drills again.
+ * Evidence scenario "fuel-soot" for #1280: a player carries two stacks of coal (the Ore/Fuel status), refuels the pod
+ * with charcoal, and the engine soots: the sooted line, then limp mode. At the colony a pod in limp mode will not
+ * launch (sprint drills; the line says why). The repair station's SERVICE ENGINE clears the soot and the pod drills
+ * again.
  */
 public class FuelSootScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;

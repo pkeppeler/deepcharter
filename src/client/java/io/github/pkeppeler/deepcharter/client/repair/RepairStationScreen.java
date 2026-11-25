@@ -127,8 +127,8 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     }
 
     /**
-     * The row that clears the engine's soot (#1280): shown only once the nearest pod has a litre or more, with its soot and
-     * its price from the synced attachment, so there is no row for a clean engine.
+     * The row that clears the engine's soot (#1280): shown only once the nearest pod has a litre or more, with its soot
+     * and its price from the synced attachment, so there is no row for a clean engine.
      */
     private Optional<Row> serviceRow() {
         return nearbyPod()

@@ -36,23 +36,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * What a trip earns on each fuel (#1280), for a player who does the rational thing and burns a fuel for many trips, servicing
- * when the engine forces it. Lines start with {@code [fuel-economy]} and make the PR's table.
+ * What a trip earns on each fuel (#1280), for a player who does the rational thing and burns a fuel for many trips,
+ * servicing when the engine forces it. Lines start with {@code [fuel-economy]} and make the PR's table.
  *
- * <p>The trip is {@link EarlyRunModel}'s: its ore, litres and seconds. The engine is the real one: {@link EngineSoot} soots as
- * the litres burn, its loss of output and burn are applied, and when it is in limp mode at the colony the player pays the
- * real service and clears it, until the engine has forced three services. Nothing is forced that the player would not do.
+ * <p>The trip is {@link EarlyRunModel}'s: its ore, litres and seconds. The engine is the real one: {@link EngineSoot}
+ * soots as the litres burn, its loss of output and burn are applied, and when it is in limp mode at the colony the
+ * player pays the real service and clears it, until the engine has forced three services. Nothing is forced that the
+ * player would not do.
  *
- * <p>The effort has no invented constants. It is derived from the game's own data: the seconds to fell a fungal stalk (the
- * block's destroy time with bare hands, measured here), the cook times of the real recipes (a furnace for charcoal, a
- * campfire or a smoker for the mash), and the colony trip's 45 s off the pod ({@code docs/design/mechanics.md}, "First-tier
- * parts"). Cooking is passive and batched, so the model gives two bounds: hands-on only (the felling) and waiting for each
- * cook in turn. The ordering is asserted at both, and at half the felling time, and the break-even prep time is printed.
+ * <p>The effort has no invented constants. It is derived from the game's own data: the seconds to fell a fungal stalk
+ * (the block's destroy time with bare hands, measured here), the cook times of the real recipes (a furnace for
+ * charcoal, a campfire or a smoker for the mash), and the colony trip's 45 s off the pod ({@code
+ * docs/design/mechanics.md}, "First-tier parts"). Cooking is passive and batched, so the model gives two bounds:
+ * hands-on only (the felling) and waiting for each cook in turn. The ordering is asserted at both, and at half the
+ * felling time, and the break-even prep time is printed.
  */
 public class FuelTripEconomyTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(FuelTripEconomyTest.class);
 
-    /** The seconds a colony trip spends off the pod: the walk to the pump and the processor, boarding, fuel and sale. */
+    /**
+     * The seconds a colony trip spends off the pod: the walk to the pump and the processor, boarding, fuel and sale.
+     */
     private static final double WALK_SECONDS = 45;
 
     /** The litres of a slice of the burn; the engine soots and slows as it goes. */

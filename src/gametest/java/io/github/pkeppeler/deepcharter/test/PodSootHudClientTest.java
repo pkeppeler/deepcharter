@@ -32,8 +32,8 @@ import net.minecraft.world.level.block.Blocks;
 
 /**
  * Client GameTest for the soot lines of the pod's readout (#1280): none for a clean engine or one inside the grace, the
- * sooted line only once it costs something (never "0%"), the limp line past the limit, and in each state the readout box
- * stays inside the GUI and clear of vanilla's rows at the two smallest GUI sizes ({@link VanillaHudRows}).
+ * sooted line only once it costs something (never "0%"), the limp line past the limit, and in each state the readout
+ * box stays inside the GUI and clear of vanilla's rows at the two smallest GUI sizes ({@link VanillaHudRows}).
  */
 public class PodSootHudClientTest implements FabricClientGameTest {
     private static final int FEET_Y = TestLayers.worldY(1, 10);
@@ -98,7 +98,10 @@ public class PodSootHudClientTest implements FabricClientGameTest {
                 .toList();
     }
 
-    /** The plain readout's box, as {@code PodStatusHud} draws it, inside the GUI and clear of vanilla's rows; and the plate. */
+    /**
+     * The plain readout's box, as {@code PodStatusHud} draws it, inside the GUI and clear of vanilla's rows; and the
+     * plate.
+     */
     private static void expectClear(ClientGameTestContext context) {
         context.runOnClient(client -> {
             PodEntity pod = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);

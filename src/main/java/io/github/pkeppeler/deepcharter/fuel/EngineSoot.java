@@ -29,8 +29,8 @@ import net.minecraft.server.level.ServerPlayer;
  *
  * <p>The engine in four steps, from {@link FuelTuning.Soot}: clean up to the grace; then it loses top speed and climb
  * speed and burns more fuel, in a straight line to the limp limit; at the limit it is in <b>limp mode</b>, with little
- * output and a high burn, which never stops it, so a pod deep down can always climb home. The colony is where limp ends:
- * a pod in limp mode cannot launch (drill) from the surface until it is serviced ({@link #launchRefused}).
+ * output and a high burn, which never stops it, so a pod deep down can always climb home. The colony is where limp
+ * ends: a pod in limp mode cannot launch (drill) from the surface until it is serviced ({@link #launchRefused}).
  *
  * <p>Refuelling with a solid fuel puts its litres, and the soot those litres will leave, in the tank's account; the
  * burn takes litres off that account in proportion. The account is clamped to the litres really in the tank when it is
@@ -39,9 +39,9 @@ import net.minecraft.server.level.ServerPlayer;
  *
  * <p>The tick path writes nothing until {@link #QUANTUM} litres have burned: the burn is held in a transient map (lost
  * when the pod unloads, at most a quantum of soot), so the attachment and its sync change a few times a minute and not
- * on every tick. It reads the state with {@link Versioned#readable}: unreadable soot is no soot, and nothing writes over
- * it. {@link #service} is an explicit change and throws on an unreadable state; its caller asks {@link #isReadable}
- * first.
+ * on every tick. It reads the state with {@link Versioned#readable}: unreadable soot is no soot, and nothing writes
+ * over it. {@link #service} is an explicit change and throws on an unreadable state; its caller asks {@link
+ * #isReadable} first.
  */
 public final class EngineSoot {
     public static final int VERSION = 1;
@@ -49,7 +49,9 @@ public final class EngineSoot {
     /** Litres of fuel burned on solid fuel before the attachment is written and synced. */
     public static final float QUANTUM = 0.1f;
 
-    /** The read mark that records the one-time line the first time soot bites a pilot (the player's {@code ReadMarks}). */
+    /**
+     * The read mark that records the one-time line the first time soot bites a pilot (the player's {@code ReadMarks}).
+     */
     public static final Identifier FIRST_SOOT_MARK =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_soot");
 
@@ -112,7 +114,9 @@ public final class EngineSoot {
         return Versioned.readable(pod, STATE).orElse(State.CLEAN);
     }
 
-    /** Litres of soot in the engine; 0 when the state cannot be read. Either side: the client reads the synced value. */
+    /**
+     * Litres of soot in the engine; 0 when the state cannot be read. Either side: the client reads the synced value.
+     */
     public static float soot(PodEntity pod) {
         return state(pod).soot();
     }
@@ -161,8 +165,9 @@ public final class EngineSoot {
     }
 
     /**
-     * Server only: {@code litres} of a fuel that leaves {@code sootPerLitre} of soot a litre went into the tank. A clean
-     * fuel (0) changes nothing, and so does an unreadable state, which is kept as it is: the refuel is a callback path.
+     * Server only: {@code litres} of a fuel that leaves {@code sootPerLitre} of soot a litre went into the tank. A
+     * clean fuel (0) changes nothing, and so does an unreadable state, which is kept as it is: the refuel is a callback
+     * path.
      */
     public static void refuelled(PodEntity pod, float litres, float sootPerLitre) {
         Optional<State> read = Versioned.readable(pod, STATE);
@@ -182,9 +187,9 @@ public final class EngineSoot {
     }
 
     /**
-     * Server only, from the pod's tick, after the fuel is taken off the tank: {@code litres} burned. They are held until
-     * {@link #QUANTUM} have burned, then written. Does nothing, and never throws, when nothing solid is in the tank or
-     * the state is unreadable.
+     * Server only, from the pod's tick, after the fuel is taken off the tank: {@code litres} burned. They are held
+     * until {@link #QUANTUM} have burned, then written. Does nothing, and never throws, when nothing solid is in the
+     * tank or the state is unreadable.
      */
     public static void burned(PodEntity pod, float litres) {
         Optional<State> read = Versioned.readable(pod, STATE);
@@ -198,7 +203,10 @@ public final class EngineSoot {
         }
     }
 
-    /** Server only: writes what the pod has burned and not written. A quantum is the most that a pod saved without it loses. */
+    /**
+     * Server only: writes what the pod has burned and not written. A quantum is the most that a pod saved without it
+     * loses.
+     */
     public static void flush(PodEntity pod) {
         Float held = UNWRITTEN.remove(pod);
         Optional<State> read = Versioned.readable(pod, STATE);
@@ -233,13 +241,19 @@ public final class EngineSoot {
         return (long) Math.ceil(soot(pod) * FuelTuning.DEFAULT.soot().servicePerLitre());
     }
 
-    /** Server only: clears the engine's soot. What the tank's fuel will still leave is kept. Throws on an unreadable state. */
+    /**
+     * Server only: clears the engine's soot. What the tank's fuel will still leave is kept. Throws on an unreadable
+     * state.
+     */
     public static void service(PodEntity pod) {
         flush(pod);
         Versioned.modifyOrThrow(pod, STATE, state -> new State(0f, state.tankLitres(), state.tankSoot()));
     }
 
-    /** Says once per player, kept as a read mark, why the engine now loses output. Says nothing when the marks cannot be read. */
+    /**
+     * Says once per player, kept as a read mark, why the engine now loses output. Says nothing when the marks cannot be
+     * read.
+     */
     private static void explainFirstSoot(PodEntity pod) {
         if (pod.getControllingPassenger() instanceof ServerPlayer pilot
                 && ReadMarks.isReadable(pilot)
