@@ -47,6 +47,8 @@ public class PodChaseClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         PodChase.setAutomatic(true);
+        // Put back the view this test found: the next class in this client JVM renders from it.
+        CameraType original = camera(context);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             PodMovementClientTest.moveToOpenGround(context, two);
             // A view that is neither the default nor the chase view, so a restore cannot pass by luck.
@@ -84,6 +86,8 @@ public class PodChaseClientTest implements FabricClientGameTest {
                     "leaving the pod should restore the view the player had before it, it is " + camera(context));
 
             leavingByDimensionSwapAndByDeathRestoresTheView(context, two);
+        } finally {
+            setCamera(context, original);
         }
     }
 
