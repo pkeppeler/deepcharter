@@ -47,10 +47,7 @@ public class PodGlideTraceTest {
     /** Blocks above the test's floor the pod is held at: nothing for its coast to run into. */
     private static final int HELD_ABOVE = 40;
 
-    /**
-     * Ticks after the last late move a pod has to be back on its on-time course: the {@code MAX_TICKS_OVER} of {@code
-     * PodMovementClientTest}'s trail window, rounded up.
-     */
+    /** Ticks after the last late move a pod has to be back on its on-time course: the window ADR 0082's model holds every late spell to. */
     private static final int RECOVERY_TICKS = 6;
 
     /** Blocks a recovered pod may still be behind its on-time course: {@code PodMovementClientTest}'s trail margin. */
@@ -65,10 +62,10 @@ public class PodGlideTraceTest {
     };
 
     /**
-     * {@link #ON_TIME} with four moves a tick late each, a slip that the server closes with three moves in one tick (44). Each capped
-     * catch-up step split the gap evenly as if the target stood still, which for a target moving at the pod's speed settled on a step
-     * of exactly that speed: the pod trailed its on-time course by a tick of speed for the rest of the drive. The split now counts
-     * the target's own advance, so every step closes some of the gap.
+     * {@link #ON_TIME} with the server four moves a tick late (two show past the jitter's held tick), a slip it closes with three moves
+     * in tick 44. Each capped catch-up step split the gap evenly as if the target stood still, which for a target moving at the pod's
+     * speed settled on a step of exactly that speed: the pod trailed its on-time course by a tick of speed for the rest of the drive.
+     * The split now counts the target's own advance, so every step closes some of the gap.
      */
     private static final int[] SLIP_CLOSED_AT_ONCE = {
         2, 3, 5, 5, 6, 8, 8, 9, 11, 11, 12, 14, 14, 15, 17, 17, 18, 20, 20, 21, 23, 23, 24, 26, 26, 27, 29, 29, 30, 32,
