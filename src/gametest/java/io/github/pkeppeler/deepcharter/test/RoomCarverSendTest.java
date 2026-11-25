@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -23,13 +24,21 @@ import net.minecraft.world.phys.Vec3;
  * view while the hold is pending must still be sent the chunk once it ends. Each test carves in a ticking chunk of layer rock, as the
  * evidence scenarios and the breach do, brings a player into view in the same tick, and waits for the server to have sent every chunk
  * of the room.
+ *
+ * <p>The carve waits until every chunk of the room can be sent. A chunk that ticks can still wait on the light of its own generation,
+ * and {@link LightSync} holds only a chunk that can be sent: one that cannot is sent by vanilla when it can, so it is not held, and a
+ * carve then would not test the hold (#1347).
  */
 public class RoomCarverSendTest {
     private static final int SECONDS = 30;
     private static final int LOCAL_FLOOR = 60; // fixed-pos: a layer-local Y, turned into a world Y by TestLayers.worldY
-    private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 200;
+    /** Three waits: the chunks ticking, the room's chunks sendable, and the carved room sent. */
+    private static final int MAX_TICKS = 3 * FarChunks.AWAIT_BUDGET_TICKS + 200;
 
-    /** Carves the box once its chunks tick, brings the player in the same tick, and fails naming the chunks that are never sent. */
+    /**
+     * Carves the box once its chunks tick and can be sent, brings the player in the same tick, and fails naming the chunks that are
+     * never sent.
+     */
     private static void carveThenArrive(GameTestHelper helper, int layer, BlockPos min, BlockPos max) {
         ServerLevel level = TestLayers.level(helper.getLevel().getServer(), layer);
         MockPlayer player = MockPlayers.join(helper, "send-" + min.getX());
@@ -39,9 +48,29 @@ public class RoomCarverSendTest {
         List<BlockPos> columns = chunks.stream()
                 .map(chunk -> new BlockPos(chunk.getMinBlockX(), min.getY(), chunk.getMinBlockZ()))
                 .toList();
-        int[] ticking = {0};
-        FarChunks.awaitEntityTicking(helper, level, columns, index -> {
-            if (++ticking[0] == columns.size()) {
+        // Each wait starts its own deadline when the one before it ends, so a slow stage cannot use up the next one's
+        // time: the wait for sendable chunks once every column ticks, the wait for the send at the carve.
+        List<FarChunks.Deadline> sendable = new ArrayList<>(1);
+        List<FarChunks.Deadline> sent = new ArrayList<>(1);
+        FarChunks.awaitAllEntityTicking(helper, level, columns, () -> sendable.add(FarChunks.deadline(SECONDS)));
+        TestTicks.each(helper, () -> {
+            if (sendable.isEmpty()) {
+                return;
+            }
+            if (sent.isEmpty()) {
+                List<ChunkPos> unsendable = chunks.stream()
+                        .filter(chunk -> level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) == null)
+                        .toList();
+                if (!unsendable.isEmpty()) {
+                    sendable.getFirst()
+                            .await(
+                                    helper,
+                                    level,
+                                    false,
+                                    () -> unsendable + " in " + level.dimension()
+                                            + " tick but never became sendable, so the" + " carve could not begin");
+                    return;
+                }
                 RoomCarver.carve(level, min, max, Blocks.AIR.defaultBlockState());
                 if (LightSync.heldChunks().stream()
                         .noneMatch(line -> line.contains(chunks.get(0).toString()))) {
@@ -49,11 +78,7 @@ public class RoomCarverSendTest {
                             "the carve should hold " + chunks.get(0) + ", held: " + LightSync.heldChunks()));
                 }
                 player.teleportTo(level, Vec3.atBottomCenterOf(min), 0f, 0f);
-            }
-        });
-        FarChunks.Deadline deadline = FarChunks.deadline(SECONDS);
-        TestTicks.each(helper, () -> {
-            if (ticking[0] < columns.size()) {
+                sent.add(FarChunks.deadline(SECONDS));
                 return;
             }
             List<ChunkPos> unsent = chunks.stream()
@@ -63,14 +88,15 @@ public class RoomCarverSendTest {
                 helper.succeed();
                 return;
             }
-            deadline.await(
-                    helper,
-                    level,
-                    false,
-                    () -> "RoomCarver held the sending of " + unsent + " in " + level.dimension()
-                            + " and never released it: "
-                            + SECONDS + " s after carving " + min + " to " + max
-                            + " a player in view of it has not been sent it");
+            sent.getFirst()
+                    .await(
+                            helper,
+                            level,
+                            false,
+                            () -> "RoomCarver held the sending of " + unsent + " in " + level.dimension()
+                                    + " and never released it: "
+                                    + SECONDS + " s after carving " + min + " to " + max
+                                    + ", a player in view of it has not been sent it");
         });
     }
 
@@ -88,8 +114,9 @@ public class RoomCarverSendTest {
         carveThenArrive(
                 helper,
                 2,
-                new BlockPos(6600 - 6, TestLayers.worldY(2, LOCAL_FLOOR), 6600 - 6),
-                new BlockPos(6600 + 6, TestLayers.worldY(2, LOCAL_FLOOR) + 4, 6600 + 6));
+                // 6608 is a chunk corner (16 x 413), so the room spans chunks 412 and 413 on both axes.
+                new BlockPos(6608 - 6, TestLayers.worldY(2, LOCAL_FLOOR), 6608 - 6),
+                new BlockPos(6608 + 6, TestLayers.worldY(2, LOCAL_FLOOR) + 4, 6608 + 6));
     }
 
     /** A player who has the chunk before the carve gets block updates, not the chunk again: a resend to everyone would pass the tests above. */
