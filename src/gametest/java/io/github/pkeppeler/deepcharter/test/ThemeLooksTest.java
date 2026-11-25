@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.ContinuityLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
@@ -253,6 +254,35 @@ public class ThemeLooksTest {
                 "suit",
                 new SuitLook(6, 20, 96, 5, 16, 1, 2, 0xFF7CFC9A, 0xFFFFB000, 0xFFFF4A3A, 0xFF2E7A45, 5),
                 SuitLook.of(area("suit", null)));
+        expect(
+                helper,
+                "continuity",
+                new ContinuityLook(
+                        0.35,
+                        0.45,
+                        0.3,
+                        0.88,
+                        3,
+                        0.94,
+                        0.08,
+                        0.8,
+                        0.12,
+                        3.0,
+                        0.5,
+                        0.4,
+                        44,
+                        0.92,
+                        9,
+                        14,
+                        0.5,
+                        0.03,
+                        90,
+                        40,
+                        0x1C7CFC9A,
+                        0xFF53A967,
+                        0x592E7A45,
+                        0xFF2E7A45),
+                ContinuityLook.of(area("continuity", null)));
         helper.succeed();
     }
 
@@ -668,7 +698,8 @@ public class ThemeLooksTest {
                 "catalogue",
                 "readout",
                 "sonar",
-                "suit")) {
+                "suit",
+                "continuity")) {
             areas.put(name, area(name, null));
         }
         return areas;
@@ -681,6 +712,19 @@ public class ThemeLooksTest {
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": 0 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": -5 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"scanlineSpacing\": 0 }")), "scanlineSpacing");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theContinuityEventKeepsItsBounds(GameTestHelper helper) {
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"rows\": 4 }")), "rows");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"skipPasses\": 9 }")), "skipPasses");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"boneColor\": 5 }")), "boneColor");
+        rejected(
+                helper,
+                () -> ContinuityLook.of(
+                        area("continuity", "{ \"skipPeriodSeconds\": 0.1, \"skipOverlapSeconds\": 0.2 }")),
+                "skipOverlapSeconds");
         helper.succeed();
     }
 
