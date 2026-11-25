@@ -44,10 +44,12 @@ import org.jspecify.annotations.Nullable;
  */
 public final class SeamStreaming {
     /**
-     * One vehicle's approach to the floor of a level with a level below it, keyed by the root vehicle (the player when on foot), listing every
-     * player it carries. {@code descentPerTick} is the vehicle's descent over the last {@link LayerTuning#seamSpeedWindow()} ticks, in
-     * blocks a tick, as of the last tick it was read (0 when it sits or climbs): what the approach hands the swap. {@code ready} is
-     * whether the arrival area's chunks have loaded.
+     * One vehicle's approach to the floor of a level with a level below it, or to the ceiling of one with a level above it, keyed by
+     * the root vehicle (the player when on foot), listing every player it carries. {@code lower} is the level the arrival area is
+     * in: the one below for {@link #approachOf}, the one above for {@link #ascentOf}. {@code descentPerTick} is the vehicle's
+     * closing speed on the seam over the last {@link LayerTuning#seamSpeedWindow()} ticks, in blocks a tick, as of the last tick it
+     * was read (0 when it sits or moves away): what the approach hands the swap. {@code ready} is whether the arrival area's chunks
+     * have loaded.
      */
     public record Approach(
             UUID root,
@@ -59,19 +61,24 @@ public final class SeamStreaming {
             double descentPerTick,
             boolean ready) {}
 
-    /** What a root vehicle is holding open under or over it: the ticket's level and chunk and when it was last taken.
-     * */
+    /** Which seam of its level a vehicle nears: the floor below it, or the ceiling above it. */
+    enum Direction {
+        DOWN,
+        UP
+    }
+
+    /** What a root vehicle is holding open under or over it: the ticket's level and chunk and when it was last taken. */
     private record Streaming(
             ResourceKey<Level> target,
             ChunkPos centre,
             long startedTick,
             long refreshedTick,
-            double descentPerTick,
+            double closingPerTick,
             CompletableFuture<Void> loaded,
             List<UUID> riders) {}
 
     /** A root vehicle's track in one direction: a vehicle near both its floor and its ceiling keeps two. */
-    private record Key(UUID root, boolean ascending) {}
+    private record Key(UUID root, Direction direction) {}
 
     /**
      * A root vehicle's recent distances to the seam it nears in one level, and the area it streams. The distance is its
@@ -80,14 +87,14 @@ public final class SeamStreaming {
      */
     private static final class Track {
         private final ResourceKey<Level> upper;
-        private final boolean ascending;
+        private final Direction direction;
         private final Deque<Double> heights = new ArrayDeque<>();
         private @Nullable Streaming streaming;
         private boolean seen;
 
-        Track(ResourceKey<Level> upper, boolean ascending) {
+        Track(ResourceKey<Level> upper, Direction direction) {
             this.upper = upper;
-            this.ascending = ascending;
+            this.direction = direction;
         }
     }
 
@@ -148,7 +155,7 @@ public final class SeamStreaming {
 
     /** The approach of the root vehicle with this UUID, if it is streaming a level below now. */
     public static Optional<Approach> approachOf(UUID root) {
-        return approachOf(root, false);
+        return approachOf(root, Direction.DOWN);
     }
 
     /**
@@ -156,20 +163,22 @@ public final class SeamStreaming {
      * as its {@code lower}: a ticket only, never sent to a rider.
      */
     public static Optional<Approach> ascentOf(UUID root) {
-        return approachOf(root, true);
+        return approachOf(root, Direction.UP);
     }
 
-    private static Optional<Approach> approachOf(UUID root, boolean ascending) {
-        Track track = TRACKS.get(new Key(root, ascending));
+    private static Optional<Approach> approachOf(UUID root, Direction direction) {
+        Track track = TRACKS.get(new Key(root, direction));
         return track == null ? Optional.empty() : approachOf(root, track);
     }
 
-    /** Every descent approach under way now: one per root vehicle that is streaming a level below. A rise is not served
-     * to riders. */
+    /**
+     * Every descent approach under way now: one per root vehicle that is streaming a level below. A rise is left out: it
+     * holds a ticket only, and nothing is sent to its riders.
+     */
     public static List<Approach> approaches() {
         List<Approach> approaches = new ArrayList<>();
         TRACKS.forEach((key, track) -> {
-            if (!key.ascending()) {
+            if (key.direction() == Direction.DOWN) {
                 approachOf(key.root(), track).ifPresent(approaches::add);
             }
         });
@@ -188,17 +197,17 @@ public final class SeamStreaming {
                 streaming.target(),
                 streaming.centre(),
                 streaming.startedTick(),
-                streaming.descentPerTick(),
+                streaming.closingPerTick(),
                 streaming.loaded().isDone() && !streaming.loaded().isCompletedExceptionally()));
     }
 
     /**
-     * Logs a crossing, down or {@code ascending}, that finds less than the whole arrival area loaded, which the
+     * Logs a crossing in {@code direction} that finds less than the whole arrival area loaded, which the
      * crossing then waits for on the server thread: how many of its chunks are loaded and how long the approach had
      * run. Silent when the area is ready.
      */
-    static void reportCrossing(Entity root, ServerLevel to, ChunkPos arrival, boolean ascending) {
-        Optional<Approach> approach = ascending ? ascentOf(root.getUUID()) : approachOf(root.getUUID());
+    static void reportCrossing(Entity root, ServerLevel to, ChunkPos arrival, Direction direction) {
+        Optional<Approach> approach = direction == Direction.UP ? ascentOf(root.getUUID()) : approachOf(root.getUUID());
         ChunkPos centre = approach.map(Approach::centre).orElse(arrival);
         int loaded = loadedAround(to, centre);
         int total = areaChunks();
@@ -241,10 +250,10 @@ public final class SeamStreaming {
         }
         TRACKS.values().stream().filter(track -> track.upper.equals(key)).forEach(track -> track.seen = false);
         if (!level.players().isEmpty() && !LayerChain.isCampaign(level)) {
-            for (boolean ascending : new boolean[] {false, true}) {
-                Optional<ServerLevel> target = levelBeyond(level, ascending);
+            for (Direction direction : Direction.values()) {
+                Optional<ServerLevel> target = levelBeyond(level, direction);
                 if (target.isPresent()) {
-                    follow(level, target.get(), ascending);
+                    follow(level, target.get(), direction);
                 }
             }
         }
@@ -252,28 +261,29 @@ public final class SeamStreaming {
     }
 
     /**
-     * The level under {@code level} in the chain, or over it when {@code ascending}: empty for the surface going up,
+     * The level under {@code level} in the chain, or over it going {@link Direction#UP}: empty for the surface going up,
      * the last level going down, a level outside the chain and a registered layer whose level is not loaded. That last
      * is warned about once per level key, and never thrown, since this runs every tick.
      */
-    private static Optional<ServerLevel> levelBeyond(ServerLevel level, boolean ascending) {
+    private static Optional<ServerLevel> levelBeyond(ServerLevel level, Direction direction) {
         Optional<Band> band = LayerChain.layerAt(level, level.getMinY());
-        if (band.isEmpty() || (!ascending && band.get().layer() >= LayerChain.count(level.registryAccess()))) {
+        if (band.isEmpty()
+                || (direction == Direction.DOWN && band.get().layer() >= LayerChain.count(level.registryAccess()))) {
             return Optional.empty();
         }
-        ResourceKey<Level> key = LayerChain.dimension(band.get().layer() + (ascending ? -1 : 1));
+        ResourceKey<Level> key = LayerChain.dimension(band.get().layer() + (direction == Direction.UP ? -1 : 1));
         ServerLevel beyond = level.getServer().getLevel(key);
         if (beyond == null && MISSING_WARNED.add(key)) {
             DeepCharter.LOGGER.warn(
                     "No arrival area is streamed from {}: the level {} it, {}, is registered but not loaded",
                     level.dimension().identifier(),
-                    ascending ? "over" : "under",
+                    direction == Direction.UP ? "over" : "under",
                     key.identifier());
         }
         return Optional.ofNullable(beyond);
     }
 
-    private static void follow(ServerLevel level, ServerLevel target, boolean ascending) {
+    private static void follow(ServerLevel level, ServerLevel target, Direction direction) {
         Map<UUID, Entity> roots = new LinkedHashMap<>();
         Map<UUID, List<UUID>> riders = new HashMap<>();
         for (ServerPlayer player : level.players()) {
@@ -284,10 +294,10 @@ public final class SeamStreaming {
             }
         }
         roots.forEach((id, root) -> {
-            Key key = new Key(id, ascending);
+            Key key = new Key(id, direction);
             Track track = TRACKS.get(key);
             if (track == null || !track.upper.equals(level.dimension())) {
-                track = new Track(level.dimension(), ascending);
+                track = new Track(level.dimension(), direction);
                 TRACKS.put(key, track);
             }
             track.seen = true;
@@ -298,13 +308,13 @@ public final class SeamStreaming {
     private static void stream(ServerLevel level, ServerLevel target, Entity root, Track track, List<UUID> riders) {
         LayerTuning tuning = LayerTuning.DEFAULT;
         double y = root.getY();
-        double toSeam = track.ascending ? level.getMaxY() - y : y - level.getMinY();
+        double toSeam = track.direction == Direction.UP ? level.getMaxY() - y : y - level.getMinY();
         track.heights.addLast(toSeam);
         while (track.heights.size() > tuning.seamSpeedWindow() + 1) {
             track.heights.removeFirst();
         }
-        double descent = descentPerTick(track.heights);
-        if (!shouldStream(toSeam, descent, target.getHeight(), tuning)) {
+        double closing = descentPerTick(track.heights);
+        if (!shouldStream(toSeam, closing, target.getHeight(), tuning)) {
             track.streaming = null;
             return;
         }
@@ -333,7 +343,7 @@ public final class SeamStreaming {
                     here,
                     current == null ? now : current.startedTick(),
                     now,
-                    descent,
+                    closing,
                     loaded,
                     riders);
         } else {
@@ -347,7 +357,7 @@ public final class SeamStreaming {
                     current.centre(),
                     current.startedTick(),
                     refresh ? now : current.refreshedTick(),
-                    descent,
+                    closing,
                     current.loaded(),
                     riders);
         }

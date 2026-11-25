@@ -8,6 +8,9 @@ import static io.github.pkeppeler.deepcharter.test.support.SeamSite.arrivalTicke
 import static io.github.pkeppeler.deepcharter.test.support.SeamSite.loadedAround;
 
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.SeamStreaming;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.BlockingLoads;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
@@ -15,6 +18,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.SeamSite.Site;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.TickTimes;
@@ -42,19 +46,22 @@ public class SeamAscentTest {
     private static final int STREAMED_SITE = 12;
 
     private static final int CONTROL_SITE = 13;
+    private static final int LIFECYCLE_SITE = 14;
+    /** Blocks past the floor margin where a pod is outside the zone of the ceiling. */
+    private static final int OUTSIDE_ZONE = 60;
 
     /**
      * The shaft a mock rises in, from {@code HOLD_HEIGHT + 10} under the ceiling to the top row: not rock, so it takes
      * no damage.
      */
     private static void carveShaft(Site site, int ceilingY) {
+        carveShaft(site, ceilingY, HOLD_HEIGHT + 10);
+    }
+
+    private static void carveShaft(Site site, int ceilingY, int depth) {
         BlockPos column = BlockPos.containing(site.x(), ceilingY, site.z());
         RoomCarver.carve(
-                site.two(),
-                column.offset(-2, -(HOLD_HEIGHT + 10), -2),
-                column.offset(2, 0, 2),
-                Blocks.AIR.defaultBlockState(),
-                3);
+                site.two(), column.offset(-2, -depth, -2), column.offset(2, 0, 2), Blocks.AIR.defaultBlockState(), 3);
     }
 
     private static boolean inArea(Site site, BlockingLoads.Load load) {
@@ -212,6 +219,85 @@ public class SeamAscentTest {
                     log.warnings().size() == 1,
                     "expected one warning that the arrival was not ready, got %s",
                     log.warnings());
+            helper.succeed();
+        });
+    }
+
+    /**
+     * A pod with a rider inside the zone of a ceiling has an ascent, keyed by the pod, and no entry among the approaches
+     * served to riders; outside the zone it has neither, and its descent track never mixed with the rise.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aRisingPodHasAnAscentThatIsNotServedAndEndsOutsideTheZone(GameTestHelper helper) {
+        Site site = Site.of(helper, LIFECYCLE_SITE);
+        MockPlayer mock = MockPlayers.join(helper, "seam-ascent-pod");
+        int ceilingY = TestLayers.dimensionBand(site.two()).maxY();
+        int outsideDepth = LayerTuning.DEFAULT.seamFloorMargin() + OUTSIDE_ZONE;
+        PodEntity[] pods = new PodEntity[1];
+        boolean[] ticking = {false};
+        boolean[] left = {false};
+        int[] outsideTicks = {0};
+        TickTimes.restart();
+        FarChunks.awaitAllEntityTicking(
+                helper,
+                site.two(),
+                List.of(BlockPos.containing(site.x(), ceilingY - HOLD_HEIGHT, site.z())),
+                () -> ticking[0] = true);
+        TestTicks.each(helper, () -> {
+            if (!ticking[0]) {
+                return;
+            }
+            if (pods[0] == null) {
+                carveShaft(site, ceilingY, outsideDepth + 10);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, site.two());
+                pod.setPos(site.x(), ceilingY - HOLD_HEIGHT, site.z());
+                pod.setDeltaMovement(Vec3.ZERO);
+                site.two().addFreshEntity(pod);
+                pods[0] = pod;
+                mock.teleportTo(site.two(), new Vec3(site.x(), ceilingY - HOLD_HEIGHT, site.z()), 0, 0);
+                expect(helper, mock.player().startRiding(pod, true, false), "the mock could not board the pod");
+                return;
+            }
+            PodEntity pod = pods[0];
+            double y = ceilingY - (left[0] ? outsideDepth : HOLD_HEIGHT);
+            pod.setPos(site.x(), y, site.z());
+            pod.setDeltaMovement(Vec3.ZERO);
+            if (!left[0]) {
+                if (SeamStreaming.ascentOf(pod.getUUID()).isEmpty()) {
+                    return;
+                }
+                expect(
+                        helper,
+                        SeamStreaming.ascentOf(pod.getUUID())
+                                .orElseThrow()
+                                .lower()
+                                .equals(site.one().dimension()),
+                        "the ascent does not stream layer 1");
+                expect(
+                        helper,
+                        SeamStreaming.approaches().stream()
+                                .noneMatch(approach -> approach.root().equals(pod.getUUID())),
+                        "a rise is served to riders as an approach: %s",
+                        SeamStreaming.approaches());
+                expect(
+                        helper,
+                        SeamStreaming.approachOf(pod.getUUID()).isEmpty(),
+                        "a pod at a ceiling has a descent track");
+                left[0] = true;
+                return;
+            }
+            if (++outsideTicks[0] < 5) {
+                return;
+            }
+            expect(
+                    helper,
+                    SeamStreaming.ascentOf(pod.getUUID()).isEmpty(),
+                    "the ascent outlived the pod leaving the zone");
+            expect(
+                    helper,
+                    SeamStreaming.approachOf(pod.getUUID()).isEmpty(),
+                    "a pod outside both zones has a descent track");
+            mock.player().stopRiding();
             helper.succeed();
         });
     }
