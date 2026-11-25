@@ -16,9 +16,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Lets the client go on mining a pod-only block while the server wears its pick (ADR 0069). Target:
- * {@code MultiPlayerGameMode.sameDestroyTarget(BlockPos)}, at its return. Vanilla takes a held stack that differs in any
- * component, damage included, for a new tool and starts the block again, so each point of wear the server sends would
- * reset the crack to nothing. No Fabric event reaches it.
+ * {@code MultiPlayerGameMode.sameDestroyTarget(BlockPos)}, at its return. Vanilla takes a held stack that differs in
+ * any component, damage included, for a new tool and starts the block again, so each point of wear the server sends
+ * would reset the crack to nothing. No Fabric event reaches it.
  */
 @Mixin(MultiPlayerGameMode.class)
 public abstract class MultiPlayerGameModeMixin {

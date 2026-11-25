@@ -13,8 +13,9 @@ import net.minecraft.world.item.Item;
  *
  * @param breakTicks     ticks a tool needs for one block, whatever its enchantments, effects or footing
  * @param stopSlackTicks ticks short of {@code breakTicks} that a STOP may come and still break the block. The break
- *     time is a floor, and vanilla's own check would let a STOP through at 0.7 of it; the slack only covers a tick
- *     of network and tick-order skew between the client's count and the server's
+ *     time is a floor, and vanilla's own check would let a STOP through at 0.7 of it; the slack only covers the skew
+ *     between the client's count and the server's. The integrated client was measured 5 ticks ahead under load, and a
+ *     network or a lag spike adds more, so 20 ticks (1 s, under 2% of the floor) keeps a legitimate break from failing
  * @param tools          the item tag of what counts as a tool: pickaxes, axes, shovels, hoes, swords and spears
  * @param durableShare the share of a durable tool's maximum durability one block costs, in any layer
  * @param durableTools the item tag of the tools that survive a block: diamond and better, and what a pack adds
@@ -32,7 +33,7 @@ public record HandBreakTuning(
         int soundTicks,
         int messageTicks) {
     public static final HandBreakTuning DEFAULT =
-            new HandBreakTuning(1200, 5, tool("hand_break/tools"), 0.5, tool("hand_break/durable"), 4, 10, 40);
+            new HandBreakTuning(1200, 20, tool("hand_break/tools"), 0.5, tool("hand_break/durable"), 4, 10, 40);
 
     public HandBreakTuning {
         if (breakTicks < 2) {

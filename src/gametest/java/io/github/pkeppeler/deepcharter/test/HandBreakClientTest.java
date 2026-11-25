@@ -27,9 +27,10 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 
 /**
- * Client GameTest for #858 (ADR 0069): the real client mines pod-only crust as the attack button does, and the client and
- * the server agree. A diamond pick breaks the block on both sides, with no ghost break and no block that comes back, and
- * so does an iron pick, which the block destroys as it goes; a bare hand breaks it on neither, however long it swings.
+ * Client GameTest for #858 (ADR 0069): the real client mines pod-only crust as the attack button does, and the client
+ * and the server agree. A diamond pick breaks the block on both sides, with no ghost break and no block that comes
+ * back, and so does an iron pick, which the block destroys as it goes; a bare hand breaks it on neither, however long
+ * it swings.
  */
 public class HandBreakClientTest implements FabricClientGameTest {
     private static final int X = 9300;
@@ -115,7 +116,10 @@ public class HandBreakClientTest implements FabricClientGameTest {
                 "the iron pick was not destroyed by the block");
     }
 
-    /** A room in {@code layer} at column {@code x} with a crust block in front of the real player, who holds nothing yet. Returns the crust's position. */
+    /**
+     * A room in {@code layer} at column {@code x} with a crust block in front of the real player, who holds nothing
+     * yet. Returns the crust's position.
+     */
     private static BlockPos prepare(TwoPlayerServer two, int layer, int x) {
         return two.server().computeOnServer(server -> {
             ServerLevel level = TestLayers.level(server, layer);
@@ -138,9 +142,10 @@ public class HandBreakClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Mines for up to {@code limit} ticks with the attack button held (the pin is on, see {@link EvidencePins#attackHeld}).
-     * With {@code bites}, the client's progress must have moved by then (the pin is the only miner, nothing steps the game mode here).
-     * Returns the ticks until the client saw the block gone, or {@code limit} when it never did; when {@code expectBreak} the block must go.
+     * Mines for up to {@code limit} ticks with the attack button held (the pin is on, see {@link
+     * EvidencePins#attackHeld}). With {@code bites}, the client's progress must have moved by then (the pin is the
+     * only miner, nothing steps the game mode here). Returns the ticks until the client saw the block gone, or {@code
+     * limit} when it never did; when {@code expectBreak} the block must go.
      */
     private static int mine(
             ClientGameTestContext context, BlockPos target, int limit, boolean bites, boolean expectBreak) {
@@ -158,7 +163,10 @@ public class HandBreakClientTest implements FabricClientGameTest {
         return limit;
     }
 
-    /** Waits for the client to hold the crust the server placed: a block set on the server reaches the client a few ticks later, and a new layer is a new level. */
+    /**
+     * Waits for the client to hold the crust the server placed: a block set on the server reaches the client a few
+     * ticks later, and a new layer is a new level.
+     */
     private static void awaitCrust(ClientGameTestContext context, BlockPos target) {
         ClientWait.until(
                 context,
@@ -186,7 +194,9 @@ public class HandBreakClientTest implements FabricClientGameTest {
                                         + client.player.getXRot()));
     }
 
-    /** What the client holds of the block, for a failure message: its block, the player's game mode and the held item. */
+    /**
+     * What the client holds of the block, for a failure message: its block, the player's game mode and the held item.
+     */
     private static String clientFacts(ClientGameTestContext context, BlockPos target) {
         return context.computeOnClient(
                 client -> client.level == null || client.player == null || client.gameMode == null
@@ -210,7 +220,9 @@ public class HandBreakClientTest implements FabricClientGameTest {
                         TestLayers.level(server, layer).getBlockState(target).is(LayerBlocks.BREACH_CRUST));
     }
 
-    /** The real client's player, who joined before the mock ({@link TwoPlayerServer} joins the mock beside the first). */
+    /**
+     * The real client's player, who joined before the mock ({@link TwoPlayerServer} joins the mock beside the first).
+     */
     private static ServerPlayer realPlayer(MinecraftServer server) {
         return server.getPlayerList().getPlayers().getFirst();
     }

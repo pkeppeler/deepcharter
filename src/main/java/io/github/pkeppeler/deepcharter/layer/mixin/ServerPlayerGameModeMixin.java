@@ -25,8 +25,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  *   <li>{@code ServerPlayerGameMode.tick()}, at its tail: while the player is mining, the cost, sparks and grinding of
  *       that tick;</li>
  *   <li>{@code handleBlockBreakAction(...)}, at its head: a new swing starts the count again;</li>
- *   <li>{@code destroyBlock(BlockPos)}, at its head, for a pod-only block only: pays the rest of the cost and breaks the
- *       block without a drop. It replaces vanilla's, which would drop the block's loot and damage the tool through
+ *   <li>{@code destroyBlock(BlockPos)}, at its head, for a pod-only block only: pays the rest of the cost and breaks
+ * the       block without a drop. It replaces vanilla's, which would drop the block's loot and damage the tool through
  *       Unbreaking.</li>
  * </ul>
  */

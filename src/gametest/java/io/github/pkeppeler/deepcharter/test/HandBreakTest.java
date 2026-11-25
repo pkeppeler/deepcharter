@@ -208,7 +208,10 @@ public class HandBreakTest {
         }
     }
 
-    /** A bare number for any tool and none for an item that is no tool, whatever it is enchanted with or the player feels. */
+    /**
+     * A bare number for any tool and none for an item that is no tool, whatever it is enchanted with or the player
+     * feels.
+     */
     @GameTest
     public void aToolMakesTheSameSlowProgressWhateverItsEnchantmentsAndEffects(GameTestHelper helper) {
         Rig rig = rig(helper, 1, X_PROGRESS, "hb-progress");
@@ -256,7 +259,10 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** An item that is no tool (a bare hand, a stick, a fishing rod, an elytra, shears) makes no progress, breaks nothing and is refused the swing. */
+    /**
+     * An item that is no tool (a bare hand, a stick, a fishing rod, an elytra, shears) makes no progress, breaks
+     * nothing and is refused the swing.
+     */
     @GameTest
     public void anItemThatIsNoToolMakesNoProgressAndBreaksNothing(GameTestHelper helper) {
         Rig one = rig(helper, 1, X_NO_BITE, "hb-notool-1");
@@ -300,7 +306,10 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** Nothing is refused for being too weak: every pickaxe, wood to netherite, breaks every kind of block in layers 1 to 3. */
+    /**
+     * Nothing is refused for being too weak: every pickaxe, wood to netherite, breaks every kind of block in layers 1
+     * to 3.
+     */
     @GameTest
     public void noToolIsRefusedForBeingTooWeakInAnyLayer(GameTestHelper helper) {
         List<Item> picks = new ArrayList<>(LESSER_PICKS);
@@ -371,9 +380,10 @@ public class HandBreakTest {
     }
 
     /**
-     * The block goes, drops nothing and costs half the pick, however many Unbreaking levels it carries and with Mending on it.
-     * It breaks only once every kind's chunk is entity-ticking: a drop in a chunk the server has not yet promoted is
-     * not found by an entity query, so an earlier read would pass the no-drop check without proving it (#872).
+     * The block goes, drops nothing and costs half the pick, however many Unbreaking levels it carries and with
+     * Mending on it. It breaks only once every kind's chunk is entity-ticking: a drop in a chunk the server has not
+     * yet promoted is not found by an entity query, so an earlier read would pass the no-drop check without proving
+     * it (#872).
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void eachKindCostsHalfTheToolWhateverUnbreakingSays(GameTestHelper helper) {
@@ -595,9 +605,9 @@ public class HandBreakTest {
     }
 
     /**
-     * A real mining run: START, then every tick the server's own, then STOP once the break time is up. The block holds until
-     * then, goes without a drop, and the pick has paid half its durability, with Unbreaking III, Efficiency V and Haste II
-     * on it and the player. Layer 2's stone drops cobblestone when it is mined as an ordinary block.
+     * A real mining run: START, then every tick the server's own, then STOP once the break time is up. The block holds
+     * until then, goes without a drop, and the pick has paid half its durability, with Unbreaking III, Efficiency V and
+     * Haste II on it and the player. Layer 2's stone drops cobblestone when it is mined as an ordinary block.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FULL_RUN_TICKS + 200)
     public void aFullMiningRunTakesTheBreakTicksAndPaysHalfTheTool(GameTestHelper helper) {
@@ -659,8 +669,8 @@ public class HandBreakTest {
 
     /**
      * A tool below diamond (every kind, with Unbreaking III and Mending on it) mines for the whole break time without
-     * breaking: the block holds and the pick is there, worn to its last point, until the break, where the block goes and
-     * the pick is destroyed, on the same call. Nothing drops.
+     * breaking: the block holds and the pick is there, worn to its last point, until the break, where the block goes
+     * and the pick is destroyed, on the same call. Nothing drops.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FULL_RUN_TICKS + 200)
     public void aToolBelowDiamondLastsTheBreakTimeAndIsDestroyedAsTheBlockGoes(GameTestHelper helper) {
@@ -774,7 +784,10 @@ public class HandBreakTest {
         });
     }
 
-    /** The campaign world's unbuilt depth counts as the layer below the last built, and costs half a pick like any other. */
+    /**
+     * The campaign world's unbuilt depth counts as the layer below the last built, and costs half a pick like any
+     * other.
+     */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE)
     public void deeperThanLayerTwoACrustCostsHalfAPick(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -815,8 +828,9 @@ public class HandBreakTest {
     }
 
     /**
-     * Sends START on the first tick the chunk is entity-ticking, then calls {@code perTick} with the ticks mined so far on
-     * every tick after. The two test bodies run in no fixed order in a tick, so START is this body's own first tick.
+     * Sends START on the first tick the chunk is entity-ticking, then calls {@code perTick} with the ticks mined so
+     * far on every tick after. The two test bodies run in no fixed order in a tick, so START is this body's own first
+     * tick.
      */
     private static void drive(GameTestHelper helper, Rig rig, BlockPos pos, IntConsumer perTick) {
         boolean[] ready = {false};
@@ -966,7 +980,10 @@ public class HandBreakTest {
         });
     }
 
-    /** Stopping and starting again throws away the count: what the first swing spent is wasted, and the block costs its whole price again. */
+    /**
+     * Stopping and starting again throws away the count: what the first swing spent is wasted, and the block costs its
+     * whole price again.
+     */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FULL_RUN_TICKS + 400)
     public void abortingAndStartingAgainWastesWhatWasSpent(GameTestHelper helper) {
         Rig rig = rig(helper, 2, X_ABORT, "hb-abort");
@@ -1091,7 +1108,10 @@ public class HandBreakTest {
         });
     }
 
-    /** Swapping the pick for an item that is no tool stops the spending and the progress; the pick put away keeps what it spent. */
+    /**
+     * Swapping the pick for an item that is no tool stops the spending and the progress; the pick put away keeps what
+     * it spent.
+     */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void swappingToAnItemThatIsNoToolStopsTheSpending(GameTestHelper helper) {
         Rig rig = rig(helper, 2, X_SWAP, "hb-swap");
@@ -1124,8 +1144,9 @@ public class HandBreakTest {
     }
 
     /**
-     * Changing the held item restarts the count, so a client cannot mine with one tool and finish with another. A wooden
-     * pick mines for most of the break time, a netherite pick is swapped in, and the STOP at the break time is refused.
+     * Changing the held item restarts the count, so a client cannot mine with one tool and finish with another. A
+     * wooden pick mines for most of the break time, a netherite pick is swapped in, and the STOP at the break time is
+     * refused.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FULL_RUN_TICKS + 200)
     public void changingTheHeldItemRestartsTheCount(GameTestHelper helper) {
@@ -1174,7 +1195,10 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** The mining count starts again on a block that is not pod-only, and an item that is no tool leaves it where it was. */
+    /**
+     * The mining count starts again on a block that is not pod-only, and an item that is no tool leaves it where it
+     * was.
+     */
     @GameTest
     public void theCountResetsOnAnOrdinaryBlockAndWaitsForATool(GameTestHelper helper) {
         Rig rig = rig(helper, 2, X_RESET, "hb-reset");
@@ -1212,8 +1236,8 @@ public class HandBreakTest {
     }
 
     /**
-     * (A) The crosshair readout says what a brute-forced block would cost the viewer's tool: a durable tool burns out, a
-     * lesser one is destroyed, and a bare hand is only told the block is pod-only.
+     * (A) The crosshair readout says what a brute-forced block would cost the viewer's tool: a durable tool burns out,
+     * a lesser one is destroyed, and a bare hand is only told the block is pod-only.
      */
     @GameTest
     public void theReadoutSaysWhatABruteForcedBlockWouldCostTheHeldTool(GameTestHelper helper) {

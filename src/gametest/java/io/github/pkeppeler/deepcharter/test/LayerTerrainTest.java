@@ -235,7 +235,10 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** Below layer 1 rock is pod-only (SPEC section 9, ADR 0069): an empty hand cannot break it; layer 1's is ordinary. {@link HandBreakTest} covers the tools that can. */
+    /**
+     * Below layer 1 rock is pod-only (SPEC section 9, ADR 0069): an empty hand cannot break it; layer 1's is ordinary.
+     * {@link HandBreakTest} covers the tools that can.
+     */
     @GameTest
     public void bareHandsCannotBreakDeepRock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-hands");

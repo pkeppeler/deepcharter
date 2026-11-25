@@ -35,10 +35,10 @@ public final class HandBreakCost {
     private HandBreakCost() {}
 
     /**
-     * One tick of mining: spends this tick's share of the cost, then the sparks, the grinding and the line that says the
-     * pick is burning out, on their cadences. Returns the ticks mined so far, which the caller keeps for the next tick
-     * and for {@link #breakByHand}. A block that is not pod-only, or an item that is no tool, returns {@code mined}
-     * unchanged, except that a block that is not pod-only starts the count again.
+     * One tick of mining: spends this tick's share of the cost, then the sparks, the grinding and the line that says
+     * the pick is burning out, on their cadences. Returns the ticks mined so far, which the caller keeps for the next
+     * tick and for {@link #breakByHand}. A block that is not pod-only, or an item that is no tool, returns {@code
+     * mined} unchanged, except that a block that is not pod-only starts the count again.
      */
     public static int grind(ServerPlayer player, ServerLevel level, BlockPos pos, Direction face, int mined) {
         BlockState state = level.getBlockState(pos);
@@ -63,13 +63,14 @@ public final class HandBreakCost {
     }
 
     /**
-     * Breaks a pod-only block for a player who has been mining it for {@code mined} ticks: refused for an item that is no
-     * tool, for a {@code timed} break (a STOP from the client) that comes more than {@code stopSlackTicks} short of the
-     * break time, since vanilla's own check would let it through at 0.7 of it, and for a block a
+     * Breaks a pod-only block for a player who has been mining it for {@code mined} ticks: refused for an item that is
+     * no tool, for a {@code timed} break (a STOP from the client) that comes more than {@code stopSlackTicks} short of
+     * the break time, since vanilla's own check would let it through at 0.7 of it, and for a block a
      * {@code PlayerBlockBreakEvents.BEFORE} listener vetoes (nothing is charged in any of these). A tool that cannot
      * pay what is due is used up and the block still goes. The block goes without a drop, a pulverised block, so brute
      * force is never an ore exploit, but with the events a hand break fires, so a gas pocket still vents and protection
-     * mods still veto. Creative players never come here. A refusal sends the client the block back, so it shows no ghost.
+     * mods still veto. Creative players never come here. A refusal sends the client the block back, so it shows no
+     * ghost.
      */
     public static boolean breakByHand(ServerPlayer player, ServerLevel level, BlockPos pos, int mined, boolean timed) {
         boolean broken = tryBreak(player, level, pos, mined, timed);
@@ -137,15 +138,18 @@ public final class HandBreakCost {
     }
 
     /**
-     * The points of {@code total} spent after {@code ticks} ticks of mining, evenly over the first {@code breakTicks - 1}
-     * and all but the last point, which the break takes.
+     * The points of {@code total} spent after {@code ticks} ticks of mining, evenly over the first {@code breakTicks -
+     * 1} and all but the last point, which the break takes.
      */
     private static int scheduled(int total, int ticks) {
         int span = LayerTuning.DEFAULT.handBreak().breakTicks() - 1;
         return (int) ((long) Math.max(total - 1, 0) * Math.min(ticks, span) / span);
     }
 
-    /** Damages {@code tool} by {@code amount} directly, and destroys it, as vanilla does, when the damage reaches its maximum. */
+    /**
+     * Damages {@code tool} by {@code amount} directly, and destroys it, as vanilla does, when the damage reaches its
+     * maximum.
+     */
     private static void spend(ServerPlayer player, ItemStack tool, int amount) {
         if (amount <= 0) {
             return;

@@ -31,8 +31,8 @@ import net.minecraft.world.level.block.state.BlockState;
  *
  * <p>This class holds what both sides must agree on, so it runs on the client as well: the predicate, the layer a block
  * counts as, what a tool costs, the destroy progress (read by the client's prediction and by the server's check through
- * {@code BlockStateBaseMixin}, so the client never predicts a break the server refuses) and the swing callback. Creative
- * players are exempt from all of it.
+ * {@code BlockStateBaseMixin}, so the client never predicts a break the server refuses) and the swing callback.
+ * Creative players are exempt from all of it.
  */
 public final class HandBreak {
     /** Rock below layer 1 is pod-only; {@code #c:ores} is part of it. */
@@ -43,7 +43,9 @@ public final class HandBreak {
     public enum Wear {
         /** Not a tool (a bare hand, a stick, a fishing rod): it makes no progress and cannot break the block. */
         NONE,
-        /** A tool that cannot be damaged (Unbreakable): it breaks the block and pays nothing, as nothing can wear it. */
+        /**
+         * A tool that cannot be damaged (Unbreakable): it breaks the block and pays nothing, as nothing can wear it.
+         */
         FREE,
         /** A diamond or better tool, in {@code deepcharter:hand_break/durable}: a share of its durability. */
         SHARE,
@@ -52,7 +54,10 @@ public final class HandBreak {
     }
 
     private static final String FIRST_TRY_KEY = "deepcharter.layer.pod_only.first_try";
-    /** The line for a held item that is no tool; the client says it too, for a swing it refuses before the server hears of it. */
+    /**
+     * The line for a held item that is no tool; the client says it too, for a swing it refuses before the server hears
+     * of it.
+     */
     public static final String CANNOT_BITE_KEY = "deepcharter.layer.pod_only.cannot_bite";
 
     /** Players the server has told each line, for this session and not saved: it forgets one on disconnect. */
@@ -83,15 +88,18 @@ public final class HandBreak {
         return state.is(DEEP_ROCK) && layerOf(level, pos) > 1;
     }
 
-    /** True when a swing or a break by this player is governed by the rule: not a creative player, and a pod-only block. */
+    /**
+     * True when a swing or a break by this player is governed by the rule: not a creative player, and a pod-only block.
+     */
     public static boolean governs(Player player, Level level, BlockPos pos, BlockState state) {
         return !player.isCreative() && isPodOnly(level, pos, state);
     }
 
     /**
      * The layer a block counts as, which decides whether rock is pod-only (below layer 1) and nothing else: the rule is
-     * the same in every layer. The crust counts as the layer whose floor it is. Unbuilt depth of the campaign world counts as the layer below the last one built; the surface and a level
-     * outside the chain (the Nether, the End, a dimension type given inline) count as layer 1. It never throws.
+     * the same in every layer. The crust counts as the layer whose floor it is. Unbuilt depth of the campaign world
+     * counts as the layer below the last one built; the surface and a level outside the chain (the Nether, the End, a
+     * dimension type given inline) count as layer 1. It never throws.
      */
     public static int layerOf(Level level, BlockPos pos) {
         // A dimension type a data pack gives inline has no key, which LayerChain rejects: such a level is outside the
@@ -139,8 +147,9 @@ public final class HandBreak {
     }
 
     /**
-     * True when {@code now} is the stack {@code began} was, worn down: the same item and components but for the damage. The
-     * client uses it to go on mining while the server wears the pick, which vanilla would take for a new tool and restart.
+     * True when {@code now} is the stack {@code began} was, worn down: the same item and components but for the
+     * damage. The client uses it to go on mining while the server wears the pick, which vanilla would take for a new
+     * tool and restart.
      */
     public static boolean sameButWorn(ItemStack began, ItemStack now) {
         if (!ItemStack.isSameItem(began, now)) {

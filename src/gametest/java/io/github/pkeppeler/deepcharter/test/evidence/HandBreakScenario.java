@@ -16,10 +16,11 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 
 /**
- * Evidence scenario "hand-break" (#858, ADR 0069): a survival player with a diamond pick brute-forces a block of breach crust on the stage of
- * the block readout. The stills are the start (the readout says the pick would burn out, the pick's durability bar full), the middle (sparks,
- * the action bar line, the crack well along, the bar shorter) and the break (the crust gone, the bar all but empty); the frames show it
- * advancing. A minute of real mining is 1200 ticks, so a frame comes every {@link #TICKS_PER_FRAME}.
+ * Evidence scenario "hand-break" (#858, ADR 0069): a survival player with a diamond pick brute-forces a block of
+ * breach crust on the stage of the block readout. The stills are the start (the readout says the pick would burn out,
+ * the pick's durability bar full), the middle (sparks, the action bar line, the crack well along, the bar shorter)
+ * and the break (the crust gone, the bar all but empty); the frames show it advancing. A minute of real mining is 1200
+ * ticks, so a frame comes every {@link #TICKS_PER_FRAME}.
  */
 public class HandBreakScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 30;

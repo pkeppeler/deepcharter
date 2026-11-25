@@ -7,11 +7,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 
 /**
- * The client's half of the swing rule for pod-only blocks (ADR 0069): a swing with an item that is no tool (a bare hand) is refused
- * here, so no crack starts, and since the server never hears of it the client says so itself, once a session. A tool goes on to the server, which tells it the first-try line.
+ * The client's half of the swing rule for pod-only blocks (ADR 0069): a swing with an item that is no tool (a bare
+ * hand) is refused here, so no crack starts, and since the server never hears of it the client says so itself, once a
+ * session. A tool goes on to the server, which tells it the first-try line.
  */
 final class HandBreakClient {
-    /** Whether this session has said an item that is no tool cannot do it. Client thread only; a disconnect starts the session again. */
+    /**
+     * Whether this session has said an item that is no tool cannot do it. Client thread only; a disconnect starts the
+     * session again.
+     */
     private static boolean toldCannotBite;
 
     private HandBreakClient() {}
