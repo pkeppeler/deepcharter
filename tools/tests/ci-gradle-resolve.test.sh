@@ -212,6 +212,7 @@ check "on GitHub Actions, no artifact named: the probe asks a known-good URL on 
 for f in "$tools/../gradle/$init_script" "$tools/../build.gradle.kts"; do
   expect_line "$(basename "$f") names the same mirror URL" "\"$mirror/\"" "$f"
 done
+expect_line "ci-gradle-resolve.sh names the same mirror URL" "mirror=$mirror" "$tools/ci-gradle-resolve.sh"
 
 status=0
 (cd "$work" && bash "$tools/ci-gradle-resolve.sh" >/dev/null 2>&1) || status=$?
