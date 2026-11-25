@@ -139,7 +139,7 @@ public class BoltDriverPacingTest {
                 return;
             }
             if (fights[1] == null) {
-                Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+                Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
                 tally.setPos(corridor.stand(11));
                 tally.setNoAi(true);
                 level.addFreshEntity(tally);
