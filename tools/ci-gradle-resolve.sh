@@ -69,15 +69,17 @@ trap 'rm -f "$log" "$report"' EXIT
 diagnose() {
   echo "::group::Download diagnostics (failure $run of $attempts)"
   if [[ $run -gt 1 ]]; then
-    echo "This run's --info lines that name an HTTP status or a cached result (at most 40):"
+    # The last 40: the failing resolution is near the end, after the build's own --info lines.
+    echo "This run's last --info lines that name an HTTP status or a cached result (at most 40):"
     grep -E 'status code|HTTP [0-9]{3}|Could not (GET|HEAD)|Resource missing|[Cc]ached|disabled due to' "$log" \
-      | head -n 40 || true
+      | tail -n 40 || true
   else
     echo "The first run is not --info; the retries' diagnostics list the HTTP statuses."
   fi
   local gav urls=() url answer
   gav=$(grep -oE "could not resolve plugin artifact '[^']+'|Could not find [A-Za-z0-9._-]+:[A-Za-z0-9._-]+:[A-Za-z0-9._+-]+" \
     "$report" | head -n 1 | sed -E "s/^could not resolve plugin artifact '//; s/'\$//; s/^Could not find //" || true)
+  gav=${gav%.} # Gradle ends "Could not find g:a:v." with a full stop that is not part of the version
   if [[ $gav =~ ^([^:]+):([^:]+):([^:]+)$ ]]; then
     local path="${BASH_REMATCH[1]//.//}/${BASH_REMATCH[2]}/${BASH_REMATCH[3]}/${BASH_REMATCH[2]}-${BASH_REMATCH[3]}.pom"
     urls=("https://plugins.gradle.org/m2/$path" "https://repo.maven.apache.org/maven2/$path")

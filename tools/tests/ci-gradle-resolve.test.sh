@@ -55,6 +55,12 @@ case ${modes[$n]} in
     echo "   > Could not GET 'https://repo.maven.apache.org/maven2/a/b/1/b-1.pom'. Received status code 429 from server: Too Many Requests"
     exit 1
     ;;
+  missing) # Gradle ends "Could not find g:a:v." with a full stop, which is not part of the version
+    echo "FAILURE: Build failed with an exception."
+    echo "> Could not resolve all files for configuration ':compileClasspath'."
+    echo "   > Could not find net.fabricmc:fabric-loader:0.17.2."
+    exit 1
+    ;;
   refused)
     echo "FAILURE: Build failed with an exception."
     echo "   > Connect to repo.maven.apache.org:443 [repo.maven.apache.org/1.2.3.4] failed: Connection refused"
@@ -162,6 +168,9 @@ check "no artifact named: the probe asks one known-good URL on each host" \
   "$portal/org/gradle/toolchains/foojay-resolver-convention/org.gradle.toolchains.foojay-resolver-convention.gradle.plugin/1.0.0/org.gradle.toolchains.foojay-resolver-convention.gradle.plugin-1.0.0.pom;$central/junit/junit/4.13.2/junit-4.13.2.pom" \
   "$(sort -u "$work/curl" | paste -sd ';')"
 check "a failing probe never fails the script" "0|gradlew classes;gradlew --info classes|yes" "$(STUB_CURL_FAIL=1 run 'plugin ok')"
+check "Could not find g:a:v.: the probe drops Gradle's full stop from the version" \
+  "$portal/net/fabricmc/fabric-loader/0.17.2/fabric-loader-0.17.2.pom;$central/net/fabricmc/fabric-loader/0.17.2/fabric-loader-0.17.2.pom" \
+  "$(run 'missing ok' >/dev/null; paste -sd ';' "$work/curl")"
 check "connection refused, then success: passes after one retry" "0|gradlew classes;gradlew --info classes|yes" "$(run 'refused ok')"
 check "download failure every time: fails after three runs" \
   "1|gradlew classes;gradlew --info classes;gradlew --refresh-dependencies --info classes|yes" "$(run plugin)"
