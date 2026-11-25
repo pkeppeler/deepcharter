@@ -77,8 +77,7 @@ public final class HandbookControls {
                     "pod_screen",
                     List.of(
                             new Row("open", List.of(options -> options.keyShift, options -> options.keyUse)),
-                            new Row("seated", List.of(options -> PodScreenKeys.OPEN)),
-                            new Row("fit"))),
+                            new Row("seated", List.of(options -> PodScreenKeys.OPEN)))),
             new Sheet("scanner", List.of(new Row("map"), new Row("reach"))));
 
     private HandbookControls() {}
