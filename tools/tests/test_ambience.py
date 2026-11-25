@@ -22,6 +22,7 @@ sys.path.insert(0, str(SOUNDS))
 import ambience  # noqa: E402
 import first_sounds  # noqa: E402
 import soundgen  # noqa: E402
+from vorbis_guard import needs_mono_vorbis  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 JAVA = ROOT / "src/main/java/io/github/pkeppeler/deepcharter"
@@ -289,6 +290,7 @@ class LoudnessTest(unittest.TestCase):
 
 
 @unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
+@needs_mono_vorbis
 class BuildTaggedTest(unittest.TestCase):
     """A source whose file does not say CC BY is refused when it is `tagged` and accepted when it is not."""
 
