@@ -33,6 +33,11 @@ import java.util.Arrays;
  * @param seamRefreshTicks  ticks between two refreshes of the ticket under a vehicle that stays in the zone
  * @param seamTicketTimeout ticks the arrival ticket outlasts its last refresh
  * @param seamRecentreChunks chunks (Chebyshev) a vehicle must be from the arrival area's centre before the area moves to it: one area per vehicle
+ * @param seamBytesPerTick  estimated bytes of arrival-area chunks the server sends a rider each tick (#1185); at least one chunk goes each tick
+ * @param seamMissedWindowTicks ticks after a crossing that the server keeps the chunks it skipped, for a client that reports them missing
+ * @param seamSwapRadius    chunks out from the arrival chunk that a rider must hold before the crossing may be a swap
+ *     (#1229); at most the chunks the server can send ahead, {@code seamRadius} less 1
+ * @param handBreak       what it takes to brute-force a pod-only block with a hand tool (#858, ADR 0069)
  */
 public record LayerTuning(
         int seaLevel,
@@ -58,9 +63,40 @@ public record LayerTuning(
         int seamRadius,
         int seamRefreshTicks,
         int seamTicketTimeout,
-        int seamRecentreChunks) {
+        int seamRecentreChunks,
+        int seamBytesPerTick,
+        int seamMissedWindowTicks,
+        int seamSwapRadius,
+        HandBreakTuning handBreak) {
     public static final LayerTuning DEFAULT = new LayerTuning(
-            63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 1.0 / 3, 6, 0.32, 160, 10, 3.9, 4, 20, 100, 2);
+            63,
+            3.28,
+            3,
+            2,
+            4,
+            384,
+            24,
+            56,
+            10f,
+            15,
+            100,
+            5f,
+            4f,
+            4f,
+            1.0 / 3,
+            6,
+            0.32,
+            160,
+            10,
+            3.9,
+            4,
+            20,
+            100,
+            2,
+            49_152,
+            100,
+            3,
+            HandBreakTuning.DEFAULT);
 
     public LayerTuning {
         if (glowcapLight < 0 || glowcapLight > 15) {
@@ -69,6 +105,17 @@ public record LayerTuning(
         if (seamRefreshTicks < 1 || seamRefreshTicks >= seamTicketTimeout) {
             throw new IllegalArgumentException("seamRefreshTicks must be at least 1 and under seamTicketTimeout "
                     + seamTicketTimeout + ", or the ticket lapses between refreshes; got " + seamRefreshTicks);
+        }
+        if (seamBytesPerTick < 16_384) {
+            throw new IllegalArgumentException("seamBytesPerTick must be at least 16384, got " + seamBytesPerTick);
+        }
+        if (seamMissedWindowTicks < 20) {
+            throw new IllegalArgumentException(
+                    "seamMissedWindowTicks must be at least 20, got " + seamMissedWindowTicks);
+        }
+        if (seamSwapRadius < 1 || seamSwapRadius > seamRadius - 1) {
+            throw new IllegalArgumentException("seamSwapRadius must be from 1 to the send radius " + (seamRadius - 1)
+                    + " (seamRadius less 1), got " + seamSwapRadius);
         }
         if (seamRecentreChunks < 1) {
             throw new IllegalArgumentException("seamRecentreChunks must be at least 1, got " + seamRecentreChunks);

@@ -134,10 +134,21 @@ public final class SeamStreaming {
     /** The approach of the root vehicle with this UUID, if it is streaming a level below now. */
     public static Optional<Approach> approachOf(UUID root) {
         Track track = TRACKS.get(root);
-        if (track == null || track.streaming == null) {
+        return track == null ? Optional.empty() : approachOf(root, track);
+    }
+
+    /** Every approach under way now: one per root vehicle that is streaming a level below. */
+    public static List<Approach> approaches() {
+        List<Approach> approaches = new ArrayList<>();
+        TRACKS.forEach((root, track) -> approachOf(root, track).ifPresent(approaches::add));
+        return approaches;
+    }
+
+    private static Optional<Approach> approachOf(UUID root, Track track) {
+        Streaming streaming = track.streaming;
+        if (streaming == null) {
             return Optional.empty();
         }
-        Streaming streaming = track.streaming;
         return Optional.of(new Approach(
                 root,
                 streaming.riders(),

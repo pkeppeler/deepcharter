@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
@@ -39,7 +40,7 @@ public class PodMovementTest {
             MockPlayer pilot = MockPlayers.join(helper, "pod-pilot");
             pilot.teleportTo(helper.getLevel(), pod.position(), yaw, 0f);
             if (!pilot.player().startRiding(pod)) {
-                throw helper.assertionException("the pilot could not mount the pod");
+                throw failure(helper, "the pilot could not mount the pod");
             }
             return new Rig(helper, pod, pilot);
         }
@@ -79,8 +80,8 @@ public class PodMovementTest {
             try {
                 Vec3 moved = rig.pod.position().subtract(start);
                 if (moved.x > -1.0 || Math.abs(moved.z) > EPSILON) {
-                    throw helper.assertionException(
-                            "facing west, forward should drive the pod west along x only, moved %s", moved);
+                    throw failure(
+                            helper, "facing west, forward should drive the pod west along x only, moved %s", moved);
                 }
                 helper.succeed();
             } finally {
@@ -100,8 +101,7 @@ public class PodMovementTest {
                 boolean alongX = Math.abs(moved.x) > 1.0 && Math.abs(moved.z) < EPSILON;
                 boolean alongZ = Math.abs(moved.z) > 1.0 && Math.abs(moved.x) < EPSILON;
                 if (!alongX && !alongZ) {
-                    throw helper.assertionException(
-                            "forward and right together must move along one axis, moved %s", moved);
+                    throw failure(helper, "forward and right together must move along one axis, moved %s", moved);
                 }
                 helper.succeed();
             } finally {
@@ -121,8 +121,8 @@ public class PodMovementTest {
                 try {
                     Vec3 moved = rig.pod.position().subtract(mid);
                     if (Math.abs(moved.z) > EPSILON || Math.abs(moved.x) < 0.5) {
-                        throw helper.assertionException(
-                                "after switching to strafe the pod should move along x only, moved %s", moved);
+                        throw failure(
+                                helper, "after switching to strafe the pod should move along x only, moved %s", moved);
                     }
                     helper.succeed();
                 } finally {
@@ -143,9 +143,11 @@ public class PodMovementTest {
                 helper.runAfterDelay(5, () -> {
                     try {
                         if (rig.pod.position().distanceTo(stopped) > EPSILON) {
-                            throw helper.assertionException(
+                            throw failure(
+                                    helper,
                                     "the pod should stand still with no input, drifted from %s to %s",
-                                    stopped, rig.pod.position());
+                                    stopped,
+                                    rig.pod.position());
                         }
                         helper.succeed();
                     } finally {
@@ -165,17 +167,22 @@ public class PodMovementTest {
             double peak = rig.pod.getY();
             if (peak - startY < 1.0 || !rig.pod.flying()) {
                 rig.finish();
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "holding jump should climb at least a block with the rotor on, rose %s, flying %s",
-                        peak - startY, rig.pod.flying());
+                        peak - startY,
+                        rig.pod.flying());
             }
             rig.pilot.releaseInput();
             helper.runAfterDelay(8, () -> {
                 try {
                     if (rig.pod.getY() >= peak - 0.2 || rig.pod.flying()) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "releasing jump should let the pod fall, peak %s now %s, flying %s",
-                                peak, rig.pod.getY(), rig.pod.flying());
+                                peak,
+                                rig.pod.getY(),
+                                rig.pod.flying());
                     }
                     helper.succeed();
                 } finally {
@@ -194,8 +201,10 @@ public class PodMovementTest {
         helper.runAfterDelay(10, () -> {
             try {
                 if (rig.pod.getY() - startY > EPSILON || rig.pod.flying()) {
-                    throw helper.assertionException(
-                            "a pod loaded to its engine power should not lift, rose %s", rig.pod.getY() - startY);
+                    throw failure(
+                            helper,
+                            "a pod loaded to its engine power should not lift, rose %s",
+                            rig.pod.getY() - startY);
                 }
                 helper.succeed();
             } finally {
@@ -212,14 +221,14 @@ public class PodMovementTest {
         helper.runAfterDelay(50, () -> {
             try {
                 if (!rig.pod.onGround()) {
-                    throw helper.assertionException("the pod should have landed by now, at y %s", rig.pod.getY());
+                    throw failure(helper, "the pod should have landed by now, at y %s", rig.pod.getY());
                 }
                 if (rig.pod.hull() >= hullBefore) {
-                    throw helper.assertionException(
-                            "a fall of about 12 blocks should damage the hull, hull %s", rig.pod.hull());
+                    throw failure(helper, "a fall of about 12 blocks should damage the hull, hull %s", rig.pod.hull());
                 }
                 if (rig.pilot.player().getHealth() != healthBefore) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "the seated pilot should take no fall damage, health %s",
                             rig.pilot.player().getHealth());
                 }
@@ -236,9 +245,11 @@ public class PodMovementTest {
         helper.runAfterDelay(30, () -> {
             try {
                 if (!pod.onGround() || pod.getDeltaMovement().y != 0) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "a landed pod should rest with no vertical speed, onGround %s, velocity %s",
-                            pod.onGround(), pod.getDeltaMovement());
+                            pod.onGround(),
+                            pod.getDeltaMovement());
                 }
                 helper.succeed();
             } finally {
@@ -256,9 +267,12 @@ public class PodMovementTest {
         helper.runAfterDelay(30, () -> {
             try {
                 if (pod.getY() != startY || pod.getDeltaMovement().y != 0) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "a pod with no gravity should hold at y %s with no vertical speed, got y %s, velocity %s",
-                            startY, pod.getY(), pod.getDeltaMovement());
+                            startY,
+                            pod.getY(),
+                            pod.getDeltaMovement());
                 }
                 helper.succeed();
             } finally {
@@ -288,15 +302,21 @@ public class PodMovementTest {
                 double speed = pod.getDeltaMovement().y;
                 double dropped = startY - pod.getY();
                 if (Math.abs(speed - expected) > 0.002) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "after %s ticks the speed should have decayed from %s to about %s, it is %s",
-                            coastTicks, launch, expected, speed);
+                            coastTicks,
+                            launch,
+                            expected,
+                            speed);
                 }
                 // The distance a coast of this length covers is the launch speed summed with the drag, 2.8 blocks here.
                 if (dropped < 2.5 || dropped > 3.1 || pod.getY() - (FLOOR_Y + 1) < 2) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y %s",
-                            dropped, pod.getY());
+                            dropped,
+                            pod.getY());
                 }
                 helper.succeed();
             } finally {
@@ -315,8 +335,7 @@ public class PodMovementTest {
         helper.runAfterDelay(5, () -> {
             try {
                 if (pod.getY() >= startY) {
-                    throw helper.assertionException(
-                            "a pod with gravity should fall from y %s, got y %s", startY, pod.getY());
+                    throw failure(helper, "a pod with gravity should fall from y %s, got y %s", startY, pod.getY());
                 }
                 helper.succeed();
             } finally {
@@ -335,9 +354,11 @@ public class PodMovementTest {
         helper.runAfterDelay(10, () -> {
             try {
                 if (rig.pod.getY() <= startY) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "a no-gravity pod should still climb on thrust from y %s, got y %s",
-                            startY, rig.pod.getY());
+                            startY,
+                            rig.pod.getY());
                 }
                 helper.succeed();
             } finally {
@@ -358,9 +379,12 @@ public class PodMovementTest {
                 if (rig.pod.getY() > limit + EPSILON
                         || rig.pod.getY() < limit - 0.2
                         || rig.pod.getDeltaMovement().y > 0) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "the pod should stop against the ceiling at y %s, y %s, velocity %s",
-                            limit, rig.pod.getY(), rig.pod.getDeltaMovement());
+                            limit,
+                            rig.pod.getY(),
+                            rig.pod.getDeltaMovement());
                 }
                 helper.succeed();
             } finally {
@@ -383,7 +407,7 @@ public class PodMovementTest {
             } finally {
                 pod.setCargoMass(0f);
             }
-            throw helper.assertionException("a negative cargo mass must throw, not add lift");
+            throw failure(helper, "a negative cargo mass must throw, not add lift");
         } finally {
             pod.discard();
             clearFloor(helper);
@@ -397,11 +421,10 @@ public class PodMovementTest {
         helper.runAfterDelay(30, () -> {
             try {
                 if (!pod.onGround()) {
-                    throw helper.assertionException("the pod should have landed by now, at y %s", pod.getY());
+                    throw failure(helper, "the pod should have landed by now, at y %s", pod.getY());
                 }
                 if (pod.hull() != hullBefore) {
-                    throw helper.assertionException(
-                            "a drop of about 2 blocks should not damage the hull, hull %s", pod.hull());
+                    throw failure(helper, "a drop of about 2 blocks should not damage the hull, hull %s", pod.hull());
                 }
                 helper.succeed();
             } finally {
@@ -420,8 +443,11 @@ public class PodMovementTest {
         helper.runAfterDelay(10, () -> {
             try {
                 if (rig.pod.position().distanceTo(start) > EPSILON || rig.pod.flying()) {
-                    throw helper.assertionException(
-                            "a stranded pod should ignore input, moved from %s to %s", start, rig.pod.position());
+                    throw failure(
+                            helper,
+                            "a stranded pod should ignore input, moved from %s to %s",
+                            start,
+                            rig.pod.position());
                 }
                 helper.succeed();
             } finally {
