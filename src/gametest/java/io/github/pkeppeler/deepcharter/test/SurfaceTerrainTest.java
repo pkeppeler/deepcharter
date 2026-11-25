@@ -125,8 +125,8 @@ public class SurfaceTerrainTest {
             for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
                     chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
                     chunkZ++) {
-                // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a 13 x
-                // 13
+                // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a 13
+                // x 13
                 // square of them held the server tick (and the deadlines of the tests beside this one) for a minute.
                 ChunkAccess chunk = level.getChunk(chunkX, chunkZ, ChunkStatus.FEATURES);
                 LevelChunkSection[] sections = chunk.getSections();
@@ -485,8 +485,8 @@ public class SurfaceTerrainTest {
 
     // The GameTest server bakes its overworld from the flat preset, so the surface is tried in the test pack's copies
     // of the shipped overworld: campaign_full is an exact copy, and campaign_sample, where most tests run, differs
-    // from it in one place (below). This keeps both copies, in the pack and in the preset, equal to the shipped
-    // overworld.
+    // from it in one place (below). This keeps both copies, in the pack and in the preset, equal to the
+    // shipped overworld.
     @GameTest
     public void theSampleDimensionsMatchTheShippedOverworld(GameTestHelper helper) throws IOException {
         JsonElement shipped = read(helper, "/data/minecraft/dimension/overworld.json");

@@ -210,8 +210,8 @@ public class OutpostSettlingTest {
         SettlingRooms.stock(lit, Items.COAL, 64);
         BlockPos lamp = lit.floor().offset(0, 3, 0);
         RoomCarver.carve(lit.level(), lamp, lamp, Blocks.GLOWSTONE.defaultBlockState());
-        // The lamp's light is made on a background thread, so it is awaited under a wall-clock Deadline, not counted in
-        // ticks.
+        // The lamp's light is made on a background thread, so it is awaited under a wall-clock Deadline, not counted
+        // in ticks.
         FarChunks.Deadline[] litBy = {null};
         boolean[] reached = {false};
         TestTicks.each(helper, () -> {
@@ -268,8 +268,8 @@ public class OutpostSettlingTest {
                             litAfter.survey());
                     expect(helper, litAfter.settledTo() == 3, "the lit hall's windows pass all the same");
 
-                    // The shipped rates: a visit never takes more than the cap, and the take is the same however it is
-                    // counted.
+                    // The shipped rates: a visit never takes more than the cap, and the take is the same however it
+                    // is counted.
                     dark.storage().clearContent();
                     SettlingRooms.stock(dark, Items.COAL, 1728);
                     Ledger shipped = settle(dark, dark.ledger(), 200, SettlingTuning.DEFAULT);

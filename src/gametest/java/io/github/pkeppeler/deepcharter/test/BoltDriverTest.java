@@ -333,8 +333,8 @@ public class BoltDriverTest {
                         "the target was never hittable, so no bolt was tried: %s",
                         state(target, shooter.player(), corridor.level()));
             }
-            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a pack
-            // holds.
+            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a
+            // pack holds.
             arm(shooter.player(), 2);
             // A full stomach heals: keep it low, so a loss is the bolt's.
             target.getFoodData().setFoodLevel(6);

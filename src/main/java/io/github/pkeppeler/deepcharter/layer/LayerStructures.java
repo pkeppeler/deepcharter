@@ -75,8 +75,8 @@ public final class LayerStructures {
         // campaign world those chunks hold both layers.
         Optional<BlockPos> conduit = Colony.plannedAnchor(level.getServer(), ColonyAnchor.CONDUIT);
         if (conduit.isPresent()) {
-            // Drawn now, so a chunk that was held and generated again (its first save never happened) is not drawn
-            // twice.
+            // Drawn now, so a chunk that was held and generated again (its first save never happened) is not
+            // drawn twice.
             PendingStructures.readable(level.getServer())
                     .ifPresent(pending -> pending.remove(level.dimension(), chunk.getPos()));
             drawSites(level, chunk, bands, conduit.get());

@@ -435,8 +435,8 @@ public final class CataloguePanel {
             return false;
         }
         if (sheet != null) {
-            // Any click puts the sheet away, and is the sheet's: the inventory under it never sees the press or its
-            // release.
+            // Any click puts the sheet away, and is the sheet's: the inventory under it never sees the press or
+            // its release.
             closeSheet();
             pressTaken = true;
             return true;

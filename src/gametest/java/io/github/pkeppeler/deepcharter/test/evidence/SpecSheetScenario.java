@@ -104,8 +104,8 @@ public class SpecSheetScenario extends EvidenceScenario {
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         ClientWait.until(context, "the pop-up put away", client -> panel.sheetItem() == null);
 
-        // The longest sheet there is, a part with a stock tier and six bought ones, the way a player looks one up
-        // later.
+        // The longest sheet there is, a part with a stock tier and six bought ones, the way a player looks one
+        // up later.
         Item drillPart = ComponentItems.item(ComponentTrack.DRILL);
         context.runOnClient(client -> SpecSheetOpener.show(drillPart));
         ClientWait.until(context, "the drill part's sheet", client -> panel.sheetItem() == drillPart);

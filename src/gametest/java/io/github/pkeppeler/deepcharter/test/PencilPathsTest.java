@@ -176,8 +176,8 @@ public class PencilPathsTest {
         if (!completed(server, director).isEmpty()) {
             throw Failures.failure(helper, "the other Note is not found yet, so the path is open");
         }
-        // The rival charter finds the target Note but never the one that draws the path: it has no such path to
-        // complete.
+        // The rival charter finds the target Note but never the one that draws the path: it has no such path
+        // to complete.
         find(helper, rival, 9, FindResult.FOUND);
         PencilPaths.poll(server, rival, ONLY_THAT_PATH);
         if (!completed(server, rival).isEmpty()) {
@@ -419,8 +419,8 @@ public class PencilPathsTest {
                         helper, "%s is outside layer 2's band: no shaft, no place", outside.toShortString());
             }
         }
-        // Layer 1 shares the campaign level, so the other layer is a height: the shaft's column in layer 1's band is no
-        // place.
+        // Layer 1 shares the campaign level, so the other layer is a height: the shaft's column in layer 1's band is
+        // no place.
         BlockPos inLayerOne = new BlockPos(
                 shaft.origin().getX(),
                 TestLayers.band(layer, 1).minY() + 1,

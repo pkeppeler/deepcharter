@@ -74,8 +74,8 @@ public final class Drifters {
      * Makes the tick roll and place for sources in {@code zone} with {@code random} in place of the level's, so a test's counts do not
      * depend on chance; null restores the level's. Other zones, and other levels, keep the level's.
      */
-    // test-seam: a test seeds the chance of a zone it alone uses so that its drifter counts are exact, not a
-    // probability
+    // test-seam: a test seeds the chance of a zone it alone uses so that its drifter counts are exact, not
+    // a probability
     public static void seed(DrifterAlarm.Zone zone, @Nullable RandomSource random) {
         if (random == null) {
             SEEDED.remove(zone);

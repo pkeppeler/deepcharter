@@ -213,8 +213,8 @@ public class SuitPacingTest {
         ServerPlayer player = mock.player();
         SuitTuning tuning = SuitTuning.DEFAULT;
         int hits = (int) Math.ceil(player.getMaxHealth() / tuning.breachDamage());
-        // The second that finds the suit spent, then the wait for the breach cadence, then a tick of slack for the
-        // teleport.
+        // The second that finds the suit spent, then the wait for the breach cadence, then a tick of slack for
+        // the teleport.
         int firstHitBound = SECOND_TICKS + tuning.breachTicks() + 1;
         long[] ticks = {-1, -1, -1};
         SuitScenes.sequence(helper, pocket)

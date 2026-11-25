@@ -226,8 +226,8 @@ public class DesignTourScenario extends EvidenceScenario {
     }
 
     private void runHidden(ClientGameTestContext context, EvidenceScenario owner, Stops stops) {
-        // A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the other
-        // scenarios.
+        // A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the
+        // other scenarios.
         try (TestSingleplayerContext singleplayer = context.worldBuilder()
                 .setUseConsistentSettings(false)
                 .adjustSettings(state -> state.setSeed("deepcharter-design-tour"))
@@ -1568,8 +1568,8 @@ public class DesignTourScenario extends EvidenceScenario {
          */
         private void airStill(String stillName) {
             settle(stillName);
-            // tick-wait: the ambient particles appear a few a tick round the camera; nothing reports that the view is
-            // full
+            // tick-wait: the ambient particles appear a few a tick round the camera; nothing reports that the view
+            // is full
             ctx.waitTicks(HOLLOWS_AIR_TICKS);
             owner.screenshot(ctx, stillName);
             owner.frame(ctx);

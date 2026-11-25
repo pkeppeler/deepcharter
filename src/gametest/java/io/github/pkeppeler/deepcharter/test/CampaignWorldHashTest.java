@@ -66,8 +66,8 @@ public class CampaignWorldHashTest {
             ServerLevel level = ClientLight.serverLevel(
                     helper.getLevel().getServer(),
                     ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", world)));
-            // level-height: one line per section of the whole level, whatever bands it holds, and one for each chunk's
-            // heightmaps
+            // level-height: one line per section of the whole level, whatever bands it holds, and one for each
+            // chunk's heightmaps
             expected += (level.getSectionsCount() + 1) * PATCH_CORNERS.length * PATCH * PATCH;
             for (int corner : PATCH_CORNERS) {
                 for (int cx = corner; cx < corner + PATCH; cx++) {

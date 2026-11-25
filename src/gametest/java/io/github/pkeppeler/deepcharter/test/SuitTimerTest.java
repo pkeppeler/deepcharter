@@ -484,8 +484,8 @@ public class SuitTimerTest {
                 "the flag is written once set, it wrote %s",
                 explainedWritten);
 
-        // A reserve out of range, or not a number, reads as a sane one: NaN as a full suit, the rest clamped to the
-        // largest
+        // A reserve out of range, or not a number, reads as a sane one: NaN as a full suit, the rest clamped to
+        // the largest
         // capacity any suit has (the suit's own capacity clamps it further each second). 300 s, an air tier 2 suit's,
         // is no
         // longer cut to a stock suit's 180.
@@ -556,8 +556,8 @@ public class SuitTimerTest {
                 "the axes are derived from the shortfall, heat and pressure, they read %s",
                 received.axes());
 
-        // The attachment's wire form: the version, then the body. A build that reads another version throws, which
-        // disconnects
+        // The attachment's wire form: the version, then the body. A build that reads another version throws,
+        // which disconnects
         // its client (the rule of m2-rules.md), and an unreadable value goes as a marker.
         StreamCodec<ByteBuf, Versioned<SuitState>> sync = Versioned.streamCodec(SuitState.VERSION, SuitState.STREAM);
         ByteBuf versioned = Unpooled.buffer();

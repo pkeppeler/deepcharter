@@ -88,8 +88,8 @@ public final class SporeClouds {
             if (age % PUFF_EVERY_TICKS == 0) {
                 // Green dust filling the ball of the damage radius, so the player sees where the gas ends; the standard
                 // deviation is a
-                // third of the radius, so nearly all of it is inside. The game sends it to players within 32 blocks
-                // only.
+                // third of the radius, so nearly all of it is inside. The game sends it to players within 32
+                // blocks only.
                 level.sendParticles(
                         GAS,
                         cloud.center().x,
