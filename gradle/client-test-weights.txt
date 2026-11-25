@@ -15,6 +15,7 @@ CatalogueAnySlotClientTest 21
 CatalogueEffectsClientTest 20
 CatalogueFavouritesClientTest 12
 CatalogueHistoryClientTest 14
+CatalogueMaterialsClientTest 14
 CatalogueToggleClientTest 22
 CavernSkyClientTest 49
 CharterCoreClientTest 26
