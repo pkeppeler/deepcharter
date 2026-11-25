@@ -118,10 +118,11 @@ public class GiantFungusTest {
                         p.stemHeight());
             }
         }
-        // Bell 20%, open 60%, old 20%; a ring 80%; a twin 15%.
+        // Bell 20%, open 60%, old 20%; a ring 80%.
         expect(helper, near(stages.getOrDefault(ParasolShape.Stage.OPEN, 0), 0.6), "open stages %s", stages);
         expect(helper, near(stages.getOrDefault(ParasolShape.Stage.BELL, 0), 0.2), "bells %s", stages);
-        expect(helper, false, "TEMP %s twins grew", twins);
+        // A roll asks for a twin 15% of the time, but one grows only where a side of the first has room for it.
+        expect(helper, Math.abs((double) twins / SEEDS - 0.065) < 0.03, "%s of %s parasols grew a twin", twins, SEEDS);
         expect(
                 helper,
                 radii[6] + radii[7] > radii[4] + radii[5],
@@ -408,8 +409,8 @@ public class GiantFungusTest {
     /**
      * A parasol's stem is thick (#1218), not a stick: every row of it over the foot is at least three cells across
      * both ways, a core with an arm on each side. Its foot flares: every cell within two of the foot, on the floor, is
-     * stem or flare. Two of the largest parasols and a great stalk on them (its yield, 90) still fall in one collapse,
-     * which lowers at most 2048 blocks ({@code StalkCollapse.MOST_BLOCKS}).
+     * stem or flare. Every parasol has at most {@link GiantLayout#MOST_CELLS} cells, so two of them and a great stalk
+     * fall in one collapse.
      */
     @GameTest
     public void aParasolsStemIsThickAndFlaresAtItsFoot(GameTestHelper helper) {
@@ -462,7 +463,7 @@ public class GiantFungusTest {
                 }
             }
         }
-        expect(helper, false, "TEMP the largest parasol is %s blocks", largest);
+        expect(helper, largest <= GiantLayout.MOST_CELLS, "the largest parasol is %s blocks", largest);
         helper.succeed();
     }
 

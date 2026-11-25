@@ -54,9 +54,9 @@ public final class GiantFungusBlocks {
     private static final double PIXELS = 16;
     /** The width of a parasol stem's core, in pixels. */
     static final double STEM_WIDTH = 18;
-    /** The width of an arm of a parasol's stem, in pixels, and how far its middle is from the core's. */
+    /** The width of an arm of a parasol's stem, in pixels. */
     static final double ARM_WIDTH = 12;
-
+    /** How far the middle of an arm of a parasol's stem is from the middle of its core, in pixels. */
     static final double ARM_OFFSET = 14;
     /** The width of a spire of each girth, 1 to 4, in pixels. */
     static final double[] SPIRE_WIDTH = {5, 8, 11, 14};

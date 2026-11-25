@@ -546,8 +546,9 @@ public final class ParasolShape {
 
     /**
      * A smaller parasol beside the first, just outside its flare and curving away from it, 50 to 70% as tall on a
-     * slender stem, with a cap two cells narrower than the first's and at most {@link #TWIN_RADIUS}. Left out where any
-     * of it would touch the first, or make the whole wider than {@link GiantLayout#MOST_ACROSS}.
+     * slender stem, with a cap two cells narrower than the first's and at most {@link #TWIN_RADIUS}. Grown on the first
+     * side of the first where it touches no part of it and keeps the whole at most {@link GiantLayout#MOST_ACROSS}
+     * across; left out where no side does.
      */
     private static void twin(GiantLayout.Builder cells, Params params, IntUnaryOperator random) {
         int radius = Math.min(params.radius() - 2, TWIN_RADIUS);
@@ -558,38 +559,49 @@ public final class ParasolShape {
                 ? horizontal(random)
                 : params.drift().getFirst().getOpposite();
         int height = (int) Math.round(params.stemHeight() * between(random, 0.5, 0.7));
-        Params small = new Params(
-                params.stage(),
-                height,
-                radius,
-                List.of(away),
-                3,
-                params.tilt(),
-                params.dome() * 0.7,
-                params.lobes(),
-                params.lobeDepth(),
-                params.lobePhase() + 1,
-                List.of(),
-                1,
-                -1,
-                0,
-                0,
-                false);
-        GiantLayout.Builder trial = new GiantLayout.Builder();
-        Cell foot = new Cell((FOOT + 2) * away.getStepX(), 0, (FOOT + 2) * away.getStepZ());
-        grow(trial, small, foot, 2, false);
-        GiantLayout twin = trial.build();
-        for (Cell cell : twin.pieces().keySet()) {
-            if (!cells.freeFor(cell, 2)) {
+        GiantLayout first = cells.build();
+        // Away from the first's curve, then to either side of it, then toward it: the first way it fits.
+        for (Direction way : List.of(away, away.getClockWise(), away.getCounterClockWise(), away.getOpposite())) {
+            Params small = new Params(
+                    params.stage(),
+                    height,
+                    radius,
+                    List.of(way),
+                    3,
+                    params.tilt(),
+                    params.dome() * 0.7,
+                    params.lobes(),
+                    params.lobeDepth(),
+                    params.lobePhase() + 1,
+                    List.of(),
+                    1,
+                    -1,
+                    0,
+                    0,
+                    false);
+            GiantLayout.Builder trial = new GiantLayout.Builder();
+            Cell foot = new Cell((FOOT + 2) * way.getStepX(), 0, (FOOT + 2) * way.getStepZ());
+            grow(trial, small, foot, 2, false);
+            GiantLayout twin = trial.build();
+            if (fits(cells, first, twin)) {
+                twin.pieces().forEach((cell, piece) -> cells.put(cell, piece, 2));
                 return;
             }
         }
-        GiantLayout first = cells.build();
+    }
+
+    /**
+     * Whether {@code twin} grows beside {@code first}, which {@code cells} holds: it touches no part of it, and the two
+     * are at most {@link GiantLayout#MOST_ACROSS} across.
+     */
+    private static boolean fits(GiantLayout.Builder cells, GiantLayout first, GiantLayout twin) {
+        for (Cell cell : twin.pieces().keySet()) {
+            if (!cells.freeFor(cell, 2)) {
+                return false;
+            }
+        }
         int acrossX = Math.max(first.maxX(), twin.maxX()) - Math.min(first.minX(), twin.minX()) + 1;
         int acrossZ = Math.max(first.maxZ(), twin.maxZ()) - Math.min(first.minZ(), twin.minZ()) + 1;
-        if (acrossX > GiantLayout.MOST_ACROSS || acrossZ > GiantLayout.MOST_ACROSS) {
-            return;
-        }
-        twin.pieces().forEach((cell, piece) -> cells.put(cell, piece, 2));
+        return acrossX <= GiantLayout.MOST_ACROSS && acrossZ <= GiantLayout.MOST_ACROSS;
     }
 }

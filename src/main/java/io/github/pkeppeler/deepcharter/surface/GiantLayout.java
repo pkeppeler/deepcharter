@@ -29,6 +29,9 @@ public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owner
     /** The most cells a giant spans in x or in z: a parasol's widest cap, radius 7. */
     public static final int MOST_ACROSS = 15;
 
+    /** The most cells a giant has, so that two of them fall in one collapse ({@link StalkCollapse}). */
+    public static final int MOST_CELLS = 960;
+
     /** The lowest x of any cell. */
     public int minX() {
         return pieces.keySet().stream().mapToInt(Cell::x).min().orElse(0);
@@ -99,10 +102,10 @@ public record GiantLayout(Map<Cell, GiantPiece> pieces, Map<Cell, Integer> owner
      * layer feature never writes outside its chunk, and a giant is moved or mirrored to fit, never cut). Of the four
      * ways it can face (as it is, mirrored across x, across z or both), the one that needs the base moved least wins,
      * so a stem that curves toward the side of the chunk curves back toward its middle instead. Empty if the layout is
-     * more than {@link #MOST_ACROSS} cells across.
+     * more than {@link #MOST_ACROSS} cells across or has more than {@link #MOST_CELLS} cells.
      */
     public Optional<Fit> fitInChunk(int wantX, int wantZ) {
-        if (maxX() - minX() + 1 > MOST_ACROSS || maxZ() - minZ() + 1 > MOST_ACROSS) {
+        if (maxX() - minX() + 1 > MOST_ACROSS || maxZ() - minZ() + 1 > MOST_ACROSS || pieces.size() > MOST_CELLS) {
             return Optional.empty();
         }
         Fit best = null;

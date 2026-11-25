@@ -47,10 +47,12 @@ import net.minecraft.world.phys.AABB;
  * hand drops, none lost and none twice. The drops fly out from the block instead of popping up from it.
  */
 final class StalkCollapse {
-    /** The most blocks one collapse lowers, so that no chain of touching great stalks makes a step cost a lot. */
-    private static final int MOST_BLOCKS = 2048;
-    // The most that can hang together: two parasols whose caps touch across a chunk edge and a great stalk (at most
-    // 90, its yield, tested) on them. GiantFungusTest.aParasolsStemIsThickAndFlaresAtItsFoot holds that under this.
+    /**
+     * The most blocks one collapse lowers, so that no chain of touching great stalks makes a step cost a lot: the most
+     * that can hang together, two giants whose caps touch across a chunk edge and a great stalk on them (at most 90
+     * blocks, {@code StalkCollapseTest.YIELD_MOST}).
+     */
+    private static final int MOST_BLOCKS = 2 * GiantLayout.MOST_CELLS + 128;
 
     private static final Direction[] JOINS = {
         Direction.UP, Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
@@ -122,7 +124,8 @@ final class StalkCollapse {
      * A block of a stalk, {@code removed}, was removed at {@code pos}: what was above it, and what hung from it and has nothing else to
      * hang from, sags and falls. A great block's removal takes the great block above it (and all that touches that) whatever else holds
      * it; a block beside or below it falls only if nothing joins it to the ground any more. An upright stalk never holds a great block
-     * up.
+     * up, and neither does a giant's root flare (#1218): a parasol's arms stand on its flares, and a player scraping its foot must not
+     * fell it.
      */
     static void removed(ServerLevel level, BlockPos pos, BlockState removed) {
         if (stepping || collapses(level.getBlockState(pos))) {
@@ -147,7 +150,8 @@ final class StalkCollapse {
         Set<BlockPos> claimed = new HashSet<>();
         BlockPos above = pos.above();
         BlockState up = level.getBlockState(above);
-        if (collapses(up) && (great(removed) || !great(up))) {
+        boolean flare = removed.getBlock() instanceof GiantFungusBlocks.FlareBlock;
+        if (collapses(up) && (great(removed) || !great(up)) && !(flare && great(up))) {
             anchors.add(above);
             claimed.addAll(connected(level, above, false));
         }

@@ -16,6 +16,14 @@ make = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(make)
 
 ROD_PIECE = make.ROOT / "src/main/java/io/github/pkeppeler/deepcharter/surface/RodPiece.java"
+BLOCKS = make.ROOT / "src/main/java/io/github/pkeppeler/deepcharter/surface/GiantFungusBlocks.java"
+
+
+def mean_luma(texture: str) -> float:
+    """The mean brightness of a block texture, 0 to 1."""
+    pixels = pngio.decode((make.ASSETS / f"textures/block/{texture}.png").read_bytes(), texture).pixels
+    luma = [(0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2]) / 255 for i in range(0, len(pixels), 4)]
+    return sum(luma) / len(luma)
 
 
 class FungusModelsTest(unittest.TestCase):
@@ -67,11 +75,19 @@ class FungusModelsTest(unittest.TestCase):
                     self.assertIs(False, face.get("shade"))
         self.assertGreater(faces, 0)
         for texture in ("parasol_gills", "parasol_gills_diagonal"):
-            image = pngio.decode((make.ASSETS / f"textures/block/{texture}.png").read_bytes(), texture)
-            pixels = image.pixels
-            luma = [(0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2]) / 255 for i in range(0, len(pixels), 4)]
             with self.subTest(texture=texture):
-                self.assertGreaterEqual(sum(luma) / len(luma), 0.25)
+                self.assertGreaterEqual(mean_luma(texture), 0.25)
+                # Every gill glows at full light, so a gill lamp stands out by its brighter gills (and its real light).
+                self.assertGreater(mean_luma(texture.replace("gills", "gills_lamp")), mean_luma(texture))
+
+    def test_the_stem_is_drawn_as_wide_as_the_blocks_bump(self):
+        """The stem's widths in the models are the ones GiantFungusBlocks gives its boxes (#1218)."""
+        java = BLOCKS.read_text()
+        for name in ("STEM_WIDTH", "ARM_WIDTH", "ARM_OFFSET"):
+            with self.subTest(constant=name):
+                found = re.search(rf"static final double {name} = ([0-9.]+);", java)
+                self.assertIsNotNone(found, name)
+                self.assertEqual(float(found.group(1)), getattr(make, name))
 
     def test_the_rod_pieces_are_rodpieces(self):
         java = ROD_PIECE.read_text()
