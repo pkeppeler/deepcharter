@@ -61,8 +61,9 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses, biofuel is
- * crafted from four crops and refuels, and a reserve tank adds 25 litres of capacity and clears Stranded.
+ * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses, biofuel refuels
+ * (its crops are not in the campaign world, so its recipe is not loaded, ADR 0093 and #1288), and a reserve tank adds 25 litres of
+ * capacity and clears Stranded.
  */
 public class FuelPumpTest {
     private static final float EPSILON = 0.001f;
@@ -402,26 +403,20 @@ public class FuelPumpTest {
         }
     }
 
+    /**
+     * The crops biofuel takes never grow in the campaign world, so its recipe is not loaded (ADR 0093) and four of them craft
+     * nothing. #1288 gives it an ingredient the world yields and makes this a crafting test again.
+     */
     @GameTest
-    public void biofuelIsCraftedFromFourCropsAndRefuels(GameTestHelper helper) {
+    public void biofuelIsNotCraftedFromCropsTheWorldLacksAndRefuels(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         for (Item crop : List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT)) {
             ItemStack made = craft(
                     helper,
                     List.of(new ItemStack(crop), new ItemStack(crop), new ItemStack(crop), new ItemStack(crop)));
-            if (!made.is(FuelRegistry.BIOFUEL) || made.getCount() != 1) {
-                throw helper.assertionException("four %s should craft one biofuel, got %s", crop, made);
+            if (!made.isEmpty()) {
+                throw helper.assertionException("four %s should craft nothing, the world has no crops; got %s", crop, made);
             }
-        }
-        ItemStack mixed = craft(
-                helper,
-                List.of(
-                        new ItemStack(Items.WHEAT),
-                        new ItemStack(Items.CARROT),
-                        new ItemStack(Items.POTATO),
-                        new ItemStack(Items.BEETROOT)));
-        if (!mixed.is(FuelRegistry.BIOFUEL)) {
-            throw helper.assertionException("four different crops should craft biofuel, got %s", mixed);
         }
         ItemStack three = craft(
                 helper, List.of(new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT)));
