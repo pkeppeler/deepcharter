@@ -12,11 +12,11 @@ import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
-import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
@@ -166,15 +166,21 @@ public class TransmissionsTest {
     }
 
     /** One row of the script's trigger lines ({@code docs/lore/transmissions.md}), as the data file must say it. */
-    private record Canon(String sender, Transmission.Framing framing, Transmission.Trigger trigger, Optional<Integer> loop,
-            Optional<Transmission.Bonus> bonus, boolean replay) {}
+    private record Canon(
+            String sender,
+            Transmission.Framing framing,
+            Transmission.Trigger trigger,
+            Optional<Integer> loop,
+            Optional<Transmission.Bonus> bonus,
+            boolean replay) {}
 
     private static Canon live(String sender, Transmission.Trigger trigger) {
         return new Canon(sender, Transmission.Framing.LIVE, trigger, Optional.empty(), Optional.empty(), false);
     }
 
     private static Canon paid(Canon canon, Transmission.Bonus bonus) {
-        return new Canon(canon.sender(), canon.framing(), canon.trigger(), canon.loop(), Optional.of(bonus), canon.replay());
+        return new Canon(
+                canon.sender(), canon.framing(), canon.trigger(), canon.loop(), Optional.of(bonus), canon.replay());
     }
 
     private static Canon replayed(Canon canon) {
@@ -221,7 +227,8 @@ public class TransmissionsTest {
         expected.put("t18", paid(live("personnel", new Transmission.Trigger.Breach(3)), Transmission.Bonus.B3));
         expected.put("surface_arrival", live("company", new Transmission.Trigger.Breach(LayerChain.SURFACE)));
 
-        List<Identifier> order = TransmissionCatalog.all().stream().map(Transmission::id).toList();
+        List<Identifier> order =
+                TransmissionCatalog.all().stream().map(Transmission::id).toList();
         if (!order.equals(expected.keySet().stream().map(TransmissionsTest::id).toList())) {
             throw helper.assertionException(
                     "the catalog should list T01 to T18 in order, then the surface arrival, lists %s", order);
@@ -268,14 +275,22 @@ public class TransmissionsTest {
                 helper,
                 "a relay with no loop counter",
                 () -> new Transmission(
-                        any, "mole_0388", Transmission.Framing.RELAY, event, Optional.empty(), Optional.empty(), false));
+                        any,
+                        "mole_0388",
+                        Transmission.Framing.RELAY,
+                        event,
+                        Optional.empty(),
+                        Optional.empty(),
+                        false));
         expectThrows(
                 helper,
                 "a live transmission with a loop counter",
                 () -> new Transmission(
                         any, "personnel", Transmission.Framing.LIVE, event, Optional.of(1), Optional.empty(), false));
-        expectThrows(helper, "the loop of a live transmission", () -> TransmissionCatalog.require(id("t01"))
-                .loopOn(0));
+        expectThrows(
+                helper,
+                "the loop of a live transmission",
+                () -> TransmissionCatalog.require(id("t01")).loopOn(0));
         helper.succeed();
     }
 
@@ -879,9 +894,12 @@ public class TransmissionsTest {
             if (!delivered.contains(id("t11"))) {
                 throw helper.assertionException("crossing into layer 2 should send t11, sent %s", delivered);
             }
-            // The zone poll may have fired layer 1's zone transmissions on the way down: the account holds each bonus sent, once.
+            // The zone poll may have fired layer 1's zone transmissions on the way down: the account holds each bonus
+            // sent live,
+            // once. Founding replayed the repairs other tests fired into the shared world, and a replay pays nothing.
             long paid = delivered.stream()
                     .map(TransmissionCatalog::require)
+                    .filter(transmission -> !transmission.replay())
                     .flatMap(transmission -> transmission.bonus().stream())
                     .mapToLong(Transmission.Bonus::amount)
                     .sum();
@@ -1011,7 +1029,7 @@ public class TransmissionsTest {
             TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.RESTORE_WRECK);
             if (!deliveredTo(crew).equals(ids("t02", "t03", "t04", "t05"))) {
                 throw helper.assertionException(
-                        "the four colony repairs send t02 to t05 in order, and a restore sends nothing: %s",
+                        "the colony repairs send t02 to t05 in order, and a restore sends nothing: %s",
                         deliveredTo(crew));
             }
             TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.BUY_MOLE);
@@ -1026,7 +1044,9 @@ public class TransmissionsTest {
             MockPlayer other = MockPlayers.join(helper, "tx-repairs-2");
             CharterId second = directCharter(helper, other.player().getUUID());
             TransmissionTriggers.onRepaired(
-                    server, HangarTerminal.TYPE, Charters.findOrThrow(server, second).orElseThrow());
+                    server,
+                    HangarTerminal.TYPE,
+                    Charters.findOrThrow(server, second).orElseThrow());
             if (!deliveredTo(other).equals(ids("t06"))) {
                 throw helper.assertionException(
                         "repairing the hangar console, and so the Mole, sends t06: %s", deliveredTo(other));

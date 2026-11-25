@@ -192,7 +192,9 @@ public record Transmission(
                     RecordCodecBuilder.<Zone>mapCodec(instance -> instance.group(
                                     Codec.INT.fieldOf("layer").forGetter(Zone::layer),
                                     Codec.INT.fieldOf("zone").forGetter(Zone::zone),
-                                    Codec.BOOL.optionalFieldOf("lower_half", false).forGetter(Zone::lowerHalf))
+                                    Codec.BOOL
+                                            .optionalFieldOf("lower_half", false)
+                                            .forGetter(Zone::lowerHalf))
                             .apply(instance, Zone::new))),
             BREACH(
                     "breach",

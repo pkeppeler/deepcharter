@@ -4,7 +4,7 @@ package io.github.pkeppeler.deepcharter.transmission;
  * Tunables for the transmission feature, read as {@code TransmissionTuning.DEFAULT.thing()}.
  *
  * @param bonusB1 the smallest Personnel bonus, in dollars, credited once to the charter that fires a transmission of its tier. Act 1
- *                pays B1 four times and B2 three times before the Prospector, so the tiers are kept small: together about the price of
+ *                pays several B1 and B2 bonuses before the Prospector, so the tiers are kept small: together about the price of
  *                restoring the Prospector, not a fortune beside the Mole's
  * @param bonusB2 the second tier
  * @param bonusB3 the third tier

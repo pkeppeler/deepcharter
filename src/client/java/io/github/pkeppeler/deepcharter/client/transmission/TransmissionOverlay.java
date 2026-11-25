@@ -160,7 +160,7 @@ public final class TransmissionOverlay {
      * The header of {@code transmission} as the player sees it on {@code day}: the framing's wording with the sender's name, and for a relay
      * the loop counter, grouped in thousands as the script writes it.
      */
-    public static String header(Transmission transmission, long day) {
+    private static String header(Transmission transmission, long day) {
         String sender = translate(transmission.senderKey(), Component.translatable(transmission.senderKey()));
         String key = transmission.framing().headerKey();
         Component header = transmission.framing() == Transmission.Framing.RELAY
@@ -179,7 +179,8 @@ public final class TransmissionOverlay {
         Transmission transmission = TransmissionCatalog.require(payload.transmission());
         String header = header(transmission, day());
         String end = translate(
-                transmission.framing().endKey(), Component.translatable(transmission.framing().endKey()));
+                transmission.framing().endKey(),
+                Component.translatable(transmission.framing().endKey()));
         String body = fill(
                         translate(transmission.bodyKey(), Component.translatable(transmission.bodyKey())),
                         payload.charter(),

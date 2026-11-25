@@ -81,6 +81,7 @@ public class FoundingMoleHangarTest {
     static final long RICH = 100_000;
     /** What T06, the first Mole a charter buys, pays it. */
     private static final long MOLE_BONUS = Transmission.Bonus.B1.amount();
+
     private static final int FLOOR = 9; // fixed-pos: the side of a square pad, not a Y
     private static final String FUTURE_HANGAR = "7741";
     private static final String FUTURE_SERIALS = "7742";

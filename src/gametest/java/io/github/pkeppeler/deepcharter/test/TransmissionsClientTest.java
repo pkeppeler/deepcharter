@@ -99,15 +99,17 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     }
                 }
                 ServerLevel one = TestLayers.level(server, 1);
-                // Layer 1's zones have transmissions of their own. They are marked fired and sent, so only the crossing's reaches
-                // the overlay.
-                CharterId charter =
-                        Charters.charterOfOrThrow(server, first.getUUID()).orElseThrow().id();
+                // Layer 1's zones have transmissions of their own. They are marked fired and sent, so only the
+                // crossing's transmission reaches the overlay.
+                CharterId charter = Charters.charterOfOrThrow(server, first.getUUID())
+                        .orElseThrow()
+                        .id();
                 TransmissionData data = TransmissionData.get(server);
                 for (String zone : List.of("t07", "t08", "t09", "t10")) {
                     data.fire(charter, TransmissionCatalog.require(id(zone)));
                 }
-                data.markSent(charter, first.getUUID(), data.progress(charter).fired().size());
+                data.markSent(
+                        charter, first.getUUID(), data.progress(charter).fired().size());
                 // A crossing is read from the layer last seen, so the player is first put in layer 1.
                 first.teleportTo(one, X, TestLayers.band(one, 1).minY() + 40, Z, Set.of(), 0, 0, true);
                 return first.getGameProfile().name();
@@ -230,7 +232,8 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     client -> seen());
             String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
             require(
-                    body.contains("congratulations on founding " + TWO_PLAYER_NAME + "!") && !body.contains("[CHARTER]"),
+                    body.contains("congratulations on founding " + TWO_PLAYER_NAME + "!")
+                            && !body.contains("[CHARTER]"),
                     "The charter is " + TWO_PLAYER_NAME + ", the text is: " + body);
             ClientWait.until(
                     context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
@@ -276,9 +279,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     parts[0].equals("▌AUTOMATIC RELAY — POD MOLE-0388 — LOOP " + parts[1])
                             && parts[2].endsWith("\n\n▌RELAY RESTARTS"),
                     "A relay names its pod, counts its loops and restarts: " + relay);
-            require(
-                    !(amberPixels(context.takeScreenshot("transmission-relay")) < 20),
-                    "A relay has an amber header");
+            require(!(amberPixels(context.takeScreenshot("transmission-relay")) < 20), "A relay has an amber header");
 
             // Offline: the client leaves, the mock stays. The mock is sent these at once, the client when it logs in
             // again.

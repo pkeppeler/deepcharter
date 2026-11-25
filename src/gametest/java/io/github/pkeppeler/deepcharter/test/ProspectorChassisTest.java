@@ -439,8 +439,9 @@ public class ProspectorChassisTest {
                             "restoring the Prospector on the advance alone");
                     expect(
                             helper,
-                            !Wrecks.isWreck(wreck) && FoundingMoleHangarTest.balance(helper, owner) == 0,
-                            "the Prospector is restored for its $1,390");
+                            !Wrecks.isWreck(wreck)
+                                    && FoundingMoleHangarTest.balance(helper, owner) == Transmission.Bonus.B3.amount(),
+                            "the Prospector is restored for its $1,390, and T17 pays B3");
                     expect(
                             helper,
                             FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == 0,
@@ -598,8 +599,10 @@ public class ProspectorChassisTest {
                             "the first charter restoring a second Prospector with no Cicatrium");
                     expect(
                             helper,
-                            Wrecks.isWreck(two) && FoundingMoleHangarTest.balance(helper, first) == PRICE,
-                            "the refused restore took nothing");
+                            Wrecks.isWreck(two)
+                                    && FoundingMoleHangarTest.balance(helper, first)
+                                            == PRICE + Transmission.Bonus.B3.amount(),
+                            "the refused restore took nothing (the first restore's T17 paid B3)");
 
                     // The second charter gets its own advance for the other wreck.
                     FoundingMoleHangarTest.expectDone(

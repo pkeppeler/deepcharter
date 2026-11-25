@@ -84,7 +84,8 @@ public class TransmissionsScenario extends EvidenceScenario {
                     crossed = true;
                     singleplayer.getServer().runOnServer(server -> {
                         ServerLevel one = TestLayers.level(server, 1);
-                        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                        ServerPlayer player =
+                                server.getPlayerList().getPlayers().getFirst();
                         // One block under the floor of layer 1, so it crosses on the next server tick.
                         player.teleportTo(one, X, TestLayers.band(one, 1).minY() - 1, Z, Set.of(), 0, 0, true);
                     });

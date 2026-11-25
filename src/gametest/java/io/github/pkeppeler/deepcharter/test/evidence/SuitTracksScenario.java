@@ -56,14 +56,15 @@ public class SuitTracksScenario extends EvidenceScenario {
             context.waitTicks(40);
             Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
             // The breach and the zones on the way down pay Personnel's bonuses when the scenario drops into the unbuilt
-            // depth. Every transmission with a bonus is marked fired now, so the balance the stills show stays the one the
+            // depth. Every transmission with a bonus is marked fired now, so the balance the stills show stays the one
+            // the
             // scenario leaves.
             singleplayer
                     .getServer()
                     .runOnServer(server -> TransmissionCatalog.all().stream()
                             .filter(transmission -> transmission.bonus().isPresent())
-                            .forEach(transmission ->
-                                    TransmissionData.get(server).fire(scene.charter().id(), transmission)));
+                            .forEach(transmission -> TransmissionData.get(server)
+                                    .fire(scene.charter().id(), transmission)));
             ClientWait.until(
                     context,
                     "the charter's balance",
