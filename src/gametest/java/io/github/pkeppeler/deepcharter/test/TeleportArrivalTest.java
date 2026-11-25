@@ -49,9 +49,9 @@ import net.minecraft.world.phys.Vec3;
  */
 public class TeleportArrivalTest {
     /**
-     * Ticks past {@code arrivalTicketTicks}, counted from the first tick its countdown shows, by which the arrival ticket
-     * must be gone. The countdown itself starts only once the chunk is ready to save, which takes as long as the
-     * machine's load makes it, so that wait is bounded by a {@link FarChunks.Deadline} instead.
+     * Ticks past {@code arrivalTicketTicks}, counted from the first tick its countdown shows, by which the arrival
+     * ticket must be gone. The countdown itself starts only once the chunk is ready to save, which takes as long as
+     * the machine's load makes it, so that wait is bounded by a {@link FarChunks.Deadline} instead.
      */
     private static final int RELEASE_MARGIN = 20;
 
