@@ -149,9 +149,10 @@ public final class LightSync {
     }
 
     /**
-     * Whether the chunk's light is being settled: it is held, it waits on a neighbour's queued light tasks or an armed offer ({@link
-     * #hasPending}), or it is inside the window after a hold in which its published light is compared with what each player was sent. A
-     * seam crossing does not skip the send of such a chunk (#1185): the ahead send bypasses the ring hold (#494). Server thread only.
+     * Whether the chunk's light is being settled: it is held, it waits on a neighbour's queued light tasks or an
+     * armed offer ({@link #hasPending}), or it is inside the window after a hold in which its published light is
+     * compared with what each player was sent. A seam crossing does not skip the send of such a chunk (#1185): the
+     * ahead send bypasses the ring hold (#494). Server thread only.
      */
     public static boolean watching(ServerLevel level, ChunkPos chunk) {
         Key key = new Key(level, chunk);
