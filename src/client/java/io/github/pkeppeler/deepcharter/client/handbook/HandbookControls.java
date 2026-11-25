@@ -39,7 +39,11 @@ public final class HandbookControls {
                             new Row("turn"))),
             new Sheet("cards", List.of(new Row("card"), new Row("any"))),
             new Sheet(
-                    "catalogue", List.of(new Row("open", List.of(options -> options.keyInventory)), new Row("search"))),
+                    "catalogue",
+                    List.of(
+                            new Row("open", List.of(options -> options.keyInventory)),
+                            new Row("toggle", List.of(options -> CatalogueKeys.TOGGLE)),
+                            new Row("search"))),
             new Sheet(
                     "lookup",
                     List.of(
