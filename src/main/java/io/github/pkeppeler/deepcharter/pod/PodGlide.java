@@ -132,8 +132,7 @@ final class PodGlide extends AbstractInterpolationHandler {
             if (moving && late) {
                 goOn(tuning, reported, distance);
                 if (remaining > 0) {
-                    entity.setYRot((float) Mth.rotLerp(share, entity.getYRot(), target.yRot()));
-                    entity.setXRot((float) Mth.lerp(share, entity.getXRot(), target.xRot()));
+                    turn(share);
                     remaining--;
                 }
                 active = true;
@@ -152,8 +151,7 @@ final class PodGlide extends AbstractInterpolationHandler {
         }
         boolean arrives = distance <= step + ARRIVED;
         entity.setPos(arrives ? target.position() : entity.position().add(gap.scale(step / distance)));
-        entity.setYRot((float) Mth.rotLerp(share, entity.getYRot(), target.yRot()));
-        entity.setXRot((float) Mth.lerp(share, entity.getXRot(), target.xRot()));
+        turn(share);
         remaining = Math.max(0, remaining - 1);
         if (arrives) {
             if (coastDirection != null) {
@@ -168,11 +166,15 @@ final class PodGlide extends AbstractInterpolationHandler {
         active = true;
     }
 
+    private void turn(double share) {
+        entity.setYRot((float) Mth.rotLerp(share, entity.getYRot(), target.yRot()));
+        entity.setXRot((float) Mth.lerp(share, entity.getXRot(), target.xRot()));
+    }
+
     /**
      * Draws a pod that is {@code distance} ahead of its target on, within the furthest the coast reaches ahead of the server's
-     * position ({@code coastTicks - 1 + coastTailShare} ticks of speed). Like the coast, a tick draws the whole speed or its tail
-     * share, never less, so a steady tick stays above the floor of {@code PodDriveSmoothClientTest}: a pod with less reach than the
-     * tail stands.
+     * position ({@code coastTicks - 1 + coastTailShare} ticks of speed). A tick draws the whole speed or its tail share, never less,
+     * so a steady drive stays above the test's step floor; a pod with less reach than the tail stands.
      */
     private void goOn(PodGlideTuning tuning, Vec3 reported, double distance) {
         double speed = reported.length();

@@ -797,8 +797,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     () -> context.computeOnClient(client -> standsAt(client, rig.mockPodId(), at)),
                     () -> "watched pod on the client " + onClient(context, rig.mockPodId()) + " for " + at);
             // The pod already stands there, so the wait above can pass before the wall's block update reaches the
-            // client;
-            // a coast on a client with no wall yet draws the pod through it.
+            // client; a coast on a client with no wall yet draws the pod through it.
             ClientWait.until(
                     context,
                     "the wall at the pod's front on the client",

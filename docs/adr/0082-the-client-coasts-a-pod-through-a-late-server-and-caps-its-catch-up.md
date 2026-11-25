@@ -63,7 +63,7 @@ Two causes, both in the tick after a stall. (1) A moveless stretch of 4 ticks wa
 
 ## Amendment 2026-11-25: a late move is not a stop (#1112)
 
-The decision and its invariant are unchanged: a pod is never drawn more than `coastTicks - 1 + coastTailShare` ticks of speed past where the server put it. What changed is how that reach is measured and used. A move that arrives one tick late carries a position one tick stale, so a pod that has coasted is already ahead of it. The old rule read that as an overshoot and gave it back at `settleShare` (a 0.024 step backward, then a stand until the next move, the 0.025 of #871 and the near freeze of #897 and #1095).
+The invariant is unchanged: a pod is never drawn more than `coastTicks - 1 + coastTailShare` ticks of speed past where the server put it. A move that arrives one tick late carries a stale position, so a pod that has coasted is already ahead of it. The old rule read that as an overshoot and gave it back at `settleShare` (a 0.024 step backward, then a stand: the 0.025 of #871 and the near freeze of #897 and #1095).
 
 - A move that advances the target along the coast (by at least half the server's reported speed along the coast) is a late move, not a stop: the pod goes on, a whole tick or its tail share and never less, within the reach above counted in blocks past the target, and stands when it is used up. It no longer gives the excess back while moves keep advancing.
 - While no move has arrived and the server reports the pod moving, the pod goes on within the same reach (it stood for the whole wait before), for `settleDelayTicks`.
