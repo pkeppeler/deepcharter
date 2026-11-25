@@ -854,13 +854,13 @@ public class UpgradeTerminalTest {
                         player.getUUID(),
                         "Upgrade " + UUID.randomUUID().toString().substring(0, 8))
                 .isPresent()) {
-            throw helper.assertionException("founding a charter should succeed");
+            throw failure(helper, "founding a charter should succeed");
         }
         CharterId charter = Charters.charterOfOrThrow(server, player.getUUID())
                 .orElseThrow()
                 .id();
         if (Charters.deposit(server, charter, account).isPresent()) {
-            throw helper.assertionException("funding the account should succeed");
+            throw failure(helper, "funding the account should succeed");
         }
         TerminalBlock.place(
                 helper.getLevel(),
@@ -881,7 +881,7 @@ public class UpgradeTerminalTest {
         if (Charters.found(
                         server, founder, "Other " + UUID.randomUUID().toString().substring(0, 8))
                 .isPresent()) {
-            throw helper.assertionException("founding the other charter should succeed");
+            throw failure(helper, "founding the other charter should succeed");
         }
         return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
     }

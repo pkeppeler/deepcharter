@@ -19,6 +19,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -334,13 +336,51 @@ public class PhonographTest {
                 List.of(Recording.values()).stream()
                         .map(Recording::getSerializedName)
                         .toList()
-                        .equals(List.of("gamme_de_la_voix", "jeune_jouvencelle", "othello")),
+                        .equals(List.of(
+                                "gamme_de_la_voix",
+                                "jeune_jouvencelle",
+                                "othello",
+                                "volta_counting",
+                                "volta_hamlet",
+                                "sullivan_toast",
+                                "edison_around_the_world",
+                                "lost_chord",
+                                "edison_doll",
+                                "volta_nursery_rhyme")),
                 "the recordings are named %s",
                 List.of(Recording.values()));
         expect(
                 helper,
-                Recording.GAMME_DE_LA_VOIX.year() == 1860 && Recording.JEUNE_JOUVENCELLE.year() == 1857,
+                Recording.GAMME_DE_LA_VOIX.year() == 1860
+                        && Recording.JEUNE_JOUVENCELLE.year() == 1857
+                        && Recording.VOLTA_COUNTING.year() == 1881
+                        && Recording.VOLTA_HAMLET.year() == 1884
+                        && Recording.SULLIVAN_TOAST.year() == 1888
+                        && Recording.EDISON_AROUND_THE_WORLD.year() == 1888
+                        && Recording.LOST_CHORD.year() == 1888
+                        && Recording.EDISON_DOLL.year() == 1888
+                        && Recording.VOLTA_NURSERY_RHYME.year() == 1885,
                 "the years moved");
+        helper.succeed();
+    }
+
+    /** The tooltip of a cylinder is its title and its year and nothing else, for the later recordings as for the first three (#946). */
+    @GameTest
+    public void aCylindersLabelIsItsTitleAndYearAndNothingElse(GameTestHelper helper) {
+        for (Recording recording : Recording.values()) {
+            expect(
+                    helper,
+                    recording.label().getContents() instanceof TranslatableContents label
+                            && label.getKey().equals("deepcharter.phonograph.label")
+                            && label.getArgs().length == 2
+                            && label.getArgs()[0] instanceof Component title
+                            && title.getContents() instanceof TranslatableContents name
+                            && name.getKey().equals("deepcharter.recording." + recording.getSerializedName())
+                            && label.getArgs()[1].equals(recording.year()),
+                    "the label of %s is not its title and year: %s",
+                    recording,
+                    recording.label());
+        }
         helper.succeed();
     }
 
@@ -411,8 +451,14 @@ public class PhonographTest {
         expect(helper, sounds.stream().distinct().count() == sounds.size(), "each recording has its own sound");
         expect(
                 helper,
-                Recording.COLONY_RACK.equals(List.of(Recording.values())),
-                "the colony's rack holds every recording, in order");
+                Recording.COLONY_RACK.equals(List.of(
+                        Recording.GAMME_DE_LA_VOIX,
+                        Recording.JEUNE_JOUVENCELLE,
+                        Recording.OTHELLO,
+                        Recording.EDISON_DOLL,
+                        Recording.VOLTA_NURSERY_RHYME)),
+                "the colony's rack holds its three recordings and then the doll and the rhyme, in order, and none of the found ones: %s",
+                Recording.COLONY_RACK);
         helper.succeed();
     }
 

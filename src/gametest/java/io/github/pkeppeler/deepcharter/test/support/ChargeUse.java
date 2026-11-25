@@ -1,10 +1,11 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -30,9 +31,13 @@ public final class ChargeUse {
     public static void expectBlock(
             GameTestHelper helper, ServerLevel level, BlockPos pos, Block expected, String what) {
         if (!level.getBlockState(pos).is(expected)) {
-            throw helper.assertionException(Component.literal(String.format(
+            throw failure(
+                    helper,
                     "%s: %s should be %s, was %s",
-                    what, pos, expected, level.getBlockState(pos).getBlock())));
+                    what,
+                    pos,
+                    expected,
+                    level.getBlockState(pos).getBlock());
         }
     }
 }
