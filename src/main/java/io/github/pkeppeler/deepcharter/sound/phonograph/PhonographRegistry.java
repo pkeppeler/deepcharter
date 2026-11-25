@@ -18,7 +18,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
 /**
- * Registers the phonograph, the colony's phonograph, the wax cylinder and the component that names its recording. The colony's is the
+ * Registers the phonograph, the colony's phonograph, the wreck's phonograph, the wax cylinder and the component that names its recording. The colony's is the
  * same block as the player's, as Company property: unbreakable like the rest of the colony's blocks, with no item and no drop.
  */
 public final class PhonographRegistry {
@@ -66,6 +66,24 @@ public final class PhonographRegistry {
             BuiltInRegistries.BLOCK_ENTITY_TYPE,
             id("phonograph"),
             new BlockEntityType<>(PhonographBlockEntity::new, Set.of(PHONOGRAPH, COLONY_PHONOGRAPH)));
+
+    /**
+     * The cabin phonograph of a wrecked pod (#861): the colony's kind of phonograph, Company-grade unbreakable, with no item and no loot,
+     * but it holds no cylinder and plays one song of its own, for a player who comes close.
+     */
+    public static final Block WRECK_PHONOGRAPH = register(
+            "wreck_phonograph",
+            key -> new WreckPhonographBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(-1.0F, Blocks.BEDROCK.getExplosionResistance())
+                    .sound(SoundType.WOOD)
+                    .noOcclusion()
+                    .noLootTable()));
+
+    public static final BlockEntityType<WreckPhonographBlockEntity> WRECK_BLOCK_ENTITY = Registry.register(
+            BuiltInRegistries.BLOCK_ENTITY_TYPE,
+            id("wreck_phonograph"),
+            new BlockEntityType<>(WreckPhonographBlockEntity::new, Set.of(WRECK_PHONOGRAPH)));
 
     private PhonographRegistry() {}
 
