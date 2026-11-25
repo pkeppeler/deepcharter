@@ -35,9 +35,10 @@ import org.jspecify.annotations.Nullable;
  * {@link LayerTuning#seamRefreshTicks()} ticks and moved to the new chunk, with the old centre's ticket removed, once the vehicle is {@link LayerTuning#seamRecentreChunks()} chunks from the centre: one area per vehicle. Leaving the zone, changing
  * level, being removed or disconnecting ends the approach; the ticket is not removed but lapses on its timeout.
  *
- * <p>A rise through a level's ceiling is streamed the same way into the level above (#1316): the same ticket on the chunk under the vehicle,
- * in the zone of {@link #shouldStream} measured from the ceiling, with the closing speed read as the rise. Only the ticket is taken: the
- * rise still lands by {@link BreachService}'s teleport and fade, since no rider is sent the area and no swap is prepared going up.
+ * <p>A rise through a level's ceiling is streamed the same way into the level above (#1316): the same ticket on the
+ * chunk under the vehicle, in the zone of {@link #shouldStream} measured from the ceiling, with the closing speed read
+ * as the rise. Only the ticket is taken: the rise still lands by {@link BreachService}'s teleport and fade, since no
+ * rider is sent the area and no swap is prepared going up.
  *
  * <p>The state is on the server thread only, and holds no level, entity or player: a root's UUID, its riders' UUIDs, level keys and a chunk.
  */
@@ -58,7 +59,8 @@ public final class SeamStreaming {
             double descentPerTick,
             boolean ready) {}
 
-    /** What a root vehicle is holding open under or over it: the ticket's level and chunk and when it was last taken. */
+    /** What a root vehicle is holding open under or over it: the ticket's level and chunk and when it was last taken.
+    * */
     private record Streaming(
             ResourceKey<Level> target,
             ChunkPos centre,
@@ -72,8 +74,9 @@ public final class SeamStreaming {
     private record Key(UUID root, boolean ascending) {}
 
     /**
-     * A root vehicle's recent distances to the seam it nears in one level, and the area it streams. The distance is its height over the
-     * floor going down and under the ceiling going up, so {@link #descentPerTick} reads the closing speed for both.
+     * A root vehicle's recent distances to the seam it nears in one level, and the area it streams. The distance is its
+     * height over the floor going down and under the ceiling going up, so {@link #descentPerTick} reads the closing
+     * speed for both.
      */
     private static final class Track {
         private final ResourceKey<Level> upper;
@@ -149,8 +152,8 @@ public final class SeamStreaming {
     }
 
     /**
-     * The approach of the root vehicle with this UUID to the level above, if it is streaming one now, with that level as its
-     * {@code lower}: a ticket only, never sent to a rider.
+     * The approach of the root vehicle with this UUID to the level above, if it is streaming one now, with that level
+     * as its {@code lower}: a ticket only, never sent to a rider.
      */
     public static Optional<Approach> ascentOf(UUID root) {
         return approachOf(root, true);
@@ -161,7 +164,8 @@ public final class SeamStreaming {
         return track == null ? Optional.empty() : approachOf(root, track);
     }
 
-    /** Every descent approach under way now: one per root vehicle that is streaming a level below. A rise is not served to riders. */
+    /** Every descent approach under way now: one per root vehicle that is streaming a level below. A rise is not served
+    * to riders. */
     public static List<Approach> approaches() {
         List<Approach> approaches = new ArrayList<>();
         TRACKS.forEach((key, track) -> {
@@ -189,8 +193,9 @@ public final class SeamStreaming {
     }
 
     /**
-     * Logs a crossing, down or {@code ascending}, that finds less than the whole arrival area loaded, which the crossing then waits for on
-     * the server thread: how many of its chunks are loaded and how long the approach had run. Silent when the area is ready.
+     * Logs a crossing, down or {@code ascending}, that finds less than the whole arrival area loaded, which the
+     * crossing then waits for on the server thread: how many of its chunks are loaded and how long the approach had
+     * run. Silent when the area is ready.
      */
     static void reportCrossing(Entity root, ServerLevel to, ChunkPos arrival, boolean ascending) {
         Optional<Approach> approach = approachOf(root.getUUID(), ascending);
@@ -247,9 +252,9 @@ public final class SeamStreaming {
     }
 
     /**
-     * The level under {@code level} in the chain, or over it when {@code ascending}: empty for the surface going up, the last level going
-     * down, a level outside the chain and a registered layer whose level is not loaded. That last is warned about once per level key,
-     * and never thrown, since this runs every tick.
+     * The level under {@code level} in the chain, or over it when {@code ascending}: empty for the surface going up,
+     * the last level going down, a level outside the chain and a registered layer whose level is not loaded. That last
+     * is warned about once per level key, and never thrown, since this runs every tick.
      */
     private static Optional<ServerLevel> levelBeyond(ServerLevel level, boolean ascending) {
         Optional<Band> band = LayerChain.layerAt(level, level.getMinY());

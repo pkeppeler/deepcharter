@@ -28,9 +28,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An upward crossing finds the arrival area of the level above loaded, and loads nothing on the server thread (#1316, ADR 0089): the
- * rise through a layer's ceiling streams as the descent through a floor does. Layer 2's ceiling leads into layer 1, a thousand
- * blocks from any other seam test's column.
+ * An upward crossing finds the arrival area of the level above loaded, and loads nothing on the server thread (#1316,
+ * ADR 0089): the rise through a layer's ceiling streams as the descent through a floor does. Layer 2's ceiling leads
+ * into layer 1, a thousand blocks from any other seam test's column.
  */
 public class SeamAscentTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SeamAscentTest.class);
@@ -43,7 +43,10 @@ public class SeamAscentTest {
 
     private static final int CONTROL_SITE = 13;
 
-    /** The shaft a mock rises in, from {@code HOLD_HEIGHT + 10} under the ceiling to the top row: not rock, so it takes no damage. */
+    /**
+     * The shaft a mock rises in, from {@code HOLD_HEIGHT + 10} under the ceiling to the top row: not rock, so it takes
+     * no damage.
+     */
     private static void carveShaft(Site site, int ceilingY) {
         BlockPos column = BlockPos.containing(site.x(), ceilingY, site.z());
         RoomCarver.carve(
@@ -62,8 +65,8 @@ public class SeamAscentTest {
     }
 
     /**
-     * A mock rising in layer 2 within the margin of its ceiling gets the whole arrival area of layer 1 loaded and ticketed before it
-     * crosses, and the crossing waits for no chunk of it on the server thread.
+     * A mock rising in layer 2 within the margin of its ceiling gets the whole arrival area of layer 1 loaded and
+     * ticketed before it crosses, and the crossing waits for no chunk of it on the server thread.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void anUpwardCrossingFindsItsArrivalAreaLoadedAndWaitsForNoChunk(GameTestHelper helper) {
@@ -156,9 +159,9 @@ public class SeamAscentTest {
     }
 
     /**
-     * The control of the case above: a mock that is over the ceiling the first tick it is near it has no lead, so its crossing does wait
-     * for the chunks on the server thread, and says how many of the area were loaded. It proves that the mixin sees a blocking load
-     * going up, and logs the stall the streamed case removes.
+     * The control of the case above: a mock that is over the ceiling the first tick it is near it has no lead, so its
+     * crossing does wait for the chunks on the server thread, and says how many of the area were loaded. It proves that
+     * the mixin sees a blocking load going up, and logs the stall the streamed case removes.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void anUpwardCrossingWithNoLeadWaitsForTheAreaAndSaysSo(GameTestHelper helper) {
