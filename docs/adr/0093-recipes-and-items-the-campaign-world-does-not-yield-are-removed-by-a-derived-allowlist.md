@@ -1,0 +1,33 @@
+---
+status: accepted
+---
+
+# Recipes and items the campaign world does not yield are removed, by an allowlist a test derives from the world
+
+Issue [#1263](https://github.com/pkeppeler/deepcharter/issues/1263), a user decision from playtest 4. Salvage crates drop oak planks and sticks, so every recipe that takes any planks became known ([ADR 0070](0070-the-server-recipe-book-holds-exactly-the-known-recipes-and-the-vanilla-recipe-packets-carry-it.md)), and the parts catalogue listed every wood in the game, though the world has none of them. This amends SPEC section 5 ("Vanilla items follow the same rule"): vanilla content the world cannot yield is removed.
+
+## Decision
+
+- **One allowlist: the item tag `deepcharter:obtainable`** (`data/deepcharter/tags/item/obtainable.json`). It lists the vanilla items the campaign world yields. Every item outside the `minecraft` namespace counts as obtainable, ours and any other mod's, as ADR 0067 leaves other mods' advancements alone. `handbook/ObtainableItems` holds the rule. A tag is synced to the client by vanilla, so the client decides from the synced tag alone (the M2 rule for tables a client needs).
+- **A recipe that needs or makes an unlisted item is not loaded.** `handbook/mixin/RecipeManagerMixin` rebuilds the `RecipeManager`'s recipe map at the head of `finalizeRecipeLoading`, from the recipe registry with those recipes filtered out of `listElements()`, and sets `learnableRecipes` from it as the constructor does. A recipe is kept when every ingredient takes at least one obtainable item (a tag needs one member, not all) and every item its displays make is obtainable. Nothing crafts it, `/recipe give` does not know it, and it never reaches a recipe book or the catalogue. A special recipe (map cloning, dyeing) names neither its ingredients nor its result and is kept: what it takes is unlisted too. The mixin is required (`defaultRequire: 1`), so a rename in a Minecraft update fails the launch.
+  - Why there and not in the constructor (`<init>`), where 26.3 builds the map with `RecipeMap.create`: the constructor runs before the reloaded item tags are bound (`ReloadableServerResources.updateComponentsAndStaticRegistryTags`), and reading a tag then throws "unbound tag" (tried). `MinecraftServer` calls `finalizeRecipeLoading` after binding the tags, on start and on `/reload`, before the server crafts, sends or indexes a recipe. One reader comes earlier: Fabric's recipe API (`fabric-recipe-api-v1`, its `RecipeManagerMixin`) copies the unfiltered map into its synchronized recipes at the end of the constructor. The constructor's `RecipeMap.create` call is wrapped only to keep the registry lookup for the rebuild.
+- **The list today** holds the vanilla items of oak and spruce wood and their products, stone, cobblestone, stone bricks, blackstone and deepslate tiles and their products, iron, copper (with its weathered stages), coal, redstone, string and white wool, and what they craft into.
+- **The client hides unlisted items.** The catalogue keeps only obtainable items in an ingredient cell (`KnownRecipe.of`), so "any planks" shows oak, spruce and stalk planks and the catalogue lists no other wood. `client/handbook/ObtainableCreativeTabs` takes unlisted items out of every creative tab and the search through Fabric's `CreativeModeTabEvents.MODIFY_OUTPUT_ALL` (`fabric-creative-tab-api-v1`).
+- **A gate derives the list from the world.** `ObtainableItemsTest.theListIsWhatTheCampaignWorldYields` fails when the tag drifts either way, naming the items to add and to remove. It starts from every item of ours, the loot tables we ship (rolled with fixed seeds), and the blocks the world is made of: the campaign noise settings and the features and carvers of our biomes (encoded as data, read for every block id), the colony's structure files, the layer structures as they generate (one site of each kind and the Prospector's), and the colony's fill (`ColonyBuilder.FILL`). It then closes over the ways a player gets more: breaking a block (its loot table, with a tool that may harvest it, in each state of a block with at most 32), crafting (every recipe in the registry, the removed ones included: one whose every ingredient has an obtainable item, made at an obtainable station, makes its results obtainable), placing a block item and breaking it, a tool's block transform (stripping a log, simulated with a real tool), copper weathering, a bucket of a fluid the world holds, and the composter. It fails, naming what to teach it, when a vanilla structure or a mob spawn may appear in one of our biomes, or when a loot table of ours is not a chest's or a block's.
+
+## Considered options
+
+- **Overriding each vanilla recipe file with a datapack.** Rejected: thousands of files, and every Minecraft update adds more (ADR 0067 rejected the same for advancements).
+- **Fabric resource conditions.** Rejected: a condition sits in each file, so it is the same per-file override.
+- **Hiding unlisted recipes only on the client.** Rejected: the user asked that they cannot be crafted at all.
+- **A list in Java or a plain JSON table.** Rejected: a tag is data a pack can extend and is synced to the client with no code.
+- **The list derived at run time instead of a committed tag.** Rejected: the derivation generates chunks and simulates tools, which a server start must not do, and a committed list makes a change to it visible in review.
+
+## Consequences
+
+- Breaking a placed block counts, so every vanilla block a player can reach and break (the colony's bookshelves and coal blocks, the layer structures' iron blocks) adds its drops and what they craft into. Protecting a block from hands would shrink the list, and the gate would say so.
+- A change to loot, worldgen, structures or recipes that changes what the world yields fails the gate until the tag follows. The failure's add and remove lists are the edit.
+- A drop of under about 5 % a roll may be missed by the 64 seeds; a tool other than the first that harvests a block rolls 8 seeds, which suits the deterministic tool matches (shears) that change a vanilla drop.
+- The creative tabs are rebuilt when the creative screen's parameters change; after a `/reload` that edits the tag, a client may show the old tabs until it rejoins.
+- `FabricRecipeManager.getSynchronizedRecipes()` (Fabric's recipe API) still holds the left-out recipes, as it copies the map before the filter. Nothing in this mod reads it, and the client's recipe sync reads the live map. Refreshing it would mean building Fabric's internal `SynchronizedRecipesImpl`, so it is left as is.
+- `/reload` with a pack that edits the tag reloads the recipes against the new list, since the recipe manager is built anew.
