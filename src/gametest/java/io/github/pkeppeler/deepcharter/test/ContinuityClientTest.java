@@ -371,7 +371,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
     }
 
     /** A sound of the game's own, not the sequence's: one the silence refuses while it holds. */
-    private static SoundInstance click() {
+    static SoundInstance click() {
         return SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f);
     }
 
@@ -397,7 +397,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
     }
 
     /** The labels of the widgets the open screen shows. */
-    private static List<String> labels(Minecraft client) {
+    static List<String> labels(Minecraft client) {
         return ClientChecks.visibleWidgets(shown(client)).stream()
                 .map(widget -> widget.getMessage().getString())
                 .toList();
@@ -412,7 +412,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
     }
 
     /** The screen open now, which the step before waited for. */
-    private static Screen shown(Minecraft client) {
+    static Screen shown(Minecraft client) {
         return Objects.requireNonNull(client.gui.screen(), "<a screen is open>");
     }
 }

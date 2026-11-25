@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.ContinuityClientTest.click;
+import static io.github.pkeppeler.deepcharter.test.ContinuityClientTest.labels;
+import static io.github.pkeppeler.deepcharter.test.ContinuityClientTest.shown;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import com.mojang.blaze3d.platform.InputConstants;
@@ -8,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
 import io.github.pkeppeler.deepcharter.client.continuity.Silence;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
+import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import java.io.IOException;
@@ -27,14 +31,10 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.locale.Language;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.packs.repository.PackRepository;
-import net.minecraft.server.packs.resources.Resource;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Util;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
@@ -42,17 +42,15 @@ import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Client GameTest for #1371: the Continuity Event always lets the dead person go. A dead person teleported to another dimension (a command
- * block's {@code /tp @a}) keeps the one sequence they died in, and RETURN TO WORK brings them back. A death after RETURN TO WORK, before the client saw
- * the person alive, is a new sequence. A resource pack whose laugh envelope
- * is broken (a length that is not a number, endless, negative or absurdly long, or missing, no values a second, a value that is
- * not a number, or not JSON) and whose skull line is blank
- * neither crashes the client nor holds the person on the screen: the skull still draws, and RETURN TO WORK comes as soon as the steady
- * fallback laugh ends, well inside {@code ContinuityScreen}'s cap, with Esc showing DISCONNECT after it.
+ * Client GameTest for #1371: the Continuity Event always lets the dead person go. A dead person teleported to another dimension (a
+ * command block's {@code /tp @a}) keeps the one sequence they died in, and RETURN TO WORK brings them back. A death after RETURN TO
+ * WORK, before the client saw the person alive, is a new sequence. A resource pack whose laugh envelope is broken ({@link #BROKEN})
+ * and whose skull line is blank neither crashes the client nor holds the person on the screen: the skull still draws, and RETURN TO
+ * WORK comes as soon as the steady fallback laugh ends, well inside {@code ContinuityScreen}'s cap, with Esc showing DISCONNECT after
+ * it.
  */
 public class ContinuityPackClientTest implements FabricClientGameTest {
     private static final String PACK = "continuity-broken";
-    private static final String PACK_ID = "file/" + PACK;
     private static final Identifier ENVELOPE =
             Identifier.fromNamespaceAndPath("deepcharter", "continuity/laugh_envelope.json");
     private static final String SKULL_KEY = "deepcharter.continuity.skull";
@@ -64,7 +62,10 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
      */
     private static final double FALLBACK_BUTTON_SECONDS = 10.0;
 
-    /** The broken envelopes, each a pack's {@code continuity/laugh_envelope.json}. */
+    /**
+     * The broken envelopes, each a pack's {@code continuity/laugh_envelope.json}: a length that is not a number, endless, negative,
+     * absurdly long or missing, no values a second, a value that is not a number, and not JSON.
+     */
     private static final List<String> BROKEN = List.of(
             "{\"framesPerSecond\": 25, \"seconds\": NaN, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": Infinity, \"values\": [0.5, 0.5]}",
@@ -93,36 +94,18 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
             try {
                 for (String broken : BROKEN) {
                     writePack(pack, broken);
-                    context.runOnClient(client -> {
-                        PackRepository repository = client.getResourcePackRepository();
-                        repository.reload();
-                        if (repository.addPack(PACK_ID)) {
-                            client.options.updateResourcePacks(repository);
-                        } else {
-                            // Selected already, by the case before: the options see no change and would not reload.
-                            var _ = client.reloadResourcePacks(); // the wait below watches the reload land
-                        }
-                    });
-                    ClientWait.until(
-                            context,
-                            "the pack with " + broken + " loaded",
-                            client -> broken.equals(envelope(client))
+                    // Selected already after the first case, it is reloaded all the same, which reads the new files.
+                    ClientPacks.enable(context, PACK);
+                    context.runOnClient(client -> require(
+                            broken.equals(envelope(client))
                                     && Language.getInstance()
                                             .getOrDefault(SKULL_KEY)
-                                            .isEmpty()
-                                    && client.gui.overlay() == null);
+                                            .isEmpty(),
+                            "the pack with " + broken + " is loaded"));
                     aDeathEndsInTheButton(context, singleplayer, broken);
                 }
             } finally {
-                context.runOnClient(client -> {
-                    PackRepository repository = client.getResourcePackRepository();
-                    repository.removePack(PACK_ID);
-                    client.options.updateResourcePacks(repository);
-                });
-                ClientWait.until(
-                        context,
-                        "the pack removed",
-                        client -> !PACK_ID.equals(source(client)) && client.gui.overlay() == null);
+                ClientPacks.disable(context, PACK);
                 deleteTree(pack);
             }
         }
@@ -135,7 +118,7 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
     private static void teleportedWhileDead(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         kill(context, singleplayer);
         ClientWait.screen(context, ContinuityScreen.class);
-        Screen sequence = context.computeOnClient(ContinuityPackClientTest::shown);
+        Screen sequence = context.computeOnClient(ContinuityClientTest::shown);
         LocalPlayer died = context.computeOnClient(client -> Objects.requireNonNull(client.player, "<in the world>"));
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -168,11 +151,7 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
      */
     private static void diedAgainAfterReturn(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         kill(context, singleplayer);
-        ClientWait.until(
-                context,
-                "RETURN TO WORK shown",
-                client -> client.gui.screen() instanceof ContinuityScreen screen
-                        && !ClientChecks.visibleWidgets(screen).isEmpty());
+        buttonShown(context, "RETURN TO WORK shown");
         context.runOnClient(client -> {
             Screen sequence = shown(client);
             ClientChecks.button(sequence, RETURN).onPress(new KeyEvent(InputConstants.KEY_RETURN, 0, 0));
@@ -189,10 +168,7 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
             // Shown as the death's screen would be: the respawn the button asked for closes it.
             client.gui.setScreen(next);
         });
-        ClientWait.until(
-                context,
-                "back at work: the screen closed and the player alive",
-                client -> client.gui.screen() == null && client.player != null && client.player.isAlive());
+        backAtWork(context);
     }
 
     /** The person dies with the broken pack on: the skull draws, the button comes in time, Esc shows DISCONNECT. */
@@ -200,35 +176,38 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
             ClientGameTestContext context, TestSingleplayerContext singleplayer, String broken) {
         kill(context, singleplayer);
         long before = context.computeOnClient(client -> Util.getMillis());
-        ClientWait.until(
-                context,
-                "RETURN TO WORK with " + broken,
-                client -> client.gui.screen() instanceof ContinuityScreen screen
-                        && !ClientChecks.visibleWidgets(screen).isEmpty());
+        buttonShown(context, "RETURN TO WORK with " + broken);
         double seconds = (context.computeOnClient(client -> Util.getMillis()) - before) / 1000.0;
         require(
                 seconds <= FALLBACK_BUTTON_SECONDS,
                 "a broken envelope " + broken + " is read as the steady fallback, so the button comes within "
                         + FALLBACK_BUTTON_SECONDS + " s; it came at " + seconds);
         RealInput.key(context, InputConstants.KEY_ESCAPE, 0);
-        context.runOnClient(client -> {
-            List<String> labels = ClientChecks.visibleWidgets(shown(client)).stream()
-                    .map(widget -> widget.getMessage().getString())
-                    .toList();
-            require(labels.equals(List.of(RETURN, DISCONNECT)), "Esc shows DISCONNECT, the screen shows " + labels);
-        });
+        context.runOnClient(client -> require(
+                labels(client).equals(List.of(RETURN, DISCONNECT)),
+                "Esc shows DISCONNECT, the screen shows " + labels(client)));
         returnToWork(context);
     }
 
+    /** Clicks RETURN TO WORK once it shows, and waits for the person to be back at work. */
     private static void returnToWork(ClientGameTestContext context) {
-        ClientWait.until(
-                context,
-                "RETURN TO WORK shown",
-                client -> client.gui.screen() instanceof ContinuityScreen screen
-                        && !ClientChecks.visibleWidgets(screen).isEmpty());
+        buttonShown(context, "RETURN TO WORK shown");
         Button button = context.computeOnClient(client -> ClientChecks.button(shown(client), RETURN));
         ClientCursor.moveTo(context, button.getX() + button.getWidth() / 2.0, button.getY() + button.getHeight() / 2.0);
         RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        backAtWork(context);
+    }
+
+    /** Waits for the sequence's buttons: RETURN TO WORK shows once the laugh ends. */
+    private static void buttonShown(ClientGameTestContext context, String what) {
+        ClientWait.until(
+                context,
+                what,
+                client -> client.gui.screen() instanceof ContinuityScreen screen
+                        && !ClientChecks.visibleWidgets(screen).isEmpty());
+    }
+
+    private static void backAtWork(ClientGameTestContext context) {
         ClientWait.until(
                 context,
                 "back at work: the screen closed and the player alive",
@@ -254,11 +233,6 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
                 () -> "a player who could not be hurt");
     }
 
-    /** A sound of the game's own, not the sequence's: one the silence refuses while it holds. */
-    private static SimpleSoundInstance click() {
-        return SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f);
-    }
-
     /** The laugh envelope the game reads now, as text; empty when there is none. */
     private static String envelope(Minecraft client) {
         return client.getResourceManager()
@@ -273,19 +247,6 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
                     }
                 })
                 .orElse("");
-    }
-
-    /** The pack the laugh envelope comes from now. */
-    private static String source(Minecraft client) {
-        return client.getResourceManager()
-                .getResource(ENVELOPE)
-                .map(Resource::sourcePackId)
-                .orElse("");
-    }
-
-    /** The screen open now, which the step before waited for. */
-    private static Screen shown(Minecraft client) {
-        return Objects.requireNonNull(client.gui.screen(), "<a screen is open>");
     }
 
     private static void writePack(Path pack, String envelope) {
