@@ -134,7 +134,7 @@ final class StructurePlan {
         set(0, y, 0, AmbienceRegistry.COMPANY_HORN.defaultBlockState());
     }
 
-    /** A step to a neighbouring column in the horn's chunk, the same from every chunk, so only that chunk draws the post. */
+    /** A step to a neighbouring column in the horn's chunk, the same from every chunk, so only it draws the post. */
     private int[] postStep() {
         BlockPos column = column(0, 0, 0);
         for (int[] step : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
