@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTether;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.ForceSends;
@@ -18,12 +19,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -32,6 +36,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Client GameTest for #1317: a real client on foot in a bore carved in the campaign world, dropped onto each of our
@@ -40,19 +46,13 @@ import net.minecraft.world.level.block.Blocks;
  * nothing below, so a block the client holds and the server does not would make it. A mock player cannot show that:
  * only a real client holds its own copy of the chunks and does its own collision.
  *
- * <p>Jumping is left out on purpose. Vanilla's own check is a false alarm on a jump's take-off and landing, one tick
- * apart between client and server: a client holding the jump key on a plain stone slab in the End logged the line
- * too, with none of our blocks near.
+ * <p>Jumping is left out: vanilla's check is a false alarm on a jump's take-off and landing, with none of our blocks
+ * near. So is a lagging server, which makes the line on plain stone too (#1343): the render distance is small, so the
+ * server generates nothing far off, and the player is counted only once the client holds every chunk in view and the
+ * server is calm. Each step records the server's slowest tick, so a red run tells lag from a block disagreement.
  *
- * <p>Nor is a lagging server. A real client dropped on plain stone logged the line in 2 runs of 14, each 12 to 13 s
- * after the server fell over 130 ticks behind; lag is tracked in #1343. So the player is a spectator until the client
- * holds the carved bore, its light is settled and the server is calm, and only then on foot and counted: this test
- * pins that our blocks make no disagreement on a calm server. Vanilla logs at most one line in 200 ticks per player,
- * so a setup line would hide a measured one: the count waits that out first.
- *
- * <p>The control: the server then removes the stone patch without telling the client, and the player drops onto it
- * again. The client lands on a block the server lacks, and the line must come, so a zero above is not the appender or
- * the line's wording failing.
+ * <p>The control: the server removes the stone patch without telling the client, and the player drops onto it again.
+ * The line must come, so a zero above is not the appender or the line's wording failing.
  */
 public class OnFootForceSendClientTest implements FabricClientGameTest {
     private static final int X = 29000;
@@ -74,10 +74,34 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
      * times, before the client-test watchdog's limit.
      */
     private static final int CALM_SECONDS = 30;
-    /** The walls of the room above the bore, and how far the pod stands from its centre. */
+    /** The walls of the room above the bore. */
     private static final int ROOM_RADIUS = 8;
 
+    /** How far the pod stands from the bore's centre. */
     private static final double POD_OFFSET = 5.5;
+
+    /**
+     * A pit as deep as the bore, across the room from the pod: a person at its foot is past the tether's length, so the
+     * taut line holds them. It stays in the bore's chunk, so the player's view never moves.
+     */
+    private static final int PIT_DX = -7;
+
+    /** Long enough to fall the pit and hang on the line. */
+    private static final int HANG_TICKS = 60;
+
+    /** Chunks; the integrated server's view distance follows it, so nothing far off generates while counting. */
+    private static final int RENDER_DISTANCE = 2;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("OnFootForceSendClientTest");
+
+    private static final AtomicLong SLOWEST_TICK = new AtomicLong();
+    private static final AtomicLong LONGEST_GAP = new AtomicLong();
+    private static final AtomicLong LAST_TICK_END = new AtomicLong();
+    private static volatile boolean watching;
+
+    static {
+        ServerTickEvents.END_SERVER_TICK.register(OnFootForceSendClientTest::watchTick);
+    }
 
     /** Vanilla sends nothing in the first 200 ticks of a connection. */
     private static final int SILENT_TICKS = 260;
@@ -99,112 +123,148 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);
-            TestServerContext server = singleplayer.getServer();
-            int start = ForceSends.total();
-            int floor = CampaignBands.LAYER_1.minY() + 60;
-            context.waitTicks(SILENT_TICKS); // tick-wait: the connection's first 200 ticks log nothing
-            server.runOnServer(s -> {
-                ServerPlayer player = player(s);
-                player.setGameMode(GameType.SPECTATOR);
-                player.teleportTo(s.overworld(), X + 0.5, floor + 2, X + 0.5, Set.of(), 0, 0, true);
+            ClientChecks.withRenderDistance(context, RENDER_DISTANCE, () -> {
+                try {
+                    count(context, singleplayer.getServer());
+                } finally {
+                    watching = false;
+                }
             });
-            ClientWait.until(
-                    context,
-                    "the chunks round the bore on the server",
-                    () -> server.computeOnServer(s -> loaded(s.overworld())),
-                    () -> "not loaded");
-            server.runOnServer(s -> carve(s.overworld(), floor));
-            BlockPos top = new BlockPos(X, floor + DROP, X);
-            ClientWait.until(
-                    context,
-                    "the client holding the bore",
-                    client -> client.level != null
-                            && client.level.getBlockState(top).isAir()
-                            && client.level.getBlockState(top.atY(floor - 1)).is(Blocks.STONE));
-            ClientWait.chunksAround(context, X, X, ROOM_RADIUS);
-            ClientWait.lightSettled(context, server, 1, X, X, ROOM_RADIUS);
-            int setup = ForceSends.total() - start;
-            if (setup > 0) {
-                context.waitTicks(LINE_COOLDOWN_TICKS); // tick-wait: a setup line's cooldown would hide a measured line
-            }
-            awaitCalm(context, server);
-            server.runOnServer(s -> player(s).setGameMode(GameType.SURVIVAL));
-            int before = ForceSends.total();
-            // The lines of each step, so a failure says where the line came.
-            StringBuilder phases = new StringBuilder();
-            ClientWait.until(
-                    context,
-                    "the player on foot on the bore's floor",
-                    client -> client.player != null && client.player.onGround());
-            int mark = phase(phases, "on foot", before);
-
-            for (Patch patch : PATCHES) {
-                dropOnto(context, server, floor, patch);
-                context.waitTicks(STAND_TICKS); // tick-wait: standing on the block, with the position reminders
-                mark = phase(
-                        phases, BuiltInRegistries.BLOCK.getKey(patch.block()).getPath(), mark);
-            }
-            dropOnto(context, server, floor, PATCHES.getLast());
-            context.waitTicks(LONG_STAND_TICKS); // tick-wait: a cooldown window of standing
-            mark = phase(phases, "long stand", mark);
-            for (int lap = 0; lap < LAPS; lap++) {
-                context.getInput().holdKeyFor(options -> options.keyUp, LAP_TICKS);
-                context.getInput().holdKeyFor(options -> options.keyLeft, LAP_TICKS);
-                context.getInput().holdKeyFor(options -> options.keyDown, LAP_TICKS);
-                context.getInput().holdKeyFor(options -> options.keyRight, LAP_TICKS);
-            }
-            mark = phase(phases, "laps", mark);
-            int onTheBlocks = ForceSends.total() - before;
-
-            UUID podId = server.computeOnServer(s -> addPodOnALedge(s.overworld(), floor));
-            ClientWait.until(context, "the pod on the client", client -> holdsEntity(client, podId));
-            for (int trip = 0; trip < TETHER_TRIPS; trip++) {
-                server.runOnServer(s -> {
-                    ServerPlayer player = player(s);
-                    player.setHealth(player.getMaxHealth());
-                    player.teleportTo(s.overworld(), X + 0.5, floor + DROP + 2, X + 0.5, Set.of(), 0, 0, true);
-                    PodTether.clip(player, Objects.requireNonNull((PodEntity)
-                            s.overworld().getEntity(podId)));
-                });
-                ClientWait.until(
-                        context,
-                        "the person on the bore floor",
-                        client -> client.player != null && client.player.onGround() && client.player.getY() < floor + 2,
-                        client -> "client player at " + (client.player == null ? "none" : client.player.position()));
-                mark = phase(phases, "tether drop " + (trip + 1), mark);
-                server.runOnServer(s -> PodTether.setWinching(player(s), true));
-                ClientWait.until(
-                        context,
-                        "the winch to haul the person up the bore",
-                        () -> server.computeOnServer(s -> !PodTether.isWinching(player(s))),
-                        () -> "winching, at "
-                                + server.computeOnServer(s -> player(s).position()));
-                server.runOnServer(s -> PodTether.unclip(player(s), PodTether.Unclipped.UNHOOKED));
-                mark = phase(phases, "haul " + (trip + 1), mark);
-            }
-            context.waitTicks(SETTLE_TICKS); // tick-wait: any last packet
-            phase(phases, "settle", mark);
-            int total = ForceSends.total() - before;
-            require(
-                    total == 0,
-                    total + " force-send lines (" + onTheBlocks + " before the tether; " + phases
-                            + ") for a real client on foot in a carved bore, and " + setup + " in the setup");
-
-            // No line since the count began, and a setup line was waited out before it, so vanilla's cooldown is clear.
-            Patch stone = PATCHES.getLast();
-            server.runOnServer(s -> s.overworld()
-                    .setBlock(
-                            new BlockPos(X + stone.dx(), floor - 1, X + stone.dz()),
-                            Blocks.AIR.defaultBlockState(),
-                            Block.UPDATE_INVISIBLE));
-            int beforeControl = ForceSends.total();
-            dropOnto(context, server, floor, stone);
-            ClientWait.until(
-                    context,
-                    "a force-send line for a client landing on a block the server removed unseen",
-                    () -> ForceSends.total() > beforeControl,
-                    () -> "no line; " + setup + " in the setup");
         }
+    }
+
+    private static void count(ClientGameTestContext context, TestServerContext server) {
+        int start = ForceSends.total();
+        int floor = CampaignBands.LAYER_1.minY() + 60;
+        context.waitTicks(SILENT_TICKS); // tick-wait: the connection's first 200 ticks log nothing
+        server.runOnServer(s -> {
+            ServerPlayer player = player(s);
+            player.setGameMode(GameType.SPECTATOR);
+            player.teleportTo(s.overworld(), X + 0.5, floor + 2, X + 0.5, Set.of(), 0, 0, true);
+        });
+        ClientWait.until(
+                context,
+                "the chunks round the bore on the server",
+                () -> server.computeOnServer(s -> loaded(s.overworld())),
+                () -> "not loaded");
+        server.runOnServer(s -> carve(s.overworld(), floor));
+        BlockPos top = new BlockPos(X, floor + DROP, X);
+        ClientWait.until(
+                context,
+                "the client holding the bore",
+                client -> client.level != null
+                        && client.level.getBlockState(top).isAir()
+                        && client.level.getBlockState(top.atY(floor - 1)).is(Blocks.STONE));
+        ClientWait.chunksAround(context, X, X, RENDER_DISTANCE * SectionPos.SECTION_SIZE);
+        ClientWait.lightSettled(context, server, 1, X, X, ROOM_RADIUS);
+        awaitCalm(context, server);
+        // Vanilla logs at most one line in 200 ticks per player, so a setup line's cooldown would hide a measured line.
+        int setup = 0;
+        while (ForceSends.total() - start > setup) {
+            setup = ForceSends.total() - start;
+            context.waitTicks(LINE_COOLDOWN_TICKS); // tick-wait: a setup line's cooldown would hide a measured line
+            awaitCalm(context, server);
+        }
+        server.runOnServer(s -> player(s).setGameMode(GameType.SURVIVAL));
+        int before = ForceSends.total();
+        startWatching();
+        Steps steps = new Steps(before);
+        ClientWait.until(
+                context,
+                "the player on foot on the bore's floor",
+                client -> client.player != null && client.player.onGround());
+        steps.end("on foot");
+
+        for (Patch patch : PATCHES) {
+            dropOnto(context, server, floor, patch);
+            context.waitTicks(STAND_TICKS); // tick-wait: standing on the block, with the position reminders
+            steps.end(BuiltInRegistries.BLOCK.getKey(patch.block()).getPath());
+        }
+        dropOnto(context, server, floor, PATCHES.getLast());
+        context.waitTicks(LONG_STAND_TICKS); // tick-wait: a cooldown window of standing
+        steps.end("long stand");
+        for (int lap = 0; lap < LAPS; lap++) {
+            context.getInput().holdKeyFor(options -> options.keyUp, LAP_TICKS);
+            context.getInput().holdKeyFor(options -> options.keyLeft, LAP_TICKS);
+            context.getInput().holdKeyFor(options -> options.keyDown, LAP_TICKS);
+            context.getInput().holdKeyFor(options -> options.keyRight, LAP_TICKS);
+        }
+        steps.end("laps");
+        int onTheBlocks = ForceSends.total() - before;
+
+        UUID podId = server.computeOnServer(s -> addPodOnALedge(s.overworld(), floor));
+        ClientWait.until(context, "the pod on the client", client -> holdsEntity(client, podId));
+        for (int trip = 0; trip < TETHER_TRIPS; trip++) {
+            clipAtTheMouth(server, floor, podId);
+            ClientWait.until(
+                    context,
+                    "the person on the bore floor",
+                    client -> client.player != null && client.player.onGround() && client.player.getY() < floor + 2,
+                    client -> "client player at " + (client.player == null ? "none" : client.player.position()));
+            steps.end("tether drop " + (trip + 1));
+            server.runOnServer(s -> PodTether.setWinching(player(s), true));
+            ClientWait.until(
+                    context,
+                    "the winch to haul the person up the bore",
+                    () -> server.computeOnServer(s -> !PodTether.isWinching(player(s))),
+                    () -> "winching, at "
+                            + server.computeOnServer(s -> player(s).position()));
+            server.runOnServer(s -> PodTether.unclip(player(s), PodTether.Unclipped.UNHOOKED));
+            steps.end("haul " + (trip + 1));
+        }
+
+        clipAtTheMouth(server, floor, podId);
+        server.runOnServer(s ->
+                player(s).teleportTo(s.overworld(), X + PIT_DX + 0.5, floor + DROP + 1, X + 0.5, Set.of(), 0, 0, true));
+        context.waitTicks(HANG_TICKS); // tick-wait: the fall down the pit, and hanging on the taut line
+        double feet = server.computeOnServer(
+                s -> PodTether.isClipped(player(s)) ? player(s).getY() : Double.NEGATIVE_INFINITY);
+        require(
+                feet > floor + 0.5,
+                "the taut line did not hold the person over the pit's floor: feet at " + feet + ", floor at " + floor);
+        steps.end("taut hold");
+        server.runOnServer(s -> PodTether.unclip(player(s), PodTether.Unclipped.UNHOOKED));
+        ClientWait.until(
+                context,
+                "the person on the pit's floor",
+                client -> client.player != null && client.player.onGround() && client.player.getY() < floor + 2,
+                client -> "client player at " + (client.player == null ? "none" : client.player.position()));
+        steps.end("pit floor");
+        context.waitTicks(SETTLE_TICKS); // tick-wait: any last packet
+        steps.end("settle");
+        int total = ForceSends.total() - before;
+        LOGGER.info("Force-send lines and slowest server tick per step: {}", steps);
+        require(
+                total == 0,
+                total + " force-send lines (" + onTheBlocks + " before the tether; " + steps
+                        + ") for a real client on foot in a carved bore, and " + setup + " in the setup");
+
+        // No line since the count began, and a setup line was waited out before it, so vanilla's cooldown is clear.
+        Patch stone = PATCHES.getLast();
+        server.runOnServer(s -> s.overworld()
+                .setBlock(
+                        new BlockPos(X + stone.dx(), floor - 1, X + stone.dz()),
+                        Blocks.AIR.defaultBlockState(),
+                        Block.UPDATE_INVISIBLE));
+        int beforeControl = ForceSends.total();
+        dropOnto(context, server, floor, stone);
+        int setupLines = setup;
+        ClientWait.until(
+                context,
+                "a force-send line for a client landing on a block the server removed unseen",
+                () -> ForceSends.total() > beforeControl,
+                () -> "no line; " + setupLines + " in the setup");
+    }
+
+    /** Clips the player to the pod from the bore's mouth, at full health, so they drop down the bore. */
+    private static void clipAtTheMouth(TestServerContext server, int floor, UUID podId) {
+        server.runOnServer(s -> {
+            ServerPlayer player = player(s);
+            player.setHealth(player.getMaxHealth());
+            player.teleportTo(s.overworld(), X + 0.5, floor + DROP + 2, X + 0.5, Set.of(), 0, 0, true);
+            PodTether.clip(
+                    player, Objects.requireNonNull((PodEntity) s.overworld().getEntity(podId)));
+        });
     }
 
     /**
@@ -221,7 +281,10 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         }
     }
 
-    /** A pod on the ledge of a room over the bore, which the tether's route follows up and across. */
+    /**
+     * A pod on the ledge of a room over the bore, which the tether's route follows up and across, and the pit of
+     * {@link #PIT_DX}.
+     */
     private static UUID addPodOnALedge(ServerLevel level, int floor) {
         int ledge = floor + DROP;
         RoomCarver.carve(
@@ -236,6 +299,8 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                 X - ROOM_RADIUS,
                 X + ROOM_RADIUS,
                 Blocks.AIR);
+        RoomCarver.carve(level, X + PIT_DX, X + PIT_DX, floor - 1, floor - 1, X, X, Blocks.STONE);
+        RoomCarver.carve(level, X + PIT_DX, X + PIT_DX, floor, ledge, X, X, Blocks.AIR);
         PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(X + POD_OFFSET, ledge + 1, X + 0.5);
         level.addFreshEntity(pod);
@@ -282,11 +347,57 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         return slow;
     }
 
-    /** Appends the lines since {@code from} under {@code name}, and returns the count now. */
-    private static int phase(StringBuilder phases, String name, int from) {
-        int now = ForceSends.total();
-        phases.append(phases.isEmpty() ? "" : ", ").append(name).append(' ').append(now - from);
-        return now;
+    private static void startWatching() {
+        LAST_TICK_END.set(0);
+        SLOWEST_TICK.set(0);
+        LONGEST_GAP.set(0);
+        watching = true;
+    }
+
+    /** Records each server tick's time and the wall-clock gap since the last one, while {@link #watching}. */
+    private static void watchTick(MinecraftServer server) {
+        if (!watching) {
+            return;
+        }
+        long now = System.nanoTime();
+        long last = LAST_TICK_END.getAndSet(now);
+        if (last != 0) {
+            LONGEST_GAP.accumulateAndGet(now - last, Math::max);
+        }
+        // Vanilla writes this tick's time at the end of tickServer, before Fabric's end-of-tick event.
+        SLOWEST_TICK.accumulateAndGet(server.getTickTimesNanos()[server.getTickCount() % 100], Math::max);
+    }
+
+    /**
+     * The lines of each step, with the server's slowest tick and longest gap between ticks in it, so a failure says
+     * where the line came and whether the server lagged then.
+     */
+    private static final class Steps {
+        private final StringBuilder record = new StringBuilder();
+        private int mark;
+
+        Steps(int from) {
+            mark = from;
+        }
+
+        void end(String name) {
+            int now = ForceSends.total();
+            record.append(record.isEmpty() ? "" : ", ")
+                    .append(name)
+                    .append(' ')
+                    .append(now - mark)
+                    .append(" (tick ")
+                    .append(SLOWEST_TICK.getAndSet(0) / 1_000_000L)
+                    .append(" ms, gap ")
+                    .append(LONGEST_GAP.getAndSet(0) / 1_000_000L)
+                    .append(" ms)");
+            mark = now;
+        }
+
+        @Override
+        public String toString() {
+            return record.toString();
+        }
     }
 
     private static ServerPlayer player(MinecraftServer server) {
