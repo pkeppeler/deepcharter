@@ -24,6 +24,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -129,19 +130,30 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             awaitCalm(context, server);
             server.runOnServer(s -> player(s).setGameMode(GameType.SURVIVAL));
             int before = ForceSends.total();
+            // The lines of each step, so a failure says where the line came.
+            StringBuilder phases = new StringBuilder();
+            ClientWait.until(
+                    context,
+                    "the player on foot on the bore's floor",
+                    client -> client.player != null && client.player.onGround());
+            int mark = phase(phases, "on foot", before);
 
             for (Patch patch : PATCHES) {
                 dropOnto(context, server, floor, patch);
                 context.waitTicks(STAND_TICKS); // tick-wait: standing on the block, with the position reminders
+                mark = phase(
+                        phases, BuiltInRegistries.BLOCK.getKey(patch.block()).getPath(), mark);
             }
             dropOnto(context, server, floor, PATCHES.getLast());
             context.waitTicks(LONG_STAND_TICKS); // tick-wait: a cooldown window of standing
+            mark = phase(phases, "long stand", mark);
             for (int lap = 0; lap < LAPS; lap++) {
                 context.getInput().holdKeyFor(options -> options.keyUp, LAP_TICKS);
                 context.getInput().holdKeyFor(options -> options.keyLeft, LAP_TICKS);
                 context.getInput().holdKeyFor(options -> options.keyDown, LAP_TICKS);
                 context.getInput().holdKeyFor(options -> options.keyRight, LAP_TICKS);
             }
+            phase(phases, "laps", mark);
             int onTheBlocks = ForceSends.total() - before;
 
             UUID podId = server.computeOnServer(s -> addPodOnALedge(s.overworld(), floor));
@@ -173,8 +185,8 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             require(
                     total == 0,
                     total + " force-send lines (" + onTheBlocks
-                            + " before the tether) for a real client on foot in a carved bore, and " + setup
-                            + " in the setup");
+                            + " before the tether: " + phases + ") for a real client on foot in a carved bore, and "
+                            + setup + " in the setup");
 
             // No line since the count began, and a setup line was waited out before it, so vanilla's cooldown is clear.
             Patch stone = PATCHES.getLast();
@@ -266,6 +278,13 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             }
         }
         return slow;
+    }
+
+    /** Appends the lines since {@code from} under {@code name}, and returns the count now. */
+    private static int phase(StringBuilder phases, String name, int from) {
+        int now = ForceSends.total();
+        phases.append(phases.isEmpty() ? "" : ", ").append(name).append(' ').append(now - from);
+        return now;
     }
 
     private static ServerPlayer player(MinecraftServer server) {
