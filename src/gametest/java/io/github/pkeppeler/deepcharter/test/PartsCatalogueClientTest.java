@@ -33,6 +33,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -84,8 +85,6 @@ import org.lwjgl.sdl.SDLKeyboard;
  */
 public class PartsCatalogueClientTest implements FabricClientGameTest {
     private static final Item DRILL = HangarParts.DRILL_HEAD;
-    private static final int LEFT_MOUSE = 0;
-    private static final int RIGHT_MOUSE = 1;
     /** The default window, 854 by 480 at GUI scale 2. */
     private static final int WIDTH = 427;
 
@@ -697,6 +696,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         everyStringIsInsideItsGlass(context, screen, "with nothing looked up");
         rAndUShowRecipesAndUsesOfAHoveredItem(context, screen, panel);
         everyStringIsInsideItsGlass(context, screen, "with a recipe shown");
+        aRealLeftAndRightClickOpenRecipesAndUses(context, panel, "on the inventory");
         hoveringAnInventorySlotWorksToo(context, singleplayer, screen, panel);
         theRecipePanelCanBePutAway(context, screen, panel);
         theSpecSheetButtonCallsItsHook(context, panel);
@@ -1124,14 +1124,14 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         CatalogueScene.hover(
                 context,
                 CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, HangarParts.ROTOR_HUB)));
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(1);
         require(
                 context.computeOnClient(client -> lookedAt(panel.state()).item()) == HangarParts.ROTOR_HUB,
                 "a left click on a cell shows its recipes");
         CatalogueScene.hover(
                 context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, Items.COPPER_INGOT)));
-        context.getInput().pressMouse(RIGHT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_RIGHT);
         context.waitTicks(1);
         CatalogueState.Lookup clicked = context.computeOnClient(client -> lookedAt(panel.state()));
         require(clicked.mode() == CatalogueState.Mode.USES, "a right click shows its uses");
@@ -1148,6 +1148,35 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 "and the panel is titled with the item");
     }
 
+    private static void aRealLeftAndRightClickOpenRecipesAndUses(
+            ClientGameTestContext context, CataloguePanel panel, String where) {
+        // Start on the other mode, so a click that does nothing cannot pass for the one asked.
+        context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.USES));
+        context.waitTicks(1);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, DRILL)));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        CatalogueState.Lookup left = context.computeOnClient(client -> lookedAt(panel.state()));
+        require(
+                left.item() == DRILL && left.mode() == CatalogueState.Mode.RECIPES,
+                "a real left click " + where + " opens the recipes of the item, got " + left);
+        // Another item, one on the first page (the crafting table lists copper past it): the right click is not the
+        // left's cell.
+        Item other = context.computeOnClient(client -> panel.shownItems().stream()
+                .filter(item -> item != DRILL)
+                .findFirst()
+                .orElseThrow());
+        CatalogueScene.hover(
+                context,
+                CatalogueScene.gridCell(
+                        CatalogueScene.layout(context, panel), CatalogueScene.indexOf(context, panel, other)));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_RIGHT);
+        CatalogueState.Lookup right = context.computeOnClient(client -> lookedAt(panel.state()));
+        require(
+                right.item() == other && right.mode() == CatalogueState.Mode.USES,
+                "a real right click " + where + " opens the uses of the item, got " + right);
+    }
+
     private static void theSpecSheetButtonCallsItsHook(ClientGameTestContext context, CataloguePanel panel) {
         List<Item> opened = new ArrayList<>();
         context.runOnClient(client -> {
@@ -1158,7 +1187,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         try {
             CatalogueLayout layout = CatalogueScene.layout(context, panel);
             CatalogueScene.hover(context, layout.card().spec());
-            context.getInput().pressMouse(LEFT_MOUSE);
+            context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
             context.waitTicks(1);
             require(opened.equals(List.of(DRILL)), "SPEC SHEET calls its hook with the item looked up, got " + opened);
         } finally {
@@ -1181,7 +1210,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.waitTicks(1);
         CatalogueLayout.Card card = CatalogueScene.layout(context, panel).card();
         CatalogueScene.hover(context, new Rect(card.left(), card.titleY(), 20, 9));
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(1);
         require(
                 !context.computeOnClient(client -> panel.showsRecipePanel()),
@@ -1305,10 +1334,10 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         Rect search = layout.shelf().search();
         CatalogueScene.hover(context, search);
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(1);
         require(context.computeOnClient(client -> panel.searchFocused()), "a click on the search field focuses it");
-        context.getInput().typeChars("rotor");
+        RealInput.type(context, "rotor");
         context.waitTicks(1);
         require(context.computeOnClient(client -> panel.state().query()).equals("rotor"), "typing fills the search");
         require(
@@ -1333,7 +1362,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(context.computeOnClient(client -> client.gui.screen()) == screen, "and does not close the inventory");
         // A search too long to show is cut from the front, so the end that is typed stays on screen.
         CatalogueScene.hover(context, search);
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.getInput().typeChars("a very long search that cannot fit the field");
         context.waitTicks(1);
         everyStringIsInsideItsGlass(context, screen, "with a long search typed");
@@ -1347,11 +1376,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         everyStringIsInsideItsGlass(context, screen, "with nothing found");
         // The runner's holdControl does not reach the key event's modifiers, so the press goes in with the edit
         // shortcut key (Ctrl, or Cmd on a Mac) set.
-        context.runOnClient(client -> client.keyboardHandler.keyPress(
-                client.getWindow().handle(),
-                InputConstants.PRESS,
-                new KeyEvent(InputConstants.KEY_BACKSPACE, 0, InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER)));
-        context.waitTicks(1);
+        RealInput.key(context, InputConstants.KEY_BACKSPACE, InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER);
         require(context.computeOnClient(client -> panel.state().query()).isEmpty(), "ctrl+backspace clears the search");
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         context.waitTicks(1);
@@ -1365,8 +1390,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         CatalogueScene.hover(context, layout.shelf().search());
         require(!sdlTextInputOn(context), "SDL text input is off before the field is clicked " + where);
-        context.getInput().pressMouse(LEFT_MOUSE);
-        context.waitTicks(1);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
         require(context.computeOnClient(client -> panel.searchFocused()), "a click focuses the field " + where);
         require(sdlTextInputOn(context), "the focused field turns SDL text input on, or no text arrives " + where);
         for (char letter : "rotor".toCharArray()) {
@@ -1504,7 +1528,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.waitTicks(2);
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         CatalogueScene.hover(context, layout.shelf().craftable());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(1);
         List<Item> shown = context.computeOnClient(client -> panel.shownItems());
         require(
@@ -1515,7 +1539,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         everyStringIsInsideItsGlass(context, screen, "with the craftable filter on");
         // The text check parked the cursor off the button.
         CatalogueScene.hover(context, layout.shelf().craftable());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(1);
         require(!context.computeOnClient(client -> panel.state().craftableOnly()), "a second click turns it off");
     }
@@ -1720,6 +1744,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES));
         context.waitTicks(1);
         require(context.computeOnClient(client -> panel.layout() != null), "the crafting table has the panels");
+        aRealLeftAndRightClickOpenRecipesAndUses(context, panel, "on the crafting table");
         everyStringIsInsideItsGlass(context, table, "on the crafting table");
         theSearchTakesWhatSdlDelivers(context, table, panel, "on the crafting table");
         require(
