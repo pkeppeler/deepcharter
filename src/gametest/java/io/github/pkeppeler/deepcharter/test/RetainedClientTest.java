@@ -186,6 +186,7 @@ public class RetainedClientTest implements FabricClientGameTest {
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(Vec3.atBottomCenterOf(origin.east(APPROACH)));
             level.addFreshEntity(pod);
+            // arrived-ok: 60 blocks up and 6 east of where the player stands, in chunks it already holds
             player.teleportTo(level, pod.getX(), pod.getY(), pod.getZ(), Set.of(), 0f, 0f, true);
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod");

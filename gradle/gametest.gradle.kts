@@ -110,6 +110,17 @@ object GametestScan {
 	private val roomCarve = Regex("""\bRoomCarver\s*\.\s*carve\w*\s*\(""")
 	private val podSeat = Regex("""\bstartRiding\s*\(|\b\w*[pP]od\w*\s*(?:\(\s*\)\s*)?\.\s*(?:setPos|teleportTo)\s*\(""")
 
+	// After a far teleport only a one-tick ticket holds the player's new chunk until the player's own, throttled ticket lands; when the short one lapses first,
+	// the chunk is demoted and an entity added or seated there in that tick is hidden for seconds (#1345, #1352). A client GameTest, evidence scenario or test
+	// helper that teleports a player (`teleportTo` on anything but a pod) and then adds an entity (`addFreshEntity`) or seats one (`startRiding`) in one
+	// runOnServer, computeOnServer, serverDo or serverGet block has no wait between them: teleport in one block, call ClientWait.arrived, then add and seat in
+	// the next. A teleport that leaves no chunk cold (in place, into chunks the player's tickets already hold, or into forced chunks) carries the marker below,
+	// with a reason, on its statement or the comment line above it. Heuristic: a teleport or a seat inside a helper method the block calls is not seen.
+	private const val ARRIVED_MARKER = "// arrived-ok:"
+	private val stagingBlockCall = Regex("""\b(?:runOnServer|computeOnServer|serverDo|serverGet)\s*\(""")
+	private val teleportCall = Regex("""(\b\w*[pP]od\w*\s*(?:\(\s*\)\s*)?\.\s*)?\bteleportTo\s*\(""")
+	private val entityArrival = Regex("""\b(?:startRiding|addFreshEntity)\s*\(""")
+
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
 	// seen, so the gate refuses the literal (#1026).
@@ -221,6 +232,29 @@ object GametestScan {
 			val line = lineOf(text, at)
 			if (carves.any { it > block.first && it < at } && !marked(markedNear, rawLines, line, LIGHT_SETTLED_MARKER)) {
 				problems.add("$className:${line + 1} seats a pod after a RoomCarver carve in one server block, so a chunk re-send queued by the carve can leave the rider's pod untracked (#1303); carve in one runOnServer, call ClientWait.lightSettled, then seat in the next, or mark a seat the carve cannot affect with '$LIGHT_SETTLED_MARKER <reason>'")
+			}
+		}
+		return problems
+	}
+
+	private fun arrivedProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val blocks = stagingBlockCall.findAll(text).map { it.range.last to closing(text, it.range.last) }.filter { it.second > 0 }.toList()
+		val arrivals = entityArrival.findAll(text).map { it.range.first }.toList()
+		val problems = mutableListOf<String>()
+		for (teleport in teleportCall.findAll(text)) {
+			if (teleport.groups[1] != null) {
+				continue
+			}
+			val at = teleport.range.first
+			val block = blocks.filter { at > it.first && at < it.second }.maxByOrNull { it.first } ?: continue
+			val line = lineOf(text, at)
+			if (arrivals.any { it > at && it < block.second } && !marked(markedNear, rawLines, line, ARRIVED_MARKER)) {
+				problems.add("$className:${line + 1} teleports a player and then adds or seats an entity in one server block, so a far teleport's one-tick chunk ticket can lapse and hide the entity for seconds (#1345); teleport in one runOnServer, call ClientWait.arrived, then add and seat in the next, or mark a teleport that leaves no chunk cold with '$ARRIVED_MARKER <reason>'")
 			}
 		}
 		return problems
@@ -427,6 +461,9 @@ object GametestScan {
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
 			if (isClientSide) {
 				problems.addAll(lightSettledProblems(className, text, rawLines, markedNear))
+			}
+			if (clientImplements.containsMatchIn(text) || className.contains(".test.support.") || className.contains(".test.evidence.")) {
+				problems.addAll(arrivedProblems(className, text, rawLines, markedNear))
 			}
 			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
 				problems.addAll(lightWaitProblems(className, text, rawLines, markedNear))

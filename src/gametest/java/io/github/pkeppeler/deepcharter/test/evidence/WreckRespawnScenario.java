@@ -75,6 +75,7 @@ public class WreckRespawnScenario extends EvidenceScenario {
                 int x = office.pos().getX() + DISTANCE;
                 int z = office.pos().getZ();
                 int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                // arrived-ok: down the column the player was put on above, 120 ticks ago
                 player.teleportTo(level, x + 0.5, ground, z + 0.5, Set.of(), 0f, 0f, true);
                 player.resetFallDistance();
                 player.setGameMode(GameType.SURVIVAL);

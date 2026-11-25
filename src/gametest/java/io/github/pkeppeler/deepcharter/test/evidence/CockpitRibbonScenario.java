@@ -249,6 +249,11 @@ public class CockpitRibbonScenario extends EvidenceScenario {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(level, X + east + 0.5, room.floorY(), Z + 0.5, Set.of(), yaw, 0f, true);
+        });
+        ClientWait.arrived(context, singleplayer.getServer());
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel level = ClientLight.serverLevel(server, room.dimension());
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(X + east + 0.5, room.floorY(), Z + 0.5);
             pod.setYRot(yaw);

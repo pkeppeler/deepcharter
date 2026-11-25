@@ -76,6 +76,11 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X - 4, FLOOR_Y, Z + 0.5, Set.of(), EAST, LOOK_DOWN, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X - 4, FLOOR_Y, Z + 0.5);
                 one.addFreshEntity(pod);
@@ -244,6 +249,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = podOnTheFloor(server);
+            // arrived-ok: back to the pod in the room the player is already in
             player.teleportTo(level(server), pod.getX(), pod.getY(), pod.getZ(), Set.of(), EAST, LOOK_DOWN, true);
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod again");
