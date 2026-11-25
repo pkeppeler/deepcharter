@@ -139,7 +139,7 @@ public final class PhonographBlockEntity extends BlockEntity {
         ticksLeft = next.lengthTicks();
         setChanged();
         showLoaded();
-        listeners = PhonographSound.start(server, getBlockPos(), next);
+        listeners = PhonographSound.start(server, getBlockPos(), next.sound(), SoundTuning.DEFAULT.phonographRange());
         return true;
     }
 
@@ -159,13 +159,14 @@ public final class PhonographBlockEntity extends BlockEntity {
     /** Whether any player is within earshot of this phonograph now. */
     public boolean hasAudience() {
         return level instanceof ServerLevel server
-                && !PhonographSound.audience(server, getBlockPos()).isEmpty();
+                && !PhonographSound.audience(server, getBlockPos(), SoundTuning.DEFAULT.phonographRange())
+                        .isEmpty();
     }
 
     /** Ends a playback and cuts its sound off for its listeners, leaving the block state alone. */
     private void silence(ServerLevel server) {
         if (playing != null) {
-            PhonographSound.stop(server.getServer(), playing, listeners);
+            PhonographSound.stop(server.getServer(), playing.sound(), listeners);
             playing = null;
             ticksLeft = 0;
         }
@@ -192,7 +193,8 @@ public final class PhonographBlockEntity extends BlockEntity {
             phonograph.listeners = new HashSet<>();
             phonograph.showLoaded();
         } else if (server.getGameTime() % SoundTuning.DEFAULT.phonographListenTicks() == 0) {
-            PhonographSound.recruit(server, pos, recording, phonograph.listeners);
+            PhonographSound.recruit(
+                    server, pos, recording.sound(), SoundTuning.DEFAULT.phonographRange(), phonograph.listeners);
         }
     }
 

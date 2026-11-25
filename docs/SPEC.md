@@ -52,8 +52,8 @@ Pillars, ranked. The higher one wins a conflict.
 ### Seams and grained crust
 
 - Below the campaign world, the worlds are up to 4,064 tall, the limit of one dimension ([ADR 0085](adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
-- The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
-- Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam cannot be told from a decoy.
+- A seam at a layer boundary sits in a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed. A seam mid-layer sits in a plain slab of ordinary rock, with none of these rules.
+- Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam at a layer boundary cannot be told from a decoy.
 
 ### Story layers
 
@@ -294,7 +294,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 ## 9. On foot
 
 - Hybrid play: leave the pod to explore caverns, fight and build.
-- **Hardness:** below layer 1, rock cannot be broken by hand tools, only by pod drills.
+- **Hardness:** the way through pod-only blocks (the breach crust, Company rock, and rock below layer 1) is a pod drill. Any hand tool (pickaxe, axe, shovel, hoe, sword or spear) can brute-force one, in any layer, at 60 seconds a block and a ruinous cost that Unbreaking and Mending cannot lower: a diamond or better tool pays half its durability, and a lesser tool (wood, stone, iron, gold, copper) is destroyed as the block goes. It drops nothing, and the game says what the player is doing wrong ([ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
 - **Environment:** heat, pressure and toxic air outside the pod, worse with depth.
 - **Suit timer:** how long you can stay on foot outside a pod or habitable outpost.
 - **Suit:** upgraded separately: oxygen and toxins, heat, pressure, lamp battery.
@@ -302,7 +302,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 
 ## 10. Hazards
 
-- Baseline from the original: Company Rock (a plain drill refuses it; a bought blasting charge clears it, [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md); a shaped charge clears a column of it and a tier 3 drill bites it slowly, [ADR 0052](adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)), visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
+- Baseline from the original: Company Rock (a plain drill refuses it, and a hand tool breaks it only at the ruinous cost of [ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md); a bought blasting charge clears it, [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md); a shaped charge clears a column of it and a tier 3 drill bites it slowly, [ADR 0052](adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)), visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
 - Earthquakes (in certain layers) and local cave-ins block a stretch of shaft, small or large, rather than erasing it.
 - Ways to clear a blockage:
   1. Climb out and plant explosives, with the suit timer running.

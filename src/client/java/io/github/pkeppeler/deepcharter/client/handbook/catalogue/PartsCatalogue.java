@@ -4,10 +4,12 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -92,13 +94,35 @@ public final class PartsCatalogue {
         return using.getOrDefault(item, List.of());
     }
 
-    /** Whether a known recipe that makes {@code item} can be made at {@code bench} from what {@code contents} holds. */
+    /**
+     * Whether a known recipe that makes {@code item} is of the kind {@code bench} makes (crafting, or the furnace it smelts in) and
+     * {@code contents} holds what it takes. The grid does not matter: a 3 x 3 recipe is craftable now at the 2 x 2 inventory, made at a
+     * table.
+     */
     public boolean craftable(Item item, StackedItemContents contents, Bench bench) {
-        for (KnownRecipe recipe : recipesFor(item)) {
-            if (recipe.makeableAt(bench) && recipe.entry().canCraft(contents)) {
-                return true;
+        return craftableRecipes(item, contents, bench).findAny().isPresent();
+    }
+
+    /** Whether {@code item} is craftable now only at a crafting table: every recipe that is makes needs the 3 x 3 grid. */
+    public boolean tableOnly(Item item, StackedItemContents contents, Bench bench) {
+        List<KnownRecipe> now = craftableRecipes(item, contents, bench).toList();
+        return !now.isEmpty() && now.stream().allMatch(KnownRecipe::needsTable);
+    }
+
+    /** Every item {@link #tableOnly} holds for: worked out once for a whole catalogue, not for each cell drawn. */
+    public Set<Item> tableOnlyItems(StackedItemContents contents, Bench bench) {
+        Set<Item> items = new HashSet<>();
+        for (Item item : items()) {
+            if (tableOnly(item, contents, bench)) {
+                items.add(item);
             }
         }
-        return false;
+        return items;
+    }
+
+    private Stream<KnownRecipe> craftableRecipes(Item item, StackedItemContents contents, Bench bench) {
+        return recipesFor(item).stream()
+                .filter(recipe ->
+                        recipe.book() == bench.type() && recipe.entry().canCraft(contents));
     }
 }
