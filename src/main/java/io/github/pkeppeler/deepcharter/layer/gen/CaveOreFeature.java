@@ -58,6 +58,9 @@ public record CaveOreFeature(int layer, List<List<Weighted>> zones, int minSize,
                 .apply(instance, Weighted::new));
     }
 
+    /** The largest seam: a face of a few blocks, not a vein through the hill. */
+    private static final int MAX_SEAM = 24;
+
     public static final MapCodec<CaveOreFeature> CODEC = RecordCodecBuilder.<CaveOreFeature>mapCodec(instance ->
                     instance.group(
                                     Codec.intRange(1, Integer.MAX_VALUE)
@@ -68,15 +71,16 @@ public record CaveOreFeature(int layer, List<List<Weighted>> zones, int minSize,
                                             .listOf(Zones.COUNT, Zones.COUNT)
                                             .fieldOf("zones")
                                             .forGetter(CaveOreFeature::zones),
-                                    Codec.intRange(1, MAX_SEAM).fieldOf("min_size").forGetter(CaveOreFeature::minSize),
-                                    Codec.intRange(1, MAX_SEAM).fieldOf("max_size").forGetter(CaveOreFeature::maxSize))
+                                    Codec.intRange(1, MAX_SEAM)
+                                            .fieldOf("min_size")
+                                            .forGetter(CaveOreFeature::minSize),
+                                    Codec.intRange(1, MAX_SEAM)
+                                            .fieldOf("max_size")
+                                            .forGetter(CaveOreFeature::maxSize))
                             .apply(instance, CaveOreFeature::new))
             .validate(feature -> feature.minSize <= feature.maxSize
                     ? DataResult.success(feature)
                     : DataResult.error(() -> "min_size " + feature.minSize + " is over max_size " + feature.maxSize));
-
-    /** The largest seam: a face of a few blocks, not a vein through the hill. */
-    private static final int MAX_SEAM = 24;
 
     /** Rows up and down from the origin that it looks for a face. */
     private static final int SEARCH = 8;
@@ -128,7 +132,9 @@ public record CaveOreFeature(int layer, List<List<Weighted>> zones, int minSize,
             placed.add(at);
             for (Direction direction : Direction.values()) {
                 BlockPos next = at.relative(direction);
-                if (inChunk(chunkPos, next, low, high) && !placed.contains(next) && isFace(chunk, chunkPos, next, low, high)) {
+                if (inChunk(chunkPos, next, low, high)
+                        && !placed.contains(next)
+                        && isFace(chunk, chunkPos, next, low, high)) {
                     seam.add(next);
                 }
             }

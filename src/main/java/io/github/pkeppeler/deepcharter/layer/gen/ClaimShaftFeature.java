@@ -47,6 +47,11 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * @param maxDepth the most
  */
 public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implements Feature {
+    /** A shaft has room for a niche, a set of timber and the drift. */
+    private static final int MIN_DEPTH = 8;
+
+    private static final int MAX_DEPTH = 64;
+
     public static final MapCodec<ClaimShaftFeature> CODEC = RecordCodecBuilder.<ClaimShaftFeature>mapCodec(instance ->
                     instance.group(
                                     Codec.intRange(1, Integer.MAX_VALUE)
@@ -62,11 +67,6 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
             .validate(shaft -> shaft.minDepth <= shaft.maxDepth
                     ? DataResult.success(shaft)
                     : DataResult.error(() -> "min_depth " + shaft.minDepth + " is over max_depth " + shaft.maxDepth));
-
-    /** A shaft has room for a niche, a set of timber and the drift. */
-    private static final int MIN_DEPTH = 8;
-
-    private static final int MAX_DEPTH = 64;
 
     /** Blocks from the axis to the hollow's wall (1), to the timber and the niches (2) and to the shell that is sealed (3). */
     private static final int HOLLOW = 1;
@@ -103,7 +103,9 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
 
     public static void register() {
         Registry.register(
-                BuiltInRegistries.FEATURE_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "claim_shaft"), CODEC);
+                BuiltInRegistries.FEATURE_TYPE,
+                Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "claim_shaft"),
+                CODEC);
     }
 
     @Override
@@ -217,7 +219,8 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
 
         /** The rock of the zone at {@code y}: a stratum of the campaign's layer 1, the layer's one rock elsewhere. */
         private BlockState rock(int y) {
-            return (campaign ? LayerBlocks.stratum(band, y) : LayerBlocks.layerGround(band.layer())).defaultBlockState();
+            return (campaign ? LayerBlocks.stratum(band, y) : LayerBlocks.layerGround(band.layer()))
+                    .defaultBlockState();
         }
 
         void seal(BoundingBox bounds) {
@@ -256,7 +259,8 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
                         continue;
                     }
                     for (int y = bottom; y < bottom + DRIFT_HEIGHT; y++) {
-                        set(x + drift.getStepX() * out + side.getStepX() * across,
+                        set(
+                                x + drift.getStepX() * out + side.getStepX() * across,
                                 y,
                                 z + drift.getStepZ() * out + side.getStepZ() * across,
                                 AIR);
@@ -319,9 +323,14 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
             set(x + drift.getStepX() * far, bottom, z + drift.getStepZ() * far, facing(LayerBlocks.LUNCH_PAIL, drift));
             Direction side = drift.getClockWise();
             int corner = HOLLOW + 1;
-            set(x + drift.getStepX() * corner + side.getStepX(), bottom, z + drift.getStepZ() * corner + side.getStepZ(), stub());
+            set(
+                    x + drift.getStepX() * corner + side.getStepX(),
+                    bottom,
+                    z + drift.getStepZ() * corner + side.getStepZ(),
+                    stub());
             if (random.nextDouble() < CRATE) {
-                set(x + drift.getStepX() * corner - side.getStepX(),
+                set(
+                        x + drift.getStepX() * corner - side.getStepX(),
                         bottom,
                         z + drift.getStepZ() * corner - side.getStepZ(),
                         facing(
@@ -348,7 +357,8 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
             }
             set(nx, y, nz, stub());
             double card = PRAYER_CARD[Zones.index(band.minY(), band.height(), y)];
-            set(nx + along.getStepX(),
+            set(
+                    nx + along.getStepX(),
                     y,
                     nz + along.getStepZ(),
                     random.nextDouble() < card ? facing(LayerBlocks.PRAYER_CARD, wall.getOpposite()) : stub());

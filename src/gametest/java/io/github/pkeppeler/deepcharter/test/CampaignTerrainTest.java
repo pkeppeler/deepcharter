@@ -216,7 +216,8 @@ public class CampaignTerrainTest {
                 }
             }
         }
-        Set<String> layer1 = new TreeSet<>(Set.of(PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", STALK));
+        Set<String> layer1 =
+                new TreeSet<>(Set.of(PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", STALK));
         layer1.addAll(CLAIM_SHAFT_BLOCKS);
         expectOnly(helper, found, CampaignBands.SURFACE, SURFACE_BLOCKS);
         expectOnly(helper, found, CampaignBands.LAYER_1, layer1);

@@ -74,8 +74,7 @@ public class TheClaimTest {
     /** The rock of each zone, top first. */
     private static final List<String> STRATA = List.of("hardpan", "packed_shale", "black_shale");
 
-    private static final List<String> FEATURES =
-            List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches");
+    private static final List<String> FEATURES = List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches");
 
     /**
      * Caves open up with depth. The share of open blocks under each column's rock top grows from the surface band's underground, where
@@ -176,7 +175,12 @@ public class TheClaimTest {
             }
         }
         for (int zone = 0; zone < Zones.COUNT; zone++) {
-            LOGGER.info("[the-claim] zone {}: {} of {} rock blocks are {}", zone, matching[zone], rock[zone], STRATA.get(zone));
+            LOGGER.info(
+                    "[the-claim] zone {}: {} of {} rock blocks are {}",
+                    zone,
+                    matching[zone],
+                    rock[zone],
+                    STRATA.get(zone));
             expect(helper, rock[zone] > 0, "zone %s has no rock in its interior", zone);
             expect(
                     helper,
@@ -250,10 +254,12 @@ public class TheClaimTest {
                     timber++;
                 }
             }
-            // A cave through the shaft: open blocks five or six out from its ladder, at the rows the ladder runs, which is past
+            // A cave through the shaft: open blocks five or six out from its ladder, at the rows the ladder runs, which
+            // is past
             // the shaft's walls, niches and sealed shell; the drift, at the foot's rows, is left out.
             for (BlockPos rung : BlockPos.betweenClosed(foot.offset(-6, 3, -6), foot.offset(6, 32, 6))) {
-                if (!ChunkPos.containing(rung).equals(chunk.getPos()) || !chunk.getBlockState(rung).is(Blocks.LADDER)) {
+                if (!ChunkPos.containing(rung).equals(chunk.getPos())
+                        || !chunk.getBlockState(rung).is(Blocks.LADDER)) {
                     continue;
                 }
                 for (BlockPos at : BlockPos.betweenClosed(rung.offset(-6, 0, -6), rung.offset(6, 0, 6))) {
@@ -296,8 +302,8 @@ public class TheClaimTest {
         var registry = level.registryAccess().lookupOrThrow(Registries.PLACED_FEATURE);
         int positions = 0;
         for (String name : FEATURES) {
-            PlacedFeature feature = registry.getValueOrThrow(
-                    ResourceKey.create(Registries.PLACED_FEATURE, Identifier.fromNamespaceAndPath("deepcharter", name)));
+            PlacedFeature feature = registry.getValueOrThrow(ResourceKey.create(
+                    Registries.PLACED_FEATURE, Identifier.fromNamespaceAndPath("deepcharter", name)));
             for (int dx = 0; dx < SAMPLE_CHUNKS; dx++) {
                 for (int dz = 0; dz < SAMPLE_CHUNKS; dz++) {
                     ChunkPos chunk = new ChunkPos(SAMPLE_CHUNK + dx, SAMPLE_CHUNK + dz);
@@ -339,8 +345,10 @@ public class TheClaimTest {
             BoundingBox bounds = shaft.plan(random, origin).bounds();
             expect(
                     helper,
-                    ChunkPos.containing(new BlockPos(bounds.minX(), 0, bounds.minZ())).equals(chunk)
-                            && ChunkPos.containing(new BlockPos(bounds.maxX(), 0, bounds.maxZ())).equals(chunk),
+                    ChunkPos.containing(new BlockPos(bounds.minX(), 0, bounds.minZ()))
+                                    .equals(chunk)
+                            && ChunkPos.containing(new BlockPos(bounds.maxX(), 0, bounds.maxZ()))
+                                    .equals(chunk),
                     "a shaft placed in chunk %s reaches %s",
                     chunk,
                     bounds);
@@ -354,7 +362,11 @@ public class TheClaimTest {
             return state.getValue(OreBlock.HOST).getSerializedName();
         }
         String id = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
-        return STRATA.contains(id) && BuiltInRegistries.BLOCK.getKey(state.getBlock()).getNamespace().equals("deepcharter")
+        return STRATA.contains(id)
+                        && BuiltInRegistries.BLOCK
+                                .getKey(state.getBlock())
+                                .getNamespace()
+                                .equals("deepcharter")
                 ? id
                 : null;
     }
