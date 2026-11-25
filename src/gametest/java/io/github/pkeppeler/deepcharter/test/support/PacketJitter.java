@@ -21,10 +21,14 @@ public final class PacketJitter {
     private static final int PERIOD = 3;
 
     private static int period;
-    /** The client game time until which every move is held; -1 when no stall is on. */
+    /** The {@link #clientTick} from which a move is no longer held; -1 when no stall is on. */
     private static long stallUntil = -1;
 
-    /** Client ticks since the jitter was first registered: the clock the moveless count runs on. */
+    /**
+     * Client ticks since the jitter was first registered, counted at the start of each: the clock the moveless count and every delay
+     * run on. Never the level's game time, which the server's time sync moves, and a late server is exactly when it does (#1112).
+     * A packet is handled between two ticks, so the next tick is the first one a delay holds it for.
+     */
     private static long clientTick;
 
     /** The client tick the latest entity move was handled on. */
@@ -36,7 +40,7 @@ public final class PacketJitter {
     /** Client ticks every move is held for, from {@link #lag}; 0 when the connection is as fast as before. */
     private static int lagTicks;
 
-    /** The client game time each move held by the lag is handed over at, in the order the moves came. */
+    /** The {@link #clientTick} each move held by the lag is handed over at, in the order the moves came. */
     private static final List<Long> LAGGED_DUE = new ArrayList<>();
 
     private static boolean replaying;
@@ -65,12 +69,11 @@ public final class PacketJitter {
      * the server falls behind and catches up, or the network stalls and delivers. Call it with the jitter off or on.
      */
     public static void stall(int ticks) {
-        ClientLevel level = Minecraft.getInstance().level;
-        if (level == null) {
+        if (Minecraft.getInstance().level == null) {
             throw new IllegalStateException("no client level to stall");
         }
         registerOnce();
-        stallUntil = level.getGameTime() + ticks;
+        stallUntil = clientTick + 1 + ticks;
     }
 
     /**
@@ -128,9 +131,9 @@ public final class PacketJitter {
             return;
         }
         if (lagTicks > 0) {
-            replayLagged(level.getGameTime());
+            replayLagged();
         } else if (stallUntil >= 0) {
-            if (level.getGameTime() < stallUntil) {
+            if (clientTick < stallUntil) {
                 return;
             }
             stallUntil = -1;
@@ -140,10 +143,10 @@ public final class PacketJitter {
         }
     }
 
-    /** Hands over the moves the lag holds that are due by {@code now}, in order. */
-    private static void replayLagged(long now) {
+    /** Hands over the moves the lag holds that are due by this tick, in order. */
+    private static void replayLagged() {
         int due = 0;
-        while (due < LAGGED_DUE.size() && LAGGED_DUE.get(due) <= now) {
+        while (due < LAGGED_DUE.size() && LAGGED_DUE.get(due) <= clientTick) {
             due++;
         }
         if (due == 0) {
@@ -167,7 +170,7 @@ public final class PacketJitter {
             return false;
         }
         HELD.add(handle);
-        LAGGED_DUE.add(client.level.getGameTime() + lagTicks);
+        LAGGED_DUE.add(clientTick + 1 + lagTicks);
         return true;
     }
 
@@ -190,7 +193,10 @@ public final class PacketJitter {
         }
     }
 
-    /** Whether a stall holds a packet now, to be handled by {@code handle} when the stall ends. Only a stall holds it, never the jitter. */
+    /**
+     * Whether a stall or a lag holds a packet now, to be handled by {@code handle} when it is due, as a late server's packets arrive
+     * together. The jitter's skipped tick never holds it.
+     */
     public static boolean stalls(Runnable handle) {
         Minecraft client = Minecraft.getInstance();
         if (lags(handle)) {
