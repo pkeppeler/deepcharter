@@ -1,0 +1,23 @@
+{
+  "templates": {},
+  "recipes": {
+    "block/company_horn_steel": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["steel.2", "steel.3", "steel.3", "steel.4"], "seed": 9111, "cell": 8, "octaves": 2, "dither": 0.7},
+      {"op": "speckle", "colours": ["steel.1", "steel.5"], "density": 0.06, "seed": 9112},
+      {"op": "rect", "rect": [0, 0, 16, 1], "colour": "steel.5"},
+      {"op": "rect", "rect": [0, 15, 16, 1], "colour": "steel.1"},
+      {"op": "grime", "colours": ["dust.0", "rust.1", "steel.1"], "density": 0.3, "seed": 9113}
+    ]},
+    "block/company_horn_red": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["company.1", "company.1", "company.2"], "seed": 9114, "cell": 8, "octaves": 1, "dither": 0.4},
+      {"op": "speckle", "colours": ["company.0", "company.3"], "density": 0.05, "seed": 9115},
+      {"op": "rect", "rect": [0, 0, 16, 1], "colour": "company.3"},
+      {"op": "rect", "rect": [0, 15, 16, 1], "colour": "company.0"},
+      {"op": "grime", "colours": ["company.0", "rust.1"], "density": 0.2, "seed": 9116}
+    ]},
+    "block/company_horn_bore": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["steel.0", "steel.1", "glass.0"], "seed": 9117, "cell": 4, "octaves": 2, "dither": 0.7},
+      {"op": "speckle", "colours": ["steel.2"], "density": 0.05, "seed": 9118}
+    ]}
+  }
+}

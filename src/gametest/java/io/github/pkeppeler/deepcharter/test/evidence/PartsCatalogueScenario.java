@@ -29,7 +29,6 @@ import net.minecraft.world.item.Items;
  */
 public class PartsCatalogueScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
-    private static final int LEFT_MOUSE = 0;
     /** An item whose name is longer than one line of the catalogue, and which iron makes. */
     private static final Item LONG_NAMED = Items.HEAVY_WEIGHTED_PRESSURE_PLATE;
 
@@ -77,7 +76,7 @@ public class PartsCatalogueScenario extends EvidenceScenario {
         screenshot(context, "console-hover");
 
         CatalogueScene.hover(context, layout.shelf().search());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.getInput().typeChars("iron");
         context.waitTicks(2);
         hold(context);
@@ -106,7 +105,7 @@ public class PartsCatalogueScenario extends EvidenceScenario {
         int perPage = layout.shelf().perPage();
 
         CatalogueScene.hover(context, layout.shelf().craftable());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(2);
         int plate = CatalogueScene.indexOf(context, panel, LONG_NAMED);
         CatalogueScene.showPage(context, panel, perPage, plate / perPage);

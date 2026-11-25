@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
@@ -47,8 +49,7 @@ public class ScanSliceTest {
     private static void expect(GameTestHelper helper, ScanSlice slice, int ahead, int up, Cell expected) {
         Cell actual = slice.cell(ahead, up);
         if (!actual.equals(expected)) {
-            throw helper.assertionException(
-                    "cell (ahead %d, up %d) should be %s, was %s".formatted(ahead, up, expected, actual));
+            throw failure(helper, "cell (ahead %d, up %d) should be %s, was %s", ahead, up, expected, actual);
         }
     }
 
@@ -86,9 +87,11 @@ public class ScanSliceTest {
             expect(helper, slice, 1, -1, Cell.AIR);
             expect(helper, slice, 3, -1, Cell.AIR);
             if (count(slice, Cell.Ore.class) != 2 || count(slice, Cell.Rock.class) != 2) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "expected 2 ore and 2 rock cells, got %d ore and %d rock",
-                        count(slice, Cell.Ore.class), count(slice, Cell.Rock.class));
+                        count(slice, Cell.Ore.class),
+                        count(slice, Cell.Rock.class));
             }
             helper.succeed();
         } finally {
@@ -120,7 +123,8 @@ public class ScanSliceTest {
             expect(helper, slice, 24, -32, Cell.ROCK);
             expect(helper, slice, -24, -32, Cell.ROCK);
             if (count(slice, Cell.Rock.class) != 4) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "only the 4 corner blocks are inside the slice, got %d rock cells",
                         count(slice, Cell.Rock.class));
             }
@@ -130,8 +134,11 @@ public class ScanSliceTest {
                 } catch (IllegalArgumentException expected) {
                     continue;
                 }
-                throw helper.assertionException(
-                        "cell (ahead %d, up %d) is outside the slice and must be refused", outside[0], outside[1]);
+                throw failure(
+                        helper,
+                        "cell (ahead %d, up %d) is outside the slice and must be refused",
+                        outside[0],
+                        outside[1]);
             }
             helper.succeed();
         } finally {
@@ -211,6 +218,6 @@ public class ScanSliceTest {
             helper.succeed();
             return;
         }
-        throw helper.assertionException("a vertical facing has no side view and must be refused");
+        throw failure(helper, "a vertical facing has no side view and must be refused");
     }
 }

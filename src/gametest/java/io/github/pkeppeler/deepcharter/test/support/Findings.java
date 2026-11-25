@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import net.minecraft.gametest.framework.GameTestHelper;
 import org.jspecify.annotations.Nullable;
 
@@ -21,7 +23,7 @@ public final class Findings {
     /** Throws the kept problem, on every call, or does nothing if none was noted. */
     public void ensure(GameTestHelper helper) {
         if (first != null) {
-            throw helper.assertionException("%s", first);
+            throw failure(helper, "%s", first);
         }
     }
 }

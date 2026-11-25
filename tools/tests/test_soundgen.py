@@ -77,6 +77,12 @@ class GateTest(unittest.TestCase):
         code, _, err = run("--out", str(self.out), "--manifest", str(self.manifest), *names)
         self.assertEqual(0, code, err)
 
+    def test_building_one_name_keeps_the_other_manifest_entries(self):
+        self.build("hymn/colony", "ui/hover")
+        both = json.loads(self.manifest.read_text())
+        self.build("ui/hover")
+        self.assertEqual(both, json.loads(self.manifest.read_text()))
+
     def test_an_ogg_with_no_recipe_fails_the_check(self):
         self.build("hymn/colony")
         stray = self.out / "hymn" / "stray.ogg"
