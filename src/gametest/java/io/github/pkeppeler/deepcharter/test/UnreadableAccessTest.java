@@ -143,11 +143,18 @@ public class UnreadableAccessTest {
             paths.put("engine soot", () -> {
                 EngineSoot.soot(pod);
                 EngineSoot.burnMultiplier(pod);
-                EngineSoot.extraBurn(EngineSoot.soot(pod));
+                EngineSoot.output(EngineSoot.soot(pod));
+                EngineSoot.launchRefused(pod);
                 EngineSoot.refuelled(pod, 1f, 1f);
                 EngineSoot.burned(pod, 1f);
+                EngineSoot.flush(pod);
             });
-            paths.put("tick", pod::tick);
+            paths.put("tick with fuel in the tank", () -> {
+                pod.setFuel(60f);
+                for (int i = 0; i < 20; i++) {
+                    pod.tick();
+                }
+            });
             paths.put("hull break", () -> pod.setHull(0f));
             UnreadableChecks.assertNoThrow(helper, "pod attachments", paths);
             helper.succeed();

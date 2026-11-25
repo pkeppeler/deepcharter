@@ -27,9 +27,12 @@ public final class FuelRegistry {
     public static void register() {
         FuelTuning tuning = FuelTuning.DEFAULT;
         DefaultItemComponentEvents.MODIFY.register(context -> {
-            context.modify(Items.COAL, builder -> solid(builder, tuning.weight().coal()));
             context.modify(
-                    Items.CHARCOAL, builder -> solid(builder, tuning.weight().charcoal()));
+                    Items.COAL,
+                    builder -> solid(builder, tuning, tuning.weight().coal()));
+            context.modify(
+                    Items.CHARCOAL,
+                    builder -> solid(builder, tuning, tuning.weight().charcoal()));
             context.modify(
                     BIOFUEL,
                     builder -> builder.set(
@@ -38,8 +41,8 @@ public final class FuelRegistry {
         });
     }
 
-    private static void solid(DataComponentMap.Builder builder, float mass) {
-        builder.set(DataComponents.MAX_STACK_SIZE, FuelTuning.DEFAULT.solidStack())
+    private static void solid(DataComponentMap.Builder builder, FuelTuning tuning, float mass) {
+        builder.set(DataComponents.MAX_STACK_SIZE, tuning.solidStack())
                 .set(OreRegistry.CARGO_WEIGHT, new CargoWeight(mass));
     }
 

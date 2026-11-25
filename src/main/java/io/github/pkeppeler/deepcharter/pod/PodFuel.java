@@ -54,10 +54,10 @@ public final class PodFuel {
             return;
         }
         // A fouled engine burns more; what the engine burns is what leaves soot (#1280).
-        float burn = drainPercentPerTick(stats, activity(pod)) * EngineSoot.burnMultiplier(pod);
-        float fuel = Math.max(0f, pod.fuel() - burn);
-        EngineSoot.burned(pod, (pod.fuel() - fuel) / PodTuning.DEFAULT.shell().fullFuel() * stats.tankLitres());
+        float before = pod.fuel();
+        float fuel = Math.max(0f, before - drainPercentPerTick(stats, activity(pod)) * EngineSoot.burnMultiplier(pod));
         pod.setFuel(fuel);
+        EngineSoot.burned(pod, (before - fuel) / PodTuning.DEFAULT.shell().fullFuel() * stats.tankLitres());
         if (fuel <= 0f) {
             pod.setStranded(true);
         }

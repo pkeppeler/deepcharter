@@ -159,6 +159,26 @@ public final class OreEncumbrance {
         }
     }
 
+    /** Whether the player carries any ore, in a slot or inside a container or a bundle. */
+    private static boolean carriesOre(Player player) {
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            if (holdsOre(player.getInventory().getItem(slot))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean holdsOre(ItemStack stack) {
+        if (OreRegistry.typeOf(stack).isPresent()) {
+            return true;
+        }
+        ItemContainerContents container = stack.get(DataComponents.CONTAINER);
+        BundleContents bundle = stack.get(DataComponents.BUNDLE_CONTENTS);
+        return (container != null && container.nonEmptyItemCopyStream().anyMatch(OreEncumbrance::holdsOre))
+                || (bundle != null && bundle.itemCopies().anyMatch(OreEncumbrance::holdsOre));
+    }
+
     /**
      * Says once per player, and keeps that as a read mark, why they now move slowly: the ore line for a first ore, the
      * fuel line for a first load that has no ore in it. Says nothing when the marks cannot be read.
@@ -167,13 +187,13 @@ public final class OreEncumbrance {
         if (!ReadMarks.isReadable(player)) {
             return;
         }
-        boolean hasOre = carriedMass(player) > carriedLooseMass(player);
-        Identifier mark = hasOre ? FIRST_PICKUP_MARK : FIRST_FUEL_MARK;
+        boolean carriesOre = carriesOre(player);
+        Identifier mark = carriesOre ? FIRST_PICKUP_MARK : FIRST_FUEL_MARK;
         if (ReadMarks.isRead(player, mark)) {
             return;
         }
         ReadMarks.mark(player, mark);
         player.sendSystemMessage(
-                Component.translatable(hasOre ? "deepcharter.ore.first_pickup" : "deepcharter.ore.first_fuel"));
+                Component.translatable(carriesOre ? "deepcharter.ore.first_pickup" : "deepcharter.ore.first_fuel"));
     }
 }

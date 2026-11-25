@@ -58,15 +58,22 @@ public final class PodStatusHud {
                 Component.translatable("hud.deepcharter.pod.fuel", Math.round(pod.fuel())), look.podStatusColor()));
         lines.add(
                 new Line(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()), look.podStatusColor()));
-        float soot = EngineSoot.soot(pod);
-        if (Math.round(soot) >= 1) {
-            lines.add(new Line(
-                    Component.translatable(
-                            "hud.deepcharter.pod.soot", Math.round(soot), Math.round(EngineSoot.extraBurn(soot) * 100)),
-                    look.podStatusColor()));
-        }
         lines.add(new Line(
                 Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())), look.podStatusColor()));
+        float soot = EngineSoot.soot(pod);
+        long slower = Math.round((1 - EngineSoot.output(soot)) * 100);
+        if (EngineSoot.isLimp(soot)) {
+            lines.add(new Line(Component.translatable("hud.deepcharter.pod.soot_limp"), look.podStatusColor()));
+        } else if (slower >= 1) {
+            // Only once it costs something: no line for a clean engine or the grace, and never a "0%".
+            lines.add(new Line(
+                    Component.translatable(
+                            "hud.deepcharter.pod.soot",
+                            Math.round(soot),
+                            slower,
+                            Math.round((EngineSoot.burn(soot) - 1) * 100)),
+                    look.podStatusColor()));
+        }
         PodLining.State lining = PodLining.of(pod);
         if (PodLining.hasHopper(pod)) {
             lines.add(new Line(
@@ -240,6 +247,7 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.liner", Kind.INFO),
             Map.entry("hud.deepcharter.pod.lining", Kind.INFO),
             Map.entry("hud.deepcharter.pod.soot", Kind.INFO),
+            Map.entry("hud.deepcharter.pod.soot_limp", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
             Map.entry("hud.deepcharter.pod.burning", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),

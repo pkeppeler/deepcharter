@@ -22,8 +22,8 @@ public record FuelTuning(
         int solidStack,
         Weight weight,
         Soot soot) {
-    public static final FuelTuning DEFAULT =
-            new FuelTuning(1, List.of(1, 5, 10), 25f, 16, new Weight(0.6f, 0.4f, 0.5f), new Soot(3f, 0.03f, 0.5f, 2));
+    public static final FuelTuning DEFAULT = new FuelTuning(
+            1, List.of(1, 5, 10), 25f, 16, new Weight(0.6f, 0.4f, 0.5f), new Soot(3f, 12f, 0.5f, 0.5f, 0.3f, 2f, 3));
 
     /** Mass of one item of each solid fuel. */
     public record Weight(float coal, float charcoal, float biofuel) {
@@ -37,19 +37,40 @@ public record FuelTuning(
 
     /**
      * What soot does. A litre of fuel adds its fuel's {@code soot} (data, {@code pod_fuel/*.json}) litres of soot as it
-     * burns.
+     * burns. Up to the grace nothing happens. From the grace to the limp limit the engine loses output and burns more,
+     * in a straight line. At the limit it is in limp mode (never stopped, so a pod deep down can always climb home).
      *
-     * @param graceLitres      the soot the engine takes before it burns more: the indicator and the first line come
-     * here
-     * @param penaltyPerLitre  the extra share of fuel the engine burns for each litre of soot past the grace
-     * @param maxPenalty       the most extra share it burns, however fouled
+     * @param graceLitres      the soot the engine takes before it loses anything: the readout and the first line come
+     *                         here
+     * @param limpLitres       the soot at which the engine drops to limp mode, which only a service at the colony ends
+     * @param lossAtLimit      the share of top speed and climb speed lost just under the limit
+     * @param extraBurnAtLimit the extra share of fuel burned just under the limit
+     * @param limpOutput       the share of top speed and climb speed left in limp mode
+     * @param limpBurn         how many times the clean burn the engine burns in limp mode
      * @param servicePerLitre  dollars the repair station charges to clear a litre of soot
      */
-    public record Soot(float graceLitres, float penaltyPerLitre, float maxPenalty, long servicePerLitre) {
+    public record Soot(
+            float graceLitres,
+            float limpLitres,
+            float lossAtLimit,
+            float extraBurnAtLimit,
+            float limpOutput,
+            float limpBurn,
+            long servicePerLitre) {
         public Soot {
-            if (!(graceLitres >= 0 && penaltyPerLitre > 0 && maxPenalty > 0 && servicePerLitre >= 1)) {
-                throw new IllegalArgumentException("bad soot tuning: " + graceLitres + ", " + penaltyPerLitre + ", "
-                        + maxPenalty + ", " + servicePerLitre);
+            if (!(graceLitres >= 0 && limpLitres > graceLitres)) {
+                throw new IllegalArgumentException(
+                        "the limp limit must come after the grace: " + graceLitres + ", " + limpLitres);
+            }
+            if (!(lossAtLimit > 0 && lossAtLimit < 1 && extraBurnAtLimit > 0)) {
+                throw new IllegalArgumentException("bad soot loss: " + lossAtLimit + ", " + extraBurnAtLimit);
+            }
+            if (!(limpOutput > 0 && limpOutput < 1 - lossAtLimit + 1e-6 && limpBurn >= 1 + extraBurnAtLimit)) {
+                throw new IllegalArgumentException(
+                        "limp mode must be the worst of the engine, but still move: " + limpOutput + ", " + limpBurn);
+            }
+            if (servicePerLitre < 1) {
+                throw new IllegalArgumentException("a litre of soot must cost at least $1, got " + servicePerLitre);
             }
         }
     }

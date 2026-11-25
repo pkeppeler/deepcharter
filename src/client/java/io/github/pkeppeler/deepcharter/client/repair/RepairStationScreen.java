@@ -108,7 +108,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                 Component.translatable("screen.deepcharter.repair.total"),
                 RepairStation.REPAIR_TOTAL,
                 new CompoundTag()));
-        rows.add(serviceRow());
+        serviceRow().ifPresent(rows::add);
         rows.addAll(suitRows());
         for (Consumable consumable : Consumable.values()) {
             CompoundTag args = new CompoundTag();
@@ -127,17 +127,19 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     }
 
     /**
-     * The row that clears the engine's soot (#1280): its price from the nearest pod's synced soot, and inactive when
-     * there is none.
+     * The row that clears the engine's soot (#1280): shown only once the nearest pod has a litre or more, with its soot and
+     * its price from the synced attachment, so there is no row for a clean engine.
      */
-    private Row serviceRow() {
-        long cost = nearbyPod().map(EngineSoot::serviceCost).orElse(0L);
-        long soot = Math.round(nearbyPod().map(EngineSoot::soot).orElse(0f));
-        return new Row(
-                Component.translatable("screen.deepcharter.repair.service", soot, cost),
-                RepairStation.SERVICE_ENGINE,
-                new CompoundTag(),
-                cost > 0);
+    private Optional<Row> serviceRow() {
+        return nearbyPod()
+                .filter(pod -> Math.round(EngineSoot.soot(pod)) >= 1)
+                .map(pod -> new Row(
+                        Component.translatable(
+                                "screen.deepcharter.repair.service",
+                                Math.round(EngineSoot.soot(pod)),
+                                EngineSoot.serviceCost(pod)),
+                        RepairStation.SERVICE_ENGINE,
+                        new CompoundTag()));
     }
 
     /**

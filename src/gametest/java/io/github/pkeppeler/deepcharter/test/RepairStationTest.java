@@ -269,6 +269,7 @@ public class RepairStationTest {
 
             EngineSoot.refuelled(pod, 12f, 1f);
             EngineSoot.burned(pod, 8f);
+            EngineSoot.flush(pod);
             long cost = EngineSoot.serviceCost(pod);
             long expected = 8 * FuelTuning.DEFAULT.soot().servicePerLitre();
             if (cost != expected) {

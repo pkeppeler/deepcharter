@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.GrainedCrust;
@@ -53,6 +54,14 @@ public final class PodDrill {
     static void tick(PodEntity pod, PodStats stats) {
         Direction wanted = PodEvents.isPowered(pod) && !PodLining.working(pod) ? wantedDirection(pod) : null;
         if (wanted == null) {
+            stop(pod);
+            return;
+        }
+        if (EngineSoot.launchRefused(pod)) {
+            // A pod in limp mode does not leave the colony: it is serviced at the repair station first (#1280).
+            if (pod.getControllingPassenger() instanceof ServerPlayer pilot && pod.tickCount % 40 == 0) {
+                pilot.sendOverlayMessage(Component.translatable("deepcharter.fuel.launch_refused"));
+            }
             stop(pod);
             return;
         }

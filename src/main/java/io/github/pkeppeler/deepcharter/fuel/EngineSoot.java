@@ -6,9 +6,14 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.netty.buffer.ByteBuf;
+import java.util.Map;
 import java.util.Optional;
+import java.util.WeakHashMap;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -19,25 +24,32 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Soot in a pod's engine (#1280). Burning coal and charcoal leaves soot, and a fouled engine burns more fuel until the
- * repair station services it; pump fuel and biofuel burn clean. The state is a versioned attachment ({@link #STATE},
- * ADR 0097).
+ * Soot in a pod's engine (#1280). Burning solid fuel leaves soot, and the engine pays for it until the repair station
+ * services it. The state is a versioned attachment ({@link #STATE}, ADR 0097).
+ *
+ * <p>The engine in four steps, from {@link FuelTuning.Soot}: clean up to the grace; then it loses top speed and climb
+ * speed and burns more fuel, in a straight line to the limp limit; at the limit it is in <b>limp mode</b>, with little
+ * output and a high burn, which never stops it, so a pod deep down can always climb home. The colony is where limp ends:
+ * a pod in limp mode cannot launch (drill) from the surface until it is serviced ({@link #launchRefused}).
  *
  * <p>Refuelling with a solid fuel puts its litres, and the soot those litres will leave, in the tank's account; the
- * pod's tick burns litres off that account in proportion, so a tank of half coal and half pump fuel fouls half as fast.
- * The burn is taken off the solid fuel first, which makes the soot a pessimistic count for a mixed tank and exact for
- * one filled with items.
+ * burn takes litres off that account in proportion. The account is clamped to the litres really in the tank when it is
+ * read, so fuel that came from elsewhere (a pump, a reserve tank, a recovery) is never counted as solid. The burn is
+ * taken off the solid fuel first, which counts a mixed tank pessimistically.
  *
- * <p>The tick path reads the state with {@link Versioned#readable}: unreadable soot is no soot, and nothing writes over
- * it. {@link #service} is an explicit change and throws on an unreadable state, naming the attachment; its caller asks
- * {@link #isReadable} first.
+ * <p>The tick path writes nothing until {@link #QUANTUM} litres have burned: the burn is held in a transient map (lost
+ * when the pod unloads, at most a quantum of soot), so the attachment and its sync change a few times a minute and not
+ * on every tick. It reads the state with {@link Versioned#readable}: unreadable soot is no soot, and nothing writes over
+ * it. {@link #service} is an explicit change and throws on an unreadable state; its caller asks {@link #isReadable}
+ * first.
  */
 public final class EngineSoot {
     public static final int VERSION = 1;
 
-    /**
-     * The read mark that records the one-time line the first time soot bites a pilot (the player's {@code ReadMarks}).
-     */
+    /** Litres of fuel burned on solid fuel before the attachment is written and synced. */
+    public static final float QUANTUM = 0.1f;
+
+    /** The read mark that records the one-time line the first time soot bites a pilot (the player's {@code ReadMarks}). */
     public static final Identifier FIRST_SOOT_MARK =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_soot");
 
@@ -79,44 +91,78 @@ public final class EngineSoot {
                     .initializer(() -> Versioned.of(State.CLEAN))
                     .syncWith(Versioned.streamCodec(VERSION, State.STREAM), AttachmentSyncPredicate.all()));
 
+    /** Litres burned on solid fuel and not yet written, for each pod. Server thread only. */
+    private static final Map<PodEntity, Float> UNWRITTEN = new WeakHashMap<>();
+
     private EngineSoot() {}
 
-    static void init() {}
+    static void init() {
+        // Output is a stat, so the speed, the climb and every reader of PodStats (the client's smoothing included) see
+        // it.
+        PodStats.MODIFY.register((pod, stats) -> {
+            float output = output(soot(pod));
+            return output >= 1f
+                    ? stats
+                    : stats.withHorizontalSpeed(stats.horizontalSpeed() * output)
+                            .withMaxClimbSpeed(stats.maxClimbSpeed() * output);
+        });
+    }
 
     private static State state(PodEntity pod) {
         return Versioned.readable(pod, STATE).orElse(State.CLEAN);
     }
 
-    /**
-     * Litres of soot in the engine; 0 when the state cannot be read. Either side: the client reads the synced value.
-     */
+    /** Litres of soot in the engine; 0 when the state cannot be read. Either side: the client reads the synced value. */
     public static float soot(PodEntity pod) {
         return state(pod).soot();
     }
 
-    /** The soot past the grace, which is what burns extra fuel. */
-    private static float sootPastGrace(float soot) {
-        return Math.max(0f, soot - FuelTuning.DEFAULT.soot().graceLitres());
-    }
-
-    /**
-     * The extra share of fuel the engine burns for {@code soot}: 0 up to the grace, then the penalty a litre, to the
-     * cap.
-     */
-    public static float extraBurn(float soot) {
+    private static float wear(float soot) {
         FuelTuning.Soot tuning = FuelTuning.DEFAULT.soot();
-        return Math.min(tuning.maxPenalty(), sootPastGrace(soot) * tuning.penaltyPerLitre());
+        return Math.min(1f, Math.max(0f, (soot - tuning.graceLitres()) / (tuning.limpLitres() - tuning.graceLitres())));
     }
 
-    /** What the engine burns now, as a multiple of what a clean engine burns: 1 up to the grace. */
+    /** Whether {@code soot} litres put the engine in limp mode. */
+    public static boolean isLimp(float soot) {
+        return soot >= FuelTuning.DEFAULT.soot().limpLitres();
+    }
+
+    /** The share of top speed and climb speed the engine has left at {@code soot} litres: 1 up to the grace. */
+    public static float output(float soot) {
+        FuelTuning.Soot tuning = FuelTuning.DEFAULT.soot();
+        return isLimp(soot) ? tuning.limpOutput() : 1f - tuning.lossAtLimit() * wear(soot);
+    }
+
+    /** How many times the clean burn the engine burns at {@code soot} litres: 1 up to the grace. */
+    public static float burn(float soot) {
+        FuelTuning.Soot tuning = FuelTuning.DEFAULT.soot();
+        return isLimp(soot) ? tuning.limpBurn() : 1f + tuning.extraBurnAtLimit() * wear(soot);
+    }
+
+    /** What this pod's engine burns now, as a multiple of what a clean engine burns. */
     public static float burnMultiplier(PodEntity pod) {
-        return 1f + extraBurn(soot(pod));
+        return burn(soot(pod));
+    }
+
+    /** Whether the engine is in limp mode. */
+    public static boolean isLimp(PodEntity pod) {
+        return isLimp(soot(pod));
     }
 
     /**
-     * Server only: {@code litres} of a fuel that leaves {@code sootPerLitre} of soot a litre went into the tank. A
-     * clean fuel (0) changes nothing, and so does an unreadable state, which is kept as it is: the refuel is a callback
-     * path.
+     * Whether the pod may not launch: it is in limp mode and at the colony (the surface band), where the drill stops
+     * with a line until the engine is serviced. Below the surface a limp pod drills, drives and climbs as it can.
+     */
+    public static boolean launchRefused(PodEntity pod) {
+        return isLimp(pod)
+                && LayerChain.bandAt(pod.level(), pod.getBlockY())
+                        .map(band -> band.layer() == LayerChain.SURFACE)
+                        .orElse(false);
+    }
+
+    /**
+     * Server only: {@code litres} of a fuel that leaves {@code sootPerLitre} of soot a litre went into the tank. A clean
+     * fuel (0) changes nothing, and so does an unreadable state, which is kept as it is: the refuel is a callback path.
      */
     public static void refuelled(PodEntity pod, float litres, float sootPerLitre) {
         Optional<State> read = Versioned.readable(pod, STATE);
@@ -136,8 +182,8 @@ public final class EngineSoot {
     }
 
     /**
-     * Server only, from the pod's tick: {@code litres} burned. The solid fuel in the tank burns first, and its soot
-     * comes off the tank's account in proportion. Does nothing, and never throws, when nothing solid is in the tank or
+     * Server only, from the pod's tick, after the fuel is taken off the tank: {@code litres} burned. They are held until
+     * {@link #QUANTUM} have burned, then written. Does nothing, and never throws, when nothing solid is in the tank or
      * the state is unreadable.
      */
     public static void burned(PodEntity pod, float litres) {
@@ -145,16 +191,39 @@ public final class EngineSoot {
         if (read.isEmpty() || read.get().tankLitres() <= 0f || !(litres > 0f)) {
             return;
         }
-        State state = read.get();
-        float share = Math.min(1f, litres / state.tankLitres());
-        float made = state.tankSoot() * share;
-        float soot = state.soot() + made;
-        boolean crossed = state.soot() <= FuelTuning.DEFAULT.soot().graceLitres()
-                && soot > FuelTuning.DEFAULT.soot().graceLitres();
-        pod.setAttached(
-                STATE,
-                Versioned.of(new State(soot, state.tankLitres() * (1f - share), state.tankSoot() * (1f - share))));
-        if (crossed) {
+        float held = UNWRITTEN.merge(pod, litres, Float::sum);
+        if (held >= QUANTUM) {
+            UNWRITTEN.remove(pod);
+            write(pod, read.get(), held);
+        }
+    }
+
+    /** Server only: writes what the pod has burned and not written. A quantum is the most that a pod saved without it loses. */
+    public static void flush(PodEntity pod) {
+        Float held = UNWRITTEN.remove(pod);
+        Optional<State> read = Versioned.readable(pod, STATE);
+        if (held != null && read.isPresent()) {
+            write(pod, read.get(), held);
+        }
+    }
+
+    private static void write(PodEntity pod, State state, float litres) {
+        if (state.tankLitres() <= 0f) {
+            return;
+        }
+        // The litres in the tank before this burn: those left, and those burned since the last write. The account of
+        // solid fuel can be no more, whatever a pump, a reserve tank or a recovery did to the tank meanwhile.
+        float inTank = pod.fuel()
+                        / PodTuning.DEFAULT.shell().fullFuel()
+                        * PodStats.of(pod).tankLitres()
+                + litres;
+        float account = Math.min(state.tankLitres(), inTank);
+        float accountSoot = state.tankSoot() * account / state.tankLitres();
+        float share = Math.min(1f, litres / account);
+        float soot = state.soot() + accountSoot * share;
+        float grace = FuelTuning.DEFAULT.soot().graceLitres();
+        pod.setAttached(STATE, Versioned.of(new State(soot, account * (1f - share), accountSoot * (1f - share))));
+        if (state.soot() <= grace && soot > grace) {
             explainFirstSoot(pod);
         }
     }
@@ -164,18 +233,13 @@ public final class EngineSoot {
         return (long) Math.ceil(soot(pod) * FuelTuning.DEFAULT.soot().servicePerLitre());
     }
 
-    /**
-     * Server only: clears the engine's soot. What the tank's fuel will still leave is kept. Throws on an unreadable
-     * state.
-     */
+    /** Server only: clears the engine's soot. What the tank's fuel will still leave is kept. Throws on an unreadable state. */
     public static void service(PodEntity pod) {
+        flush(pod);
         Versioned.modifyOrThrow(pod, STATE, state -> new State(0f, state.tankLitres(), state.tankSoot()));
     }
 
-    /**
-     * Says once per player, kept as a read mark, why the engine now burns more. Says nothing when the marks cannot be
-     * read.
-     */
+    /** Says once per player, kept as a read mark, why the engine now loses output. Says nothing when the marks cannot be read. */
     private static void explainFirstSoot(PodEntity pod) {
         if (pod.getControllingPassenger() instanceof ServerPlayer pilot
                 && ReadMarks.isReadable(pilot)

@@ -1,8 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
-import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.fuel.FuelRegistry;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
@@ -13,17 +13,20 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.test.support.Inputs;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.Locale;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +71,7 @@ public class FuelWeightSootTest {
     }
 
     @GameTest
-    public void charcoalIsOneLitreCoalTwoAndBiofuelThreeAndMoreIsCleanerPerSlot(GameTestHelper helper) {
+    public void charcoalIsOneLitreCoalTwoAndBiofuelThreeWithSootInThatOrder(GameTestHelper helper) {
         near(
                 helper,
                 "charcoal litres",
@@ -86,7 +89,7 @@ public class FuelWeightSootTest {
                 PodFuelItems.litresOf(new ItemStack(FuelRegistry.BIOFUEL)).orElseThrow());
         near(helper, "charcoal soot", 1.0, PodFuelItems.sootOf(new ItemStack(Items.CHARCOAL)));
         near(helper, "coal soot", 0.5, PodFuelItems.sootOf(new ItemStack(Items.COAL)));
-        near(helper, "biofuel soot", 0.0, PodFuelItems.sootOf(new ItemStack(FuelRegistry.BIOFUEL)));
+        near(helper, "biofuel soot", 0.1, PodFuelItems.sootOf(new ItemStack(FuelRegistry.BIOFUEL)));
         helper.succeed();
     }
 
@@ -119,69 +122,102 @@ public class FuelWeightSootTest {
         }
     }
 
-    /**
-     * Burns {@code litres} of the pod's tank the way its tick does, through the soot, and answers what the engine
-     * really burned.
-     */
-    private static float burn(PodEntity pod, float litres) {
-        float burned = litres * EngineSoot.burnMultiplier(pod);
-        EngineSoot.burned(pod, burned);
-        return burned;
+    /** Burns {@code litres} on the pod's solid fuel and writes it, as the pod's tick does a quantum at a time. */
+    private static void burn(PodEntity pod, float litres) {
+        EngineSoot.burned(pod, litres);
+        EngineSoot.flush(pod);
+    }
+
+    private static void fill(PodEntity pod, MockPlayer player, Item fuel, int items) {
+        pod.setFuel(0f);
+        for (int item = 0; item < items; item++) {
+            player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(fuel));
+            UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
+        }
     }
 
     @GameTest
-    public void charcoalFoulsTheEngineAfterFiveLitresBurnedAndAServiceClearsIt(GameTestHelper helper) {
+    public void charcoalSootsTheEngineSlowerThenLimpsAtTheLimitAndAServiceClearsIt(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "sooter");
         try {
             player.player().setGameMode(GameType.SURVIVAL);
             FuelTuning.Soot soot = FuelTuning.DEFAULT.soot();
-            pod.setFuel(0f);
-            for (int item = 0; item < 10; item++) {
-                player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.CHARCOAL));
-                UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-            }
+            PodStats clean = PodStats.of(pod);
+            fill(pod, player, Items.CHARCOAL, 10);
             near(helper, "soot before anything burns", 0, EngineSoot.soot(pod));
-            float first = burn(pod, soot.graceLitres());
-            LOGGER.info(
-                    "[fuel-economy] charcoal: {} L burned -> soot {}, burn x{}, fouled {}",
-                    first,
-                    EngineSoot.soot(pod),
-                    EngineSoot.burnMultiplier(pod),
-                    (EngineSoot.extraBurn(EngineSoot.soot(pod)) > 0));
-            near(helper, "soot after the grace's litres of charcoal", soot.graceLitres(), EngineSoot.soot(pod));
-            near(helper, "the burn at the grace", 1.0, EngineSoot.burnMultiplier(pod));
-            expect(helper, !(EngineSoot.extraBurn(EngineSoot.soot(pod)) > 0), "the engine is not fouled at the grace");
+            burn(pod, soot.graceLitres());
+            near(helper, "soot at the grace", soot.graceLitres(), EngineSoot.soot(pod));
+            near(helper, "the output at the grace", 1.0, EngineSoot.output(EngineSoot.soot(pod)));
+            near(
+                    helper,
+                    "the top speed at the grace",
+                    clean.horizontalSpeed(),
+                    PodStats.of(pod).horizontalSpeed());
+            // One litre past the grace is one ninth of the way to the limit: 1 - 0.5 / 9 and 1 + 0.5 / 9.
             burn(pod, 1f);
-            double expected = 1 + soot.penaltyPerLitre() * 1.0;
+            PodStats sooted = PodStats.of(pod);
             LOGGER.info(
-                    "[fuel-economy] charcoal: one litre more -> soot {}, burn x{}, fouled {}, service ${}",
-                    EngineSoot.soot(pod),
-                    EngineSoot.burnMultiplier(pod),
-                    (EngineSoot.extraBurn(EngineSoot.soot(pod)) > 0),
+                    "[fuel-economy] charcoal 4 L of soot: output {}, burn x{}, top speed {} of {}, climb {} of {}, service ${}",
+                    EngineSoot.output(4f),
+                    EngineSoot.burn(4f),
+                    sooted.horizontalSpeed(),
+                    clean.horizontalSpeed(),
+                    sooted.maxClimbSpeed(),
+                    clean.maxClimbSpeed(),
                     EngineSoot.serviceCost(pod));
-            expect(helper, (EngineSoot.extraBurn(EngineSoot.soot(pod)) > 0), "past the grace the engine is fouled");
-            near(helper, "the burn one litre past the grace", expected, EngineSoot.burnMultiplier(pod));
+            near(helper, "the output one litre past the grace", 1 - 0.5 / 9, EngineSoot.output(4f));
+            near(helper, "the burn one litre past the grace", 1 + 0.5 / 9, EngineSoot.burnMultiplier(pod));
+            near(
+                    helper,
+                    "the top speed with 4 L of soot",
+                    clean.horizontalSpeed() * (1 - 0.5 / 9),
+                    sooted.horizontalSpeed());
+            near(
+                    helper,
+                    "the climb speed with 4 L of soot",
+                    clean.maxClimbSpeed() * (1 - 0.5 / 9),
+                    sooted.maxClimbSpeed());
+            near(helper, "the engine power with 4 L of soot", clean.enginePower(), sooted.enginePower());
+            expect(helper, !EngineSoot.isLimp(pod), "4 L of soot is not limp mode");
             expect(
                     helper,
-                    EngineSoot.serviceCost(pod) == (long) Math.ceil(EngineSoot.soot(pod) * soot.servicePerLitre()),
-                    "a service should cost the soot's litres at $%s, got $%s",
+                    EngineSoot.serviceCost(pod) == 4 * soot.servicePerLitre(),
+                    "a service of 4 L should cost $%s a litre, got $%s",
                     soot.servicePerLitre(),
                     EngineSoot.serviceCost(pod));
+            // Past the limit: limp mode, which burns double and moves at 30%, and still climbs.
+            for (int i = 0; i < 10; i++) {
+                EngineSoot.refuelled(pod, 1f, 1f);
+            }
+            burn(pod, soot.limpLitres() - 4f);
+            PodStats limp = PodStats.of(pod);
+            LOGGER.info(
+                    "[fuel-economy] charcoal {} L of soot: limp, output {}, burn x{}, top speed {} of {}, climb {} of {}",
+                    EngineSoot.soot(pod),
+                    EngineSoot.output(EngineSoot.soot(pod)),
+                    EngineSoot.burnMultiplier(pod),
+                    limp.horizontalSpeed(),
+                    clean.horizontalSpeed(),
+                    limp.maxClimbSpeed(),
+                    clean.maxClimbSpeed());
+            expect(helper, EngineSoot.isLimp(pod), "%s L of soot should be limp mode", EngineSoot.soot(pod));
+            near(helper, "the limp burn", soot.limpBurn(), EngineSoot.burnMultiplier(pod));
+            near(helper, "the limp top speed", clean.horizontalSpeed() * soot.limpOutput(), limp.horizontalSpeed());
+            near(helper, "the limp climb speed", clean.maxClimbSpeed() * soot.limpOutput(), limp.maxClimbSpeed());
+            expect(
+                    helper,
+                    limp.maxClimbSpeed() > 0 && limp.horizontalSpeed() > 0,
+                    "limp mode must still move and climb");
+            near(helper, "the limp engine power", clean.enginePower(), limp.enginePower());
             EngineSoot.service(pod);
             near(helper, "soot after a service", 0, EngineSoot.soot(pod));
             near(helper, "the burn after a service", 1.0, EngineSoot.burnMultiplier(pod));
-            // Never past the cap, however much burns.
-            EngineSoot.burned(pod, 1f);
-            for (int i = 0; i < 100; i++) {
-                EngineSoot.refuelled(pod, 1f, 1f);
-                EngineSoot.burned(pod, 1f);
-            }
             near(
                     helper,
-                    "the burn of a fouled engine at its cap",
-                    1 + soot.maxPenalty(),
-                    EngineSoot.burnMultiplier(pod));
+                    "the top speed after a service",
+                    clean.horizontalSpeed(),
+                    PodStats.of(pod).horizontalSpeed());
             helper.succeed();
         } finally {
             player.leave();
@@ -190,7 +226,7 @@ public class FuelWeightSootTest {
     }
 
     @GameTest
-    public void coalFoulsHalfAsFastAsCharcoalAndBiofuelAndPumpFuelBurnClean(GameTestHelper helper) {
+    public void coalSootsHalfAsFastAsCharcoalAndBiofuelAFifthOfCoal(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "clean-burner");
         try {
@@ -199,16 +235,12 @@ public class FuelWeightSootTest {
             Item[] fuels = {Items.CHARCOAL, Items.COAL, FuelRegistry.BIOFUEL};
             for (int i = 0; i < fuels.length; i++) {
                 EngineSoot.service(pod);
-                pod.setFuel(0f);
                 int items = Math.round(6
                         / (float) PodFuelItems.litresOf(new ItemStack(fuels[i])).orElseThrow());
-                for (int n = 0; n < items; n++) {
-                    player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(fuels[i]));
-                    UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-                }
-                EngineSoot.burned(pod, 6f);
+                fill(pod, player, fuels[i], items);
+                burn(pod, 6f);
                 sootPerFuel[i] = EngineSoot.soot(pod);
-                EngineSoot.burned(pod, 100f);
+                burn(pod, 100f);
                 EngineSoot.service(pod);
             }
             LOGGER.info(
@@ -218,9 +250,9 @@ public class FuelWeightSootTest {
                     sootPerFuel[2]);
             near(helper, "soot from 6 L of charcoal", 6.0, sootPerFuel[0]);
             near(helper, "soot from 6 L of coal", 3.0, sootPerFuel[1]);
-            near(helper, "soot from 6 L of biofuel", 0.0, sootPerFuel[2]);
+            near(helper, "soot from 6 L of biofuel", 0.6, sootPerFuel[2]);
             // Pump fuel is not an item: litres bought leave no soot to come.
-            EngineSoot.burned(pod, 6f);
+            burn(pod, 6f);
             near(helper, "soot from 6 L of pump fuel", 0, EngineSoot.soot(pod));
             helper.succeed();
         } finally {
@@ -229,49 +261,148 @@ public class FuelWeightSootTest {
         }
     }
 
-    @GameTest(maxTicks = 160)
-    public void aRealTickingPodBurnsItsSolidFuelIntoSootAndTheFirstTimeItSaysSo(GameTestHelper helper) {
+    @GameTest
+    public void aTankAccountIsNeverMoreThanTheLitresReallyInTheTank(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+        MockPlayer player = MockPlayers.join(helper, "drifter");
+        try {
+            player.player().setGameMode(GameType.SURVIVAL);
+            fill(pod, player, Items.CHARCOAL, 10);
+            // A reserve tank rescue or a recovery sets the tank to a litre of other fuel: the account says 10 L of
+            // charcoal.
+            pod.setFuel(10f);
+            burn(pod, 0.5f);
+            // Then the pump fills it, and the pod burns a whole tank of pump fuel: none of that is solid.
+            pod.setFuel(100f);
+            burn(pod, 10f);
+            LOGGER.info(
+                    "[fuel-economy] a tank account left over from 10 L of charcoal, 1 L in the tank: soot {}",
+                    EngineSoot.soot(pod));
+            expect(
+                    helper,
+                    EngineSoot.soot(pod) <= 1.5f + 0.001f,
+                    "only the litre that was in the tank (and the 0.5 L burned) is solid: soot should be at most 1.5, got %s",
+                    EngineSoot.soot(pod));
+            helper.succeed();
+        } finally {
+            player.leave();
+            pod.discard();
+        }
+    }
+
+    @GameTest(maxTicks = 360)
+    public void aRealTickingPodWritesItsSootAQuantumAtATimeAndSaysSoTheFirstTime(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer pilot = MockPlayers.join(helper, "soot-reader");
+        expect(helper, pilot.player().startRiding(pod), "the pilot should mount the pod");
+        pod.setFuel(50f);
+        EngineSoot.refuelled(pod, 100f, 1f);
+        // One more quantum of soot takes the engine over the grace.
+        burn(pod, FuelTuning.DEFAULT.soot().graceLitres() - 0.05f);
+        Object written = pod.getAttached(EngineSoot.STATE);
+        float before = EngineSoot.soot(pod);
+        helper.runAfterDelay(100, () -> {
+            try {
+                // Five seconds idle burns 0.045 L: under a quantum, so nothing is written or synced.
+                expect(
+                        helper,
+                        pod.getAttached(EngineSoot.STATE) == written,
+                        "5 s of idle burn (under %s L) should write nothing",
+                        EngineSoot.QUANTUM);
+            } catch (RuntimeException e) {
+                pilot.leave();
+                pod.discard();
+                throw e;
+            }
+        });
+        helper.runAfterDelay(300, () -> {
+            try {
+                float grown = EngineSoot.soot(pod) - before;
+                float quantum = EngineSoot.QUANTUM;
+                LOGGER.info("[fuel-economy] a real pod idling 15 s on charcoal wrote {} L of soot in one write", grown);
+                expect(
+                        helper,
+                        grown >= quantum && grown < quantum + 0.05f,
+                        "15 s of idle burn should have written one quantum of about %s L of soot, got %s",
+                        quantum,
+                        grown);
+                expect(
+                        helper,
+                        pilot.chatMessages().stream()
+                                .anyMatch(line -> line.getString()
+                                        .toLowerCase(Locale.ROOT)
+                                        .contains("soot")),
+                        "the pilot should be told once that soot fouls the engine, heard %s",
+                        pilot.chatMessages());
+                helper.succeed();
+            } finally {
+                pilot.leave();
+                pod.discard();
+            }
+        });
+    }
+
+    @GameTest
+    public void aPodInLimpModeCannotLaunchFromTheColonyButIsFreeBelow(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         try {
-            expect(helper, pilot.player().startRiding(pod), "the pilot should mount the pod");
-            pod.setFuel(50f);
-            EngineSoot.refuelled(pod, 100f, 1f);
-            // Fill the engine to the grace in one go, then let the pod's own tick take the next litres.
-            EngineSoot.burned(pod, FuelTuning.DEFAULT.soot().graceLitres() - 0.01f);
-            float before = EngineSoot.soot(pod);
-            helper.runAfterDelay(100, () -> {
-                try {
-                    float grown = EngineSoot.soot(pod) - before;
-                    float idleLitres = PodStats.of(pod).idleLitresPerSecond() * 5f;
-                    LOGGER.info(
-                            "[fuel-economy] a real pod idling 5 s on charcoal: soot grew {} L for {} L burned",
-                            grown,
-                            idleLitres);
-                    expect(
-                            helper,
-                            grown > 0 && Math.abs(grown - idleLitres) < idleLitres * 0.2f,
-                            "5 s of idle burn should leave about %s L of soot, got %s",
-                            idleLitres,
-                            grown);
-                    expect(
-                            helper,
-                            pilot.chatMessages().stream()
-                                    .anyMatch(line -> line.getString()
-                                            .toLowerCase(Locale.ROOT)
-                                            .contains("soot")),
-                            "the pilot should be told once that soot fouls the engine, heard %s",
-                            pilot.chatMessages());
-                    helper.succeed();
-                } finally {
-                    pilot.leave();
-                    pod.discard();
-                }
-            });
-        } catch (RuntimeException e) {
-            pilot.leave();
+            float limp = FuelTuning.DEFAULT.soot().limpLitres();
+            pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(limp, 0f, 0f)));
+            // The helper's level is the test overworld, the surface: the colony.
+            expect(helper, EngineSoot.launchRefused(pod), "a pod in limp mode at the colony should not launch");
+            pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(limp - 0.5f, 0f, 0f)));
+            expect(helper, !EngineSoot.launchRefused(pod), "a pod under the limit launches");
+            helper.succeed();
+        } finally {
             pod.discard();
-            throw failure(helper, "setup failed: %s", e);
         }
+    }
+
+    @GameTest(maxTicks = 200)
+    public void aPodInLimpModeDoesNotDrillAtTheColonyUntilItIsServiced(GameTestHelper helper) {
+        BlockPos below = new BlockPos(2, 1, 2);
+        for (int x = 1; x <= 3; x++) {
+            for (int z = 1; z <= 3; z++) {
+                helper.setBlock(new BlockPos(x, 1, z), Blocks.STONE);
+            }
+        }
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2.5f, 2f, 2.5f);
+        MockPlayer pilot = MockPlayers.join(helper, "limp-driller");
+        expect(helper, pilot.player().startRiding(pod), "the pilot should mount the pod");
+        pod.setAttached(
+                EngineSoot.STATE,
+                Versioned.of(new EngineSoot.State(FuelTuning.DEFAULT.soot().limpLitres() + 1f, 0f, 0f)));
+        pilot.setInput(Inputs.SPRINT);
+        helper.runAfterDelay(60, () -> {
+            try {
+                expect(helper, !pod.drilling(), "a pod in limp mode at the colony should not drill");
+                expect(helper, helper.getBlockState(below).is(Blocks.STONE), "the floor should be whole");
+                expect(
+                        helper,
+                        pilot.actionBarMessages().stream()
+                                .anyMatch(line -> line.getString()
+                                        .toLowerCase(Locale.ROOT)
+                                        .contains("clogged")),
+                        "the pilot should be told why, heard %s",
+                        pilot.actionBarMessages());
+                EngineSoot.service(pod);
+            } catch (RuntimeException e) {
+                pilot.leave();
+                pod.discard();
+                throw e;
+            }
+        });
+        helper.runAfterDelay(120, () -> {
+            try {
+                expect(
+                        helper,
+                        pod.drilling() || !helper.getBlockState(below).is(Blocks.STONE),
+                        "once serviced the same pod should drill the floor");
+                helper.succeed();
+            } finally {
+                pilot.leave();
+                pod.discard();
+            }
+        });
     }
 }
