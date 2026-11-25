@@ -2,11 +2,13 @@ package io.github.pkeppeler.deepcharter.test.mixin;
 
 import io.github.pkeppeler.deepcharter.test.support.ChunkPacketLog;
 import io.github.pkeppeler.deepcharter.test.support.PacketJitter;
+import io.github.pkeppeler.deepcharter.test.support.SwapProbes;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import org.spongepowered.asm.mixin.Mixin;
@@ -38,6 +40,19 @@ public abstract class ClientPacketListenerMixin {
                             shift = At.Shift.AFTER))
     private void deepcharter$logChunk(ClientboundLevelChunkWithLightPacket packet, CallbackInfo ci) {
         ChunkPacketLog.record(level.dimension(), packet.x(), packet.z());
+    }
+
+    /** Counts each respawn the client handles, for {@link SwapProbes}: a swap handles none. */
+    @Inject(
+            method = "handleRespawn",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/network/PacketProcessor;)V",
+                            shift = At.Shift.AFTER))
+    private void deepcharter$countRespawn(ClientboundRespawnPacket packet, CallbackInfo ci) {
+        SwapProbes.recordRespawn();
     }
 
     @Inject(method = "handleMoveEntity", at = @At("HEAD"), cancellable = true)
