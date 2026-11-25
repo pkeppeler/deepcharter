@@ -39,8 +39,7 @@ import org.jspecify.annotations.Nullable;
  * a default world. Each view is shot twice: lamp-lit, as a miner's lamp lights it (light blocks round the camera, in
  * the game's own fog and ambient light), and with night vision, which shows the shapes. The views:
  *
- * <ul> <li>a cave pocket in the surface band's underground, the first caves on the way down; <li>the longest open run
- * in a cave of each zone of layer 1; <li>a cut face across each contact between two strata: Topsoil Claims' hardpan
+ * <ul> <li>the longest open run in a cave of each zone of layer 1; <li>a cut face across each contact between two strata: Topsoil Claims' hardpan
  * over Stone Benches' packed shale, and that over Deep Claim's black shale; <li>the abandoned shaft nearest the start:
  * up from its foot, at a candle niche, and down it from part way up.
  * </ul>
@@ -67,10 +66,6 @@ public class ClaimTourScenario extends EvidenceScenario {
 
     private static final int CUT_HALF_HEIGHT = 18;
     private static final int CUT_DEPTH = 26;
-    /** The surface band's underground that holds caves (#1277): over its floor and under the deepest ground. */
-    private static final int SURFACE_CAVES_LOW = CampaignBands.SURFACE.minY() + 8;
-
-    private static final int SURFACE_CAVES_HIGH = 16;
     private static final int LAMP = 15;
 
     /** A view: where the eye is and what it looks at. */
@@ -100,10 +95,6 @@ public class ClaimTourScenario extends EvidenceScenario {
     }
 
     private void tour(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-        View surface = singleplayer
-                .getServer()
-                .computeOnServer(server -> caveView(level(server), SURFACE_CAVES_LOW, SURFACE_CAVES_HIGH));
-        shootBoth(context, singleplayer, "surface-underground-cave", surface);
         CampaignBands.Band band = CampaignBands.LAYER_1;
         String[] zones = {"topsoil-claims", "stone-benches", "deep-claim"};
         for (int zone = 0; zone < Zones.COUNT; zone++) {
