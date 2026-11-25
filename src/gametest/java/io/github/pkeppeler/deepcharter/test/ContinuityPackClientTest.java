@@ -89,7 +89,7 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
                     .runOnServer(server ->
                             server.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SURVIVAL));
             teleportedWhileDead(context, singleplayer);
-            diedAgainAfterReturn(context);
+            diedAgainAfterReturn(context, singleplayer);
             try {
                 for (String broken : BROKEN) {
                     writePack(pack, broken);
