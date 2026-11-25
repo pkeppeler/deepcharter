@@ -391,7 +391,7 @@ public class OutpostSettlingTest {
         room.level().setBlock(heapAt, WreckRegistry.HEAP.defaultBlockState(), 3);
         room.level().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
         Container heap = SettlingRooms.containerAt(room.level(), heapAt);
-        heap.setItem(0, new ItemStack(Items.COAL, 64));
+        heap.setItem(0, new ItemStack(Items.COAL, Items.COAL.getDefaultMaxStackSize()));
         PodEntity pod = TestEntities.create(PodRegistry.POD, room.level());
         pod.setPos(Vec3.atBottomCenterOf(room.floor().offset(0, 1, -2)));
         room.level().addFreshEntity(pod);
@@ -421,8 +421,8 @@ public class OutpostSettlingTest {
                             drained);
                     expect(
                             helper,
-                            SettlingRooms.count(heap, Items.COAL) == 64,
-                            "the heap keeps its 64 coal, it holds %s",
+                            SettlingRooms.count(heap, Items.COAL) == Items.COAL.getDefaultMaxStackSize(),
+                            "the heap keeps its stack of coal, it holds %s",
                             SettlingRooms.count(heap, Items.COAL));
                     expect(
                             helper,

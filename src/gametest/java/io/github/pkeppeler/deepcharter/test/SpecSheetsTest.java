@@ -577,8 +577,8 @@ public class SpecSheetsTest {
                 stock);
         expect(
                 helper,
-                argsOf(row(helper, stock, "rating.stack").value()).equals(List.of("64")),
-                "coal stacks to 64, got %s",
+                argsOf(row(helper, stock, "rating.stack").value()).equals(List.of("16")),
+                "coal stacks to 16 (#1280), got %s",
                 stock.ratings());
         expect(
                 helper,

@@ -304,7 +304,9 @@ public class OverburdenedTest {
                 List<Component> lines = new ItemStack(item)
                         .getTooltipLines(Item.TooltipContext.of(helper.getLevel()), null, TooltipFlag.NORMAL);
                 boolean saysHeavy = has(lines, HEAVY_KEY);
-                if (counted != saysHeavy || counted != has(lines, HAUL_KEY)) {
+                // Only ore is hauled in the bay: the solid fuels (#1280) are counted and heavy, and ride in the pack.
+                boolean ore = OreRegistry.typeOf(new ItemStack(item)).isPresent();
+                if (counted != saysHeavy || ore != has(lines, HAUL_KEY)) {
                     throw failure(
                             helper,
                             "%s: OreEncumbrance counts it %s, its tooltip has the heavy and haul lines %s and %s",
@@ -313,7 +315,7 @@ public class OverburdenedTest {
                             saysHeavy,
                             has(lines, HAUL_KEY));
                 }
-                if (counted) {
+                if (ore) {
                     heavy++;
                 }
             }

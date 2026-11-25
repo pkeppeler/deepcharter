@@ -239,6 +239,7 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.slag_only", Kind.INFO),
             Map.entry("hud.deepcharter.pod.liner", Kind.INFO),
             Map.entry("hud.deepcharter.pod.lining", Kind.INFO),
+            Map.entry("hud.deepcharter.pod.soot", Kind.INFO),
             Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
             Map.entry("hud.deepcharter.pod.burning", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
