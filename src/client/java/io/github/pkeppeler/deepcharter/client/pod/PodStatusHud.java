@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -57,6 +58,13 @@ public final class PodStatusHud {
                 Component.translatable("hud.deepcharter.pod.fuel", Math.round(pod.fuel())), look.podStatusColor()));
         lines.add(
                 new Line(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()), look.podStatusColor()));
+        float soot = EngineSoot.soot(pod);
+        if (Math.round(soot) >= 1) {
+            lines.add(new Line(
+                    Component.translatable(
+                            "hud.deepcharter.pod.soot", Math.round(soot), Math.round(EngineSoot.extraBurn(soot) * 100)),
+                    look.podStatusColor()));
+        }
         lines.add(new Line(
                 Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())), look.podStatusColor()));
         PodLining.State lining = PodLining.of(pod);

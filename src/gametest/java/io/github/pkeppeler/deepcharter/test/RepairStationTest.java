@@ -6,6 +6,8 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -249,6 +251,48 @@ public class RepairStationTest {
             expectAccount(helper, station, 1_000 - 40 * PER_HP, "a full hull costs nothing");
             if (RepairTuning.DEFAULT.repairCostPerHp() != PER_HP) {
                 throw helper.assertionException("the tuned price should be $%d/HP", PER_HP);
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void serviceEngineClearsTheSootForDollarsPerLitreAndRefusesACleanEngineOrAShortAccount(
+            GameTestHelper helper) {
+        withStation(helper, station -> {
+            PodEntity pod = station.pod();
+            CompoundTag none = new CompoundTag();
+            expectRefused(
+                    helper,
+                    Terminals.act(station.pilot().player(), station.pos(), RepairStation.SERVICE_ENGINE, none),
+                    "servicing a clean engine");
+
+            EngineSoot.refuelled(pod, 12f, 1f);
+            EngineSoot.burned(pod, 8f);
+            long cost = EngineSoot.serviceCost(pod);
+            long expected = 8 * FuelTuning.DEFAULT.soot().servicePerLitre();
+            if (cost != expected) {
+                throw helper.assertionException(
+                        "8 L of soot should cost $%d at the tuned price, got $%d", expected, cost);
+            }
+            expectRefused(
+                    helper,
+                    Terminals.act(station.pilot().player(), station.pos(), RepairStation.SERVICE_ENGINE, none),
+                    "servicing from an empty account");
+            if (EngineSoot.soot(pod) != 8f) {
+                throw helper.assertionException(
+                        "a refused service should leave the soot, got %s L", EngineSoot.soot(pod));
+            }
+            expectAccount(helper, station, 0, "after the refusal");
+
+            fund(helper, station, 1_000);
+            expectDone(
+                    helper,
+                    Terminals.act(station.pilot().player(), station.pos(), RepairStation.SERVICE_ENGINE, none),
+                    "servicing a sooty engine");
+            expectAccount(helper, station, 1_000 - cost, "after the service");
+            if (EngineSoot.soot(pod) != 0f) {
+                throw helper.assertionException("a service should clear the soot, got %s L", EngineSoot.soot(pod));
             }
             helper.succeed();
         });

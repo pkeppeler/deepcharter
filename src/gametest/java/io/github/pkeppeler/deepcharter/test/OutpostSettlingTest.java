@@ -271,11 +271,14 @@ public class OutpostSettlingTest {
                     // The shipped rates: a visit never takes more than the cap, and the take is the same however it is
                     // counted.
                     dark.storage().clearContent();
-                    SettlingRooms.stock(dark, Items.COAL, 1728);
-                    Ledger shipped = settle(dark, dark.ledger(), 200, SettlingTuning.DEFAULT);
+                    // A full barrel is 27 stacks of 16 (#1280), and stays above the 64 where the share, not the cap,
+                    // sets a take.
+                    int full = dark.storage().getContainerSize() * Items.COAL.getDefaultMaxStackSize();
+                    SettlingRooms.stock(dark, Items.COAL, full);
+                    Ledger shipped = settle(dark, dark.ledger(), 100, SettlingTuning.DEFAULT);
                     int visits = shipped.unread().visits();
-                    int taken = 1728 - SettlingRooms.count(dark.storage(), Items.COAL);
-                    expect(helper, visits > 0, "200 windows at 2 a day should bring a visit");
+                    int taken = full - SettlingRooms.count(dark.storage(), Items.COAL);
+                    expect(helper, visits > 0, "100 windows at 2 a day should bring a visit");
                     expect(
                             helper,
                             taken == visits * SettlingTuning.DEFAULT.maxFuelItemsPerVisit(),

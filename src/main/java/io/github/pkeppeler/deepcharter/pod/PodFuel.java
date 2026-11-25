@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import java.util.OptionalDouble;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.world.InteractionHand;
@@ -52,7 +53,10 @@ public final class PodFuel {
         if (!PodEvents.isPowered(pod)) {
             return;
         }
-        float fuel = Math.max(0f, pod.fuel() - drainPercentPerTick(stats, activity(pod)));
+        // A fouled engine burns more; what the engine burns is what leaves soot (#1280).
+        float burn = drainPercentPerTick(stats, activity(pod)) * EngineSoot.burnMultiplier(pod);
+        float fuel = Math.max(0f, pod.fuel() - burn);
+        EngineSoot.burned(pod, (pod.fuel() - fuel) / PodTuning.DEFAULT.shell().fullFuel() * stats.tankLitres());
         pod.setFuel(fuel);
         if (fuel <= 0f) {
             pod.setStranded(true);
@@ -95,7 +99,11 @@ public final class PodFuel {
             return InteractionResult.PASS;
         }
         float added = litresToPercent(PodStats.of(pod), (float) litres.getAsDouble());
-        pod.setFuel(Math.min(full, pod.fuel() + added));
+        float before = pod.fuel();
+        pod.setFuel(Math.min(full, before + added));
+        // Only the litres that fit in the tank count towards its soot.
+        EngineSoot.refuelled(
+                pod, (float) litres.getAsDouble() * (pod.fuel() - before) / added, PodFuelItems.sootOf(stack));
         pod.setStranded(false);
         stack.consume(1, player);
         return InteractionResult.SUCCESS;

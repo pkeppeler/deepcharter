@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
@@ -94,7 +95,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
         return typewriter;
     }
 
-    private static List<Row> rows() {
+    private List<Row> rows() {
         List<Row> rows = new ArrayList<>();
         for (int hp : REPAIR_STEPS) {
             long cost = hp * RepairTuning.DEFAULT.repairCostPerHp();
@@ -107,6 +108,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                 Component.translatable("screen.deepcharter.repair.total"),
                 RepairStation.REPAIR_TOTAL,
                 new CompoundTag()));
+        rows.add(serviceRow());
         rows.addAll(suitRows());
         for (Consumable consumable : Consumable.values()) {
             CompoundTag args = new CompoundTag();
@@ -122,6 +124,17 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
             rows.add(new Row(label, RepairStation.BUY, args));
         }
         return rows;
+    }
+
+    /** The row that clears the engine's soot (#1280): its price from the nearest pod's synced soot, and inactive when there is none. */
+    private Row serviceRow() {
+        long cost = nearbyPod().map(EngineSoot::serviceCost).orElse(0L);
+        long soot = Math.round(nearbyPod().map(EngineSoot::soot).orElse(0f));
+        return new Row(
+                Component.translatable("screen.deepcharter.repair.service", soot, cost),
+                RepairStation.SERVICE_ENGINE,
+                new CompoundTag(),
+                cost > 0);
     }
 
     /**

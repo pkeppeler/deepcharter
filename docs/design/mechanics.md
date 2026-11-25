@@ -466,7 +466,7 @@ What else the part did to the bores:
 **Verdict: reachable once, not repeatedly. The 4-run pace needs a way back down.** The layer 2 runs in `EarlyRunModel` start at the bottom of layer 1's shaft with a full tank. Two facts decide whether a pod can be there.
 
 1. **A pod could not drive back down its own shaft.** The hull paid by distance fallen, so a braked fall cost the hull of a free one and a stock hull survived 23 blocks of 192. [Hard landings (#319)](#hard-landings-319-a) changed the rule to impact speed: a braked descent is safe and costs fuel (`EarlyRunModel.driveDownLitres`), which the layer 2 runs now include.
-2. **A bore down has to carry its fuel.** There is no pump underground. The only field refuel is a fuel item fed to the parked pod (coal, charcoal, biofuel: 2 L each, `pod_fuel/*.json`), by reading the code, not tried in play.
+2. **A bore down has to carry its fuel.** There is no pump underground. The only field refuel is a fuel item fed to the parked pod (coal 2 L, charcoal 1 L, biofuel 3 L; see [Solid fuel](#solid-fuel-1280-a)), by reading the code, not tried in play.
 
 Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`EarlyRunModel.boreLitres`): **139 L**. The tank tier sets how many tank-fulls that is:
 
@@ -499,6 +499,53 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 **Open questions.**
 - Is the first descent meant to be the one-way bore with a stack of coal? The handbook's chapter 8 ("Your first breach") should say so if it is.
 - Should the descent's own ore count towards the first layer 2 run's income? It is not counted.
+
+## Solid fuel (#1280, A)
+
+**Problem.** Coal, charcoal and biofuel each gave 2 L, stacked to 64 and weighed nothing, so one slot was 128 L. A player could fell stalks, smelt a pile of charcoal and carry a free tank of fuel: no tension, and the pump was pointless ([user playtest, 2026-11-25](https://github.com/pkeppeler/deepcharter/issues/1280)). The campaign world also grows no crops, so biofuel could not be crafted at all ([#1288](https://github.com/pkeppeler/deepcharter/issues/1288)).
+
+**What it does.** Three changes, each copying something already in the game:
+1. **Solid fuel is bulky and heavy.** Coal, charcoal and biofuel stack to 16 (a default `max_stack_size`, as Fabric's `DefaultItemComponentEvents` allows for the vanilla items). They carry a `CargoWeight` (ADR 0097), counted by the same `OreEncumbrance` as ore: a pack slows a person on foot (the Laden status, once Ore-laden, names both), and what the pilot carries cuts the pod's lift through `PodEvents.EXTRA_MASS`, as cargo does. A one-time line says why the first time a person carries a load of fuel with no ore in it.
+2. **Fuel grades.** Charcoal gives 1 L, coal 2 L, biofuel 3 L (`pod_fuel/*.json`). Pump fuel stays the efficient choice: no slot, no weight, no soot, $1 a litre.
+3. **Soot.** Coal and charcoal leave soot in the engine as they burn (`soot` in `pod_fuel/*.json`: coal 0.5 L, charcoal 1 L, per litre burned; biofuel and pump fuel none). Soot is a pod attachment (`EngineSoot`, ADR 0097). Up to 3 L of soot (`FuelTuning.Soot.graceLitres`) it does nothing. Past that the engine burns 3% more fuel for each litre of soot, to at most 50% more. The pod status shows "SOOT n L, ENGINE BURNS +n%" from 1 L, and the first time the grace is crossed the pilot reads one line. The repair station's new SERVICE ENGINE row clears it for $2 a litre of soot (`RepairStation.SERVICE_ENGINE`; the same flow as hull repair: the parked pod, the charter's account, refuses a clean engine, a wreck or a short account). It copies hull repair.
+
+**Biofuel (#1288).** Three **stalk mash** (the colony's campfire meal, `deepcharter:stalk_meal`) ferment into one biofuel, shapeless, at the crafting grid. The mash is cooked from a fungal stalk, which grows on crater floors and in layer 1's caves ([SPEC](../SPEC.md)). It is the clean, homegrown fuel: 3 L an item, 48 L a stack, no soot, and the only one a world without crops can make. It costs three stalks and three cooks for 3 L, so it is dearer in effort than a charcoal, and it competes with the mash a player eats. The old recipe (four crops) and the `biofuel_crops` tag are gone.
+
+**The economy.** Per item and per litre (`FuelTuning`, `pod_fuel/*.json`; the "effort" is the model's, below):
+
+| Fuel | L an item | Stack | L a slot | Mass an item | Mass a slot | L per mass | Soot per L | Cost per L | Effort per L |
+|---|---|---|---|---|---|---|---|---|---|
+| Pump | | | any | 0 | 0 | | 0 | $1 | 0 s |
+| Biofuel | 3 | 16 | 48 | 0.5 | 8.0 | 6.0 | 0 | 0 | 8.7 s |
+| Coal | 2 | 16 | 32 | 0.6 | 9.6 | 3.3 | 0.5 | $1 (service) | 3 s |
+| Charcoal | 1 | 16 | 16 | 0.4 | 6.4 | 2.5 | 1 | $2 (service) | 10 s |
+
+(Before: coal, charcoal and biofuel 2 L, stack 64, no mass: 128 L a slot.)
+
+**Measured.** `FuelTripEconomyTest` runs `EarlyRunModel`'s trip, burns it through the real `EngineSoot`, and counts a trip's net (ore minus the fuel's cost: the pump's litres, or the service bill) and the minutes it takes (the trip, 45 s at the colony, and the model's effort to gather the fuel: (A) 10 s an item for charcoal, 6 s for coal, 26 s for biofuel). Layer 1, topsoil claims, `$` a trip and `$` a minute:
+
+| Trip | Pump | Biofuel | Coal | Charcoal |
+|---|---|---|---|---|
+| Stock Mole (1.4 L): net a trip | $123.61 | $124.99 | $122.99 | $121.99 |
+| Stock Mole: a minute | $104.46 | $90.34 | $98.19 | $86.26 |
+| Tier 3 tank (5.7 L): net a trip | $384.95 | $390.60 | $384.60 | $378.60 |
+| Tier 3 tank: a minute | $153.19 | $117.32 | $137.58 | $109.02 |
+
+A charcoal trip nets less than a pump trip ($1.62 and $6.35 less, the bill for the soot the pump never leaves) and earns 17% to 29% less a minute, once the hands-on time of gathering is counted. Biofuel lands between charcoal and pump on the minute, and ahead of both on the trip's dollars, because it costs effort and no cash. The pricing trip stays inside the grace, so the engine's extra burn shows only on a longer one: the tier 3 charcoal trip burns 5.76 L against the 5.65 L of a clean engine.
+
+`FuelWeightSootTest` pins the stack, the litres, the mass (a pilot with two stacks of coal and one of charcoal takes 25.6 off the pod's 100 engine power and 25.6 off their own walk), the grace (3 L burned, burn x1.00, then x1.03 a litre, $8 to service 4 L of soot), the cap, the 5-second idle burn that a real ticking pod leaves as soot (0.045 L burned, 0.045 L of soot) and that the first line is said.
+
+**Early game.** No first-run number changes: the first tank, the first trips (`PodFuelTripTest`) and the upgrade economy (`EconomyAffordabilityTest`) use the pump or a clean engine, and neither test feeds the pod a solid fuel. What changes is a stranded rescue and a long dive: a stack of coal was 128 L and is 32 L, so a pilot who wants to bore deep with carried fuel needs three or four stacks (about 35 mass, a third of a Mole's engine power) or a trip to the outpost's pump at $2 a litre, which is the point.
+
+**For #1276 (pod sprint).** Sprint should multiply the burn per second on top of the engine's soot factor: `PodFuel.tick` takes `drainPercentPerTick x EngineSoot.burnMultiplier`, so a sprint multiplier is one more factor beside it, and the soot a litre leaves is per litre, so a sprinting pod on charcoal makes soot faster per block. A +40% speed at 1.8 times the burn costs 29% more litres a block. On charcoal that is 29% more soot a block, and the fouling cap of +50% bounds the compound burn at 1.8 x 1.5. A tank of coal or charcoal also weighs more than the pump's fuel, and the lift left (74 of 100 with a 25.6 load) is what a sprint's climb uses. Headroom: the soot cap, the grace and the penalty are `FuelTuning.Soot`, and the per-litre soot is data.
+
+**Trade-offs.** A stack of 16 and a weight make a bore with carried fuel a real load, and the soot makes charcoal the poorest fuel, which is where felled stalks end up. Coal is the best of the solids by a margin, and there is one source, the colony's coal blocks. The service price ($2 a litre of soot) is a dollar over the pump's on a charcoal litre and equal to it on a coal one, so a charter that burns solid fuel at the colony pays at least what the pump would have charged; the saving is only for a pilot who burns it at depth, where the pump costs $2.
+
+**Knobs.** `FuelTuning` (`solidStack` 16, `weight`, `soot`: grace 3, 3% a litre, cap 50%, $2 a litre), `pod_fuel/*.json` (litres and soot an item), `recipe/biofuel.json`, `PodTuning.Fuel`.
+
+**Open questions.**
+- Should the soot slow the pod as well as burn more? Left out so that #1276's sprint is the only speed knob.
+- Should a hangar part (a filter) cut the soot? A candidate for a later track.
 
 ## Outposts at the layer 1 floor (#320, A)
 

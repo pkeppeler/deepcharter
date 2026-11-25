@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.repair;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
@@ -29,6 +30,9 @@ public final class RepairStation {
     public static final Identifier REPAIR = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "repair");
     /** Repair all that is missing. */
     public static final Identifier REPAIR_TOTAL = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "repair_total");
+    /** Clear the soot of the engine of the pod parked at the station, at {@link EngineSoot#serviceCost}. */
+    public static final Identifier SERVICE_ENGINE =
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "service_engine");
     /** Buy one of the item whose id is {@code args.item}. */
     public static final Identifier BUY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "buy");
 
@@ -45,6 +49,7 @@ public final class RepairStation {
                 context -> repair(context, context.args().getInt(HP_KEY)));
         TerminalActions.register(
                 TerminalTypes.REPAIR_STATION, REPAIR_TOTAL, context -> repair(context, Optional.of(Integer.MAX_VALUE)));
+        TerminalActions.register(TerminalTypes.REPAIR_STATION, SERVICE_ENGINE, RepairStation::serviceEngine);
         TerminalActions.register(TerminalTypes.REPAIR_STATION, BUY, RepairStation::buy);
         ParkedPodView.register(TerminalTypes.REPAIR_STATION);
     }
@@ -76,6 +81,39 @@ public final class RepairStation {
             return Optional.of(unpaid.get().message());
         }
         pod.setHull(pod.hull() + (float) repaired);
+        pod.level()
+                .playSound(
+                        null,
+                        pod.getX(),
+                        pod.getY(),
+                        pod.getZ(),
+                        DeepSound.REPAIR_NANOBOTS.event(),
+                        SoundSource.PLAYERS);
+        return Optional.empty();
+    }
+
+    /** Clears the soot of the parked pod's engine for {@link EngineSoot#serviceCost}; a clean engine costs nothing and is refused. */
+    private static Optional<Component> serviceEngine(TerminalAction.Context context) {
+        Optional<PodEntity> parked = parkedPod(context);
+        if (parked.isEmpty()) {
+            return Consumables.refusal("no_pod");
+        }
+        PodEntity pod = parked.get();
+        if (pod.hull() <= 0f || Wrecks.isWreck(pod)) {
+            return Consumables.refusal("wreck");
+        }
+        if (!EngineSoot.isReadable(pod)) {
+            return Consumables.refusal("engine_unreadable");
+        }
+        if (EngineSoot.soot(pod) <= 0f) {
+            return Consumables.refusal("engine_clean");
+        }
+        Optional<CharterRefusal> unpaid =
+                Charters.spend(context.server(), context.charter().orElseThrow().id(), EngineSoot.serviceCost(pod));
+        if (unpaid.isPresent()) {
+            return Optional.of(unpaid.get().message());
+        }
+        EngineSoot.service(pod);
         pod.level()
                 .playSound(
                         null,
