@@ -68,6 +68,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
+import net.minecraft.world.entity.ai.goal.RandomStrollGoal;
 import net.minecraft.world.entity.animal.chicken.Chicken;
 import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.monster.zombie.Husk;
@@ -840,9 +841,18 @@ public class PodSonarTest {
                 });
     }
 
-    /** A cow that is in the hears tag and keeps all its own goals: the test's stand-in for a Sleeper's creature that has other things to do. */
+    /**
+     * A cow that is in the hears tag and keeps its own goals but the random stroll: the test sends it elsewhere by hand, and a stroll that starts on
+     * the tick after a resend (one in 120) takes it off the ping before the test's 10-tick window reads it (#1234). A subclass, because the goal
+     * selector is protected; it is made persistent as {@link TestEntities#mob} makes it.
+     */
     private static Cow busyCow(ServerLevel level, double x) {
-        Cow cow = TestEntities.mob(EntityTypes.COW, level);
+        Cow cow = new Cow(EntityTypes.COW, level) {
+            {
+                goalSelector.removeAllGoals(goal -> goal instanceof RandomStrollGoal);
+            }
+        };
+        cow.setPersistenceRequired();
         cow.setPos(x, FLOOR, Z + 0.5);
         level.addFreshEntity(cow);
         return cow;
