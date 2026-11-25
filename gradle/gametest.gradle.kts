@@ -101,12 +101,9 @@ object GametestScan {
 	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
 	// A carve makes LightSync queue a ring re-send, and while it is pending a pod added or moved for its rider is untracked, so the client
-	// pilot ends up on foot (#1249, #1303). In a client GameTest or scenario, each method's steps are read in source order: a carve
-	// (RoomCarver.carve*), a wait (ClientWait.lightSettled), and a seat (`startRiding`, addFreshEntity of a pod, or setPos, teleportTo or
-	// teleport on a pod: `pod`, `realPod()`, `rig.pod(0)`, `pod(server, id)`, `pods[0]`). A call or method reference to a method of the same
-	// file stands for that method's steps, so a carve in buildSite and a seat in board are seen from the method that calls both. A seat after
-	// a carve with no wait between them fails: carve, call ClientWait.lightSettled, then seat. A seat the carve cannot affect carries the
-	// marker below, with a reason, on its statement (or the call that reaches it) or the comment line above it.
+	// pilot ends up on foot (#1249, #1303). Each method of a client GameTest or scenario is read in source order as carves, waits and
+	// seats, where a call or method reference to a same-file method stands for that method's steps; a seat after a carve with no wait
+	// between fails. The marker goes on the seat's statement, or on the call that reaches it.
 	// Heuristic: a call through another object or class (a support helper, a base class, another scenario) is not followed, a method is
 	// matched by name across its overloads, and the order is the text's, so a loop that seats before it carves again is not seen.
 	private const val LIGHT_SETTLED_MARKER = "// light-settled-ok:"
@@ -273,18 +270,15 @@ object GametestScan {
 		val memo = mutableMapOf<String, List<SettleStep>>()
 		fun steps(body: Pair<Int, IntRange>, stack: Set<String>): List<SettleStep> {
 			val range = body.second
+			fun inBody(regex: Regex) = regex.findAll(text, range.first).takeWhile { it.range.first < range.last }
 			val own = { at: Int -> owner(at) == body }
 			val found = mutableListOf<SettleStep>()
-			roomCarve.findAll(text, range.first).takeWhile { it.range.first < range.last }.filter { own(it.range.first) }
-				.forEach { found.add(SettleStep('C', it.range.first, false)) }
-			lightSettledWait.findAll(text, range.first).takeWhile { it.range.first < range.last }.filter { own(it.range.first) }
-				.forEach { found.add(SettleStep('W', it.range.first, false)) }
-			podSeat.findAll(text, range.first).takeWhile { it.range.first < range.last }.filter { own(it.range.first) && !isMarked(it.range.first) }
-				.forEach { found.add(SettleStep('S', it.range.first, false)) }
-			val calls = namedCall.findAll(text, range.first).takeWhile { it.range.first < range.last }
-				.map { Triple(it.range.first, it.groupValues[1], false) } +
-				methodReference.findAll(text, range.first).takeWhile { it.range.first < range.last }
-					.map { Triple(it.range.first, it.groupValues[1], true) }
+			for ((kind, regex) in listOf('C' to roomCarve, 'W' to lightSettledWait, 'S' to podSeat)) {
+				inBody(regex).map { it.range.first }.filter { own(it) && !(kind == 'S' && isMarked(it)) }
+					.forEach { found.add(SettleStep(kind, it, false)) }
+			}
+			val calls = inBody(namedCall).map { Triple(it.range.first, it.groupValues[1], false) } +
+				inBody(methodReference).map { Triple(it.range.first, it.groupValues[1], true) }
 			for ((at, name, reference) in calls) {
 				if (!own(at) || name in stack || !sameFileCall(at, name, reference)) continue
 				val marked = isMarked(at)

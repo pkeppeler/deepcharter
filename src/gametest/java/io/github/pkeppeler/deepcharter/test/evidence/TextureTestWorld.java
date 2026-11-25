@@ -534,7 +534,6 @@ final class TextureTestWorld {
         sp.getServer().runOnServer(action::accept);
     }
 
-    /** The world's server, for a wait such as ClientWait.lightSettled. */
     TestServerContext server() {
         return sp.getServer();
     }
