@@ -227,7 +227,7 @@ def skull_shapes(jaw):
     jawline = [(0.37, 0.67 + d), (0.375, 0.75 + d), (0.42, 0.80 + d), (0.58, 0.80 + d), (0.625, 0.75 + d), (0.63, 0.67 + d)]
     upper_teeth = [((0.39 + k * 0.022, 0.665), (0.39 + k * 0.022, 0.70)) for k in range(11)]
     lower_teeth = [((0.39 + k * 0.022, 0.675 + d), (0.39 + k * 0.022, 0.71 + d)) for k in range(11)]
-    bones = [((0.16, 0.64), (0.84, 0.97)), ((0.84, 0.64), (0.16, 0.97))]
+    bones = [((0.15, 0.60), (0.85, 0.93)), ((0.85, 0.60), (0.15, 0.93))]
     crack = [(0.56, 0.11), (0.585, 0.17), (0.57, 0.21), (0.6, 0.26)]
     return dict(head=head, eye_l=eye_l, eye_r=eye_r, nose=nose, jaw=jawline, upper=upper_teeth, lower=lower_teeth,
                 bones=bones, crack=crack)
@@ -244,7 +244,7 @@ def _bone_ends(d, a, b, r, colour, width):
             d.ellipse([c[0] - r, c[1] - r, c[0] + r, c[1] + r], outline=colour, width=width)
 
 
-def draw_vector(env, wobble, width=3, fill_skull=True):
+def draw_vector(env, wobble, width=3, fill_skull=True, bones=True):
     """Glowing line art, as on a vector monitor; the lines wobble with the laugh."""
     img = Image.new("L", (W, H), 0)
     d = ImageDraw.Draw(img)
@@ -254,7 +254,7 @@ def draw_vector(env, wobble, width=3, fill_skull=True):
         return [(px + RNG.normal(0, wobble), py + RNG.normal(0, wobble)) for px, py in (P(x, y) for x, y in seq)]
 
     s = box()[2]
-    for a, b in sh["bones"]:  # the bones first: the skull hides where they cross
+    for a, b in sh["bones"] if bones else []:  # the bones first: the skull hides where they cross
         pa, pb = P(*a), P(*b)
         d.line(pts([a, b]), fill=200, width=width + 1)
         _bone_ends(d, pa, pb, s * 0.03, 230, width)
@@ -372,12 +372,47 @@ def draw_bitmap(env):
     return img
 
 
+def femur(a, b):
+    """A thigh bone from a to b, in screen pixels: a shaft that narrows to the middle and flares to each end, and two
+    knobbed condyles side by side at each end. Returns the shaft polygon and the condyle circles (x, y, r)."""
+    s = box()[2]
+    ax, ay = a
+    ux, uy = b[0] - ax, b[1] - ay
+    length = math.hypot(ux, uy)
+    ux, uy = ux / length, uy / length
+    px, py = -uy, ux
+    w_mid, w_end = s * 0.017, s * 0.034
+    left, right = [], []
+    for k in range(41):
+        t = 0.06 + 0.88 * k / 40
+        w = w_mid + (w_end - w_mid) * abs(2 * t - 1) ** 3.5
+        cx, cy = ax + ux * length * t, ay + uy * length * t
+        left.append((cx + px * w, cy + py * w))
+        right.append((cx - px * w, cy - py * w))
+    knobs = []
+    r = s * 0.03
+    for t, sgn in ((0.035, 1), (0.965, -1)):
+        cx, cy = ax + ux * length * t, ay + uy * length * t
+        for k in (1, -1):
+            knobs.append((cx + px * r * 0.95 * k - ux * r * 0.25 * sgn, cy + py * r * 0.95 * k - uy * r * 0.25 * sgn, r))
+    return left + right[::-1], knobs
+
+
 def draw_typographic(env):
-    """The skull made of the Company's own words: its shape is a mask, filled with H. COLOM & CO. and the number."""
-    mask = draw_vector(env, 0, width=1, fill_skull=True)
+    """The skull made of the Company's own words: its shape is a mask, filled with H. COLOM & CO. and the number.
+    The crossbones are femurs behind the jaw, filled with the same text, with a faint outline."""
+    mask = draw_vector(env, 0, width=1, fill_skull=True, bones=False)
     solid = Image.new("L", (W, H), 0)
     d = ImageDraw.Draw(solid)
     sh = skull_shapes(env)
+    outline = ImageDraw.Draw(mask)
+    for a, b in sh["bones"]:  # first, so the skull covers where they cross behind it
+        shaft, knobs = femur(P(*a), P(*b))
+        for x, y, r in knobs:
+            d.ellipse([x - r, y - r, x + r, y + r], fill=170)
+            outline.ellipse([x - r, y - r, x + r, y + r], outline=200, width=1)
+        d.polygon(shaft, fill=170)
+        outline.polygon(shaft, outline=200)
     d.polygon([P(*p) for p in sh["head"]], fill=255)
     d.polygon([P(*p) for p in sh["jaw"] + [(0.63, 0.665), (0.37, 0.665)]], fill=255)
     for key in ("eye_l", "eye_r", "nose"):
@@ -385,8 +420,10 @@ def draw_typographic(env):
     mouth = [P(0.38, 0.705), P(0.62, 0.705), P(0.62, 0.705 + env * 0.075), P(0.38, 0.705 + env * 0.075)]
     if env > 0.05:
         d.polygon(mouth, fill=0)
-    for a, b in sh["bones"]:
-        d.line([P(*a), P(*b)], fill=150, width=int(box()[2] * 0.045))
+    hide = Image.new("L", (W, H), 0)  # the bone outline stays out of the skull
+    ImageDraw.Draw(hide).polygon([P(*p) for p in sh["head"]], fill=255)
+    ImageDraw.Draw(hide).polygon([P(*p) for p in sh["jaw"] + [(0.63, 0.665), (0.37, 0.665)]], fill=255)
+    mask = Image.fromarray(np.where(np.asarray(hide) > 0, np.asarray(draw_vector(env, 0, 1, True, bones=False)), np.asarray(mask)))
     s = np.asarray(solid)
     text = "H. COLOM & CO. · 0412 · CONTINUITY EVENT No. 7 · RECORDED FOR TRAINING PURPOSES · "
     font = ImageFont.truetype(m.FONT, 13)
