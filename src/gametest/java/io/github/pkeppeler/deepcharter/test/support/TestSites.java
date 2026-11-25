@@ -13,18 +13,21 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 
 /**
- * Who stages where. Layer tests share one world and stage at fixed columns far from the spawn, so two tests that pick the same column
- * of a layer corrupt each other, and only when they run in one batch (#1178). Every such test has its columns claimed in
- * {@link TestSiteTable}, one box of block columns per room (room, shell and the pod's travel), and {@code TestSitesTest} fails the
- * build's GameTest run when two owners' boxes overlap in one layer, whatever order or batch the tests run in.
+ * Who stages where. Layer tests share one world and stage at fixed columns far from the spawn, so two tests that pick
+ * the same column of a layer corrupt each other, and only when they run in one batch (#1178). Every such test has its
+ * columns claimed in {@link TestSiteTable}, one box of block columns per room (room, shell and the pod's travel), and
+ * {@code TestSitesTest} fails the build's GameTest run when two owners' boxes overlap in one layer, whatever order or
+ * batch the tests run in.
  *
- * <p>The claims cannot go stale unnoticed: {@link RoomCarver#carve} and {@link FarChunks#force} call {@link #guardCarve} and
- * {@link #guardChunk}, which fail the calling test when it stages outside its own claims. A test that stages and has no claim at all
- * fails there too, and the build fails on a server test that uses {@code FarChunks} or {@code RoomCarver} and is named nowhere in the
- * table ({@code gradle/gametest.gradle.kts}). To add a site, add a line to the table and run {@code TestSitesTest}.
+ * <p>The claims cannot go stale unnoticed: {@link RoomCarver#carve} and {@link FarChunks#force} call {@link
+ * #guardCarve} and {@link #guardChunk}, which fail the calling test when it stages outside its own claims. A test that
+ * stages and has no claim at all fails there too, and the build fails on a server test that uses {@code FarChunks} or
+ * {@code RoomCarver} and is named nowhere in the table ({@code gradle/gametest.gradle.kts}). To add a site, add a line
+ * to the table and run {@code TestSitesTest}.
  *
- * <p>The spawn square ({@link #SPAWN_RADIUS}) is every world's own: the colony, the content surveys. Nothing claims it and nothing
- * there is checked. Dimensions other than the overworld and the campaign sample level are one test's own and are not checked.
+ * <p>The spawn square ({@link #SPAWN_RADIUS}) is every world's own: the colony, the content surveys. Nothing claims it
+ * and nothing there is checked. Dimensions other than the overworld and the campaign sample level are one test's own
+ * and are not checked.
  */
 public final class TestSites {
     /** Blocks around the origin that every test world shares and that no test claims. */
@@ -32,7 +35,10 @@ public final class TestSites {
 
     private static final String TEST_PACKAGE = TestSites.class.getPackageName().replaceAll("\\.support$", "");
 
-    /** The last built layer. A claim for "the last layer" uses this, never its number, which moves when a layer is built. */
+    /**
+     * The last built layer. A claim for "the last layer" uses this, never its number, which moves when a layer is
+     * built.
+     */
     public static final int LAST = CampaignBands.lastLayer();
 
     /** The first layer past the built ones: the campaign sample's unbuilt depth, which tests carve pockets in too. */
@@ -66,9 +72,9 @@ public final class TestSites {
     }
 
     /**
-     * Whether this is a client GameTest JVM ({@code runClientGameTest}, evidence scenarios): each test starts a world of its own, which nothing
-     * else stages in, and it carves from the integrated server thread, where the test's frame is not on the stack. Server GameTests run a
-     * dedicated server and are guarded.
+     * Whether this is a client GameTest JVM ({@code runClientGameTest}, evidence scenarios): each test starts a world
+     * of its own, which nothing else stages in, and it carves from the integrated server thread, where the test's frame
+     * is not on the stack. Server GameTests run a dedicated server and are guarded.
      */
     private static final boolean CLIENT_JVM = FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT;
 
@@ -85,8 +91,8 @@ public final class TestSites {
     private TestSites() {}
 
     /**
-     * Claims the block columns {@code x0..x1}, {@code z0..z1} (inclusive) of {@code layer} for the test class named {@code owner} (its
-     * simple name; a nested class counts as its outer class).
+     * Claims the block columns {@code x0..x1}, {@code z0..z1} (inclusive) of {@code layer} for the test class named
+     * {@code owner} (its simple name; a nested class counts as its outer class).
      */
     static void claim(String owner, int layer, int x0, int x1, int z0, int z1) {
         SITES.add(new Site(owner, layer, x0, x1, z0, z1));
@@ -194,7 +200,8 @@ public final class TestSites {
     }
 
     /**
-     * The owner whose claims must cover the box, or empty when the box is not checked: another dimension, the spawn square, a client JVM, or an exempt owner. Throws when a checked call has no owner.
+     * The owner whose claims must cover the box, or empty when the box is not checked: another dimension, the spawn
+     * square, a client JVM, or an exempt owner. Throws when a checked call has no owner.
      */
     private static Optional<String> checkedOwner(
             ServerLevel level, List<Class<?>> stack, int x0, int x1, int z0, int z1, Supplier<String> what) {
@@ -222,8 +229,8 @@ public final class TestSites {
     }
 
     /**
-     * Wraps a callback that a test schedules from its own stack, so that what it stages is attributed to that test when it runs later
-     * with no test frame under it. Call it where the test's frame is on the stack.
+     * Wraps a callback that a test schedules from its own stack, so that what it stages is attributed to that test when
+     * it runs later with no test frame under it. Call it where the test's frame is on the stack.
      */
     public static Runnable attributed(Runnable callback) {
         Optional<String> owner = ownerOf(stack());
@@ -256,9 +263,9 @@ public final class TestSites {
     }
 
     /**
-     * The server test class that is staging: the outermost class of the outermost frame in {@code io.github.pkeppeler.deepcharter.test}
-     * itself (not its support, mixin or evidence packages), so a helper in that package that a test calls is transparent and the test
-     * owns the claim. Empty when no such frame is on the stack.
+     * The server test class that is staging: the outermost class of the outermost frame in {@code
+     * io.github.pkeppeler.deepcharter.test} itself (not its support, mixin or evidence packages), so a helper in that
+     * package that a test calls is transparent and the test owns the claim. Empty when no such frame is on the stack.
      */
     public static Optional<String> ownerOf(List<Class<?>> stack) {
         return stack.stream()

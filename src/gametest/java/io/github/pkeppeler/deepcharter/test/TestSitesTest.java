@@ -12,7 +12,10 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 
-/** Server GameTests for {@link TestSites} (#1182): the table has no overlap and no stale owner, and staging outside a claim fails. */
+/**
+ * Server GameTests for {@link TestSites} (#1182): the table has no overlap and no stale owner, and staging outside a
+ * claim fails.
+ */
 public class TestSitesTest {
     private static final String TEST_PACKAGE = "io.github.pkeppeler.deepcharter.test.";
 
@@ -70,7 +73,10 @@ public class TestSitesTest {
         helper.succeed();
     }
 
-    /** This class claims nothing, so the guards that {@code RoomCarver.carve} and {@code FarChunks.force} call refuse a place far from the spawn square. */
+    /**
+     * This class claims nothing, so the guards that {@code RoomCarver.carve} and {@code FarChunks.force} call refuse a
+     * place far from the spawn square.
+     */
     @GameTest
     public void stagingOutsideTheClaimsFails(GameTestHelper helper) {
         var level = helper.getLevel();
@@ -166,7 +172,10 @@ public class TestSitesTest {
         helper.succeed();
     }
 
-    /** {@code ColonyTest} reads the terrain at the surface column 9500, 9500, outside the spawn square, so it claims it rather than being exempt. */
+    /**
+     * {@code ColonyTest} reads the terrain at the surface column 9500, 9500, outside the spawn square, so it claims it
+     * rather than being exempt.
+     */
     @GameTest
     public void colonyTestClaimsTheSurfaceColumnItReads(GameTestHelper helper) {
         expect(
@@ -182,7 +191,10 @@ public class TestSitesTest {
         helper.succeed();
     }
 
-    /** A claim for "the unbuilt depth" or "the last layer" names a symbol, not a number, so building a layer moves it (#1182). */
+    /**
+     * A claim for "the unbuilt depth" or "the last layer" names a symbol, not a number, so building a layer moves it
+     * (#1182).
+     */
     @GameTest
     public void aSymbolicClaimResolvesToTheCurrentLayerCount(GameTestHelper helper) {
         expect(
@@ -195,14 +207,14 @@ public class TestSitesTest {
         expect(
                 helper,
                 TestSites.sites().stream()
-                        .anyMatch(site -> site.owner().equals("SuitTimerTest")
-                                && site.layer() == CampaignBands.lastLayer() + 1),
+                        .anyMatch(site ->
+                                site.owner().equals("SuitTimerTest") && site.layer() == CampaignBands.lastLayer() + 1),
                 "SuitTimerTest does not claim the layer below the last built one");
         expect(
                 helper,
                 TestSites.sites().stream()
-                        .anyMatch(site -> site.owner().equals("BandReadersTest")
-                                && site.layer() == CampaignBands.lastLayer()),
+                        .anyMatch(site ->
+                                site.owner().equals("BandReadersTest") && site.layer() == CampaignBands.lastLayer()),
                 "BandReadersTest does not claim the last built layer");
         helper.succeed();
     }
