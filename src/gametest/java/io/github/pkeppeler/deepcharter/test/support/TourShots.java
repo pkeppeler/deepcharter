@@ -31,8 +31,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * The design tour's stills that have a subject, and the check that the subject is in sight. The colony's views are
  * measured from the anchors of the buildings they show, so {@code ColonyPlacementTest} checks them on the server
- * GameTest's own colony: a change to the town that hides a subject (#869 lowered the terminals into the line of a lamp
- * post, #1291) fails there, not half an hour into a tour.
+ * GameTest's own colony.
  */
 public final class TourShots {
     /** How far a player's eyes are above the feet. */
@@ -75,9 +74,8 @@ public final class TourShots {
                 new Shot("colony-aerial-south", p(colony, 0, 38, 62), middle, 80, TOWN),
                 new Shot("colony-aerial-northwest", p(colony, -52, 38, -52), middle, 30, TOWN),
                 new Shot("colony-aerial-northeast", p(colony, 52, 38, -52), middle, 30, TOWN),
-                // From out on the graded land, looking back at the pad's edge: the south margin, and the east side
-                // where
-                // the land is higher.
+                // From out on the graded land, looking back at the pad's edge: the south margin, and the east
+                // side where the land is higher.
                 new Shot("colony-margin-looking-back-south", p(colony, 14, 12, 60), p(colony, 0, 6, 8), 30, TOWN),
                 new Shot("colony-margin-from-the-east", p(colony, 60, 14, 8), p(colony, 0, 6, -4), 30, TOWN),
                 new Shot("colony-from-straight-above", p(colony, 0, 80, 6), p(colony, 0, 0, -2), 30, TOWN),
@@ -109,10 +107,8 @@ public final class TourShots {
         }
         Vec3 upgrade = rel(colony, ColonyAnchor.UPGRADE_TERMINAL, 0, 0, 0);
         // From the south-east, past the square's corner, so that the Host's plinth, which stands in line with the
-        // upgrade
-        // terminal, is not in the line of sight; and high enough to look over the top of the square's lamp post 10 east
-        // and
-        // 4 south of the Host.
+        // upgrade terminal, is not in the line of sight; and high enough to look over the top of the square's lamp
+        // post 10 east and 4 south of the Host.
         shots.add(new Shot(
                 "terminal-row",
                 upgrade.add(12, 5, 14),
@@ -188,9 +184,8 @@ public final class TourShots {
                 40,
                 new Subject("the coal blocks of the bar", state -> state.is(Blocks.COAL_BLOCK), 3)));
 
-        // The Conduit stands in the headframe: its casing shows through the open front of the tower, and the tower is
-        // the
-        // subject from the sides.
+        // The Conduit stands in the headframe: its casing shows through the open front of the tower, and the tower
+        // is the subject from the sides.
         Vec3 conduit = rel(colony, ColonyAnchor.CONDUIT, 0, 0, 0);
         Subject casing = new Subject("the conduit casing", state -> state.is(ColonyBlocks.CONDUIT), 3);
         Subject tower = new Subject(
