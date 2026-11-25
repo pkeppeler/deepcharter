@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestRegions;
+import io.github.pkeppeler.deepcharter.test.support.TourShots;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
@@ -799,6 +800,40 @@ public class ColonyPlacementTest {
             }
         }
         finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+    }
+
+    /**
+     * Every still the design tour takes of the colony from over the pad has its subject in sight (#1291). A view from beyond the
+     * pad's edge crosses natural ground, which this world does not share with the tour's fixed seed, so only the tour checks it.
+     */
+    @GameTest(maxTicks = 100)
+    public void everyDesignTourViewFromOverThePadSeesItsSubject(GameTestHelper helper) {
+        ServerLevel level = server(helper).overworld();
+        ColonySite.Placed colony = placed(helper);
+        loadPad(level, colony);
+        AABB pad = pad(colony);
+        List<String> problems = new ArrayList<>();
+        int checked = 0;
+        for (List<TourShots.Shot> shots : List.of(TourShots.overviews(colony), TourShots.closeUps(colony))) {
+            for (TourShots.Shot shot : shots) {
+                if (overThe(pad, shot.eye()) && overThe(pad, shot.target())) {
+                    checked++;
+                    String problem = TourShots.problem(level, shot.eye(), shot.target(), shot.subject());
+                    if (problem != null) {
+                        problems.add(shot.name() + ": " + problem);
+                    }
+                }
+            }
+        }
+        if (checked == 0) {
+            problems.add("no view of the tour is over the pad");
+        }
+        finish(helper, problems);
+    }
+
+    /** Whether {@code point} is over the pad, at whatever height. */
+    private static boolean overThe(AABB pad, Vec3 point) {
+        return point.x >= pad.minX && point.x <= pad.maxX && point.z >= pad.minZ && point.z <= pad.maxZ;
     }
 
     private static AABB pad(ColonySite.Placed colony) {
