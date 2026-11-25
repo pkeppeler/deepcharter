@@ -42,6 +42,14 @@ import net.minecraft.world.phys.Vec3;
  * tick and the sweep comes later.
  */
 public class OutpostSettlingSweepTest {
+    /**
+     * A stack of coal, which a container clamps to (#1280). Read when a test runs: the item's components are bound
+     * after the class loads.
+     */
+    private static int coalStack() {
+        return Items.COAL.getDefaultMaxStackSize();
+    }
+
     /** The wait for the chunk, then several sweeps (one every 100 ticks) and the light going out. */
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 800;
     /** The hall's lamps, as offsets from the floor: the builder's six. */
@@ -105,7 +113,7 @@ public class OutpostSettlingSweepTest {
                     one.setBlock(barrel, Blocks.BARREL.defaultBlockState(), 3);
                     Container storage = SettlingRooms.containerAt(one, barrel);
                     for (int slot = 0; slot < storage.getContainerSize(); slot++) {
-                        storage.setItem(slot, new net.minecraft.world.item.ItemStack(Items.COAL, 64));
+                        storage.setItem(slot, new net.minecraft.world.item.ItemStack(Items.COAL, coalStack()));
                     }
                     long window = one.getGameTime() / SettlingTuning.DEFAULT.windowTicks();
                     OutpostVisits.get(server)
@@ -120,7 +128,11 @@ public class OutpostSettlingSweepTest {
                 .thenWaitUntil(() -> expect(helper, dark[0], "waiting for the hall to go dark"))
                 .thenWaitUntil(() -> {
                     int coal = SettlingRooms.count(SettlingRooms.containerAt(one, barrel), Items.COAL);
-                    expect(helper, coal < 27 * 64, "waiting for a sweep to take fuel, the barrel still holds %s", coal);
+                    expect(
+                            helper,
+                            coal < 27 * coalStack(),
+                            "waiting for a sweep to take fuel, the barrel still holds %s",
+                            coal);
                 })
                 .thenExecute(() -> {
                     Ledger ledger = OutpostVisits.get(server).find(charter, 1).orElseThrow();

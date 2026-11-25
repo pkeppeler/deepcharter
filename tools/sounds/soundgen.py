@@ -51,8 +51,7 @@ def _sha256(path):
 
 
 def _encoder_args():
-    listing = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], check=True, capture_output=True, text=True).stdout
-    if " libvorbis " in listing:
+    if first_sounds.has_libvorbis():
         return ["-c:a", "libvorbis", "-q:a", "4"]
     return ["-c:a", "vorbis", "-strict", "-2", "-q:a", "4"]
 

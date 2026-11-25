@@ -11,5 +11,6 @@ public final class FuelInit {
         FuelRegistry.register();
         FuelPump.init();
         ReserveTank.init();
+        EngineSoot.init();
     }
 }

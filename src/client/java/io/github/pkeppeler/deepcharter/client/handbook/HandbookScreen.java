@@ -118,6 +118,9 @@ public final class HandbookScreen extends Screen {
     /** Absent until {@link #init} has built the widgets. */
     private @Nullable Buttons buttons;
 
+    /** Ticks since the screen opened: the clock an any-of slot's icon cycles on. */
+    private int cycleTicks;
+
     /** The screen closing returns to; none returns to the game. */
     private @Nullable Screen parent;
 
@@ -544,6 +547,7 @@ public final class HandbookScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        cycleTicks++;
         if (flipTicks > 0) {
             flipTicks--;
         }
@@ -623,7 +627,7 @@ public final class HandbookScreen extends Screen {
             }
             QuestMap.CardItem item = card.itemAt(event.x(), event.y());
             if (item != null) {
-                CatalogueScreens.open(item.item());
+                CatalogueScreens.open(item.shown(cycleTicks));
                 return true;
             }
             if (card.box().contains(event.x(), event.y())) {
@@ -690,6 +694,7 @@ public final class HandbookScreen extends Screen {
             case HandbookPage.Slip slip -> drawSlip(graphics);
             case HandbookPage.Letter letter -> drawLetter(graphics);
             case HandbookPage.Contents contents -> drawContents(graphics, contents);
+            case HandbookPage.Controls controls -> drawControls(graphics, controls);
             case HandbookPage.ChapterText text -> drawChapterText(graphics, text);
             case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
             case HandbookPage.Pencil pencil -> drawPencil(graphics, pencil);
@@ -863,6 +868,31 @@ public final class HandbookScreen extends Screen {
         };
     }
 
+    /** A page of the controls: its label and title, then each line, with the keys the player has bound now. */
+    private void drawControls(GuiGraphicsExtractor graphics, HandbookPage.Controls controls) {
+        int y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("controls.label", controls.part(), controls.parts()),
+                textLeft,
+                paperTop + tuning().topMargin(),
+                textWidth,
+                tuning().faintInkColor());
+        y = PaperDraw.wrapped(
+                graphics,
+                font,
+                Component.translatable(HandbookControls.titleKey(controls.part())),
+                textLeft,
+                y + 3,
+                textWidth,
+                tuning().inkColor());
+        y = titleRule(graphics, y);
+        for (Component line : HandbookControls.lines(controls.part(), Minecraft.getInstance().options)) {
+            y = PaperDraw.wrapped(graphics, font, line, textLeft, y, textWidth, tuning().inkColor())
+                    + tuning().paragraphGap();
+        }
+    }
+
     /** A page of the text of a chapter: its label and title, the text, and the margin note beside it if the language file has one. */
     private void drawChapterText(GuiGraphicsExtractor graphics, HandbookPage.ChapterText text) {
         int y = PaperDraw.wrapped(
@@ -1010,7 +1040,7 @@ public final class HandbookScreen extends Screen {
         HandbookPage.Chapter chapter = Objects.requireNonNull(
                 chapters.get(chapterNumber), () -> "chapter " + chapterNumber + " has no chapter page");
         for (QuestMap.CardItem shown : indexCard(chapter).items()) {
-            if (shown.item() == item) {
+            if (shown.items().contains(item)) {
                 return new Rect(
                         shown.box().x(),
                         shown.box().y(),
@@ -1067,7 +1097,6 @@ public final class HandbookScreen extends Screen {
                 Colors.opaque(tuning().inkColor()));
         QuestMap.Model model = QuestMap.model(chapters, chapter.number());
         QuestMap.Layout layout = mapLayout(chapter);
-        HandbookPage.Chapter ahead = model.ahead();
         QuestMap.drawChart(
                 graphics,
                 font,
@@ -1077,10 +1106,7 @@ public final class HandbookScreen extends Screen {
                 frame.originY(),
                 frame.clip(),
                 mapNote(chapter),
-                tr("chapter.stamp.classified"),
-                ahead == null
-                        ? Component.empty()
-                        : tr("quest.ahead", ahead.number(), ahead.chapter().title()));
+                tr("chapter.stamp.classified"));
         int stampX = textLeft + QuestMapTuning.current().stampLeft();
         int stampY = paperTop + tuning().topMargin() + QuestMapTuning.current().stampTop();
         if (chapter.visibility() == HandbookVisibility.PREVIEW) {
@@ -1091,7 +1117,8 @@ public final class HandbookScreen extends Screen {
         if (full) {
             HandbookChapter.Entry step = QuestMap.shown(chapter, memory.picked(chapter.number()));
             QuestMap.Card card = indexCard(chapter);
-            QuestMap.drawCard(graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter));
+            QuestMap.drawCard(
+                    graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter), cycleTicks);
         }
     }
 
