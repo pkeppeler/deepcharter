@@ -86,7 +86,7 @@ A 1-D model of `PodGlide` under `PacketJitter`, matched to a per-tick client tra
 - A capped catch-up drew the cap and then a sliver of the gap, and a coast after that sliver made a short tick. Capped steps of a moving pod now split the gap evenly, each still under the cap, counting the target's own advance ([below](#the-even-split-chases-a-moving-target)).
 - A coasted pod within a tick of its target, while the moves advance, draws the whole tick past it, and that part counts against the reach. A move that does not advance (a pushed pod the server slows faster than the speed it reported) arrives on its target as before, so a knockback or a tow release is not dead-reckoned past it.
 
-A client test meets the first two only when CI's server happens to run late in that pattern, so `PodGlideTraceTest` replays one trace of the model for each through the real `PodGlide`; each fails without its fix.
+A client test meets them only when CI's server happens to run late in that pattern, so `PodGlideTraceTest` replays one trace of the model for each through the real `PodGlide`; each fails without its fix.
 
 ### The even split chases a moving target
 

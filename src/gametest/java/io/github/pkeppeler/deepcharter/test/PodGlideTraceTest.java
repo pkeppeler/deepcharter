@@ -120,9 +120,27 @@ public class PodGlideTraceTest {
         89, 89
     };
 
+    /**
+     * Three moves one, two and one tick late. A pod that has coasted and sits within a tick of a target the moves keep advancing would
+     * arrive on it and draw the tick short (0.0668 in tick 36, 0.0501 with the still split); it draws the whole tick. A local {@code
+     * PodDriveLateClientTest} no longer meets it.
+     */
+    private static final int[] WITHIN_A_TICK = {
+        0, 2, 2, 3, 5, 5, 6, 8, 8, 9, 11, 11, 12, 14, 14, 15, 17, 17, 18, 20, 20, 21, 23, 23, 24, 26, 26, 27, 29, 29,
+        30, 32, 32, 35, 36, 36, 36, 38, 38, 39, 41, 41, 42, 44, 44, 45, 47, 47, 48, 50, 50, 51, 53, 53, 54, 56, 56, 57,
+        59, 59, 60, 62, 62, 63, 65, 65, 66, 68, 68, 69, 71, 71, 72, 74, 74, 75, 77, 77, 78, 80, 80, 81, 83, 83, 84, 86,
+        86, 87
+    };
+
     @GameTest
     public void aCappedCatchUpSplitsItsGapEvenly(GameTestHelper helper) {
         expectSteady(helper, "a capped catch-up after a stall", CAPPED_CATCH_UP);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aCoastedPodNearItsTargetDrawsTheWholeTick(GameTestHelper helper) {
+        expectSteady(helper, "a coasted pod within a tick of its target", WITHIN_A_TICK);
         helper.succeed();
     }
 
