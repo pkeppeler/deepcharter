@@ -179,10 +179,9 @@ public class RecipeFillClientTest implements FabricClientGameTest {
                         == 3,
                 "and the three iron stay in the inventory");
 
-        // An item that teaches new recipes rebuilds the catalogue under the ghost, and the ghost stands. String, which
-        // the
-        // world yields (salvage cloth), teaches wool, the bow and the lead; an unobtainable item has no recipes (ADR
-        // 0093).
+        // An item that teaches new recipes rebuilds the catalogue under the ghost, and the ghost stands.
+        // String, which the world yields (salvage cloth), teaches wool and the bow; an unobtainable item has no
+        // recipes (ADR 0093).
         Object before = context.computeOnClient(client -> panel.catalogue());
         singleplayer.getServer().runCommand("give @p minecraft:string 1");
         ClientWait.until(context, "the catalogue rebuilt", client -> panel.catalogue() != before);
