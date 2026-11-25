@@ -52,7 +52,7 @@ public final class HandBreakCost {
         }
         HandBreakTuning tuning = LayerTuning.DEFAULT.handBreak();
         int ticks = mined + 1;
-        if (ticks < tuning.breakTicks()) {
+        if (ticks < tuning.breakTicks() && wear != HandBreak.Wear.FREE) {
             // Never the last point: that one is the break's, so the tool cannot give out with the block standing.
             int spend =
                     Math.min(spentThisTick(tool, wear, mined, ticks), tool.getMaxDamage() - tool.getDamageValue() - 1);
@@ -64,20 +64,22 @@ public final class HandBreakCost {
 
     /**
      * Breaks a pod-only block for a player who has been mining it for {@code mined} ticks: refused for an item that is no
-     * tool, or a block a {@code PlayerBlockBreakEvents.BEFORE} listener vetoes (nothing is charged). A tool that cannot
+     * tool, for a {@code timed} break (a STOP from the client) that comes more than {@code stopSlackTicks} short of the
+     * break time, since vanilla's own check would let it through at 0.7 of it, and for a block a
+     * {@code PlayerBlockBreakEvents.BEFORE} listener vetoes (nothing is charged in any of these). A tool that cannot
      * pay what is due is used up and the block still goes. The block goes without a drop, a pulverised block, so brute
      * force is never an ore exploit, but with the events a hand break fires, so a gas pocket still vents and protection
      * mods still veto. Creative players never come here. A refusal sends the client the block back, so it shows no ghost.
      */
-    public static boolean breakByHand(ServerPlayer player, ServerLevel level, BlockPos pos, int mined) {
-        boolean broken = tryBreak(player, level, pos, mined);
+    public static boolean breakByHand(ServerPlayer player, ServerLevel level, BlockPos pos, int mined, boolean timed) {
+        boolean broken = tryBreak(player, level, pos, mined, timed);
         if (!broken) {
             player.connection.send(new ClientboundBlockUpdatePacket(pos, level.getBlockState(pos)));
         }
         return broken;
     }
 
-    private static boolean tryBreak(ServerPlayer player, ServerLevel level, BlockPos pos, int mined) {
+    private static boolean tryBreak(ServerPlayer player, ServerLevel level, BlockPos pos, int mined, boolean timed) {
         // Vanilla's own refusals in destroyBlock, which this replaces for a pod-only block: adventure mode and the
         // like.
         if (player.blockActionRestricted(level, pos, player.gameMode.getGameModeForPlayer())) {
@@ -88,6 +90,10 @@ public final class HandBreakCost {
         if (wear == HandBreak.Wear.NONE) {
             return false;
         }
+        HandBreakTuning tuning = LayerTuning.DEFAULT.handBreak();
+        if (timed && mined < tuning.breakTicks() - tuning.stopSlackTicks()) {
+            return false;
+        }
         BlockState state = level.getBlockState(pos);
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (!PlayerBlockBreakEvents.BEFORE.invoker().beforeBlockBreak(level, player, pos, state, blockEntity)) {
@@ -95,15 +101,18 @@ public final class HandBreakCost {
             return false;
         }
         int remaining = tool.getMaxDamage() - tool.getDamageValue();
-        int due = wear == HandBreak.Wear.SHARE
-                ? Math.min(remaining, durableCost(tool) - scheduled(durableCost(tool), mined))
-                : remaining;
-        // A tool with less than is due is used up by the block, and the block still goes.
-        spend(player, tool, due);
+        int due = switch (wear) {
+            case SHARE -> Math.min(remaining, durableCost(tool) - scheduled(durableCost(tool), mined));
+            case DESTROYED -> remaining;
+            case FREE, NONE -> 0;
+        };
         BlockState broken = state.getBlock().playerWillDestroy(level, pos, state, player);
         if (!level.removeBlock(pos, false)) {
             return false;
         }
+        // Paid only once the block is gone, so a removal that fails never costs a pick. A tool with less than is due is
+        // used up by the block, and the block has already gone.
+        spend(player, tool, due);
         state.getBlock().destroy(level, pos, broken);
         PlayerBlockBreakEvents.AFTER.invoker().afterBlockBreak(level, player, pos, state, blockEntity);
         return true;
@@ -167,7 +176,7 @@ public final class HandBreakCost {
         if (ticks % tuning.soundTicks() == 0) {
             level.playSound(null, pos, SoundEvents.GRINDSTONE_USE, SoundSource.BLOCKS, 0.7F, 0.9F);
         }
-        if (ticks % tuning.messageTicks() == 1) {
+        if (ticks % tuning.messageTicks() == 1 && wear != HandBreak.Wear.FREE) {
             player.sendOverlayMessage(Component.translatable(
                     wear == HandBreak.Wear.SHARE
                             ? "deepcharter.layer.pod_only.burning"

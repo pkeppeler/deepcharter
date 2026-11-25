@@ -17,7 +17,7 @@
   "deepcharter.layer.grain_squeeze_foot": "[PLACEHOLDER #12] The grain squeezes. Get off the crust.",
   "deepcharter.layer.grain_squeeze_pod": "[PLACEHOLDER #12] The grain squeezes. Keep moving.",
   "deepcharter.layer.pod_only.burning": "Pod drill only: your pick is burning out",
-  "deepcharter.layer.pod_only.cannot_bite": "Your bare hand cannot do this at all. A pod drill is the way through. A pick could grind through, but it would burn itself out doing it.",
+  "deepcharter.layer.pod_only.cannot_bite": "This item cannot do this at all. A pod drill is the way through. A pick could grind through, but it would burn itself out doing it.",
   "deepcharter.layer.pod_only.destroying": "Pod drill only: this will destroy your pick",
   "deepcharter.layer.pod_only.first_try": "A pod drill is the way through this. A pick can grind through it, but the pick burns itself out doing it.",
   "hint.deepcharter.pod_drill_only": "Pod drill only",

@@ -28,6 +28,7 @@ final class LayerReadouts {
             return switch (HandBreak.wearOf(viewer.getMainHandItem())) {
                 case SHARE -> Optional.of(PICK_WOULD_BURN_OUT);
                 case DESTROYED -> Optional.of(PICK_WOULD_BE_DESTROYED);
+                case FREE -> Optional.of(POD_DRILL_ONLY);
                 case NONE -> state.is(HazardBlocks.COMPANY_ROCK) ? Optional.empty() : Optional.of(POD_DRILL_ONLY);
             };
         });

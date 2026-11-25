@@ -41,8 +41,10 @@ public final class HandBreak {
 
     /** What brute-forcing a block costs the tool that does it. */
     public enum Wear {
-        /** Not a tool (a bare hand, a stick): it makes no progress and cannot break the block. */
+        /** Not a tool (a bare hand, a stick, a fishing rod): it makes no progress and cannot break the block. */
         NONE,
+        /** A tool that cannot be damaged (Unbreakable): it breaks the block and pays nothing, as nothing can wear it. */
+        FREE,
         /** A diamond or better tool, in {@code deepcharter:hand_break/durable}: a share of its durability. */
         SHARE,
         /** Any other tool: all of its durability, spent so that it is destroyed as the block goes. */
@@ -109,15 +111,19 @@ public final class HandBreak {
                 && pos.getY() < CampaignBands.layer(CampaignBands.lastLayer()).minY();
     }
 
-    /** True when {@code tool} is a tool, any item with durability, and so can brute-force a pod-only block in any layer. */
+    /** True when {@code tool} is in the tool tag, and so can brute-force a pod-only block in any layer. */
     public static boolean isTool(ItemStack tool) {
-        return tool.isDamageableItem();
+        return tool.is(LayerTuning.DEFAULT.handBreak().tools());
     }
 
     /** What brute-forcing a block costs {@code tool}, whatever the layer. */
     public static Wear wearOf(ItemStack tool) {
         if (!isTool(tool)) {
             return Wear.NONE;
+        }
+        // An Unbreakable tool is not damageable, so there is nothing to spend: it breaks the block for free.
+        if (!tool.isDamageableItem()) {
+            return Wear.FREE;
         }
         return tool.is(LayerTuning.DEFAULT.handBreak().durableTools()) ? Wear.SHARE : Wear.DESTROYED;
     }

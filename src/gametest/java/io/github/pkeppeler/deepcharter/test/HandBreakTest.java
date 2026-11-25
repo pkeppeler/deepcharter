@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.HandBreak;
 import io.github.pkeppeler.deepcharter.layer.HandBreakCost;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -25,6 +26,7 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -32,6 +34,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Unit;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -94,6 +97,11 @@ public class HandBreakTest {
     private static final int FULL_RUN_TICKS = 1200;
     /** A STOP this many ticks in is past the 0.7 of the break time that vanilla's check lets through. */
     private static final int EARLY_STOP_TICKS = 850;
+    /** The ticks short of the break time that a STOP may come and still break the block. */
+    private static final int SLACK = LayerTuning.DEFAULT.handBreak().stopSlackTicks();
+
+    private static final int X_UNBREAKABLE = 10600;
+    private static final int X_CHANGE = 9650;
 
     /** Positions a test has asked the veto listener below to refuse. A Fabric event cannot be unregistered. */
     private static final Set<BlockPos> VETOED = ConcurrentHashMap.newKeySet();
@@ -248,12 +256,17 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** An item that is no tool, a bare hand or a stick, makes no progress, breaks nothing and is refused the swing. */
+    /** An item that is no tool (a bare hand, a stick, a fishing rod, an elytra, shears) makes no progress, breaks nothing and is refused the swing. */
     @GameTest
     public void anItemThatIsNoToolMakesNoProgressAndBreaksNothing(GameTestHelper helper) {
         Rig one = rig(helper, 1, X_NO_BITE, "hb-notool-1");
         Rig two = rig(helper, 2, X_NO_BITE + 1, "hb-notool-2");
-        List<ItemStack> items = List.of(ItemStack.EMPTY, new ItemStack(Items.STICK));
+        List<ItemStack> items = List.of(
+                ItemStack.EMPTY,
+                new ItemStack(Items.STICK),
+                new ItemStack(Items.FISHING_ROD),
+                new ItemStack(Items.ELYTRA),
+                new ItemStack(Items.SHEARS));
         List<BlockState> states = List.of(
                 LayerBlocks.BREACH_CRUST.defaultBlockState(),
                 HazardBlocks.COMPANY_ROCK.defaultBlockState(),
@@ -879,15 +892,17 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** A STOP that comes before the break time is up, but past vanilla's 0.7, pays the rest of the cost and breaks the block. */
+    /**
+     * The 60 s is a floor: a STOP past vanilla's 0.7 of the break time, but short of the break time less the slack, is
+     * refused. The block stays, the client is sent it back and the break charges nothing.
+     */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + EARLY_STOP_TICKS + 200)
-    public void anEarlyStopPaysTheRemainderAndBreaksTheBlock(GameTestHelper helper) {
+    public void anEarlyStopIsRefusedAndChargesNothing(GameTestHelper helper) {
         Rig rig = rig(helper, 2, X_EARLY, "hb-early");
         BlockPos pos = rig.cell(0);
         rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
         ItemStack pick = new ItemStack(Items.NETHERITE_PICKAXE);
         hold(rig.player(), pick);
-        int expected = expectedCost(pick.getMaxDamage());
         drive(helper, rig, pos, mined -> {
             if (mined < EARLY_STOP_TICKS) {
                 if (!rig.level.getBlockState(pos).is(Blocks.STONE)) {
@@ -895,12 +910,57 @@ public class HandBreakTest {
                 }
                 return;
             }
+            int worn = pick.getDamageValue();
+            action(rig, pos, ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, 1);
+            if (!rig.level.getBlockState(pos).is(Blocks.STONE)) {
+                throw failure(helper, "a STOP after %d ticks broke the block, short of 60 s", mined);
+            }
+            if (pick.getDamageValue() != worn || rig.player().getMainHandItem() != pick) {
+                throw failure(
+                        helper, "a refused STOP charged the pick: damage %d, was %d", pick.getDamageValue(), worn);
+            }
+            helper.succeed();
+        });
+    }
+
+    /** A STOP within the slack of the break time breaks the block and pays the rest, so skew never costs a block. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FULL_RUN_TICKS + 200)
+    public void aStopWithinTheSlackOfTheBreakTimeStillBreaksTheBlock(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_EARLY + 20, "hb-slack");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        ItemStack pick = new ItemStack(Items.NETHERITE_PICKAXE);
+        hold(rig.player(), pick);
+        int expected = expectedCost(pick.getMaxDamage());
+        drive(helper, rig, pos, mined -> {
+            if (mined < FULL_RUN_TICKS - SLACK + 1) {
+                return;
+            }
             action(rig, pos, ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, 1);
             if (!rig.level.getBlockState(pos).isAir()) {
-                throw failure(helper, "a STOP after %d ticks did not break the block", mined);
+                throw failure(helper, "a STOP %d ticks short of 60 s did not break the block", FULL_RUN_TICKS - mined);
             }
             if (pick.getDamageValue() != expected) {
-                throw failure(helper, "an early STOP cost %d durability, expected %d", pick.getDamageValue(), expected);
+                throw failure(helper, "the break cost %d durability, expected %d", pick.getDamageValue(), expected);
+            }
+            helper.succeed();
+        });
+    }
+
+    /** One tick further short than the slack is refused: the floor is the break time less the slack and no less. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FULL_RUN_TICKS + 200)
+    public void aStopJustPastTheSlackIsRefused(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_EARLY + 40, "hb-past-slack");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        hold(rig.player(), new ItemStack(Items.NETHERITE_PICKAXE));
+        drive(helper, rig, pos, mined -> {
+            if (mined < FULL_RUN_TICKS - SLACK - 3) {
+                return;
+            }
+            action(rig, pos, ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, 1);
+            if (!rig.level.getBlockState(pos).is(Blocks.STONE)) {
+                throw failure(helper, "a STOP %d ticks short of 60 s broke the block", FULL_RUN_TICKS - mined);
             }
             helper.succeed();
         });
@@ -1000,7 +1060,10 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** What the player sees: the server sends the worn pick to the client while the player mines, not only when the block goes. */
+    /**
+     * What the player sees: the server sends the worn pick to the client while the player mines, not only when the
+     * block goes.
+     */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void theWornPickIsSentToThePlayerWhileMining(GameTestHelper helper) {
         Rig rig = rig(helper, 2, X_SENT, "hb-sent");
@@ -1058,6 +1121,57 @@ public class HandBreakTest {
                 helper.succeed();
             }
         });
+    }
+
+    /**
+     * Changing the held item restarts the count, so a client cannot mine with one tool and finish with another. A wooden
+     * pick mines for most of the break time, a netherite pick is swapped in, and the STOP at the break time is refused.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FULL_RUN_TICKS + 200)
+    public void changingTheHeldItemRestartsTheCount(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_CHANGE, "hb-change");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        hold(rig.player(), new ItemStack(Items.WOODEN_PICKAXE));
+        ItemStack other = new ItemStack(Items.NETHERITE_PICKAXE);
+        drive(helper, rig, pos, mined -> {
+            if (mined == FULL_RUN_TICKS - 200) {
+                hold(rig.player(), other);
+            } else if (mined == FULL_RUN_TICKS) {
+                action(rig, pos, ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, 1);
+                if (!rig.level.getBlockState(pos).is(Blocks.STONE)) {
+                    throw failure(helper, "a tool swapped in at the end finished the block");
+                }
+                helper.succeed();
+            }
+        });
+    }
+
+    /**
+     * A tool that cannot be damaged (Unbreakable) is still a tool: it makes progress, breaks the block after the break
+     * time and pays nothing, the one exception to the cost. Its pick, a lesser one and a durable one, is not destroyed.
+     */
+    @GameTest
+    public void anUnbreakableToolBreaksTheBlockAndPaysNothing(GameTestHelper helper) {
+        List<Item> picks = List.of(Items.IRON_PICKAXE, Items.NETHERITE_PICKAXE);
+        for (int i = 0; i < picks.size(); i++) {
+            Rig rig = rig(helper, 2, X_UNBREAKABLE + 20 * i, "hb-unbreakable-" + i);
+            BlockPos pos = rig.cell(0);
+            rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+            ItemStack pick = new ItemStack(picks.get(i));
+            pick.set(DataComponents.UNBREAKABLE, Unit.INSTANCE);
+            hold(rig.player(), pick);
+            expectProgress(helper, rig, pos, BREAK_PROGRESS, picks.get(i) + " unbreakable");
+            if (HandBreakCost.grind(rig.player(), rig.level, pos, Direction.UP, 10) != 11
+                    || !rig.player().gameMode.destroyBlock(pos)
+                    || !rig.level.getBlockState(pos).isAir()) {
+                throw failure(helper, "an unbreakable %s did not break the block", picks.get(i));
+            }
+            if (rig.player().getMainHandItem() != pick || pick.getDamageValue() != 0) {
+                throw failure(helper, "an unbreakable %s was worn or destroyed: %s", picks.get(i), pick);
+            }
+        }
+        helper.succeed();
     }
 
     /** The mining count starts again on a block that is not pod-only, and an item that is no tool leaves it where it was. */

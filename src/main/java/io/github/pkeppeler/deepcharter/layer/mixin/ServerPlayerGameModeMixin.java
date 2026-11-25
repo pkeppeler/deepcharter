@@ -8,6 +8,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerPlayerGameMode;
+import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -51,6 +52,17 @@ public abstract class ServerPlayerGameModeMixin {
     @Unique
     private int deepcharter$minedTicks;
 
+    /**
+     * The stack held when the count began or last restarted. A different stack, whether another item or a swapped copy,
+     * restarts the count, so a client cannot mine with one tool and finish with another.
+     */
+    @Unique
+    private ItemStack deepcharter$countedTool = ItemStack.EMPTY;
+
+    /** True while a STOP from the client is being handled: only that break is held to the break time. */
+    @Unique
+    private boolean deepcharter$stopping;
+
     @Inject(method = "handleBlockBreakAction", at = @At("HEAD"))
     private void deepcharter$newSwing(
             BlockPos pos,
@@ -61,12 +73,26 @@ public abstract class ServerPlayerGameModeMixin {
             CallbackInfo ci) {
         if (action == ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK) {
             deepcharter$minedTicks = 0;
+            deepcharter$countedTool = player.getMainHandItem();
         }
+        deepcharter$stopping = action == ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK;
+    }
+
+    @Inject(method = "handleBlockBreakAction", at = @At("RETURN"))
+    private void deepcharter$handled(
+            BlockPos pos,
+            ServerboundPlayerActionPacket.Action action,
+            Direction face,
+            int maxY,
+            int sequence,
+            CallbackInfo ci) {
+        deepcharter$stopping = false;
     }
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void deepcharter$grind(CallbackInfo ci) {
         if (isDestroyingBlock) {
+            deepcharter$restartOnNewTool();
             deepcharter$minedTicks =
                     HandBreakCost.grind(player, level, destroyPos, destroyDirection, deepcharter$minedTicks);
         }
@@ -75,8 +101,19 @@ public abstract class ServerPlayerGameModeMixin {
     @Inject(method = "destroyBlock", at = @At("HEAD"), cancellable = true)
     private void deepcharter$bruteForce(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
         if (HandBreak.governs(player, level, pos, level.getBlockState(pos))) {
-            cir.setReturnValue(HandBreakCost.breakByHand(player, level, pos, deepcharter$minedTicks));
+            deepcharter$restartOnNewTool();
+            cir.setReturnValue(
+                    HandBreakCost.breakByHand(player, level, pos, deepcharter$minedTicks, deepcharter$stopping));
             deepcharter$minedTicks = 0;
+        }
+    }
+
+    @Unique
+    private void deepcharter$restartOnNewTool() {
+        ItemStack held = player.getMainHandItem();
+        if (held != deepcharter$countedTool) {
+            deepcharter$minedTicks = 0;
+            deepcharter$countedTool = held;
         }
     }
 }
