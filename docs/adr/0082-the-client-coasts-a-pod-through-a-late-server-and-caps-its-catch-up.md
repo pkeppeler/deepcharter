@@ -71,7 +71,7 @@ The invariant is unchanged: a pod is never drawn more than `coastTicks - 1 + coa
 
 ### The 0.0674533 of CI
 
-CI runs on PRs #897, #976, #1000, #1257, #1307 and #1318 reported 0.06745330749075862, the pilot's view in the short-stall drive, on `main`'s `PodGlide`. Two roundings put a late move a hair behind a coasted pod:
+CI runs ([below](#ci-runs)) reported 0.06745330749075862, the pilot's view in the short-stall drive, on `main`'s `PodGlide`. Two roundings put a late move a hair behind a coasted pod:
 
 - the reported speed travels as an `LpVec3`, so 0.2 arrives as 2 × 19660 / 32766 − 1 = 0.2000244, or 819.3000 position quanta (1/4096);
 - a position travels rounded to a quantum, and three moves in five step 819 quanta, not 819.2.
@@ -90,7 +90,7 @@ A client test meets the first two only when CI's server happens to run late in t
 
 ### A pod at the reach is not held to the floor
 
-A stale move resets the client's moveless count but not the pod's lead over the last position the server sent, so a server late before an injected stall can run the pod to the reach with fewer moveless ticks than the coast covers. The invariant then makes the pod stand. The drive tests (`test/support/PodDrives`) leave out of the floor check only the two ticks that take in a tick where the pod stood at the reach past the last position the server sent and no move came (both read from the entity's position codec). They hold every other tick to half the speed, and the drive that runs late and catches up never reaches the reach. The bounds scale with the reported speed. The watch window for a pinned pod is derived from `settleDelayTicks` and `settleShare` at the pod's speed, because a faster pod coasts further past the pin.
+A stale move resets the client's moveless count but not the pod's lead over the last position the server sent, so a server late before an injected stall can run the pod to the reach with fewer moveless ticks than the coast covers. The invariant then makes the pod stand. The drive tests (`test/support/PodDrives`) leave out of the floor check only the two ticks that take in a tick where the pod stood at the reach past the last position the server sent and no move came. They hold every other tick to half the speed, and the drive that runs late and catches up never reaches the reach.
 
 ### CI runs
 

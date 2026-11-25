@@ -47,12 +47,6 @@ public final class PodDrives {
     /** Client ticks for a released key to reach the server and act there, with margin. */
     public static final int INPUT_LAG_TICKS = 5;
 
-    /** Long enough for a stall in the middle of it and the pod to recover after. */
-    public static final int STALL_DRIVE_TICKS = 90;
-
-    /** Client ticks into a drive when a stall begins: past the settle, with the pod at speed. */
-    public static final int STALL_AT_TICK = 40;
-
     /** Client ticks after a drive for a drawn pod that coasted too far to settle on the server's. */
     private static final int SETTLE_AFTER_TICKS = 40;
 
@@ -128,8 +122,17 @@ public final class PodDrives {
     /** The two pods the drives use: the real client's, and the mock's beside it, with where each stood at the start. */
     public record Rig(TwoPlayerServer two, int ownPodId, int mockPodId, Vec3 ownStart, Vec3 mockStart) {}
 
-    /** How a server is late in a drive (#1041, #1112). */
-    public sealed interface Lateness permits Stall, Lag {}
+    /**
+     * How a server is late in a drive (#1041, #1112): from client tick {@code at}; whether the drawn pod must settle on the server's
+     * after, and whether it must keep its progress.
+     */
+    public sealed interface Lateness permits Stall, Lag {
+        int at();
+
+        boolean settles();
+
+        boolean recovers();
+    }
 
     /**
      * Every move held from client tick {@code at} for {@code ticks} ticks and handed over in one ({@link PacketJitter#stall}); the keys
@@ -152,7 +155,17 @@ public final class PodDrives {
      * A connection {@code lateBy} client ticks slower from client tick {@code at} ({@link PacketJitter#lag}), until it catches up
      * {@code endsAfter} ticks later, or for the rest of the drive. The pod must keep its progress and settle after.
      */
-    public record Lag(int at, int lateBy, OptionalInt endsAfter) implements Lateness {}
+    public record Lag(int at, int lateBy, OptionalInt endsAfter) implements Lateness {
+        @Override
+        public boolean settles() {
+            return true;
+        }
+
+        @Override
+        public boolean recovers() {
+            return true;
+        }
+    }
 
     /** One kind of drive: what the real client holds, what the mock's input is, how many client ticks, and the pod's speed in it. */
     public record Drive(
@@ -243,11 +256,6 @@ public final class PodDrives {
     private static int driveOnce(ClientGameTestContext context, Rig rig, Drive drive) {
         TwoPlayerServer two = rig.two();
         Lateness late = drive.late();
-        int at = switch (late) {
-            case null -> -1;
-            case Stall stall -> stall.at();
-            case Lag lag -> lag.at();
-        };
         // A drop starts held in the air: the pods wait there without gravity, so the client has them in place before
         // they fall.
         double drop = late instanceof Stall stall ? stall.dropBlocks() : 0;
@@ -297,7 +305,7 @@ public final class PodDrives {
                 if (tick == SETTLE_TICKS) {
                     context.runOnClient(client -> PacketJitter.resetMoveless());
                 }
-                if (late != null && tick == at) {
+                if (late != null && tick == late.at()) {
                     Lateness starting = late;
                     context.runOnClient(client -> begin(starting));
                 }
@@ -366,22 +374,12 @@ public final class PodDrives {
                                 + " ticks late");
             }
         }
-        boolean recovers = switch (late) {
-            case null -> false;
-            case Stall stall -> stall.recovers();
-            case Lag _ -> true;
-        };
-        if (recovers) {
+        if (late != null && late.recovers()) {
             for (Subject subject : List.of(ownPod, watched)) {
                 expectProgress(drive.name() + ", " + subject.name(), subject.frames(), drive);
             }
         }
-        boolean settles = switch (late) {
-            case null -> false;
-            case Stall stall -> stall.settles();
-            case Lag _ -> true;
-        };
-        if (settles) {
+        if (late != null && late.settles()) {
             context.waitTicks(SETTLE_AFTER_TICKS);
             expectSettled(drive.name(), rig, context);
         }

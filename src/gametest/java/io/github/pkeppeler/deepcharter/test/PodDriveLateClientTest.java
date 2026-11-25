@@ -1,8 +1,5 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import static io.github.pkeppeler.deepcharter.test.support.PodDrives.STALL_AT_TICK;
-import static io.github.pkeppeler.deepcharter.test.support.PodDrives.STALL_DRIVE_TICKS;
-
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.PacketJitter;
 import io.github.pkeppeler.deepcharter.test.support.PodDrives;
@@ -18,21 +15,18 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 /**
  * Client GameTest for #1041 and #1112: a pod drives smoothly on a client through a server that runs late, judged by {@link PodDrives}
- * over {@link PacketJitter}'s irregular network, as {@link PodDriveSmoothClientTest} judges an on-time one.
- *
- * <p>The stall drives hold every move for a few client ticks and hand them over in one, as a server that runs late does
- * ({@link PacketJitter#stall}). They cover stalls of 3 and 5 ticks (the pod coasts through, the 5 on the coast's tail: steady floor and
- * lunge bound hold), 4 ticks across a key release (the pod ends past the server's stop by no more than a coast, steps back under half a
- * frame's speed, and settles on the server's) and 6 ticks (the pod may stand, never lunges, keeps 80% of its progress and settles). They
- * do not cover stalls beyond 6 ticks: a longer one stands the pod for the rest of it, and a gap over {@code snapGap} blocks glides over
+ * over {@link PacketJitter}'s irregular network, as {@link PodDriveSmoothClientTest} judges an on-time one. A stall holds every move for
+ * a few client ticks and hands them over in one ({@link PacketJitter#stall}); a lag makes the connection slower ({@link PacketJitter#lag}).
+ * Stalls beyond 6 ticks are not covered: a longer one stands the pod for the rest of it, and a gap over {@code snapGap} blocks glides over
  * as before (ADR 0082).
- *
- * <p>The lag drives make the connection slower ({@link PacketJitter#lag}). One that gets two ticks slower and stays so hands the moves
- * over one a tick, each stale, so the pod has coasted past every move it gets: it must go on at its speed, never turn back to the stale
- * position. A server that runs two ticks late for four ticks and catches up hands over stale moves and then a burst, the pattern behind
- * CI's 0.0674533 (#1112); the pod never reaches the coast's reach in it, so every tick is held to the floor.
  */
 public class PodDriveLateClientTest implements FabricClientGameTest {
+    /** Long enough for a stall in the middle of it and the pod to recover after. */
+    private static final int STALL_DRIVE_TICKS = 90;
+
+    /** Client ticks into a drive when a stall begins: past the settle, with the pod at speed. */
+    private static final int STALL_AT_TICK = 40;
+
     /** A server a few ticks late: the pod coasts through it. */
     private static final int SHORT_STALL_TICKS = 3;
 
@@ -47,15 +41,13 @@ public class PodDriveLateClientTest implements FabricClientGameTest {
 
     /**
      * A connection that gets this many client ticks slower (#1112): the pod sees no move for that long, then a move a tick, each as stale
-     * as the gap was long. It is what a one-tick-late move is, and it left the pod behind a stale target.
+     * as the gap was long, so it has coasted past every move it gets and must go on, never turn back to the stale position.
      */
     private static final int SLOWER_TICKS = 2;
 
     /**
-     * A server that runs {@link #SLOWER_TICKS} late for this many client ticks and then catches up (#1112): the client sees no move for
-     * two ticks, then stale moves, then the rest in one burst. CI's loaded runners did this, and a pod that had coasted a tick read a
-     * stale move a rounding step behind it as an overshoot and stood (0.0674533 against the 0.1 floor, the same to every digit on five
-     * CI runs).
+     * A server that runs {@link #SLOWER_TICKS} late for this many client ticks and then catches up: stale moves, then the rest in one
+     * burst, the pattern behind CI's 0.0674533 (ADR 0082).
      */
     private static final int CATCH_UP_AFTER_TICKS = 4;
 

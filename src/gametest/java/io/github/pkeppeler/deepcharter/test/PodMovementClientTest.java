@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OpenGround;
+import io.github.pkeppeler.deepcharter.test.support.PodDrives;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.UUID;
@@ -159,8 +160,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
      * speed (ADR 0082). Driven on the client's copy of the watched pod, which the server holds still, as the moves a server would send.
      */
     private static void expectPushedCoastedPodStaysBehindItsTarget(ClientGameTestContext context, int podId) {
-        Vec3 start = context.computeOnClient(client ->
-                TestEntities.require(ClientLight.clientLevel(client), podId).position());
+        Vec3 start = PodDrives.onClient(context, podId);
         double past = Double.NEGATIVE_INFINITY;
         try {
             context.runOnClient(client -> {
@@ -182,11 +182,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
                     pod.moveOrInterpolateTo(target, pod.getYRot(), pod.getXRot());
                 });
                 context.waitTick();
-                past = Math.max(
-                        past,
-                        context.computeOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), podId)
-                                        .getZ()
-                                - target.z));
+                past = Math.max(past, PodDrives.onClient(context, podId).z - target.z);
             }
         } finally {
             context.runOnClient(client -> {
