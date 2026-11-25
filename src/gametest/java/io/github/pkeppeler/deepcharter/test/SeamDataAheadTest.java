@@ -682,10 +682,9 @@ public class SeamDataAheadTest {
             GameTestHelper helper, ServerLevel level, MockPlayer mock, Set<ChunkPos> chunks, int ticks) {
         List<ChunkPos> watching =
                 chunks.stream().filter(pos -> LightSync.watching(level, pos)).toList();
-        List<ChunkPos> pending = chunks.stream()
-                .filter(pos -> mock.player().connection.chunkSender.isPending(pos.pack()))
-                .toList();
-        throw failure(
+        List<ChunkPos> pending =
+                chunks.stream().filter(pos -> isPending(mock, pos)).toList();
+        return failure(
                 helper,
                 "light still busy at tick %d: watching %s, pending on the sender %s, held %s",
                 ticks,
@@ -696,9 +695,11 @@ public class SeamDataAheadTest {
 
     /** Whether {@code LightSync} settles none of the chunks and the player has none of them waiting to be sent. */
     private static boolean lightIsQuiet(ServerLevel level, MockPlayer mock, Set<ChunkPos> chunks) {
-        return chunks.stream()
-                .noneMatch(pos -> LightSync.watching(level, pos)
-                        || mock.player().connection.chunkSender.isPending(pos.pack()));
+        return chunks.stream().noneMatch(pos -> LightSync.watching(level, pos) || isPending(mock, pos));
+    }
+
+    private static boolean isPending(MockPlayer mock, ChunkPos pos) {
+        return mock.player().connection.chunkSender.isPending(pos.pack());
     }
 
     /**
