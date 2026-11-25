@@ -30,7 +30,7 @@ final class PodGlide extends AbstractInterpolationHandler {
     /** Blocks within which the pod counts as having reached its target. */
     private static final double ARRIVED = 1e-4;
 
-    /** The share of a coast tick a move has to advance the target by for the server to count as driving the pod on. */
+    /** The share of the reported speed a move has to advance the target by for the server to count as driving the pod on. */
     private static final double ADVANCING_SHARE = 0.5;
 
     /** Halvings of the first coast sub-step tried before the coast gives up for the tick. */
@@ -80,9 +80,12 @@ final class PodGlide extends AbstractInterpolationHandler {
             // A far move is a teleport, not an overshoot to settle back from: a stale coast must not ease it.
             coastDirection = null;
         }
+        // The direction of the coast, the size of the server's speed: the coast's own vector is shrunk by its tail and
+        // by goOn.
         Vec3 coast = coastDirection;
         advancing = coast != null
-                && path.endPosition().subtract(target.position()).dot(coast) >= coast.lengthSqr() * ADVANCING_SHARE;
+                && path.endPosition().subtract(target.position()).dot(coast.normalize())
+                        >= ADVANCING_SHARE * entity.getDeltaMovement().length();
         target.set(path.endPosition(), yRot, xRot);
         remaining = interpolationSteps;
         coasted = 0;
@@ -122,9 +125,9 @@ final class PodGlide extends AbstractInterpolationHandler {
         double step;
         if (coastDirection != null && gap.dot(coastDirection) < 0) {
             // The pod coasted past where the server put it. While the server reports it moving, a late server may
-            // yet say it went on, and a move that arrives advancing is a late move, not a stop: the pod goes on at the
-            // reported speed within the coast's reach, and stands when its reach is used up. Once the server reports
-            // the pod still, or a move that does not advance arrives, give the excess back.
+            // yet say it went on, and a move that arrives advancing is a late move, not a stop: the pod goes on within
+            // the coast's reach and stands when it is used up. Once the server reports the pod still, or a move that
+            // does not advance arrives, give the excess back.
             boolean late = remaining == 0 ? sinceMove < tuning.settleDelayTicks() : advancing;
             if (moving && late) {
                 goOn(tuning, reported, distance);
@@ -166,15 +169,18 @@ final class PodGlide extends AbstractInterpolationHandler {
     }
 
     /**
-     * Draws a pod that is {@code distance} ahead of its target on by the reported speed, but never past the furthest the coast
-     * reaches ahead of the server's position ({@code coastTicks - 1 + coastTailShare} ticks of speed), the last tick eased: a pod
-     * that has used that up stands.
+     * Draws a pod that is {@code distance} ahead of its target on, within the furthest the coast reaches ahead of the server's
+     * position ({@code coastTicks - 1 + coastTailShare} ticks of speed). Like the coast, a tick draws the whole speed or its tail
+     * share, never less, so a steady tick stays above the floor of {@code PodDriveSmoothClientTest}: a pod with less reach than the
+     * tail stands.
      */
     private void goOn(PodGlideTuning tuning, Vec3 reported, double distance) {
         double speed = reported.length();
         double reach = (tuning.coastTicks() - 1 + tuning.coastTailShare()) * speed - distance;
-        if (reach > 0) {
-            coast(reported.scale(Math.min(1, reach / speed)));
+        if (reach >= speed) {
+            coast(reported);
+        } else if (reach >= tuning.coastTailShare() * speed) {
+            coast(reported.scale(tuning.coastTailShare()));
         }
     }
 

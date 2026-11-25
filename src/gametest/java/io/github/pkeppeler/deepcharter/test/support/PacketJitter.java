@@ -80,6 +80,8 @@ public final class PacketJitter {
      */
     public static void lag(int ticks) {
         registerOnce();
+        LAGGED_DUE.clear();
+        HELD.clear();
         lagTicks = ticks;
     }
 

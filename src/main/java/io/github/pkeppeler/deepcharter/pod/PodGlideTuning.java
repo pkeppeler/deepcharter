@@ -18,7 +18,7 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param settleDelayTicks ticks with no move, while the server still reports the pod moving, before a pod that coasted too far goes
  *                      back to the server's last position: a stall that long means the pod has stopped there (a pin, a tow, a world
  *                      change), while a shorter one is a late server whose next move is the real answer, and going back first would
- *                      draw a reversal
+ *                      draw a reversal. Until then the pod goes on within the coast's reach, or stands when that is used up
  * @param settleShare   the share of its gap to the server's position a pod that coasted too far gives back each tick: a small, smooth
  *                      bounce back, not a snap
  * @param snapGap       blocks beyond which the pod is not eased but glides over {@code steps} ticks as before: a real teleport, or a
