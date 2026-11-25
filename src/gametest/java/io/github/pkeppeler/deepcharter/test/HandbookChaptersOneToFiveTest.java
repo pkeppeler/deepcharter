@@ -66,6 +66,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -73,6 +74,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -189,72 +191,105 @@ public class HandbookChaptersOneToFiveTest {
         helper.succeed();
     }
 
+    /** The triggers of a directive's advancement that complete it on obtaining or crafting an item (#1260). */
+    private static final Set<String> ITEM_TRIGGERS =
+            Set.of("minecraft:inventory_changed", "minecraft:recipe_crafted", "minecraft:crafter_recipe_crafted");
+
     /**
-     * A directive may list the items its step needs, for the quest map's index card (#847). Every need of a shipped directive is a
-     * registered item with a positive count, and the scanner directive needs exactly what the scanner unit's recipe takes.
+     * Every directive whose advancement completes on an obtained or crafted item names the item the step asks for in {@code targets}
+     * (not its ingredients), so its index card shows it and a click opens its recipe (#1260). Each target is a registered item that the
+     * advancement itself accepts, so the card cannot show an item the step does not ask for. A new directive of that kind that names
+     * no item fails here.
      */
     @GameTest
-    public void everyNeedOfAShippedDirectiveIsARealItemAndTheScannerDirectiveNeedsItsRecipe(GameTestHelper helper) {
-        Map<Identifier, Integer> scannerNeeds = new LinkedHashMap<>();
+    public void everyItemDirectiveNamesTheRealItemsItAsksFor(GameTestHelper helper) {
+        int itemDirectives = 0;
         for (HandbookChapter chapter : shipped(helper.getLevel().getServer()).values()) {
             for (HandbookChapter.Entry entry : chapter.directives()) {
-                for (HandbookChapter.Need need : entry.needs()) {
-                    if (BuiltInRegistries.ITEM.getOptional(need.item()).isEmpty() || need.count() < 1) {
+                List<String> accepted = acceptedItems(entry.id());
+                if (accepted.isEmpty()) {
+                    continue;
+                }
+                itemDirectives++;
+                if (entry.targets().isEmpty()) {
+                    throw helper.assertionException(
+                            "directive %s is completed by an item but names no target item", entry.id());
+                }
+                for (HandbookChapter.Target target : entry.targets()) {
+                    Optional<Holder.Reference<Item>> item = BuiltInRegistries.ITEM.get(target.item());
+                    if (item.isEmpty()) {
                         throw helper.assertionException(
-                                "directive %s needs %s x%s, which is not a registered item or not a count",
-                                entry.id(), need.item(), need.count());
+                                "directive %s targets %s, which is not a registered item", entry.id(), target.item());
                     }
-                    if (entry.id().toString().equals(directive("welcome", "craft_scanner"))) {
-                        scannerNeeds.put(need.item(), need.count());
+                    if (accepted.stream().noneMatch(predicate -> accepts(predicate, item.get()))) {
+                        throw helper.assertionException(
+                                "directive %s targets %s, which its advancement does not ask for (%s)",
+                                entry.id(), target.item(), accepted);
                     }
                 }
             }
         }
-        Map<Identifier, Integer> recipe = new LinkedHashMap<>();
-        try (InputStream stream =
-                HandbookChaptersOneToFiveTest.class.getResourceAsStream("/data/deepcharter/recipe/scanner_unit.json")) {
+        if (itemDirectives < 7) {
+            throw helper.assertionException(
+                    "the shipped chapters should hold at least the seven item directives of chapter 1, found %s",
+                    itemDirectives);
+        }
+        helper.succeed();
+    }
+
+    /** Whether an advancement's item predicate, an item id or a {@code #tag}, takes {@code item}. */
+    private static boolean accepts(String predicate, Holder.Reference<Item> item) {
+        return predicate.startsWith("#")
+                ? item.is(TagKey.create(Registries.ITEM, Identifier.parse(predicate.substring(1))))
+                : item.key().identifier().equals(Identifier.parse(predicate));
+    }
+
+    /** The item predicates of the item triggers of the advancement a directive shares its id with; empty when it has none. */
+    private static List<String> acceptedItems(Identifier directive) {
+        String path = "/data/" + directive.getNamespace() + "/advancement/" + directive.getPath() + ".json";
+        List<String> accepted = new ArrayList<>();
+        try (InputStream stream = HandbookChaptersOneToFiveTest.class.getResourceAsStream(path)) {
             JsonObject json = JsonParser.parseReader(new InputStreamReader(
-                            Objects.requireNonNull(stream, "no scanner recipe"), StandardCharsets.UTF_8))
+                            Objects.requireNonNull(stream, () -> "no advancement " + path), StandardCharsets.UTF_8))
                     .getAsJsonObject();
-            JsonObject key = json.getAsJsonObject("key");
-            for (var row : json.getAsJsonArray("pattern")) {
-                for (char symbol : row.getAsString().toCharArray()) {
-                    if (symbol != ' ') {
-                        recipe.merge(
-                                Identifier.parse(key.get(String.valueOf(symbol)).getAsString()), 1, Integer::sum);
-                    }
+            for (var criterion : json.getAsJsonObject("criteria").asMap().values()) {
+                JsonObject trigger = criterion.getAsJsonObject();
+                if (!ITEM_TRIGGERS.contains(trigger.get("trigger").getAsString())) {
+                    continue;
+                }
+                var conditions = trigger.getAsJsonObject("conditions");
+                if (conditions == null || !conditions.has("items")) {
+                    throw new IllegalStateException(path + " has an item trigger with no items to match");
+                }
+                for (var predicate : conditions.getAsJsonArray("items")) {
+                    accepted.add(predicate.getAsJsonObject().get("items").getAsString());
                 }
             }
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
-        if (!scannerNeeds.equals(recipe)) {
-            throw helper.assertionException(
-                    "the craft_scanner directive should need what the scanner unit recipe takes, %s, got %s",
-                    recipe, scannerNeeds);
-        }
-        helper.succeed();
+        return accepted;
     }
 
-    /** A directive without {@code needs} needs nothing, and a need with no items is refused when the chapter loads. */
+    /** A directive without {@code targets} targets nothing, and a target of count 0 is refused when the chapter loads. */
     @GameTest
-    public void needsAreOptionalAndACountOfZeroIsRefused(GameTestHelper helper) {
+    public void targetsAreOptionalAndACountOfZeroIsRefused(GameTestHelper helper) {
         JsonObject bare = JsonParser.parseString("{\"id\": \"deepcharter:x\", \"text\": \"x\"}")
                 .getAsJsonObject();
         HandbookChapter.Entry entry = HandbookChapter.Entry.CODEC
                 .parse(com.mojang.serialization.JsonOps.INSTANCE, bare)
                 .getOrThrow();
-        if (!entry.needs().isEmpty()) {
-            throw helper.assertionException("an entry without needs should need nothing, got %s", entry.needs());
+        if (!entry.targets().isEmpty()) {
+            throw helper.assertionException("an entry without targets should target nothing, got %s", entry.targets());
         }
         JsonObject zero = JsonParser.parseString(
-                        "{\"id\": \"deepcharter:x\", \"text\": \"x\", \"needs\": [{\"item\": \"minecraft:stick\", \"count\": 0}]}")
+                        "{\"id\": \"deepcharter:x\", \"text\": \"x\", \"targets\": [{\"item\": \"minecraft:stick\", \"count\": 0}]}")
                 .getAsJsonObject();
         if (HandbookChapter.Entry.CODEC
                 .parse(com.mojang.serialization.JsonOps.INSTANCE, zero)
                 .result()
                 .isPresent()) {
-            throw helper.assertionException("a need of count 0 should be refused");
+            throw helper.assertionException("a target of count 0 should be refused");
         }
         helper.succeed();
     }

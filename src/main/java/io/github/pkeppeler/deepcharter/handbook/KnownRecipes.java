@@ -130,9 +130,9 @@ public final class KnownRecipes {
         }
         held.forEach(item -> found.addAll(index.touching(item)));
         HandbookChapters.current(server, HandbookProgress.completedFor(server, player.getUUID()))
-                .ifPresent(step -> step.needs()
-                        .forEach(need -> BuiltInRegistries.ITEM
-                                .getOptional(need.item())
+                .ifPresent(step -> step.targets()
+                        .forEach(target -> BuiltInRegistries.ITEM
+                                .getOptional(target.item())
                                 .ifPresent(item -> found.addAll(index.producing(item)))));
         return found;
     }

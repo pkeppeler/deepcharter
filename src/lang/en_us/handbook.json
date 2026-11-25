@@ -171,7 +171,6 @@
   "key.deepcharter.catalogue.favourite": "Star the hovered item in the parts catalogue",
   "key.deepcharter.catalogue.recipes": "Show the recipes of the hovered item",
   "key.deepcharter.catalogue.uses": "Show what the hovered item is used in",
-  "deepcharter.handbook.quest.ahead": "Chapter %s: %s",
   "deepcharter.handbook.quest.see_page": "see p. %s",
   "deepcharter.handbook.quest.step": "Step %s",
   "deepcharter.handbook.quest.toast": "Directive complete",

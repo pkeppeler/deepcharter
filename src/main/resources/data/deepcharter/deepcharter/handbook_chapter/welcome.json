@@ -8,48 +8,70 @@
       "id": "deepcharter:handbook/welcome/gather_wood",
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.gather_wood"
-      }
+      },
+      "targets": [
+        { "item": "deepcharter:fungal_stalk", "count": 1 }
+      ]
     },
     {
       "id": "deepcharter:handbook/welcome/craft_crafting_table",
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.craft_crafting_table"
-      }
+      },
+      "targets": [
+        { "item": "minecraft:crafting_table", "count": 1 }
+      ]
     },
     {
       "id": "deepcharter:handbook/welcome/craft_stone_tools",
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.craft_stone_tools"
-      }
+      },
+      "targets": [
+        { "item": "minecraft:stone_pickaxe", "count": 1 },
+        { "item": "minecraft:stone_axe", "count": 1 },
+        { "item": "minecraft:stone_shovel", "count": 1 },
+        { "item": "minecraft:stone_sword", "count": 1 },
+        { "item": "minecraft:stone_hoe", "count": 1 }
+      ]
     },
     {
       "id": "deepcharter:handbook/welcome/gather_scrap",
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.gather_scrap"
-      }
+      },
+      "targets": [
+        { "item": "deepcharter:scrap_iron", "count": 1 },
+        { "item": "deepcharter:scrap_copper", "count": 1 }
+      ]
     },
     {
       "id": "deepcharter:handbook/welcome/smelt_iron",
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.smelt_iron"
-      }
+      },
+      "targets": [
+        { "item": "minecraft:iron_ingot", "count": 1 }
+      ]
     },
     {
       "id": "deepcharter:handbook/welcome/craft_scanner",
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.craft_scanner"
       },
-      "needs": [
-        { "item": "minecraft:iron_ingot", "count": 4 },
-        { "item": "minecraft:copper_ingot", "count": 2 },
-        { "item": "minecraft:redstone", "count": 2 }
+      "targets": [
+        { "item": "deepcharter:scanner_unit", "count": 1 }
       ]
     },
     {
       "id": "deepcharter:handbook/welcome/make_light",
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.make_light"
-      }
+      },
+      "targets": [
+        { "item": "minecraft:torch", "count": 1 },
+        { "item": "minecraft:lantern", "count": 1 }
+      ]
     }
   ]
 }

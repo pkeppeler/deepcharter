@@ -1048,7 +1048,6 @@ public final class HandbookScreen extends Screen {
                 Colors.opaque(tuning().inkColor()));
         QuestMap.Model model = QuestMap.model(chapters, chapter.number());
         QuestMap.Layout layout = mapLayout(chapter);
-        HandbookPage.Chapter ahead = model.ahead();
         QuestMap.drawChart(
                 graphics,
                 font,
@@ -1058,10 +1057,7 @@ public final class HandbookScreen extends Screen {
                 frame.originY(),
                 frame.clip(),
                 mapNote(chapter),
-                tr("chapter.stamp.classified"),
-                ahead == null
-                        ? Component.empty()
-                        : tr("quest.ahead", ahead.number(), ahead.chapter().title()));
+                tr("chapter.stamp.classified"));
         int stampX = textLeft + QuestMapTuning.current().stampLeft();
         int stampY = paperTop + tuning().topMargin() + QuestMapTuning.current().stampTop();
         if (chapter.visibility() == HandbookVisibility.PREVIEW) {

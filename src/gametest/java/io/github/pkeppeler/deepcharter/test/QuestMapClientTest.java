@@ -61,7 +61,6 @@ public class QuestMapClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         context.runOnClient(client -> {
             theMapShowsTheStepsTheCardAndTheRoadAhead();
-            theNextChapterShowsFaintStepsWhenTheyFit();
             nothingBeyondTheNextChapterIsReadable();
             everyPageShowsTheTabsAndSelectsItsSection();
             chapterTabsOpenTheirChapterMaps();
@@ -100,9 +99,9 @@ public class QuestMapClientTest implements FabricClientGameTest {
                         Component.literal("Do thing " + chapter + "." + n),
                         scanner
                                 ? List.of(
-                                        new HandbookChapter.Need(IRON, 4),
-                                        new HandbookChapter.Need(Identifier.parse("minecraft:copper_ingot"), 2),
-                                        new HandbookChapter.Need(Identifier.parse("minecraft:redstone"), 2))
+                                        new HandbookChapter.Target(IRON, 4),
+                                        new HandbookChapter.Target(Identifier.parse("minecraft:copper_ingot"), 2),
+                                        new HandbookChapter.Target(Identifier.parse("minecraft:redstone"), 2))
                                 : List.of()));
             }
             chapters.put(
@@ -214,43 +213,14 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 "the card links to the chapter's first page, p. " + (firstPage(1) + 1) + ": " + texts);
         require(
                 texts.containsAll(List.of("0/4", "0/2")),
-                "the card counts each item needed against what is held: " + texts);
+                "the card counts each target item against what is held: " + texts);
         require(
-                texts.contains(Component.translatable("deepcharter.handbook.quest.ahead", 2, "Title 2")
-                        .getString()),
-                "the next chapter is named under the flowchart: " + texts);
+                texts.stream().noneMatch(text -> text.contains("Title 2") || text.contains("Do thing 2")),
+                "the map does not preview the next chapter: " + texts);
         require(
                 texts.contains(Component.translatable("deepcharter.handbook.chapter.stamp.classified")
                         .getString()),
                 "the redaction bars carry the CLASSIFIED stamp");
-    }
-
-    /**
-     * Where the sheet has room the next chapter's steps show too, in faint ink with no checkbox. Chapter 1 of the fixture above has a
-     * three-line margin note and no room for them (it keeps the next chapter's title only), so this is chapter 2 of the shipped step
-     * counts, whose next chapter fits whole.
-     */
-    private static void theNextChapterShowsFaintStepsWhenTheyFit() {
-        Map<Identifier, HandbookChapter> chapters = shippedLike();
-        List<HandbookPage> pages = HandbookPages.of(chapters, doneBefore(chapters, 2));
-        HandbookScreen screen = new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
-        screen.init(WIDTH, HEIGHT);
-        for (int index = 0; index < pages.size(); index++) {
-            if (pages.get(index) instanceof HandbookPage.Chapter map && map.number() == 2) {
-                screen.goTo(index);
-            }
-        }
-        settle(screen);
-        List<String> texts = texts(screen);
-        for (int n = 1; n <= 2; n++) {
-            String step = "Do thing 3." + n;
-            require(
-                    texts.stream().anyMatch(text -> text.startsWith(step)),
-                    "the next chapter's step " + n + " shows when it fits: " + texts);
-            require(
-                    texts.stream().noneMatch(text -> text.startsWith("[") && text.contains(step)),
-                    "the next chapter's steps carry no checkbox: " + texts);
-        }
     }
 
     private static void nothingBeyondTheNextChapterIsReadable() {
@@ -618,16 +588,6 @@ public class QuestMapClientTest implements FabricClientGameTest {
                                 .anyMatch(entry ->
                                         entry.text().equals(line) && entry.box().height() >= font.lineHeight),
                         where + " draws the margin note line '" + line + "' whole: " + texts(screen));
-            }
-            if (chapter < chapters.size()) {
-                String title = Component.translatable(
-                                "deepcharter.handbook.quest.ahead", chapter + 1, "Title " + (chapter + 1))
-                        .getString();
-                require(
-                        drawn.stream()
-                                .anyMatch(entry -> entry.text().equals(title)
-                                        && entry.box().height() >= font.lineHeight),
-                        where + " draws the next chapter's title '" + title + "' whole: " + texts(screen));
             }
             List<Drawn> noteLines =
                     drawn.stream().filter(entry -> whole.contains(entry.text())).toList();

@@ -25,21 +25,17 @@ import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 /**
  * Evidence scenario "m2-quest-map" for #847: the handbook's quest map, in the real game with the shipped chapters. A player on a
- * charter has done five of chapter 1's seven steps, the last of them just now (the step popup), and holds some of what the sixth, the
- * scanner, needs (the index card). Then the first two chapters are done, and chapter 3's map, with chapter 4 ahead and the rest redacted, is shown
+ * charter has done five of chapter 1's seven steps, the last of them just now (the step popup); the card of the sixth shows the
+ * scanner unit it asks for. Then the first two chapters are done, and chapter 3's map, with the chapters after it redacted, is shown
  * whole. Every page carries the tabs: the stills show them on the Founder's letter (the intro), on a chapter text page and on the maps, and
  * a step with a very long line shows its popup grown to fit it (#962).
  */
 public class QuestMapScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
     private static final int TOAST_SETTLE_TICKS = 40;
-    private static final int SCANNER_IRON = 2;
-    private static final int SCANNER_COPPER = 2;
     private static final String LONG_STEP =
             "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
                     + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
@@ -59,8 +55,6 @@ public class QuestMapScenario extends EvidenceScenario {
                         .isPresent()) {
                     throw new AssertionError("founding the charter should succeed");
                 }
-                player.getInventory().add(new ItemStack(Items.IRON_INGOT, SCANNER_IRON));
-                player.getInventory().add(new ItemStack(Items.COPPER_INGOT, SCANNER_COPPER));
             });
 
             // four steps at once are a handover, not news; the fifth alone is the popup
