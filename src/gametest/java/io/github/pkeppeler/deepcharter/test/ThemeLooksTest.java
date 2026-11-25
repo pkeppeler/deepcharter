@@ -279,7 +279,7 @@ public class ThemeLooksTest {
                         0.06,
                         4,
                         1,
-                        0x107CFC9A,
+                        0x0C7CFC9A,
                         9,
                         14,
                         0.5,

@@ -96,6 +96,7 @@ final class SkullArt {
         }
         char[] skullRow = new char[grid.cols()];
         char[] boneRow = new char[grid.cols()];
+        int lit = 0;
         for (int row = 0; row < grid.rows(); row++) {
             float y = top + row * cellHeight;
             if (!arrived[row]) {
@@ -118,7 +119,8 @@ final class SkullArt {
             boolean any = false;
             for (int col = 0; col < grid.cols(); col++) {
                 byte cell = grid.cells()[row * grid.cols() + col];
-                char letter = text.charAt((row * grid.cols() + col + shuffle) % text.length());
+                // The line runs on through the lit cells only, so it reads on from row to row and never lines up in columns.
+                char letter = cell == SkullShape.NONE ? ' ' : text.charAt((lit++ + shuffle) % text.length());
                 skullRow[col] = cell == SkullShape.SKULL ? letter : ' ';
                 boneRow[col] = cell == SkullShape.BONE ? letter : ' ';
                 any |= cell != SkullShape.NONE;

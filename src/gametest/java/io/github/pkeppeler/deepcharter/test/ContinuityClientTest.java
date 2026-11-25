@@ -65,6 +65,9 @@ public class ContinuityClientTest implements FabricClientGameTest {
     /** The laugh's length ({@code continuity/laugh_envelope.json}) and the cut before it: the button cannot come sooner. */
     private static final double SOONEST_BUTTON_SECONDS = 0.35 + 3.68;
 
+    /** The made-up crewmate's entity id: never added to the level, so it needs one of its own; the level's ids count up from 1. */
+    private static final int CREWMATE_ID = -1337;
+
     /** A vanilla death screen ever made: set by a listener that cannot be removed, so it only ever records a fact. */
     private static final AtomicBoolean SAW_DEATH_SCREEN = new AtomicBoolean();
     /** When the Continuity Event's screen last opened, on the client's clock. */
@@ -274,6 +277,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
         ClientLevel level = Objects.requireNonNull(client.level, "<in the world>");
         LocalPlayer me = Objects.requireNonNull(client.player, "<in the world>");
         RemotePlayer crewmate = new RemotePlayer(level, new GameProfile(UUID.randomUUID(), "Crewmate"));
+        crewmate.setId(CREWMATE_ID);
         crewmate.setPos(me.getX() + 2, me.getY(), me.getZ());
         crewmate.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
         crewmate.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_PICKAXE));

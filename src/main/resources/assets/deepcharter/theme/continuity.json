@@ -20,7 +20,7 @@
   "loudGain": 0.06,
   "bloomLayers": 4,
   "bloomSpread": 1,
-  "bloomColor": "#107CFC9A",
+  "bloomColor": "#0C7CFC9A",
   "tearRows": 9,
   "tearPixels": 14,
   "shuffleLoudness": 0.5,
