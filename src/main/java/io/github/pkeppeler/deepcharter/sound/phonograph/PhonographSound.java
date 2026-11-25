@@ -1,6 +1,6 @@
 package io.github.pkeppeler.deepcharter.sound.phonograph;
 
-import io.github.pkeppeler.deepcharter.sound.SoundTuning;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -17,22 +17,21 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Plays a recording at a block and stops it, with the game's own sound packets, so no client code is needed and nothing names the
+ * Plays a sound at a place and stops it, with the game's own sound packets, so no client code is needed and nothing names the
  * recording on screen (a vanilla jukebox song shows "Now playing" and would need a client mixin to hide it).
  *
  * <p>A playback keeps a set of its listeners, the players it has sent the start to. {@link #start} sends it to the players within
- * {@link SoundTuning#phonographRange()} blocks, and {@link #recruit} sends it again, from the top, to a player who has come into range
+ * the range it is given, and {@link #recruit} sends it again, from the top, to a player who has come into range
  * since. {@link #stop} goes to the listeners only, wherever they are now (the server's player list reaches one who left the level), so a
- * recording that two phonographs play stops at one and plays on at the other. The set is in memory and not saved: after a restart the
+ * sound that two phonographs play stops at one and plays on at the other. The set is in memory and not saved: after a restart the
  * sound is gone as well.
  */
 final class PhonographSound {
     private PhonographSound() {}
 
-    /** The players of {@code level} within earshot of {@code pos}. */
-    static Set<UUID> audience(ServerLevel level, BlockPos pos) {
+    /** The players of {@code level} within {@code range} blocks of {@code pos}. */
+    static Set<UUID> audience(ServerLevel level, BlockPos pos, double range) {
         Vec3 at = Vec3.atCenterOf(pos);
-        double range = SoundTuning.DEFAULT.phonographRange();
         Set<UUID> inRange = new HashSet<>();
         for (ServerPlayer player : level.players()) {
             if (player.connection != null && player.distanceToSqr(at) <= range * range) {
@@ -42,19 +41,20 @@ final class PhonographSound {
         return inRange;
     }
 
+    // Takes a DeepSound, a place and a range, not a Recording: #861's wreck phonograph plays its own sound through this
+    // call.
     /** Sends the start to every player in range and returns them: the playback's first listeners. */
-    static Set<UUID> start(ServerLevel level, BlockPos pos, Recording recording) {
+    static Set<UUID> start(ServerLevel level, BlockPos pos, DeepSound sound, double range) {
         Set<UUID> listeners = new HashSet<>();
-        recruit(level, pos, recording, listeners);
+        recruit(level, pos, sound, range, listeners);
         return listeners;
     }
 
     /** Sends the start to each player in range who is not a listener yet, and makes them one. */
-    static void recruit(ServerLevel level, BlockPos pos, Recording recording, Set<UUID> listeners) {
-        Holder<SoundEvent> event =
-                BuiltInRegistries.SOUND_EVENT.wrapAsHolder(recording.sound().event());
+    static void recruit(ServerLevel level, BlockPos pos, DeepSound sound, double range, Set<UUID> listeners) {
+        Holder<SoundEvent> event = BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound.event());
         Vec3 at = Vec3.atCenterOf(pos);
-        for (UUID id : audience(level, pos)) {
+        for (UUID id : audience(level, pos, range)) {
             ServerPlayer player = level.getServer().getPlayerList().getPlayer(id);
             if (player != null && listeners.add(id)) {
                 player.connection.send(new ClientboundSoundPacket(
@@ -70,13 +70,13 @@ final class PhonographSound {
         }
     }
 
-    /** Tells each listener's client to stop the recording. A player who has left the server is gone with their sound. */
-    static void stop(MinecraftServer server, Recording recording, Set<UUID> listeners) {
+    /** Tells each listener's client to stop the sound. A player who has left the server is gone with their sound. */
+    static void stop(MinecraftServer server, DeepSound sound, Set<UUID> listeners) {
         for (UUID id : listeners) {
             ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player != null && player.connection != null) {
                 player.connection.send(
-                        new ClientboundStopSoundPacket(recording.sound().event().location(), SoundSource.RECORDS));
+                        new ClientboundStopSoundPacket(sound.event().location(), SoundSource.RECORDS));
             }
         }
     }

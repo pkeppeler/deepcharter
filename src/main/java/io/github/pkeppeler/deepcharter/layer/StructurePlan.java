@@ -2,6 +2,8 @@ package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
+import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
+import java.util.OptionalInt;
 import java.util.SplittableRandom;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -71,18 +73,16 @@ final class StructurePlan {
         }
     }
 
+    /** The world position of a place in the structure, in any chunk. */
+    private BlockPos column(int u, int y, int v) {
+        return site.origin().offset(site.alongZ() ? v : u, y, site.alongZ() ? u : v);
+    }
+
     /** The world position of a place in the structure, or null where it lies in another chunk. */
     @Nullable
     BlockPos inChunk(int u, int y, int v) {
-        int x = site.origin().getX() + (site.alongZ() ? v : u);
-        int z = site.origin().getZ() + (site.alongZ() ? u : v);
-        if (x < chunkPos.getMinBlockX()
-                || x > chunkPos.getMaxBlockX()
-                || z < chunkPos.getMinBlockZ()
-                || z > chunkPos.getMaxBlockZ()) {
-            return null;
-        }
-        return new BlockPos(x, site.origin().getY() + y, z);
+        BlockPos pos = column(u, y, v);
+        return chunkPos.equals(ChunkPos.containing(pos)) ? pos : null;
     }
 
     void set(int u, int y, int v, BlockState state) {
@@ -111,6 +111,54 @@ final class StructurePlan {
 
     void air(int u1, int y1, int v1, int u2, int y2, int v2) {
         box(u1, y1, v1, u2, y2, v2, Blocks.AIR.defaultBlockState());
+    }
+
+    /**
+     * A Company horn over the middle of the hall, {@link StructureKind#HORN_HEIGHT} above the floor, that always hangs from a sturdy
+     * block: a chain from the first solid block above it, or with none in reach a beam over it on a post from the floor. The support
+     * lies in the horn's own chunk, which is complete when drawn (a neighbour may not be).
+     */
+    void companyHorn() {
+        int y = StructureKind.HORN_HEIGHT;
+        OptionalInt ceiling = ceilingAbove();
+        if (ceiling.isPresent()) {
+            for (int cy = y + 1; cy < ceiling.getAsInt(); cy++) {
+                set(0, cy, 0, Blocks.IRON_CHAIN.defaultBlockState());
+            }
+        } else {
+            BlockState iron = Blocks.IRON_BLOCK.defaultBlockState();
+            int[] step = postStep();
+            box(step[0], 0, step[1], step[0], y + 1, step[1], iron);
+            set(0, y + 1, 0, iron);
+        }
+        set(0, y, 0, AmbienceRegistry.COMPANY_HORN.defaultBlockState());
+    }
+
+    /** A step to a neighbouring column in the same chunk as the horn's, the same from every chunk, so only the horn's chunk draws the post. */
+    private int[] postStep() {
+        BlockPos column = column(0, 0, 0);
+        for (int[] step : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            BlockPos next = column(step[0], 0, step[1]);
+            if (ChunkPos.containing(next).equals(ChunkPos.containing(column))) {
+                return step;
+            }
+        }
+        throw new IllegalStateException("every neighbour of " + column + " is in another chunk");
+    }
+
+    /** The height of the first sturdy-underside block above the horn within {@link StructureKind#HORN_REACH}; empty if none, or the column is in another chunk. */
+    private OptionalInt ceilingAbove() {
+        for (int up = 1; up <= StructureKind.HORN_REACH; up++) {
+            BlockPos pos = inChunk(0, StructureKind.HORN_HEIGHT + up, 0);
+            if (pos == null || pos.getY() > band.maxY() || chunk.isOutsideBuildHeight(pos)) {
+                return OptionalInt.empty();
+            }
+            BlockState state = chunk.getBlockState(pos);
+            if (!RoomSeal.needsSealing(state) && state.isFaceSturdy(chunk, pos, Direction.DOWN)) {
+                return OptionalInt.of(StructureKind.HORN_HEIGHT + up);
+            }
+        }
+        return OptionalInt.empty();
     }
 
     /** True with the given chance, and the same answer for the same place in the same structure every time. */
