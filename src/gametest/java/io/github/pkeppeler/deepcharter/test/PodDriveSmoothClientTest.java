@@ -17,7 +17,6 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -25,7 +24,6 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.PositionAndRotation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
@@ -621,9 +619,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
     /** How far along the drive (south) the pod is drawn past the last position the server sent for it. */
     private static double lead(Entity pod) {
-        PositionAndRotation target = Objects.requireNonNull(
-                pod.getInterpolation().target(), () -> "a client pod with no glide target: " + pod);
-        return pod.getZ() - target.position().z;
+        return pod.getZ() - pod.getPositionCodec().getBase().z;
     }
 
     /** 1 when the pod's drawn box, shrunk by {@link #INSIDE_MARGIN}, overlaps a block at {@code partial}; else 0. */
