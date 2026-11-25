@@ -33,6 +33,9 @@ final class PodGlide extends AbstractInterpolationHandler {
     /** The share of the reported speed a move has to advance the target by for the server to count as driving the pod on. */
     private static final double ADVANCING_SHARE = 0.5;
 
+    /** Blocks the network rounds a position to (VecDeltaCodec.TRUNCATION_STEPS is 4096): two rounded positions differ from the truth by up to this. */
+    private static final double POSITION_QUANTUM = 1.0 / 4096;
+
     /** Halvings of the first coast sub-step tried before the coast gives up for the tick. */
     private static final int COAST_CLIP_TRIES = 3;
 
@@ -54,6 +57,13 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     /** Whether the latest move put the target further along the coast than the one before it: the server is still driving the pod on. */
     private boolean advancing;
+
+    /**
+     * What the moves that advanced the target since the pod was last drawn moved it by: the server's own steps. A pod that goes on past a
+     * late move draws these, not the speed the server reported, which is rounded up, so the pod does not run ahead of the moves by the
+     * rounding every tick.
+     */
+    private Vec3 owed = Vec3.ZERO;
 
     private boolean active;
 
@@ -82,11 +92,11 @@ final class PodGlide extends AbstractInterpolationHandler {
         }
         // The direction of the coast, the size of the server's speed: the coast's own vector is shrunk by its tail and
         // by goOn.
-        if (System.getProperty("pgt") != null) { org.slf4j.LoggerFactory.getLogger("PGT").info("MOVE id {} t {} z {} newtz {} v {}", entity.getId(), entity.level().getGameTime(), entity.getZ(), path.endPosition().z, entity.getDeltaMovement().z); }
         Vec3 coast = coastDirection;
         advancing = coast != null
                 && path.endPosition().subtract(target.position()).dot(coast.normalize())
                         >= ADVANCING_SHARE * entity.getDeltaMovement().length();
+        owed = advancing ? owed.add(path.endPosition().subtract(target.position())) : Vec3.ZERO;
         target.set(path.endPosition(), yRot, xRot);
         remaining = interpolationSteps;
         coasted = 0;
@@ -97,13 +107,18 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     @Override
     protected void doInterpolate() {
+        try {
+            drawTick();
+        } finally {
+            owed = Vec3.ZERO;
+        }
+    }
+
+    private void drawTick() {
         PodGlideTuning tuning = PodGlideTuning.DEFAULT;
         sinceMove++;
         Vec3 reported = entity.getDeltaMovement();
         boolean moving = reported.lengthSqr() > ARRIVED * ARRIVED;
-        if (entity.level().isClientSide() && System.getProperty("pgt") != null) {
-            org.slf4j.LoggerFactory.getLogger("PGT").info("GLIDE id {} t {} z {} tz {} rem {} coasted {} coasting {} since {} adv {} dirNull {} v {}", entity.getId(), entity.level().getGameTime(), entity.getZ(), target.position().z, remaining, coasted, coasting, sinceMove, advancing, coastDirection == null, reported.z);
-        }
         if (coasting) {
             if (coastOn(tuning, reported, moving)) {
                 return;
@@ -143,6 +158,17 @@ final class PodGlide extends AbstractInterpolationHandler {
                 return;
             }
             step = distance * tuning.settleShare();
+        } else if (!snapping && moving && coastDirection != null && distance < speed) {
+            // A pod that has coasted sits within a tick of its target, behind it by the rounding of the moves it follows. Arriving
+            // would draw less than the speed the server reports (nothing at all, for a gap of a rounding step), a hitch in a drive
+            // that is going on at speed, and the next tick would lunge to make it up. The pod draws the whole tick, as it does
+            // when it sits ahead of the target, within the same reach.
+            if (coast(reported)) {
+                turn(share);
+                remaining = Math.max(0, remaining - 1);
+                return;
+            }
+            step = distance;
         } else if (snapping) {
             step = distance * share;
         } else {
@@ -178,15 +204,20 @@ final class PodGlide extends AbstractInterpolationHandler {
     /**
      * Draws a pod that is {@code distance} ahead of its target on, within the furthest the coast reaches ahead of the server's
      * position ({@code coastTicks - 1 + coastTailShare} ticks of speed). A tick draws the whole speed or its tail share, never less,
-     * so a steady drive stays above the test's step floor; a pod with less reach than the tail stands.
+     * so a steady drive stays above the test's step floor; a pod with less reach than the tail stands. The reach is measured to within
+     * a network position quantum: a pod exactly the whole reach behind a late server, as a drive one tick later than the coast's tail
+     * allows, is that much off by rounding alone.
      */
     private void goOn(PodGlideTuning tuning, Vec3 reported, double distance) {
         double speed = reported.length();
-        double reach = (tuning.coastTicks() - 1 + tuning.coastTailShare()) * speed - distance;
+        double reach = (tuning.coastTicks() - 1 + tuning.coastTailShare()) * speed - distance + POSITION_QUANTUM;
+        // The moves that came this tick, when they advance the target by about the speed (a burst of them counts as one tick), else the
+        // reported speed.
+        Vec3 tick = owed.length() >= ADVANCING_SHARE * speed ? owed.scale(Math.min(1, speed / owed.length())) : reported;
         if (reach >= speed) {
-            coast(reported);
+            coast(tick);
         } else if (reach >= tuning.coastTailShare() * speed) {
-            coast(reported.scale(tuning.coastTailShare()));
+            coast(tick.scale(tuning.coastTailShare()));
         }
     }
 

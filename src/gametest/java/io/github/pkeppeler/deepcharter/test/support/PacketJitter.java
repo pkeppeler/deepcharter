@@ -80,8 +80,10 @@ public final class PacketJitter {
      */
     public static void lag(int ticks) {
         registerOnce();
+        // A move the jitter holds now is one the server sent: hand it over, never drop it, or the client's position is a move short
+        // for the rest of the drive (the stall phase where the lag starts on a skipped tick).
+        replayHeld();
         LAGGED_DUE.clear();
-        HELD.clear();
         lagTicks = ticks;
     }
 
