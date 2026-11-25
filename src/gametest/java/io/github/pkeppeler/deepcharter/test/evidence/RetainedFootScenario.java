@@ -95,6 +95,9 @@ public class RetainedFootScenario extends EvidenceScenario {
 
         private void setUp() {
             chamber.enterLayer(
+                    LENGTH,
+                    HALF_WIDTH,
+                    HEIGHT,
                     RetainedChamber.FLOOR.getX() + PERSON_X,
                     RetainedChamber.FLOOR.getY() + 1,
                     RetainedChamber.FLOOR.getZ() + PERSON_Z,
@@ -102,7 +105,6 @@ public class RetainedFootScenario extends EvidenceScenario {
                     12f);
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
-                RetainedChamber.buildChamber(level, LENGTH, HALF_WIDTH, HEIGHT);
                 ServerPlayer player = person(server);
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(
@@ -156,6 +158,7 @@ public class RetainedFootScenario extends EvidenceScenario {
         }
 
         private void sendFigure() {
+            chamber.awaitEntityTicking(RetainedChamber.at(FIGURE_X, 1, FIGURE_Z));
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);

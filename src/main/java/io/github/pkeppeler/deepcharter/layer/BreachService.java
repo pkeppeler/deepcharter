@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,8 +40,8 @@ import net.minecraft.world.phys.Vec3;
  * vehicle with no respawn, carving the pocket first only if the arrival is obstructed. Otherwise it is the teleport
  * above, with its pocket and fade.
  *
- * <p>Survival and adventure players cannot break {@code breach_crust} by hand; creative players can.
- * Drills do it through {@link #breakCrust}.
+ * <p>The crust is pod-only ({@link HandBreak}): drills break it through {@link #breakCrust}, creative players break it
+ * as any block, and a hand tool brute-forces it only at the cost ADR 0069 sets.
  */
 public final class BreachService {
     /** How far a crossing looks for a pocket column free of protected blocks. */
@@ -53,13 +52,11 @@ public final class BreachService {
     public static void init() {
         BandCrossing.init();
         ServerTickEvents.END_LEVEL_TICK.register(BreachService::crossEntities);
-        PlayerBlockBreakEvents.BEFORE.register(
-                (level, player, pos, state, blockEntity) -> player.isCreative() || !state.is(LayerBlocks.BREACH_CRUST));
     }
 
     /**
-     * The drill's way through the crust. Hand-breaking is refused by the player block-break event;
-     * this removes the block directly, so it is not subject to that guard. Returns false when
+     * The drill's way through the crust. A hand tool brute-forces it only through {@link HandBreak};
+     * this removes the block directly, so it is not subject to that rule. Returns false when
      * {@code pos} holds no crust.
      */
     public static boolean breakCrust(ServerLevel level, BlockPos pos) {
