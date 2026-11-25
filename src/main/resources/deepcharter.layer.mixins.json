@@ -4,12 +4,14 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ChunkMapMixin",
+    "EntitySeamAccess",
     "EnvironmentAttributeSystemBuilderMixin",
     "EnvironmentAttributeSystemInvoker",
     "BlockStateBaseMixin",
     "PlayerChunkSenderMixin",
     "ServerChunkCacheMixin",
-    "ServerPlayerGameModeMixin"
+    "ServerPlayerGameModeMixin",
+    "ServerPlayerSeamAccess"
   ],
   "injectors": {
     "defaultRequire": 1

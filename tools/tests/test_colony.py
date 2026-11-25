@@ -256,9 +256,15 @@ class TownTest(unittest.TestCase):
         return self.cells.get((x, y, z), ("minecraft:light",))[0] == "minecraft:light"
 
     def test_the_pad_the_game_flattens_is_the_pad_the_town_is_drawn_for(self):
-        size, height = java_constants("ColonyTuning.java", r"DEFAULT = new ColonyTuning\((\d+), (\d+),")
+        size, height = java_constants("ColonyTuning.java", r"DEFAULT =\s*new ColonyTuning\((\d+), (\d+),")
         self.assertEqual(size // 2, town.PAD_HALF)
         self.assertEqual(height, town.CLEAR_HEIGHT)
+
+    def test_the_colony_phonograph_has_the_counter_under_it_and_air_in_it(self):
+        # ColonyPhonograph sets the colony's phonograph at the bar's anchor + (0, 2, 5): on the back counter, in free air.
+        x, y, z = town.ANCHORS["lamp_and_pick"]
+        self.assertFalse(self.free(x, y + 1, z + 5), "no counter under the phonograph")
+        self.assertTrue(self.free(x, y + 2, z + 5), "the phonograph's cell is not free")
 
     def test_every_block_and_display_is_inside_the_pad_and_the_cleared_height(self):
         half = town.PAD_HALF

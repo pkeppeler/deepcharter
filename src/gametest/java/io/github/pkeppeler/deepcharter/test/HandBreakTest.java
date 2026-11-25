@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -279,43 +280,64 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** The block goes, drops nothing and costs its layer's share of the pick, however many Unbreaking levels it carries. */
-    @GameTest
+    /**
+     * The block goes, drops nothing and costs its layer's share of the pick, however many Unbreaking levels it carries.
+     * It breaks only once every kind's chunk is entity-ticking: a drop in a chunk the server has not yet promoted is
+     * not found by an entity query, so an earlier read would pass the no-drop check without proving it (#872).
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void eachKindCostsItsShareOfTheToolWhateverUnbreakingSays(GameTestHelper helper) {
         List<Kind> kinds = kinds();
+        List<Rig> rigs = new ArrayList<>();
+        List<BlockPos> cells = new ArrayList<>();
         for (int i = 0; i < kinds.size(); i++) {
             Kind kind = kinds.get(i);
             Rig rig = rig(helper, kind.layer, X_UNBREAKING + 20 * i, "hb-cost-" + i);
-            BlockPos pos = rig.cell(0);
-            rig.level.setBlock(pos, kind.state, 3);
-            ItemStack pick = enchanted(rig.level, new ItemStack(kind.bitingTool), Enchantments.UNBREAKING, 3);
-            enchanted(rig.level, pick, Enchantments.MENDING, 1);
-            hold(rig.player(), pick);
-            int max = pick.getMaxDamage();
-            int expected = expectedCost(kind.layer, max);
-            if (!rig.player().gameMode.destroyBlock(pos)
-                    || !rig.level.getBlockState(pos).isAir()) {
-                throw failure(helper, "%s did not break", kind.name);
-            }
-            if (expected >= max) {
-                // Layer 3 and deeper cost the whole pick: it is used up, so there is no damage left to read.
-                if (!rig.player().getMainHandItem().isEmpty()) {
-                    throw failure(helper, "%s cost the whole pick, which was not used up", kind.name);
-                }
-            } else if (pick.getDamageValue() != expected) {
-                throw failure(
-                        helper,
-                        "%s cost %d durability, expected %d of %d",
-                        kind.name,
-                        pick.getDamageValue(),
-                        expected,
-                        max);
-            }
-            if (dropsAround(rig.level, pos) != 0) {
-                throw failure(helper, "%s dropped something", kind.name);
-            }
+            rig.level.setBlock(rig.cell(0), kind.state, 3);
+            rigs.add(rig);
+            cells.add(rig.cell(0));
         }
-        helper.succeed();
+        boolean[] ready = {false};
+        FarChunks.awaitAllEntityTicking(helper, rigs.get(0).level, cells, () -> ready[0] = true);
+        TestTicks.each(helper, () -> {
+            if (!ready[0]) {
+                return;
+            }
+            for (int i = 0; i < kinds.size(); i++) {
+                checkCost(helper, kinds.get(i), rigs.get(i));
+            }
+            helper.succeed();
+        });
+    }
+
+    private static void checkCost(GameTestHelper helper, Kind kind, Rig rig) {
+        BlockPos pos = rig.cell(0);
+        ItemStack pick = enchanted(rig.level, new ItemStack(kind.bitingTool), Enchantments.UNBREAKING, 3);
+        enchanted(rig.level, pick, Enchantments.MENDING, 1);
+        hold(rig.player(), pick);
+        int max = pick.getMaxDamage();
+        int expected = expectedCost(kind.layer, max);
+        if (!rig.player().gameMode.destroyBlock(pos)
+                || !rig.level.getBlockState(pos).isAir()) {
+            throw failure(helper, "%s did not break", kind.name);
+        }
+        if (expected >= max) {
+            // Layer 3 and deeper cost the whole pick: it is used up, so there is no damage left to read.
+            if (!rig.player().getMainHandItem().isEmpty()) {
+                throw failure(helper, "%s cost the whole pick, which was not used up", kind.name);
+            }
+        } else if (pick.getDamageValue() != expected) {
+            throw failure(
+                    helper,
+                    "%s cost %d durability, expected %d of %d",
+                    kind.name,
+                    pick.getDamageValue(),
+                    expected,
+                    max);
+        }
+        if (dropsAround(rig.level, pos) != 0) {
+            throw failure(helper, "%s dropped something", kind.name);
+        }
     }
 
     /**

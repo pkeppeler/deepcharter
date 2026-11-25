@@ -144,6 +144,11 @@ public final class SuitTicker {
         }
     }
 
+    /** What the suit would do this second for {@code player}, without doing it: the mode {@link #second} would write. */
+    static Mode modeNow(ServerPlayer player, SuitTracks tracks) {
+        return plan(player, tracks.ratings(), OutpostHabitability::requiredAt).mode();
+    }
+
     /** Where the person is decides what the suit does: seated, sheltered, leaking, exposed, or none of them. */
     private static Plan plan(ServerPlayer player, Ratings suit, BiFunction<Level, Outpost, Optional<Ratings>> hallRow) {
         if (OnFoot.seated(player) && player.getVehicle() instanceof PodEntity pod) {

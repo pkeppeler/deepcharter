@@ -4,9 +4,12 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ClientChunkCacheSeamMixin",
+    "ClientLevelMapAccess",
     "ClientLevelSeamMixin",
     "ClientPacketListenerAccess",
     "ClientPacketListenerRespawnMixin",
+    "ClientPacketListenerSeamSwapMixin",
+    "MinecraftSeamAccess",
     "MultiPlayerGameModeMixin"
   ],
   "injectors": {
