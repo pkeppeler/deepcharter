@@ -56,9 +56,9 @@ import org.lwjgl.sdl.SDLKeyboard;
  * one screen to the next.
  */
 public class CatalogueToggleClientTest implements FabricClientGameTest {
-    /** The game's left button: what a vanilla button answers to. */
     private static final Item DRILL = HangarParts.DRILL_HEAD;
 
+    /** The game's left button: what a vanilla button and the catalogue's panels answer to. */
     private static final int LEFT_MOUSE = InputConstants.MOUSE_BUTTON_LEFT;
     /** The default window, 854 by 480 at GUI scale 2. */
     private static final int WIDTH = 427;
