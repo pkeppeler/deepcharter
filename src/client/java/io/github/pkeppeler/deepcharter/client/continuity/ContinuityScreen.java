@@ -40,9 +40,10 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ContinuityScreen extends Screen {
     /**
-     * The latest RETURN TO WORK can come, in seconds from the death, whatever the packs say: Esc and DISCONNECT wait only for the button,
-     * so no data can hold a dead person on this screen for longer. The theme's bounds ({@code ContinuityLook.of}) and the laugh's
-     * ({@link LaughEnvelope#MAX_SECONDS}) keep any valid pack well inside it; it is here for whatever slips past them.
+     * The latest RETURN TO WORK can come, in seconds from the screen's opening at the death, whatever the packs say: Esc and DISCONNECT
+     * wait only for the button, so no data can hold a dead person on this screen for longer. The theme's bounds ({@code
+     * ContinuityLook.of}) and the laugh's ({@link LaughEnvelope#MAX_SECONDS}) keep any valid pack well inside it; it is here for whatever
+     * slips past them.
      */
     static final double LONGEST_SECONDS = 40.0;
 
@@ -210,10 +211,12 @@ public final class ContinuityScreen extends Screen {
     /**
      * Whether {@code player} carries this sequence on: the player who died, or one the client swapped them for while they are still dead,
      * whom the sequence then follows. A teleport to another dimension (a command block's {@code /tp}) gives the client a new player that
-     * keeps the old one's health; a respawn's new player is alive, and the sequence ends with the old one.
+     * keeps the old one's health; a respawn's new player is alive, and the sequence ends with the old one. Once RETURN TO WORK is
+     * pressed, no new player carries it on: one that is dead already (a respawn and a death handled in one batch) has died again, and
+     * that is a new death with a sequence of its own.
      */
     boolean carriesOn(LocalPlayer player) {
-        if (player != dead && player.isDeadOrDying()) {
+        if (player != dead && !respawnAsked && player.isDeadOrDying()) {
             dead = player;
         }
         return player == dead;

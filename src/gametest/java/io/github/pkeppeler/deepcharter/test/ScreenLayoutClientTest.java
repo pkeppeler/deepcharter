@@ -70,6 +70,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -82,6 +83,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -806,15 +808,31 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         List<Case> cases = new ArrayList<>();
         cases.add(new Case("ui demo", CrtDemoScreen::new));
         // The largest numbers there are; the buttons show only once the laugh ends, so the variants wait for them, then
-        // show DISCONNECT.
+        // show DISCONNECT. Built outside a death, the screen is not the live sequence: it plays none of the sequence's
+        // sounds, which nothing would ever stop.
+        List<Identifier> sequenceSounds = new CopyOnWriteArrayList<>();
+        SoundEventListener heard = (sound, events, range) -> {
+            if (sound.getIdentifier().getPath().startsWith("continuity.")) {
+                sequenceSounds.add(sound.getIdentifier());
+            }
+        };
         cases.add(new Case(
                 "continuity event",
-                () -> new ContinuityScreen(ClientSession.player(Minecraft.getInstance()), 99999, 9999),
+                () -> {
+                    Minecraft client = Minecraft.getInstance();
+                    client.getSoundManager().addListener(heard);
+                    return new ContinuityScreen(ClientSession.player(client), 99999, 9999);
+                },
                 List.of(new Variant("its buttons", (context, screen) -> {
                     ClientWait.until(
                             context,
                             "RETURN TO WORK shown",
                             client -> !ClientChecks.visibleWidgets(screen).isEmpty());
+                    context.runOnClient(client -> client.getSoundManager().removeListener(heard));
+                    require(
+                            sequenceSounds.isEmpty(),
+                            "a Continuity Event screen that is not the live sequence plays nothing, it played "
+                                    + sequenceSounds);
                     RealInput.key(context, InputConstants.KEY_ESCAPE, 0);
                     return List.of();
                 }))));

@@ -25,6 +25,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.locale.Language;
@@ -42,8 +43,10 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for #1371: the Continuity Event always lets the dead person go. A dead person teleported to another dimension (a command
- * block's {@code /tp @a}) keeps the one sequence they died in, and RETURN TO WORK brings them back. A resource pack whose laugh envelope
- * is broken (a length that is not a number, endless, negative or absurdly long, missing, or not JSON) and whose skull line is blank
+ * block's {@code /tp @a}) keeps the one sequence they died in, and RETURN TO WORK brings them back. A death after RETURN TO WORK, before the client saw
+ * the person alive, is a new sequence. A resource pack whose laugh envelope
+ * is broken (a length that is not a number, endless, negative or absurdly long, or missing, no values a second, a value that is
+ * not a number, or not JSON) and whose skull line is blank
  * neither crashes the client nor holds the person on the screen: the skull still draws, and RETURN TO WORK comes as soon as the steady
  * fallback laugh ends, well inside {@code ContinuityScreen}'s cap, with Esc showing DISCONNECT after it.
  */
@@ -68,6 +71,9 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
             "{\"framesPerSecond\": 25, \"seconds\": -1, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": 1e9, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"values\": [0.5, 0.5]}",
+            // Lengths a valid envelope may have, so the button would come late if these were read as they are.
+            "{\"framesPerSecond\": 0, \"seconds\": 20, \"values\": [0.5, 0.5]}",
+            "{\"framesPerSecond\": 25, \"seconds\": 20, \"values\": [NaN]}",
             "{ this is not json");
 
     @Override
@@ -83,6 +89,7 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
                     .runOnServer(server ->
                             server.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SURVIVAL));
             teleportedWhileDead(context, singleplayer);
+            diedAgainAfterReturn(context);
             try {
                 for (String broken : BROKEN) {
                     writePack(pack, broken);
@@ -151,6 +158,41 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
             require(Silence.refuses(click()), "the silence holds over the teleport");
         });
         returnToWork(context);
+    }
+
+    /**
+     * Once RETURN TO WORK is pressed, a dead player the client is given next has died again: a respawn and a death handled in one batch,
+     * as a deadly spawn or a repeating {@code /kill} makes them while the client stalls. That death is a sequence of its own, never the
+     * old one with its button spent, which would leave the person only DISCONNECT. The second death is staged on the client, a new player
+     * handed to {@link ContinuityClient#screenFor} dead, because the server cannot be made to batch the two packets.
+     */
+    private static void diedAgainAfterReturn(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        kill(context, singleplayer);
+        ClientWait.until(
+                context,
+                "RETURN TO WORK shown",
+                client -> client.gui.screen() instanceof ContinuityScreen screen
+                        && !ClientChecks.visibleWidgets(screen).isEmpty());
+        context.runOnClient(client -> {
+            Screen sequence = shown(client);
+            ClientChecks.button(sequence, RETURN).onPress(new KeyEvent(InputConstants.KEY_RETURN, 0, 0));
+            LocalPlayer died = Objects.requireNonNull(client.player, "<in the world>");
+            LocalPlayer again = Objects.requireNonNull(client.gameMode, "<in the world>")
+                    .createPlayer(
+                            Objects.requireNonNull(client.level, "<in the world>"),
+                            died.getStats(),
+                            died.getRecipeBook(),
+                            died.itemActivation());
+            again.setHealth(0f);
+            ContinuityScreen next = ContinuityClient.screenFor(again);
+            require(next != sequence, "a death after RETURN TO WORK is a sequence of its own, not the spent one");
+            // Shown as the death's screen would be: the respawn the button asked for closes it.
+            client.gui.setScreen(next);
+        });
+        ClientWait.until(
+                context,
+                "back at work: the screen closed and the player alive",
+                client -> client.gui.screen() == null && client.player != null && client.player.isAlive());
     }
 
     /** The person dies with the broken pack on: the skull draws, the button comes in time, Esc shows DISCONNECT. */

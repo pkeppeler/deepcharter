@@ -13,8 +13,8 @@ import org.jspecify.annotations.Nullable;
  * <p>The sequence outlives its screen. Vanilla builds a new death screen whenever the screen is cleared while the player is dead (a
  * container the server closes, a screen opened over it and shut), and {@code GuiSetScreenMixin} hands it this same screen back each time
  * (ADR 0100), so the laugh and the silence go on and the timeline keeps the wall clock of the death. A new player the client is given
- * while the person is still dead (a teleport to another dimension) carries the same sequence on. It ends only when the client has a
- * living player again (RETURN TO WORK, or any respawn), has none, or leaves the world.
+ * while the person is still dead (a teleport to another dimension) carries the same sequence on, until RETURN TO WORK is pressed. It
+ * ends only when the client has a living player again (RETURN TO WORK, or any respawn), has none, or leaves the world.
  */
 public final class ContinuityClient {
     private static @Nullable ContinuityEventPayload pending;

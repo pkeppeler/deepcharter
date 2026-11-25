@@ -32,7 +32,7 @@ record LaughEnvelope(int framesPerSecond, double seconds, float[] values) {
      * ContinuityScreen} also caps the whole sequence, whatever the data.
      */
     static final double MAX_SECONDS = 30.0;
-    /** The most values a second a pack may give: far more than a frame rate, few enough to keep the file small. */
+    /** The most values a second a pack may give: far more than a frame rate, so a bigger number is a mistake. */
     private static final int MAX_FRAMES_PER_SECOND = 1000;
 
     private static final float FALLBACK_LOUDNESS = 0.5f;
@@ -68,9 +68,6 @@ record LaughEnvelope(int framesPerSecond, double seconds, float[] values) {
             if (!(seconds > 0 && seconds <= MAX_SECONDS)) {
                 throw new IllegalStateException(
                         "seconds must be more than 0 and at most " + MAX_SECONDS + ", got " + seconds);
-            }
-            if (array.size() > Math.ceil(seconds * rate) + 1) {
-                throw new IllegalStateException("more values than seconds at framesPerSecond hold");
             }
             float[] values = new float[array.size()];
             for (int i = 0; i < values.length; i++) {
