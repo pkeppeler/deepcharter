@@ -101,7 +101,9 @@ public class PodDriveStepTest {
                     }
                 }
                 last[i] = now;
-                if (now.x > X + 2 + SLABS) {
+                // On the last slab's column: a pod the drill has centred there stands on it exactly (#1276's faster
+                // drive arrives and is centred within one tick).
+                if (now.x >= X + 2 + SLABS) {
                     pilots.get(i).releaseInput();
                     pod.discard();
                     done[i] = true;

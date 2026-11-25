@@ -560,7 +560,7 @@ Before: coal, charcoal and biofuel 2 L, stack 64, no mass: 128 L a slot. Coal an
 
 So a broke pilot scrapes once, makes one slow trip, and pays for a near-full service out of its haul. The scrape is not a way to skip the service: it leaves the engine a litre from the limit, so a pilot who only scrapes runs about the last third of every trip limp, at 30% speed and twice the burn.
 
-**For #1276 (pod sprint).** Sprint should multiply the burn per second on top of the engine's soot factor: `PodFuel.tick` takes `drainPercentPerTick x EngineSoot.burnMultiplier`, so a sprint multiplier is one more factor beside it. The soot a litre leaves is per litre, so a sprinting pod on charcoal soots faster per block: +40% speed at 1.8 times the burn is 29% more litres a block, and so 29% more soot. A limp engine's top speed is 30% of the clean one, so a sprint on top of it still loses to a clean engine's cruise. Headroom: the output and burn curves, the grace and the limit are `FuelTuning.Soot`, and the per-litre soot is data.
+**Pod sprint (#1276).** Built as planned here: sprint multiplies the burn per second beside the engine's soot factor, so a sprinting pod on charcoal soots 29% more per block. [Pod sprint](#pod-sprint-and-the-outrun-rule-1276-a) has the numbers.
 
 **Trade-offs.** A stack of 16 and a weight make a bore with carried fuel a real load, and the soot makes charcoal the poorest fuel. Coal is the best of the solids at cash a litre among the sooty ones, with one source (the colony's coal blocks). Biofuel is the best per slot and the cleanest, and the dearest in effort. Limp mode is a pace penalty and a trip to the station, never a stranding, and the flue scrape means it is never a softlock: money buys a clean engine, time buys a slow one. The service is paid at the colony, so a pilot who burns solid fuel at depth pays when they come home.
 
@@ -2561,7 +2561,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 | bare A or D | creeps forward at 1/8 of the drive speed | the boat's paddle creep | none |
 | Space | rotor up | unchanged | |
 | sneak | dismount | vanilla | |
-| sprint | drills down when no direction key is held | unchanged for now; #1276 makes sprint with a direction key a boost | |
+| sprint | drills down when no direction key is held; with W, a 40% boost ([Pod sprint](#pod-sprint-and-the-outrun-rule-1276-a)) | the boat has none | the boost never reaches the drill |
 
 **Camera.** Taking the pilot seat switches to third person (`THIRD_PERSON_BACK`) and leaving restores the view the player had. There is no option to turn it off. The view yaw takes the pod's turn every tick, as `AbstractBoat.positionRider` adds `deltaRotation` to its rider, so the angle to the pod stays in first and third person. **Unclamped view (a deviation):** the boat clamps the rider's view to 105 degrees from the nose; the pod does not, because #1268 and #1281 ask for free mouse look. In third person the view also eases back behind a driving pod (4 degrees a tick) once the mouse has been still for a second, so the camera chases; first person never settles.
 
@@ -2572,3 +2572,51 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 **Open questions.**
 - Whether the pod should accelerate to its speed as a boat does. It does not yet: the speed is a stat the client smoothing and the fuel numbers assume.
 - The turn rate is a boat's, 200 degrees a second; a heavy pod might want less. It is one number.
+
+## Pod sprint and the outrun rule (#1276, A)
+
+**Problem.** The user, 2026-11-25: "the player should be able to 'sprint' to make the pod move faster. And generally, the pod should be faster than a player on foot always." The stock pod drove at 4 blocks a second, slower than a sprinting player (5.6) and far slower than a sprint-jumping one (6.7), so walking beside the pod was faster than riding it.
+
+**The outrun rule.** On the ground and in the air (not drilling), a clean engine's cruise beats a player on foot at every chassis and engine tier. "On foot" is read as the fastest a player runs without items or effects: a sprint-jump, not only a sprint. `PodSprintTest` measures the player through vanilla's own `travel`, as the client runs it (a server only scales a player's motion, so the runner's ticks run back to back), and asserts the measured value, never an assumed one.
+
+**Pod sprint.** Holding the sprint key with W drives the pod 1.4 times faster, on the ground and in the air, and burns 1.8 times the moving fuel. The pod has no speed ramp ([Pod controls](#pod-controls-and-the-chase-camera-1281-1268-a): the speed is reached at once), so the boost is to the top speed alone; the acceleration is as instant as the cruise's. A readout line ("SPRINT +40% SPEED +80% FUEL", in the theme's `podSprintColor`) shows while it boosts, and a one-time line tells the pilot the first time, naming their own keys. The handbook's Mole sheet "The Mole: drill and sprint" has the line.
+
+| | Cruise | Sprint |
+|---|---|---|
+| Speed | the `horizontalSpeed` stat | x1.4 |
+| Moving burn | `movingLitresPerSecond` | x1.8 |
+| Fuel a block | 1 | 1.29 |
+
+**Where it does not boost.**
+- **The drill.** Sprint with no direction key still drills down, and sprint with W into rock bores sideways at the drill's own rate. The boost is off while the drill bores and in a bore as wide as the pod (rock beside it on both sides), so it does not even shorten the drive from one slab to the next: without the bore check a sprinting pod bored 13 columns in 600 ticks to a cruising one's 12. The drill stays its own track (issue item A).
+- **S.** Reverse is never boosted: backing out is the slow, careful move, and the reverse share stays the one number for it. Sprint with S neither boosts nor drills.
+- **A bare A or D.** The creep stays a creep.
+- **A passenger.** Only the pilot's keys drive the pod, so a navigator's sprint does nothing.
+
+**Measured** (`PodSprintTest`, clean engine, pump fuel; litres a block from the tank's fall over 39 ticks of driving):
+
+| | Sprint on foot | Sprint-jump on foot |
+|---|---|---|
+| Player | 5.61 b/s | 6.74 b/s |
+
+| Pod | Cruise | Sprint | Cruise fuel a block | Sprint fuel a block |
+|---|---|---|---|---|
+| Mole or Prospector, stock engine | 8.00 b/s | 11.20 b/s | 0.00337 L | 0.00434 L |
+| engine tier 1 | 8.53 | 11.95 | 0.00316 | 0.00407 |
+| engine tier 2 (the Mole's cap) | 9.07 | 12.69 | 0.00298 | 0.00383 |
+| engine tier 3 (Prospector) | 9.60 | 13.44 | 0.00281 | 0.00362 |
+
+The air rows are the same numbers: the rotor does not change the drive speed. Before #1276 the stock cruise was 4.00 b/s at 0.00675 L a block.
+
+**Tuning.** The stock `horizontalSpeed` went from 0.2 to 0.4 blocks a tick, 8 blocks a second: a vanilla boat's top speed on water, 19% over a sprint-jumping player and 43% over a sprinting one, so the rule holds with room for a heavy pack. The engine tiers keep their ratios. Doubling the speed halves the fuel a cruised block costs, because the burn is per second; the trip and fuel tables are unchanged, since `EarlyRunModel`, `PodFuelTripTest` and `FuelTripEconomyTest` price the vertical bore and the climb, not the drive. A sprinted block costs 29% more than a cruised one, and still less than a 4 b/s block cost before.
+
+**Soot and limp mode.** The outrun rule is for a clean engine. Soot cuts the drive speed ([Solid fuel](#solid-fuel-1280-a)), and the rule holds up to about 5.8 L of soot against a sprint-jump (8.4 L against a plain sprint). Limp mode is a penalty the pilot chose to run into, so the rule does not hold there: a limp pod cruises at 2.4 b/s and sprints at 3.4 b/s, slower than a player on foot, and its sprint burns 1.8 times limp mode's double burn. The test's scope is the clean engine.
+
+**Trade-offs.** Sprint is fuel for time: a sprinting trip across the yard or up a long cavern is faster and dearer. It never helps the drill, so a shaft costs what it did. On solid fuel it soots faster per block, so a coal pilot who sprints services sooner.
+
+**Knobs.** `PodTuning.Movement.horizontalSpeed` (0.4), `PodSteeringTuning`: `sprintBoost` (1.4), `sprintBurn` (1.8); `theme/hud.json` `podSprintColor`.
+
+**Open questions.**
+- Should a sprinting pod be louder to the Drifters, as a sprinting person is ([Drifters and the alarm](#drifters-and-the-alarm-973-a))? A second cost that fits the dread of the deep.
+- Should an engine tier raise the boost, or should a part (an afterburner) be the boost's own track?
+- Whether the pod should ramp to its speed, which would make the boost an acceleration as well.

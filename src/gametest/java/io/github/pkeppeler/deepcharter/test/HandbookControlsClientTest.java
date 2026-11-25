@@ -42,6 +42,7 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         context.runOnClient(client -> {
             theControlsPagesFollowTheContents();
             aRebindChangesWhatThePageShows(client.options);
+            theBoardingSheetNamesTheSprintBoost();
             everyControlsPageFitsTheDefaultWindowAndTheSmallestGui();
             everyModKeyAndEveryPodInputKeyIsOnASheet(client.options);
         });
@@ -115,6 +116,14 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         rebind(HandbookKeys.OPEN, InputConstants.KEY_J, 1, "[H]", "[J]");
         rebind(options.keyUp, InputConstants.KEY_I, controlsPartOf("drive"), "[W]", "[I]");
         rebind(options.keySprint, InputConstants.KEY_O, controlsPartOf("dig"), "[Left Control]", "[O]");
+    }
+
+    /** Pod sprint (#1276) is on a Mole sheet: one line names sprint held with W, the keys that boost the pod. */
+    private static void theBoardingSheetNamesTheSprintBoost() {
+        List<String> shown = texts(screenOn(controlsPartOf("board"), WIDTH, HEIGHT));
+        require(
+                shown.stream().anyMatch(text -> text.contains("[Left Control]") && text.contains("[W]")),
+                "the boarding sheet should name sprint with W: " + shown);
     }
 
     private static int controlsPartOf(String sheet) {
