@@ -31,11 +31,11 @@ import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The recipe console: the recipes or uses {@link CatalogueState} has looked up, or the shown recipe's total materials (M), the back knob and the SPEC SHEET switch on its deck, the
- * fill switch under them, and a star at the end of the title for the favourite of the item it is titled with. {@link CataloguePanel}
- * stands it beside the inventory and {@link RecipeConsoleScreen} puts it on a screen of its own over a container that has no catalogue;
- * both ask it where a thing is and what a click does, and it keeps what the charter knows and the player's favourites for both, so the
- * two behave alike.
+ * The recipe console: the recipes or uses {@link CatalogueState} has looked up, or the shown recipe's total materials (M), the back knob
+ * and the SPEC SHEET switch on its deck, the fill switch under them, and a star at the end of the title for the favourite of the item it
+ * is titled with. {@link CataloguePanel} stands it beside the inventory and {@link RecipeConsoleScreen} puts it on a screen of its own
+ * over a container that has no catalogue; both ask it where a thing is and what a click does, and it keeps what the charter knows and the
+ * player's favourites for both, so the two behave alike.
  */
 final class RecipeConsole {
     /** An item under the mouse and the cell it is in. */

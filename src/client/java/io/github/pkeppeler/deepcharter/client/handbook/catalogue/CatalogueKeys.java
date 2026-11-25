@@ -8,8 +8,7 @@ import net.minecraft.client.KeyMapping;
 /**
  * The catalogue's keys, rebindable, in the mod's key category ({@link HandbookKeys}): R on an item shows its recipes, U its uses and A stars
  * it, Backspace goes back to the recipe shown before (EMI's keys), M switches the recipe console to the recipe's total materials and back,
- * and O shows or hides the panels. R is also the pilot's lining key, which is
- * used only in a pod with no screen open, so the two never meet.
+ * and O shows or hides the panels. R is also the pilot's lining key, which is used only in a pod with no screen open, so the two never meet.
  */
 public final class CatalogueKeys {
     public static final KeyMapping RECIPES = key("recipes", InputConstants.KEY_R);
