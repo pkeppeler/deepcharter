@@ -349,8 +349,7 @@ public class DrifterSpawnTest {
             Arena arena = made[0];
             long tick = helper.getTick() - since[0];
             PodEntity pod = arena.pod();
-            // Wait on the beat and judge it by the tick it played: the mock reads sounds after the test's
-            // tick, so a beat is heard a tick late (#1359).
+            // The mock reads sounds after the test's tick, so judge a beat by its play tick (#1359).
             int beat = droned[0] ? -1 : arena.pilot().soundsHeard().indexOf(DRONE);
             if (beat >= 0) {
                 long after = arena.pilot().soundTicks().get(beat) - raisedAt[0];

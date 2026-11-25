@@ -144,7 +144,7 @@ public final class MockPlayer {
         return List.copyOf(soundsByEntity.getOrDefault(source.getId(), List.of()));
     }
 
-    /** The level game time at which the mock read each sound of {@link #soundsHeard()}, in order: the play tick or the next. */
+    /** The level game time at which the mock read each sound of {@link #soundsHeard()}, in order. The mock reads at END_SERVER_TICK, so a sound sent earlier in that tick carries its play tick. */
     public List<Long> soundTicks() {
         return List.copyOf(soundTicks);
     }
