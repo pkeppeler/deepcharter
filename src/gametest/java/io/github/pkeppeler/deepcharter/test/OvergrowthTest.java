@@ -73,7 +73,10 @@ public class OvergrowthTest {
     private static final int BORE_LENGTH = 8;
     private static final int BORE_CELLS = 9 * BORE_LENGTH;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
-    /** A bore closes in at most this many passes more than its cells divided by the pass's share: a pass may weigh a cell that cannot grow yet. */
+    /**
+     * A bore closes in at most this many passes more than its cells divided by the pass's share: a pass may weigh a
+     * cell that cannot grow yet.
+     */
     private static final int SLACK_PASSES = 8;
 
     private static final Identifier HOLLOWS = Hollows.BIOME;
@@ -625,7 +628,10 @@ public class OvergrowthTest {
         });
     }
 
-    /** Waits the real clock out on the real tick path: no player near, nothing passed in. Prints the line that mechanics.md quotes. */
+    /**
+     * Waits the real clock out on the real tick path: no player near, nothing passed in. Prints the line that
+     * mechanics.md quotes.
+     */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 12_000)
     public void theBoreGrowsAtTheMeasuredPace(GameTestHelper helper) {
         int x = column(10);
@@ -682,7 +688,10 @@ public class OvergrowthTest {
 
     // ---------------------------------------------------------------------------------------------------------------
 
-    /** The column's stone box with the bore cut in it, once its chunk ticks entities; {@code body} runs once, then the test succeeds. */
+    /**
+     * The column's stone box with the bore cut in it, once its chunk ticks entities; {@code body} runs once, then the
+     * test succeeds.
+     */
     private static void onceReady(GameTestHelper helper, int x, Body body) {
         ServerLevel level = room(helper, x);
         Arrival<Boolean> ready = ready(helper, level, x);

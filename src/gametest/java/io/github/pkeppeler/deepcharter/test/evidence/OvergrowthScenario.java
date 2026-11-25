@@ -145,10 +145,16 @@ public class OvergrowthScenario extends EvidenceScenario {
         }
     }
 
-    /** Where the bores are, and which pod is ours: layer 1 holds others (the wreck sites' Prospectors), so "the first pod" is not it. */
+    /**
+     * Where the bores are, and which pod is ours: layer 1 holds others (the wreck sites' Prospectors), so "the first
+     * pod" is not it.
+     */
     private record Scene(BlockPos site, UUID pod) {}
 
-    /** Nobody comes: the growth pass runs at a game time later than any visit, a few passes a frame, until the bare bore is closed. */
+    /**
+     * Nobody comes: the growth pass runs at a game time later than any visit, a few passes a frame, until the bare bore
+     * is closed.
+     */
     private void timeLapse(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos site) {
         long[] clock = {
             singleplayer
@@ -201,7 +207,10 @@ public class OvergrowthScenario extends EvidenceScenario {
         }
     }
 
-    /** True when the bare bore's middle cell is still open and its ceiling three cells in has grown: the eye can sit inside and look up at it. */
+    /**
+     * True when the bare bore's middle cell is still open and its ceiling three cells in has grown: the eye can sit
+     * inside and look up at it.
+     */
     private static boolean undersideReady(TestSingleplayerContext singleplayer, BlockPos site) {
         return singleplayer.getServer().computeOnServer(server -> {
             ServerLevel one = TestLayers.level(server, 1);
@@ -212,7 +221,10 @@ public class OvergrowthScenario extends EvidenceScenario {
         });
     }
 
-    /** The eye sits inside the half-grown bare bore and looks up at the growth on its ceiling, then goes back to the chamber. */
+    /**
+     * The eye sits inside the half-grown bare bore and looks up at the growth on its ceiling, then goes back to the
+     * chamber.
+     */
     private void underside(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos site) {
         double x = site.getX() - OFFSET + 0.5;
         lookFrom(
@@ -277,7 +289,10 @@ public class OvergrowthScenario extends EvidenceScenario {
                                 true));
     }
 
-    /** The pod is set at the mouth of the bare bore and drilled into the growth: the slabs go at extra fuel and the bore opens. */
+    /**
+     * The pod is set at the mouth of the bare bore and drilled into the growth: the slabs go at extra fuel and the bore
+     * opens.
+     */
     private void drillThrough(ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
         BlockPos site = scene.site();
         UUID podId = scene.pod();
@@ -335,7 +350,10 @@ public class OvergrowthScenario extends EvidenceScenario {
         }
     }
 
-    /** A bore the way a drill cuts one into the wall of a cave: its open mouth, the direction it runs, and the cells of it. */
+    /**
+     * A bore the way a drill cuts one into the wall of a cave: its open mouth, the direction it runs, and the cells of
+     * it.
+     */
     private record Cave(BlockPos mouth, Direction run, List<BlockPos> cells, int wide) {}
 
     /**

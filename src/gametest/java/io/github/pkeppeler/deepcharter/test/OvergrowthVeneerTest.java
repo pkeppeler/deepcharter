@@ -484,7 +484,9 @@ public class OvergrowthVeneerTest {
         chunk.setAttached(Overgrowth.BORES, Versioned.of(new Overgrowth.Bores(time, bores.cells())));
     }
 
-    /** A one-block-high cave at the bore's floor, {@code halfX} and {@code halfZ} either side of the column's middle. */
+    /**
+     * A one-block-high cave at the bore's floor, {@code halfX} and {@code halfZ} either side of the column's middle.
+     */
     private static void plane(ServerLevel level, int x, int halfX, int halfZ) {
         for (BlockPos cell : planeCells(x, halfX, halfZ)) {
             level.setBlock(cell, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
@@ -497,7 +499,10 @@ public class OvergrowthVeneerTest {
                 .toList();
     }
 
-    /** Cuts a one-cell bore at each offset {@code {dx, dz}} from the middle, lets the real clock say they are long unvisited, and runs one growth pass. */
+    /**
+     * Cuts a one-cell bore at each offset {@code {dx, dz}} from the middle, lets the real clock say they are long
+     * unvisited, and runs one growth pass.
+     */
     private static void growPlugs(ServerLevel level, int x, List<int[]> offsets) {
         for (int[] offset : offsets) {
             Hollows.cut(level, new BlockPos(x + offset[0], FLOOR, Z + offset[1]));
@@ -545,7 +550,10 @@ public class OvergrowthVeneerTest {
                 body);
     }
 
-    /** The column's stone box, all in the hollows biome, then {@code setup} carves what the test needs; {@code body} runs once the chunk ticks. */
+    /**
+     * The column's stone box, all in the hollows biome, then {@code setup} carves what the test needs; {@code body}
+     * runs once the chunk ticks.
+     */
     private static void onceReady(GameTestHelper helper, int x, Body setup, Body body) {
         ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(

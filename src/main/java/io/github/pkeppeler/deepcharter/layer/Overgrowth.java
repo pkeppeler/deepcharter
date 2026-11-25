@@ -103,7 +103,10 @@ public final class Overgrowth {
         return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
     }
 
-    /** The biome stored for the cell: {@code Level.getBiome} blends neighbouring cells at an edge, which would let growth leak a block out of the hollows. */
+    /**
+     * The biome stored for the cell: {@code Level.getBiome} blends neighbouring cells at an edge, which would let
+     * growth leak a block out of the hollows.
+     */
     private static Holder<Biome> stored(ServerLevel level, BlockPos pos) {
         return level.getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2);
     }
@@ -144,7 +147,10 @@ public final class Overgrowth {
                 || state.is(HazardBlocks.UNDIGGABLE);
     }
 
-    /** A player joins inside growth (it closed round the place they logged out): the cells of their feet and head are cleared and stay pending. */
+    /**
+     * A player joins inside growth (it closed round the place they logged out): the cells of their feet and head are
+     * cleared and stay pending.
+     */
     public static void freePlayer(ServerPlayer player) {
         ServerLevel level = player.level();
         for (BlockPos cell :
@@ -235,7 +241,10 @@ public final class Overgrowth {
         }
     }
 
-    /** Writes {@code now} as the chunk's last visit when a player is within reach of one of its bore cells; writes at most every {@link OvergrowthTuning#visitStampTicks}. */
+    /**
+     * Writes {@code now} as the chunk's last visit when a player is within reach of one of its bore cells; writes at
+     * most every {@link OvergrowthTuning#visitStampTicks}.
+     */
     public static void stampVisit(ServerLevel level, LevelChunk chunk, long now) {
         Optional<Bores> read = Versioned.readable(chunk, BORES);
         if (read.isEmpty() || now - read.get().lastVisit() < OvergrowthTuning.DEFAULT.visitStampTicks()) {
@@ -342,7 +351,10 @@ public final class Overgrowth {
         }
     }
 
-    /** The lining blocks within {@code reach} of {@code centre}, read once for a cell or for all the cells a spill reaches. */
+    /**
+     * The lining blocks within {@code reach} of {@code centre}, read once for a cell or for all the cells a spill
+     * reaches.
+     */
     private static List<BlockPos> liningNear(LoadedBlocks blocks, BlockPos centre, int reach) {
         List<BlockPos> found = new ArrayList<>();
         for (BlockPos near :
@@ -397,7 +409,10 @@ public final class Overgrowth {
         return false;
     }
 
-    /** The {@link OvergrowthTuning#maxLooks} cells with the smallest key this pass, smallest first, in one scan with no sort of the whole set. */
+    /**
+     * The {@link OvergrowthTuning#maxLooks} cells with the smallest key this pass, smallest first, in one scan with no
+     * sort of the whole set.
+     */
     private static List<Long> weighed(Set<Long> cells, long pass) {
         PriorityQueue<long[]> largest = new PriorityQueue<>(
                 Comparator.comparingLong((long[] pair) -> pair[0]).reversed());
@@ -440,7 +455,10 @@ public final class Overgrowth {
         return false;
     }
 
-    /** An unloaded neighbouring chunk reads as air here, so a lining block across a chunk border that is not loaded does not hold; {@code canChange} has already refused a cell on a loaded border's unloaded side. */
+    /**
+     * An unloaded neighbouring chunk reads as air here, so a lining block across a chunk border that is not loaded does
+     * not hold; {@code canChange} has already refused a cell on a loaded border's unloaded side.
+     */
     private static boolean heldOpen(LoadedBlocks blocks, BlockPos pos) {
         int reach = OvergrowthTuning.DEFAULT.holdReach();
         for (BlockPos near :
