@@ -24,7 +24,7 @@ public final class HandBreakChecks {
     private HandBreakChecks() {}
 
     /**
-     * Fails unless, after {@code ticks} of unbroken mining with a pick that bites, the client's held pick shows wear and the client's own
+     * Fails unless, after {@code ticks} of unbroken mining with a tool, the client's held pick shows wear and the client's own
      * destroy progress, which draws the crack, is about {@code ticks / 1200}. A swing the client restarted would show neither.
      * {@code serverWear} reads the damage of the server's held pick, to tell a pick never worn from wear never shown.
      */
@@ -55,14 +55,14 @@ public final class HandBreakChecks {
     }
 
     /**
-     * Fails unless the client's destroy progress has moved on from {@code start} after {@code ticks} ticks of mining with a pick that bites:
+     * Fails unless the client's destroy progress has moved on from {@code start} after {@code ticks} ticks of mining with a tool:
      * the pin is the only miner, so no progress means it is not mining the block.
      */
     public static void requireProgressedFrom(ClientGameTestContext context, float start, int ticks) {
         require(
                 clientProgress(context) > start,
                 "the client's destroy progress has not moved from " + start + " after " + ticks
-                        + " ticks of mining with a pick that bites; the client says: " + clientFacts(context));
+                        + " ticks of mining with a tool; the client says: " + clientFacts(context));
     }
 
     /**
@@ -83,7 +83,7 @@ public final class HandBreakChecks {
                 + ", dimension " + level.dimension().identifier()
                 + ", layerOf " + HandBreak.layerOf(level, target)
                 + ", governs " + HandBreak.governs(player, level, target, state)
-                + ", bites " + HandBreak.bites(player.getMainHandItem(), HandBreak.layerOf(level, target));
+                + ", tool " + HandBreak.isTool(player.getMainHandItem());
     }
 
     /** What the client holds of its own mining, for a failure message: the crosshair, the held pick and the game mode's mining state. */
@@ -111,7 +111,7 @@ public final class HandBreakChecks {
         return "crosshair block " + state.getBlock() + " at " + pos.toShortString()
                 + ", governs " + HandBreak.governs(client.player, client.level, pos, state)
                 + ", layerOf " + layer
-                + ", bites " + HandBreak.bites(client.player.getMainHandItem(), layer)
+                + ", tool " + HandBreak.isTool(client.player.getMainHandItem())
                 + ", swing answer "
                 + AttackBlockCallback.EVENT
                         .invoker()

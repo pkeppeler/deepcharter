@@ -47,7 +47,7 @@ public abstract class ServerPlayerGameModeMixin {
     @Shadow
     private Direction destroyDirection;
 
-    /** Ticks the player has mined the pod-only block of this swing with a tool that bites. */
+    /** Ticks the player has mined the pod-only block of this swing with a tool. */
     @Unique
     private int deepcharter$minedTicks;
 

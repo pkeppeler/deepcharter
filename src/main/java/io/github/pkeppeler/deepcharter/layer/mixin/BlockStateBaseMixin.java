@@ -27,7 +27,7 @@ public abstract class BlockStateBaseMixin {
         // The only subclass of BlockStateBase is BlockState.
         BlockState state = (BlockState) (Object) this;
         if (getter instanceof Level level && HandBreak.governs(player, level, pos, state)) {
-            cir.setReturnValue(HandBreak.progress(player, level, pos));
+            cir.setReturnValue(HandBreak.progress(player));
         }
     }
 }

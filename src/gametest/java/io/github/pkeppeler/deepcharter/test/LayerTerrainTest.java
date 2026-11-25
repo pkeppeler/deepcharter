@@ -275,7 +275,7 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** The attack callback runs on the client too, so a swing that cannot bite starts no crack animation. */
+    /** The attack callback runs on the client too, so a swing with no tool starts no crack animation. */
     @GameTest
     public void startingToBreakDeepRockWithABareHandIsRefused(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-attack");
