@@ -12,9 +12,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.SectionPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Waits in a client GameTest for a value the server syncs, or for any other state the test awaits. The wait is on the wall clock, not on ticks: the client and
@@ -112,6 +114,37 @@ public final class ClientWait {
                 () -> "unsettled chunks "
                         + server.computeOnServer(
                                 srv -> unsettledChunks(TestLayers.level(srv, layer), minX, maxX, minZ, maxZ)));
+    }
+
+    /**
+     * Waits until the chunk the first player stands in ticks entities on the server and has been sent to that player.
+     * Call it between a teleport to a spot far from the player and adding the pod they will ride there (#1345): until
+     * the player's own ticket lands, the chunk is held only by a ticket that lasts a tick. If that ticket runs out
+     * first, the chunk is briefly not loaded, which hides its entities. The pod then drops off the pilot's client,
+     * and comes back only once the chunk ticks entities, which can take seconds of world generation.
+     */
+    public static void arrived(ClientGameTestContext context, TestServerContext server) {
+        until(
+                context,
+                "the player's chunk to tick entities and reach the player",
+                () -> server.computeOnServer(srv -> arrivalIn(firstPlayer(srv)) == null),
+                () -> server.computeOnServer(srv -> String.valueOf(arrivalIn(firstPlayer(srv)))));
+    }
+
+    private static ServerPlayer firstPlayer(MinecraftServer server) {
+        return server.getPlayerList().getPlayers().getFirst();
+    }
+
+    /** What the player's arrival still waits for, or null once the chunk ticks entities and has been sent. */
+    private static @Nullable String arrivalIn(ServerPlayer player) {
+        ChunkPos chunk = player.chunkPosition();
+        if (!player.level().isPositionEntityTicking(player.blockPosition())) {
+            return "chunk " + chunk + " does not tick entities yet";
+        }
+        if (player.connection.chunkSender.isPending(chunk.pack())) {
+            return "chunk " + chunk + " is still queued to send";
+        }
+        return null;
     }
 
     private static List<ChunkPos> unsettledChunks(ServerLevel level, int minX, int maxX, int minZ, int maxZ) {
