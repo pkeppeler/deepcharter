@@ -38,6 +38,10 @@ import net.minecraft.world.level.block.Blocks;
  * <p>Jumping is left out on purpose. Vanilla's own check is a false alarm on a jump's take-off and landing, one tick
  * apart between client and server: a client holding the jump key on a plain stone slab in the End logged the line
  * too, with none of our blocks near.
+ *
+ * <p>So is the setup. The player is a spectator until the client holds the carved bore and its light is settled, and
+ * only then on foot and counted. In one run of four, with the player teleported on foot into the bore's fresh chunks
+ * while the server ran 130 ticks behind, one line came before the tether.
  */
 public class OnFootForceSendClientTest implements FabricClientGameTest {
     private static final int X = 29000;
@@ -74,13 +78,11 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);
             TestServerContext server = singleplayer.getServer();
-            ForceSends sends =
-                    ForceSends.start(server.computeOnServer(s -> player(s).getPlainTextName()));
             int floor = CampaignBands.LAYER_1.minY() + 60;
             context.waitTicks(SILENT_TICKS); // tick-wait: the connection's first 200 ticks log nothing
             server.runOnServer(s -> {
                 ServerPlayer player = player(s);
-                player.setGameMode(GameType.SURVIVAL);
+                player.setGameMode(GameType.SPECTATOR);
                 player.teleportTo(s.overworld(), X + 0.5, floor + 2, X + 0.5, Set.of(), 0, 0, true);
             });
             ClientWait.until(
@@ -96,6 +98,10 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                     client -> client.level != null
                             && client.level.getBlockState(top).isAir()
                             && client.level.getBlockState(top.atY(floor - 1)).is(Blocks.STONE));
+            ClientWait.chunksAround(context, X, X, ROOM_RADIUS);
+            ClientWait.lightSettled(context, server, 1, X, X, ROOM_RADIUS);
+            server.runOnServer(s -> player(s).setGameMode(GameType.SURVIVAL));
+            int before = ForceSends.total();
 
             for (Patch patch : PATCHES) {
                 dropOnto(context, server, floor, patch);
@@ -109,7 +115,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                 context.getInput().holdKeyFor(options -> options.keyDown, LAP_TICKS);
                 context.getInput().holdKeyFor(options -> options.keyRight, LAP_TICKS);
             }
-            int onTheBlocks = sends.count();
+            int onTheBlocks = ForceSends.total() - before;
 
             UUID podId = server.computeOnServer(s -> addPodOnALedge(s.overworld(), floor));
             context.waitTicks(SETTLE_TICKS); // tick-wait: the room and the pod reach the client
@@ -136,7 +142,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                 server.runOnServer(s -> PodTether.unclip(player(s), PodTether.Unclipped.UNHOOKED));
             }
             context.waitTicks(SETTLE_TICKS); // tick-wait: any last packet
-            int total = sends.count();
+            int total = ForceSends.total() - before;
             require(
                     total == 0,
                     total + " force-send lines (" + onTheBlocks
