@@ -60,18 +60,14 @@ public final class ContinuityEventScenario extends EvidenceScenario {
             awaitWorld(context);
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
-                box(one, FLOOR_Y - 2, FLOOR_Y - 1, 6, Blocks.STONE);
-                box(one, FLOOR_Y, FLOOR_Y + 8, 6, Blocks.STONE);
-                // room-carver: a room cut inside the solid stone box built just above, so no worldgen lava is in or
-                // beside it; the scenario places its own lava
-                box(one, FLOOR_Y, FLOOR_Y + 7, 5, Blocks.AIR);
-                for (BlockPos lamp : new BlockPos[] {
-                    new BlockPos(X + 5, FLOOR_Y + 3, Z),
-                    new BlockPos(X - 5, FLOOR_Y + 3, Z),
-                    new BlockPos(X, FLOOR_Y + 3, Z + 5)
-                }) {
-                    one.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
-                }
+                stoneChamber(
+                        one,
+                        X,
+                        Z,
+                        FLOOR_Y,
+                        new BlockPos(X + 5, FLOOR_Y + 3, Z),
+                        new BlockPos(X - 5, FLOOR_Y + 3, Z),
+                        new BlockPos(X, FLOOR_Y + 3, Z + 5));
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), 0, LOOK_DOWN, true);
@@ -91,9 +87,7 @@ public final class ContinuityEventScenario extends EvidenceScenario {
                             && TestLayers.clientIsIn(client, 1));
             context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
             ClientWait.until(context, "the room drawn", client -> client.levelRenderer.hasRenderedAllSections());
-            for (int i = 0; i < 40; i++) {
-                step(context);
-            }
+            tickFrames(context, 40);
             screenshot(context, "1-in-the-pod");
 
             singleplayer.getServer().runOnServer(server -> {
@@ -107,7 +101,7 @@ public final class ContinuityEventScenario extends EvidenceScenario {
                 }
             });
             for (int i = 0; i < DEATH_LIMIT_TICKS && !inSequence(context); i++) {
-                step(context);
+                tickFrames(context, 1);
             }
             if (!inSequence(context)) {
                 throw new AssertionError("the pilot did not die in the lava");
@@ -117,7 +111,7 @@ public final class ContinuityEventScenario extends EvidenceScenario {
             boolean skull = false;
             boolean laugh = false;
             for (int i = 0; i < SEQUENCE_LIMIT_TICKS && !buttonShown(context); i++) {
-                step(context);
+                tickFrames(context, 1);
                 long since = clock(context) - died;
                 if (!skull && since >= SKULL_STILL_MILLIS) {
                     screenshot(context, "2-the-skull");
@@ -134,32 +128,21 @@ public final class ContinuityEventScenario extends EvidenceScenario {
             if (!buttonShown(context)) {
                 throw new AssertionError("RETURN TO WORK never came");
             }
-            for (int i = 0; i < 20; i++) {
-                step(context);
-            }
+            tickFrames(context, 20);
             screenshot(context, "4-return-to-work");
 
             Button button = context.computeOnClient(client -> ClientChecks.button(shown(client), "RETURN TO WORK"));
             ClientCursor.moveTo(
                     context, button.getX() + button.getWidth() / 2.0, button.getY() + button.getHeight() / 2.0);
-            for (int i = 0; i < 10; i++) {
-                step(context);
-            }
+            tickFrames(context, 10);
             RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
             ClientWait.until(
                     context,
                     "back at work",
                     client -> client.gui.screen() == null && client.player != null && client.player.isAlive());
-            for (int i = 0; i < 40; i++) {
-                step(context);
-            }
+            tickFrames(context, 40);
             screenshot(context, "5-back-at-work");
         }
-    }
-
-    private void step(ClientGameTestContext context) {
-        context.waitTicks(1); // tick-wait: one frame a tick, the recording's frame rate
-        frame(context);
     }
 
     /** The client's clock, the one the sequence runs on. */
@@ -174,17 +157,6 @@ public final class ContinuityEventScenario extends EvidenceScenario {
     private static boolean buttonShown(ClientGameTestContext context) {
         return context.computeOnClient(client -> client.gui.screen() instanceof ContinuityScreen screen
                 && !ClientChecks.visibleWidgets(screen).isEmpty());
-    }
-
-    /** A square of {@code block} {@code radius} blocks out from the pod's column, from {@code yFrom} to {@code yTo}. */
-    private static void box(ServerLevel level, int yFrom, int yTo, int radius, Block block) {
-        for (int x = X - radius; x <= X + radius; x++) {
-            for (int y = yFrom; y <= yTo; y++) {
-                for (int z = Z - radius; z <= Z + radius; z++) {
-                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), Block.UPDATE_ALL);
-                }
-            }
-        }
     }
 
     /** The screen open now, which the step before waited for. */

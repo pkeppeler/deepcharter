@@ -4,8 +4,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SoundInstance;
 
 /**
- * The hard cut's silence: from the death until the Continuity Event's screen closes, every sound the game starts is refused except the
- * event's own ({@link SequenceSound}). Read by {@code SoundEngineMixin} on the client thread and the sound engine's.
+ * The hard cut's silence: from the death until the sequence ends (the respawn, or leaving the world), every sound the game starts is
+ * refused except the event's own ({@link SequenceSound}). Read by {@code SoundEngineMixin} on the client thread and the sound engine's.
  */
 public final class Silence {
     private static volatile boolean held;

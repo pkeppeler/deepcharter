@@ -165,10 +165,10 @@ public final class ContinuityScreen extends Screen {
      * so they never play on top of each other), the laugh, then shows the button. Nothing before the screen first opens.
      */
     void advance() {
+        Plan plan = this.plan;
         if (plan == null) {
             return;
         }
-        Plan plan = plan();
         double now = now();
         int due = passesPlayed;
         while (due < plan.passStarts().length && now >= plan.passStarts()[due]) {
@@ -180,14 +180,14 @@ public final class ContinuityScreen extends Screen {
             float pitch = (float) (last.pitch() * Math.pow(plan.look().skipPitch(), due));
             pass = SequenceSound.replay(last, pitch);
             play(pass);
-            play(SequenceSound.atListener(DeepSound.CONTINUITY_NEEDLE.event().location(), 1f, 1f));
+            play(SequenceSound.atListener(DeepSound.CONTINUITY_NEEDLE.event().location()));
         }
         passesPlayed = due;
         if (passesPlayed > 0 && now >= plan.skipEnd()) {
             stopPass();
         }
         if (laugh == null && now >= plan.laughStart()) {
-            laugh = SequenceSound.atListener(DeepSound.CONTINUITY_LAUGH.event().location(), 1f, 1f);
+            laugh = SequenceSound.atListener(DeepSound.CONTINUITY_LAUGH.event().location());
             play(laugh);
         }
         if (!buttonShown && now >= plan.laughEnd()) {
@@ -262,11 +262,9 @@ public final class ContinuityScreen extends Screen {
      */
     void end() {
         Silence.end();
-        if (plan != null) {
-            stopPass();
-            if (laugh != null) {
-                minecraft.getSoundManager().stop(laugh);
-            }
+        stopPass();
+        if (laugh != null) {
+            minecraft.getSoundManager().stop(laugh);
         }
     }
 

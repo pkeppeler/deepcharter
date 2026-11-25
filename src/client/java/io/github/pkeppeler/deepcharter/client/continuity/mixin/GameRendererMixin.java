@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * No red hurt tilt while the Continuity Event plays (#1337, ADR 0100): the death is a hard cut, not a fall. Target: {@code
- * GameRenderer.bobHurt}, the camera roll vanilla adds for the hurt and death times, skipped while the event's screen is open.
+ * GameRenderer.bobHurt}, the camera roll vanilla adds for the hurt and death times, skipped while the sequence is under way.
  */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {

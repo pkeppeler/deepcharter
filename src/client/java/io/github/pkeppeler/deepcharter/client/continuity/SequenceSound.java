@@ -29,8 +29,8 @@ final class SequenceSound extends AbstractSoundInstance {
     }
 
     /** {@code event} at the listener, as a UI sound plays. */
-    static SequenceSound atListener(Identifier event, float volume, float pitch) {
-        return new SequenceSound(event, volume, pitch);
+    static SequenceSound atListener(Identifier event) {
+        return new SequenceSound(event, 1f, 1f);
     }
 
     /**

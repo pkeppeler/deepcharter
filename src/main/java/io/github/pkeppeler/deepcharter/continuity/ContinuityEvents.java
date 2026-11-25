@@ -1,13 +1,13 @@
 package io.github.pkeppeler.deepcharter.continuity;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,10 +24,6 @@ public final class ContinuityEvents {
     static final int FIRST_EMPLOYEE = 1000;
 
     static final int LAST_EMPLOYEE = 9999;
-    /** Smoke and ash the body dissolves in, as a Retained's does (counts, spread and speed of {@code LamplessFigure.die}). */
-    private static final int SMOKE = 12;
-
-    private static final int ASH = 30;
 
     private ContinuityEvents() {}
 
@@ -53,18 +49,7 @@ public final class ContinuityEvents {
                 SoundSource.PLAYERS,
                 1f,
                 1f);
-        level.sendParticles(
-                ParticleTypes.LARGE_SMOKE,
-                player.getX(),
-                player.getY() + 1.0,
-                player.getZ(),
-                SMOKE,
-                0.3,
-                0.8,
-                0.3,
-                0.02);
-        level.sendParticles(
-                ParticleTypes.ASH, player.getX(), player.getY() + 1.0, player.getZ(), ASH, 0.4, 0.9, 0.4, 0.02);
+        LamplessFigure.dissolve(level, player);
     }
 
     /**

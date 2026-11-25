@@ -21,7 +21,6 @@ import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +40,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageSources;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.item.FallingBlockEntity;
@@ -296,11 +296,11 @@ public class ContinuityEventTest {
                             line);
                     // Tests run side by side, and another test's death is heard too: only what was played where the
                     // pilot died counts.
+                    Identifier lampOut = DeepSound.CONTINUITY_LAMP_OUT.event().location();
                     List<Identifier> crewHeard = heardAt(crewmate, died[0]);
                     expect(
                             helper,
-                            crewHeard.contains(
-                                    DeepSound.CONTINUITY_LAMP_OUT.event().location()),
+                            crewHeard.contains(lampOut),
                             "the crewmate should hear the lamp go out, heard %s",
                             crewHeard);
                     expect(
@@ -308,14 +308,12 @@ public class ContinuityEventTest {
                             !crewHeard.contains(SoundEvents.PLAYER_DEATH.location()),
                             "no vanilla death cry, heard %s",
                             crewHeard);
+                    List<Identifier> pilotHeard = heardAt(pilot, died[0]);
                     expect(
                             helper,
-                            !heardAt(pilot, died[0])
-                                    .contains(DeepSound.CONTINUITY_LAMP_OUT
-                                            .event()
-                                            .location()),
+                            !pilotHeard.contains(lampOut),
                             "the person whose lamp it was hears nothing of it, heard %s",
-                            heardAt(pilot, died[0]));
+                            pilotHeard);
                     pod.discard();
                     pilot.leave();
                     crewmate.leave();
@@ -435,59 +433,44 @@ public class ContinuityEventTest {
         Creeper creeper = TestEntities.create(EntityTypes.CREEPER, level);
         LargeFireball fireball = TestEntities.create(EntityTypes.FIREBALL, level);
         FallingBlockEntity block = TestEntities.create(EntityTypes.FALLING_BLOCK, level);
-        Map<String, ContinuityCause> table = new LinkedHashMap<>();
-        table.put("hull loss", ContinuityCause.of(sources.source(WreckRegistry.HULL_LOSS)));
-        table.put("hull loss with an attacker", ContinuityCause.of(sources.source(WreckRegistry.HULL_LOSS, attacker)));
-        table.put("suit exposure", ContinuityCause.of(sources.source(SuitRegistry.EXPOSURE)));
-        table.put("in a wall", ContinuityCause.of(sources.inWall()));
-        table.put("falling block", ContinuityCause.of(sources.fallingBlock(block)));
-        table.put("anvil", ContinuityCause.of(sources.anvil(block)));
-        table.put("stalactite", ContinuityCause.of(sources.fallingStalactite(block)));
-        table.put("stalagmite", ContinuityCause.of(sources.stalagmite()));
-        table.put("cramming", ContinuityCause.of(sources.cramming()));
-        table.put("into a wall", ContinuityCause.of(sources.flyIntoWall()));
-        table.put("lava", ContinuityCause.of(sources.lava()));
-        table.put("in fire", ContinuityCause.of(sources.inFire()));
-        table.put("on fire", ContinuityCause.of(sources.onFire()));
-        table.put("fireball", ContinuityCause.of(sources.fireball(fireball, attacker)));
-        table.put("drown", ContinuityCause.of(sources.drown()));
-        table.put("creeper", ContinuityCause.of(sources.explosion(creeper, creeper)));
-        table.put("freeze", ContinuityCause.of(sources.freeze()));
-        table.put("fall", ContinuityCause.of(sources.fall()));
-        table.put("starve", ContinuityCause.of(sources.starve()));
-        table.put("void", ContinuityCause.of(sources.fellOutOfWorld()));
-        table.put("border", ContinuityCause.of(sources.outOfBorder()));
-        table.put("mob attack", ContinuityCause.of(sources.mobAttack(attacker)));
-        table.put("magic", ContinuityCause.of(sources.magic()));
-        table.put("generic", ContinuityCause.of(sources.generic()));
-        Map<String, ContinuityCause> expected = new LinkedHashMap<>();
-        expected.put("hull loss", ContinuityCause.HULL_LOSS);
-        expected.put("hull loss with an attacker", ContinuityCause.HULL_LOSS);
-        expected.put("suit exposure", ContinuityCause.SUIT_BREACH);
-        expected.put("in a wall", ContinuityCause.BURIED);
-        expected.put("falling block", ContinuityCause.CRUSHED);
-        expected.put("anvil", ContinuityCause.CRUSHED);
-        expected.put("stalactite", ContinuityCause.CRUSHED);
-        expected.put("stalagmite", ContinuityCause.CRUSHED);
-        expected.put("cramming", ContinuityCause.CRUSHED);
-        expected.put("into a wall", ContinuityCause.CRUSHED);
-        expected.put("lava", ContinuityCause.BURNED);
-        expected.put("in fire", ContinuityCause.BURNED);
-        expected.put("on fire", ContinuityCause.BURNED);
-        expected.put("fireball", ContinuityCause.BURNED);
-        expected.put("drown", ContinuityCause.DROWNED);
-        expected.put("creeper", ContinuityCause.BLAST);
-        expected.put("freeze", ContinuityCause.FROZEN);
-        expected.put("fall", ContinuityCause.FELL);
-        expected.put("starve", ContinuityCause.STARVED);
-        expected.put("void", ContinuityCause.LOST);
-        expected.put("border", ContinuityCause.LOST);
-        expected.put("mob attack", ContinuityCause.ATTACKED);
-        expected.put("magic", ContinuityCause.UNSPECIFIED);
-        expected.put("generic", ContinuityCause.UNSPECIFIED);
-        expect(helper, table.equals(expected), "the causes were filed as %s, not %s", table, expected);
+        List<Filed> cases = List.of(
+                new Filed("hull loss", sources.source(WreckRegistry.HULL_LOSS), ContinuityCause.HULL_LOSS),
+                new Filed(
+                        "hull loss with an attacker",
+                        sources.source(WreckRegistry.HULL_LOSS, attacker),
+                        ContinuityCause.HULL_LOSS),
+                new Filed("suit exposure", sources.source(SuitRegistry.EXPOSURE), ContinuityCause.SUIT_BREACH),
+                new Filed("in a wall", sources.inWall(), ContinuityCause.BURIED),
+                new Filed("falling block", sources.fallingBlock(block), ContinuityCause.CRUSHED),
+                new Filed("anvil", sources.anvil(block), ContinuityCause.CRUSHED),
+                new Filed("stalactite", sources.fallingStalactite(block), ContinuityCause.CRUSHED),
+                new Filed("stalagmite", sources.stalagmite(), ContinuityCause.CRUSHED),
+                new Filed("cramming", sources.cramming(), ContinuityCause.CRUSHED),
+                new Filed("into a wall", sources.flyIntoWall(), ContinuityCause.CRUSHED),
+                new Filed("lava", sources.lava(), ContinuityCause.BURNED),
+                new Filed("in fire", sources.inFire(), ContinuityCause.BURNED),
+                new Filed("on fire", sources.onFire(), ContinuityCause.BURNED),
+                new Filed("fireball", sources.fireball(fireball, attacker), ContinuityCause.BURNED),
+                new Filed("drown", sources.drown(), ContinuityCause.DROWNED),
+                new Filed("creeper", sources.explosion(creeper, creeper), ContinuityCause.BLAST),
+                new Filed("freeze", sources.freeze(), ContinuityCause.FROZEN),
+                new Filed("fall", sources.fall(), ContinuityCause.FELL),
+                new Filed("starve", sources.starve(), ContinuityCause.STARVED),
+                new Filed("void", sources.fellOutOfWorld(), ContinuityCause.LOST),
+                new Filed("border", sources.outOfBorder(), ContinuityCause.LOST),
+                new Filed("mob attack", sources.mobAttack(attacker), ContinuityCause.ATTACKED),
+                new Filed("magic", sources.magic(), ContinuityCause.UNSPECIFIED),
+                new Filed("generic", sources.generic(), ContinuityCause.UNSPECIFIED));
+        List<String> wrong = cases.stream()
+                .filter(filed -> ContinuityCause.of(filed.source()) != filed.cause())
+                .map(filed -> filed.name() + " is " + ContinuityCause.of(filed.source()) + ", not " + filed.cause())
+                .toList();
+        expect(helper, wrong.isEmpty(), "causes filed wrongly: %s", wrong);
         helper.succeed();
     }
+
+    /** A damage source and the cause it must be filed under. */
+    private record Filed(String name, DamageSource source, ContinuityCause cause) {}
 
     /** The sounds {@code listener} was sent that were played within a block of {@code at}. */
     private static List<Identifier> heardAt(MockPlayer listener, Vec3 at) {

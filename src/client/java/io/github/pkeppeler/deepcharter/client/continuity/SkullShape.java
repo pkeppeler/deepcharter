@@ -6,8 +6,8 @@ import java.util.List;
 /**
  * The Company's skull and crossbones (#1337, the user's pick C4): our own geometry in a unit square, x to the right and y down. The
  * skull is filled with letters, so its shape is a mask: {@link #cell} says whether a point is skull, bone or nothing, with the eye
- * sockets, the nose and the gap of the open mouth as holes. The crossbones are two femurs behind the jaw. {@link #skullLines}, {@link #boneLines} and {@link #knobs} are the faint
- * lines drawn round both. {@code jaw} from 0 (shut) to 1 (wide) drops the mandible with the laugh.
+ * sockets, the nose and the gap of the open mouth as holes. The crossbones are two femurs behind the jaw. {@link #skullLines},
+ * {@link #boneLines} and {@link #knobs} are the faint lines drawn round both. {@code jaw} from 0 (shut) to 1 (wide) drops the mandible with the laugh.
  *
  * <p>The shape is art, but not the kind a pack restyles with a number: it lives here as the model of the skull, as a model's cubes live
  * in its geometry file. Its sizes and colours on screen are the {@code continuity} theme's.

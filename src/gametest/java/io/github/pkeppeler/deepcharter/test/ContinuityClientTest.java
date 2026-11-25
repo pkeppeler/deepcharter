@@ -89,6 +89,11 @@ public class ContinuityClientTest implements FabricClientGameTest {
         List<Played> since(long millis) {
             return played.stream().filter(p -> p.millis() >= millis).toList();
         }
+
+        /** Whether {@code id} was started at or after {@code millis}. */
+        boolean heard(Identifier id, long millis) {
+            return since(millis).stream().anyMatch(p -> p.id().equals(id));
+        }
     }
 
     @Override
@@ -114,16 +119,10 @@ public class ContinuityClientTest implements FabricClientGameTest {
             context.runOnClient(ContinuityClientTest::checkTheStillBody);
             long beforeAnvil = context.computeOnClient(client -> Util.getMillis());
             anvil(singleplayer);
-            ClientWait.until(
-                    context,
-                    "the anvil heard",
-                    client -> heard.since(beforeAnvil).stream().anyMatch(p -> p.id().equals(ANVIL)));
+            ClientWait.until(context, "the anvil heard", client -> heard.heard(ANVIL, beforeAnvil));
 
             OPENED.set(0);
-            singleplayer.getServer().runOnServer(server -> {
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.hurtServer(player.level(), player.level().damageSources().lava(), 1000f);
-            });
+            burn(singleplayer);
             ClientWait.screen(context, ContinuityScreen.class);
             long opened = OPENED.get();
             require(opened != 0, "the screen's opening was seen");
@@ -141,12 +140,10 @@ public class ContinuityClientTest implements FabricClientGameTest {
             anvil(singleplayer);
 
             // Once the laugh plays, nothing that clears or covers the screen while the person is dead ends the
-            // sequence: vanilla would
-            // build its death screen again for a container the server closes and for a screen shut over it.
-            ClientWait.until(
-                    context,
-                    "the laugh started",
-                    client -> heard.since(opened).stream().anyMatch(p -> p.id().equals(LAUGH)));
+            // sequence:
+            // vanilla would build its death screen again for a container the server closes and for a screen shut over
+            // it.
+            ClientWait.until(context, "the laugh started", client -> heard.heard(LAUGH, opened));
             SoundInstance laugh = heard.since(opened).stream()
                     .filter(p -> p.id().equals(LAUGH))
                     .findFirst()
@@ -183,17 +180,13 @@ public class ContinuityClientTest implements FabricClientGameTest {
             checkTheSequence(heard.since(opened));
 
             context.runOnClient(client -> {
-                List<String> labels = ClientChecks.visibleWidgets(shown(client)).stream()
-                        .map(widget -> widget.getMessage().getString())
-                        .toList();
+                List<String> labels = labels(client);
                 require(labels.equals(List.of(RETURN)), "only RETURN TO WORK shows, the screen shows " + labels);
             });
             RealInput.key(context, InputConstants.KEY_ESCAPE, 0);
             context.runOnClient(client -> {
                 require(client.gui.screen() instanceof ContinuityScreen, "the first Esc stays on the screen");
-                List<String> labels = ClientChecks.visibleWidgets(shown(client)).stream()
-                        .map(widget -> widget.getMessage().getString())
-                        .toList();
+                List<String> labels = labels(client);
                 require(labels.equals(List.of(RETURN, DISCONNECT)), "Esc shows DISCONNECT, the screen shows " + labels);
             });
 
@@ -208,25 +201,16 @@ public class ContinuityClientTest implements FabricClientGameTest {
 
             long back = context.computeOnClient(client -> Util.getMillis());
             anvil(singleplayer);
-            ClientWait.until(
-                    context,
-                    "the world's sounds back",
-                    client -> heard.since(back).stream().anyMatch(p -> p.id().equals(ANVIL)));
+            ClientWait.until(context, "the world's sounds back", client -> heard.heard(ANVIL, back));
 
             // A second death in the same session is a sequence of its own, No. 2, laugh and all.
             long second = context.computeOnClient(client -> Util.getMillis());
-            singleplayer.getServer().runOnServer(server -> {
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.hurtServer(player.level(), player.level().damageSources().lava(), 1000f);
-            });
+            burn(singleplayer);
             ClientWait.until(
                     context,
                     "a second sequence",
                     client -> client.gui.screen() instanceof ContinuityScreen screen && screen != sequence);
-            ClientWait.until(
-                    context,
-                    "the second laugh",
-                    client -> heard.since(second).stream().anyMatch(p -> p.id().equals(LAUGH)));
+            ClientWait.until(context, "the second laugh", client -> heard.heard(LAUGH, second));
             int events = singleplayer
                     .getServer()
                     .computeOnServer(server -> Versioned.readable(
@@ -317,6 +301,21 @@ public class ContinuityClientTest implements FabricClientGameTest {
     /** A sound of the game's own, not the sequence's: one the silence refuses while it holds. */
     private static SoundInstance click() {
         return SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f);
+    }
+
+    /** The player dies in lava, on the server. */
+    private static void burn(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.hurtServer(player.level(), player.level().damageSources().lava(), 1000f);
+        });
+    }
+
+    /** The labels of the widgets the open screen shows. */
+    private static List<String> labels(Minecraft client) {
+        return ClientChecks.visibleWidgets(shown(client)).stream()
+                .map(widget -> widget.getMessage().getString())
+                .toList();
     }
 
     /** An anvil lands at the player, loud. */

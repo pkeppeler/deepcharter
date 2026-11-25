@@ -19,8 +19,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -61,19 +59,15 @@ public final class ContinuityCrewmateScenario extends EvidenceScenario {
             awaitWorld(context);
             UUID crewmate = singleplayer.getServer().computeOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
-                box(one, FLOOR_Y - 2, FLOOR_Y - 1, 6, Blocks.STONE);
-                box(one, FLOOR_Y, FLOOR_Y + 8, 6, Blocks.STONE);
-                // room-carver: a room cut inside the solid stone box built just above, so no worldgen lava is in or
-                // beside it
-                box(one, FLOOR_Y, FLOOR_Y + 7, 5, Blocks.AIR);
-                for (BlockPos lamp : new BlockPos[] {
-                    new BlockPos(X + 5, FLOOR_Y + 3, Z),
-                    new BlockPos(X - 5, FLOOR_Y + 3, Z),
-                    new BlockPos(X, FLOOR_Y + 3, Z + 5),
-                    new BlockPos(X, FLOOR_Y + 3, Z - 5)
-                }) {
-                    one.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
-                }
+                stoneChamber(
+                        one,
+                        X,
+                        Z,
+                        FLOOR_Y,
+                        new BlockPos(X + 5, FLOOR_Y + 3, Z),
+                        new BlockPos(X - 5, FLOOR_Y + 3, Z),
+                        new BlockPos(X, FLOOR_Y + 3, Z + 5),
+                        new BlockPos(X, FLOOR_Y + 3, Z - 5));
                 ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
                 camera.setGameMode(GameType.CREATIVE);
                 camera.setPermanentlyInvulnerable(true);
@@ -93,9 +87,7 @@ public final class ContinuityCrewmateScenario extends EvidenceScenario {
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ClientWait.until(context, "the room drawn", client -> client.levelRenderer.hasRenderedAllSections());
             ClientChecks.withHudHidden(context, () -> {
-                for (int i = 0; i < ALIVE_FRAMES; i++) {
-                    step(context);
-                }
+                tickFrames(context, ALIVE_FRAMES);
                 screenshot(context, "1-crewmate");
 
                 singleplayer.getServer().runOnServer(server -> {
@@ -108,7 +100,7 @@ public final class ContinuityCrewmateScenario extends EvidenceScenario {
                 boolean still = false;
                 boolean fading = false;
                 for (int i = 0; i < DEATH_LIMIT_TICKS && !fading; i++) {
-                    step(context);
+                    tickFrames(context, 1);
                     float deathTime = context.computeOnClient(client -> {
                         Player body = crewmateOf(client, crewmate);
                         return body == null ? -1f : body.deathTime;
@@ -126,33 +118,15 @@ public final class ContinuityCrewmateScenario extends EvidenceScenario {
                             "the crewmate's death was not seen: still " + still + ", fading " + fading);
                 }
                 ClientWait.until(context, "the body gone", client -> crewmateOf(client, crewmate) == null);
-                step(context);
+                tickFrames(context, 1);
                 screenshot(context, "4-ash");
-                for (int i = 0; i < AFTER_FRAMES; i++) {
-                    step(context);
-                }
+                tickFrames(context, AFTER_FRAMES);
             });
         }
-    }
-
-    private void step(ClientGameTestContext context) {
-        context.waitTicks(1); // tick-wait: one frame a tick, the recording's frame rate
-        frame(context);
     }
 
     /** The crewmate as the client has them, or null once the body is gone. */
     private static @Nullable Player crewmateOf(Minecraft client, UUID id) {
         return client.level == null ? null : client.level.getPlayerByUUID(id);
-    }
-
-    /** A square of {@code block} {@code radius} blocks out from the room's column, from {@code yFrom} to {@code yTo}. */
-    private static void box(ServerLevel level, int yFrom, int yTo, int radius, Block block) {
-        for (int x = X - radius; x <= X + radius; x++) {
-            for (int y = yFrom; y <= yTo; y++) {
-                for (int z = Z - radius; z <= Z + radius; z++) {
-                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), Block.UPDATE_ALL);
-                }
-            }
-        }
     }
 }

@@ -8,8 +8,8 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 /**
  * Client entry point for the Continuity Event (#1337), called from DeepCharterClient: the numbers from the server, the ear that keeps the
- * last few seconds of sound, the sequence's tick, and a clean slate on leaving a world. The screen, the silence and the still body are mixins in {@code
- * client/continuity/mixin} (ADR 0100).
+ * last few seconds of sound, the sequence's tick, and a clean slate on leaving a world. The screen, the silence, the camera and the still
+ * body are mixins in {@code client/continuity/mixin} (ADR 0100).
  */
 public final class ContinuityClientInit {
     private ContinuityClientInit() {}
