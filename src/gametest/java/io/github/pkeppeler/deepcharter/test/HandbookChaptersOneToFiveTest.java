@@ -266,7 +266,10 @@ public class HandbookChaptersOneToFiveTest {
                 : BuiltInRegistries.ITEM.getKey(item).equals(Identifier.parse(predicate));
     }
 
-    /** The item predicates of the item triggers of the advancement a directive shares its id with; empty when it has none. */
+    /**
+     * The item predicates of the item triggers of the advancement a directive shares its id with; empty when it has
+     * none.
+     */
     private static List<String> acceptedItems(Identifier directive) {
         String path = "/data/" + directive.getNamespace() + "/advancement/" + directive.getPath() + ".json";
         List<String> accepted = new ArrayList<>();

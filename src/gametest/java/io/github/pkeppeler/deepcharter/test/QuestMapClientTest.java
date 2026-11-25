@@ -444,9 +444,9 @@ public class QuestMapClientTest implements FabricClientGameTest {
 
     /**
      * A step that is done by any one of several items (#1260) is one slot with one shared count and an "any" cue, not a
-     * row of items to collect. Its icon cycles through the alternatives once every {@code cycleTicks}, and a click opens
-     * the recipes of the icon showing: the first click and the one a cycle later name different items, and the third
-     * is back on the first.
+     * row of items to collect. Its icon cycles through the alternatives once every {@code cycleTicks}, and a click
+     * opens the recipes of the icon showing: the first click and the one a cycle later name different items, and the
+     * third is back on the first.
      */
     private static void anyOfStepIsOneSlotWhoseIconCyclesAndWhoseClickOpensTheShownRecipe(
             ClientGameTestContext context) {

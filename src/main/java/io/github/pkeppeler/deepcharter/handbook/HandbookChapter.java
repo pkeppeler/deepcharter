@@ -43,8 +43,8 @@ public record HandbookChapter(int order, Component title, List<Entry> directives
 
     /**
      * One directive: its id, which is also the id of its advancement, the line the handbook shows, and what the step
-     * asks the player to obtain or craft, one slot each (never the ingredients of one). {@code targets} is for the quest
-     * map's index card only, where a click opens the shown item's recipe: nothing here takes the items.
+     * asks the player to obtain or craft, one slot each (never the ingredients of one). {@code targets} is for the
+     * quest map's index card only, where a click opens the shown item's recipe: nothing here takes the items.
      */
     public record Entry(Identifier id, Component text, List<TargetSlot> targets) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -62,8 +62,8 @@ public record HandbookChapter(int order, Component title, List<Entry> directives
     }
 
     /**
-     * What one slot of an index card asks for: {@code count} of one item ({@link Target}), or {@code count} of any one of
-     * several ({@link AnyOf}), like a BetterQuesting task.
+     * What one slot of an index card asks for: {@code count} of one item ({@link Target}), or {@code count} of any one
+     * of several ({@link AnyOf}), like a BetterQuesting task.
      */
     public sealed interface TargetSlot permits Target, AnyOf {
         Codec<TargetSlot> CODEC = RecordCodecBuilder.<RawSlot>create(instance -> instance.group(

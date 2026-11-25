@@ -27,7 +27,8 @@ import net.minecraft.resources.Identifier;
 
 /**
  * Client GameTest for #1260's controls pages: they follow the first contents page, every key a line names is the
- * player's binding read at draw time (a rebind changes what the page shows), every named key is on a sheet, and each page fits the default window and the smallest GUI.
+ * player's binding read at draw time (a rebind changes what the page shows), every named key is on a sheet, and each
+ * page fits the default window and the smallest GUI.
  */
 public class HandbookControlsClientTest implements FabricClientGameTest {
     private static final int WIDTH = 427;
@@ -146,7 +147,10 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         }
     }
 
-    /** At the default window and at the smallest real GUI, 213 x 120 (854 x 480 at scale 4), every line of every page is on the screen. */
+    /**
+     * At the default window and at the smallest real GUI, 213 x 120 (854 x 480 at scale 4), every line of every page is
+     * on the screen.
+     */
     private static void everyControlsPageFitsTheDefaultWindowAndTheSmallestGui() {
         int[][] windows = {{WIDTH, HEIGHT}, {SMALL_WIDTH, SMALL_HEIGHT}};
         for (int[] window : windows) {
