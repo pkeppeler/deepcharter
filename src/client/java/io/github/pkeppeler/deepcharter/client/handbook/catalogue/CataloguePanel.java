@@ -12,8 +12,10 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheet;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -21,20 +23,25 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.StackedItemContents;
+import net.minecraft.world.inventory.AbstractCraftingMenu;
+import net.minecraft.world.inventory.RecipeBookMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
 
@@ -53,6 +60,10 @@ public final class CataloguePanel {
     private static final int MOST_COUNTED = 99;
     /** The dots a text loses its tail to when it is too long for its line. */
     private static final String ELLIPSIS = "..";
+    /** How long a note about the fill switch stays over the recipe console. */
+    private static final int STATUS_TICKS = 80;
+    /** How many ticks a fill press is given to change the grid before the server is taken to have refused it. */
+    private static final int FILL_WAIT_TICKS = 10;
 
     /** What is under the mouse in a panel (not in the inventory): the item and the cell it is in. */
     private record Hit(Item item, Rect cell) {}
@@ -67,11 +78,33 @@ public final class CataloguePanel {
     /** Where the sheet stands at the screen's size and what it says there; null while no sheet is open. */
     private @Nullable Placed placed;
 
+    /** The recipe shown as a ghost over the crafting grid, with the slots the player cannot fill marked, or null. */
+    private @Nullable Ghost ghost;
+    /** Why the fill switch did nothing, drawn over the recipe console for {@link #STATUS_TICKS}, or null. */
+    private @Nullable Note fillNote;
+    /** The last fill press the server has not yet been seen to answer, or null. */
+    private @Nullable Pressed pressed;
+    /** What the player holds, grid included, as of the last tick: what the fill switch weighs a recipe against. */
+    private StackedItemContents fillContents = new StackedItemContents();
+
     private int screenWidth;
     private int screenHeight;
     private PartsCatalogue catalogue = PartsCatalogue.of(List.of(), ContextMap.EMPTY);
     private @Nullable List<RecipeCollection> builtFrom;
     private StackedItemContents contents = new StackedItemContents();
+    /** What the recipe card shows: the recipe, and the item and mode looked up to get it. */
+    private record CardShows(
+            @Nullable RecipeDisplayId recipe, @Nullable Item item, CatalogueState.@Nullable Mode mode) {}
+
+    /** A fill press waiting for the server: the recipe asked for, the grid as it was, and the tick it is judged at. */
+    private record Pressed(KnownRecipe recipe, List<ItemStack> before, int judgedAt) {}
+
+    /** A note about the fill switch: what it says, what the card showed when it was made (it goes when that changes), and the tick it ends at. */
+    private record Note(String message, CardShows shows, int endsAt) {}
+
+    /** A recipe's ghost: where each of its cells goes in the grid and which of those the player lacks. */
+    private record Ghost(KnownRecipe recipe, List<RecipeFill.Placed> cells, Set<Integer> missing) {}
+
     /** What {@link #shownItems} was last worked out from; it is worked out again only when one of these changes. */
     private List<Item> shownCache = List.of();
 
@@ -101,7 +134,8 @@ public final class CataloguePanel {
 
     /** Lays the panels out for a screen {@code width} by {@code height}. */
     void resize(int width, int height) {
-        CatalogueLayout now = CatalogueLayout.of(width, height, look(), CrtTuning.current(), font.lineHeight);
+        CatalogueLayout now = CatalogueLayout.of(
+                width, height, look(), CrtTuning.current(), font.lineHeight, screen instanceof InventoryScreen);
         layout = now;
         screenWidth = width;
         screenHeight = height;
@@ -145,6 +179,20 @@ public final class CataloguePanel {
         return where == null ? null : where.layout().glass();
     }
 
+    /** The Recipes link of the open spec sheet, or null when none is open. */
+    // test-seam: the client test clicks the link
+    public @Nullable Rect sheetRecipesLink() {
+        Placed where = placed;
+        return where == null ? null : where.layout().recipes();
+    }
+
+    /** The close switch of the open spec sheet, or null when none is open. */
+    // test-seam: the client test clicks the switch
+    public @Nullable Rect sheetCloseSwitch() {
+        Placed where = placed;
+        return where == null ? null : where.layout().close();
+    }
+
     private CatalogueLook look() {
         return CatalogueLook.current();
     }
@@ -166,9 +214,22 @@ public final class CataloguePanel {
         return catalogue;
     }
 
+    /** Whether the panels are drawn and take input: they have room, and the player has not put them away. */
+    // test-seam: the client test reads whether the panels are out
+    public boolean panelsShown() {
+        return layout != null && !state.hidden();
+    }
+
+    /** Puts the panels away, or brings them back: the button's press and the key. The search lets go of the keyboard either way. */
+    void toggleHidden() {
+        state.toggleHidden();
+        dropStale();
+        focusSearch(false);
+    }
+
     /** The recipe panel is drawn only while an item is looked up. */
     public boolean showsRecipePanel() {
-        return layout != null && state.lookup() != null;
+        return panelsShown() && state.lookup() != null;
     }
 
     // test-seam: whether the search field has the keyboard, which the client test reads
@@ -192,7 +253,88 @@ public final class CataloguePanel {
 
     void tick() {
         ticks++;
+        if (fillNote != null && ticks >= fillNote.endsAt()) {
+            fillNote = null;
+        }
         refresh();
+        dropStale();
+        refreshGhost();
+        checkPressed();
+    }
+
+    /** Says so when the server left the grid as it was after a fill press (its inventory was full, say), and the grid does not already hold the recipe. */
+    private void checkPressed() {
+        Pressed waiting = pressed;
+        if (waiting == null) {
+            return;
+        }
+        if (ticks < waiting.judgedAt()) {
+            return;
+        }
+        pressed = null;
+        List<ItemStack> now = gridSlots().stream().map(Slot::getItem).toList();
+        boolean unchanged = now.size() == waiting.before().size();
+        for (int i = 0; unchanged && i < now.size(); i++) {
+            unchanged = ItemStack.matches(now.get(i), waiting.before().get(i));
+        }
+        if (unchanged
+                && !gridMakes(waiting.recipe())
+                && Objects.equals(idOf(waiting.recipe()), idOf(state.shownRecipe(catalogue)))) {
+            note(text("fill.status.refused"));
+        }
+    }
+
+    /** Whether the grid already holds {@code recipe}: its result is showing, or a furnace's input is one of its ingredients. */
+    private boolean gridMakes(KnownRecipe recipe) {
+        if (screen.getMenu() instanceof AbstractCraftingMenu crafting) {
+            return crafting.getResultSlot()
+                    .getItem()
+                    .is(recipe.results().getFirst().getItem());
+        }
+        List<Slot> grid = gridSlots();
+        return !grid.isEmpty()
+                && recipe.cells().stream()
+                        .anyMatch(cell -> cell.stream()
+                                .anyMatch(choice -> grid.getFirst().getItem().is(choice.getItem())));
+    }
+
+    /** What the card shows now. */
+    private CardShows cardShows() {
+        CatalogueState.Lookup lookup = state.lookup();
+        return new CardShows(
+                idOf(state.shownRecipe(catalogue)),
+                lookup == null ? null : lookup.item(),
+                lookup == null ? null : lookup.mode());
+    }
+
+    /** The id of {@code recipe}, which names it across a rebuild of the catalogue (a recipe the player has just been taught): the recipes themselves are new objects then. */
+    private static @Nullable RecipeDisplayId idOf(@Nullable KnownRecipe recipe) {
+        return recipe == null ? null : recipe.entry().id();
+    }
+
+    /** Takes away the ghost and the note that no longer fit what is on the screen: another recipe, panels put away, or a fit that is not the ghost's. */
+    private void dropStale() {
+        CardShows now = cardShows();
+        if (fillNote != null && !now.equals(fillNote.shows())) {
+            fillNote = null;
+        }
+        Ghost shownGhost = ghost;
+        if (shownGhost != null
+                && (state.hidden()
+                        || layout == null
+                        || !Objects.equals(idOf(shownGhost.recipe()), now.recipe())
+                        || fillFit() != RecipeFill.Fit.GHOST)) {
+            ghost = null;
+        }
+    }
+
+    /** Marks again what the player still lacks of the ghost's recipe, from what they hold now. */
+    private void refreshGhost() {
+        Ghost shownGhost = ghost;
+        if (shownGhost != null) {
+            ghost = new Ghost(
+                    shownGhost.recipe(), shownGhost.cells(), RecipeFill.missing(shownGhost.cells(), held(gridSlots())));
+        }
     }
 
     /** Rebuilds what the catalogue lists when the recipe book changed, and counts what the player holds. */
@@ -209,6 +351,10 @@ public final class CataloguePanel {
         }
         contents = new StackedItemContents();
         player.getInventory().fillStackedContents(contents);
+        // The fill takes the grid's items back first, as the server does, so they count as held.
+        fillContents = new StackedItemContents();
+        player.getInventory().fillStackedContents(fillContents);
+        screen.getMenu().fillCraftSlotsStackedContents(fillContents);
         contentsStamp++;
         craftableCount = state.craftableCount(catalogue, contents, bench);
         tableOnly = catalogue.tableOnlyItems(contents, bench);
@@ -375,7 +521,7 @@ public final class CataloguePanel {
     /** What the mouse is over in a panel, or null. */
     private @Nullable Hit hitAt(double x, double y) {
         CatalogueLayout now = layout;
-        if (now == null) {
+        if (now == null || state.hidden()) {
             return null;
         }
         CatalogueLook look = look();
@@ -415,7 +561,7 @@ public final class CataloguePanel {
             return hit.item();
         }
         CatalogueLayout now = layout;
-        if (now == null) {
+        if (now == null || state.hidden()) {
             return null;
         }
         for (Slot slot : screen.getMenu().slots) {
@@ -435,7 +581,186 @@ public final class CataloguePanel {
 
     /** R or U on {@code item} from outside the screen's keys: the quest map's "recipe one click away" calls this through {@code CatalogueScreens}. */
     void lookUp(Item item, CatalogueState.Mode mode) {
+        // A recipe asked for is a recipe to show, so the panels that were put away come back for it.
+        if (state.hidden()) {
+            state.toggleHidden();
+        }
         state.look(catalogue, item, mode);
+    }
+
+    // ---------------------------------------------------------------- fill and ghost
+
+    /** What the fill switch does with the recipe shown, or null while none is. */
+    private RecipeFill.@Nullable Fit fillFit() {
+        KnownRecipe recipe = showsRecipePanel() ? state.shownRecipe(catalogue) : null;
+        return recipe == null ? null : RecipeFill.fit(recipe, bench, fillContents);
+    }
+
+    /** The legend of the fill switch, which says what a press does with the recipe shown, or an empty string while none is. */
+    // test-seam: the client test reads what the switch offers
+    public String fillLegend() {
+        RecipeFill.Fit fit = fillFit();
+        return fit == null ? "" : text(fit.legendKey());
+    }
+
+    /** Why the last press of the fill switch did nothing, or null. */
+    // test-seam: the client test reads the note over the recipe console
+    public @Nullable String fillStatus() {
+        return fillNote == null ? null : fillNote.message();
+    }
+
+    /** The grid slots (indexes of the menu's input slots) the ghost marks as missing, or none when no ghost is shown. */
+    // test-seam: the client test reads which slots the ghost marks
+    public Set<Integer> ghostMissing() {
+        Ghost shown = ghost;
+        return shown == null ? Set.of() : shown.missing();
+    }
+
+    /** Whether a recipe is shown as a ghost over the grid. */
+    // test-seam: the client test reads whether the ghost is up
+    public boolean ghostShown() {
+        return ghost != null;
+    }
+
+    private List<Slot> gridSlots() {
+        RecipeBookMenu menu = screen.getMenu();
+        if (menu instanceof AbstractCraftingMenu crafting) {
+            return crafting.getInputGridSlots();
+        }
+        // A furnace takes its one ingredient in its first slot.
+        return menu.slots.isEmpty() ? List.of() : List.of(menu.slots.getFirst());
+    }
+
+    /** The press of the fill switch: the server fills the grid, or the recipe shows as a ghost, or a note says why neither. */
+    private void fillClicked(boolean maximum) {
+        KnownRecipe recipe = state.shownRecipe(catalogue);
+        RecipeFill.Fit fit = fillFit();
+        if (recipe == null || fit == null) {
+            return;
+        }
+        switch (fit) {
+            case NEEDS_TABLE -> note(text("fill.status.table"));
+            case NOT_HERE -> note(text("fill.status.here"));
+            case FILL -> {
+                // Vanilla's recipe-book placement: the server moves the ingredients, and the grid's items back first.
+                ghost = null;
+                pressed = new Pressed(
+                        recipe,
+                        gridSlots().stream().map(slot -> slot.getItem().copy()).toList(),
+                        ticks + FILL_WAIT_TICKS);
+                MultiPlayerGameMode mode = Minecraft.getInstance().gameMode;
+                if (mode != null) {
+                    mode.handlePlaceRecipe(
+                            screen.getMenu().containerId, recipe.entry().id(), maximum);
+                }
+            }
+            case GHOST -> {
+                List<Slot> grid = gridSlots();
+                List<RecipeFill.Placed> cells = RecipeFill.place(recipe, bench.width(), bench.height());
+                ghost = new Ghost(recipe, cells, RecipeFill.missing(cells, held(grid)));
+            }
+        }
+    }
+
+    /** Shows {@code message} over the recipe console for a while. */
+    private void note(String message) {
+        fillNote = new Note(message, cardShows(), ticks + STATUS_TICKS);
+    }
+
+    /** How many of each item the player holds, the items in the grid included: the server takes the grid back before it places. */
+    private Map<Item, Integer> held(List<Slot> grid) {
+        Map<Item, Integer> held = new HashMap<>();
+        LocalPlayer player = Minecraft.getInstance().player;
+        List<ItemStack> stacks = new ArrayList<>();
+        if (player != null) {
+            stacks.addAll(player.getInventory().getNonEquipmentItems());
+        }
+        for (Slot slot : grid) {
+            stacks.add(slot.getItem());
+        }
+        for (ItemStack stack : stacks) {
+            if (!stack.isEmpty()) {
+                held.merge(stack.getItem(), stack.getCount(), Integer::sum);
+            }
+        }
+        return held;
+    }
+
+    /** Takes the ghost away when the player works the grid itself: a click on one of its slots or on the result, as vanilla's recipe book does. */
+    private void dropGhostOnGridClick(double x, double y) {
+        CatalogueLayout now = layout;
+        if (ghost == null || now == null) {
+            return;
+        }
+        List<Slot> slots = new ArrayList<>(gridSlots());
+        if (screen.getMenu() instanceof AbstractCraftingMenu crafting) {
+            slots.add(crafting.getResultSlot());
+        }
+        for (Slot slot : slots) {
+            int slotX = now.inventory().x() + slot.x;
+            int slotY = now.inventory().y() + slot.y;
+            if (x >= slotX && x < slotX + ICON && y >= slotY && y < slotY + ICON) {
+                ghost = null;
+                return;
+            }
+        }
+    }
+
+    /** Draws the ghost over the grid: each ingredient faint in its slot, the ones the player lacks tinted red, and the result faint too. */
+    private void drawGhost(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look) {
+        Ghost shown = ghost;
+        if (shown == null) {
+            return;
+        }
+        List<Slot> grid = gridSlots();
+        graphics.nextStratum();
+        for (RecipeFill.Placed cell : shown.cells()) {
+            Slot slot = grid.get(cell.slot());
+            boolean missing = shown.missing().contains(cell.slot());
+            int veil = missing ? look.missingColor() : look.ghostColor();
+            int x = now.inventory().x() + slot.x;
+            int y = now.inventory().y() + slot.y;
+            graphics.fill(x, y, x + ICON, y + ICON, veil);
+            graphics.fakeItem(cycled(cell.choices()), x, y);
+            graphics.fill(x, y, x + ICON, y + ICON, veil);
+        }
+        if (screen.getMenu() instanceof AbstractCraftingMenu crafting) {
+            Slot result = crafting.getResultSlot();
+            int x = now.inventory().x() + result.x;
+            int y = now.inventory().y() + result.y;
+            graphics.fakeItem(shown.recipe().results().getFirst(), x, y);
+            graphics.fill(x, y, x + ICON, y + ICON, look.ghostColor());
+        }
+    }
+
+    /** The note about the fill switch in a strip over the foot of the recipe glass, in the name strip's look, a name's width at most. */
+    private void drawFillStatus(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look) {
+        Note shown = fillNote;
+        if (shown == null) {
+            return;
+        }
+        String message = shown.message();
+        CrtTuning crt = CrtTuning.current();
+        Rect glass = now.recipeGlass();
+        int inset = look.nameStripPad() + 1;
+        List<String> lines = TextWrap.lines(this::termWidth, message, glass.width() - 2 * look.pad() - 2 * inset);
+        int widest = lines.stream().mapToInt(this::termWidth).max().orElse(0);
+        int width = widest + 2 * inset;
+        int height = lines.size() * font.lineHeight + 2 * inset;
+        int x = glass.x() + (glass.width() - width) / 2;
+        int y = glass.bottom() - look.contentBottom() - height;
+        graphics.nextStratum();
+        graphics.fill(x, y, x + width, y + height, crt.backgroundColor());
+        CrtDraw.border(graphics, x, y, x + width, y + height, crt.phosphorColor());
+        for (int i = 0; i < lines.size(); i++) {
+            CrtDraw.glowText(
+                    graphics,
+                    font,
+                    CrtText.terminal(lines.get(i)),
+                    x + inset,
+                    y + inset + i * font.lineHeight,
+                    crt.phosphorColor());
+        }
     }
 
     // ---------------------------------------------------------------- input
@@ -457,6 +782,13 @@ public final class CataloguePanel {
         }
         if (searchFocused) {
             return searchKey(event);
+        }
+        if (CatalogueKeys.TOGGLE.matches(event)) {
+            toggleHidden();
+            return true;
+        }
+        if (state.hidden()) {
+            return false;
         }
         // Ctrl+F, or Cmd+F on a Mac (hasControlDownWithQuirk is the shortcut key of the platform).
         if (event.hasControlDownWithQuirk() && event.key() == InputConstants.KEY_F) {
@@ -515,7 +847,7 @@ public final class CataloguePanel {
     }
 
     boolean charTyped(CharacterEvent event) {
-        if (layout == null || !searchFocused) {
+        if (!panelsShown() || !searchFocused) {
             return false;
         }
         if (event.isAllowedChatCharacter()) {
@@ -531,11 +863,25 @@ public final class CataloguePanel {
             return false;
         }
         if (sheet != null) {
-            // Any click puts the sheet away, and is the sheet's: the inventory under it never sees the press or its
-            // release.
-            closeSheet();
+            // Every click is the sheet's: the inventory under it never sees the press or its release. The Recipes link
+            // shows the item's recipes, the close switch and a click off the console put the sheet away, and a click on
+            // the console itself does nothing, so a stray one does not lose the sheet.
             pressTaken = true;
+            Placed where = placed;
+            SpecSheetView.Click click = where == null
+                    ? SpecSheetView.Click.CLOSE
+                    : SpecSheetView.clickAt(where.layout(), event.x(), event.y());
+            if (click == SpecSheetView.Click.RECIPES) {
+                lookUp(Objects.requireNonNull(sheetItem(), "<a sheet is open>"), CatalogueState.Mode.RECIPES);
+            }
+            if (click != SpecSheetView.Click.NONE) {
+                closeSheet();
+            }
             return true;
+        }
+        dropGhostOnGridClick(event.x(), event.y());
+        if (state.hidden()) {
+            return false;
         }
         double x = event.x();
         double y = event.y();
@@ -567,6 +913,8 @@ public final class CataloguePanel {
                     titleLines(card).size() * font.lineHeight);
             if (lookup != null && card.spec().contains(x, y)) {
                 SpecSheetHook.open(lookup.item());
+            } else if (lookup != null && card.fill().contains(x, y)) {
+                fillClicked(event.hasShiftDown());
             } else if (title.contains(x, y)) {
                 state.clear();
             }
@@ -601,6 +949,9 @@ public final class CataloguePanel {
         if (sheet != null) {
             return true;
         }
+        if (state.hidden()) {
+            return false;
+        }
         int direction = vertical > 0 ? -1 : 1;
         if (now.catalogue().contains(x, y)) {
             CatalogueLayout.Shelf shelf = now.shelf();
@@ -633,16 +984,30 @@ public final class CataloguePanel {
         SpecSheet shownSheet = sheet;
         Placed sheetAt = placed;
         Hit hit = shownSheet == null ? hitAt(mouseX, mouseY) : null;
-        graphics.nextStratum();
-        drawShelf(graphics, now, look, hit);
-        if (showsRecipePanel()) {
-            drawCard(graphics, now, look, hit);
+        dropStale();
+        if (shownSheet == null) {
+            drawGhost(graphics, now, look);
         }
-        if (hit != null) {
-            drawNameStrip(graphics, now, look, hit);
+        if (!state.hidden()) {
+            Rect effects = now.effects();
+            if (effects != null) {
+                CatalogueEffects.extract(
+                        graphics, effects, now.inventory().x() + CatalogueLayout.IMAGE_WIDTH / 2, mouseX, mouseY);
+            }
+            graphics.nextStratum();
+            drawShelf(graphics, now, look, hit);
+            if (showsRecipePanel()) {
+                drawCard(graphics, now, look, hit);
+            }
+            if (hit != null) {
+                drawNameStrip(graphics, now, look, hit);
+            }
+            if (showsRecipePanel()) {
+                drawFillStatus(graphics, now, look);
+            }
         }
         if (shownSheet != null && sheetAt != null) {
-            SpecSheetView.draw(graphics, font, sheetAt.layout(), shownSheet, sheetAt.plan(), mouseX, mouseY);
+            SpecSheetView.draw(graphics, font, sheetAt.layout(), shownSheet, sheetAt.plan(), mouseX, mouseY, true);
             // The screen's own tooltip step comes after this one and would draw the name of the slot under the sheet
             // over it.
             HoveredSlot.clear(screen);
@@ -838,7 +1203,7 @@ public final class CataloguePanel {
         KnownRecipe recipe = state.shownRecipe(catalogue);
         int width = card.right() - card.left();
         graphics.nextStratum();
-        CatalogueHardware.body(graphics, look, now.recipe(), now.recipeGlass(), card.vents());
+        CatalogueHardware.body(graphics, look, now.recipe(), now.recipeGlass(), List.of());
         graphics.nextStratum();
 
         CatalogueHardware.title(graphics, font, titleLines(card), card.left(), card.titleY(), card.right());
@@ -865,6 +1230,19 @@ public final class CataloguePanel {
                 false,
                 recipe != null,
                 recipe != null && spec.contains(mouseX, mouseY));
+        RecipeFill.Fit fit = fillFit();
+        Rect fill = card.fill();
+        CatalogueHardware.legendSwitch(
+                graphics,
+                font,
+                look,
+                panel,
+                crt,
+                fill,
+                fillLegend(),
+                fit == RecipeFill.Fit.FILL,
+                fit == RecipeFill.Fit.FILL || fit == RecipeFill.Fit.GHOST,
+                recipe != null && fill.contains(mouseX, mouseY));
     }
 
     private void drawRecipe(

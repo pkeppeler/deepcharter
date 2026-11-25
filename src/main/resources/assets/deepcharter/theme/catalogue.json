@@ -82,5 +82,15 @@
   "sheetMinHeight": 90,
   "sheetGap": 4,
   "sheetLineGap": 1,
-  "sheetValueGap": 6
+  "sheetValueGap": 6,
+
+  "buttonWidth": 20,
+  "buttonHeight": 18,
+  "buttonCell": 2,
+  "buttonCellGap": 1,
+  "buttonColumns": 3,
+  "buttonRows": 2,
+
+  "ghostColor": "#5000E5A0",
+  "missingColor": "#90FF2A20"
 }
