@@ -496,8 +496,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     Blocks.AIR);
             pod.setHull(pod.maxHull() / 10f);
             pod.setStranded(true);
-            pod.setPos(0.5, floorFeetY, 0.5);
         });
+        // The carve makes the server re-send the chunks round it, and a chunk waiting to be sent drops the pod for its
+        // pilot if the pod changes section meanwhile (#1249): move the pod once they are sent.
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+        singleplayer.getServer().runOnServer(server -> pod.setPos(0.5, floorFeetY, 0.5));
         ClientWait.until(
                 context,
                 "the pod in the blackout band on the client",

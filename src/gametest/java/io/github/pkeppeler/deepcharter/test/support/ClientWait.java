@@ -8,9 +8,12 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 
 /**
@@ -86,6 +89,49 @@ public final class ClientWait {
                 "the chunks " + minX + "," + minZ + " to " + maxX + "," + maxZ + " on the client",
                 client -> missingChunks(client, minX, maxX, minZ, maxZ).isEmpty(),
                 client -> "chunks missing: " + missingChunks(client, minX, maxX, minZ, maxZ) + ", " + describe(client));
+    }
+
+    /**
+     * Waits until the server has settled the light of the chunks the block square of {@code radius} round
+     * ({@code x}, {@code z}) touches, and of the ring of chunks round them, in {@code layer}. Call it after a carve
+     * and before a pod that carries a pilot moves into it. The server re-sends a settling chunk to every player that
+     * holds it, and while that send is queued {@code ChunkMap.isChunkTracked} is false. A pod that changes section in
+     * that window is dropped for its pilot, and a rider sends no move packets to make the server track the pod again,
+     * so the client shows the pilot on foot until the send lands and something else moves (#1249).
+     */
+    public static void lightSettled(
+            ClientGameTestContext context, TestServerContext server, int layer, int x, int z, int radius) {
+        int minX = SectionPos.blockToSectionCoord(x - radius) - 1;
+        int maxX = SectionPos.blockToSectionCoord(x + radius) + 1;
+        int minZ = SectionPos.blockToSectionCoord(z - radius) - 1;
+        int maxZ = SectionPos.blockToSectionCoord(z + radius) + 1;
+        until(
+                context,
+                "the light of the chunks " + minX + "," + minZ + " to " + maxX + "," + maxZ
+                        + " to settle on the server",
+                () -> server.computeOnServer(
+                        srv -> unsettledChunks(TestLayers.level(srv, layer), minX, maxX, minZ, maxZ)
+                                .isEmpty()),
+                () -> "unsettled chunks "
+                        + server.computeOnServer(
+                                srv -> unsettledChunks(TestLayers.level(srv, layer), minX, maxX, minZ, maxZ)));
+    }
+
+    private static List<ChunkPos> unsettledChunks(ServerLevel level, int minX, int maxX, int minZ, int maxZ) {
+        List<ChunkPos> unsettled = new ArrayList<>();
+        for (int chunkX = minX; chunkX <= maxX; chunkX++) {
+            for (int chunkZ = minZ; chunkZ <= maxZ; chunkZ++) {
+                ChunkPos pos = new ChunkPos(chunkX, chunkZ);
+                boolean queued = false;
+                for (ServerPlayer player : level.players()) {
+                    queued |= player.connection.chunkSender.isPending(pos.pack());
+                }
+                if (queued || LightSync.watching(level, pos)) {
+                    unsettled.add(pos);
+                }
+            }
+        }
+        return unsettled;
     }
 
     private static List<ChunkPos> missingChunks(Minecraft client, int minX, int maxX, int minZ, int maxZ) {
