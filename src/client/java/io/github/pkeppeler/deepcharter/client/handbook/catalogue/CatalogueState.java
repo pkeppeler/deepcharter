@@ -75,15 +75,14 @@ public final class CatalogueState {
         return Math.max(1, (total + perPage - 1) / perPage);
     }
 
-    /** The page being shown, from 0, kept inside {@code pages}. */
+    /** The page being shown, from 0, inside {@code pages}. The page kept is not changed: a list that is briefly short does not forget it. */
     public int page(int pages) {
-        page = Math.clamp(page, 0, pages - 1);
-        return page;
+        return Math.clamp(page, 0, pages - 1);
     }
 
-    /** Moves {@code delta} pages, stopping at the first and the last. */
+    /** Moves {@code delta} pages from the one shown, stopping at the first and the last, and keeps that page. */
     public void turn(int delta, int pages) {
-        page = Math.clamp((long) page + delta, 0, pages - 1);
+        page = Math.clamp((long) page(pages) + delta, 0, pages - 1);
     }
 
     /** The first favourite shown in the row, kept so that the row stays full while there are enough. */

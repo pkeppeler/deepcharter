@@ -32,6 +32,7 @@ public class PartsCatalogueScenario extends EvidenceScenario {
     private static final int LEFT_MOUSE = 0;
     /** An item whose name is longer than one line of the catalogue, and which iron makes. */
     private static final Item LONG_NAMED = Items.HEAVY_WEIGHTED_PRESSURE_PLATE;
+
     private static final int FAVOURITES = 5;
     /** The advancement toasts of the first items held, which sit over the top of the catalogue, fade by now. */
     private static final int TOAST_TICKS = 60;
@@ -95,7 +96,9 @@ public class PartsCatalogueScenario extends EvidenceScenario {
                 context,
                 "the recipes of the iron, taught by what the player holds",
                 client -> !panel.catalogue().recipesFor(LONG_NAMED).isEmpty()
-                        && !panel.catalogue().recipesFor(ScannerRegistry.SCANNER_UNIT).isEmpty()
+                        && !panel.catalogue()
+                                .recipesFor(ScannerRegistry.SCANNER_UNIT)
+                                .isEmpty()
                         && panel.craftableCount() > 0);
         CatalogueScene.clearSearch(context, panel);
         context.waitTicks(2);
@@ -108,6 +111,9 @@ public class PartsCatalogueScenario extends EvidenceScenario {
         int plate = CatalogueScene.indexOf(context, panel, LONG_NAMED);
         CatalogueScene.showPage(context, panel, perPage, plate / perPage);
         CatalogueScene.hover(context, CatalogueScene.gridCell(layout, plate % perPage));
+        ClientChecks.require(
+                context.computeOnClient(client -> panel.nameLines(LONG_NAMED).size()) > 1,
+                "the long name wraps, or the still shows nothing about it");
         hold(context);
         screenshot(context, "console-long-name");
 

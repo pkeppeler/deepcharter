@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -48,7 +49,9 @@ import org.jspecify.annotations.Nullable;
 public final class CataloguePanel {
     /** Item icons are 16 pixels. */
     private static final int ICON = 16;
-    /** The dots a name loses its tail to when it is too long for its line. */
+    /** The most the craftable switch counts out; more reads "99+". */
+    private static final int MOST_COUNTED = 99;
+    /** The dots a text loses its tail to when it is too long for its line. */
     private static final String ELLIPSIS = "..";
 
     /** What is under the mouse in a panel (not in the inventory): the item and the cell it is in. */
@@ -77,6 +80,9 @@ public final class CataloguePanel {
     private boolean shownFilter;
     private int contentsStamp;
     private int craftableCount;
+    /** The items {@link PartsCatalogue#tableOnly} holds for, as of the last tick. */
+    private Set<Item> tableOnly = Set.of();
+
     private int shownStamp = -1;
     private List<Item> favouritesCache = List.of();
     private boolean searchFocused;
@@ -205,6 +211,7 @@ public final class CataloguePanel {
         player.getInventory().fillStackedContents(contents);
         contentsStamp++;
         craftableCount = state.craftableCount(catalogue, contents, bench);
+        tableOnly = catalogue.tableOnlyItems(contents, bench);
         favouritesCache = CatalogueFavourites.shared().items(player.getUUID());
     }
 
@@ -238,6 +245,15 @@ public final class CataloguePanel {
         return shownCache;
     }
 
+    /** The legend of the craftable switch: its words and the count, which stops at "99+" so the legend stays on its plate. */
+    // test-seam: the client test holds the legend of a count over 99 to its plate
+    public static String craftableLegend(int count) {
+        return count > MOST_COUNTED
+                ? text("craftable.many")
+                : Component.translatable("deepcharter.catalogue.craftable", count)
+                        .getString();
+    }
+
     // test-seam: the count the switch's legend shows
     public int craftableCount() {
         return craftableCount;
@@ -245,7 +261,7 @@ public final class CataloguePanel {
 
     /** Whether {@code item} is made only at a crafting table by what the player holds, which its cell is marked with an icon for. */
     public boolean marksTable(Item item) {
-        return catalogue.tableOnly(item, contents, bench);
+        return tableOnly.contains(item);
     }
 
     /** The lines the strip that names {@code item} draws over the catalogue's glass. */
@@ -725,8 +741,7 @@ public final class CataloguePanel {
                 panel,
                 crt,
                 craftable,
-                Component.translatable("deepcharter.catalogue.craftable", craftableCount)
-                        .getString(),
+                craftableLegend(craftableCount),
                 state.craftableOnly(),
                 true,
                 craftable.contains(mouseX, mouseY));

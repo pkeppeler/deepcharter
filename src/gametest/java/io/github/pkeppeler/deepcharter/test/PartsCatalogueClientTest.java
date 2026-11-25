@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetOpener
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.TextWrap;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
@@ -281,14 +282,62 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 "a furnace screen counts what it smelts");
     }
 
+    /** The glass's plate is as wide as the glass; the legend starts after the switch and ends at the plate's edge. */
+    private static void theCountStopsAt99AndItsLegendFitsThePlate() {
+        Minecraft client = Minecraft.getInstance();
+        CatalogueLook look = CatalogueLook.current();
+        CatalogueLayout layout = Objects.requireNonNull(
+                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight),
+                "the default window has the panels");
+        Rect plate = layout.shelf().craftable();
+        int textX = plate.x()
+                + look.casing().switchPad()
+                + look.casing().switchWidth()
+                + look.casing().switchPad();
+        require(CataloguePanel.craftableLegend(99).equals("CRAFTABLE (99)"), "99 is counted out");
+        require(CataloguePanel.craftableLegend(100).equals("CRAFTABLE 99+"), "more than 99 reads 99+");
+        for (int count : new int[] {0, 9, 99, 100, 250, 1000}) {
+            String legend = CataloguePanel.craftableLegend(count);
+            int width = client.font.width(CrtText.terminal(legend));
+            require(
+                    textX + width <= plate.right(),
+                    "the legend '" + legend + "' (" + width + " wide from " + textX + ") lies inside its plate "
+                            + plate);
+        }
+    }
+
+    /** A title of three lines moves the card down two lines; every have/need row that is left still ends inside the glass. */
+    private static void aTitleOfThreeLinesKeepsEveryNeedRowInTheCard() {
+        Minecraft client = Minecraft.getInstance();
+        CatalogueLook look = CatalogueLook.current();
+        CatalogueLayout layout = Objects.requireNonNull(
+                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight),
+                "the default window has the panels");
+        CatalogueLayout.Card card = layout.card();
+        CatalogueLayout.Card lowered = card.lowered(2 * client.font.lineHeight, look.needRow());
+        require(
+                lowered.needTop() + lowered.needRows() * look.needRow() <= lowered.needBottom(),
+                "the last have/need row of the lowered card ends inside " + lowered.needBottom() + ", the card is "
+                        + lowered);
+        require(lowered.needRows() <= card.needRows(), "lowering the card never makes room for more rows");
+        require(
+                lowered.gridY() == card.gridY() + 2 * client.font.lineHeight,
+                "the grid moves down by the two extra lines");
+    }
+
     private static void togglingCraftableNowKeepsAValidPage() {
         CatalogueState state = new CatalogueState();
         state.turn(4, 10);
         state.toggleCraftableOnly();
         require(state.page(10) == 4, "the switch keeps the page while it is still there, got " + state.page(10));
-        require(state.page(2) == 1, "with fewer pages the page is the last, not a page past the end");
+        require(state.page(2) == 1, "with fewer pages the page shown is the last, not a page past the end");
+        require(state.page(1) == 0, "and with one page it is the first");
+        require(
+                state.page(10) == 4,
+                "a list that is briefly short does not make the catalogue forget its page, got " + state.page(10));
         state.toggleCraftableOnly();
-        require(state.page(10) == 1, "and the clamp is kept, got " + state.page(10));
+        state.turn(-1, 2);
+        require(state.page(10) == 0, "a turn moves from the page shown (the last of two), got " + state.page(10));
     }
 
     private static void longNamesWrapWithoutLosingAWord() {
@@ -590,6 +639,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 craftableNowCountsEveryGrid();
                 togglingCraftableNowKeepsAValidPage();
                 longNamesWrapWithoutLosingAWord();
+                theCountStopsAt99AndItsLegendFitsThePlate();
+                aTitleOfThreeLinesKeepsEveryNeedRowInTheCard();
                 theLookupListsRecipesAndUsesAndStepsThrough();
                 pagesStopAtTheEnds();
                 favouritesAreKeptPerPlayerAndSurviveReopening();
@@ -853,7 +904,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
 
     /** The legend of the switch: its words and how many items are craftable now. */
     private static String craftableLabel(CataloguePanel panel) {
-        return "CRAFTABLE (" + panel.craftableCount() + ")";
+        return CataloguePanel.craftableLegend(panel.craftableCount());
     }
 
     /** The 16 by 16 item a catalogue cell draws inside its outline. */
@@ -1491,6 +1542,16 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         for (String line : lines) {
             require(texts.contains(line), "the recipe title shows '" + line + "' whole, it draws " + texts);
         }
+        context.runOnClient(client -> {
+            List<String> title = panel.titleLines();
+            CatalogueLayout.Card moved = layout.card()
+                    .lowered(
+                            (title.size() - 1) * client.font.lineHeight,
+                            CatalogueLook.current().needRow());
+            require(
+                    moved.needTop() + moved.needRows() * CatalogueLook.current().needRow() <= moved.needBottom(),
+                    "with a title of " + title.size() + " lines every need row of the 3 x 3 recipe stays in the card");
+        });
         require(texts.stream().noneMatch(text -> text.contains("..")), "no title is cut with dots, it draws " + texts);
 
         context.runOnClient(client -> {
@@ -1531,10 +1592,15 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             client.gui.setScreen(null);
             client.gui.setScreen(craftingScreen(client));
             requireRemembered(panelOf(shown(client)), "the crafting table");
-            CatalogueState kept = panelOf(shown(client)).state();
-            kept.setQuery("");
-            kept.toggleCraftableOnly();
-            kept.clear();
+            // What leaving a world does: the next panel is as a new client's.
+            CatalogueScreens.resetState();
+            client.gui.setScreen(null);
+            client.gui.setScreen(new InventoryScreen(ClientSession.player(client)));
+            CatalogueState fresh = panelOf(shown(client)).state();
+            require(fresh.query().isEmpty(), "after a reset the search is empty, got '" + fresh.query() + "'");
+            require(!fresh.craftableOnly(), "after a reset the switch is off");
+            require(fresh.lookup() == null, "after a reset nothing is looked up");
+            require(fresh.page(3) == 0, "after a reset the catalogue is on its first page");
             client.gui.setScreen(null);
         });
         CatalogueScene.openInventory(context);

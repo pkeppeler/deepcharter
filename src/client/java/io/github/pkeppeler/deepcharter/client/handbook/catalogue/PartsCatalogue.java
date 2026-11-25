@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -103,8 +104,19 @@ public final class PartsCatalogue {
 
     /** Whether {@code item} is craftable now only at a crafting table: every recipe that is makes needs the 3 x 3 grid. */
     public boolean tableOnly(Item item, StackedItemContents contents, Bench bench) {
-        return craftableRecipes(item, contents, bench).allMatch(KnownRecipe::needsTable)
-                && craftable(item, contents, bench);
+        List<KnownRecipe> now = craftableRecipes(item, contents, bench).toList();
+        return !now.isEmpty() && now.stream().allMatch(KnownRecipe::needsTable);
+    }
+
+    /** Every item {@link #tableOnly} holds for: worked out once for a whole catalogue, not for each cell drawn. */
+    public Set<Item> tableOnlyItems(StackedItemContents contents, Bench bench) {
+        Set<Item> items = new HashSet<>();
+        for (Item item : items()) {
+            if (tableOnly(item, contents, bench)) {
+                items.add(item);
+            }
+        }
+        return items;
     }
 
     private Stream<KnownRecipe> craftableRecipes(Item item, StackedItemContents contents, Bench bench) {
