@@ -81,13 +81,9 @@ public final class CataloguePanel {
     /** The recipe shown as a ghost over the crafting grid, with the slots the player cannot fill marked, or null. */
     private @Nullable Ghost ghost;
     /** Why the fill switch did nothing, drawn over the recipe console for {@link #STATUS_TICKS}, or null. */
-    private @Nullable String fillStatus;
-
-    private int statusTicks;
+    private @Nullable Note fillNote;
     /** The last fill press the server has not yet been seen to answer, or null. */
     private @Nullable Pressed pressed;
-    /** What the card showed when the note was made: the note goes when this changes. */
-    private @Nullable CardShows statusFor;
     /** What the player holds, grid included, as of the last tick: what the fill switch weighs a recipe against. */
     private StackedItemContents fillContents = new StackedItemContents();
 
@@ -100,8 +96,11 @@ public final class CataloguePanel {
     private record CardShows(
             @Nullable RecipeDisplayId recipe, @Nullable Item item, CatalogueState.@Nullable Mode mode) {}
 
-    /** A fill press waiting for the server: the recipe asked for, the grid as it was, and the ticks left to wait. */
-    private record Pressed(KnownRecipe recipe, List<ItemStack> before, int ticksLeft) {}
+    /** A fill press waiting for the server: the recipe asked for, the grid as it was, and the tick it is judged at. */
+    private record Pressed(KnownRecipe recipe, List<ItemStack> before, int judgedAt) {}
+
+    /** A note about the fill switch: what it says, what the card showed when it was made (it goes when that changes), and the tick it ends at. */
+    private record Note(String message, CardShows shows, int endsAt) {}
 
     /** A recipe's ghost: where each of its cells goes in the grid and which of those the player lacks. */
     private record Ghost(KnownRecipe recipe, List<RecipeFill.Placed> cells, Set<Integer> missing) {}
@@ -254,8 +253,8 @@ public final class CataloguePanel {
 
     void tick() {
         ticks++;
-        if (statusTicks > 0 && --statusTicks == 0) {
-            fillStatus = null;
+        if (fillNote != null && ticks >= fillNote.endsAt()) {
+            fillNote = null;
         }
         refresh();
         dropStale();
@@ -269,8 +268,7 @@ public final class CataloguePanel {
         if (waiting == null) {
             return;
         }
-        if (waiting.ticksLeft() > 1) {
-            pressed = new Pressed(waiting.recipe(), waiting.before(), waiting.ticksLeft() - 1);
+        if (ticks < waiting.judgedAt()) {
             return;
         }
         pressed = null;
@@ -317,9 +315,8 @@ public final class CataloguePanel {
     /** Takes away the ghost and the note that no longer fit what is on the screen: another recipe, panels put away, or a fit that is not the ghost's. */
     private void dropStale() {
         CardShows now = cardShows();
-        if (fillStatus != null && !now.equals(statusFor)) {
-            fillStatus = null;
-            statusTicks = 0;
+        if (fillNote != null && !now.equals(fillNote.shows())) {
+            fillNote = null;
         }
         Ghost shownGhost = ghost;
         if (shownGhost != null
@@ -609,7 +606,7 @@ public final class CataloguePanel {
     /** Why the last press of the fill switch did nothing, or null. */
     // test-seam: the client test reads the note over the recipe console
     public @Nullable String fillStatus() {
-        return fillStatus;
+        return fillNote == null ? null : fillNote.message();
     }
 
     /** The grid slots (indexes of the menu's input slots) the ghost marks as missing, or none when no ghost is shown. */
@@ -650,7 +647,7 @@ public final class CataloguePanel {
                 pressed = new Pressed(
                         recipe,
                         gridSlots().stream().map(slot -> slot.getItem().copy()).toList(),
-                        FILL_WAIT_TICKS);
+                        ticks + FILL_WAIT_TICKS);
                 MultiPlayerGameMode mode = Minecraft.getInstance().gameMode;
                 if (mode != null) {
                     mode.handlePlaceRecipe(
@@ -667,9 +664,7 @@ public final class CataloguePanel {
 
     /** Shows {@code message} over the recipe console for a while. */
     private void note(String message) {
-        fillStatus = message;
-        statusFor = cardShows();
-        statusTicks = STATUS_TICKS;
+        fillNote = new Note(message, cardShows(), ticks + STATUS_TICKS);
     }
 
     /** How many of each item the player holds, the items in the grid included: the server takes the grid back before it places. */
@@ -740,10 +735,11 @@ public final class CataloguePanel {
 
     /** The note about the fill switch in a strip over the foot of the recipe glass, in the name strip's look, a name's width at most. */
     private void drawFillStatus(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look) {
-        String message = fillStatus;
-        if (message == null) {
+        Note shown = fillNote;
+        if (shown == null) {
             return;
         }
+        String message = shown.message();
         CrtTuning crt = CrtTuning.current();
         Rect glass = now.recipeGlass();
         int inset = look.nameStripPad() + 1;
