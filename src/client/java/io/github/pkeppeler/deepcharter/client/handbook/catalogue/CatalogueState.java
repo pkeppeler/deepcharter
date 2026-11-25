@@ -9,7 +9,7 @@ import net.minecraft.world.item.Item;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What the catalogue is set to, for the client session: the search, the craftable-now filter, the page, the favourites row's scroll, the recipe lookup and its history, and whether the panels are put away.
+ * What the catalogue is set to, for the client session: the search, the craftable-now filter, the page, the favourites row's scroll, the recipe lookup and its history, whether the console shows the recipe or its total materials, and whether the panels are put away.
  * No drawing and no input here, so the rules of the filter and the lookup are testable on their own.
  *
  * <p>The history is EMI's: each lookup the player leaves (for another item, for the other mode, or put away) is remembered with the recipe
@@ -35,6 +35,10 @@ public final class CatalogueState {
     private int favouriteOffset;
     private boolean hidden;
     private @Nullable Lookup lookup;
+    /** Whether the console shows the total materials of its recipe instead of the recipe; any other lookup turns it off. */
+    private boolean materials;
+    /** The first row of the total materials shown. */
+    private int materialsOffset;
     /** The lookups left, newest first. */
     private final Deque<Lookup> history = new ArrayDeque<>();
 
@@ -120,6 +124,35 @@ public final class CatalogueState {
     public void clear() {
         remember(lookup);
         lookup = null;
+        showRecipe();
+    }
+
+    /** Whether the console shows the total materials of the recipe it shows ({@link MaterialsTree}) instead of the recipe. */
+    public boolean materials() {
+        return materials;
+    }
+
+    /** Switches the console between the recipe and its total materials; with nothing looked up there is nothing to switch. */
+    public void toggleMaterials() {
+        if (lookup != null) {
+            materials = !materials;
+            materialsOffset = 0;
+        }
+    }
+
+    /** The first row of the total materials shown, kept inside {@code total} rows of which {@code rows} fit. */
+    public int materialsOffset(int total, int rows) {
+        materialsOffset = Math.clamp(materialsOffset, 0, Math.max(0, total - rows));
+        return materialsOffset;
+    }
+
+    public void scrollMaterials(int delta) {
+        materialsOffset = Math.max(0, materialsOffset + delta);
+    }
+
+    private void showRecipe() {
+        materials = false;
+        materialsOffset = 0;
     }
 
     public @Nullable Lookup lookup() {
@@ -138,6 +171,7 @@ public final class CatalogueState {
         }
         remember(now);
         lookup = new Lookup(item, mode, 0);
+        showRecipe();
     }
 
     /** Adds {@code left} to the history, unless it is the page already newest there, and lets the oldest go past {@link #HISTORY_DEPTH}. */
@@ -168,6 +202,7 @@ public final class CatalogueState {
             return false;
         }
         lookup = previous;
+        showRecipe();
         return true;
     }
 
@@ -191,6 +226,7 @@ public final class CatalogueState {
         int count = found(catalogue).size();
         int index = count == 0 ? 0 : Math.floorMod(now.index() + delta, count);
         lookup = new Lookup(now.item(), now.mode(), index);
+        materialsOffset = 0;
     }
 
     /** The recipes the lookup lists; none when nothing is looked up or the charter knows none. */

@@ -163,8 +163,9 @@ public record MaterialsTree(Node root, List<Material> materials) {
         /** The first known recipe of {@code item} whose every cell can take something not being made on this branch, or null. */
         private @Nullable KnownRecipe recipeFor(Item item) {
             for (KnownRecipe recipe : known.apply(item)) {
-                if (recipe.needs().stream().allMatch(need -> need.choices().stream()
-                        .anyMatch(choice -> !choice.is(item) && !branch.contains(choice.getItem())))) {
+                if (recipe.needs().stream()
+                        .allMatch(need -> need.choices().stream()
+                                .anyMatch(choice -> !choice.is(item) && !branch.contains(choice.getItem())))) {
                     return recipe;
                 }
             }

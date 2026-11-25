@@ -12,8 +12,10 @@ import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -29,7 +31,7 @@ import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The recipe console: the recipes or uses {@link CatalogueState} has looked up, the back knob and the SPEC SHEET switch on its deck, the
+ * The recipe console: the recipes or uses {@link CatalogueState} has looked up, or the shown recipe's total materials (M), the back knob and the SPEC SHEET switch on its deck, the
  * fill switch under them, and a star at the end of the title for the favourite of the item it is titled with. {@link CataloguePanel}
  * stands it beside the inventory and {@link RecipeConsoleScreen} puts it on a screen of its own over a container that has no catalogue;
  * both ask it where a thing is and what a click does, and it keeps what the charter knows and the player's favourites for both, so the
@@ -56,6 +58,9 @@ final class RecipeConsole {
 
     /** How the fill switch is drawn: its legend, whether its lever is thrown, and whether a press does anything. */
     record FillSwitch(String legend, boolean on, boolean active) {}
+
+    /** The rows of the total materials that fit, from the one scrolled to, and how many more there are below them. */
+    private record MaterialsPage(List<MaterialsTree.Material> shown, int more) {}
 
     private final CatalogueState state;
     private final Font font;
@@ -160,6 +165,14 @@ final class RecipeConsole {
         CatalogueLook look = CatalogueLook.current();
         Card card = card(base);
         List<Hit> hits = new ArrayList<>();
+        if (state.materials()) {
+            List<MaterialsTree.Material> shown =
+                    materialsPage(card, materials(recipe)).shown();
+            for (int i = 0; i < shown.size(); i++) {
+                hits.add(new Hit(shown.get(i).item(), materialCell(card, look, i)));
+            }
+            return hits;
+        }
         for (int i = 0; i < recipe.cells().size(); i++) {
             ItemStack stack = cycled(recipe.cells().get(i));
             if (!stack.isEmpty()) {
@@ -254,6 +267,8 @@ final class RecipeConsole {
         if (recipe == null) {
             String none = text(lookup.mode() == CatalogueState.Mode.RECIPES ? "none.recipes" : "none.uses");
             dim(graphics, font, fit(font, none, width), card.left(), card.stationY());
+        } else if (state.materials()) {
+            drawMaterials(graphics, card, look, materials(recipe));
         } else {
             dim(graphics, font, fit(font, recipe.station(), width), card.left(), card.stationY());
             drawRecipe(graphics, card, look, lookup, recipe, hit, crt);
@@ -359,6 +374,92 @@ final class RecipeConsole {
             int y = card.needTop() + rows * look.needRow() - look.needRow();
             String more = "+" + (needs.size() - rows);
             dim(graphics, font, more, card.right() - termWidth(font, more), y + look.needTextY());
+        }
+    }
+
+    /** The total materials of one craft of {@code recipe}, less what the player holds. */
+    private MaterialsTree materials(KnownRecipe recipe) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return MaterialsTree.of(
+                recipe, catalogue::recipesFor, player == null ? Map.of() : stock(player.getInventory()));
+    }
+
+    /** What the player holds, by item, as the have/need rows count it: the armour and the offhand left out. */
+    private static Map<Item, Integer> stock(Inventory inventory) {
+        Map<Item, Integer> stock = new HashMap<>();
+        for (ItemStack stack : inventory.getNonEquipmentItems()) {
+            if (!stack.isEmpty()) {
+                stock.merge(stack.getItem(), stack.getCount(), Integer::sum);
+            }
+        }
+        return stock;
+    }
+
+    /** How many rows of materials fit on {@code card}: from the top of the recipe grid down to the bottom of the have/need rows. */
+    private static int materialRows(Card card, CatalogueLook look) {
+        return Math.max(0, (card.needBottom() - card.gridY()) / look.needRow());
+    }
+
+    /** The rows of {@code tree} shown: as many as fit from the one scrolled to, the last row saying how many more when some are left. */
+    private MaterialsPage materialsPage(Card card, MaterialsTree tree) {
+        List<MaterialsTree.Material> all = tree.materials();
+        int rows = materialRows(card, CatalogueLook.current());
+        int offset = state.materialsOffset(all.size(), rows);
+        int end = Math.min(all.size(), offset + rows);
+        if (end < all.size()) {
+            end--;
+        }
+        end = Math.max(offset, end);
+        return new MaterialsPage(all.subList(offset, end), all.size() - end);
+    }
+
+    private static Rect materialCell(Card card, CatalogueLook look, int row) {
+        return new Rect(card.left(), card.gridY() + row * look.needRow(), ICON, ICON);
+    }
+
+    /**
+     * The total materials in place of the recipe: a heading where the station stands (or that the player holds everything), then a row
+     * for each item, its icon and have/need, and how many are short at the right, glowing; the last row says how many more the wheel
+     * shows.
+     */
+    private void drawMaterials(GuiGraphicsExtractor graphics, Card card, CatalogueLook look, MaterialsTree tree) {
+        int width = card.right() - card.left();
+        if (tree.allHeld()) {
+            glow(graphics, font, fit(font, text("materials.all"), width), card.left(), card.stationY());
+        } else {
+            dim(graphics, font, fit(font, text("materials"), width), card.left(), card.stationY());
+        }
+        MaterialsPage page = materialsPage(card, tree);
+        int textX = card.left() + look.needTextX();
+        for (int i = 0; i < page.shown().size(); i++) {
+            MaterialsTree.Material material = page.shown().get(i);
+            Rect cell = materialCell(card, look, i);
+            graphics.item(new ItemStack(material.item()), cell.x(), cell.y());
+            int y = cell.y() + look.needTextY();
+            String figures = material.have() + "/" + material.need();
+            if (material.shortBy() == 0) {
+                dim(graphics, font, fit(font, figures, card.right() - textX), textX, y);
+                continue;
+            }
+            String shortBy = "-" + material.shortBy();
+            int shortX = card.right() - termWidth(font, shortBy);
+            glow(graphics, font, fit(font, figures, shortX - termWidth(font, " ") - textX), textX, y);
+            glow(graphics, font, shortBy, shortX, y);
+        }
+        if (page.more() > 0) {
+            String more = Component.translatable("deepcharter.catalogue.materials.more", page.more())
+                    .getString();
+            int y = card.gridY() + page.shown().size() * look.needRow() + look.needTextY();
+            dim(graphics, font, fit(font, more, width), card.left(), y);
+        }
+    }
+
+    /** The wheel over the console: through the total materials while they are shown, else through the recipes found. */
+    void scroll(int direction) {
+        if (state.materials()) {
+            state.scrollMaterials(direction);
+        } else {
+            state.step(catalogue, direction);
         }
     }
 

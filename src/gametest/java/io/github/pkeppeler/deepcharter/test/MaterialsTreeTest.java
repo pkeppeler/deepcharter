@@ -133,7 +133,11 @@ public class MaterialsTreeTest {
         KnownRecipe chest = recipe(helper, Items.CHEST, 1, times(PLANKS, 8));
         MaterialsTree tree = MaterialsTree.of(chest, known(chest), stock(Items.OAK_PLANKS, 3));
         expectMaterials(helper, tree, "a chest from eight planks, three held", Items.OAK_PLANKS, 8, 3);
-        expect(helper, tree.root().crafts() == 1, "the shown recipe is made once, got %s", tree.root().crafts());
+        expect(
+                helper,
+                tree.root().crafts() == 1,
+                "the shown recipe is made once, got %s",
+                tree.root().crafts());
         expect(helper, !tree.allHeld(), "five planks short is not everything held");
         helper.succeed();
     }
@@ -217,8 +221,7 @@ public class MaterialsTreeTest {
     public void anIntermediateIsMadeByItsFirstKnownRecipe(GameTestHelper helper) {
         KnownRecipe ladder = recipe(helper, Items.LADDER, 3, times(STICK, 6));
         KnownRecipe oakSticks = recipe(helper, Items.STICK, 4, PLANKS, PLANKS);
-        KnownRecipe spruceSticks =
-                recipe(helper, Items.STICK, 4, item(Items.SPRUCE_PLANKS), item(Items.SPRUCE_PLANKS));
+        KnownRecipe spruceSticks = recipe(helper, Items.STICK, 4, item(Items.SPRUCE_PLANKS), item(Items.SPRUCE_PLANKS));
         expectMaterials(
                 helper,
                 MaterialsTree.of(ladder, known(ladder, oakSticks, spruceSticks), stock()),

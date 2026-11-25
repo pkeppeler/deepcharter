@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -68,6 +69,59 @@ public final class CatalogueScene {
                         .recipesFor(ScannerRegistry.SCANNER_UNIT)
                         .isEmpty());
         return panel;
+    }
+
+    /**
+     * Empties the player's inventory, gives two iron and two copper, lets the server teach what they teach (ADR 0070), then replaces the
+     * client's recipe book with the {@link CatalogueFixtures} and {@link CatalogueFixtures#sundries()} and starts the catalogue afresh.
+     * Opens the inventory and returns its catalogue, whose recipes and stock a test then knows exactly.
+     */
+    public static CataloguePanel knowFixturesHoldingIronAndCopper(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
+        singleplayer.getServer().runCommand("clear @p");
+        singleplayer.getServer().runCommand("give @p minecraft:iron_ingot 2");
+        singleplayer.getServer().runCommand("give @p minecraft:copper_ingot 2");
+        ClientWait.until(
+                context,
+                "two iron and two copper",
+                client -> ClientSession.player(client).getInventory().countItem(Items.IRON_INGOT) == 2
+                        && ClientSession.player(client).getInventory().countItem(Items.COPPER_INGOT) == 2);
+        openInventory(context);
+        CataloguePanel taught = panel(context);
+        ClientWait.until(
+                context,
+                "the recipes the iron and the copper teach",
+                client -> !taught.catalogue().usesOf(Items.IRON_INGOT).isEmpty()
+                        && !taught.catalogue().usesOf(Items.COPPER_INGOT).isEmpty());
+        context.waitTicks(
+                5); // tick-wait: anything else the server teaches for them arrives before the book is replaced
+        context.runOnClient(client -> {
+            ClientRecipeBook book = ClientSession.player(client).getRecipeBook();
+            CatalogueFixtures.fill(book);
+            book.add(CatalogueFixtures.sundries());
+            book.rebuildCollections();
+            CatalogueScreens.resetState();
+        });
+        context.setScreen(() -> null);
+        openInventory(context);
+        CataloguePanel panel = panel(context);
+        ClientWait.until(
+                context,
+                "the catalogue of the fixtures",
+                client -> !panel.catalogue().recipesFor(Items.LADDER).isEmpty()
+                        && panel.catalogue().recipesFor(Items.IRON_BLOCK).isEmpty());
+        return panel;
+    }
+
+    /** Hovers {@code item}'s cell in the catalogue's grid, on the page it is on, and presses {@code key}. */
+    public static void pressOn(ClientGameTestContext context, CataloguePanel panel, Item item, int key) {
+        CatalogueLayout layout = layout(context, panel);
+        int perPage = layout.shelf().perPage();
+        int index = indexOf(context, panel, item);
+        showPage(context, panel, perPage, index / perPage);
+        hover(context, gridCell(layout, index % perPage));
+        RealInput.key(context, key, 0);
     }
 
     /** Empties the search and the lookup. The caller waits a tick or two for the list to follow. */

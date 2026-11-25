@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
  * The recipe console on a screen of its own, over a container screen that has no catalogue beside it (a chest, a barrel, the creative
  * inventory): where R and U on one of its slots show the item's recipes or uses ({@link SlotLookup}), as EMI's recipe screen does. It
  * moves the client's {@link CatalogueState}, so its history and the catalogue's are one. R, U and A on its cells, Backspace and the back
- * knob, the star and the wheel work as on the catalogue's console. Escape, the inventory key, the title and a click off the console go
+ * knob, M, the star and the wheel work as on the catalogue's console. Escape, the inventory key, the title and a click off the console go
  * back to the screen under it; a container stays open on the server the whole time. A click goes back on its release, which the console
  * keeps: the screen under it would take a release it never saw pressed as the end of a click, and drop or place a stack on the cursor.
  *
@@ -112,6 +112,10 @@ public final class RecipeConsoleScreen extends Screen {
             state.back();
             return true;
         }
+        if (CatalogueKeys.MATERIALS.matches(event)) {
+            state.toggleMaterials();
+            return true;
+        }
         CatalogueLayout.Console now = layout;
         RecipeConsole.Hit hit = now == null ? null : console.hitAt(now.card(), mouseX, mouseY);
         if (hit != null && CatalogueKeys.RECIPES.matches(event)) {
@@ -177,7 +181,7 @@ public final class RecipeConsoleScreen extends Screen {
     public boolean mouseScrolled(double x, double y, double horizontal, double vertical) {
         CatalogueLayout.Console now = layout;
         if (now != null && vertical != 0 && now.casing().contains(x, y)) {
-            state.step(console.catalogue(), vertical > 0 ? -1 : 1);
+            console.scroll(vertical > 0 ? -1 : 1);
             return true;
         }
         return false;
