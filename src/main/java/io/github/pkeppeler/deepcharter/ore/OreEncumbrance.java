@@ -140,7 +140,7 @@ public final class OreEncumbrance {
 
     /**
      * Shows the weight as an endless status whose level is the units of ore carried, one level for each {@code massScale} of mass and no
-     * more than the cap allows. It is set only when it differs, because every change is a packet, and it is put back on the next tick
+     * more than the cap allows. It shows its icon and no swirl particles (the icon says it). It is set only when it differs, because every change is a packet, and it is put back on the next tick
      * if milk or a command cleared it.
      */
     private static void showStatus(ServerPlayer player, double slowdown) {
@@ -155,7 +155,7 @@ public final class OreEncumbrance {
         int level = Math.max(1, (int) Math.round(slowdown / (tuning.slowdownPerMass() * tuning.massScale())));
         if (shown == null || shown.getAmplifier() != level - 1) {
             player.addEffect(new MobEffectInstance(
-                    OreRegistry.OVERBURDENED, MobEffectInstance.INFINITE_DURATION, level - 1, false, true, true));
+                    OreRegistry.OVERBURDENED, MobEffectInstance.INFINITE_DURATION, level - 1, false, false, true));
         }
     }
 

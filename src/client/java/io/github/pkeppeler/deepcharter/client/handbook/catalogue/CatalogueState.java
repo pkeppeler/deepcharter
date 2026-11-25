@@ -7,7 +7,7 @@ import net.minecraft.world.item.Item;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What the catalogue is set to, for the client session: the search, the craftable-now filter, the page, the favourites row's scroll and the recipe lookup.
+ * What the catalogue is set to, for the client session: the search, the craftable-now filter, the page, the favourites row's scroll, the recipe lookup and whether the panels are put away.
  * No drawing and no input here, so the rules of the filter and the lookup are testable on their own.
  */
 public final class CatalogueState {
@@ -24,6 +24,7 @@ public final class CatalogueState {
     private boolean craftableOnly;
     private int page;
     private int favouriteOffset;
+    private boolean hidden;
     private @Nullable Lookup lookup;
 
     public String query() {
@@ -36,6 +37,15 @@ public final class CatalogueState {
             this.query = query;
             this.page = 0;
         }
+    }
+
+    /** Whether the player has put the panels away: the screens open without them, until the button or the key brings them back. */
+    public boolean hidden() {
+        return hidden;
+    }
+
+    public void toggleHidden() {
+        hidden = !hidden;
     }
 
     public boolean craftableOnly() {

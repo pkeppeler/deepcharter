@@ -5,7 +5,10 @@ import static io.github.pkeppeler.deepcharter.test.support.GlassCorners.requireC
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.Bench;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueFavourites;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
@@ -23,6 +26,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
@@ -43,6 +47,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -65,6 +70,7 @@ import net.minecraft.client.input.InputQuirks;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.CraftingMenu;
@@ -286,7 +292,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         Minecraft client = Minecraft.getInstance();
         CatalogueLook look = CatalogueLook.current();
         CatalogueLayout layout = Objects.requireNonNull(
-                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight),
+                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight, true),
                 "the default window has the panels");
         Rect plate = layout.shelf().craftable();
         int textX = plate.x()
@@ -310,7 +316,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         Minecraft client = Minecraft.getInstance();
         CatalogueLook look = CatalogueLook.current();
         CatalogueLayout layout = Objects.requireNonNull(
-                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight),
+                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight, true),
                 "the default window has the panels");
         CatalogueLayout.Card card = layout.card();
         CatalogueLayout.Card lowered = card.lowered(2 * client.font.lineHeight, look.needRow());
@@ -500,13 +506,21 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     // ---------------------------------------------------------------- the layout
 
     private static Optional<CatalogueLayout> layoutAt(int width, int height) {
-        return Optional.ofNullable(CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), 9));
+        return Optional.ofNullable(
+                CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), 9, true));
     }
 
-    /** The shortest GUI the consoles draw at: they stand level with the inventory. */
+    /**
+     * The shortest GUI the consoles draw at on the inventory: level with the image, under a row of its effects as bare
+     * icons.
+     */
     private static int shortest() {
-        CatalogueLook look = CatalogueLook.current();
-        return look.consoleHeight() + 2 * look.screenEdge();
+        return CatalogueLayout.shortest(CatalogueLook.current(), CatalogueLayout.EffectRow.ICONS);
+    }
+
+    /** The shortest GUI the consoles draw at on a screen with no effects, the crafting table: level with the image. */
+    private static int shortestWithoutEffects() {
+        return CatalogueLayout.shortest(CatalogueLook.current(), CatalogueLayout.EffectRow.NONE);
     }
 
     private static void thePanelsFitAtEveryWindowSize() {
@@ -519,6 +533,16 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(layoutAt(WIDTH, shortest()).isPresent(), "the panels draw in a window just tall enough, " + shortest());
         require(layoutAt(WIDTH, shortest() - 1).isEmpty(), "and are hidden, not clipped, one pixel shorter");
         require(shortest() <= HEIGHT, "the default window is tall enough for the panels");
+        require(
+                CatalogueLayout.shortest(CatalogueLook.current(), CatalogueLayout.EffectRow.TILES) <= HEIGHT,
+                "and for the panels with a row of effect tiles over them");
+        CatalogueLook look = CatalogueLook.current();
+        require(
+                CatalogueLayout.of(WIDTH, shortestWithoutEffects(), look, CrtTuning.current(), 9, false) != null
+                        && CatalogueLayout.of(WIDTH, shortestWithoutEffects() - 1, look, CrtTuning.current(), 9, false)
+                                == null,
+                "a screen with no effects (the crafting table) needs no room for a row of them, only "
+                        + shortestWithoutEffects());
         for (int height : new int[] {shortest(), HEIGHT, 270}) {
             for (int width : new int[] {NARROWEST, 426, WIDTH, 480, 854}) {
                 requireFits(layoutAt(width, height).orElseThrow(), width, height);
@@ -562,7 +586,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 shelf.vents(),
                 at);
         CatalogueLayout.Card card = layout.card();
-        requireHardware(layout.recipe(), layout.recipeGlass(), List.of(card.spec()), card.vents(), at);
+        requireHardware(layout.recipe(), layout.recipeGlass(), List.of(card.spec(), card.fill()), List.of(), at);
         for (Rect rect : List.of(shelf.search(), shelf.favourites())) {
             require(inside(rect, glass), "a part " + rect + " leaves the catalogue's glass " + glass + at);
         }
@@ -700,6 +724,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         hoveringAnInventorySlotWorksToo(context, singleplayer, screen, panel);
         theRecipePanelCanBePutAway(context, screen, panel);
         theSpecSheetButtonCallsItsHook(context, panel);
+        clickingAnItemOpensItsRecipesAndNeverASheet(context, panel);
         theSearchFiltersAndKeepsItsKeys(context, screen, panel);
         theSearchTakesWhatSdlDelivers(context, screen, panel, "on the inventory screen");
         favouritesStarAndPersist(context, screen, panel);
@@ -708,6 +733,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         thePanelsFollowTheWindowSize(context, screen);
         theCatalogueOpensAtAnItem(context);
         openingAnItemFromTheHandbookComesBackToIt(context);
+        aQuestBookCardItemOpensItsRecipesOnAClick(context);
         openingAnItemInAWindowTooSmallLeavesTheHandbookOpen(context);
         theCraftingTableHasTheCatalogueToo(context);
         CatalogueScene.openInventory(context);
@@ -803,6 +829,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                     layout.shelf().next(),
                     layout.shelf().counter()));
             plates.add(layout.card().spec());
+            plates.add(layout.card().fill());
             for (Drawn text : drawn) {
                 Rect box = new Rect(
                         text.box().x(),
@@ -844,6 +871,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                         "the spec sheet label lies inside its button " + when);
                 KnownRecipe shownRecipe = panel.state().shownRecipe(panel.catalogue());
                 if (shownRecipe != null) {
+                    require(
+                            labelInside(drawn, panel.fillLegend(), layout.card().fill()),
+                            "the fill switch's legend '" + panel.fillLegend() + "' lies inside its plate " + when);
                     require(
                             texts.contains(shownRecipe.station()),
                             "the recipe panel names the station '" + shownRecipe.station() + "' " + when + ", it draws "
@@ -1195,6 +1225,160 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         }
     }
 
+    /**
+     * A real left click on an item opens its recipes, wherever the item is (a catalogue cell, a favourite, an ingredient or the result in
+     * the recipe card), and never a spec sheet: the sheet comes only from the SPEC SHEET button and the server's first-craft pop-up.
+     */
+    private static void clickingAnItemOpensItsRecipesAndNeverASheet(
+            ClientGameTestContext context, CataloguePanel panel) {
+        UUID player =
+                context.computeOnClient(client -> ClientSession.player(client).getUUID());
+        for (Item left : CatalogueFavourites.shared().items(player)) {
+            CatalogueFavourites.shared().toggle(player, left);
+        }
+        CatalogueFavourites.shared().toggle(player, Items.IRON_INGOT);
+        try {
+            context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.USES));
+            context.waitTicks(2);
+            CatalogueLayout layout = CatalogueScene.layout(context, panel);
+            CatalogueLook look = CatalogueLook.current();
+            CatalogueLayout.Shelf shelf = layout.shelf();
+            // A cell of the grid, a favourite, and the first ingredient and the result of the drill head's 3 x 3
+            // recipe.
+            Item other = context.computeOnClient(client -> panel.shownItems().stream()
+                    .filter(item -> item != DRILL && item != Items.IRON_INGOT)
+                    .findFirst()
+                    .orElseThrow());
+            Rect cell = CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, other));
+            Rect favourite = new Rect(shelf.left(), shelf.favouritesY(), look.slotSize(), look.slotSize());
+            clickAndExpectRecipes(context, panel, cell, other, "a catalogue cell");
+            context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.USES));
+            context.waitTicks(2);
+            clickAndExpectRecipes(context, panel, favourite, Items.IRON_INGOT, "a favourite");
+            // The server teaches its own recipe of the drill head, which sorts before the fixtures: read the recipe the
+            // card shows.
+            context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES));
+            context.waitTicks(2);
+            KnownRecipe shown = Objects.requireNonNull(
+                    context.computeOnClient(client -> panel.state().shownRecipe(panel.catalogue())),
+                    "the drill head has a recipe");
+            int at = 0;
+            while (shown.cells().get(at).size() != 1) {
+                at++;
+            }
+            Item ingredientItem = shown.cells().get(at).getFirst().getItem();
+            CatalogueLayout.Card card = cardShown(context, panel);
+            clickAndExpectRecipes(
+                    context,
+                    panel,
+                    new Rect(
+                            card.left() + (at % shown.columns()) * look.recipeCell(),
+                            card.gridY() + (at / shown.columns()) * look.recipeCell(),
+                            look.slotSize(),
+                            look.slotSize()),
+                    ingredientItem,
+                    "an ingredient in the recipe card");
+            // Iron's uses: the result of the recipe shown is not iron, so a click that did nothing could not pass.
+            context.runOnClient(
+                    client -> panel.state().look(panel.catalogue(), Items.IRON_INGOT, CatalogueState.Mode.USES));
+            context.waitTicks(2);
+            Item made = context.computeOnClient(
+                    client -> Objects.requireNonNull(panel.state().shownRecipe(panel.catalogue()), "a recipe uses iron")
+                            .results()
+                            .getFirst()
+                            .getItem());
+            require(made != Items.IRON_INGOT, "setup: the recipe shown makes something else than iron");
+            CatalogueLayout.Card madeCard = cardShown(context, panel);
+            clickAndExpectRecipes(
+                    context,
+                    panel,
+                    new Rect(
+                            madeCard.left() + look.resultX(),
+                            madeCard.gridY() + look.resultY(),
+                            look.slotSize(),
+                            look.slotSize()),
+                    made,
+                    "the result in the recipe card");
+        } finally {
+            CatalogueFavourites.shared().toggle(player, Items.IRON_INGOT);
+            context.runOnClient(client -> panel.state().clear());
+        }
+    }
+
+    /** The recipe console's content as drawn: moved down by each line the title takes beyond the first. */
+    private static CatalogueLayout.Card cardShown(ClientGameTestContext context, CataloguePanel panel) {
+        int titleLines = context.computeOnClient(client -> panel.titleLines().size());
+        return CatalogueScene.layout(context, panel)
+                .card()
+                .lowered(
+                        (titleLines - 1) * context.computeOnClient(client -> client.font.lineHeight),
+                        CatalogueLook.current().needRow());
+    }
+
+    private static void clickAndExpectRecipes(
+            ClientGameTestContext context, CataloguePanel panel, Rect cell, Item item, String where) {
+        CatalogueScene.hover(context, cell);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        CatalogueState.Lookup now = context.computeOnClient(client -> lookedAt(panel.state()));
+        require(
+                now.item() == item && now.mode() == CatalogueState.Mode.RECIPES,
+                "a click on " + where + " opens the recipes of " + item + ", got " + now);
+        require(
+                context.computeOnClient(client -> panel.sheetItem()) == null
+                        && context.computeOnClient(client -> client.gui.screen() instanceof InventoryScreen),
+                "a click on " + where + " opens no spec sheet");
+    }
+
+    /** The handbook's index card of a quest step lists the items it needs; a click on one opens that item's recipes in the catalogue. */
+    private static void aQuestBookCardItemOpensItsRecipesOnAClick(ClientGameTestContext context) {
+        context.setScreen(() -> null);
+        context.waitTicks(2);
+        Identifier directive = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/test/card_item");
+        Identifier chapterId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "card_item_chapter");
+        HandbookChapter chapter = new HandbookChapter(
+                1,
+                Component.literal("Chapter 1"),
+                List.of(new HandbookChapter.Entry(
+                        directive,
+                        Component.literal("Make a drill head."),
+                        List.of(new HandbookChapter.Need(BuiltInRegistries.ITEM.getKey(DRILL), 1)))));
+        List<HandbookPage> pages = HandbookPages.of(Map.of(chapterId, chapter), Set.of());
+        HandbookScreen[] opened = new HandbookScreen[1];
+        context.setScreen(() -> {
+            opened[0] = new HandbookScreen(pages, id -> false, id -> {}, List.of());
+            return opened[0];
+        });
+        context.runOnClient(client -> {
+            HandbookScreen screen = opened[0];
+            int page = 0;
+            while (!(pages.get(page) instanceof HandbookPage.Chapter)) {
+                page++;
+            }
+            screen.goTo(page);
+            for (int tick = 0; tick < HandbookScreenTuning.current().flipTicks(); tick++) {
+                screen.tick();
+            }
+        });
+        Rect box = Objects.requireNonNull(
+                context.computeOnClient(client -> opened[0].indexCardItemBox(1, DRILL)),
+                "the chapter's index card lists the drill head it needs");
+        CatalogueScene.hover(context, box);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        ClientWait.screen(context, InventoryScreen.class);
+        context.waitTicks(3);
+        CataloguePanel panel = CatalogueScene.panel(context);
+        CatalogueState.Lookup lookup = context.computeOnClient(client -> lookedAt(panel.state()));
+        require(
+                lookup.item() == DRILL && lookup.mode() == CatalogueState.Mode.RECIPES,
+                "a click on a quest-book index card's item opens its recipes, got " + lookup);
+        require(context.computeOnClient(client -> panel.sheetItem()) == null, "and no spec sheet");
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        context.waitTicks(1);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(context, "the handbook back", client -> client.gui.screen() == opened[0]);
+        context.setScreen(() -> null);
+    }
+
     private static void theRecipePanelCanBePutAway(
             ClientGameTestContext context, AbstractContainerScreen<?> screen, CataloguePanel panel) {
         context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES));
@@ -1275,7 +1459,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                                     client.getWindow().getGuiScaledHeight(),
                                     CatalogueLook.current(),
                                     CrtTuning.current(),
-                                    client.font.lineHeight)
+                                    client.font.lineHeight,
+                                    true)
                             == null),
                     "setup: the window is too small for the consoles at GUI scale 4");
             context.runOnClient(client -> CatalogueScreens.open(DRILL));

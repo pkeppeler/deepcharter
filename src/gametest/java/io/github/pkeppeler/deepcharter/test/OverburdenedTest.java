@@ -77,12 +77,12 @@ public class OverburdenedTest {
                 }
                 if (effect.getAmplifier() != amplifierOf(OreType.EINSTEINIUM)
                         || !effect.isInfiniteDuration()
-                        || !effect.isVisible()
+                        || effect.isVisible()
                         || !effect.showIcon()) {
                     walker.leave();
                     throw failure(
                             helper,
-                            "carrying Einsteinium should show an endless, visible status of amplifier %s, got %s",
+                            "carrying Einsteinium should show an endless, particle-free status of amplifier %s, got %s",
                             amplifierOf(OreType.EINSTEINIUM),
                             effect);
                 }
