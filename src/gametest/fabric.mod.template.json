@@ -17,6 +17,9 @@
 			"io.github.pkeppeler.deepcharter.test.support.TestPacks",
 			"io.github.pkeppeler.deepcharter.test.support.WorldDataGuard"
 		],
+		"client": [
+			"io.github.pkeppeler.deepcharter.test.support.QuietTransmissions"
+		],
 		"fabric-gametest": [
 			"@SERVER_TESTS@"
 		],
