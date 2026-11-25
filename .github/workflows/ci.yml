@@ -39,6 +39,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: false
+      # TEMPORARY (#1365 proof, reverted before review): Central unreachable, so the build must resolve through the mirror.
+      - name: "TEMPORARY: block repo.maven.apache.org"
+        if: github.head_ref == '1365-ci-central-mirror'
+        shell: bash
+        run: |
+          printf '0.0.0.0 repo.maven.apache.org\n:: repo.maven.apache.org\n' | sudo tee -a /etc/hosts
+          if curl -sS -m 10 -o /dev/null https://repo.maven.apache.org/maven2/junit/junit/4.13.2/junit-4.13.2.pom; then
+            echo "::error::Central is still reachable"; exit 1
+          fi
+          echo "Central is unreachable, as intended"
+          rm -rf "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2" # no restored dependency: every one is downloaded
       # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
       # if a repository fails to answer (#1358).
       - run: tools/ci-gradle-resolve.sh build

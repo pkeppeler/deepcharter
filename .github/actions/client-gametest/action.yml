@@ -40,6 +40,17 @@ runs:
     # failure only, clears the module cache and retries once with --refresh-dependencies; when a
     # repository fails to answer (Maven Central's 429s, #1358), it waits and retries with backoff. It is
     # work the client run would do anyway, moved ahead of it, so a healthy run costs about nothing.
+    # TEMPORARY (#1365 proof, reverted before review): Central unreachable, so the build must resolve through the mirror.
+    - name: "TEMPORARY: block repo.maven.apache.org"
+      if: github.head_ref == '1365-ci-central-mirror'
+      shell: bash
+      run: |
+        printf '0.0.0.0 repo.maven.apache.org\n:: repo.maven.apache.org\n' | sudo tee -a /etc/hosts
+        if curl -sS -m 10 -o /dev/null https://repo.maven.apache.org/maven2/junit/junit/4.13.2/junit-4.13.2.pom; then
+          echo "::error::Central is still reachable"; exit 1
+        fi
+        echo "Central is unreachable, as intended"
+        rm -rf "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2" # no restored dependency: every one is downloaded
     - name: Resolve dependencies
       shell: bash
       run: tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime
