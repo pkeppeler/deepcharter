@@ -89,6 +89,8 @@ final class StructurePlan {
     }
 
     /** A barrel that fills from {@code table} when it is first opened, the same for the same site every time. */
+    // const-param: u, y and v are the structure's own drawing coordinates, as in set() and roll(); each structure puts
+    // its barrel where its plan has room, and the wreck bay is the only one with a locker so far
     void lootBarrel(int u, int y, int v, ResourceKey<LootTable> table) {
         set(u, y, v, Blocks.BARREL.defaultBlockState().setValue(BarrelBlock.FACING, Direction.UP));
         BlockPos pos = inChunk(u, y, v);
