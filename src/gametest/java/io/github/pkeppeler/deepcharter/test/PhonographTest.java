@@ -232,6 +232,8 @@ public class PhonographTest {
 
     @GameTest(maxTicks = 100)
     public void aPlayerBeyondTheRangeIsNeverSentTheStartNorTheStop(GameTestHelper helper) {
+        // A stop names no place, and tests run side by side in one level: a far player is a listener of a neighbour's
+        // phonograph, and that one's stop of the same sound would land here. No other test plays this recording.
         PhonographBlockEntity phonograph = place(helper);
         MockPlayer near = join(helper, "near");
         MockPlayer far = join(helper, "far");
@@ -239,14 +241,14 @@ public class PhonographTest {
         Vec3 at = Vec3.atBottomCenterOf(helper.absolutePos(PLACE));
         double range = SoundTuning.DEFAULT.phonographRange();
         far.teleportTo(level, at.add(range + 6, 1, 0), 0f, 0f);
-        use(helper, near, cylinder(Recording.OTHELLO), false);
+        use(helper, near, cylinder(Recording.VOLTA_COUNTING), false);
         use(helper, near, ItemStack.EMPTY, false);
         expect(helper, !phonograph.isPlaying(), "stopped");
         helper.runAfterDelay(DRAIN_TICKS, () -> {
             expect(helper, startsAtMine(helper, far).isEmpty(), "a player past %s blocks heard the start", range);
             expect(
                     helper,
-                    !far.soundsStopped().contains(id(DeepSound.PHONOGRAPH_OTHELLO)),
+                    !far.soundsStopped().contains(id(DeepSound.PHONOGRAPH_VOLTA_COUNTING)),
                     "a player who never heard the start was sent the stop: %s",
                     far.soundsStopped());
             expect(helper, startsAtMine(helper, near).size() == 1, "the near player heard the start once");
