@@ -35,15 +35,18 @@ import org.slf4j.LoggerFactory;
  * Claims' hardpan, Stone Benches' packed shale and Deep Claim's black shale, with a gap of open space after each.
  * Measured at the cells' size on screen, once with large cells (tier 1) and once with the smallest the game draws (tier
  * 2), each stratum's cell must be clearly apart from the next one's, so a contact shows as you descend, and from open
- * space, so a cave in it still reads as a cave. /
+ * space, so a cave in it still reads as a cave.
+ */
 public class ClaimStrataScannerClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger("ClaimStrataScanner");
     private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
     private static final int RGB = 0xFFFFFF;
     private static final int ROW = ScannerHudTest.GOLD_UP;
     private static final int FIRST = 1;
-    /** How far apart (RGB distance of the cells' mean colours, of 441) two neighbouring strata must be for a contact to
-     * show. */
+    /**
+     * How far apart (RGB distance of the cells' mean colours, of 441) two neighbouring strata must be for a contact to
+     * show.
+     */
     private static final double STRATA_DISTANCE = 20;
     /** How far from open space's colour a stratum's cell must be for a cave in it to read. */
     private static final double AIR_DISTANCE = 25;
@@ -59,8 +62,10 @@ public class ClaimStrataScannerClientTest implements FabricClientGameTest {
         return FIRST + 2 * index;
     }
 
-    /** Mounts the first player on a new pod with a scanner of {@code tier} and builds the row, each cell walled in
-     * stone so it stays put. */
+    /**
+     * Mounts the first player on a new pod with a scanner of {@code tier} and builds the row, each cell walled in stone
+     * so it stays put.
+     */
     private static void buildRow(ClientGameTestContext context, TestServerContext server, int tier) {
         ScannerHudTest.mountFirstPlayer(server, tier);
         ClientWait.until(

@@ -41,7 +41,8 @@ import org.slf4j.LoggerFactory;
  * packed shale, Deep Claim's black shale) with a contact that waves either side of the zone's edge; first-generation
  * shafts dressed as the lore has them (LORE section 11); and every one of these features writing inside its own chunk
  * (ADR 0088). The world is {@code deepcharter:campaign_full}, the shipped overworld, sampled in a square of chunks far
- * from the colony and the structure sites. /
+ * from the colony and the structure sites.
+ */
 public class TheClaimTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(TheClaimTest.class);
     private static final String FULL = "deepcharter:campaign_full";
@@ -56,8 +57,10 @@ public class TheClaimTest {
 
     private static final CampaignBands.Band LAYER = CampaignBands.LAYER_1;
 
-    /** The surface band's underground that the caves reach: under the deepest ground (the great pit's floor) and over
-     * its floor. */
+    /**
+     * The surface band's underground that the caves reach: under the deepest ground (the great pit's floor) and over
+     * its floor.
+     */
     private static final int SURFACE_CAVES_LOW = CampaignBands.SURFACE.minY() + 8;
 
     private static final int SURFACE_CAVES_HIGH = 16;
@@ -67,7 +70,8 @@ public class TheClaimTest {
     /**
      * Rows either side of a zone's edge where the contact between two strata may lie: the material rule lays it 6 under
      * the edge, moved 5 down to 6 up by the contact noise and raised by the column's surface depth, and a thin bed of
-     * the lower rock lies up to 4 above it. /
+     * the lower rock lies up to 4 above it.
+     */
     private static final int CONTACT_BELOW = 12;
 
     private static final int CONTACT_ABOVE = 12;
@@ -80,7 +84,8 @@ public class TheClaimTest {
     /**
      * Caves open up with depth. The share of open blocks under each column's rock top grows from the surface band's
      * underground, where there are a few, through Topsoil Claims to the Deep Claim, and stays small everywhere:
-     * pockets, fissures and passages, nothing like layer 3's halls. /
+     * pockets, fissures and passages, nothing like layer 3's halls.
+     */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void cavesOpenUpWithDepth(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -137,7 +142,8 @@ public class TheClaimTest {
     /**
      * Each zone has its own rock. Away from the edges, every block of layer rock in a zone, and the host of every ore,
      * is the zone's stratum; the contact between two strata lies in a band round the zone's edge and waves from column
-     * to column, so it reads as rock and not as a ruled line. /
+     * to column, so it reads as rock and not as a ruled line.
+     */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void eachZoneHasItsOwnRock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -215,7 +221,8 @@ public class TheClaimTest {
     /**
      * The first generation's shafts are there and dressed as the lore has them: a lunch pail at the foot of each, a
      * ladder, timber of stalk planks and candle stubs burnt out in niches, and, in some, a prayer card; and some of
-     * them cut through a cave. /
+     * them cut through a cave.
+     */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void abandonedShaftsAreDressedAsTheLoreHasThem(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -297,7 +304,8 @@ public class TheClaimTest {
     /**
      * Each of the Claim's features stays in its chunk (ADR 0088): every position each placement step picks for a chunk
      * lies in that chunk, and every block a shaft may write, its shell included, lies in the chunk its placement
-     * picked. /
+     * picked.
+     */
     @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
     public void theClaimsFeaturesStayInTheirChunks(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -373,8 +381,10 @@ public class TheClaimTest {
                 : null;
     }
 
-    /** The zone whose interior holds {@code y}, clear of the band round each edge where a contact may lie; empty in a
-     * band. */
+    /**
+     * The zone whose interior holds {@code y}, clear of the band round each edge where a contact may lie; empty in a
+     * band.
+     */
     private static Optional<Integer> interiorZone(int y) {
         for (int zone = 1; zone < Zones.COUNT; zone++) {
             int edge = Zones.span(LAYER.minY(), LAYER.height(), zone - 1).low();
@@ -387,7 +397,8 @@ public class TheClaimTest {
 
     /**
      * The highest block of layer 1's rock in the column, under the open room at the top of the band; the search starts
-     * under the surface band's floor, whose last rows may reach into the band. /
+     * under the surface band's floor, whose last rows may reach into the band.
+     */
     private static int rockTop(ChunkAccess chunk, BlockPos column) {
         for (int y = LAYER.topExclusive() - 8; y >= LAYER.minY(); y--) {
             if (!chunk.getBlockState(column.atY(y)).isAir()) {

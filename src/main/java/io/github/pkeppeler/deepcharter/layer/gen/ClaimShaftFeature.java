@@ -69,8 +69,10 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
                     ? DataResult.success(shaft)
                     : DataResult.error(() -> "min_depth " + shaft.minDepth + " is over max_depth " + shaft.maxDepth));
 
-    /** Blocks from the axis to the hollow's wall (1), to the timber and the niches (2) and to the shell that is sealed
-     * (3). */
+    /**
+     * Blocks from the axis to the hollow's wall (1), to the timber and the niches (2) and to the shell that is sealed
+     * (3).
+     */
     private static final int HOLLOW = 1;
 
     private static final int WALL = 2;
@@ -92,8 +94,10 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
     /** Rows of rubble in the plug of a shaft whose top is in rock. */
     private static final int PLUG = 2;
 
-    /** The chance a block of timber has rotted away, a rung has gone, and a niche holds a prayer card by zone (top
-     * first). */
+    /**
+     * The chance a block of timber has rotted away, a rung has gone, and a niche holds a prayer card by zone (top
+     * first).
+     */
     private static final double ROTTED = 0.2;
 
     private static final double RUNG_GONE = 0.12;
@@ -119,15 +123,18 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
     /**
      * Where a shaft goes: its axis column, its top row (the origin's, before {@link #place} looks for the rock), its
      * rows of hollow and the way its drift runs from the foot. The axis is {@link #REACH} blocks clear of the chunk's
-     * sides, and the drift runs towards the chunk's middle, so {@link #bounds} lies in the chunk of the origin. /
+     * sides, and the drift runs towards the chunk's middle, so {@link #bounds} lies in the chunk of the origin.
+     */
     public record Plan(BlockPos top, int depth, Direction drift) {
         /** The lowest row of hollow. */
         int bottom() {
             return top.getY() - depth + 1;
         }
 
-        /** Every block the shaft may read or write: its hollow, timber, niches, drift, plug and floor, and the shell
-         * round them. */
+        /**
+         * Every block the shaft may read or write: its hollow, timber, niches, drift, plug and floor, and the shell
+         * round them.
+         */
         public BoundingBox bounds() {
             int x = top.getX();
             int z = top.getZ();
@@ -188,8 +195,10 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
         return true;
     }
 
-    /** Natural rock (the layer's, an ore, a gas pocket, rubble): what a shaft is dug through. Air, lava, growth and
-     * placed blocks are not. */
+    /**
+     * Natural rock (the layer's, an ore, a gas pocket, rubble): what a shaft is dug through. Air, lava, growth and
+     * placed blocks are not.
+     */
     private static boolean isRock(BlockState state) {
         return state.is(HazardBlocks.NATURAL_ROCK);
     }
@@ -344,8 +353,10 @@ public record ClaimShaftFeature(int layer, int minDepth, int maxDepth) implement
             }
         }
 
-        /** A niche two blocks wide and two tall in {@code wall}, at row {@code y}: a candle stub, and a prayer card or
-         * a second stub. */
+        /**
+         * A niche two blocks wide and two tall in {@code wall}, at row {@code y}: a candle stub, and a prayer card or a
+         * second stub.
+         */
         private void niche(int x, int y, int z, Direction wall) {
             Direction along = wall.getClockWise();
             int nx = x + wall.getStepX() * WALL;

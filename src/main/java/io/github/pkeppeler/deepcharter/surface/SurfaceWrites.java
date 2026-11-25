@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.surface;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
+import net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
@@ -35,45 +36,47 @@ public final class SurfaceWrites {
 
     /**
      * A pair {@link #judge} ruled on, and the tag generation it read. The heightmap predicates test tags (a hash lookup
-     * each), which cost more than the lock this path skips, so verdicts are kept. /
-     * private record Verdict(int generation, BlockState was, BlockState now, boolean neutral) {}
-     *
-     * /** The most verdicts kept: worldgen writes a few dozen pairs, so more means a leak, and the table starts again. */
+     * each), which cost more than the lock this path skips, so verdicts are kept.
+     */
+    private record Verdict(int generation, BlockState was, BlockState now, boolean neutral) {}
+
+    /** The most verdicts kept: worldgen writes a few dozen pairs, so more means a leak, and the table starts again. */
     private static final int MOST_PAIRS = 64;
 
     /**
      * Every pair judged so far, oldest first, shared by every worker thread and replaced whole when a pair is added. A
      * column writes a few pairs in turn (layer 1's strata, #1277) and each thread writes its own chunk's, so the one
      * last pair this used to keep missed on most writes and doubled layer 1's cost; a table read through one volatile
-     * field is as cheap as that one pair on a hit. /
-     * private static volatile Verdict[] known = new Verdict[0];
-     *
-     * private SurfaceWrites() {}
-     *
-     * public static void init() {
-     * CommonLifecycleEvents.TAGS_LOADED.register((registries, client) -> TAGS_GENERATION.incrementAndGet());
-     * }
-     *
-     * // test-seam: SurfaceWritesTest generates with the fast path off to compare, and restores the value this returns.
-     * public static boolean setEnabled(boolean on) {
-     * boolean was = enabled;
-     * enabled = on;
-     * return was;
-     * }
-     *
-     * // test-seam: SurfaceWritesTest counts the fast writes of one chunk position, so concurrent worldgen elsewhere
-     * // cannot move it.
-     * public static void watch(@Nullable ChunkPos pos) {
-     * watched = pos;
-     * WATCHED_WRITES.reset();
-     * }
-     *
-     * // test-seam: the fast writes into the watched chunk position since watch.
-     * public static long watchedWrites() {
-     * return WATCHED_WRITES.sum();
-     * }
-     *
-     * /** What {@code chunk.setBlockState(pos, state)} returns and does, by the cheaper way when that is provably the same. */
+     * field is as cheap as that one pair on a hit.
+     */
+    private static volatile Verdict[] known = new Verdict[0];
+
+    private SurfaceWrites() {}
+
+    public static void init() {
+        CommonLifecycleEvents.TAGS_LOADED.register((registries, client) -> TAGS_GENERATION.incrementAndGet());
+    }
+
+    // test-seam: SurfaceWritesTest generates with the fast path off to compare, and restores the value this returns.
+    public static boolean setEnabled(boolean on) {
+        boolean was = enabled;
+        enabled = on;
+        return was;
+    }
+
+    // test-seam: SurfaceWritesTest counts the fast writes of one chunk position, so concurrent worldgen elsewhere
+    // cannot move it.
+    public static void watch(@Nullable ChunkPos pos) {
+        watched = pos;
+        WATCHED_WRITES.reset();
+    }
+
+    // test-seam: the fast writes into the watched chunk position since watch.
+    public static long watchedWrites() {
+        return WATCHED_WRITES.sum();
+    }
+
+    /** What {@code chunk.setBlockState(pos, state)} returns and does, by the cheaper way when that is provably the same. */
     public static @Nullable BlockState set(ChunkAccess chunk, BlockPos pos, BlockState state) {
         LevelChunkSection section = enabled ? fastSection(chunk, pos, state) : null;
         if (section == null) {

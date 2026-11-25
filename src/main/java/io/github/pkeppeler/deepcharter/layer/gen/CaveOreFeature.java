@@ -143,8 +143,10 @@ public record CaveOreFeature(int layer, List<List<Weighted>> zones, int minSize,
         return !placed.isEmpty();
     }
 
-    /** The first block of the layer's rock beside open space in the column at {@code at}'s row, looking at the six
-     * neighbours; null for none. */
+    /**
+     * The first block of the layer's rock beside open space in the column at {@code at}'s row, looking at the six
+     * neighbours; null for none.
+     */
     private static @Nullable BlockPos faceAt(ChunkAccess chunk, ChunkPos chunkPos, BlockPos at) {
         if (!chunk.getBlockState(at).isAir()) {
             return null;

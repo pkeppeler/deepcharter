@@ -42,10 +42,12 @@ import org.jspecify.annotations.Nullable;
  * <ul> <li>a cave pocket in the surface band's underground, the first caves on the way down; <li>the longest open run
  * in a cave of each zone of layer 1; <li>a cut face across each contact between two strata: Topsoil Claims' hardpan
  * over Stone Benches' packed shale, and that over Deep Claim's black shale; <li>the abandoned shaft nearest the start:
- * up from its foot, at a candle niche, and down it from part way up. </ul>
+ * up from its foot, at a candle niche, and down it from part way up.
+ * </ul>
  *
  * The player is a spectator. Places are found in the generated world near the start column, so nothing is staged but
- * the cut faces and the lamps. /
+ * the cut faces and the lamps.
+ */
 public class ClaimTourScenario extends EvidenceScenario {
     private static final int X = 3000;
     private static final int Z = 3000;
@@ -57,8 +59,10 @@ public class ClaimTourScenario extends EvidenceScenario {
     private static final double LOOK = 10;
     private static final int ROOF = 10;
     private static final double EYE = 1.62;
-    /** A cut face: blocks to each side of the start column, rows each way from the contact, and how deep the cut runs
-     * south. */
+    /**
+     * A cut face: blocks to each side of the start column, rows each way from the contact, and how deep the cut runs
+     * south.
+     */
     private static final int CUT_HALF_WIDTH = 34;
 
     private static final int CUT_HALF_HEIGHT = 18;
@@ -161,7 +165,8 @@ public class ClaimTourScenario extends EvidenceScenario {
     /**
      * Lamps: light blocks at the eye and along the line of sight, as a miner carries them, and a ring of them two
      * blocks short of what the view looks at, as the Company would hang them on a wall; in open cells only, so nothing
-     * in view is replaced. /
+     * in view is replaced.
+     */
     private static List<BlockPos> lamps(ServerLevel level, View view) {
         List<BlockPos> placed = new ArrayList<>();
         Vec3 step = view.target().subtract(view.eye()).normalize();
@@ -242,7 +247,8 @@ public class ClaimTourScenario extends EvidenceScenario {
 
     /**
      * The view down the longest run of open cells along an axis at eye height, from a floor between rows {@code low}
-     * and {@code high} within {@link #SEARCH_CHUNKS} of the start, looking along it and a little down. /
+     * and {@code high} within {@link #SEARCH_CHUNKS} of the start, looking along it and a little down.
+     */
     private static View caveView(ServerLevel level, int low, int high) {
         @Nullable BlockPos best = null;
         Direction bestDirection = Direction.SOUTH;
@@ -282,8 +288,10 @@ public class ClaimTourScenario extends EvidenceScenario {
         return new View(eye, eye.add(ahead).add(0, -1.5, 0));
     }
 
-    /** A cave has a roof: rock within {@value #ROOF} blocks over the feet, so the open room over the rock's top is no
-     * cave. */
+    /**
+     * A cave has a roof: rock within {@value #ROOF} blocks over the feet, so the open room over the rock's top is no
+     * cave.
+     */
     private static boolean roofed(ServerLevel level, BlockPos feet) {
         for (int up = 2; up <= ROOF; up++) {
             if (!level.getBlockState(feet.above(up)).isAir()) {
@@ -293,8 +301,10 @@ public class ClaimTourScenario extends EvidenceScenario {
         return false;
     }
 
-    /** Cuts a room south of the start column across the contact near {@code edge}, so its north face shows the strata
-     * either side. */
+    /**
+     * Cuts a room south of the start column across the contact near {@code edge}, so its north face shows the strata
+     * either side.
+     */
     private static void cut(ServerLevel level, int edge) {
         RoomCarver.carve(
                 level,
@@ -327,8 +337,9 @@ public class ClaimTourScenario extends EvidenceScenario {
         return best;
     }
 
-    /** The shaft's axis column at the pail's row: the middle of the 3 x 3 hollow next to the ladder nearest the pail.
-     * */
+    /**
+     * The shaft's axis column at the pail's row: the middle of the 3 x 3 hollow next to the ladder nearest the pail.
+     */
     private static BlockPos shaftAxis(ServerLevel level, BlockPos pail) {
         for (BlockPos at : BlockPos.betweenClosed(pail.offset(-6, 0, -6), pail.offset(6, 6, 6))) {
             BlockState state = level.getBlockState(at);

@@ -48,8 +48,10 @@ public record StrataRule(
     /** The most rows the noise moves a contact either way. */
     private static final int MAX_SHIFT = 6;
 
-    /** One contact: the upper rock starts at {@code y} (before the shifts), and {@code bed} is the thin bed of the
-     * lower rock in it. */
+    /**
+     * One contact: the upper rock starts at {@code y} (before the shifts), and {@code bed} is the thin bed of the lower
+     * rock in it.
+     */
     public record Contact(int y, BlockState upper, BlockState bed) {
         static final Codec<Contact> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                         Codec.INT.fieldOf("y").forGetter(Contact::y),
