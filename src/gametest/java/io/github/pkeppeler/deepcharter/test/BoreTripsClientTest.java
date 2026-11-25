@@ -151,8 +151,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                 ClientWait::describe);
         context.waitTicks(20);
         // The climb: the mock steps off (a Mole has one seat, and the crossing recreates the pod with that one), then
-        // the pod
-        // rises through layer 2's ceiling.
+        // the pod rises through layer 2's ceiling.
         two.server().runOnServer(server -> {
             two.mock().player().stopRiding();
             ServerPlayer real = SeamPodScene.player(server, clientId);

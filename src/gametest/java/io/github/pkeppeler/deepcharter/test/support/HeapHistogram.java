@@ -54,12 +54,7 @@ public final class HeapHistogram {
         Map<String, Long> counts = new HashMap<>();
         classes.forEach(name -> counts.put(name, 0L));
         try {
-            String histogram = (String) ManagementFactory.getPlatformMBeanServer()
-                    .invoke(
-                            new ObjectName("com.sun.management:type=DiagnosticCommand"),
-                            "gcClassHistogram",
-                            new Object[] {new String[0]},
-                            new String[] {String[].class.getName()});
+            String histogram = gcClassHistogram();
             // A row is "num: instances bytes class (module)"; a class is named by its binary name.
             for (String line : histogram.lines().toList()) {
                 List<String> row = ROW.splitToList(line.trim());
@@ -73,6 +68,15 @@ public final class HeapHistogram {
         return counts;
     }
 
+    private static String gcClassHistogram() throws JMException {
+        return (String) ManagementFactory.getPlatformMBeanServer()
+                .invoke(
+                        new ObjectName("com.sun.management:type=DiagnosticCommand"),
+                        "gcClassHistogram",
+                        new Object[] {new String[0]},
+                        new String[] {String[].class.getName()});
+    }
+
     /** Writes the histogram of the heap as it stands before {@code test} starts, when {@link #DIR_ENV} is set. */
     public static synchronized void record(String test) {
         String dir = System.getenv(DIR_ENV);
@@ -80,12 +84,7 @@ public final class HeapHistogram {
             return;
         }
         try {
-            String histogram = (String) ManagementFactory.getPlatformMBeanServer()
-                    .invoke(
-                            new ObjectName("com.sun.management:type=DiagnosticCommand"),
-                            "gcClassHistogram",
-                            new Object[] {new String[0]},
-                            new String[] {String[].class.getName()});
+            String histogram = gcClassHistogram();
             List<String> lines = histogram.lines().toList();
             List<String> kept = new ArrayList<>();
             // A header line and a rule, then one row per class (its module in brackets after the name), then a "Total"
