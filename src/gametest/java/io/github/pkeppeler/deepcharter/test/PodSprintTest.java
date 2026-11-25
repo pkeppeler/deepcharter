@@ -183,7 +183,7 @@ public class PodSprintTest {
         return new Vec3(X + 4.5, FLOOR, Z + LANE * lane + 0.5);
     }
 
-    /** A column in every chunk of the box from ({@code x1}, {@code z1}) to ({@code x2}, {@code z2}), for the far-chunk wait. */
+    /** A column in every chunk of the box from ({@code x1}, {@code z1}) to ({@code x2}, {@code z2}), for the chunk wait. */
     private static List<BlockPos> columns(int x1, int x2, int z1, int z2) {
         List<BlockPos> columns = new ArrayList<>();
         for (int chunkX = x1 >> 4; chunkX <= x2 >> 4; chunkX++) {
@@ -195,9 +195,9 @@ public class PodSprintTest {
     }
 
     /**
-     * The outrun rule and the boost, every shipped chassis at every engine tier it takes, on the ground and in the air:
-     * a clean engine's cruise beats a player's sprint and sprint-jump, the sprint is about 40% faster, and it burns more
-     * fuel a block. Sprint with W never drills on open ground, and the pilot is told once.
+     * The outrun rule and the boost, every shipped chassis at every engine tier it takes, on the ground and in the
+     * air: a clean engine's cruise beats a player's sprint and sprint-jump, the sprint is about 40% faster, and it burns
+     * more fuel a block. Sprint with W never drills on open ground, and the pilot is told once.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void cruiseOutrunsAPlayerOnFootAndSprintIsFasterForMoreFuelABlock(GameTestHelper helper) {

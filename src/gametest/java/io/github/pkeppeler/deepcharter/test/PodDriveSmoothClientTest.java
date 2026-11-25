@@ -37,12 +37,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The real client pilots one pod and watches a mock
- * player's pod beside it, over flat ground (at the cruise and at the sprint's boost, #1276), climbing on the rotor, and drilling into a
- * wall. Every client tick the test samples what a
- * renderer would draw, the pod's position at four partial ticks, for the pilot (the camera follows the player riding) and for the
- * watched pod, and asserts the drawn position never steps backward along the drive and never steps further in one frame than the
- * pod's speed allows, and that a flat drive is never still for a tick it should be moving.
+ * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The real client pilots one pod and
+ * watches a mock player's pod beside it, over flat ground (at the cruise and at the sprint's boost, #1276), climbing on
+ * the rotor, and drilling into a wall. Every client tick the test samples what a renderer would draw, the pod's
+ * position at four partial ticks, for the pilot (the camera follows the player riding) and for the watched pod, and
+ * asserts the drawn position never steps backward along the drive and never steps further in one frame than the pod's
+ * speed allows, and that a flat drive is never still for a tick it should be moving.
  *
  * <p>The harness ticks the server and client in lockstep, so the network is as regular as it never is in play. {@link PacketJitter}
  * makes it irregular the way a real connection is: every third client tick the client handles no pod move and the next tick

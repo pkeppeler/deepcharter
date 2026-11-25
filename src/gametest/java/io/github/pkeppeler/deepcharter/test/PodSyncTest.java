@@ -46,7 +46,7 @@ public class PodSyncTest {
     private static final int CLAIM_AFTER_TICKS = 5;
 
     private static final double EPSILON = 1e-6;
-    /** How far a hacked client claims the vehicle went in one tick: five blocks, where the pod's own top speed is under one. */
+    /** How far a hacked client claims the vehicle went in one tick: five blocks, far past the pod's top speed. */
     private static final double CLAIMED_STEP = 5;
 
     /** Lays the floor and awaits entity ticking in every chunk under it; the result is true once they all tick (#1083). */

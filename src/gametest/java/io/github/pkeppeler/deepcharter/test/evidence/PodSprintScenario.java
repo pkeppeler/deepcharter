@@ -157,7 +157,7 @@ public class PodSprintScenario extends EvidenceScenario {
         context.runOnClient(client -> client.gui.toastManager().clear());
     }
 
-    /** The running player's and the pod's positions on the server, read on one tick so a race compares like with like. */
+    /** The running player's and the pod's positions on the server, read on one tick so a race is a fair one. */
     private static Vec3[] positions(TestSingleplayerContext singleplayer, int podId) {
         return singleplayer.getServer().computeOnServer(server -> new Vec3[] {
             server.getPlayerList().getPlayers().getFirst().position(),
