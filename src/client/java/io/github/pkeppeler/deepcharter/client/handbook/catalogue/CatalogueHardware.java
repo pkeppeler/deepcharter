@@ -250,8 +250,8 @@ final class CatalogueHardware {
         graphics.fill(rect.right() - 1, rect.y(), rect.right(), rect.bottom(), c.casingDarkColor());
         int cell = look.buttonCell();
         int gap = look.buttonCellGap();
-        int columns = 3;
-        int rows = 2;
+        int columns = look.buttonColumns();
+        int rows = look.buttonRows();
         int width = columns * cell + (columns - 1) * gap;
         int height = rows * cell + (rows - 1) * gap;
         int left = rect.x() + (rect.width() - width) / 2;

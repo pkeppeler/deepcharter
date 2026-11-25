@@ -30,28 +30,25 @@ public final class CatalogueToggleButton extends Button {
         refreshTooltip();
     }
 
-    /** The tooltip's words: the catalogue's name and the key, or the name alone while the key is unbound. */
-    static String tooltipFor(String key, boolean bound) {
-        return bound
-                ? Component.translatable("deepcharter.catalogue.button", key).getString()
-                : Component.translatable("deepcharter.catalogue.button.unbound").getString();
-    }
-
     // test-seam: the client test reads the tooltip's words, which a rebind must change
     public String tooltipText() {
         return tooltipText;
     }
 
     private void refreshTooltip() {
-        String now = tooltipFor(
-                CatalogueKeys.TOGGLE.getTranslatedKeyMessage().getString(), !CatalogueKeys.TOGGLE.isUnbound());
+        String now = CatalogueKeys.TOGGLE.isUnbound()
+                ? Component.translatable("deepcharter.catalogue.button.unbound").getString()
+                : Component.translatable(
+                                "deepcharter.catalogue.button",
+                                CatalogueKeys.TOGGLE.getTranslatedKeyMessage().getString())
+                        .getString();
         if (!now.equals(tooltipText)) {
             tooltipText = now;
             setTooltip(Tooltip.create(Component.literal(now)));
         }
     }
 
-    /** The base class paints the vanilla sprite first; the fill here is opaque and covers it. */
+    /** The whole face: the base class draws no sprite of its own, so nothing of vanilla's button shows at the edges. */
     @Override
     protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         refreshTooltip();

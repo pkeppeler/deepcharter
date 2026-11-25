@@ -3,32 +3,50 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueFavourites;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueToggleButton;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetOpener;
+import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
+import net.minecraft.client.gui.screens.inventory.FurnaceScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.input.InputQuirks;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.CraftingMenu;
+import net.minecraft.world.inventory.FurnaceMenu;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import org.lwjgl.sdl.SDLKeyboard;
 
 /**
  * Client GameTest for #1282, the parts catalogue's show/hide button: it stands in the recipe-book button's place on the inventory and the
@@ -38,8 +56,10 @@ import net.minecraft.world.inventory.Slot;
  */
 public class CatalogueToggleClientTest implements FabricClientGameTest {
     /** The game's left button: what a vanilla button answers to. */
+    private static final Item DRILL = HangarParts.DRILL_HEAD;
+
     private static final int LEFT_MOUSE = InputConstants.MOUSE_BUTTON_LEFT;
-    /** The button the parts catalogue's panels read as a plain click, for the search field. */
+    /** The button the parts catalogue's panels read as a plain click, for the search field. Switch to InputConstants.MOUSE_BUTTON_LEFT once #1304 lands. */
     private static final int PANEL_CLICK = 0;
     /** The default window, 854 by 480 at GUI scale 2. */
     private static final int WIDTH = 427;
@@ -49,6 +69,8 @@ public class CatalogueToggleClientTest implements FabricClientGameTest {
     private static final int NARROWEST = 425;
     /** An item icon, and so a slot's hit area. */
     private static final int ICON = 16;
+    /** Pages assumed for turning the catalogue's page: more than the page the test leaves it on. */
+    private static final int PAGES = 99;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -65,6 +87,11 @@ public class CatalogueToggleClientTest implements FabricClientGameTest {
             theTooltipNamesTheKeyBoundNow(context);
             theKeyTogglesButNotWhileSearching(context);
             theChoiceIsRemembered(context);
+            theHiddenPanelsSwallowNothing(context, singleplayer);
+            lookingAnItemUpBringsHiddenPanelsBack(context);
+            aSpecSheetWorksWhileHidden(context);
+            theNarrowFallbackKeepsVanillasBookButton(context);
+            theFurnaceHasTheButtonToo(context);
             context.setScreen(() -> null);
         }
     }
@@ -269,5 +296,203 @@ public class CatalogueToggleClientTest implements FabricClientGameTest {
             client.gui.setScreen(new InventoryScreen(ClientSession.player(client)));
         });
         require(!hidden(context), "after a reset the panels are shown");
+    }
+
+    // ---------------------------------------------------------------- hidden panels
+
+    private static void setHidden(ClientGameTestContext context, boolean hidden) {
+        context.runOnClient(client -> {
+            CatalogueState state = CatalogueScene.panelNow(client).state();
+            if (state.hidden() != hidden) {
+                state.toggleHidden();
+            }
+        });
+        context.waitTicks(1);
+    }
+
+    private static void theHiddenPanelsSwallowNothing(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        CatalogueScene.openInventory(context);
+        singleplayer.getServer().runCommand("give @p minecraft:iron_ingot 1");
+        ClientWait.until(
+                context,
+                "an iron ingot in the inventory",
+                client -> ClientSession.player(client).getInventory().contains(new ItemStack(Items.IRON_INGOT)));
+        context.waitTicks(2);
+        CataloguePanel panel = CatalogueScene.panel(context);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        UUID player =
+                context.computeOnClient(client -> ClientSession.player(client).getUUID());
+        List<Item> starred = CatalogueFavourites.shared().items(player);
+        Rect slot = context.computeOnClient(client -> {
+            for (Slot candidate : ((AbstractContainerScreen<?>) shown(client)).getMenu().slots) {
+                if (candidate.hasItem() && candidate.getItem().is(Items.IRON_INGOT)) {
+                    return new Rect(
+                            layout.inventory().x() + candidate.x,
+                            layout.inventory().y() + candidate.y,
+                            ICON,
+                            ICON);
+                }
+            }
+            throw new AssertionError("no slot holds the iron ingot");
+        });
+        // The page the catalogue was left on, so a wheel that turned it would show.
+        context.runOnClient(client -> panel.state().turn(1, PAGES));
+        setHidden(context, true);
+        try {
+            CatalogueScene.hover(context, slot);
+            require(
+                    context.computeOnClient(client -> panel.hoveredItem()) == null,
+                    "hidden panels name no item under the cursor");
+            for (int key : new int[] {InputConstants.KEY_R, InputConstants.KEY_U, InputConstants.KEY_A}) {
+                context.getInput().pressKey(key);
+                context.waitTicks(1);
+            }
+            require(
+                    context.computeOnClient(client -> panel.state().lookup()) == null,
+                    "R and U over a slot look nothing up while the panels are hidden");
+            require(
+                    CatalogueFavourites.shared().items(player).equals(starred),
+                    "A over a slot stars nothing while the panels are hidden");
+            require(hidden(context), "and the panels stay hidden");
+            sdlShortcut(context, InputConstants.KEY_F);
+            require(
+                    !context.computeOnClient(client -> panel.searchFocused()),
+                    "Ctrl+F does not focus the search of hidden panels");
+
+            CatalogueScene.hover(context, layout.shelf().search());
+            context.getInput().scroll(-1);
+            context.waitTicks(1);
+            require(
+                    context.computeOnClient(client -> panel.state().page(PAGES)) == 1,
+                    "the wheel over the hidden shelf turns no page");
+
+            CatalogueScene.hover(context, CatalogueScene.gridCell(layout, 0));
+            context.getInput().pressMouse(PANEL_CLICK);
+            CatalogueScene.hover(context, layout.shelf().craftable());
+            context.getInput().pressMouse(PANEL_CLICK);
+            CatalogueScene.hover(context, layout.shelf().search());
+            context.getInput().pressMouse(PANEL_CLICK);
+            context.waitTicks(1);
+            require(
+                    context.computeOnClient(client -> panel.state().lookup()) == null
+                            && !context.computeOnClient(client -> panel.state().craftableOnly())
+                            && !context.computeOnClient(client -> panel.searchFocused()),
+                    "a click where a cell, the switch and the search would be does nothing while hidden");
+            require(context.computeOnClient(client -> panel.state().page(PAGES)) == 1, "nor does it turn a page");
+        } finally {
+            setHidden(context, false);
+            context.runOnClient(client -> panel.state().turn(-1, PAGES));
+        }
+    }
+
+    /** Ctrl+F (Cmd+F on a Mac) as SDL delivers it: the runner's holdControl does not reach the key event's modifiers. */
+    private static void sdlShortcut(ClientGameTestContext context, int key) {
+        context.runOnClient(client -> {
+            long window = client.getWindow().handle();
+            KeyEvent event = new KeyEvent(
+                    key,
+                    SDLKeyboard.SDL_GetKeyFromScancode(key, (short) 0, false),
+                    InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER);
+            client.keyboardHandler.keyPress(window, InputConstants.PRESS, event);
+            client.keyboardHandler.keyPress(window, InputConstants.RELEASE, event);
+        });
+        context.waitTicks(1);
+    }
+
+    private static void lookingAnItemUpBringsHiddenPanelsBack(ClientGameTestContext context) {
+        CatalogueScene.openInventory(context);
+        setHidden(context, true);
+        context.runOnClient(client -> CatalogueScreens.open(DRILL));
+        context.waitTicks(1);
+        CataloguePanel panel = CatalogueScene.panel(context);
+        require(!hidden(context), "asking for an item's recipe brings the hidden panels back");
+        CatalogueState.Lookup lookup =
+                context.computeOnClient(client -> panel.state().lookup());
+        require(
+                lookup != null && lookup.item() == DRILL && lookup.mode() == CatalogueState.Mode.RECIPES,
+                "and shows that recipe, got " + lookup);
+        require(context.computeOnClient(client -> panel.showsRecipePanel()), "the recipe panel is out");
+        context.runOnClient(client -> panel.state().clear());
+    }
+
+    private static void aSpecSheetWorksWhileHidden(ClientGameTestContext context) {
+        CatalogueScene.openInventory(context);
+        CataloguePanel panel = CatalogueScene.panel(context);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        setHidden(context, true);
+        try {
+            context.runOnClient(client -> SpecSheetOpener.show(DRILL));
+            context.waitTicks(2);
+            require(
+                    context.computeOnClient(client -> panel.sheetItem()) == DRILL,
+                    "a spec sheet opens over the hidden panels");
+            String title = DRILL.getDefaultInstance().getHoverName().getString().toUpperCase(Locale.ROOT);
+            require(
+                    context.computeOnClient(client -> DrawnText.of(shown(client)).stream()
+                                    .anyMatch(drawn -> drawn.text().equals(title)))
+                            && context.computeOnClient(client -> panel.sheetGlass()) != null,
+                    "and draws its title '" + title + "'");
+            CatalogueScene.hover(context, layout.inventory());
+            context.getInput().pressMouse(PANEL_CLICK);
+            context.waitTicks(1);
+            require(
+                    context.computeOnClient(client -> panel.sheetItem()) == null,
+                    "a click puts the sheet away while the panels are hidden");
+            require(hidden(context), "and the panels are still hidden after it");
+            require(
+                    context.computeOnClient(client -> DrawnText.of(shown(client)).stream()
+                            .noneMatch(drawn -> drawn.text().equals(title))),
+                    "the sheet is no longer drawn");
+        } finally {
+            setHidden(context, false);
+        }
+    }
+
+    private static void theNarrowFallbackKeepsVanillasBookButton(ClientGameTestContext context) {
+        CatalogueScene.openInventory(context);
+        AbstractContainerScreen<?> screen =
+                context.computeOnClient(client -> (AbstractContainerScreen<?>) shown(client));
+        context.runOnClient(client -> screen.resize(NARROWEST - 1, HEIGHT));
+        context.waitTicks(2);
+        try {
+            require(
+                    context.computeOnClient(
+                                    client -> CatalogueScene.panelNow(client).layout())
+                            == null,
+                    "the panels have no room at " + (NARROWEST - 1));
+            require(
+                    context.computeOnClient(client ->
+                            Screens.getWidgets(screen).stream().noneMatch(CatalogueToggleButton.class::isInstance)),
+                    "a window with no room for the panels has no catalogue button");
+            List<AbstractWidget> book = context.computeOnClient(client -> Screens.getWidgets(screen).stream()
+                    .filter(ImageButton.class::isInstance)
+                    .toList());
+            require(
+                    !book.isEmpty() && book.stream().allMatch(button -> button.visible && button.active),
+                    "and vanilla's recipe book button is still there to use");
+        } finally {
+            context.runOnClient(client -> screen.resize(WIDTH, HEIGHT));
+            context.waitTicks(2);
+        }
+    }
+
+    private static void theFurnaceHasTheButtonToo(ClientGameTestContext context) {
+        context.setScreen(() -> null);
+        context.runOnClient(client -> {
+            Inventory inventory = ClientSession.player(client).getInventory();
+            client.gui.setScreen(new FurnaceScreen(
+                    new FurnaceMenu(0, inventory), inventory, Component.translatable("container.furnace")));
+        });
+        ClientWait.screen(context, FurnaceScreen.class);
+        context.waitTicks(3);
+        theButtonStandsClearAtEveryWindowSize(context, "the furnace");
+        Rect button = rectOf(button(context));
+        require(!hidden(context), "the furnace opens with the panels shown");
+        click(context, button, LEFT_MOUSE);
+        require(hidden(context), "the furnace's button puts the panels away");
+        click(context, rectOf(button(context)), LEFT_MOUSE);
+        require(!hidden(context), "and brings them back");
+        context.setScreen(() -> null);
     }
 }

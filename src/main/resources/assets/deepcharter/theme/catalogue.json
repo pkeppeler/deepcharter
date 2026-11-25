@@ -87,5 +87,7 @@
   "buttonWidth": 20,
   "buttonHeight": 18,
   "buttonCell": 2,
-  "buttonCellGap": 1
+  "buttonCellGap": 1,
+  "buttonColumns": 3,
+  "buttonRows": 2
 }

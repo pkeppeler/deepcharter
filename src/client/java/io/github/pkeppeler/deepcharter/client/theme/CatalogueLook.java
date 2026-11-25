@@ -56,6 +56,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param buttonHeight its height
  * @param buttonCell the side of one of the small cells drawn on the button's face
  * @param buttonCellGap pixels between those cells
+ * @param buttonColumns how many columns of cells the button's face has
+ * @param buttonRows how many rows
  */
 public record CatalogueLook(
         int maxPanelWidth,
@@ -106,7 +108,9 @@ public record CatalogueLook(
         int buttonWidth,
         int buttonHeight,
         int buttonCell,
-        int buttonCellGap) {
+        int buttonCellGap,
+        int buttonColumns,
+        int buttonRows) {
     /**
      * The casing round a glass and the hardware on it, drawn in the pack's metal greens.
      *
@@ -295,7 +299,9 @@ public record CatalogueLook(
                 d.integer("buttonWidth", 12, 64),
                 d.integer("buttonHeight", 12, 64),
                 d.integer("buttonCell", 1, 8),
-                d.integer("buttonCellGap", 0, 4));
+                d.integer("buttonCellGap", 0, 4),
+                d.integer("buttonColumns", 1, 6),
+                d.integer("buttonRows", 1, 6));
         if (look.minPanelWidth() > look.maxPanelWidth()) {
             throw d.conflict("minPanelWidth must not exceed maxPanelWidth", "minPanelWidth", "maxPanelWidth");
         }
