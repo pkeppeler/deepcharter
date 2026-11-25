@@ -1,0 +1,31 @@
+{
+  "templates": {},
+  "recipes": {
+    "block/phonograph_wood": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["timber.3", "timber.4", "timber.4", "timber.5"], "seed": 8641, "cell": 8, "octaves": 2, "dither": 0.6},
+      {"op": "speckle", "colours": ["timber.2", "timber.5"], "density": 0.05, "seed": 8642},
+      {"op": "rect", "rect": [0, 5, 16, 1], "colour": "timber.1"},
+      {"op": "rect", "rect": [0, 10, 16, 1], "colour": "timber.1"},
+      {"op": "rect", "rect": [0, 0, 16, 16], "colour": "timber.1", "outline": true},
+      {"op": "grime", "colours": ["dust.1", "dust.2"], "density": 0.12, "seed": 8643}
+    ]},
+    "block/phonograph_horn": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["brass.2", "brass.3", "brass.3", "brass.4"], "seed": 8644, "cell": 8, "octaves": 2, "dither": 0.5},
+      {"op": "speckle", "colours": ["brass.1", "brass.5"], "density": 0.06, "seed": 8645},
+      {"op": "rect", "rect": [0, 0, 16, 16], "colour": "brass.1", "outline": true},
+      {"op": "rect", "rect": [3, 2, 1, 12], "colour": "brass.5"},
+      {"op": "grime", "colours": ["rust.0", "rust.1"], "density": 0.1, "seed": 8646}
+    ]},
+    "block/phonograph_wax": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["fuel.1", "fuel.2", "fuel.2", "fuel.3"], "seed": 8647, "cell": 8, "octaves": 2, "dither": 0.5},
+      {"op": "rect", "rect": [0, 1, 16, 1], "colour": "fuel.0"},
+      {"op": "rect", "rect": [0, 4, 16, 1], "colour": "fuel.0"},
+      {"op": "rect", "rect": [0, 7, 16, 1], "colour": "fuel.0"},
+      {"op": "rect", "rect": [0, 10, 16, 1], "colour": "fuel.0"},
+      {"op": "rect", "rect": [0, 13, 16, 1], "colour": "fuel.0"}
+    ]},
+    "item/wax_cylinder": {"template": "sprite", "args": {
+      "legend": {"w": "fuel.3", "d": "fuel.0", "l": "fuel.2", "g": "fuel.1"},
+      "rows": ["", "", ".....wwwwww", "....wwddddww", "....dlllllld", "....dlllllld", "....dggggggd", "....dlllllld", "....dlllllld", "....dggggggd", "....dlllllld", "....dlllllld", "....dggggggd", "....dlllllld", ".....dddddd", ""]}}
+  }
+}

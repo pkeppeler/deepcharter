@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -48,6 +47,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
@@ -118,7 +118,9 @@ public class SurfaceTerrainTest {
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theGroundHoldsOnlyRegolithRockAndBasalt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        FarChunks.whenBlocksLoaded(
+        // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a 13 x 13
+        // square of them held the server tick (and the deadlines of the tests beside this one) for a minute (#1142).
+        FarChunks.whenReachedStatus(
                 helper,
                 FarChunks.rect(
                         level,
@@ -126,37 +128,29 @@ public class SurfaceTerrainTest {
                         SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS,
                         SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS,
                         SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS),
-                () -> theGroundHoldsOnly(helper));
+                ChunkStatus.FEATURES,
+                chunks -> theGroundHoldsOnly(helper, chunks));
     }
 
-    private static void theGroundHoldsOnly(GameTestHelper helper) {
+    private static void theGroundHoldsOnly(GameTestHelper helper, List<ChunkAccess> chunks) {
         ServerLevel level = helper.getLevel();
         LayerChain.Band surface = TestLayers.band(level, TestLayers.SURFACE);
         Set<String> found = new TreeSet<>();
-        for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
-                chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
-                chunkX++) {
-            for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
-                    chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
-                    chunkZ++) {
-                ChunkAccess chunk = Objects.requireNonNull(
-                        level.getChunkSource().getChunkNow(chunkX, chunkZ), "whenBlocksLoaded loaded the chunk");
-                LevelChunkSection[] sections = chunk.getSections();
-                for (int index = 0; index < sections.length; index++) {
-                    int sectionMinY = chunk.getSectionYFromSectionIndex(index) << 4;
-                    // The campaign level holds the layers' rock under the surface band; only the band's sections are
-                    // the surface's.
-                    if (sectionMinY < surface.minY() || sectionMinY + 15 > surface.maxY()) {
-                        continue;
-                    }
-                    // Counted from the blocks, not from the palette: a palette keeps the states a section once held,
-                    // such as the campaign's default rock that the surface rule then replaced.
-                    sections[index]
-                            .getStates()
-                            .count((state, count) -> found.add(BuiltInRegistries.BLOCK
-                                    .getKey(state.getBlock())
-                                    .toString()));
+        for (ChunkAccess chunk : chunks) {
+            LevelChunkSection[] sections = chunk.getSections();
+            for (int index = 0; index < sections.length; index++) {
+                int sectionMinY = chunk.getSectionYFromSectionIndex(index) << 4;
+                // The campaign level holds the layers' rock under the surface band; only the band's sections are
+                // the surface's.
+                if (sectionMinY < surface.minY() || sectionMinY + 15 > surface.maxY()) {
+                    continue;
                 }
+                // Counted from the blocks, not from the palette: a palette keeps the states a section once held,
+                // such as the campaign's default rock that the surface rule then replaced.
+                sections[index]
+                        .getStates()
+                        .count((state, count) -> found.add(
+                                BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString()));
             }
         }
         Set<String> allowed = new TreeSet<>(GROUND_BLOCKS);

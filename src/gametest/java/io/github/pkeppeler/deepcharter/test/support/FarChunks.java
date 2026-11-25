@@ -2,11 +2,13 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -14,8 +16,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkHolder;
+import net.minecraft.server.level.ChunkLevel;
+import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.Ticket;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.AABB;
 
 /**
@@ -259,7 +268,7 @@ public final class FarChunks {
         awaitEntityTicking(helper, level, List.of(pos), index -> then.run());
     }
 
-    /** A chunk of a level, for {@link #awaitLoaded}. */
+    /** A chunk of a level, for {@link #whenBlocksLoaded} and {@link #whenReachedStatus}. */
     public record At(ServerLevel level, int chunkX, int chunkZ) {}
 
     /**
@@ -328,7 +337,7 @@ public final class FarChunks {
     }
 
     /**
-     * As {@link #awaitLoaded}, then runs {@code body} as a step of the test, where it may read the chunks, fail and
+     * As {@code awaitLoaded} (which waits for the chunks to load), then runs {@code body} as a step of the test, where it may read the chunks, fail and
      * {@code helper.succeed()}. Call it from the test method, last or with the test's other sequences started after it. Loaded is not
      * entity ticking: an entity that spawns or arrives in these chunks is invisible to {@code getEntity} until it ticks, so for
      * entities use {@code awaitAllEntityTicking} (#1151).
@@ -343,6 +352,73 @@ public final class FarChunks {
                     }
                 })
                 .thenExecute(body);
+    }
+
+    /**
+     * Runs {@code body} as a step of the test once every chunk of {@code chunks} has reached {@code status}, with the chunks in the
+     * order of the list, or fails the test naming the first one still missing after {@link #WAIT_SECONDS}. For a test that reads
+     * blocks and needs no more than a status short of full (a tall world's full chunks cost seconds each, #1142): unlike
+     * {@link #whenBlocksLoaded} it does not force the chunks, so they stop at {@code status}. Each waiting tick asks for them
+     * with a ticket at that level, which expires on its own, and for generation to that status, so the workers generate them and the server keeps ticking, and a chunk
+     * that has reached {@code status} is kept by reference, not held. Call it from the test method.
+     *
+     * @throws IllegalStateException if called after the test's first tick
+     */
+    public static void whenReachedStatus(
+            GameTestHelper helper, List<At> chunks, ChunkStatus status, Consumer<List<ChunkAccess>> body) {
+        if (helper.getTick() != 0) {
+            throw new IllegalStateException(
+                    "FarChunks.whenReachedStatus must be called from the test method, not from a tick callback");
+        }
+        List<ChunkAccess> reached = new ArrayList<>(Collections.nCopies(chunks.size(), null));
+        boolean[] done = {false};
+        Deadline deadline = deadline();
+        TestTicks.each(helper, () -> {
+            if (done[0]) {
+                return;
+            }
+            At missing = null;
+            for (int i = 0; i < chunks.size(); i++) {
+                if (reached.get(i) != null) {
+                    continue;
+                }
+                At chunk = chunks.get(i);
+                ChunkPos pos = new ChunkPos(chunk.chunkX(), chunk.chunkZ());
+                ServerChunkCache cache = chunk.level().getChunkSource();
+                cache.addTicket(new Ticket(TicketType.UNKNOWN, ChunkLevel.byStatus(status)), pos);
+                ChunkHolder holder = cache.chunkMap.getUpdatingChunkIfPresent(pos.pack());
+                ChunkAccess access = holder == null ? null : holder.getChunkIfPresent(status);
+                if (holder != null && access == null) {
+                    // A ticket alone only makes the holder; asking for the status starts the work, on the workers, and
+                    // is
+                    // the same future on every later tick.
+                    var _ = holder.scheduleChunkGenerationTask(status, cache.chunkMap);
+                }
+                if (access != null) {
+                    reached.set(i, access);
+                } else if (missing == null) {
+                    missing = chunk;
+                }
+            }
+            if (missing == null) {
+                done[0] = true;
+                return;
+            }
+            At first = missing;
+            deadline.await(
+                    helper,
+                    first.level(),
+                    false,
+                    () -> "chunk " + new ChunkPos(first.chunkX(), first.chunkZ()) + " in "
+                            + first.level().dimension() + " did not reach " + status + " after " + WAIT_SECONDS + " s");
+        });
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    if (!done[0]) {
+                        throw helper.assertionException("the chunks have not reached " + status + " yet");
+                    }
+                })
+                .thenExecute(() -> body.accept(reached));
     }
 
     /** As the list form, for a test that needs every column ticking: runs {@code then} once on the tick when the last one is. */

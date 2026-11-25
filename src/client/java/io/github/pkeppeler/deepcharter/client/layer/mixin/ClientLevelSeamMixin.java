@@ -17,23 +17,31 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(ClientLevel.class)
 public abstract class ClientLevelSeamMixin {
-    @Inject(method = "sendBlockUpdated", at = @At("HEAD"), cancellable = true)
+    @Inject(
+            method =
+                    "sendBlockUpdated(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/block/state/BlockState;I)V",
+            at = @At("HEAD"),
+            cancellable = true)
     private void deepcharter$quietBlockUpdated(
             BlockPos pos, BlockState old, BlockState current, int updateFlags, CallbackInfo ci) {
         quietIfBackground(ci);
     }
 
-    @Inject(method = "setBlocksDirty", at = @At("HEAD"), cancellable = true)
+    @Inject(
+            method =
+                    "setBlocksDirty(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/block/state/BlockState;)V",
+            at = @At("HEAD"),
+            cancellable = true)
     private void deepcharter$quietBlocksDirty(BlockPos pos, BlockState oldState, BlockState newState, CallbackInfo ci) {
         quietIfBackground(ci);
     }
 
-    @Inject(method = "setSectionDirtyWithNeighbors", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "setSectionDirtyWithNeighbors(III)V", at = @At("HEAD"), cancellable = true)
     private void deepcharter$quietSectionDirty(int chunkX, int chunkY, int chunkZ, CallbackInfo ci) {
         quietIfBackground(ci);
     }
 
-    @Inject(method = "setSectionRangeDirty", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "setSectionRangeDirty(IIIIII)V", at = @At("HEAD"), cancellable = true)
     private void deepcharter$quietRangeDirty(
             int minSectionX,
             int minSectionY,

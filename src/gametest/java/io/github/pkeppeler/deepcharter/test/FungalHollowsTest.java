@@ -470,7 +470,7 @@ public class FungalHollowsTest {
     }
 
     private static BlockState state(ServerLevel level, BlockPos pos) {
-        // sync-load: every caller waited for the sample and its margin with whenSampleLoaded
+        // sync-load: every caller waited with whenSampleLoaded or whenGlowcapSampleLoaded
         return level.getChunk(pos).getBlockState(pos);
     }
 

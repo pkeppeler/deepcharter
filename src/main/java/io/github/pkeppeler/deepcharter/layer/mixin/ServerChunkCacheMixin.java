@@ -21,7 +21,7 @@ public abstract class ServerChunkCacheMixin {
     @Final
     private ServerLevel level;
 
-    @Inject(method = "blockChanged", at = @At("HEAD"))
+    @Inject(method = "blockChanged(Lnet/minecraft/core/BlockPos;)V", at = @At("HEAD"))
     private void deepcharter$noteChange(BlockPos pos, CallbackInfo ci) {
         SeamSender.blockChanged(level, pos);
     }

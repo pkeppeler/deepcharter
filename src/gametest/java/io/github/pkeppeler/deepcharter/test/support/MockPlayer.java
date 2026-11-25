@@ -12,11 +12,13 @@ import java.util.function.BooleanSupplier;
 import net.fabricmc.fabric.impl.networking.RegistrationPayload;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
@@ -26,6 +28,7 @@ import net.minecraft.network.protocol.game.ClientboundRecipeBookRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
@@ -63,10 +66,13 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final List<PlacedSound> soundsAtPlaces = new ArrayList<>();
+    private final List<Identifier> soundsStopped = new ArrayList<>();
     private final Map<Integer, List<Identifier>> soundsByEntity = new HashMap<>();
     private final List<Long> soundTicks = new ArrayList<>();
     private final List<Identifier> soundsInTheWorld = new ArrayList<>();
     private final List<CustomPacketPayload> payloads = new ArrayList<>();
+    private final List<Packet<?>> packets = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private final Map<ResourceKey<Level>, Map<ChunkPos, Integer>> chunksSentByLevel = new HashMap<>();
     private final List<ChunkPos> forgetsAfterRespawn = new ArrayList<>();
@@ -112,6 +118,25 @@ public final class MockPlayer {
     /** The id of every sound the server has played to this player alone (a sound entity packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
     public List<Identifier> soundsHeard() {
         return List.copyOf(sounds);
+    }
+
+    /** A sound the server played at a place in the world. */
+    public record PlacedSound(Identifier id, Vec3 at) {}
+
+    /**
+     * Every sound the server has played to this player at a place in the world (a sound packet) so far, oldest first. Read on the mock's tick,
+     * so it lags by one. Tests run side by side in one level, so a sound of another test's block can be here: filter by place.
+     */
+    public List<PlacedSound> soundsHeardAtPlaces() {
+        return List.copyOf(soundsAtPlaces);
+    }
+
+    /**
+     * The id of every sound the server has told this player's client to stop so far, oldest first. Read on the mock's tick, so it lags by
+     * one. A stop names no place, so a test beside other tests asks whether one is among them.
+     */
+    public List<Identifier> soundsStopped() {
+        return List.copyOf(soundsStopped);
     }
 
     /** The id of every sound that the server played at a place in the world and sent this player (a sound packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
@@ -203,6 +228,34 @@ public final class MockPlayer {
      */
     public <T extends CustomPacketPayload> List<T> payloadsOf(Class<T> type) {
         return payloads.stream().filter(type::isInstance).map(type::cast).toList();
+    }
+
+    /**
+     * Every packet of {@code type} the server has sent this player so far, oldest first, with a bundle's packets taken
+     * apart. Read on the mock's tick, so it lags by one.
+     */
+    private <T extends Packet<?>> List<T> packetsOf(Class<T> type) {
+        return packets.stream().filter(type::isInstance).map(type::cast).toList();
+    }
+
+    /**
+     * Every packet the server has sent this player so far, oldest first, a custom payload as its payload, a bundle
+     * taken apart: for a test of the order packets came in. Read on the mock's tick, so it lags by one.
+     */
+    public List<Object> sequence() {
+        List<Object> sequence = new ArrayList<>();
+        for (Packet<?> packet : packets) {
+            sequence.add(packet instanceof ClientboundCustomPayloadPacket custom ? custom.payload() : packet);
+        }
+        return sequence;
+    }
+
+    /**
+     * How many respawn packets the server has sent this player: a swap sends none. Read on the mock's tick, so it lags
+     * by one.
+     */
+    public int respawns() {
+        return packetsOf(ClientboundRespawnPacket.class).size();
     }
 
     /**
@@ -338,6 +391,14 @@ public final class MockPlayer {
         return server;
     }
 
+    private void record(Object outbound) {
+        if (outbound instanceof ClientboundBundlePacket bundle) {
+            bundle.subPackets().forEach(this::record);
+        } else if (outbound instanceof Packet<?> packet) {
+            packets.add(packet);
+        }
+    }
+
     /**
      * One server tick of the fake network, skipped while the mock's chunk is not loaded: tick the connection (which
      * runs the packet listener and sends keep-alives), then drain everything the server wrote to the channel, answering
@@ -376,6 +437,7 @@ public final class MockPlayer {
         Object outbound;
         while ((outbound = channel.readOutbound()) != null) {
             try {
+                record(outbound);
                 if (outbound instanceof ClientboundSystemChatPacket packet) {
                     (packet.overlay() ? actionBar : chat).add(packet.content());
                 }
@@ -404,6 +466,14 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundRecipeBookRemovePacket packet) {
                     packet.recipes().forEach(recipeDisplays::remove);
+                }
+                if (outbound instanceof ClientboundSoundPacket packet) {
+                    soundsAtPlaces.add(new PlacedSound(
+                            packet.getSound().value().location(),
+                            new Vec3(packet.getX(), packet.getY(), packet.getZ())));
+                }
+                if (outbound instanceof ClientboundStopSoundPacket packet) {
+                    soundsStopped.add(packet.getName());
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);
