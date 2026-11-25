@@ -4,15 +4,22 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.layer.BlockReadoutHud;
+import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.layer.BlockReadouts.Readout;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.test.support.BlockReadoutStage;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -44,6 +51,8 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
                     ContractTerminal.TYPE.block(),
                     Optional.of("hint.deepcharter.right_click_use"));
             show(context, singleplayer, spot, LayerBlocks.BREACH_CRUST, Optional.of("hint.deepcharter.pod_drill_only"));
+
+            expectTheReadoutKeepsItsBoxClear(context);
 
             ClientChecks.withHudHidden(context, () -> {
                 ClientWait.until(
@@ -82,6 +91,59 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
                     "no readout for air",
                     client -> BlockReadoutHud.shown().isEmpty());
         }
+    }
+
+    /**
+     * The one rectangle {@link HudKeepClear} names for the readout is worked out from the theme and the font, and holds every string the readout
+     * draws, at whatever GUI width the window gives (an odd one is where the text used to leave the box by a pixel).
+     */
+    private static void expectTheReadoutKeepsItsBoxClear(ClientGameTestContext context) {
+        ClientWait.until(
+                context,
+                "the block readout up and drawn",
+                client -> BlockReadoutHud.shown().isPresent() && !drawn(client).isEmpty());
+        context.runOnClient(client -> {
+            int width = client.getWindow().getGuiScaledWidth();
+            int height = client.getWindow().getGuiScaledHeight();
+            List<HudKeepClear.Rect> mine = HudKeepClear.rects(client, width, height).stream()
+                    .filter(rect -> rect.what().equals("block readout"))
+                    .toList();
+            require(mine.size() == 1, "the block readout keeps exactly one box clear, listed " + mine);
+            HudKeepClear.Rect kept = mine.getFirst();
+            Readout readout = BlockReadoutHud.shown().orElseThrow();
+            ReadoutLook look = ReadoutLook.current();
+            int widest = Math.max(
+                    client.font.width(readout.name()),
+                    readout.hint().map(client.font::width).orElse(0));
+            int expectedWidth = (int) Math.ceil(widest * look.scale());
+            int lines = readout.hint().isPresent() ? 2 : 1;
+            int expectedHeight =
+                    (int) Math.ceil((lines * client.font.lineHeight + (lines - 1) * look.lineGap()) * look.scale());
+            require(
+                    kept.x() == (width - expectedWidth) / 2
+                            && kept.width() == expectedWidth
+                            && kept.y() == height / 2 + look.offsetY()
+                            && kept.height() == expectedHeight,
+                    "the kept box " + kept + " is centred, " + expectedWidth + " wide (the wider line) and "
+                            + expectedHeight + " high (its lines), below the crosshair");
+            require(width % 2 == 1, "this check needs an odd GUI width to catch the half-pixel overflow, got " + width);
+            List<Drawn> drawn = drawn(client);
+            require(drawn.size() == lines, "the readout should draw " + lines + " strings, drew " + drawn);
+            Box box = new Box(kept.x(), kept.y(), kept.width(), kept.height());
+            for (Drawn text : drawn) {
+                require(
+                        text.box().x() >= box.x()
+                                && text.box().y() >= box.y()
+                                && text.box().right() <= box.right()
+                                && text.box().bottom() <= box.bottom(),
+                        "the readout drew '" + text.shortText() + "' at " + text.box() + ", outside the box " + box
+                                + " it keeps clear");
+            }
+        });
+    }
+
+    private static List<Drawn> drawn(Minecraft client) {
+        return DrawnText.of(graphics -> BlockReadoutHud.extract(graphics, client.getDeltaTracker()));
     }
 
     private static void show(

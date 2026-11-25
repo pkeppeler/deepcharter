@@ -6,6 +6,8 @@ status: accepted
 
 Amended by [ADR 0050](0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md): Company rock is destroyable. A blasting charge clears it; hand and drill still refuse it.
 
+Amended 2026-11-24 (#972): the fill is not always at `UNDERGROUND_ORES`. A feature's random is seeded by its index in its decoration step across every biome of the generator, so a new feature in a step another band uses can shift that band's seeds and move its ore and lava. Layer 3's fill, lining and growth stand in steps 5, 7 and 8, which no other band uses; each new band's features go where no existing index shifts. `CampaignDecorationStepsTest` holds every campaign feature's step and index to a committed list.
+
 Ore and hazards (SPEC sections 4 and 10) are placed by one worldgen feature per zone, `deepcharter:zone_fill`, whose chances come from the original game's generator (REFERENCE.md section 4). #63 builds it.
 
 ## Decision

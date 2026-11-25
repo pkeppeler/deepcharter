@@ -36,12 +36,12 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Drifters' world (#973): what makes a noise in the hollows, and when a source of noise draws a new drifter. Placement keys on the biome tag
- * {@link #FUNGAL_HOLLOWS}, empty in shipped data until the worldgen of layer 3 (#972) fills it. The count is of pods, not of people: see
+ * {@link #FUNGAL_HOLLOWS}, which holds layer 3's zone biomes (#972). The count is of pods, not of people: see
  * {@link DrifterTuning.Spawn}. Nothing is saved.
  */
 public final class Drifters {
     /**
-     * The biomes in which drifters appear. Empty in the shipped data; the test data pack names a test biome. The same tag as #976's
+     * The biomes in which drifters appear: layer 3's zones, and in the test data pack a test biome too. The same tag as #976's
      * {@code Overgrowth.HOLLOWS}: whichever of the two PRs merges second folds one constant into the other.
      */
     public static final TagKey<Biome> FUNGAL_HOLLOWS =

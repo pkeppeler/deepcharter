@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -9,7 +10,10 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Locale;
@@ -23,6 +27,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
@@ -48,6 +53,9 @@ public class LayerStructuresScenario extends EvidenceScenario {
     private static final Vec3 OVER_NOTE = new Vec3(0, 3, -0.6);
 
     private static final int COLONY_NOTE_REACH = 6;
+
+    /** The player's eye height above the feet. */
+    private static final double EYE_HEIGHT = 1.62;
 
     @Override
     protected String name() {
@@ -117,7 +125,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
     }
 
     /** Finds the kind's site, and generates its chunks, on the server. */
-    private static StructureSite prepare(TestSingleplayerContext singleplayer, StructureKind kind) {
+    static StructureSite prepare(TestSingleplayerContext singleplayer, StructureKind kind) {
         return singleplayer.getServer().computeOnServer(server -> {
             ServerLevel level = TestLayers.level(server, kind.layer());
             LayerChain.Band levelBand = TestLayers.band(level, kind.layer());
@@ -184,6 +192,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
                     frame(context);
                 }
                 screenshot(context, shot + "-card-rack");
+                horn(context, singleplayer, layer, site, shot);
             }
             case RAILS -> {
                 for (int i = 0; i < RAIL_FRAMES; i++) {
@@ -225,13 +234,62 @@ public class LayerStructuresScenario extends EvidenceScenario {
         }
     }
 
+    /** A still of the Company horn from 2 blocks off and a block under it, looking up; the HUD, hands and item name are hidden for it. */
+    private void horn(
+            ClientGameTestContext context,
+            TestSingleplayerContext singleplayer,
+            ResourceKey<Level> layer,
+            StructureSite site,
+            String shot) {
+        Vec3 centre = at(site, 0, StructureKind.HORN_HEIGHT + 0.6, 0);
+        // The player's feet are put one eye height under the eye, and the aim is shifted down with them.
+        Vec3 feet = at(site, -2, StructureKind.HORN_HEIGHT - 0.4 - EYE_HEIGHT, 0);
+        EvidencePins.handsHidden = true;
+        EvidencePins.itemNameHidden = true;
+        EvidencePins.vignetteHidden = true;
+        try {
+            ClientChecks.withHudHidden(context, () -> {
+                fly(singleplayer, layer, feet, centre.subtract(0, EYE_HEIGHT, 0));
+                settle(context, 0);
+                logHornSupport(singleplayer, site);
+                screenshot(context, shot + "-horn");
+            });
+        } finally {
+            EvidencePins.reset();
+        }
+    }
+
+    /** Logs how the horn is held: a chain of N blocks to a roof at some height, or the gantry. */
+    private static void logHornSupport(TestSingleplayerContext singleplayer, StructureSite site) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel level = TestLayers.level(server, site.kind().layer());
+            Vec3 at = at(site, 0, StructureKind.HORN_HEIGHT, 0);
+            BlockPos horn = BlockPos.containing(at);
+            if (!level.getBlockState(horn).is(AmbienceRegistry.COMPANY_HORN)) {
+                throw new AssertionError(
+                        "no Company horn at " + horn.toShortString() + ": " + level.getBlockState(horn));
+            }
+            BlockPos top = horn.above();
+            while (level.getBlockState(top).is(Blocks.IRON_CHAIN)) {
+                top = top.above();
+            }
+            boolean gantry = level.getBlockState(top).is(Blocks.IRON_BLOCK);
+            DeepCharter.LOGGER.info(
+                    "[horn] site={} horn={} support={} roof={}",
+                    site.origin().toShortString(),
+                    horn.toShortString(),
+                    gantry ? "gantry" : "chain " + (top.getY() - horn.getY() - 1),
+                    gantry ? "none" : top.getY());
+        });
+    }
+
     /** Waits longer for the first frame of a path, when the chunks and the dimension have to arrive. */
     private static void settle(ClientGameTestContext context, int step) {
         context.waitTicks(step == 0 ? SETTLE_TICKS : TICKS_PER_FRAME);
     }
 
     /** Puts the player at {@code at} in {@code dimension}, looking at {@code target}. */
-    private static void fly(TestSingleplayerContext singleplayer, ResourceKey<Level> dimension, Vec3 at, Vec3 target) {
+    static void fly(TestSingleplayerContext singleplayer, ResourceKey<Level> dimension, Vec3 at, Vec3 target) {
         Vec3 d = target.subtract(at);
         float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
         float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
