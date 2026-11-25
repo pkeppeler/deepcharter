@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -40,8 +41,8 @@ import org.jspecify.annotations.Nullable;
  * the game's own fog and ambient light), and with night vision, which shows the shapes. The views:
  *
  * <ul> <li>the longest open run in a cave of each zone of layer 1; <li>a cut face across each contact between two strata: Topsoil Claims' hardpan
- * over Stone Benches' packed shale, and that over Deep Claim's black shale; <li>the abandoned shaft nearest the start:
- * up from its foot, at a candle niche, and down it from part way up.
+ * over Stone Benches' packed shale, and that over Deep Claim's black shale; <li>the abandoned shaft nearest the start
+ * that has a candle niche: up from its foot, at the niche, and down it from part way up.
  * </ul>
  *
  * The player is a spectator. Places are found in the generated world near the start column, so nothing is staged but
@@ -112,12 +113,13 @@ public class ClaimTourScenario extends EvidenceScenario {
                     new Vec3(X + 0.5, edge + 0.5, Z + CUT_DEPTH - 1.5), new Vec3(X + 0.5, edge + 0.5, Z - 1.0));
             shootBoth(context, singleplayer, name, face);
         }
-        BlockPos pail = singleplayer.getServer().computeOnServer(server -> nearest(level(server), block("lunch_pail")));
-        BlockPos axis = singleplayer.getServer().computeOnServer(server -> shaftAxis(level(server), pail));
+        Shaft shaft = singleplayer.getServer().computeOnServer(server -> shaft(level(server)));
+        BlockPos pail = shaft.pail();
+        BlockPos axis = shaft.axis();
+        BlockPos niche = shaft.niche();
         Vec3 foot = Vec3.atBottomCenterOf(axis.atY(pail.getY()));
         shootBoth(
                 context, singleplayer, "shaft-up-from-the-foot", new View(foot.add(0, 0.2, 0), foot.add(0.3, 12, 0.3)));
-        BlockPos niche = singleplayer.getServer().computeOnServer(server -> niche(level(server), axis, pail));
         Vec3 nicheEye = Vec3.atBottomCenterOf(axis.atY(niche.getY())).add(0, 0.5, 0);
         shootBoth(context, singleplayer, "shaft-candle-niche", new View(nicheEye, Vec3.atCenterOf(niche)));
         int top = singleplayer.getServer().computeOnServer(server -> shaftTop(level(server), axis, pail));
@@ -304,28 +306,37 @@ public class ClaimTourScenario extends EvidenceScenario {
                 Blocks.AIR.defaultBlockState());
     }
 
-    /** The nearest block of {@code wanted} in layer 1 to the start column, within the search. */
-    private static BlockPos nearest(ServerLevel level, Block wanted) {
+    /** A shaft the tour shows: the lunch pail at its foot, its axis column at the pail's row, and a candle niche. */
+    private record Shaft(BlockPos pail, BlockPos axis, BlockPos niche) {}
+
+    /**
+     * The shaft nearest the start column, across the columns, that has a candle niche: a shaft may have none, where a
+     * cave took the rock its niches would be cut in.
+     */
+    private static Shaft shaft(ServerLevel level) {
+        Block wanted = block("lunch_pail");
         CampaignBands.Band band = CampaignBands.LAYER_1;
-        @Nullable BlockPos best = null;
+        List<BlockPos> pails = new ArrayList<>();
         int reach = SEARCH_CHUNKS * 16;
         for (int x = X - reach; x < X + reach; x++) {
             for (int z = Z - reach; z < Z + reach; z++) {
                 for (int y = band.minY(); y < band.topExclusive(); y++) {
                     BlockPos at = new BlockPos(x, y, z);
-                    if (level.getBlockState(at).is(wanted)
-                            && (best == null
-                                    || at.distSqr(new BlockPos(X, y, Z))
-                                            < best.distSqr(new BlockPos(X, best.getY(), Z)))) {
-                        best = at;
+                    if (level.getBlockState(at).is(wanted)) {
+                        pails.add(at);
                     }
                 }
             }
         }
-        if (best == null) {
-            throw new AssertionError("no " + wanted + " in layer 1 within " + reach + " blocks of " + X + ", " + Z);
+        pails.sort(Comparator.comparingDouble(at -> at.distSqr(new BlockPos(X, at.getY(), Z))));
+        for (BlockPos pail : pails) {
+            BlockPos axis = shaftAxis(level, pail);
+            @Nullable BlockPos niche = niche(level, axis, pail);
+            if (niche != null) {
+                return new Shaft(pail, axis, niche);
+            }
         }
-        return best;
+        throw new AssertionError("no shaft with a niche in layer 1 within " + reach + " blocks of " + X + ", " + Z);
     }
 
     /**
@@ -342,8 +353,8 @@ public class ClaimTourScenario extends EvidenceScenario {
         throw new AssertionError("no ladder by the pail at " + pail.toShortString());
     }
 
-    /** A candle niche of the shaft: a prayer card if one is there, else a candle stub, the lowest first. */
-    private static BlockPos niche(ServerLevel level, BlockPos axis, BlockPos pail) {
+    /** A candle niche of the shaft: a prayer card if one is there, else a candle stub, the lowest first; null if none. */
+    private static @Nullable BlockPos niche(ServerLevel level, BlockPos axis, BlockPos pail) {
         @Nullable BlockPos candle = null;
         for (int y = pail.getY() + 2; y < pail.getY() + 40; y++) {
             for (BlockPos at : BlockPos.betweenClosed(
@@ -356,9 +367,6 @@ public class ClaimTourScenario extends EvidenceScenario {
                     candle = at.immutable();
                 }
             }
-        }
-        if (candle == null) {
-            throw new AssertionError("the shaft at " + axis.toShortString() + " has no niche");
         }
         return candle;
     }
