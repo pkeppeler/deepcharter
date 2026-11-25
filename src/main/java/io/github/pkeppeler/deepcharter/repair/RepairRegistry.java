@@ -66,10 +66,12 @@ public final class RepairRegistry {
                     BlockBehaviour.Properties.of().setId(FLARE_LIGHT_KEY).sound(SoundType.WOOD)));
 
     /**
-     * Holds a teleporter's landing chunk (#1353, {@link Teleports}): it loads and simulates the chunks, keeps the
-     * dimension active, is not saved, and lapses {@link RepairTuning#arrivalTicketTicks()} ticks after the chunk ticks
-     * entities. Vanilla's {@code PORTAL} and {@code ENDER_PEARL} are shared with portals and pearls, and
-     * {@code SEAM_ARRIVAL} with seam crossings, so a teleport has its own.
+     * Holds a teleporter's landing chunk (#1353, {@link Teleports}) until the pilot's own chunk tickets arrive: it
+     * loads and simulates the chunks, keeps the dimension active, and is not saved. It lapses
+     * {@link RepairTuning#arrivalTicketTicks()} ticks after its chunk is ready to save ({@code ChunkHolder.saveSync}
+     * settles): vanilla counts a timed ticket down only from then, which came well after the chunk ticked entities
+     * (tick 148 against 67, and 183 against 93, in two runs). Its own type reads clearly in a ticket dump, and its
+     * timeout is tuned apart from vanilla's.
      */
     static final TicketType TELEPORT_ARRIVAL = Registry.register(
             BuiltInRegistries.TICKET_TYPE,

@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -21,14 +22,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.FullChunkStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.Ticket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
@@ -42,8 +46,18 @@ import net.minecraft.world.phys.Vec3;
  * as a seam swap's or a tow's arrival does.
  */
 public class TeleportArrivalTest {
-    /** How long the arrival is watched, in ticks. */
-    private static final int WATCH_TICKS = 200;
+    /**
+     * Ticks after the teleport by which the arrival ticket must be gone. Its countdown starts only once the chunk is
+     * ready to save, which took 148 and 183 ticks in two runs, and then runs {@code arrivalTicketTicks}.
+     */
+    private static final int RELEASE_DEADLINE = 600;
+
+    /** Ticks the chunk is watched after the arrival ticket is released, for a lapse at the handover. */
+    private static final int AFTER_RELEASE_TICKS = 40;
+
+    /** The arrival ticket's type, by its registry name. */
+    private static final Identifier ARRIVAL_TICKET =
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "teleport_arrival");
 
     /**
      * Ticks from the teleport to the client's answer to it, which is what moves the pilot's own chunk tickets to the
@@ -53,7 +67,10 @@ public class TeleportArrivalTest {
      */
     private static final int ANSWER_DELAY = 5;
 
-    @GameTest(maxTicks = WATCH_TICKS + 100)
+    // The landing look-up loads the cold chunk synchronously on the server thread, inside a same-tick WorldData.with.
+    @GameTest(
+            environment = CampaignEnvironments.SYNC_CHUNK_LOAD,
+            maxTicks = RELEASE_DEADLINE + AFTER_RELEASE_TICKS + 100)
     public void theArrivalChunkHoldsUntilTheLatePilotsTicketsArrive(GameTestHelper helper) {
         ServerLevel overworld = helper.getLevel().getServer().overworld();
         int x = 14_000;
@@ -83,6 +100,8 @@ public class TeleportArrivalTest {
         long[] sent = {-1};
         String[] last = {""};
         boolean[] everLoaded = {false};
+        boolean[] everHeld = {false};
+        long[] released = {-1};
         List<String> lapses = new ArrayList<>();
         TestTicks.each(helper, () -> {
             ServerPlayer player = pilot.player();
@@ -102,8 +121,7 @@ public class TeleportArrivalTest {
             }
             long tick = helper.getTick() - sent[0];
             // A real client answers the teleport once, then reports its look every tick: each moves its chunk tickets.
-            // A
-            // second answer to the same teleport would disconnect it.
+            // A second answer to the same teleport would disconnect it.
             if (tick == ANSWER_DELAY) {
                 pilot.acknowledgeTeleports();
             }
@@ -114,13 +132,20 @@ public class TeleportArrivalTest {
             long key = arrival.pack();
             int level = overworld.getChunkSource().chunkMap.getDistanceManager().getChunkLevel(key, false);
             boolean loaded = overworld.areEntitiesLoaded(key);
+            List<Ticket> tickets = overworld
+                    .getDataStorage()
+                    .computeIfAbsent(TicketStorage.TYPE)
+                    .getTickets(key);
+            boolean held = tickets.stream()
+                    .anyMatch(ticket -> ARRIVAL_TICKET.equals(BuiltInRegistries.TICKET_TYPE.getKey(ticket.getType())));
+            everHeld[0] |= held;
+            if (everHeld[0] && !held && released[0] < 0) {
+                released[0] = tick;
+            }
             String state = String.format(
                     "level=%d tickets=%s entitiesLoaded=%s entityTicking=%s clientHoldsPod=%s podRemoved=%s",
                     level,
-                    overworld
-                            .getDataStorage()
-                            .computeIfAbsent(TicketStorage.TYPE)
-                            .getTickets(key),
+                    tickets,
                     loaded,
                     overworld.isPositionEntityTicking(pod.blockPosition()),
                     clientHolds(pilot, podId),
@@ -133,9 +158,19 @@ public class TeleportArrivalTest {
             if (level > ChunkLevel.byStatus(FullChunkStatus.FULL) || (everLoaded[0] && !loaded)) {
                 lapses.add(String.format("tick %d: level %d, entities loaded %s", tick, level, loaded));
             }
-            if (tick >= WATCH_TICKS) {
+            expect(
+                    helper,
+                    released[0] >= 0 || tick < RELEASE_DEADLINE,
+                    "the arrival ticket was not released within %d ticks (ever held: %s, tickets now: %s), lapses: %s",
+                    RELEASE_DEADLINE,
+                    everHeld[0],
+                    tickets,
+                    lapses);
+            if (released[0] >= 0 && tick >= released[0] + AFTER_RELEASE_TICKS) {
+                DeepCharter.LOGGER.info("[teleport-arrival] ticket released at tick={}", released[0]);
                 expect(helper, lapses.isEmpty(), "the arrival chunk lapsed: %s", lapses);
                 expect(helper, !pod.isRemoved(), "the pod was removed: %s", pod.getRemovalReason());
+                // Only at the end: the client still drops the pod for a tick at tick 1 and after the answer (#1364).
                 expect(helper, clientHolds(pilot, podId), "the pilot's client should hold its pod at the end");
                 expect(helper, player.getVehicle() == pod, "the pilot should still ride the pod");
                 helper.succeed();
