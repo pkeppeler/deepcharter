@@ -1,14 +1,19 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalInt;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.LootTable;
 
 /**
  * The structures of the first two layers (lore canon, section 11). Each one stands in one zone, and is drawn in its own
@@ -142,7 +147,7 @@ public enum StructureKind {
     },
     /**
      * A wreck site in Prospector's Run: a bay with a scorched floor, a rail that ends in it, and debris at the edges. The middle
-     * is clear for a pod, which a later issue sets there (the site is {@code origin}).
+     * is clear for a pod, which a later issue sets there (the site is {@code origin}). A barrel in the corner is the crew's locker.
      */
     WRECK(2, 2, 6, 6, OptionalInt.of(5)) {
         @Override
@@ -164,8 +169,13 @@ public enum StructureKind {
                     }
                 }
             }
+            p.lootBarrel(5, 0, -5, WRECK_LOCKER);
         }
     };
+
+    /** The crew's locker in a wreck bay: scrap, and rarely a wax cylinder ({@code loot_table/chests/wreck_locker.json}). */
+    private static final ResourceKey<LootTable> WRECK_LOCKER = ResourceKey.create(
+            Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "chests/wreck_locker"));
 
     /** Blocks from the centre of the rail line to the centre of the Kells' shaft, along the line: 4 past the end the line stops at. */
     public static final int KELLS_OFFSET = 36;

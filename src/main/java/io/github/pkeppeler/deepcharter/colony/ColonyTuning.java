@@ -18,6 +18,10 @@ package io.github.pkeppeler.deepcharter.colony;
  * @param rimWidth      the pad's outer rim, in blocks, where the packed regolith and rock of the layers show through
  * @param scatterPercent the share of columns by the pad's edge, in percent, that show rock
  * @param scatterPackedFactor packed regolith shows on this many times as many columns as rock
+ * @param phonographCheckTicks the colony's phonograph is asked every this many ticks whether it starts by itself
+ * @param phonographChance the chance, at each check at night with nobody near, that it does; it starts at most once a night
+ * @param phonographNightHalfWidth a night is the stretch of the sky timeline this many ticks either side of its darkest point
+ * @param phonographQuietRadius it never starts by itself with a player within this many blocks of it (the whole Lamp and Pick)
  */
 public record ColonyTuning(
         int padSize,
@@ -34,6 +38,11 @@ public record ColonyTuning(
         int edgeLattice,
         int rimWidth,
         int scatterPercent,
-        int scatterPackedFactor) {
-    public static final ColonyTuning DEFAULT = new ColonyTuning(80, 36, 48, 1, 10, 4, 8, 2400, 32, 64, 4, 12, 3, 6, 3);
+        int scatterPackedFactor,
+        int phonographCheckTicks,
+        double phonographChance,
+        int phonographNightHalfWidth,
+        int phonographQuietRadius) {
+    public static final ColonyTuning DEFAULT =
+            new ColonyTuning(80, 36, 48, 1, 10, 4, 8, 2400, 32, 64, 4, 12, 3, 6, 3, 12_000, 0.04, 48_000, 16);
 }
