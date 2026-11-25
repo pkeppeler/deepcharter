@@ -168,6 +168,7 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         server.runOnServer(s -> player(s).setGameMode(GameType.SURVIVAL));
         int before = ForceSends.total();
         startWatching();
+        LOGGER.info("Counting force-send lines from here; {} in the setup", setup);
         Steps steps = new Steps(before);
         ClientWait.until(
                 context,
