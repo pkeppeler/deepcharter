@@ -54,7 +54,7 @@ public final class PlacementReadoutHud {
     /**
      * The box of the lines on a GUI {@code guiWidth} x {@code guiHeight}, as the scale puts them: as wide as the wider
      * line, the verdict and the reason under it, growing upward from {@link
-     * ReadoutLook#placementBottom}. What is drawn and what is kept clear are this one box.
+     * ReadoutLook#placementTop}. What is drawn and what is kept clear are this one box.
      */
     private static HudKeepClear.Rect box(Font font, Readout readout, int guiWidth, int guiHeight) {
         ReadoutLook look = ReadoutLook.current();
@@ -66,7 +66,7 @@ public final class PlacementReadoutHud {
         return new HudKeepClear.Rect(
                 "placement readout",
                 (guiWidth - width) / 2,
-                look.placementBottom(guiHeight, font.lineHeight) - boxHeight,
+                look.placementTop(guiHeight, font.lineHeight, boxHeight),
                 width,
                 boxHeight);
     }

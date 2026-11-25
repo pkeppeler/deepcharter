@@ -7,11 +7,11 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * block's name and a hint, in the account line's green and the lining line's amber. Lengths are GUI pixels, timings are
  * client ticks (20 are one second).
  *
- * <p>The block readout's bottom edge is {@code bottomOffset} above the bottom of the GUI, so the same number of pixels
- * clears vanilla's rows at every GUI scale; its lines grow upward from it. The placement readout stands above it, over
- * the room of two lines.
+ * <p>The block readout has a room of two lines that ends {@code bottomOffset} above the bottom of the GUI, so the same
+ * number of pixels clears vanilla's rows at every GUI scale. Its name is always on the room's first line and its hint,
+ * when there is one, on the second, so a sweep of the view moves nothing. The placement readout stands above the room.
  *
- * @param bottomOffset space between the bottom of the GUI and the block readout's bottom edge; never less than {@link
+ * @param bottomOffset space between the bottom of the GUI and the block readout's room; never less than {@link
  *     #CLEAR_OF_VANILLA}
  * @param lineGap space between the name and the hint, on top of the font height
  * @param scale how large the text is drawn, as a multiple of the font
@@ -45,9 +45,18 @@ public record ReadoutLook(
         return UiTheme.current().readout();
     }
 
-    /** The y of the bottom edge of the block readout on a GUI {@code guiHeight} high; its lines grow upward from it. */
+    /** The y of the bottom edge of the room the block readout reserves on a GUI {@code guiHeight} high. */
     public int blockBottom(int guiHeight) {
         return guiHeight - bottomOffset;
+    }
+
+    /**
+     * The y of the block readout's name line, for a font {@code lineHeight} high: the top of the room of two lines above
+     * {@link #blockBottom}, whether or not there is a hint under the name, so the name never moves between blocks. Never
+     * above the screen.
+     */
+    public int blockTop(int guiHeight, int lineHeight) {
+        return Math.max(0, blockBottom(guiHeight) - (int) Math.ceil((2 * lineHeight + lineGap) * scale));
     }
 
     /**
@@ -56,6 +65,11 @@ public record ReadoutLook(
      */
     public int placementBottom(int guiHeight, int lineHeight) {
         return blockBottom(guiHeight) - (int) Math.ceil((2 * lineHeight + 2 * lineGap) * scale);
+    }
+
+    /** The y of the top of the placement readout's box {@code boxHeight} high, growing up from {@link #placementBottom}; never above the screen. */
+    public int placementTop(int guiHeight, int lineHeight, int boxHeight) {
+        return Math.max(0, placementBottom(guiHeight, lineHeight) - boxHeight);
     }
 
     public static ReadoutLook of(ThemeData d) {

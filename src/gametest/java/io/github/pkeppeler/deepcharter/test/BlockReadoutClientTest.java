@@ -51,12 +51,16 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
             BlockPos spot = singleplayer.getServer().computeOnServer(BlockReadoutStage::build);
 
             show(context, singleplayer, spot, Blocks.STONE, Optional.empty());
+            int nameWithoutHint = nameTop(context);
             show(
                     context,
                     singleplayer,
                     spot,
                     ContractTerminal.TYPE.block(),
                     Optional.of("hint.deepcharter.right_click_use"));
+            require(
+                    nameTop(context) == nameWithoutHint,
+                    "the name moved from y " + nameWithoutHint + " to " + nameTop(context) + " when a hint came");
             show(context, singleplayer, spot, LayerBlocks.BREACH_CRUST, Optional.of("hint.deepcharter.pod_drill_only"));
 
             expectTheReadoutKeepsItsBoxClear(context);
@@ -129,10 +133,11 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
             require(
                     kept.x() == (width - expectedWidth) / 2
                             && kept.width() == expectedWidth
-                            && kept.bottom() == look.blockBottom(height)
+                            && kept.y() == look.blockTop(height, client.font.lineHeight)
                             && kept.height() == expectedHeight,
                     "the kept box " + kept + " is centred, " + expectedWidth + " wide (the wider line) and "
-                            + expectedHeight + " high (its lines), with its bottom edge above the hotbar");
+                            + expectedHeight
+                            + " high (its lines), with its name on the first line of the room above the hotbar");
             expectTheBoxClearsVanilla(client, readout);
             require(width % 2 == 1, "this check needs an odd GUI width to catch the half-pixel overflow, got " + width);
             List<Drawn> drawn = drawn(client);
@@ -169,10 +174,25 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
                     "at GUI scale " + scale + " (" + guiWidth + " x " + guiHeight + ") the block readout box " + box
                             + " overlaps vanilla's " + VanillaHudRows.clashes(box, guiWidth, guiHeight) + " for "
                             + readout.name().getString());
+            require(box.y() >= 0, "at GUI scale " + scale + " the box " + box + " starts above the screen");
             require(
                     box.bottom() <= guiHeight - ReadoutLook.CLEAR_OF_VANILLA,
                     "at GUI scale " + scale + " the box " + box + " reaches below the held item's name");
         }
+    }
+
+    /** The y of the block readout's name line, from the box the readout keeps clear. */
+    private static int nameTop(ClientGameTestContext context) {
+        return context.computeOnClient(client ->
+                HudKeepClear.rects(
+                                client,
+                                client.getWindow().getGuiScaledWidth(),
+                                client.getWindow().getGuiScaledHeight())
+                        .stream()
+                        .filter(rect -> rect.what().equals("block readout"))
+                        .findFirst()
+                        .orElseThrow()
+                        .y());
     }
 
     private static List<Drawn> drawn(Minecraft client) {

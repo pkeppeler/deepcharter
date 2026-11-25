@@ -480,7 +480,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                     "block readout",
                     new Box(
                             (width - (int) Math.ceil(widest * scale)) / 2,
-                            look.blockBottom(height) - boxHeight,
+                            look.blockTop(height, font.lineHeight),
                             (int) Math.ceil(widest * scale),
                             boxHeight));
         });

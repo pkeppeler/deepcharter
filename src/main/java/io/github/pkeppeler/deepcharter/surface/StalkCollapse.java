@@ -55,7 +55,9 @@ final class StalkCollapse {
 
     /**
      * True while a collapse changes blocks: the blocks it sets to air are removals that must not start a collapse of
-     * their own. The server thread is the only one that changes blocks, so no lock.
+     * their own. A burst sets air with {@code UPDATE_CLIENTS} only, which vanilla does not announce as a removal, so
+     * today the guard is idle; it holds if that flag ever gains {@code UPDATE_NEIGHBORS} (a test pins one cough per
+     * collapse). The server thread is the only one that changes blocks, so no lock.
      */
     private static boolean bursting;
 
@@ -138,7 +140,10 @@ final class StalkCollapse {
         bursting = true;
         try {
             for (BlockPos fall : claimed) {
-                burst(level, fall, level.getBlockState(fall), great);
+                BlockState state = level.getBlockState(fall);
+                if (collapses(state)) {
+                    burst(level, fall, state, great);
+                }
             }
         } finally {
             bursting = false;

@@ -139,7 +139,7 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
                     kept.x() == (width - expectedWidth) / 2 && kept.width() == expectedWidth,
                     "the kept box " + kept + " is centred and as wide as the wider line, " + expectedWidth);
             require(
-                    kept.bottom() == look.placementBottom(height, client.font.lineHeight)
+                    kept.y() == look.placementTop(height, client.font.lineHeight, kept.height())
                             && kept.height() == (int) Math.ceil((client.font.lineHeight + line) * (float) look.scale()),
                     "the kept box " + kept + " is above the block readout's two lines and holds both lines");
             require(

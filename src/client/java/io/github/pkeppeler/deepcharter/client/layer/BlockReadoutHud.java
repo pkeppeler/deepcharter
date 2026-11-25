@@ -55,7 +55,7 @@ public final class BlockReadoutHud {
         int width = (int) Math.ceil(widest * look.scale());
         int boxHeight = (int) Math.ceil(height * look.scale());
         return new HudKeepClear.Rect(
-                "block readout", (guiWidth - width) / 2, look.blockBottom(guiHeight) - boxHeight, width, boxHeight);
+                "block readout", (guiWidth - width) / 2, look.blockTop(guiHeight, font.lineHeight), width, boxHeight);
     }
 
     private static int widest(Font font, Readout readout) {

@@ -33,6 +33,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
@@ -295,6 +296,35 @@ public class StalkCollapseTest {
                     helper, "the collapse gave the player %s", player.player().getActiveEffects());
         }
         helper.succeed();
+    }
+
+    /**
+     * One collapse coughs once. Each burst block is removed too, and announces its removal to the block: the collapse
+     * must not take that for a break of its own and cough again for what is left of the column.
+     */
+    @GameTest(maxTicks = TEST_MAX_TICKS)
+    public void aCollapseCoughsOnce(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        clearArea(helper, COLUMN_HEIGHT);
+        MockPlayer player = MockPlayers.join(helper, "stalk-cough");
+        player.player().setGameMode(GameType.SURVIVAL);
+        player.teleportTo(level, Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(3, BASE_ROW, 2))), 0, 0);
+        column(helper, 2, 2, COLUMN_HEIGHT);
+        helper.runAfterDelay(1, () -> {
+            Identifier cough = SoundEvents.PUFFER_FISH_BLOW_OUT.location();
+            long before =
+                    player.soundsInTheWorld().stream().filter(cough::equals).count();
+            breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
+            // The mock reads what the server sent on its own tick, one later.
+            helper.runAfterDelay(2, () -> {
+                long coughs =
+                        player.soundsInTheWorld().stream().filter(cough::equals).count() - before;
+                if (coughs != 1) {
+                    throw failure(helper, "one collapse coughed %s times, not once", coughs);
+                }
+                helper.succeed();
+            });
+        });
     }
 
     /** Breaking the top block, or a block with nothing above it, starts no collapse; neither does a stalk lying on its side. */
