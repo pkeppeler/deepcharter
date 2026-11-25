@@ -4,9 +4,12 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityClient;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
 import io.github.pkeppeler.deepcharter.client.continuity.Silence;
+import io.github.pkeppeler.deepcharter.continuity.ContinuityRecord;
+import io.github.pkeppeler.deepcharter.continuity.ContinuityRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
@@ -21,7 +24,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
@@ -76,9 +78,6 @@ public class ContinuityClientTest implements FabricClientGameTest {
     /** Every sound the engine starts, with its pitch and when. */
     private record Played(SoundInstance sound, Identifier id, float pitch, long millis) {}
 
-    /** The game messages the client was shown, as text: set by a listener that cannot be removed. */
-    private static final List<String> CHAT = new CopyOnWriteArrayList<>();
-
     private static final class Heard implements SoundEventListener {
         private final List<Played> played = new CopyOnWriteArrayList<>();
 
@@ -103,7 +102,6 @@ public class ContinuityClientTest implements FabricClientGameTest {
                 OPENED.compareAndSet(0, Util.getMillis());
             }
         });
-        ClientReceiveMessageEvents.GAME.register((message, overlay) -> CHAT.add(message.getString()));
         Heard heard = new Heard();
         context.runOnClient(client -> client.getSoundManager().addListener(heard));
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
@@ -229,9 +227,13 @@ public class ContinuityClientTest implements FabricClientGameTest {
                     context,
                     "the second laugh",
                     client -> heard.since(second).stream().anyMatch(p -> p.id().equals(LAUGH)));
-            require(
-                    CHAT.stream().anyMatch(line -> line.contains("(No. 2)")),
-                    "the second death is No. 2, the chat was " + CHAT);
+            int events = singleplayer
+                    .getServer()
+                    .computeOnServer(server -> Versioned.readable(
+                                    server.getPlayerList().getPlayers().getFirst(), ContinuityRegistry.RECORD)
+                            .map(ContinuityRecord::events)
+                            .orElse(-1));
+            require(events == 2, "the second death is No. 2, the record reads " + events);
             require(!SAW_DEATH_SCREEN.get(), "vanilla's death screen never opened");
             context.runOnClient(client -> require(Silence.refuses(click()), "the second sequence holds the silence"));
         } finally {
