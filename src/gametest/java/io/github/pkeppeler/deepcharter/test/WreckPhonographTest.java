@@ -39,6 +39,16 @@ public class WreckPhonographTest {
 
     private static final BlockPos PLACE = new BlockPos(3, 1, 3);
 
+    // Any player within the trigger range starts the song, and a batch lays its tests out side by side, 5 blocks
+    // apart: the next test's mock players join 11 blocks from this block (#1368). So each test that reads whether it
+    // plays has one of these environments of its own, and runs in a batch with no other test's player beside it.
+    private static final String TRIGGER = "deepcharter-test:wreck_phonograph_trigger";
+    private static final String SWITCH = "deepcharter-test:wreck_phonograph_switch";
+    private static final String HAND = "deepcharter-test:wreck_phonograph_hand";
+    private static final String ENDING = "deepcharter-test:wreck_phonograph_ending";
+    private static final String CYLINDER = "deepcharter-test:wreck_phonograph_cylinder";
+    private static final String RELOAD = "deepcharter-test:wreck_phonograph_reload";
+
     private static WreckPhonographBlockEntity place(GameTestHelper helper) {
         helper.setBlock(PLACE, PhonographRegistry.WRECK_PHONOGRAPH.defaultBlockState());
         BlockEntity found = helper.getLevel().getBlockEntity(helper.absolutePos(PLACE));
@@ -67,7 +77,7 @@ public class WreckPhonographTest {
         player.player().gameMode.useItemOn(player.player(), level, stack, InteractionHand.MAIN_HAND, hit);
     }
 
-    /** The songs the player was sent the start of at the test's own block: the other tests' blocks stand within earshot. */
+    /** The songs the player was sent the start of at the test's own block. */
     private static List<Identifier> startsAtMine(GameTestHelper helper, MockPlayer player) {
         Vec3 mine = Vec3.atCenterOf(helper.absolutePos(PLACE));
         return player.soundsHeardAtPlaces().stream()
@@ -80,7 +90,7 @@ public class WreckPhonographTest {
         return DeepSound.SONG_WRECK.event().location();
     }
 
-    @GameTest(maxTicks = 200)
+    @GameTest(maxTicks = 200, environment = TRIGGER)
     public void aPlayerWhoComesCloseStartsTheSongAndAFarOneIsNeverSentIt(GameTestHelper helper) {
         WreckPhonographBlockEntity phonograph = place(helper);
         SoundTuning tuning = SoundTuning.DEFAULT;
@@ -110,7 +120,7 @@ public class WreckPhonographTest {
         });
     }
 
-    @GameTest(maxTicks = 300)
+    @GameTest(maxTicks = 300, environment = SWITCH)
     public void aRightClickSwitchesItOffAndItStaysOffWhileAPlayerLingersAndAnotherStartsItAgain(GameTestHelper helper) {
         WreckPhonographBlockEntity phonograph = place(helper);
         int listen = SoundTuning.DEFAULT.phonographListenTicks();
@@ -132,7 +142,7 @@ public class WreckPhonographTest {
         });
     }
 
-    @GameTest(maxTicks = 200)
+    @GameTest(maxTicks = 200, environment = HAND)
     public void aHandOnItBeforeItHasLookedSpendsItSoTheNextLookDoesNotStartIt(GameTestHelper helper) {
         WreckPhonographBlockEntity phonograph = place(helper);
         int listen = SoundTuning.DEFAULT.phonographListenTicks();
@@ -147,7 +157,7 @@ public class WreckPhonographTest {
         });
     }
 
-    @GameTest(maxTicks = 700)
+    @GameTest(maxTicks = 700, environment = ENDING)
     public void theSongEndsByItselfAndDoesNotReplayWhileAPlayerStays(GameTestHelper helper) {
         WreckPhonographBlockEntity phonograph = place(helper);
         SoundTuning tuning = SoundTuning.DEFAULT;
@@ -162,7 +172,7 @@ public class WreckPhonographTest {
         });
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = 100, environment = CYLINDER)
     public void aCylinderOnItIsNotTakenSoTheSongCannotBeCarriedOff(GameTestHelper helper) {
         WreckPhonographBlockEntity phonograph = place(helper);
         MockPlayer player = joinAt(helper, "wreck-collector", 30);
@@ -207,7 +217,7 @@ public class WreckPhonographTest {
         helper.succeed();
     }
 
-    @GameTest(maxTicks = 300)
+    @GameTest(maxTicks = 300, environment = RELOAD)
     public void aSwitchOffSurvivesTheChunkLeavingAndComingBackAndRearmsOnceTimeHasPassedWithNobodyNear(
             GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
