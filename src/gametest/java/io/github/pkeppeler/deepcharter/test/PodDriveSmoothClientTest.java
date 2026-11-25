@@ -51,7 +51,8 @@ import org.slf4j.LoggerFactory;
  * and settles on the server's), 6 ticks (the pod may stand, never lunges, keeps 80% of its progress and settles), 6 ticks across the
  * arrival at a wall, and 5 ticks across a landing from 10 blocks (never drawn inside a block, never below the ground). They do not cover
  * stalls beyond 6 ticks: a longer one stands the pod for the rest of it, and a gap over {@code snapGap} blocks glides over as before
- * (ADR 0082).
+ * (ADR 0082). A connection that gets two ticks slower and stays so (#1112, {@link PacketJitter#lag}) hands the moves over one a tick, each
+ * stale, so the pod has coasted past every move it gets: it must go on at its speed, never turn back to the stale position.
  *
  * <p>A steady drive is judged for the stall it injects, not a longer one: when the real test server also ran late and the drive saw more
  * moveless ticks than the glide covers ({@link #COVERED_MOVELESS_TICKS}), it is run again (#1168).
@@ -91,6 +92,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
     /** A server later than the pod coasts: the pod may stand a few ticks, but never lunges when the moves arrive. */
     private static final int LONG_STALL_TICKS = 6;
+
+    /**
+     * A connection that gets this many client ticks slower and stays so (#1112): the pod sees no move for that long, then a move a
+     * tick, each as stale as the gap was long. It is what a one-tick-late move is, and it left the pod behind a stale target.
+     */
+    private static final int SLOWER_TICKS = 2;
 
     /** Client ticks of the stall that hides a stop: the keys are released one tick into it, so the server stops while the client is blind. */
     private static final int STOP_STALL_TICKS = 4;
@@ -227,11 +234,17 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      * its progress.
      */
     private record Late(
-            int stallAt, int stallTicks, int releaseAt, double dropBlocks, boolean settles, boolean recovers,
+            int stallAt,
+            int stallTicks,
+            int releaseAt,
+            double dropBlocks,
+            boolean settles,
+            boolean recovers,
             boolean lags) {
         Late(int stallAt, int stallTicks, int releaseAt, double dropBlocks, boolean settles, boolean recovers) {
             this(stallAt, stallTicks, releaseAt, dropBlocks, settles, recovers, false);
         }
+
         boolean stops() {
             return releaseAt >= 0 || dropBlocks > 0;
         }
@@ -281,18 +294,16 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 true,
                                 false,
                                 new Late(STALL_AT_TICK, SHORT_STALL_TICKS, -1, 0, true, true)));
-                for (int lag : new int[] {1, 2}) {
-                    drive(
-                            context,
-                            rig,
-                            Drive.forward(
-                                    "flat drive through a connection " + lag + " ticks slower",
-                                    STALL_DRIVE_TICKS,
-                                    flatSpeed,
-                                    true,
-                                    false,
-                                    new Late(STALL_AT_TICK, lag, -1, 0, true, true, true)));
-                }
+                drive(
+                        context,
+                        rig,
+                        Drive.forward(
+                                "flat drive through a connection that gets slower",
+                                STALL_DRIVE_TICKS,
+                                flatSpeed,
+                                true,
+                                false,
+                                new Late(STALL_AT_TICK, SLOWER_TICKS, -1, 0, true, true, true)));
                 drive(
                         context,
                         rig,
@@ -445,7 +456,6 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                 if (tick == SETTLE_TICKS) {
                     context.runOnClient(client -> PacketJitter.resetMoveless());
                 }
-                io.github.pkeppeler.deepcharter.pod.PodGlideTrace.on = late != null && (late.stallTicks() == SHORT_STALL_TICKS || late.lags()) && tick >= 15; // TRACE
                 if (late != null && tick == late.stallAt()) {
                     context.runOnClient(client -> {
                         if (late.lags()) {
@@ -471,14 +481,6 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     }
                     drilled[0] |= watchedPod instanceof PodEntity pod && pod.drilling();
                 });
-                if (late != null && tick >= 15 && (late.stallTicks() == SHORT_STALL_TICKS || late.lags())) { // TRACE
-                    int n = pilot.frames().size();
-                    LOGGER.info("TRACE {} tick {} moveless {} pilotDz {} ownDz {} watchedDz {}", drive.name(), tick,
-                            context.computeOnClient(c -> PacketJitter.movelessTicks()),
-                            pilot.frames().get(n - 1).z - pilot.frames().get(n - 1 - FRAMES).z,
-                            ownPod.frames().get(n - 1).z - ownPod.frames().get(n - 1 - FRAMES).z,
-                            watched.frames().get(n - 1).z - watched.frames().get(n - 1 - FRAMES).z);
-                }
             }
             moveless = context.computeOnClient(client -> PacketJitter.movelessTicks());
         } finally {
@@ -782,7 +784,14 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     "the watched pod standing at its place before the wall",
                     () -> context.computeOnClient(client -> standsAt(client, rig.mockPodId(), at)),
                     () -> "watched pod on the client " + onClient(context, rig.mockPodId()) + " for " + at);
-            io.github.pkeppeler.deepcharter.pod.PodGlideTrace.on = true; // TRACE
+            // The pod already stands there, so the wait above can pass before the wall's block update reaches the
+            // client; a coast
+            // on a client with no wall yet draws the pod through it.
+            ClientWait.until(
+                    context,
+                    "the wall at the pod's front on the client",
+                    client ->
+                            !ClientLight.clientLevel(client).getBlockState(wall).isAir());
             context.runOnClient(client -> {
                 Entity pod = TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId());
                 pod.setDeltaMovement(0, 0, FAST_COAST_SPEED);
@@ -798,7 +807,6 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                         .maxZ));
             }
         } finally {
-            io.github.pkeppeler.deepcharter.pod.PodGlideTrace.on = false; // TRACE
             context.runOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId())
                     .setDeltaMovement(Vec3.ZERO));
             rig.two().server().runOnServer(server -> {

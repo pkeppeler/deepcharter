@@ -60,3 +60,11 @@ Two causes, both in the tick after a stall. (1) A moveless stretch of 4 ticks wa
 - A glide that arrives early (the speed floor ran the pod onto its target) ends there and the pod coasts, so it does not stand for the rest of the glide.
 - While the server reports a pod that has coasted moving, a glide tick covers at least that speed, or the whole gap when it is smaller; the catch-up cap still applies, so there is no lunge. A pod that has not coasted keeps the share: it trails its target by design, and the jitter's skipped ticks need that gap.
 - `settleShare` is 0.12, so the way back from a hidden stop (up to 0.72 blocks past it) stays under half the frame's speed.
+
+## Amendment 2026-11-25: a late move is not a stop (#1112)
+
+The decision and its invariant are unchanged: a pod is never drawn more than `coastTicks - 1 + coastTailShare` ticks of speed past where the server put it. What changed is how that reach is measured and used. A move that arrives one tick late carries a position one tick stale, so a pod that has coasted is already ahead of it. The old rule read that as an overshoot and gave it back at `settleShare` (a 0.024 step backward, then a stand until the next move, the 0.025 of #871 and the near freeze of #897 and #1095).
+
+- A move that advances the target along the coast (at least half a coast tick) is a late move, not a stop: the pod goes on at the reported speed, within the reach above counted in blocks past the target, and stands when it is used up. It no longer gives the excess back while moves keep advancing.
+- While no move has arrived and the server reports the pod moving, the pod goes on within the same reach (it stood for the whole wait before), for `settleDelayTicks`.
+- A move that does not advance, or a pod the server reports still, settles back as before.
