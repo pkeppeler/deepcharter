@@ -20,6 +20,9 @@ public final class CatalogueState {
     /** The item being looked up, in a mode, at the recipe shown out of those found (from 0). */
     public record Lookup(Item item, Mode mode, int index) {}
 
+    /** How many lookups the history keeps: the oldest goes when another is added past it. */
+    public static final int HISTORY_DEPTH = 32;
+
     private String query = "";
     private boolean craftableOnly;
     private int page;
@@ -145,6 +148,16 @@ public final class CatalogueState {
             return List.of();
         }
         return now.mode() == Mode.RECIPES ? catalogue.recipesFor(now.item()) : catalogue.usesOf(now.item());
+    }
+
+    /** STUB */
+    public boolean back() {
+        return false;
+    }
+
+    /** STUB */
+    public boolean canGoBack() {
+        return false;
     }
 
     /** The recipe the lookup shows, or null when it lists none. */
