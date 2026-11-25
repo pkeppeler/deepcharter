@@ -26,6 +26,7 @@ import net.minecraft.network.protocol.game.ClientboundRecipeBookRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
@@ -58,6 +59,8 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final List<PlacedSound> soundsAtPlaces = new ArrayList<>();
+    private final List<Identifier> soundsStopped = new ArrayList<>();
     private final Map<Integer, List<Identifier>> soundsByEntity = new HashMap<>();
     private final List<Long> soundTicks = new ArrayList<>();
     private final List<Identifier> soundsInTheWorld = new ArrayList<>();
@@ -99,6 +102,25 @@ public final class MockPlayer {
     /** The id of every sound the server has played to this player alone (a sound entity packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
     public List<Identifier> soundsHeard() {
         return List.copyOf(sounds);
+    }
+
+    /** A sound the server played at a place in the world. */
+    public record PlacedSound(Identifier id, Vec3 at) {}
+
+    /**
+     * Every sound the server has played to this player at a place in the world (a sound packet) so far, oldest first. Read on the mock's tick,
+     * so it lags by one. Tests run side by side in one level, so a sound of another test's block can be here: filter by place.
+     */
+    public List<PlacedSound> soundsHeardAtPlaces() {
+        return List.copyOf(soundsAtPlaces);
+    }
+
+    /**
+     * The id of every sound the server has told this player's client to stop so far, oldest first. Read on the mock's tick, so it lags by
+     * one. A stop names no place, so a test beside other tests asks whether one is among them.
+     */
+    public List<Identifier> soundsStopped() {
+        return List.copyOf(soundsStopped);
     }
 
     /** The id of every sound that the server played at a place in the world and sent this player (a sound packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
@@ -345,6 +367,14 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundRecipeBookRemovePacket packet) {
                     packet.recipes().forEach(recipeDisplays::remove);
+                }
+                if (outbound instanceof ClientboundSoundPacket packet) {
+                    soundsAtPlaces.add(new PlacedSound(
+                            packet.getSound().value().location(),
+                            new Vec3(packet.getX(), packet.getY(), packet.getZ())));
+                }
+                if (outbound instanceof ClientboundStopSoundPacket packet) {
+                    soundsStopped.add(packet.getName());
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);

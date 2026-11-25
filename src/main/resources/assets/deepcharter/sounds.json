@@ -80,5 +80,8 @@
 	"ambient.layer_2_knock": { "sounds": [{ "name": "deepcharter:ambient/layer_2_knock", "volume": 0.8 }], "subtitle": "subtitles.deepcharter.ambient.knock" },
 	"hymn.colony": { "sounds": [{ "name": "deepcharter:hymn/colony", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
 	"hymn.layer_1": { "sounds": [{ "name": "deepcharter:hymn/layer_1", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
-	"hymn.layer_2": { "sounds": [{ "name": "deepcharter:hymn/layer_2", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" }
+	"hymn.layer_2": { "sounds": [{ "name": "deepcharter:hymn/layer_2", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
+	"phonograph.gamme_de_la_voix": { "sounds": [{ "name": "deepcharter:phonograph/gamme_de_la_voix", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
+	"phonograph.jeune_jouvencelle": { "sounds": [{ "name": "deepcharter:phonograph/jeune_jouvencelle", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
+	"phonograph.othello": { "sounds": [{ "name": "deepcharter:phonograph/othello", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" }
 }
