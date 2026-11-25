@@ -109,12 +109,18 @@ public class GiantFungiClientTest implements FabricClientGameTest {
                         .filter(quad -> quad.direction() == Direction.UP)
                         .allMatch(quad -> quad.materialInfo().lightEmission() == 0),
                 "a cap's top glows");
+        // Every gill glows at full light (#1218): a gill lamp stands out by its brighter gills and its real light.
         BlockState lamp = block("parasol_gills").defaultBlockState().setValue(BlockStateProperties.LIT, true);
         require(
-                most(quads(models, lamp), quad -> quad.materialInfo().lightEmission())
-                        > most(
-                                quads(models, block("parasol_gills").defaultBlockState()),
-                                quad -> quad.materialInfo().lightEmission()),
-                "a gill lamp's gills glow no brighter than the rest");
+                quads(models, lamp).stream()
+                        .filter(quad -> quad.direction() == Direction.DOWN)
+                        .anyMatch(quad -> quad.materialInfo().lightEmission() == 15
+                                && quad.materialInfo()
+                                        .sprite()
+                                        .contents()
+                                        .name()
+                                        .getPath()
+                                        .equals("block/parasol_gills_lamp")),
+                "a gill lamp does not draw its own gills at full light");
     }
 }
