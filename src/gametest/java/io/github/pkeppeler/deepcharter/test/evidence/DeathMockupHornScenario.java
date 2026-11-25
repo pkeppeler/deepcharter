@@ -20,7 +20,7 @@ import net.minecraft.world.level.block.Blocks;
  * only from a lamp in the floor beneath it. The camera turns slowly until the horn's mouth fills the view. One frame per
  * tick, with the HUD hidden; the mock-up grades it to soot and sepia and lays the laugh over it.
  */
-public class DeathMockupHornScenario extends EvidenceScenario {
+public final class DeathMockupHornScenario extends EvidenceScenario {
     private static final int X = 5400;
     private static final int Z = 5400;
     private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;

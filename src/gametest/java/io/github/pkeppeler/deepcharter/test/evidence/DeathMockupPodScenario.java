@@ -22,7 +22,7 @@ import net.minecraft.world.level.block.Blocks;
  * layer-1 chamber when the floor under it gives way to lava. The lava burns the hull to nothing, the pod is a wreck and its
  * pilot dies with it (the wreck kill, {@code CrewFate}). One frame per tick, up to the tick before the vanilla death screen.
  */
-public class DeathMockupPodScenario extends EvidenceScenario {
+public final class DeathMockupPodScenario extends EvidenceScenario {
     private static final int X = 5200;
     private static final int Z = 5200;
     private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;

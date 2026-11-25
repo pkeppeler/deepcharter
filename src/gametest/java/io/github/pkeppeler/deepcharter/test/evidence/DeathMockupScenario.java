@@ -21,7 +21,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * regolith roof. The props under the roof give, the loose regolith comes down on them and they suffocate. Every tick is one
  * frame, and the frames stop on the tick before the vanilla death screen, where the mock-up's own death sequence is cut in.
  */
-public class DeathMockupScenario extends EvidenceScenario {
+public final class DeathMockupScenario extends EvidenceScenario {
     private static final int X = 5000;
     private static final int Z = 5000;
     private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
