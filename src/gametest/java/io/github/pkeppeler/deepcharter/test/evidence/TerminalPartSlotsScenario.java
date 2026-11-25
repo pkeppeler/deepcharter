@@ -94,6 +94,7 @@ public class TerminalPartSlotsScenario extends EvidenceScenario {
                             .computeOnServer(server -> RepairState.get(server).inserted(TerminalTypes.FUEL_PUMP))
                             .contains(motor),
                     () -> "not yet");
+            context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN); // no tooltip over the motor's name
             hold(context);
             screenshot(context, "motor-in");
 

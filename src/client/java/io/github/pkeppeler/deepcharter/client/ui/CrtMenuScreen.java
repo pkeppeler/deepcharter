@@ -149,6 +149,12 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
         }
     }
 
+    /** The terminal fills the window, as a {@link CrtScreen} does, so the HUD is not drawn under it (a container screen's default). */
+    @Override
+    public boolean isInGameUi() {
+        return false;
+    }
+
     /** The narrator reads the intro in full, not the part typed so far. */
     @Override
     public Component getNarrationMessage() {

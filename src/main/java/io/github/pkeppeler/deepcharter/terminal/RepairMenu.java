@@ -97,9 +97,9 @@ public final class RepairMenu extends SlottedMenu {
                     .ghost(new ItemStack(part), new ItemStack(part).getHoverName())
                     .locking()
                     .holding(1);
-            addRuleSlot(view, i, i % PART_COLUMNS * PART_COLUMN, PARTS_Y + i / PART_COLUMNS * PART_ROW, rule);
+            addRuleSlot(view, i, FRAME + i % PART_COLUMNS * PART_COLUMN, PARTS_Y + i / PART_COLUMNS * PART_ROW, rule);
         }
-        addPlayerInventory(inventory, 0, inventoryY(parts.size()));
+        addPlayerInventory(inventory, FRAME, inventoryY(parts.size()));
         refresh();
     }
 
