@@ -55,12 +55,10 @@ import org.lwjgl.sdl.SDLKeyboard;
  * one screen to the next.
  */
 public class CatalogueToggleClientTest implements FabricClientGameTest {
-    /** The game's left button: what a vanilla button answers to. */
     private static final Item DRILL = HangarParts.DRILL_HEAD;
 
+    /** The game's left button: what a vanilla button and the catalogue's panels answer to. */
     private static final int LEFT_MOUSE = InputConstants.MOUSE_BUTTON_LEFT;
-    /** The button the parts catalogue's panels read as a plain click, for the search field. Switch to InputConstants.MOUSE_BUTTON_LEFT once #1304 lands. */
-    private static final int PANEL_CLICK = 0;
     /** The default window, 854 by 480 at GUI scale 2. */
     private static final int WIDTH = 427;
 
@@ -249,7 +247,7 @@ public class CatalogueToggleClientTest implements FabricClientGameTest {
 
         CataloguePanel panel = CatalogueScene.panel(context);
         Rect search = CatalogueScene.layout(context, panel).shelf().search();
-        click(context, search, PANEL_CLICK);
+        click(context, search, LEFT_MOUSE);
         require(context.computeOnClient(client -> panel.searchFocused()), "a click on the search field focuses it");
         context.getInput().typeChars("o");
         context.getInput().pressKey(InputConstants.KEY_O);
@@ -368,11 +366,11 @@ public class CatalogueToggleClientTest implements FabricClientGameTest {
                     "the wheel over the hidden shelf turns no page");
 
             CatalogueScene.hover(context, CatalogueScene.gridCell(layout, 0));
-            context.getInput().pressMouse(PANEL_CLICK);
+            context.getInput().pressMouse(LEFT_MOUSE);
             CatalogueScene.hover(context, layout.shelf().craftable());
-            context.getInput().pressMouse(PANEL_CLICK);
+            context.getInput().pressMouse(LEFT_MOUSE);
             CatalogueScene.hover(context, layout.shelf().search());
-            context.getInput().pressMouse(PANEL_CLICK);
+            context.getInput().pressMouse(LEFT_MOUSE);
             context.waitTicks(1);
             require(
                     context.computeOnClient(client -> panel.state().lookup()) == null
@@ -434,7 +432,7 @@ public class CatalogueToggleClientTest implements FabricClientGameTest {
                             && context.computeOnClient(client -> panel.sheetGlass()) != null,
                     "and draws its title '" + title + "'");
             CatalogueScene.hover(context, layout.inventory());
-            context.getInput().pressMouse(PANEL_CLICK);
+            context.getInput().pressMouse(LEFT_MOUSE);
             context.waitTicks(1);
             require(
                     context.computeOnClient(client -> panel.sheetItem()) == null,
