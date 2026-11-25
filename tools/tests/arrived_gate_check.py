@@ -138,14 +138,14 @@ VIOLATIONS = {
     ),
 }
 CLIENT_CLASS = "public class SeatsClientTest implements FabricClientGameTest"
-# label: (file, class line, server block call, line the gate reports)
+# label: (file, class line, server block call); each block holds the startRiding violation
 OTHER_SHAPES = {
-    "computeOnServer": ("SeatsClientTest.java", CLIENT_CLASS, "singleplayer.getServer().computeOnServer", 5),
-    "serverDo": ("SeatsClientTest.java", CLIENT_CLASS, "chamber.serverDo", 5),
-    "serverGet": ("SeatsClientTest.java", CLIENT_CLASS, "world.serverGet", 5),
-    "an evidence scenario": ("evidence/SeatsScenario.java", "public class SeatsScenario extends EvidenceScenario", "singleplayer.getServer().runOnServer", 5),
-    "an evidence helper": ("evidence/SeatsHelper.java", "final class SeatsHelper", "singleplayer.getServer().runOnServer", 5),
-    "a test helper": ("support/SeatsSupport.java", "public final class SeatsSupport", "server.runOnServer", 5),
+    "computeOnServer": ("SeatsClientTest.java", CLIENT_CLASS, "singleplayer.getServer().computeOnServer"),
+    "serverDo": ("SeatsClientTest.java", CLIENT_CLASS, "chamber.serverDo"),
+    "serverGet": ("SeatsClientTest.java", CLIENT_CLASS, "world.serverGet"),
+    "an evidence scenario": ("evidence/SeatsScenario.java", "public class SeatsScenario extends EvidenceScenario", "singleplayer.getServer().runOnServer"),
+    "an evidence helper": ("evidence/SeatsHelper.java", "final class SeatsHelper", "singleplayer.getServer().runOnServer"),
+    "a test helper": ("support/SeatsSupport.java", "public final class SeatsSupport", "server.runOnServer"),
 }
 
 
@@ -173,7 +173,7 @@ CASES = {
     },
     **{
         label: Case(fixture({path: violating(class_line, call, VIOLATIONS["startRiding"][0])}), None)
-        for label, (path, class_line, call, _) in OTHER_SHAPES.items()
+        for label, (path, class_line, call) in OTHER_SHAPES.items()
     },
 }
 
@@ -202,6 +202,7 @@ class ArrivedGateTest(unittest.TestCase):
                 self.check_fails(label, "SeatsClientTest", line)
 
     def test_every_server_block_and_staging_class_is_scanned(self):
-        for label, (path, _, _, line) in OTHER_SHAPES.items():
+        line = VIOLATIONS["startRiding"][1]
+        for label, (path, _, _) in OTHER_SHAPES.items():
             with self.subTest(label):
                 self.check_fails(label, path.removesuffix(".java").replace("/", "."), line)
