@@ -33,7 +33,7 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
     public static final int INVENTORY_WIDTH = 9 * SLOT_SIZE;
 
     public static final int INVENTORY_HEIGHT = 4 * SLOT_SIZE + 4;
-    /** Pixels the screen's frame round a slot reaches past it: a menu puts its slots at least this far into its image. */
+    /** Pixels the frame round a slot reaches past it: a menu puts its slots at least this far into its image. */
     public static final int FRAME = 1;
 
     private final List<RuleSlot> ruleSlots = new ArrayList<>();
