@@ -39,13 +39,10 @@ public class WreckPhonographTest {
 
     private static final BlockPos PLACE = new BlockPos(3, 1, 3);
 
-    /**
-     * Any player within the trigger range starts the song, and a batch lays its tests out side by side, 5 blocks
-     * apart: the next test's mock players join 11 blocks from this block (#1368). So each test that reads whether it
-     * plays has an environment of its own, and runs in a batch with no other test's player beside it.
-     */
+    // Any player within the trigger range starts the song, and a batch lays its tests out side by side, 5 blocks
+    // apart: the next test's mock players join 11 blocks from this block (#1368). So each test that reads whether it
+    // plays has one of these environments of its own, and runs in a batch with no other test's player beside it.
     private static final String TRIGGER = "deepcharter-test:wreck_phonograph_trigger";
-
     private static final String SWITCH = "deepcharter-test:wreck_phonograph_switch";
     private static final String HAND = "deepcharter-test:wreck_phonograph_hand";
     private static final String ENDING = "deepcharter-test:wreck_phonograph_ending";
@@ -80,7 +77,7 @@ public class WreckPhonographTest {
         player.player().gameMode.useItemOn(player.player(), level, stack, InteractionHand.MAIN_HAND, hit);
     }
 
-    /** The songs the player was sent the start of at the test's own block: the other tests' blocks stand within earshot. */
+    /** The songs the player was sent the start of at the test's own block. */
     private static List<Identifier> startsAtMine(GameTestHelper helper, MockPlayer player) {
         Vec3 mine = Vec3.atCenterOf(helper.absolutePos(PLACE));
         return player.soundsHeardAtPlaces().stream()
