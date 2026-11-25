@@ -92,12 +92,9 @@ public final class ClientWait {
     }
 
     /**
-     * Waits until the server has settled the light of the chunks the block square of {@code radius} round
-     * ({@code x}, {@code z}) touches, and of the ring of chunks round them, in {@code layer}. Call it after a carve
-     * and before a pod that carries a pilot moves into it. The server re-sends a settling chunk to every player that
-     * holds it, and while that send is queued {@code ChunkMap.isChunkTracked} is false. A pod that changes section in
-     * that window is dropped for its pilot, and a rider sends no move packets to make the server track the pod again,
-     * so the client shows the pilot on foot until the send lands and something else moves (#1249).
+     * Waits until the server has settled the light of the chunks round the block square of {@code radius} at ({@code x},
+     * {@code z}) in {@code layer}. Call it after a carve, before a pod with a pilot moves in: a rider sends no move
+     * packets, so a pod dropped while a chunk send is queued stays dropped (#1249).
      */
     public static void lightSettled(
             ClientGameTestContext context, TestServerContext server, int layer, int x, int z, int radius) {

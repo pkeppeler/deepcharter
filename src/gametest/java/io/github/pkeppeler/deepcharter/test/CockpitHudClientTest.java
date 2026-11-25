@@ -131,6 +131,13 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                             -ROOM_RADIUS,
                             ROOM_RADIUS,
                             Blocks.AIR);
+                });
+                // The carve makes the server re-send the chunks round it, and a pod added or mounted while that send
+                // is queued is dropped for its pilot (#1249): seat the pilot once the chunks are sent.
+                ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+                singleplayer.getServer().runOnServer(server -> {
+                    ServerLevel one = TestLayers.level(server, 1);
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
                     PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                     pod.setPos(0.5, FEET_Y, 0.5);
