@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -106,7 +107,10 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        run(context);
+        // A recording shows the game as a player sees it, transmissions included.
+        try (var _ = QuietTransmissions.shown()) {
+            run(context);
+        }
         if (frame == 0) {
             throw new AssertionError("Scenario " + name() + " produced no frames");
         }

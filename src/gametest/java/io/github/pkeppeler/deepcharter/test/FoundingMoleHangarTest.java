@@ -39,6 +39,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.ArrayList;
@@ -430,6 +431,13 @@ public class FoundingMoleHangarTest {
                             REPAIRED_BY.equals(List.of(charterOf(helper, second).name())),
                             "the repair fires once: %s",
                             REPAIRED_BY);
+                    expect(
+                            helper,
+                            TransmissionData.get(server(helper))
+                                    .progress(charterOf(helper, second).id())
+                                    .fired()
+                                    .contains(Hangar.MOLE_TRANSMISSION),
+                            "handing over the founding Mole fires T06 for its charter");
                     expect(
                             helper,
                             PodEvents.canMount(derelict, second.player()) && PodEvents.isPowered(derelict),

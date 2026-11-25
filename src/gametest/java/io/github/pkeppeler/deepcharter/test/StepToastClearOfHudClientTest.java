@@ -36,6 +36,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -280,6 +281,12 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     }
 
     private static void expectTheSlipIsClearOfATransmission(ClientGameTestContext context) {
+        try (var _ = QuietTransmissions.shown()) {
+            expectTheSlipIsClearOfAShownTransmission(context);
+        }
+    }
+
+    private static void expectTheSlipIsClearOfAShownTransmission(ClientGameTestContext context) {
         context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(
                 Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t01"), CHARTER, "Director")));
         ClientWait.until(context, "a transmission on screen", client -> TransmissionOverlay.active());

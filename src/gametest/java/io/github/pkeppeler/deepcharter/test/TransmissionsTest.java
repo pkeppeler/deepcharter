@@ -1011,8 +1011,9 @@ public class TransmissionsTest {
     }
 
     /**
-     * The event triggers of the script: each colony terminal's repair fires its transmission (T05 for one past the first three), and the
-     * hangar console's repair or a bought Mole fires T06. Called on the hooks' handlers, not the events, so no other feature's listener
+     * The event triggers of the script: each colony terminal's repair fires its transmission (T05 for any further one), and a bought
+     * Mole fires T06. The hangar console's repair fires nothing here: the hangar fires T06 when it hands over the founding Mole.
+     * Called on the hooks' handlers, not the events, so no other feature's listener
      * changes the shared world.
      */
     @GameTest
@@ -1033,7 +1034,7 @@ public class TransmissionsTest {
                         deliveredTo(crew));
             }
             TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.BUY_MOLE);
-            TransmissionTriggers.onRepaired(server, HangarTerminal.TYPE, charter);
+            TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.BUY_MOLE);
             if (!deliveredTo(crew).equals(ids("t02", "t03", "t04", "t05", "t06"))
                     || account(helper, id) != 3 * Transmission.Bonus.B1.amount()) {
                 throw helper.assertionException(
@@ -1047,9 +1048,10 @@ public class TransmissionsTest {
                     server,
                     HangarTerminal.TYPE,
                     Charters.findOrThrow(server, second).orElseThrow());
-            if (!deliveredTo(other).equals(ids("t06"))) {
+            if (!deliveredTo(other).isEmpty()) {
                 throw helper.assertionException(
-                        "repairing the hangar console, and so the Mole, sends t06: %s", deliveredTo(other));
+                        "the console's repair alone sends nothing: the hangar sends t06 with the founding Mole, %s",
+                        deliveredTo(other));
             }
         });
         helper.succeed();

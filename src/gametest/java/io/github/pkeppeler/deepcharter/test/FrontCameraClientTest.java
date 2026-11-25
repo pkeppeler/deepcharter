@@ -14,7 +14,6 @@ import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
-import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -232,7 +231,6 @@ public class FrontCameraClientTest implements FabricClientGameTest {
             pod.setNoGravity(true);
             one.addFreshEntity(pod);
             ScannerPods.fit(server, player, pod, 1);
-            QuietTransmissions.silence(server, player);
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod");
             }
@@ -246,7 +244,6 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                         && TestLayers.clientIsIn(client, 1)
                         // The campaign level is tall: the loading screen outlasts the arrival.
                         && client.gui.screen() == null);
-        QuietTransmissions.clear(context);
         return made[0];
     }
 

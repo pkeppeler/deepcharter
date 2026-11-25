@@ -1,36 +1,45 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
-import io.github.pkeppeler.deepcharter.charter.CharterId;
-import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
-import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
-import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 /**
- * Keeps the transmission panel off the screen of a client test about something else. Founding a charter sends T01, and standing in a
- * layer's zones sends more, each a panel over the middle of the view that a screenshot would catch.
+ * Keeps the transmission panel off the screen of every client test that is about something else. Founding a charter sends T01, and
+ * standing in a layer's zones sends more: each is a panel over the middle of the view, which a screenshot or a pixel check would catch.
+ * The overlay is emptied on both ends of every client tick, so nothing it is sent is ever drawn.
+ *
+ * <p>A test about transmissions, and every evidence scenario (which records the game as a player sees it), wraps itself in
+ * {@link #shown()}.
  */
-public final class QuietTransmissions {
-    private QuietTransmissions() {}
+public final class QuietTransmissions implements ClientModInitializer {
+    private static volatile boolean shown;
 
-    /**
-     * On the server: marks every transmission fired for {@code member}'s charter and sent to {@code member}, so nothing more reaches them,
-     * and pays no bonus.
-     */
-    public static void silence(MinecraftServer server, ServerPlayer member) {
-        CharterId charter = Charters.charterOfOrThrow(server, member.getUUID())
-                .orElseThrow()
-                .id();
-        TransmissionData data = TransmissionData.get(server);
-        TransmissionCatalog.all().forEach(transmission -> data.fire(charter, transmission));
-        data.markSent(charter, member.getUUID(), data.progress(charter).fired().size());
+    @Override
+    public void onInitializeClient() {
+        ClientTickEvents.START_CLIENT_TICK.register(client -> quiet());
+        ClientTickEvents.END_CLIENT_TICK.register(client -> quiet());
     }
 
-    /** On the client: clears what is on the panel and queued, which {@link #silence} cannot recall once it was sent. */
-    public static void clear(ClientGameTestContext context) {
-        context.runOnClient(client -> TransmissionOverlay.reset());
+    private static void quiet() {
+        if (!shown) {
+            TransmissionOverlay.reset();
+        }
+    }
+
+    /** Lets transmissions reach the screen until the returned handle is closed. */
+    public static Shown shown() {
+        shown = true;
+        return new Shown();
+    }
+
+    /** While open, transmissions are drawn. */
+    public static final class Shown implements AutoCloseable {
+        private Shown() {}
+
+        @Override
+        public void close() {
+            shown = false;
+        }
     }
 }

@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.transmission;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
@@ -24,7 +25,8 @@ import net.minecraft.world.entity.Entity;
  *   <li>a charter founded: T01, then the repairs the world has fired ({@link Transmissions#replayTo});
  *   <li>a colony terminal repaired: T02 for the fuel pump, T03 for the ore processor, T04 for the upgrade terminal, T05 for any
  *       other;
- *   <li>the hangar console repaired, which repairs the founding Mole, or a refurbished Mole bought: T06;
+ *   <li>a refurbished Mole bought: T06, which the hangar also fires when it hands the founding Mole to the charter that repaired the
+ *       hangar console;
  *   <li>the Prospector restored: T17, fired by the hangar from its tuning.
  * </ul>
  *
@@ -35,10 +37,8 @@ public final class TransmissionTriggers {
     private static final Map<TerminalType, Identifier> REPAIRS = Map.of(
             TerminalTypes.FUEL_PUMP, id("t02"),
             TerminalTypes.ORE_PROCESSOR, id("t03"),
-            TerminalTypes.UPGRADE_TERMINAL, id("t04"),
-            HangarTerminal.TYPE, id("t06"));
+            TerminalTypes.UPGRADE_TERMINAL, id("t04"));
     private static final Identifier FURTHER_REPAIR = id("t05");
-    private static final Identifier MOLE = id("t06");
 
     private TransmissionTriggers() {}
 
@@ -53,16 +53,21 @@ public final class TransmissionTriggers {
         Transmissions.replayTo(server, data, charter.id());
     }
 
-    /** A terminal repaired by {@code charter}: the transmission of that terminal. */
+    /**
+     * A terminal repaired by {@code charter}: the transmission of that terminal. The hangar console's is the hangar's to fire, once the
+     * founding Mole it repairs is the charter's.
+     */
     public static void onRepaired(MinecraftServer server, TerminalType type, Charter charter) {
-        Transmissions.fire(server, charter.id(), REPAIRS.getOrDefault(type, FURTHER_REPAIR));
+        if (type != HangarTerminal.TYPE) {
+            Transmissions.fire(server, charter.id(), REPAIRS.getOrDefault(type, FURTHER_REPAIR));
+        }
     }
 
     /** A terminal action that took effect: buying a refurbished Mole is how a charter after the first gets its Mole, and T06. */
     public static void onActed(MinecraftServer server, TerminalType type, ServerPlayer player, Identifier action) {
         if (type == HangarTerminal.TYPE && action.equals(HangarTerminal.BUY_MOLE)) {
             Charters.readableCharterOf(server, player.getUUID())
-                    .ifPresent(charter -> Transmissions.fire(server, charter.id(), MOLE));
+                    .ifPresent(charter -> Transmissions.fire(server, charter.id(), Hangar.MOLE_TRANSMISSION));
         }
     }
 

@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
@@ -57,9 +58,11 @@ public class TransmissionsClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
-        theDirectorFieldIsFilledWithTheDirectorsName();
-        aCrossingShowsItsTransmissionOverTheFade(context);
-        transmissionsReachTheClientInOrderAndOnLogin(context);
+        try (var _ = QuietTransmissions.shown()) {
+            theDirectorFieldIsFilledWithTheDirectorsName();
+            aCrossingShowsItsTransmissionOverTheFade(context);
+            transmissionsReachTheClientInOrderAndOnLogin(context);
+        }
     }
 
     /** The overlay fills {@code [DIRECTOR]} with the name the server sent and leaves no literal field behind. */
