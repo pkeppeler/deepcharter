@@ -92,7 +92,7 @@ public final class ClientWait {
     }
 
     /**
-     * Waits until the server has settled the light of the chunks round the block square of {@code radius} at ({@code x},
+     * Waits until the server has settled the light of the chunks round the square of {@code radius} at ({@code x},
      * {@code z}) in {@code layer}. Call it after a carve, before a pod with a pilot moves in: a rider sends no move
      * packets, so a pod dropped while a chunk send is queued stays dropped (#1249).
      */
