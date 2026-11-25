@@ -30,11 +30,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * Evidence scenario "pod-screen" for #1270: a charter sneaks and uses their Mole, which has a bought tier 2 hull, two ore
- * in the hold and an empty tank. The screen shows the fitted hull with its tier, ghosts on the empty tracks, the fuel
- * gauge and the hold. A cargo bay unit dragged onto its slot is fitted and the hold grows at once; a hull unit dragged onto
- * the fitted hull is refused with the reason; coal shift-clicked into the fuel slot feeds the tank as the gauge rises;
- * and dirt dragged into the hold lands where it is dropped. Stills of each step.
+ * Evidence scenario "pod-screen" for #1270: a charter sneaks and uses their Mole, which has a bought tier 2 hull, two
+ * ore in the hold and an empty tank. The screen shows the fitted hull with its tier, ghosts on the empty tracks, the
+ * fuel gauge and the hold. A cargo bay unit dragged onto its slot is fitted and the hold grows at once; a hull unit
+ * dragged onto the fitted hull is refused with the reason; coal shift-clicked into the fuel slot feeds the tank as the
+ * gauge rises; and dirt dragged into the hold lands where it is dropped. Stills of each step.
  */
 public class PodScreenScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;

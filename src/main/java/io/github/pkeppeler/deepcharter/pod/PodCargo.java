@@ -131,12 +131,17 @@ public final class PodCargo {
 
     private boolean discardLogged;
 
-    /** The mass {@code stack} adds to a pod when stowed by hand: an ore's own mass, or {@link OreEncumbrance#massOf}. */
+    /**
+     * The mass {@code stack} adds to a pod when stowed by hand: an ore's own mass, or {@link OreEncumbrance#massOf}.
+     */
     public static float massOf(ItemStack stack) {
         return OreEncumbrance.massOf(stack);
     }
 
-    /** Server only: puts one ore at its real mass in a free slot, if the hold has one, and returns whether it did. Anything but ore throws. */
+    /**
+     * Server only: puts one ore at its real mass in a free slot, if the hold has one, and returns whether it did.
+     * Anything but ore throws.
+     */
     public boolean tryAdd(PodEntity pod, ItemStack ore) {
         return tryAdd(
                 pod,
@@ -146,7 +151,10 @@ public final class PodCargo {
                         .orElseThrow(() -> new IllegalArgumentException("only ore is cargo, not " + ore)));
     }
 
-    /** Server only: puts one ore at the given mass (not negative) in a free slot, if the hold has one, and returns whether it did. */
+    /**
+     * Server only: puts one ore at the given mass (not negative) in a free slot, if the hold has one, and returns
+     * whether it did.
+     */
     public boolean tryAdd(PodEntity pod, ItemStack ore, float mass) {
         requireOwnServerPod(pod);
         requireReadable(pod);
@@ -167,8 +175,9 @@ public final class PodCargo {
     }
 
     /**
-     * Server only: removes up to {@code amount} (at least 1) of {@code ore}, in slot order, and returns how many it removed: fewer
-     * than asked when the hold has fewer. A slot that holds more than is asked is shrunk and keeps its mass in proportion.
+     * Server only: removes up to {@code amount} (at least 1) of {@code ore}, in slot order, and returns how many it
+     * removed: fewer than asked when the hold has fewer. A slot that holds more than is asked is shrunk and keeps its
+     * mass in proportion.
      */
     public int take(PodEntity pod, OreType ore, int amount) {
         requireOwnServerPod(pod);
@@ -199,7 +208,10 @@ public final class PodCargo {
         return amount - left;
     }
 
-    /** Server only: takes every ore out of the hold, leaving what else it holds, and returns how many slots of ore it emptied. */
+    /**
+     * Server only: takes every ore out of the hold, leaving what else it holds, and returns how many slots of ore it
+     * emptied.
+     */
     public int dump(PodEntity pod) {
         requireOwnServerPod(pod);
         requireReadable(pod);
@@ -216,7 +228,10 @@ public final class PodCargo {
         return dumped;
     }
 
-    /** False while the saved cargo is unreadable: the hold then takes nothing and shows nothing, and {@link #tryAdd} and {@link #dump} throw. */
+    /**
+     * False while the saved cargo is unreadable: the hold then takes nothing and shows nothing, and {@link #tryAdd} and
+     * {@link #dump} throw.
+     */
     public boolean isReadable() {
         return unreadable == null;
     }
@@ -260,9 +275,9 @@ public final class PodCargo {
     }
 
     /**
-     * Server only: puts {@code stack} itself in slot {@code index}, over what was there, or empties it. The stack that is
-     * already there, put back after a change in place, keeps its mass in proportion; any other weighs {@link #massOf}.
-     * Whoever calls this has checked the slot may take it.
+     * Server only: puts {@code stack} itself in slot {@code index}, over what was there, or empties it. The stack that
+     * is already there, put back after a change in place, keeps its mass in proportion; any other weighs {@link
+     * #massOf}. Whoever calls this has checked the slot may take it.
      */
     public void setAt(PodEntity pod, int index, ItemStack stack) {
         requireOwnServerPod(pod);
@@ -282,7 +297,10 @@ public final class PodCargo {
         sync(pod);
     }
 
-    /** Server only: splits up to {@code amount} off the stack in slot {@code index} and returns it; empty for an empty slot. */
+    /**
+     * Server only: splits up to {@code amount} off the stack in slot {@code index} and returns it; empty for an empty
+     * slot.
+     */
     public ItemStack removeAt(PodEntity pod, int index, int amount) {
         ItemStack there = stackAt(index);
         if (there.isEmpty() || amount <= 0) {
@@ -294,8 +312,8 @@ public final class PodCargo {
     }
 
     /**
-     * Server only: a stack the pod screen holds was changed in place (grown, shrunk or emptied): empties the slots left with
-     * nothing, keeps each changed stack's mass in proportion, and updates the synced counts.
+     * Server only: a stack the pod screen holds was changed in place (grown, shrunk or emptied): empties the slots left
+     * with nothing, keeps each changed stack's mass in proportion, and updates the synced counts.
      */
     public void changed(PodEntity pod) {
         requireOwnServerPod(pod);
@@ -386,7 +404,10 @@ public final class PodCargo {
         }
     }
 
-    /** Restores the hold saved by {@link #save}, or the ore bay of version 1, and derives the pod's synced counts from it. */
+    /**
+     * Restores the hold saved by {@link #save}, or the ore bay of version 1, and derives the pod's synced counts from
+     * it.
+     */
     public void load(ValueInput input, PodEntity pod) {
         slots.clear();
         unreadable = null;

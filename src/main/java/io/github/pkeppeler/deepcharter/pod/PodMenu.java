@@ -49,11 +49,11 @@ import org.jspecify.annotations.Nullable;
  * seat ({@link PodScreenPayload}).
  *
  * <ul>
- *   <li><b>Parts.</b> Each track's slot shows the part fitted on it, bought or crafted, or a faded stock or empty ghost.
- *       A crafted unit dragged or shift-clicked into its track's slot is fitted by {@link PartFitting}'s rules, and a
- *       fitted part stays: the slots mirror the pod's parts and lock.</li>
- *   <li><b>Fuel.</b> The fuel slot holds one stack of pod fuel ({@link PodFuelSlot}), which feeds the tank as it has room.
- *       The gauge reads the tank.</li>
+ *   <li><b>Parts.</b> Each track's slot shows the part fitted on it, bought or crafted, or a faded stock or empty
+ * ghost.       A crafted unit dragged or shift-clicked into its track's slot is fitted by {@link PartFitting}'s rules,
+ * and a       fitted part stays: the slots mirror the pod's parts and lock.</li>
+ *   <li><b>Fuel.</b> The fuel slot holds one stack of pod fuel ({@link PodFuelSlot}), which feeds the tank as it has
+ * room.       The gauge reads the tank.</li>
  *   <li><b>Hold.</b> {@link PodCargo}'s slots, a page at a time; anything moves in and out as with a chest, as far as
  *       the cargo bay's size. The slots are the hold itself, not a copy, so two open screens share them.</li>
  * </ul>
@@ -192,9 +192,9 @@ public final class PodMenu extends SlottedMenu {
     }
 
     /**
-     * Server only: opens the pod screen of {@code pod} for {@code player}, or says why not. Only the pod's own charter may
-     * open it ({@link PodComponents#mayAccess}); while the saved charters cannot be read, a readable pod opens, as it lets
-     * anyone board.
+     * Server only: opens the pod screen of {@code pod} for {@code player}, or says why not. Only the pod's own charter
+     * may open it ({@link PodComponents#mayAccess}); while the saved charters cannot be read, a readable pod opens, as
+     * it lets anyone board.
      */
     public static Optional<Component> open(ServerPlayer player, PodEntity pod) {
         if (player.isSpectator() || !pod.isAlive()) {
@@ -314,7 +314,9 @@ public final class PodMenu extends SlottedMenu {
         VOID
     }
 
-    /** How the part on {@code track} works, read from the pod; empty for no part, or a pod the client does not track. */
+    /**
+     * How the part on {@code track} works, read from the pod; empty for no part, or a pod the client does not track.
+     */
     public Optional<Condition> condition(ComponentTrack track) {
         if (pod == null) {
             return Optional.empty();
@@ -400,7 +402,10 @@ public final class PodMenu extends SlottedMenu {
         return SlotRule.of(stack -> true, stack -> Component.empty()).checked(stack -> holdRefusal(window));
     }
 
-    /** Why hold slot {@code window} of the page takes nothing now: past the bay's size, a full bay, or no hold to put it in. */
+    /**
+     * Why hold slot {@code window} of the page takes nothing now: past the bay's size, a full bay, or no hold to put it
+     * in.
+     */
     private Optional<Component> holdRefusal(int window) {
         if (player != null && pod != null) {
             if (pod.isRemoved()) {
@@ -554,8 +559,9 @@ public final class PodMenu extends SlottedMenu {
     }
 
     /**
-     * The page of the hold the server's menu shows: hold slot {@code page * HOLD_WINDOW + i} as container slot {@code i}.
-     * It hands out the hold's own stacks, so a click changes the hold and nothing else; a pod that is gone shows nothing.
+     * The page of the hold the server's menu shows: hold slot {@code page * HOLD_WINDOW + i} as container slot {@code
+     * i}. It hands out the hold's own stacks, so a click changes the hold and nothing else; a pod that is gone shows
+     * nothing.
      */
     private final class HoldView implements Container {
         private final PodEntity owner;

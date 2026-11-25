@@ -97,7 +97,9 @@ public final class PodFuelSlot {
             this.stack = saved.map(State::stack).orElse(ItemStack.EMPTY);
         }
 
-        /** Nothing is there to take from a pod that is gone (saved and unloaded, or removed): its stack went with it. */
+        /**
+         * Nothing is there to take from a pod that is gone (saved and unloaded, or removed): its stack went with it.
+         */
         private boolean present() {
             return readable && !pod.isRemoved();
         }

@@ -104,8 +104,9 @@ public final class PodFuel {
     }
 
     /**
-     * Server only: pours one of {@code stack} into the tank and takes it from the stack, if the tank has room for all of
-     * its litres; true if it did. The pod's fuel slot feeds the tank this way ({@link PodFuelSlot}), so none is wasted.
+     * Server only: pours one of {@code stack} into the tank and takes it from the stack, if the tank has room for all
+     * of its litres; true if it did. The pod's fuel slot feeds the tank this way ({@link PodFuelSlot}), so none is
+     * wasted.
      */
     static boolean feedOne(PodEntity pod, ItemStack stack) {
         OptionalDouble litres = stack.isEmpty() ? OptionalDouble.empty() : PodFuelItems.litresOf(stack);

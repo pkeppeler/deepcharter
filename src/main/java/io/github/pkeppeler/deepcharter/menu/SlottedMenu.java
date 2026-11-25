@@ -90,22 +90,24 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
 
     /**
      * Whether a shift-click from the inventory tries {@code slot} for {@code stack}: by default, every slot the stack
-     * {@link SlotRule#fits fits}. A menu whose plain slots take anything narrows this, so a stack meant for a typed slot
-     * is refused with that slot's reason instead of landing in a plain one.
+     * {@link SlotRule#fits fits}. A menu whose plain slots take anything narrows this, so a stack meant for a typed
+     * slot is refused with that slot's reason instead of landing in a plain one.
      */
     protected boolean routes(RuleSlot slot, ItemStack stack) {
         return slot.rule().fits().test(stack);
     }
 
     /**
-     * Why {@code slot} gives back nothing of what it holds now, or empty when it gives it back: a menu keeps some stacks
-     * in an unlocked slot this way. A slot whose rule locks keeps what it holds whatever this says.
+     * Why {@code slot} gives back nothing of what it holds now, or empty when it gives it back: a menu keeps some
+     * stacks in an unlocked slot this way. A slot whose rule locks keeps what it holds whatever this says.
      */
     protected Optional<Component> keeps(RuleSlot slot) {
         return Optional.empty();
     }
 
-    /** Whether {@code slot} is there now: an inactive slot is not drawn and takes no click. Every slot is, by default. */
+    /**
+     * Whether {@code slot} is there now: an inactive slot is not drawn and takes no click. Every slot is, by default.
+     */
     protected boolean active(RuleSlot slot) {
         return true;
     }
@@ -150,7 +152,9 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         return Optional.empty();
     }
 
-    /** Whether a click of {@code input} on a filled slot would take from it, so a slot that keeps its stack refuses it. */
+    /**
+     * Whether a click of {@code input} on a filled slot would take from it, so a slot that keeps its stack refuses it.
+     */
     private boolean takes(ContainerInput input) {
         return switch (input) {
             case PICKUP -> getCarried().isEmpty();

@@ -93,7 +93,10 @@ public class PodScreenClientTest implements FabricClientGameTest {
         }
     }
 
-    /** The player founds a charter, a pod of theirs with two ore and an empty tank stands beside them, and they carry what the test moves. */
+    /**
+     * The player founds a charter, a pod of theirs with two ore and an empty tank stands beside them, and they carry
+     * what the test moves.
+     */
     private static UUID setUp(MinecraftServer server) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
         require(Charters.found(server, player.getUUID(), "Pod Screen Charter").isEmpty(), "founding should succeed");

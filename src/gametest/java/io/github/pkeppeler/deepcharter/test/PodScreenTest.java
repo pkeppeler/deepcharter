@@ -58,11 +58,11 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 
 /**
- * Server GameTests for #1270 (ADR 0102): the pod screen. Only the pod's charter opens it, by sneak and use or by the key
- * from a seat; a unit dragged or shift-clicked into its track's slot is fitted and stays, a wrong one is refused with a
- * reason; the slots show bought tiers; fuel goes into the fuel slot, at most a stack, and feeds the tank as it has room;
- * the hold moves items both ways up to the cargo bay's size; and no item is made or lost on close, with two viewers, or
- * when the pod goes while the screen is open. Walking away, leaving the seat or losing the pod closes it.
+ * Server GameTests for #1270 (ADR 0102): the pod screen. Only the pod's charter opens it, by sneak and use or by the
+ * key from a seat; a unit dragged or shift-clicked into its track's slot is fitted and stays, a wrong one is refused
+ * with a reason; the slots show bought tiers; fuel goes into the fuel slot, at most a stack, and feeds the tank as it
+ * has room; the hold moves items both ways up to the cargo bay's size; and no item is made or lost on close, with two
+ * viewers, or when the pod goes while the screen is open. Walking away, leaving the seat or losing the pod closes it.
  *
  * <p>The clicks are the server menu's own {@code clicked}, which the click packet runs.
  */
