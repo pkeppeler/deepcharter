@@ -2,12 +2,13 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.test.support.DriveJudge;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 
 /** Server GameTest for #1227: the drive-smooth floor passes the network position quantum and fails a real hitch. No world is built. */
 public class DriveJudgeTest {
-    /** A pod's speed in blocks per tick and the share of it a steady drive must cover each tick, as in PodDriveSmoothClientTest. */
+    /** A pod's speed in blocks per tick and the share of it a steady drive must cover each tick, as in PodDrives. */
     private static final double SPEED = 0.2f;
 
     private static final double SHARE = 0.5;

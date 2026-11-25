@@ -37,7 +37,8 @@ runs:
     # were never restored, so verification fails and the failed run saves the broken state again
     # (#830). This resolves everything the run needs first (the compile classpaths through `classes`,
     # the run's runtime classpaths through resolveClientGameTestRuntime) and, on a dependency-verification
-    # failure only, clears the module cache and retries once with --refresh-dependencies. It is
+    # failure only, clears the module cache and retries once with --refresh-dependencies; when a
+    # repository fails to answer (Maven Central's 429s, #1358), it waits and retries with backoff. It is
     # work the client run would do anyway, moved ahead of it, so a healthy run costs about nothing.
     - name: Resolve dependencies
       shell: bash
