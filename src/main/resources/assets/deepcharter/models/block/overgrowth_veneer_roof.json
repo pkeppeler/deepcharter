@@ -36,7 +36,9 @@
           ],
           "texture": "#all"
         }
-      }
+      },
+      "light_emission": 6,
+      "shade": false
     },
     {
       "from": [
@@ -68,7 +70,9 @@
           ],
           "texture": "#strand"
         }
-      }
+      },
+      "light_emission": 6,
+      "shade": false
     },
     {
       "from": [
@@ -100,7 +104,9 @@
           ],
           "texture": "#strand"
         }
-      }
+      },
+      "light_emission": 6,
+      "shade": false
     }
   ]
 }

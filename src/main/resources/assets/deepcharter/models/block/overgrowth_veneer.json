@@ -35,7 +35,9 @@
           ],
           "texture": "#all"
         }
-      }
+      },
+      "light_emission": 6,
+      "shade": false
     }
   ]
 }
