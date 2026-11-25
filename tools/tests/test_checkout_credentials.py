@@ -1,8 +1,9 @@
 """Every `actions/checkout` step sets `persist-credentials: false` (#1283).
 
-Without it the checkout writes the workflow token into `the repo config file`, where every later step and action can read it. A step that needs
-the token passes it to that one command (see `record-evidence.yml`). The tools are standard-library only, so there is no YAML parser:
-a workflow step is a `- ` list item, and the scan reads its block by indentation, which the workflow files here keep simple.
+Without it the checkout writes the workflow token into the repo config file, where every later step and action can
+read it. A step that needs the token passes it to that one command (see `record-evidence.yml`). The tools are
+standard-library only, so there is no YAML parser: a workflow step is a `- ` list item, and the scan reads its block
+by indentation, which the workflow files here keep simple.
 """
 import re
 import tempfile
@@ -70,8 +71,10 @@ def violations(root: Path) -> list[str]:
             name = next((m.group(1) for m in map(NAME.match, block) if m), "(unnamed)")
             if persists(block):
                 found.append(
-                    f"{path.relative_to(root)}:{first} step {name}: actions/checkout without `with: persist-credentials: false`. "
-                    "The token would stay in the repo config file for every later step; set it to false and pass a token only to the command that needs it."
+                    f"{path.relative_to(root)}:{first} step {name}: "
+                    "actions/checkout without `with: persist-credentials: false`. "
+                    "The token would stay in the repo config file for every later step; "
+                    "set it to false and pass a token only to the command that needs it."
                 )
     return found
 
