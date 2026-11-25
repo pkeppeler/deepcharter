@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.layer.gen.ClaimShaftFeature;
 import io.github.pkeppeler.deepcharter.layer.gen.GrainedCrustPass;
 import io.github.pkeppeler.deepcharter.layer.gen.InChunkOffsetPlacement;
 import io.github.pkeppeler.deepcharter.layer.gen.LayerRowsPlacement;
+import io.github.pkeppeler.deepcharter.layer.gen.StrataRule;
 import io.github.pkeppeler.deepcharter.layer.gen.ZoneBiomeSource;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -42,5 +43,6 @@ public final class LayerRegistry {
         AirFaceLiningFeature.register();
         ClaimShaftFeature.register();
         CaveOreFeature.register();
+        StrataRule.register();
     }
 }
