@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -87,13 +88,19 @@ public class CampaignContentTest {
             "minecraft:offset",
             "minecraft:heightmap",
             "minecraft:environment_scan",
-            "minecraft:block_predicate_filter");
+            "minecraft:block_predicate_filter",
+            "deepcharter:in_chunk_offset");
 
     private static final String FIGURE = "deepcharter:lampless_figure";
     /** The test data pack's campaign sample dimension. */
     private static final String DIMENSION = "/data/deepcharter/dimension/campaign_sample.json";
 
+    /** The one feature unbuilt depth carries: its biome is in every column of the campaign world, so the pass runs once for each chunk. */
+    private static final String CRUST_PASS = "deepcharter:grained_crust_pass";
+
     private static final String UNBUILT_BIOME = "deepcharter:unbuilt_depth";
+    /** The layers whose zones spawn the lampless figure: the Claim and the Old Workings (CREATURES section 5). */
+    private static final int FIGURE_LAYERS = 2;
 
     /**
      * The layers the world generates from (the biome source's data, which {@code LayerChain.campaignLayers} reads) are the band table
@@ -283,30 +290,38 @@ public class CampaignContentTest {
             unmet.add(where + (famous ? " is not the famous Prospector" : " holds the famous Prospector"));
         }
         int lanterns = 0;
+        int phonographs = 0;
         BoundingBox box = site.bounds();
         for (BlockPos pos :
                 BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
             if (level.getBlockState(pos).is(Blocks.LANTERN)) {
                 lanterns++;
             }
+            if (level.getBlockState(pos).is(PhonographRegistry.WRECK_PHONOGRAPH)) {
+                phonographs++;
+            }
         }
         if (lanterns != (famous ? 1 : 0)) {
             unmet.add(where + " has " + lanterns + " lanterns");
         }
+        // The cabin phonograph (#861) is the story bay's alone.
+        if (phonographs != (famous ? 1 : 0)) {
+            unmet.add(where + " has " + phonographs + " cabin phonographs");
+        }
     }
 
     /**
-     * The Conduit's casing fills its column without a gap from layer 2's floor up to the top of the colony's stack, and none lies in the
-     * unbuilt depth below: the casing is set when a chunk loads (ADR 0016), as it is in the layers today.
+     * The Conduit's casing fills its column without a gap from the last layer's floor up to the top of the colony's stack, and none lies
+     * in the unbuilt depth below: the casing is set when a chunk loads (ADR 0016), as it is in the layers today.
      */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void theConduitIsContinuousFromLayer2sFloorUpToTheColony(GameTestHelper helper) {
+    public void theConduitIsContinuousFromTheLastLayersFloorUpToTheColony(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ColonySite.Placed colony =
                 Colony.placed(level.getServer()).orElseThrow(() -> failure(helper, "the colony was not built"));
         BlockPos centre = ColonyAnchor.CONDUIT.in(colony.anchors());
         int radius = ColonyTuning.DEFAULT.conduitRadius();
-        int bottom = CampaignBands.LAYER_2.minY();
+        int bottom = CampaignBands.layer(CampaignBands.lastLayer()).minY();
         int top = colony.groundY() + ColonyTuning.DEFAULT.conduitStack();
         for (int x = centre.getX() - radius; x <= centre.getX() + radius; x += radius) {
             for (int z = centre.getZ() - radius; z <= centre.getZ() + radius; z += radius) {
@@ -324,7 +339,7 @@ public class CampaignContentTest {
                 expect(
                         helper,
                         !level.getBlockState(new BlockPos(x, bottom - 1, z)).is(ColonyBlocks.CONDUIT),
-                        "the casing goes below layer 2's floor at %d %d",
+                        "the casing goes below the last layer's floor at %d %d",
                         x,
                         z);
             }
@@ -415,8 +430,9 @@ public class CampaignContentTest {
                         .getAsJsonArray("features")
                         .asList()
                         .stream()
-                        .allMatch(step -> step.getAsJsonArray().isEmpty()),
-                "unbuilt depth places features");
+                        .flatMap(step -> step.getAsJsonArray().asList().stream())
+                        .allMatch(feature -> feature.getAsString().equals(CRUST_PASS)),
+                "unbuilt depth places a feature besides the grained crust pass (#216), which every column runs once");
         helper.succeed();
     }
 
@@ -485,20 +501,26 @@ public class CampaignContentTest {
     }
 
     /**
-     * The cave stalks of Topsoil Claims, layer 1's first zone, grow there and nowhere else under the surface: the range of the
-     * biome's feature is the layer's own rows, so the zone's own rows are where they stand (to a block, for the offset a stalk takes).
+     * The cave stalks of Topsoil Claims, layer 1's first zone, grow there, and under the surface only there and in the Garden, layer 3's
+     * first zone (#972): the range of each biome's feature is its layer's own rows, so the zone's own rows are where they stand (to a
+     * block, for the offset a stalk takes).
      */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void caveStalksGrowInLayer1sFirstZoneOnly(GameTestHelper helper) {
+    public void caveStalksGrowInTheFirstZoneOfLayers1And3Only(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        FarChunks.whenLoaded(helper, BlockSurvey.area(level, STALK_CHUNKS), () -> {
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, STALK_CHUNKS), () -> {
             Band layer = CampaignBands.LAYER_1;
             Zones.Span zone = Zones.span(layer.minY(), layer.height(), 0);
+            Zones.Span garden = Zones.span(CampaignBands.LAYER_3.minY(), CampaignBands.LAYER_3.height(), 0);
             TreeSet<Integer> rows = new TreeSet<>();
             for (BlockPos stalk : BlockSurvey.find(level, STALK_CHUNKS, ours("fungal_stalk"))) {
-                // The surface has stalks of its own (the surface band's features).
-                if (stalk.getY() < CampaignBands.SURFACE.minY()) {
-                    rows.add(stalk.getY());
+                int y = stalk.getY();
+                // The surface has stalks of its own (the surface band's features), and so has the Garden.
+                if (y >= garden.low() - 1 && y <= garden.high() + 1) {
+                    continue;
+                }
+                if (y < CampaignBands.SURFACE.minY()) {
+                    rows.add(y);
                 }
             }
             expect(
@@ -523,15 +545,22 @@ public class CampaignContentTest {
     }
 
     /**
-     * The lampless figure's natural spawn is part of the biome data of both layers' zones (the rail-line spawns are the creature
-     * feature's own), so it follows the bands: every zone biome of the layers carries it, and the surface and the unbuilt depth do not.
+     * The lampless figure's natural spawn is part of the biome data of the zones of layers 1 and 2 (the rail-line spawns are the creature
+     * feature's own), so it follows the bands: every zone biome of those layers carries it, and the surface, layer 3 (whose creatures are
+     * its own, CREATURES section 5) and the unbuilt depth do not.
      */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void theLamplessFigureSpawnsInTheZonesOfBothLayersAndNowhereElse(GameTestHelper helper) throws IOException {
+    public void theLamplessFigureSpawnsInTheZonesOfLayers1And2AndNowhereElse(GameTestHelper helper) throws IOException {
         for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
             for (int zone = 0; zone < Zones.COUNT; zone++) {
                 String id = zoneBiomeId(number, zone);
-                expect(helper, spawnsFigure(helper, id), "%s lacks the lampless figure", id);
+                boolean figure = number <= FIGURE_LAYERS;
+                expect(
+                        helper,
+                        spawnsFigure(helper, id) == figure,
+                        "%s %s the lampless figure",
+                        id,
+                        figure ? "lacks" : "spawns");
             }
         }
         expect(helper, !spawnsFigure(helper, UNBUILT_BIOME), "unbuilt depth spawns the figure");

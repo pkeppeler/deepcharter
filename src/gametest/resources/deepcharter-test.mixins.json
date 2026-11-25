@@ -11,9 +11,14 @@
     "GameTestBatchFactoryMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
+    "LightEngineGateMixin",
     "LightSyncSendMixin",
     "MainShutdownHookMixin",
-    "ServerLevelForcedMixin"
+    "MinecraftServerAccess",
+    "ServerChunkCacheAccess",
+    "ServerChunkCacheBlockingLoadMixin",
+    "ServerLevelForcedMixin",
+    "TicketAccess"
   ],
   "client": [
     "CardinalLightingMixin",
@@ -25,6 +30,8 @@
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
+    "MinecraftAttackMixin",
+    "SoundManagerStopProbeMixin",
     "SpriteAnimationStateMixin"
   ],
   "injectors": {

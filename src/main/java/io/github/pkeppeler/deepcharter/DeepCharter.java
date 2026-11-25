@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodInit;
 import io.github.pkeppeler.deepcharter.repair.RepairInit;
 import io.github.pkeppeler.deepcharter.scanner.ScannerInit;
 import io.github.pkeppeler.deepcharter.sound.SoundInit;
+import io.github.pkeppeler.deepcharter.suit.SuitInit;
 import io.github.pkeppeler.deepcharter.surface.SurfaceInit;
 import io.github.pkeppeler.deepcharter.terminal.TerminalInit;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionInit;
@@ -45,6 +46,7 @@ public class DeepCharter implements ModInitializer {
         RepairInit.init();
         ScannerInit.init();
         SoundInit.init();
+        SuitInit.init();
         SurfaceInit.init();
         TerminalInit.init();
         TransmissionInit.init();

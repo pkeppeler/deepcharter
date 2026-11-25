@@ -6,22 +6,17 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
@@ -37,13 +32,13 @@ public final class LayerStructures {
     private static final int NEAREST_CELLS = 2;
 
     private static final AtomicBoolean LOGGED_FAILURE = new AtomicBoolean();
+    private static final AtomicBoolean LOGGED_PENDING_FAILURE = new AtomicBoolean();
     private static final AtomicBoolean LOGGED_UNREADABLE_COLONY = new AtomicBoolean();
 
-    /**
-     * The chunks that generated before the colony's pad was chosen, by level: held, and drawn once the pad is chosen. Each is a chunk of a
-     * level that holds layers, so in the campaign world it is a chunk of the surface band and of every layer band. Server thread only.
-     */
-    private static final Map<ResourceKey<Level>, Set<ChunkPos>> WAITING = new HashMap<>();
+    /** Set by a chunk load that finds drawable chunks held; drained at the end of the tick, not inside the load. Server thread only. */
+    private static boolean drainQueued;
+
+    private static boolean draining;
 
     private LayerStructures() {}
 
@@ -52,9 +47,18 @@ public final class LayerStructures {
             if (newlyGenerated) {
                 draw(level, chunk);
             }
+            queueDrainIfDue(level.getServer());
         });
-        ColonyEvents.BEGUN.register((server, colony) -> drawWaiting(server));
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> WAITING.clear());
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if (drainQueued) {
+                drainQueued = false;
+                drawPending(server);
+            }
+        });
+        ColonyEvents.BEGUN.register((server, colony) -> drawPending(server));
+        // A chunk saved undrawn before the pad was chosen: the pad may be chosen already, in an earlier run.
+        ServerLifecycleEvents.SERVER_STARTED.register(LayerStructures::drawPending);
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> drainQueued = false);
     }
 
     private static void draw(ServerLevel level, LevelChunk chunk) {
@@ -71,9 +75,14 @@ public final class LayerStructures {
         // campaign world those chunks hold both layers.
         Optional<BlockPos> conduit = Colony.plannedAnchor(level.getServer(), ColonyAnchor.CONDUIT);
         if (conduit.isPresent()) {
+            // Drawn now, so a chunk that was held and generated again (its first save never happened) is not drawn
+            // twice.
+            PendingStructures.readable(level.getServer())
+                    .ifPresent(pending -> pending.remove(level.dimension(), chunk.getPos()));
             drawSites(level, chunk, bands, conduit.get());
         } else if (Colony.readable(level.getServer()).isPresent()) {
-            WAITING.computeIfAbsent(level.dimension(), key -> new HashSet<>()).add(chunk.getPos());
+            PendingStructures.readable(level.getServer())
+                    .ifPresent(pending -> pending.add(level.dimension(), chunk.getPos()));
         } else if (LOGGED_UNREADABLE_COLONY.compareAndSet(false, true)) {
             DeepCharter.LOGGER.warn(
                     "A chunk of layer {} generated while the colony's saved data is unreadable, so it gets no structures",
@@ -81,18 +90,71 @@ public final class LayerStructures {
         }
     }
 
-    /** Draws the chunks that generated before the pad was chosen, now that it is; each once. */
-    private static void drawWaiting(MinecraftServer server) {
-        Map<ResourceKey<Level>, Set<ChunkPos>> waiting = new HashMap<>(WAITING);
-        WAITING.clear();
-        waiting.forEach((dimension, chunks) -> {
+    /**
+     * A chunk may be held while the pad is chosen: a test that swaps the colony's record parks chunks the real colony would have drawn,
+     * and no event follows. Any chunk load finding some held asks for a drain at the end of the tick.
+     */
+    private static void queueDrainIfDue(MinecraftServer server) {
+        if (drainQueued || draining) {
+            return;
+        }
+        boolean held = PendingStructures.readable(server)
+                .filter(pending -> !pending.isEmpty())
+                .isPresent();
+        if (held && Colony.plannedAnchor(server, ColonyAnchor.CONDUIT).isPresent()) {
+            drainQueued = true;
+        }
+    }
+
+    /**
+     * Draws the chunks held before the pad was chosen ({@link PendingStructures}), each once, now that it is: on {@code BEGUN}, on
+     * server start and after a chunk load that finds some held.
+     *
+     * <p>A chunk's load can itself draw it (it generated again): it is then no longer held, and is not drawn a second time. A chunk that
+     * cannot be loaded stays held, as nothing was drawn; one that fails to draw is dropped, as a half-drawn chunk would draw twice.
+     */
+    public static void drawPending(MinecraftServer server) {
+        if (draining || Colony.plannedAnchor(server, ColonyAnchor.CONDUIT).isEmpty()) {
+            return;
+        }
+        draining = true;
+        try {
+            PendingStructures.readable(server).ifPresent(pending -> drawHeld(server, pending));
+        } finally {
+            draining = false;
+        }
+    }
+
+    private static void drawHeld(MinecraftServer server, PendingStructures pending) {
+        pending.snapshot().forEach((dimension, chunks) -> {
             ServerLevel level = server.getLevel(dimension);
             if (level == null) {
                 return;
             }
             for (ChunkPos pos : chunks) {
-                // A chunk that unloaded since was saved undrawn: it loads from disk, which is no draw of its own.
-                draw(level, level.getChunk(pos.x(), pos.z()));
+                LevelChunk chunk;
+                try {
+                    // A chunk that unloaded since was saved undrawn: it loads from disk, which is no draw of its own.
+                    chunk = level.getChunk(pos.x(), pos.z());
+                } catch (RuntimeException e) {
+                    if (LOGGED_PENDING_FAILURE.compareAndSet(false, true)) {
+                        DeepCharter.LOGGER.error(
+                                "A pending chunk {} of {} could not be loaded; it stays held",
+                                pos,
+                                dimension.identifier(),
+                                e);
+                    }
+                    continue;
+                }
+                if (!pending.remove(dimension, pos)) {
+                    continue;
+                }
+                try {
+                    draw(level, chunk);
+                } catch (RuntimeException e) {
+                    DeepCharter.LOGGER.error(
+                            "A pending chunk {} of {} could not be drawn", pos, dimension.identifier(), e);
+                }
             }
         });
     }
@@ -138,13 +200,12 @@ public final class LayerStructures {
     }
 
     /**
-     * The layers a level holds: the one layer of a layer dimension, every layer of a campaign world (#743), or none for the surface and
-     * any other level.
+     * The layers a level holds: the one layer of a layer dimension, every layer of a campaign world (#743) inside its height
+     * ({@link LayerChain#campaignLayersIn}), or none for the surface and any other level.
      */
     private static List<Band> layerBands(ServerLevel level) {
-        List<Band> campaign = LayerChain.campaignLayers(level);
-        if (!campaign.isEmpty()) {
-            return campaign;
+        if (!LayerChain.campaignLayers(level).isEmpty()) {
+            return LayerChain.campaignLayersIn(level);
         }
         return LayerChain.layerAt(level, level.getMinY()).stream().toList();
     }
@@ -205,6 +266,20 @@ public final class LayerStructures {
         }
         return Objects.requireNonNull(
                 nearest, "no structure site found in the search window: the cell loop always visits at least one cell");
+    }
+
+    /**
+     * The site of {@code kind} nearest {@code pos} on the map, when {@code pos} is inside the band of the layer {@code kind} belongs to
+     * in {@code level}. Empty for a level that does not hold that layer, a Y outside its band, and before the colony's pad is chosen
+     * or while its data is unreadable. Pure position arithmetic, so it asks no chunk and no entity.
+     */
+    public static Optional<StructureSite> siteNear(ServerLevel level, StructureKind kind, BlockPos pos) {
+        return Colony.plannedAnchor(level.getServer(), ColonyAnchor.CONDUIT)
+                .flatMap(conduit -> layerBands(level).stream()
+                        .filter(band ->
+                                band.layer() == kind.layer() && pos.getY() >= band.minY() && pos.getY() <= band.maxY())
+                        .findFirst()
+                        .map(band -> nearest(level.getSeed(), kind, band.minY(), band.height(), pos, conduit)));
     }
 
     /**

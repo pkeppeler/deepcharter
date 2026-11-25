@@ -50,7 +50,7 @@ public final class Terminals {
             case Access.Denied denied -> refuse(player, denied.refusal());
             case Access.Granted granted -> {
                 sendView(player, pos, granted);
-                TerminalEvents.OPENED.invoker().onOpened(player.level().getServer(), granted.type(), player);
+                TerminalEvents.OPENED.invoker().onOpened(player.level().getServer(), granted.type(), player, pos);
                 yield Optional.empty();
             }
         };
@@ -218,7 +218,8 @@ public final class Terminals {
             TerminalView view = TerminalView.of(pos, access.type(), RepairState.get(server));
             Optional<TerminalFeature> feature =
                     TerminalFeatures.supply(access.type(), view.repaired(), server, player, access.charter(), pos);
-            ServerPlayNetworking.send(player, new TerminalViewPayload(view.withFeature(feature)));
+            List<Component> notices = TerminalNotices.collect(server, player, access.charter(), pos);
+            ServerPlayNetworking.send(player, new TerminalViewPayload(view.with(feature, notices)));
         }
     }
 }

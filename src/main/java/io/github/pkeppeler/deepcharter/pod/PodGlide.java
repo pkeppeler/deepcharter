@@ -30,7 +30,7 @@ final class PodGlide extends AbstractInterpolationHandler {
     /** Blocks within which the pod counts as having reached its target. */
     private static final double ARRIVED = 1e-4;
 
-    /** Halvings of a coast step tried before the coast gives up for the tick. */
+    /** Halvings of the first coast sub-step tried before the coast gives up for the tick. */
     private static final int COAST_CLIP_TRIES = 3;
 
     /** The last position the server sent, and the rotation with it; only a move changes it. */
@@ -67,7 +67,13 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     @Override
     protected void startInterpolating(PositionPath path, float yRot, float xRot) {
-        snapping = entity.position().distanceTo(path.endPosition()) > PodGlideTuning.DEFAULT.snapGap();
+        // Sticky until arrival: the moves that follow a teleport of a driven pod find it nearer than snapGap, and must
+        // not ease the rest.
+        snapping = snapping || entity.position().distanceTo(path.endPosition()) > PodGlideTuning.DEFAULT.snapGap();
+        if (snapping) {
+            // A far move is a teleport, not an overshoot to settle back from: a stale coast must not ease it.
+            coastDirection = null;
+        }
         target.set(path.endPosition(), yRot, xRot);
         remaining = interpolationSteps;
         coasted = 0;
@@ -155,20 +161,33 @@ final class PodGlide extends AbstractInterpolationHandler {
         return true;
     }
 
-    /** Draws the pod one more tick by {@code drawn}, short of any block; false when it cannot move at all. */
+    /**
+     * Draws the pod one more tick by {@code drawn}, short of any block; false when it cannot move at all. The tick is swept in
+     * sub-steps no longer than the box's smallest side (at most {@link PodGlideTuning#coastSweepSteps()} of them, so a huge synced speed costs a bounded
+     * number of checks), so a step bigger than the box cannot skip a thin block.
+     */
     private boolean coast(Vec3 drawn) {
         AABB box = entity.getBoundingBox();
-        Vec3 step = drawn;
-        for (int tries = 0; tries <= COAST_CLIP_TRIES; tries++) {
-            if (entity.level().noCollision(entity, box.move(step))) {
-                entity.setPos(entity.position().add(step));
-                coastDirection = drawn;
-                active = true;
-                return true;
-            }
-            step = step.scale(0.5);
+        double side = Math.min(box.getXsize(), Math.min(box.getYsize(), box.getZsize()));
+        int pieces = Math.clamp((long) Math.ceil(drawn.length() / side), 1, PodGlideTuning.DEFAULT.coastSweepSteps());
+        Vec3 piece = drawn.scale(1.0 / pieces);
+        Vec3 step = Vec3.ZERO;
+        for (int i = 1; i <= pieces && entity.level().noCollision(entity, box.move(piece.scale(i))); i++) {
+            step = piece.scale(i);
         }
-        return false;
+        for (int tries = 0; step.equals(Vec3.ZERO) && tries < COAST_CLIP_TRIES; tries++) {
+            piece = piece.scale(0.5);
+            if (entity.level().noCollision(entity, box.move(piece))) {
+                step = piece;
+            }
+        }
+        if (step.equals(Vec3.ZERO)) {
+            return false;
+        }
+        entity.setPos(entity.position().add(step));
+        coastDirection = drawn;
+        active = true;
+        return true;
     }
 
     @Override

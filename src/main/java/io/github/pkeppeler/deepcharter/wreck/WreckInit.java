@@ -9,5 +9,6 @@ public final class WreckInit {
 
     public static void init() {
         WreckRegistry.register();
+        WreckReadout.init();
     }
 }

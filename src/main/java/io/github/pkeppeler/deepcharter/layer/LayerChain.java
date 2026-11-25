@@ -11,6 +11,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -92,6 +93,16 @@ public final class LayerChain {
     }
 
     /**
+     * The {@link #campaignLayers} inside {@code level}'s height: every one in a campaign world, and only its own in a level of the
+     * campaign generator cut to one band's rows (the cost test's band windows, ADR 0086), where another band would lie outside it.
+     */
+    public static List<Band> campaignLayersIn(ServerLevel level) {
+        return campaignLayers(level).stream()
+                .filter(band -> !level.isOutsideBuildHeight(band.minY()) && !level.isOutsideBuildHeight(band.maxY()))
+                .toList();
+    }
+
+    /**
      * The band of layer {@code layer} as {@code generator} lays it out in a level: a band of a campaign world, or the whole level of a
      * layer dimension. {@code feature} names the caller, for the failure when a campaign world has no such layer.
      */
@@ -110,6 +121,15 @@ public final class LayerChain {
     /** {@link #bandAt} for a layer; empty on the surface too. */
     public static Optional<Band> layerAt(Level level, int y) {
         return bandAt(level, y).filter(Band::isLayer);
+    }
+
+    /** The loaded level of layer {@code layer} of the chain; fails when the registry holds the layer but its level is not loaded. */
+    public static ServerLevel levelOf(MinecraftServer server, int layer) {
+        ServerLevel level = server.getLevel(dimension(layer));
+        if (level == null) {
+            throw new IllegalStateException("Layer " + layer + " is in the registry but its level is not loaded");
+        }
+        return level;
     }
 
     public static ResourceKey<Level> dimension(int layer) {

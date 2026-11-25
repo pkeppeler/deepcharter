@@ -45,6 +45,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -635,7 +636,9 @@ public class DimensionCrossingTest {
 
     /**
      * The shape every crossing test takes. Waits until {@code sourcePos} ticks entities in {@code source} and every chunk of
-     * {@code loaded} is loaded, both off the server thread; then runs {@code setup} once. From the next tick it runs {@code check} with
+     * {@code arrival} (all in one level) does too, both off the server thread; then runs {@code setup} once. An entity that crosses
+     * into a chunk that is loaded but not entity ticking joins the level's lookup only when the chunk starts ticking, which comes a
+     * variable number of ticks after the crossing, so a loaded chunk is not enough. From the next tick it runs {@code check} with
      * the ticks since setup: the test passes on the first tick {@code check} does not throw, and fails with its last
      * failure {@link #CROSSING_TICKS} after setup.
      */
@@ -643,14 +646,25 @@ public class DimensionCrossingTest {
             GameTestHelper helper,
             ServerLevel source,
             BlockPos sourcePos,
-            List<FarChunks.At> loaded,
+            List<FarChunks.At> arrival,
             Runnable setup,
             IntConsumer check) {
         boolean[] ticking = {false};
         boolean[] ready = {false};
         long[] setUpAt = {-1};
         FarChunks.awaitEntityTicking(helper, source, sourcePos, () -> ticking[0] = true);
-        FarChunks.awaitLoaded(helper, loaded, () -> ready[0] = true);
+        if (arrival.isEmpty()) {
+            ready[0] = true;
+        } else {
+            ServerLevel arrivalLevel = arrival.getFirst().level();
+            FarChunks.awaitAllEntityTicking(
+                    helper,
+                    arrivalLevel,
+                    arrival.stream()
+                            .map(chunk -> new ChunkPos(chunk.chunkX(), chunk.chunkZ()).getWorldPosition())
+                            .toList(),
+                    () -> ready[0] = true);
+        }
         TestTicks.each(helper, () -> {
             if (setUpAt[0] < 0) {
                 if (ticking[0] && ready[0]) {
@@ -836,7 +850,7 @@ public class DimensionCrossingTest {
         return LayerTuning.DEFAULT.pocketRadius() + 3;
     }
 
-    /** Every chunk of {@code level} within {@code reach} blocks of the column, for {@link FarChunks#awaitLoaded}. */
+    /** Every chunk of {@code level} within {@code reach} blocks of the column, the arrival chunks that {@link #staged} waits on. */
     private static List<FarChunks.At> chunksAround(ServerLevel level, double x, double z, int reach) {
         int bx = Mth.floor(x);
         int bz = Mth.floor(z);

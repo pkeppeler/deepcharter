@@ -53,7 +53,13 @@
     "minecraft:visual/fog_color": "#14141a",
     "minecraft:visual/fog_end_distance": 32.0,
     "minecraft:visual/fog_start_distance": 2.0,
-    "minecraft:visual/sky_light_factor": 0.0
+    "minecraft:visual/moon_angle": 180.0,
+    "minecraft:visual/sky_color": "#14141a",
+    "minecraft:visual/sky_fog_end_distance": 0.0,
+    "minecraft:visual/sky_light_factor": 0.0,
+    "minecraft:visual/star_brightness": 0.0,
+    "minecraft:visual/sun_angle": 180.0,
+    "minecraft:visual/sunrise_sunset_color": "#00000000"
   },
   "carvers": [],
   "downfall": 0.0,

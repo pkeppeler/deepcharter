@@ -474,7 +474,7 @@ public class OrePlacementTest {
 
     /** SPEC section 9 and the note from #54: a mod ore in layer 2 is deep rock like any other. */
     @GameTest
-    public void handsCannotBreakAModOreInLayerTwo(GameTestHelper helper) {
+    public void bareHandsCannotBreakAModOreInLayerTwo(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "ore-hands");
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
@@ -485,31 +485,31 @@ public class OrePlacementTest {
         mock.player().setGameMode(GameType.SURVIVAL);
         two.setBlock(pos, ironium.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(ironium)) {
-            throw failure(helper, "a survival player broke ironium ore by hand in layer_2");
+            throw failure(helper, "a survival player broke ironium ore with a bare hand in layer_2");
         }
         for (OreType type : OreType.values()) {
             BlockPos other = pos.east(1 + type.ordinal());
             two.setBlock(other, OreBlocks.of(type).defaultBlockState(), 3);
             if (mock.player().gameMode.destroyBlock(other)
                     || !two.getBlockState(other).is(OreBlocks.of(type))) {
-                throw failure(helper, "a survival player broke %s by hand in layer_2", type.blockId());
+                throw failure(helper, "a survival player broke %s with a bare hand in layer_2", type.blockId());
             }
         }
         mock.player().setGameMode(GameType.ADVENTURE);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(ironium)) {
-            throw failure(helper, "an adventure player broke ironium ore by hand in layer_2");
+            throw failure(helper, "an adventure player broke ironium ore with a bare hand in layer_2");
         }
         mock.teleportTo(one, Vec3.atBottomCenterOf(pos1.above(4)), 0, 0);
         mock.player().setGameMode(GameType.SURVIVAL);
         one.setBlock(pos1, ironium.defaultBlockState(), 3);
         if (!mock.player().gameMode.destroyBlock(pos1)) {
-            throw failure(helper, "a survival player could not break ironium ore by hand in layer_1");
+            throw failure(helper, "a survival player could not break ironium ore with a bare hand in layer_1");
         }
         helper.succeed();
     }
 
     @GameTest
-    public void handsCannotBreakCompanyRockInAnyLayer(GameTestHelper helper) {
+    public void bareHandsCannotBreakCompanyRockInAnyLayer(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "company-hands");
         for (int layer = 1; layer <= 2; layer++) {
             BlockPos pos = TestLayers.pos(layer, 7300, 80, Z);
@@ -520,7 +520,7 @@ public class OrePlacementTest {
                 mock.player().setGameMode(mode);
                 if (mock.player().gameMode.destroyBlock(pos)
                         || !level.getBlockState(pos).is(HazardBlocks.COMPANY_ROCK)) {
-                    throw failure(helper, "a %s player broke company rock by hand in layer_%d", mode, layer);
+                    throw failure(helper, "a %s player broke company rock with a bare hand in layer_%d", mode, layer);
                 }
             }
             if (!level.getBlockState(pos).is(HazardBlocks.UNDIGGABLE)) {
@@ -611,7 +611,7 @@ public class OrePlacementTest {
         mock.player().setGameMode(GameType.SURVIVAL);
         level.setBlock(centre, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
         if (!mock.player().gameMode.destroyBlock(centre)) {
-            throw failure(helper, "a survival player could not break a gas pocket by hand in layer_1");
+            throw failure(helper, "a survival player could not break a gas pocket with a bare hand in layer_1");
         }
         for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-3, -3, -3), centre.offset(3, 3, 3))) {
             boolean inside = Math.abs(pos.getX() - centre.getX()) <= 1
@@ -775,7 +775,7 @@ public class OrePlacementTest {
         int[][] candidates = new int[2][3];
         int[] next = {0};
         long[] start = {0};
-        FarChunks.whenLoaded(helper, chunks, () -> {
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> {
             start[0] = System.nanoTime();
             helper.startSequence()
                     .thenWaitUntil(() -> {

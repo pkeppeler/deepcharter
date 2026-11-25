@@ -26,14 +26,14 @@ import org.slf4j.LoggerFactory;
 /**
  * The layers' density terms must not reach above the surface band (#803). In the shipped overworld they once did: solid pillars rose
  * from the surface to the top of the band in 0.5% of the columns, because the terms ran past their bands. The ground of
- * {@code deepcharter:campaign_sample} (the shipped overworld in the test pack) must be the ground of {@code deepcharter:surface_sample},
+ * {@code deepcharter:campaign_full} (the shipped overworld in the test pack) must be the ground of {@code deepcharter:surface_sample},
  * the pack's copy of the overworld before the cutover (the surface alone, 384 tall; {@code tall_surface_biomes} is no reference: its own layer
  * terms leak, 320 in 5 of 4096 columns), to within {@link #TOLERANCE} blocks on a grid of columns, and the density must end the layers' terms at the
  * surface band's floor: a {@code range_choice} on the band below it, a constant that is empty everywhere else.
  */
 public class CampaignSurfaceParityTest {
     private static final ResourceKey<Level> CAMPAIGN =
-            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "campaign_sample"));
+            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "campaign_full"));
     private static final ResourceKey<Level> SURFACE_SAMPLE =
             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "surface_sample"));
     /** The columns read: a square this many blocks either side of the origin, this far apart (4096 columns, the leak hit 1 in 200). */

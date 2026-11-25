@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
+import io.github.pkeppeler.deepcharter.client.handbook.ClientPencil;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
@@ -14,7 +15,7 @@ import net.minecraft.resources.Identifier;
 
 /**
  * The pages {@code HandbookScreen.open} builds, without the test pack's sample chapter (it is never finished, which would classify every real
- * chapter after it): the shipped chapters and the progress the server synced. Client thread.
+ * chapter after it): the shipped chapters, the progress the server synced and the pencil paths of the Notes found. Client thread.
  */
 public final class ShippedHandbook {
     private ShippedHandbook() {}
@@ -26,6 +27,6 @@ public final class ShippedHandbook {
                 .stream()
                 .filter(entry -> !entry.key().identifier().getPath().equals("sample"))
                 .forEach(entry -> shipped.put(entry.key().identifier(), entry.value()));
-        return HandbookPages.of(shipped, ClientHandbook.completed());
+        return HandbookPages.withPencil(HandbookPages.of(shipped, ClientHandbook.completed()), ClientPencil.entries());
     }
 }

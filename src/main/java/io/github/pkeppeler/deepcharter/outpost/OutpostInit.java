@@ -9,5 +9,7 @@ public final class OutpostInit {
 
     public static void init() {
         OutpostRegistry.register();
+        OutpostSettling.init();
+        IncidentReports.init();
     }
 }

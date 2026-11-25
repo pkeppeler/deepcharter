@@ -2,7 +2,8 @@
   "property": "host",
   "hosts": {
     "packed_shale": "packed_shale",
-    "green_shale": "green_shale"
+    "green_shale": "green_shale",
+    "basalt_core": "basalt_core"
   },
   "variants": 10,
   "ends": 4,

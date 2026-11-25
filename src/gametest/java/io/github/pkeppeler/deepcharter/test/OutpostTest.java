@@ -7,6 +7,8 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
+import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.creature.Tally;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
@@ -52,8 +54,11 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
@@ -62,6 +67,9 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -83,6 +91,7 @@ public class OutpostTest {
     private static final String CLOSED = "message.deepcharter.outpost.closed";
     private static final String NOT_YOURS = "message.deepcharter.outpost.not_yours";
     private static final String OCCUPIED = "message.deepcharter.outpost.occupied";
+    private static final String OCCUPIED_ITEMS = "message.deepcharter.outpost.occupied_items";
     private static final String OVERLAPS = "message.deepcharter.outpost.overlaps";
     private static final String NOT_HERE = "message.deepcharter.outpost.not_here";
     private static final String NOT_ON_TOP = "message.deepcharter.outpost.not_on_top";
@@ -626,6 +635,315 @@ public class OutpostTest {
         });
     }
 
+    private static Optional<Component> build(Stage stage) {
+        return OutpostBuilder.build(stage.player(), stage.level(), stage.floor(), Direction.UP);
+    }
+
+    private static AABB shellOf(BlockPos floor) {
+        return AABB.encapsulatingFullBlocks(floor.offset(-5, 0, -5), floor.offset(5, 6, 5));
+    }
+
+    /** Items lying in {@code area}. */
+    private static List<ItemEntity> itemsIn(ServerLevel level, AABB area) {
+        // entity-query: the area is in the chunk this test forced and waited on
+        return level.getEntitiesOfClass(ItemEntity.class, area);
+    }
+
+    /** A stack dropped in the hall, {@code dx} and {@code dz} from the floor's middle. */
+    private static ItemEntity dropItem(Stage stage, double dx, double dz, ItemStack stack) {
+        ItemEntity item = new ItemEntity(
+                stage.level(),
+                stage.floor().getX() + dx,
+                stage.floor().getY() + 2,
+                stage.floor().getZ() + dz,
+                stack);
+        stage.level().addFreshEntity(item);
+        return item;
+    }
+
+    private static void fillInventory(Stage stage) {
+        for (int slot = 0; slot < 36; slot++) {
+            stage.player().getInventory().setItem(slot, new ItemStack(Items.DIRT, 64));
+        }
+    }
+
+    /** The kit builds: {@code what} must not refuse it. */
+    private static void expectBuilt(GameTestHelper helper, Stage stage, String what) {
+        Optional<Component> refusal = build(stage);
+        if (refusal.isPresent()) {
+            throw failure(
+                    helper,
+                    "%s must not refuse the kit, it said %s",
+                    what,
+                    refusal.get().getString());
+        }
+    }
+
+    /** The refusal the builder gives is given {@code name} as its one argument. */
+    private static void expectNamed(GameTestHelper helper, Stage stage, Component name, String whose) {
+        Component said = build(stage).orElseThrow();
+        if (!(said.getContents() instanceof TranslatableContents translatable)
+                || translatable.getArgs().length != 1
+                || !name.equals(translatable.getArgs()[0])) {
+            throw failure(helper, "the refusal should be given %s name, it was %s", whose, said);
+        }
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aLooseStackInTheHallIsSweptToTheBuilderNotRefused(GameTestHelper helper) {
+        Stage stage = stage(helper, 9600, true);
+        whenReady(helper, stage, () -> {
+            ItemEntity stack = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
+            expectBuilt(helper, stage, "a loose stack");
+            if (!stack.isRemoved()) {
+                throw failure(helper, "the swept stack's entity should be discarded");
+            }
+            int held = stage.player().getInventory().countItem(Items.DIAMOND);
+            if (held != 7) {
+                throw failure(helper, "the builder should hold the 7 swept diamonds, held %s", held);
+            }
+            if (!itemsIn(stage.level(), shellOf(stage.floor()).inflate(2)).isEmpty()) {
+                throw failure(helper, "no item should be left lying in or round the hall");
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSweptStackThatDoesNotFitDropsAtTheBuildersFeetOutsideTheHall(GameTestHelper helper) {
+        Stage stage = stage(helper, 9700, true);
+        whenReady(helper, stage, () -> {
+            Vec3 outside = Vec3.atBottomCenterOf(stage.floor().offset(7, 1, 0));
+            stage.mock().teleportTo(stage.level(), outside, 0f, 0f);
+            fillInventory(stage);
+            dropItem(stage, 0.5, 3.5, new ItemStack(Items.DIAMOND, 5));
+            expectBuilt(helper, stage, "a loose stack");
+            if (stage.player().getInventory().countItem(Items.DIAMOND) != 0) {
+                throw failure(helper, "a full inventory takes no diamond");
+            }
+            List<ItemEntity> dropped = itemsIn(stage.level(), new AABB(BlockPos.containing(outside)).inflate(1.5));
+            int total =
+                    dropped.stream().mapToInt(item -> item.getItem().getCount()).sum();
+            if (dropped.size() != 1
+                    || total != 5
+                    || !dropped.getFirst().getItem().is(Items.DIAMOND)) {
+                throw failure(helper, "the 5 diamonds should drop once at the builder's feet, found %s", dropped);
+            }
+            if (shellOf(stage.floor()).intersects(dropped.getFirst().getBoundingBox())) {
+                throw failure(
+                        helper,
+                        "the overflow lies inside the hall's shell at %s",
+                        dropped.getFirst().position());
+            }
+            if (!itemsIn(stage.level(), shellOf(stage.floor())).isEmpty()) {
+                throw failure(helper, "no item should be left inside the hall's shell");
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void anExperienceOrbInTheHallIsAwardedToTheBuilderNotRefused(GameTestHelper helper) {
+        Stage stage = stage(helper, 9800, true);
+        whenReady(helper, stage, () -> {
+            ExperienceOrb orb = new ExperienceOrb(
+                    stage.level(),
+                    stage.floor().getX() + 2.5,
+                    stage.floor().getY() + 2,
+                    stage.floor().getZ() + 2.5,
+                    11);
+            stage.level().addFreshEntity(orb);
+            int before = stage.player().totalExperience;
+            expectBuilt(helper, stage, "an orb");
+            if (!orb.isRemoved()) {
+                throw failure(helper, "the swept orb should be discarded");
+            }
+            int gained = stage.player().totalExperience - before;
+            if (gained != 11) {
+                throw failure(helper, "the builder should gain the orb's 11 experience, gained %s", gained);
+            }
+        });
+    }
+
+    /** An orb of 3 in the hall that a save and a load make hold {@code count}: the private count has no setter. */
+    private static ExperienceOrb orbHolding(Stage stage, int count) {
+        ExperienceOrb orb = new ExperienceOrb(
+                stage.level(),
+                stage.floor().getX() + 2.5,
+                stage.floor().getY() + 2,
+                stage.floor().getZ() + 2.5,
+                3);
+        TagValueOutput output = TagValueOutput.createWithContext(
+                ProblemReporter.DISCARDING, stage.level().registryAccess());
+        orb.saveWithoutId(output);
+        CompoundTag saved = output.buildResult();
+        saved.putInt("Count", count);
+        orb.load(TagValueInput.create(ProblemReporter.DISCARDING, stage.level().registryAccess(), saved));
+        stage.level().addFreshEntity(orb);
+        return orb;
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aMergedOrbPaysAllTheExperienceItHolds(GameTestHelper helper) {
+        Stage stage = stage(helper, 10100, true);
+        whenReady(helper, stage, () -> {
+            ExperienceOrb orb = orbHolding(stage, 5);
+            int before = stage.player().totalExperience;
+            expectBuilt(helper, stage, "an orb");
+            int gained = stage.player().totalExperience - before;
+            if (!orb.isRemoved() || gained != 15) {
+                throw failure(helper, "the merged orb's 15 experience should be paid in full, gained %s", gained);
+            }
+        });
+    }
+
+    /** Fills the line of cells from {@code from} to {@code to} blocks east of the floor's middle, at the builder's height, with stone. */
+    private static void stoneEast(Stage stage, int from, int to) {
+        BlockPos floor = stage.floor();
+        RoomCarver.carve(
+                stage.level(),
+                floor.getX() + from,
+                floor.getX() + to,
+                floor.getY() + 1,
+                floor.getY() + 1,
+                floor.getZ(),
+                floor.getZ(),
+                Blocks.STONE);
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aBlockAtTheOverflowSpotSurvivesAndTheStackLiesInTheNearestAirBeyondIt(GameTestHelper helper) {
+        Stage stage = stage(helper, 10200, true);
+        whenReady(helper, stage, () -> {
+            stoneEast(stage, 6, 10);
+            BlockPos wall = stage.floor().offset(6, 1, 0);
+            BlockPos pocket = stage.floor().offset(8, 1, 0);
+            stage.level().setBlock(wall, Blocks.OBSIDIAN.defaultBlockState(), Block.UPDATE_ALL);
+            stage.level().setBlock(pocket, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+            fillInventory(stage);
+            dropItem(stage, 0.5, 3.5, new ItemStack(Items.DIAMOND, 5));
+            expectBuilt(helper, stage, "a loose stack");
+            if (!stage.level().getBlockState(wall).is(Blocks.OBSIDIAN)) {
+                throw failure(
+                        helper,
+                        "the block at the overflow spot must survive, it is %s",
+                        stage.level().getBlockState(wall));
+            }
+            if (!stage.level().getBlockState(stage.floor().offset(7, 1, 0)).is(Blocks.STONE)) {
+                throw failure(helper, "the stone between the spot and the pocket must survive");
+            }
+            List<ItemEntity> lying =
+                    itemsIn(stage.level(), shellOf(stage.floor()).inflate(6));
+            if (lying.size() != 1 || lying.getFirst().getItem().getCount() != 5) {
+                throw failure(helper, "the 5 diamonds should lie once near the hall, found %s", lying);
+            }
+            if (!lying.getFirst().blockPosition().equals(pocket)) {
+                throw failure(
+                        helper,
+                        "the overflow should lie in the air pocket %s, it lies at %s",
+                        pocket,
+                        lying.getFirst().blockPosition());
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSweptStackWithNoAirOutsideLiesInTheHallsAirAfterTheCut(GameTestHelper helper) {
+        Stage stage = stage(helper, 10700, true);
+        whenReady(helper, stage, () -> {
+            stoneEast(stage, 6, 10);
+            fillInventory(stage);
+            dropItem(stage, 0.5, 3.5, new ItemStack(Items.DIAMOND, 5));
+            expectBuilt(helper, stage, "a loose stack");
+            for (int dx = 6; dx <= 10; dx++) {
+                if (!stage.level().getBlockState(stage.floor().offset(dx, 1, 0)).is(Blocks.STONE)) {
+                    throw failure(helper, "the stone %s blocks east of the middle must survive", dx);
+                }
+            }
+            List<ItemEntity> lying =
+                    itemsIn(stage.level(), shellOf(stage.floor()).inflate(6));
+            if (lying.size() != 1 || lying.getFirst().getItem().getCount() != 5) {
+                throw failure(helper, "the 5 diamonds should lie once near the hall, found %s", lying);
+            }
+            BlockPos at = lying.getFirst().blockPosition();
+            BlockPos from = stage.floor().subtract(at);
+            boolean inHall =
+                    Math.abs(from.getX()) <= 4 && Math.abs(from.getZ()) <= 4 && from.getY() <= -1 && from.getY() >= -5;
+            if (!inHall || !stage.level().getBlockState(at).isAir()) {
+                throw failure(
+                        helper,
+                        "the overflow should lie in the hall's air, it lies at %s in %s",
+                        at,
+                        stage.level().getBlockState(at));
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theItemsOfAnotherChartersPlayerRefuseTheKitAndNameThem(GameTestHelper helper) {
+        Stage stage = stage(helper, 10300, true);
+        whenReady(helper, stage, () -> {
+            Stage other = stranger(helper, stage);
+            other.mock()
+                    .teleportTo(
+                            stage.level(), Vec3.atBottomCenterOf(stage.floor().offset(7, 1, 0)), 0f, 0f);
+            ItemEntity pile = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
+            pile.setThrower(other.player());
+            try {
+                expectRefusal(helper, stage, stage.floor(), Direction.UP, OCCUPIED_ITEMS, "another charter's items");
+                expectNamed(helper, stage, other.player().getName(), "the owner's");
+                if (pile.isRemoved() || stage.player().getInventory().countItem(Items.DIAMOND) != 0) {
+                    throw failure(helper, "a refused kit must sweep nothing");
+                }
+            } finally {
+                pile.discard();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theBuildersOwnCharterItemsAreSwept(GameTestHelper helper) {
+        Stage stage = stage(helper, 10400, true);
+        whenReady(helper, stage, () -> {
+            ItemEntity thrown = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
+            thrown.setThrower(stage.player());
+            expectBuilt(helper, stage, "the builder's own thrown stack");
+            if (!thrown.isRemoved() || stage.player().getInventory().countItem(Items.DIAMOND) != 7) {
+                throw failure(helper, "the builder's own thrown 7 diamonds should be swept into the inventory");
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aMobInTheHallRefusesTheKitAndTheRefusalNamesIt(GameTestHelper helper) {
+        Stage stage = stage(helper, 9900, true);
+        whenReady(helper, stage, () -> {
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, stage.level());
+            tally.setPos(Vec3.atBottomCenterOf(stage.floor().offset(2, 2, 2)));
+            stage.level().addFreshEntity(tally);
+            ItemEntity stack = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
+            try {
+                expectRefusal(helper, stage, stage.floor(), Direction.UP, OCCUPIED, "a mob in the hall");
+                expectNamed(helper, stage, tally.getName(), "the Tally's");
+                if (stack.isRemoved() || stage.player().getInventory().countItem(Items.DIAMOND) != 0) {
+                    throw failure(helper, "a refused kit must sweep nothing");
+                }
+            } finally {
+                tally.discard();
+                stack.discard();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void anotherPlayerInTheHallRefusesTheKit(GameTestHelper helper) {
+        Stage stage = stage(helper, 10000, true);
+        whenReady(helper, stage, () -> {
+            MockPlayer other = MockPlayers.join(helper, "outposter-crewmate");
+            other.teleportTo(stage.level(), Vec3.atBottomCenterOf(stage.floor().offset(3, 1, 3)), 0f, 0f);
+            expectRefusal(helper, stage, stage.floor(), Direction.UP, OCCUPIED, "another player in the hall");
+            expectNamed(helper, stage, other.player().getName(), "the other player's");
+        });
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
     public void theKitIsRefusedAndKeptWhereAnotherChartersHallStands(GameTestHelper helper) {
         Stage first = stage(helper, 9000, true);
@@ -713,10 +1031,10 @@ public class OutpostTest {
     @GameTest
     public void outpostDataOfAnotherVersionIsKeptAndNeverThrowsOnAGameplayPath(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        if (OutpostData.VERSION != 1) {
+        if (OutpostData.VERSION != 2) {
             throw failure(
                     helper,
-                    "the saved outposts are version 1, not %d, until a change carries a migration test",
+                    "the saved outposts are version 2, not %d, until a change carries a migration test",
                     OutpostData.VERSION);
         }
         UnreadableChecks.assertSavedDataNoThrow(

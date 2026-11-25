@@ -36,6 +36,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -220,6 +221,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                                     toast[0].width(),
                                     toast[0].height(),
                                     HudKeepClear.rects(client, width, height))
+                            .map(StepToast.Placement::slip)
                             .map(StepToastClearOfHudClientTest::box)
                             .equals(Optional.of(slip)),
                     "the popup is where StepToast.place puts it, not somewhere the toast manager moved it");
@@ -279,19 +281,21 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     }
 
     private static void expectTheSlipIsClearOfATransmission(ClientGameTestContext context) {
-        context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(
-                Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t01"), CHARTER, "Director")));
-        ClientWait.until(context, "a transmission on screen", client -> TransmissionOverlay.active());
-        context.runOnClient(client -> {
-            for (int[] gui : COCKPIT_GUIS) {
-                Map<String, Box> hud = critical(client, gui[0], gui[1]);
-                require(
-                        hud.containsKey("transmission"),
-                        "the transmission is among the HUD on " + gui[0] + " x " + gui[1]);
-                requireClearOrNowhere(client, gui, SHORT_STEP, hud, false);
-            }
-            TransmissionOverlay.reset();
-        });
+        try (var _ = QuietTransmissions.shown()) {
+            context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(
+                    Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t01"), CHARTER, "Director")));
+            ClientWait.until(context, "a transmission on screen", client -> TransmissionOverlay.active());
+            context.runOnClient(client -> {
+                for (int[] gui : COCKPIT_GUIS) {
+                    Map<String, Box> hud = critical(client, gui[0], gui[1]);
+                    require(
+                            hud.containsKey("transmission"),
+                            "the transmission is among the HUD on " + gui[0] + " x " + gui[1]);
+                    requireClearOrNowhere(client, gui, SHORT_STEP, hud, false);
+                }
+                TransmissionOverlay.reset();
+            });
+        }
     }
 
     private static void expectTheSlipIsClearOnFoot(ClientGameTestContext context) {
@@ -310,14 +314,15 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
 
     /**
      * The popup of {@code step} on {@code gui}: where {@link StepToast#place} puts it against the HUD's own rectangles, and that it is
-     * clear of {@code hud}, worked out here. Where it finds no place, that every place in the left column is under some part of the
-     * HUD. {@code placed} says it must find one.
+     * clear of {@code hud}, worked out here. Where it finds no place, that every place in the left and in the right column is under some
+     * part of the HUD. {@code placed} says it must find one.
      */
     static void requireClearOrNowhere(Minecraft client, int[] gui, String step, Map<String, Box> hud, boolean placed) {
         StepToast toast = StepToast.of(Component.literal(step));
         String when = "'" + step.substring(0, Math.min(24, step.length())) + "' on " + gui[0] + " x " + gui[1];
         Optional<Box> slip = StepToast.place(
                         gui[0], gui[1], toast.width(), toast.height(), HudKeepClear.rects(client, gui[0], gui[1]))
+                .map(StepToast.Placement::slip)
                 .map(StepToastClearOfHudClientTest::box);
         if (slip.isPresent()) {
             requireClear("the step popup " + when, slip.get(), hud);
@@ -325,11 +330,13 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         }
         require(!placed, "the step popup " + when + " finds a place");
         int margin = QuestMapTuning.current().toastMargin();
-        for (int y = margin; y + toast.height() <= gui[1] - margin; y++) {
-            Box candidate = new Box(margin, y, toast.width(), toast.height());
-            require(
-                    hud.values().stream().anyMatch(part -> ClientChecks.overlaps(candidate, part)),
-                    "the step popup " + when + " found no place, but " + candidate + " is clear of the HUD");
+        for (int x : new int[] {margin, gui[0] - margin - toast.width()}) {
+            for (int y = margin; y + toast.height() <= gui[1] - margin; y++) {
+                Box candidate = new Box(x, y, toast.width(), toast.height());
+                require(
+                        hud.values().stream().anyMatch(part -> ClientChecks.overlaps(candidate, part)),
+                        "the step popup " + when + " found no place, but " + candidate + " is clear of the HUD");
+            }
         }
     }
 
@@ -511,7 +518,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         return new Box(decal.left(width), decal.top(height), decal.width(), decal.height());
     }
 
-    private static Box box(HudKeepClear.Rect rect) {
+    static Box box(HudKeepClear.Rect rect) {
         return new Box(rect.x(), rect.y(), rect.width(), rect.height());
     }
 }

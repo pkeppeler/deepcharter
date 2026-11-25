@@ -84,14 +84,17 @@ public class WorldFormatTest {
         helper.succeed();
     }
 
-    /** The format is the campaign overworld's, 2 (#803, ADR 0059): a world made before the stamp existed, with a colony, is refused. */
+    /**
+     * The format is the campaign overworld's with layer 3, 3 (#972, ADR 0059): a world made before the stamp existed, with a colony, is
+     * refused.
+     */
     @GameTest
-    public void theFormatOfThisBuildIsTwoAndAWorldWithNoStampIsRefusedAtIt(GameTestHelper helper) {
+    public void theFormatOfThisBuildIsThreeAndAWorldWithNoStampIsRefusedAtIt(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        if (WorldFormat.CURRENT != 2 || WorldFormat.LEGACY != 1) {
+        if (WorldFormat.CURRENT != 3 || WorldFormat.LEGACY != 1) {
             throw failure(
                     helper,
-                    "the format of the campaign overworld is 2 over the legacy 1, got %s over %s",
+                    "the format of the campaign overworld with layer 3 is 3 over the legacy 1, got %s over %s",
                     WorldFormat.CURRENT,
                     WorldFormat.LEGACY);
         }

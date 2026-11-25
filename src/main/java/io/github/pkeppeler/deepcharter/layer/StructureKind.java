@@ -1,15 +1,21 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
+import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
 import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalInt;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.LootTable;
 
 /**
  * The structures of the first two layers (lore canon, section 11). Each one stands in one zone, and is drawn in its own
@@ -76,7 +82,10 @@ public enum StructureKind {
     },
     /**
      * The colony's underground rail hub in Shift Change: two tracks, a wall of shelves for the time cards, the punch clock that
-     * is still lit and the Note (N09) on the table before the shelves.
+     * is still lit and the Note (N09) on the table before the shelves. A Company horn hangs over the middle of the hall on a chain from the ceiling
+     * ({@link StructurePlan#companyHorn}; on a beam and post from the floor where the roof is out of reach): a player near it hears the
+     * ambience's fragments from it ({@code AmbienceTicker}). A Company punch clock stands before the lit one and rarely calls an hour,
+     * sometimes the wrong one (#938).
      */
     PUNCH_CLOCK(2, 1, 8, 8, OptionalInt.of(5)) {
         @Override
@@ -100,6 +109,8 @@ public enum StructureKind {
             p.set(-7, 2, 0, Blocks.SEA_LANTERN.defaultBlockState());
             p.set(5, 0, 0, Blocks.SPRUCE_PLANKS.defaultBlockState());
             p.set(5, 1, 0, NoteBlock.stateOf(9));
+            p.companyHorn(0, HORN_HEIGHT, 0, 0);
+            p.set(-6, 0, 0, AmbienceRegistry.COMPANY_CLOCK.defaultBlockState());
         }
     },
     /** The rail line of Prospector's Run: a long timbered drift with a single track, broken in places, and nothing at the end of it but the Kells' shaft. */
@@ -128,8 +139,8 @@ public enum StructureKind {
         }
     },
     /**
-     * The Kells' shaft: a 2 x 2 hollow, 20 to 80 blocks deep, from a drift at the end of the rail line to the first block above
-     * the crust. Where it was cut through lava the Kells walled it in slag brick, two to four rings of three rows, and in the
+     * The Kells' shaft: a 2 x 2 hollow, 20 to 80 blocks deep, from a drift at the end of the rail line down through the crust,
+     * which the Kells broke into the Hollows (LORE, CY 19; #972), so the hollow opens into the roof of layer 3. Where it was cut through lava the Kells walled it in slag brick, two to four rings of three rows, and in the
      * middle row of each ring the lining has failed: one block of the wall is lava, with one more behind it, and across the hollow
      * at that row a bulkhead of brick, which a pod lands on, with a hole beside the gap and lava under the hole. A pod can
      * go down, and its hand lining closes the gaps. Timber sets, some fallen, line the rest. At the head, in the walls of the
@@ -143,7 +154,8 @@ public enum StructureKind {
     },
     /**
      * A wreck site in Prospector's Run: a bay with a scorched floor, a rail that ends in it, and debris at the edges. The middle
-     * is clear for a pod, which a later issue sets there (the site is {@code origin}).
+     * is clear for a pod, which a later issue sets there (the site is {@code origin}). A barrel in the corner is the crew's locker. PROSPECTOR-0002's bay
+     * alone also holds the cabin's phonograph ({@link ProspectorWrecks#light}).
      */
     WRECK(2, 2, 6, 6, OptionalInt.of(5)) {
         @Override
@@ -165,8 +177,19 @@ public enum StructureKind {
                     }
                 }
             }
+            p.lootBarrel(5, 0, -5, WRECK_LOCKER);
         }
     };
+
+    /** The crew's locker in a wreck bay: scrap, and rarely a wax cylinder ({@code loot_table/chests/wreck_locker.json}). */
+    private static final ResourceKey<LootTable> WRECK_LOCKER = ResourceKey.create(
+            Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "chests/wreck_locker"));
+
+    /** The Company horn's height over the hall floor. */
+    public static final int HORN_HEIGHT = 4;
+
+    /** Blocks above the horn that {@link StructurePlan#companyHorn} looks for a ceiling. */
+    public static final int HORN_REACH = 24;
 
     /** Blocks from the centre of the rail line to the centre of the Kells' shaft, along the line: 4 past the end the line stops at. */
     public static final int KELLS_OFFSET = 36;
@@ -309,6 +332,8 @@ public enum StructureKind {
         int[] rows = kellsGapRows(p.site());
         int gaps = rows.length;
         p.air(-1, 0, -1, 0, height - 1, 0);
+        // The layer 3 end (#972): the Kells broke through the crust under the hollow, into the Hollows.
+        p.air(-1, -LayerTuning.DEFAULT.crustThickness(), -1, 0, -1, 0);
         BlockState lava = Blocks.LAVA.defaultBlockState();
         // Timber sets, a quarter of their blocks fallen.
         for (int y = 1; y < height - DRIFT_HEIGHT - 1; y += KELLS_SET_SPACING) {

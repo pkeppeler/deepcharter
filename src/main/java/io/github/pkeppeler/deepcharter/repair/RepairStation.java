@@ -88,11 +88,8 @@ public final class RepairStation {
     }
 
     private static Optional<Component> buy(TerminalAction.Context context) {
-        Optional<Consumable> item = context.args()
-                .getString(ITEM_KEY)
-                .map(Identifier::tryParse)
-                .flatMap(Consumable::byItemId)
-                .filter(Consumable::sold);
+        Optional<Consumable> item =
+                context.args().getString(ITEM_KEY).map(Identifier::tryParse).flatMap(Consumable::byItemId);
         if (item.isEmpty()) {
             return Consumables.refusal("unknown_item");
         }
@@ -112,6 +109,7 @@ public final class RepairStation {
             return Optional.of(unpaid.get().message());
         }
         inventory.add(stack);
+        RepairEvents.BOUGHT.invoker().onBought(context.server(), player, item.get());
         return Optional.empty();
     }
 
