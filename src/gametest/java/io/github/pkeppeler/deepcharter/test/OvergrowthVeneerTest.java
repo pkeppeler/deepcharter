@@ -234,6 +234,11 @@ public class OvergrowthVeneerTest {
             }
             long now = level.getGameTime();
             LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
+            // The chunk's own growth pass runs on the real tick path every passTicks, and would grow cells in the
+            // middle of the two waits: start the tick after it, so the 90 ticks of the test fall between two passes.
+            if (stage[0] == 0 && Math.floorMod(now - chunk.getPos().hashCode(), TUNING.passTicks()) != 1) {
+                return;
+            }
             switch (stage[0]) {
                 case 0 -> {
                     cutBore(level, x);
@@ -581,9 +586,9 @@ public class OvergrowthVeneerTest {
     }
 
     /**
-     * Cuts the bore and grows one pass, and returns its film. Which cells a pass weighs follows the clock, and the clock
-     * of a full suite is not that of one class: on a pass that puts all the film beside growth there is nothing to
-     * retreat, so it tries the next pass on a fresh bore.
+     * Cuts the bore and grows one pass, and returns its film. Which cells a pass weighs follows the clock, and the
+     * clock of a full suite is not that of one class: on a pass that puts all the film beside growth there is nothing
+     * to retreat, so it tries the next pass on a fresh bore.
      */
     private static List<BlockPos> filmWithSomeOutOfReach(ServerLevel level, LevelChunk chunk, int x) {
         cutBore(level, x);
