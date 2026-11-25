@@ -30,13 +30,12 @@ import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.market.ProcessorView;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.IncidentReportPayload;
 import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability;
 import io.github.pkeppeler.deepcharter.outpost.Ratings;
 import io.github.pkeppeler.deepcharter.outpost.VisitCause;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.suit.OutpostRisks;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
@@ -710,8 +709,6 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
     /** One screen for each menu type the mod registered, built with the screen constructor it registered with {@code MenuScreens}. */
     private static List<Case> menuCases() {
         Map<MenuType<?>, MenuFixture> fixtures = new LinkedHashMap<>();
-        int bay = Math.round(PodTuning.Cargo.DEFAULT.slots()
-                * UpgradeTuning.DEFAULT.ratio(ComponentTrack.CARGO_BAY, ComponentTrack.CARGO_BAY.maxTier()));
         TerminalType mostParts = TerminalTypes.all().stream()
                 .filter(type -> type.id().getNamespace().equals(DeepCharter.MOD_ID))
                 .max(Comparator.comparingInt(type -> type.parts().size()))
@@ -726,12 +723,25 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                         mostParts.id().getPath() + " offline, "
                                 + mostParts.parts().size() + " parts",
                         Component.translatable(mostParts.block().getDescriptionId())));
+        // The pod screen is one size whatever the pod: a big hold turns pages. Its largest is the biggest bay there
+        // is, so every hold slot shows and so do the page buttons.
+        int bay = Math.round(PodTuning.Cargo.DEFAULT.slots()
+                * UpgradeTuning.DEFAULT.ratio(ComponentTrack.CARGO_BAY, ComponentTrack.CARGO_BAY.maxTier()));
         fixtures.put(
-                OreRegistry.CARGO_MENU,
+                PodMenu.TYPE,
                 new MenuFixture(
-                        id -> new OreCargoMenu(id, bay),
-                        "cargo bay of " + bay,
-                        Component.translatable("container.deepcharter.cargo")));
+                        id -> {
+                            PodMenu menu = new PodMenu(
+                                    id,
+                                    ClientSession.player(Minecraft.getInstance())
+                                            .getInventory(),
+                                    new PodMenu.Opening(-1, false));
+                            // The first data slot is the hold's size, as the server sends it.
+                            menu.setData(0, bay);
+                            return menu;
+                        },
+                        "pod screen, hold of " + bay,
+                        Component.literal("PROSPECTOR-0001")));
         Map<?, ?> constructors = menuConstructors();
         List<Case> cases = new ArrayList<>();
         for (MenuType<?> type : BuiltInRegistries.MENU) {

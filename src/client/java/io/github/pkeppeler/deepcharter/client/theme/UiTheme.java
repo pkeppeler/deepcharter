@@ -21,7 +21,6 @@ import org.jspecify.annotations.Nullable;
  * @param hud the pod readout, the altimeter and the account line
  * @param transmission the transmission panel
  * @param breach the fade and jitter of a crossing
- * @param cargo the pod cargo screen
  * @param pod the paint palette of the pods' hulls
  * @param panel the machine panel round the terminals, on in the mod; a pack restyles it or switches it off
  * @param cockpit the cockpit HUD of a seated pilot: the Ribbon, until a pack turns it off
@@ -40,7 +39,6 @@ public record UiTheme(
         HudLook hud,
         TransmissionLook transmission,
         BreachLook breach,
-        CargoLook cargo,
         PodPaintLook pod,
         PanelLook panel,
         CockpitLook cockpit,
@@ -58,7 +56,6 @@ public record UiTheme(
             "hud",
             "transmission",
             "breach",
-            "cargo",
             "pod",
             "panel",
             "cockpit",
@@ -106,7 +103,6 @@ public record UiTheme(
                 HudLook.of(area(areas, "hud")),
                 TransmissionLook.of(area(areas, "transmission")),
                 BreachLook.of(area(areas, "breach")),
-                CargoLook.of(area(areas, "cargo")),
                 PodPaintLook.of(area(areas, "pod")),
                 PanelLook.of(area(areas, "panel")),
                 CockpitLook.of(area(areas, "cockpit")),

@@ -13,12 +13,12 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -928,7 +928,7 @@ public class WreckTest {
     }
 
     @GameTest
-    public void sneakingOnAWreckStillOnlyOpensTheCargoView(GameTestHelper helper) {
+    public void sneakingOnAWreckStillOnlyOpensThePodScreen(GameTestHelper helper) {
         PodEntity pod = spawnOnFloor(helper);
         MockPlayer mock = joinLoaded(helper, "wreck-sneak", pod.position().add(2, 0, 0));
         try {
@@ -937,10 +937,10 @@ public class WreckTest {
             wreck(pod);
             mock.setInput(SNEAK);
             InteractionResult result = UseEntity.on(mock.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-            if (!result.consumesAction() || !(mock.player().containerMenu instanceof OreCargoMenu)) {
+            if (!result.consumesAction() || !(mock.player().containerMenu instanceof PodMenu)) {
                 throw failure(
                         helper,
-                        "sneak-use should open the cargo view, got %s with %s",
+                        "sneak-use should open the pod screen, got %s with %s",
                         result,
                         mock.player().containerMenu);
             }

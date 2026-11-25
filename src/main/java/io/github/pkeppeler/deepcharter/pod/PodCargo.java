@@ -7,69 +7,89 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.command.FeatureCommands;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
+import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
+import java.util.Objects;
 import java.util.Optional;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import java.util.stream.Stream;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A pod's cargo bay: ore items, one per slot, each with a mass. Only the mod's ore is cargo: a vanilla ore or any
- * other stack is refused. The synced {@link PodData#CARGO_USED} and {@link PodData#CARGO_MASS} mirror the entries;
- * only this class writes them.
+ * A pod's hold (ADR 0100): a row of slots, as many as the pod's {@link PodStats#cargoSlots}, each holding one stack of
+ * anything, with a mass. Drilled ore goes in one ore to a free slot ({@link #tryAdd}); the pod screen ({@link PodMenu})
+ * moves stacks in and out of any slot, as a chest does. What the terminals and the brace read and take is the ore
+ * ({@link #entries}, {@link #count}, {@link #take}, {@link #dump}); what else the crew stows rides along. The synced
+ * {@link PodData#CARGO_USED} (slots holding something) and {@link PodData#CARGO_MASS} mirror the slots; only this class
+ * writes them.
  *
- * <p>The saved cargo has a version ({@value #VERSION}). A save with no version is from before ore items: its entries
- * were vanilla ores, which are not cargo, so they are dropped and logged. A save of another version, or one with an
- * entry that does not decode, is kept as it was read and written back unchanged, and {@link #tryAdd} and {@link #dump}
- * throw until a build can read it. Nothing is dropped silently.
+ * <p>An ore weighs its {@link OreType#mass} unless it was drilled at another; anything else weighs what {@link
+ * OreEncumbrance#massOf} says, its {@code cargo_weight} and whatever it holds.
+ *
+ * <p>The saved hold has a version ({@value #VERSION}). Version 1 was the ore bay: ore only, one entry after another,
+ * read into the first slots. A save with no version is from before ore items: its entries were vanilla ores, which are
+ * not cargo, so they are dropped and logged. A save of another version, or one with an entry that does not decode, is
+ * kept as it was read and written back unchanged, the hold shows nothing and takes nothing, and {@link #tryAdd} and
+ * {@link #dump} throw until a build can read it. Nothing is dropped silently.
  */
 public final class PodCargo {
-    /** The version of the saved cargo; 1 is the first with ore items. */
-    public static final int VERSION = 1;
+    /** The version of the saved hold: 1 was the ore bay, 2 the hold of any item, each in its own slot. */
+    public static final int VERSION = 2;
+
+    private static final int ORE_BAY_VERSION = 1;
+    /** More slots than any pod has, so a corrupt slot number cannot make the load build a huge list. */
+    private static final int MOST_SLOTS = 4096;
 
     private static final String CARGO_KEY = "cargo";
     private static final String VERSION_KEY = "cargo_version";
 
-    /** The stack and mass of an entry as saved, before it is known to be ore. */
-    private record Saved(ItemStack stack, float mass) {
-        static final Codec<Saved> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                        ItemStack.CODEC.fieldOf("stack").forGetter(Saved::stack),
-                        Codec.FLOAT.fieldOf("mass").forGetter(Saved::mass))
-                .apply(instance, Saved::new));
+    /** A version 1 entry as saved: an ore and its mass, its slot the next one. */
+    private record OreBayEntry(ItemStack stack, float mass) {
+        static final Codec<OreBayEntry> CODEC = RecordCodecBuilder.<OreBayEntry>create(instance -> instance.group(
+                                ItemStack.CODEC.fieldOf("stack").forGetter(OreBayEntry::stack),
+                                Codec.FLOAT.fieldOf("mass").forGetter(OreBayEntry::mass))
+                        .apply(instance, OreBayEntry::new))
+                .flatXmap(
+                        saved -> OreRegistry.typeOf(saved.stack()).isEmpty()
+                                ? DataResult.error(() -> "only ore is cargo, not " + saved.stack())
+                                : checkedMass(saved.mass(), saved),
+                        DataResult::success);
+    }
+
+    /** A version 2 entry as saved: the slot, the stack in it and its mass. */
+    private record SlotEntry(int slot, ItemStack stack, float mass) {
+        static final Codec<SlotEntry> CODEC = RecordCodecBuilder.<SlotEntry>create(instance -> instance.group(
+                                Codec.intRange(0, MOST_SLOTS - 1)
+                                        .fieldOf("slot")
+                                        .forGetter(SlotEntry::slot),
+                                ItemStack.CODEC.fieldOf("stack").forGetter(SlotEntry::stack),
+                                Codec.FLOAT.fieldOf("mass").forGetter(SlotEntry::mass))
+                        .apply(instance, SlotEntry::new))
+                .flatXmap(saved -> checkedMass(saved.mass(), saved), DataResult::success);
+    }
+
+    /** A bad mass is a decode error, never a throw: loading a pod must not crash. */
+    private static <T> DataResult<T> checkedMass(float mass, T saved) {
+        return mass >= 0f
+                ? DataResult.success(saved)
+                : DataResult.error(() -> "cargo mass must be a number, not negative: " + mass);
     }
 
     /** Saved cargo this build cannot read, held as it was read: its version if it had one, and its entries. */
     private record Unreadable(Optional<Integer> version, List<Tag> raw) {}
 
-    /** One ore in one slot. The stack is the ore item; the mass is what it adds to the pod's cargo mass. */
+    /** One ore in the hold. The stack is the ore item; the mass is what it adds to the pod's cargo mass. */
     public record Entry(ItemStack stack, float mass) {
-        /** A stack that is not ore, or a bad mass, is a decode error, never a throw: loading a pod must not crash. */
-        static final Codec<Entry> CODEC = Saved.CODEC.flatXmap(
-                saved -> {
-                    if (OreRegistry.typeOf(saved.stack()).isEmpty()) {
-                        return DataResult.error(() -> "only ore is cargo, not " + saved.stack());
-                    }
-                    if (!(saved.mass() >= 0f)) {
-                        return DataResult.error(() -> "ore mass must be a number, not negative: " + saved.mass());
-                    }
-                    return DataResult.success(new Entry(saved.stack(), saved.mass()));
-                },
-                entry -> DataResult.success(new Saved(entry.stack(), entry.mass())));
-
         public Entry {
             if (OreRegistry.typeOf(stack).isEmpty()) {
                 throw new IllegalArgumentException("only ore is cargo, not " + stack);
@@ -92,13 +112,31 @@ public final class PodCargo {
         }
     }
 
-    private final List<Entry> entries = new ArrayList<>();
+    /**
+     * What one slot holds: the stack itself, which the pod screen changes in place as vanilla's menus do, and the mass
+     * it had at {@code count} items. A stack that grew or shrank keeps its mass in proportion ({@link #changed}).
+     */
+    private record Held(ItemStack stack, float mass, int count) {
+        Held rescaled() {
+            return stack.getCount() == count
+                    ? this
+                    : new Held(stack, mass * stack.getCount() / count, stack.getCount());
+        }
+    }
+
+    /** The slots in order; null is an empty slot. Never ends in null. */
+    private final List<@Nullable Held> slots = new ArrayList<>();
     /** The saved cargo this build cannot read, or null when the cargo is readable. */
     private @Nullable Unreadable unreadable;
 
     private boolean discardLogged;
 
-    /** Server only: adds one ore at its real mass if a slot is free, and returns whether it did. Anything but ore throws. */
+    /** The mass {@code stack} adds to a pod when stowed by hand: an ore's own mass, or {@link OreEncumbrance#massOf}. */
+    public static float massOf(ItemStack stack) {
+        return OreEncumbrance.massOf(stack);
+    }
+
+    /** Server only: puts one ore at its real mass in a free slot, if the hold has one, and returns whether it did. Anything but ore throws. */
     public boolean tryAdd(PodEntity pod, ItemStack ore) {
         return tryAdd(
                 pod,
@@ -108,30 +146,29 @@ public final class PodCargo {
                         .orElseThrow(() -> new IllegalArgumentException("only ore is cargo, not " + ore)));
     }
 
-    /** Server only: adds one ore at the given mass (not negative) if a slot is free, and returns whether it did. */
+    /** Server only: puts one ore at the given mass (not negative) in a free slot, if the hold has one, and returns whether it did. */
     public boolean tryAdd(PodEntity pod, ItemStack ore, float mass) {
         requireOwnServerPod(pod);
         requireReadable(pod);
         Entry entry = new Entry(ore, mass);
-        if (entries.size() >= PodStats.of(pod).cargoSlots()) {
+        if (occupied() >= PodStats.of(pod).cargoSlots()) {
             return false;
         }
-        entries.add(entry);
+        put(firstFree(), new Held(entry.stack(), mass, entry.stack().getCount()));
         sync(pod);
         return true;
     }
 
-    /** How many of {@code ore} the bay holds; 0 while the saved cargo is unreadable. */
+    /** How many of {@code ore} the hold has; 0 while the saved cargo is unreadable. */
     public int count(OreType ore) {
-        return entries.stream()
-                .filter(entry -> OreRegistry.typeOf(entry.stack()).orElseThrow() == ore)
-                .mapToInt(entry -> entry.stack().getCount())
+        return held().filter(held -> isOre(held, ore))
+                .mapToInt(held -> held.stack().getCount())
                 .sum();
     }
 
     /**
-     * Server only: removes up to {@code amount} (at least 1) of {@code ore}, in the bay's order, and returns how many it removed: fewer
-     * than asked when the bay holds fewer. An entry that holds more than is asked is shrunk and keeps its mass in proportion.
+     * Server only: removes up to {@code amount} (at least 1) of {@code ore}, in slot order, and returns how many it removed: fewer
+     * than asked when the hold has fewer. A slot that holds more than is asked is shrunk and keeps its mass in proportion.
      */
     public int take(PodEntity pod, OreType ore, int amount) {
         requireOwnServerPod(pod);
@@ -140,37 +177,46 @@ public final class PodCargo {
             throw new IllegalArgumentException("cannot take " + amount + " ore from the cargo");
         }
         int left = amount;
-        for (ListIterator<Entry> it = entries.listIterator(); it.hasNext() && left > 0; ) {
-            Entry entry = it.next();
-            if (OreRegistry.typeOf(entry.stack()).orElseThrow() != ore) {
+        for (int i = 0; i < slots.size() && left > 0; i++) {
+            Held held = slots.get(i);
+            if (held == null || !isOre(held, ore)) {
                 continue;
             }
-            int held = entry.stack().getCount();
-            if (held <= left) {
-                it.remove();
-                left -= held;
+            int count = held.stack().getCount();
+            if (count <= left) {
+                slots.set(i, null);
+                left -= count;
             } else {
-                it.set(new Entry(entry.stack().copyWithCount(held - left), entry.mass() * (held - left) / held));
+                held.stack().shrink(left);
+                slots.set(i, held.rescaled());
                 left = 0;
             }
         }
         if (left < amount) {
+            trim();
             sync(pod);
         }
         return amount - left;
     }
 
-    /** Server only: empties the bay and returns how many ore it held. */
+    /** Server only: takes every ore out of the hold, leaving what else it holds, and returns how many slots of ore it emptied. */
     public int dump(PodEntity pod) {
         requireOwnServerPod(pod);
         requireReadable(pod);
-        int dumped = entries.size();
-        entries.clear();
+        int dumped = 0;
+        for (int i = 0; i < slots.size(); i++) {
+            Held held = slots.get(i);
+            if (held != null && OreRegistry.typeOf(held.stack()).isPresent()) {
+                slots.set(i, null);
+                dumped++;
+            }
+        }
+        trim();
         sync(pod);
         return dumped;
     }
 
-    /** False while the saved cargo is unreadable: the bay then takes no ore, and {@link #tryAdd} and {@link #dump} throw. */
+    /** False while the saved cargo is unreadable: the hold then takes nothing and shows nothing, and {@link #tryAdd} and {@link #dump} throw. */
     public boolean isReadable() {
         return unreadable == null;
     }
@@ -183,17 +229,125 @@ public final class PodCargo {
         }
     }
 
-    /** The bay's entries; empty while the saved cargo is unreadable. */
+    /** The ore in the hold, in slot order, each slot's stack a copy; empty while the saved cargo is unreadable. */
     public List<Entry> entries() {
-        return List.copyOf(entries);
+        return held().filter(held -> OreRegistry.typeOf(held.stack()).isPresent())
+                .map(held -> new Entry(held.stack(), held.mass()))
+                .toList();
+    }
+
+    /** How many slots, from the first, the hold's contents reach: the last one that holds something, plus one. */
+    public int reach() {
+        return slots.size();
+    }
+
+    /** How many slots hold something. */
+    public int occupied() {
+        return (int) held().count();
+    }
+
+    /**
+     * The stack in slot {@code index} itself, not a copy, for the pod screen's container; empty for an empty slot, one
+     * past the hold's reach, or while the saved cargo is unreadable. A change to it is the caller's to report with
+     * {@link #changed}.
+     */
+    public ItemStack stackAt(int index) {
+        if (unreadable != null || index < 0 || index >= slots.size()) {
+            return ItemStack.EMPTY;
+        }
+        Held held = slots.get(index);
+        return held == null ? ItemStack.EMPTY : held.stack();
+    }
+
+    /**
+     * Server only: puts {@code stack} itself in slot {@code index}, over what was there, or empties it. The stack that is
+     * already there, put back after a change in place, keeps its mass in proportion; any other weighs {@link #massOf}.
+     * Whoever calls this has checked the slot may take it.
+     */
+    public void setAt(PodEntity pod, int index, ItemStack stack) {
+        requireOwnServerPod(pod);
+        requireReadable(pod);
+        if (index < 0 || index >= MOST_SLOTS) {
+            throw new IndexOutOfBoundsException("no hold slot " + index);
+        }
+        Held there = index < slots.size() ? slots.get(index) : null;
+        if (stack.isEmpty()) {
+            put(index, null);
+        } else if (there != null && there.stack() == stack) {
+            put(index, there.rescaled());
+        } else {
+            put(index, new Held(stack, massOf(stack), stack.getCount()));
+        }
+        trim();
+        sync(pod);
+    }
+
+    /** Server only: splits up to {@code amount} off the stack in slot {@code index} and returns it; empty for an empty slot. */
+    public ItemStack removeAt(PodEntity pod, int index, int amount) {
+        ItemStack there = stackAt(index);
+        if (there.isEmpty() || amount <= 0) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack split = there.split(amount);
+        changed(pod);
+        return split;
+    }
+
+    /**
+     * Server only: a stack the pod screen holds was changed in place (grown, shrunk or emptied): empties the slots left with
+     * nothing, keeps each changed stack's mass in proportion, and updates the synced counts.
+     */
+    public void changed(PodEntity pod) {
+        requireOwnServerPod(pod);
+        if (unreadable != null) {
+            return;
+        }
+        for (int i = 0; i < slots.size(); i++) {
+            Held held = slots.get(i);
+            if (held != null) {
+                slots.set(i, held.stack().isEmpty() ? null : held.rescaled());
+            }
+        }
+        trim();
+        sync(pod);
+    }
+
+    private Stream<Held> held() {
+        return slots.stream().filter(Objects::nonNull).map(held -> Objects.requireNonNull(held));
+    }
+
+    private static boolean isOre(Held held, OreType ore) {
+        return OreRegistry.typeOf(held.stack()).map(type -> type == ore).orElse(false);
+    }
+
+    private int firstFree() {
+        int free = slots.indexOf(null);
+        return free < 0 ? slots.size() : free;
+    }
+
+    private void put(int index, @Nullable Held held) {
+        while (slots.size() <= index) {
+            slots.add(null);
+        }
+        slots.set(index, held);
+    }
+
+    private void trim() {
+        while (!slots.isEmpty() && slots.getLast() == null) {
+            slots.removeLast();
+        }
     }
 
     private void sync(PodEntity pod) {
         float mass = 0f;
-        for (Entry entry : entries) {
-            mass += entry.mass();
+        int used = 0;
+        for (Held held : slots) {
+            if (held != null) {
+                mass += held.mass();
+                used++;
+            }
         }
-        pod.setCargoUsed(entries.size());
+        pod.setCargoUsed(used);
         pod.setCargoMass(mass);
     }
 
@@ -214,7 +368,7 @@ public final class PodCargo {
         }
     }
 
-    /** Saves the cargo with the pod, with its version; unreadable cargo is written back as it was read. */
+    /** Saves the hold with the pod, with its version; unreadable cargo is written back as it was read. */
     public void save(ValueOutput output) {
         if (unreadable != null) {
             unreadable.version().ifPresent(version -> output.putInt(VERSION_KEY, version));
@@ -223,13 +377,18 @@ public final class PodCargo {
             return;
         }
         output.putInt(VERSION_KEY, VERSION);
-        ValueOutput.TypedOutputList<Entry> list = output.list(CARGO_KEY, Entry.CODEC);
-        entries.forEach(list::add);
+        ValueOutput.TypedOutputList<SlotEntry> list = output.list(CARGO_KEY, SlotEntry.CODEC);
+        for (int i = 0; i < slots.size(); i++) {
+            Held held = slots.get(i);
+            if (held != null) {
+                list.add(new SlotEntry(i, held.stack(), held.mass()));
+            }
+        }
     }
 
-    /** Restores the cargo saved by {@link #save} and derives the pod's synced counts from it. */
+    /** Restores the hold saved by {@link #save}, or the ore bay of version 1, and derives the pod's synced counts from it. */
     public void load(ValueInput input, PodEntity pod) {
-        entries.clear();
+        slots.clear();
         unreadable = null;
         discardLogged = false;
         List<Tag> raw = new ArrayList<>();
@@ -248,23 +407,54 @@ public final class PodCargo {
             sync(pod);
             return;
         }
-        List<Entry> decoded = new ArrayList<>();
-        input.list(CARGO_KEY, Entry.CODEC).orElseThrow().forEach(decoded::add);
-        if (version.get() != VERSION || decoded.size() < raw.size()) {
+        // Not checked against the slots: the hold's size is a stat that other features change, and a pod whose hold
+        // shrank since it was saved must still load. A hold over its size takes nothing until it is under it again.
+        boolean read = switch (version.get()) {
+            case ORE_BAY_VERSION -> readOreBay(input, raw.size());
+            case VERSION -> readHold(input, raw.size());
+            default -> false;
+        };
+        if (!read) {
+            slots.clear();
             unreadable = new Unreadable(version, raw);
             DeepCharter.LOGGER.error(
-                    "Pod {} has cargo this build cannot read (version {}, {} of {} entries decode): kept unchanged, and the cargo refuses changes",
+                    "Pod {} has cargo this build cannot read (version {}, {} entries): kept unchanged, and the cargo refuses changes",
                     pod.getUUID(),
                     version.get(),
-                    decoded.size(),
                     raw.size());
-            sync(pod);
-            return;
         }
-        // Not checked against the slots: the bay's size is a stat that other features change, and a pod whose bay
-        // shrank since it was saved must still load. A bay over its size refuses ore until it is under it again.
-        entries.addAll(decoded);
         sync(pod);
+    }
+
+    /** Reads the ore bay of version 1 into the first slots; false if an entry does not decode. */
+    private boolean readOreBay(ValueInput input, int saved) {
+        List<OreBayEntry> decoded = new ArrayList<>();
+        input.list(CARGO_KEY, OreBayEntry.CODEC).orElseThrow().forEach(decoded::add);
+        if (decoded.size() < saved) {
+            return false;
+        }
+        decoded.forEach(entry ->
+                slots.add(new Held(entry.stack(), entry.mass(), entry.stack().getCount())));
+        trim();
+        return true;
+    }
+
+    /** Reads the hold of version 2; false if an entry does not decode or two share a slot. */
+    private boolean readHold(ValueInput input, int saved) {
+        List<SlotEntry> decoded = new ArrayList<>();
+        input.list(CARGO_KEY, SlotEntry.CODEC).orElseThrow().forEach(decoded::add);
+        if (decoded.size() < saved) {
+            return false;
+        }
+        for (SlotEntry entry : decoded) {
+            if (entry.slot() < slots.size() && slots.get(entry.slot()) != null) {
+                return false;
+            }
+            put(
+                    entry.slot(),
+                    new Held(entry.stack(), entry.mass(), entry.stack().getCount()));
+        }
+        return true;
     }
 
     public static void init() {
@@ -273,15 +463,6 @@ public final class PodCargo {
                 root -> root.then(Commands.literal("dump")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(PodCargo::dumpRiddenPod)));
-        UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
-            if (!(entity instanceof PodEntity pod) || !player.isSecondaryUseActive() || player.isSpectator()) {
-                return InteractionResult.PASS;
-            }
-            if (player instanceof ServerPlayer serverPlayer) {
-                OreCargoMenu.open(serverPlayer, pod);
-            }
-            return InteractionResult.SUCCESS;
-        });
     }
 
     private static int dumpRiddenPod(CommandContext<CommandSourceStack> context) {

@@ -77,15 +77,20 @@ public final class PartFitting {
         }
         // The unit goes first: a listener that throws after the fit must not leave a fitted pod and a kept unit.
         stack.consume(1, player);
-        install(serverPlayer, pod, track);
-        serverPlayer.sendOverlayMessage(Component.translatable(
-                "message.deepcharter.upgrade.fitting.fitted",
-                Component.translatable("item.deepcharter.part_" + track.id())));
+        fit(serverPlayer, pod, track);
+        serverPlayer.sendOverlayMessage(fittedMessage(track));
         return InteractionResult.SUCCESS;
     }
 
+    /** What the fitter is told once a unit of {@code track} is in. */
+    public static Component fittedMessage(ComponentTrack track) {
+        return Component.translatable(
+                "message.deepcharter.upgrade.fitting.fitted",
+                Component.translatable("item.deepcharter.part_" + track.id()));
+    }
+
     /** Why a unit of {@code track} would not fit {@code pod} for {@code player}, if it would not. Server only; changes nothing. */
-    private static Optional<Refusal> check(ServerPlayer player, PodEntity pod, ComponentTrack track) {
+    public static Optional<Refusal> check(ServerPlayer player, PodEntity pod, ComponentTrack track) {
         MinecraftServer server = player.level().getServer();
         if (!Charters.isReadable(server)) {
             return Optional.of(Refusal.CHARTERS_UNREADABLE);
@@ -113,8 +118,12 @@ public final class PartFitting {
         return Optional.empty();
     }
 
-    /** Only after {@link #check}. Fires {@link UpgradeEvents#FITTED} after the change. A replaced part (a void one of another charter, say) drops as an item. */
-    private static void install(ServerPlayer player, PodEntity pod, ComponentTrack track) {
+    /**
+     * Fits a tier 1 part of {@code track}, for a unit the caller has already taken from the player; only after {@link
+     * #check}. The pod screen ({@code PodMenu}) and the right-click shortcut both fit through here. Fires {@link
+     * UpgradeEvents#FITTED} after the change. A replaced part (a void one of another charter, say) drops as an item.
+     */
+    public static void fit(ServerPlayer player, PodEntity pod, ComponentTrack track) {
         MinecraftServer server = player.level().getServer();
         CharterId charter = Charters.charterOfOrThrow(server, player.getUUID())
                 .orElseThrow()

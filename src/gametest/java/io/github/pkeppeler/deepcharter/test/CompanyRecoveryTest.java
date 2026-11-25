@@ -5,12 +5,12 @@ import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.fuel.ReserveTank;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
@@ -44,6 +44,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -396,10 +397,15 @@ public class CompanyRecoveryTest {
                 throw helper.assertionException("waiting for the clock to start");
             }
             ServerPlayer player = scene.pilot.player();
-            OreCargoMenu.open(player, scene.current());
+            PodMenu.open(player, scene.current());
+            if (!(player.containerMenu instanceof PodMenu menu)) {
+                throw helper.assertionException("the pod screen did not open");
+            }
             tried[0] = true;
-            ItemStack moved = player.containerMenu.quickMoveStack(player, 0);
-            verify(helper, moved.isEmpty(), "shift-clicking the bay moved %s", moved);
+            int ore = menu.holdSlot(0).index;
+            ItemStack moved = menu.quickMoveStack(player, ore);
+            menu.clicked(ore, 0, ContainerInput.PICKUP, player);
+            verify(helper, moved.isEmpty() && menu.getCarried().isEmpty(), "taking from the hold moved %s", moved);
             verify(helper, scene.current().cargo().count(OreType.IRONIUM) == 2, "the bay still holds its ore");
             verify(helper, tried[0], "the menu was tried");
         });

@@ -89,7 +89,7 @@ public final class OreEncumbrance {
     }
 
     /** The mass of a stack's own ore and weighted items, and of everything inside it. */
-    static float massOf(ItemStack stack) {
+    public static float massOf(ItemStack stack) {
         return massOf(stack, true);
     }
 

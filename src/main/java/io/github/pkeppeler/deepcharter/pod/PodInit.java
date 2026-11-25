@@ -16,6 +16,8 @@ public final class PodInit {
         PodCues.init();
         PodDrill.init();
         PodCargo.init();
+        PodMenu.init();
+        PodFuelSlot.init();
         PodFuel.init();
         PodComponents.init();
         PodLights.init();
