@@ -109,7 +109,7 @@
   "deepcharter.handbook.controls.cards.any": "A slot marked any takes any one of its items.",
   "deepcharter.handbook.controls.catalogue.title": "The parts catalogue",
   "deepcharter.handbook.controls.catalogue.open": "Your inventory (%s) or a table opens it.",
-  "deepcharter.handbook.controls.catalogue.toggle": "%s or the recipe book's button hides it.",
+  "deepcharter.handbook.controls.catalogue.toggle": "%s or its button shows or hides it.",
   "deepcharter.handbook.controls.catalogue.search": "Ctrl+F/Cmd+F searches.",
   "deepcharter.handbook.controls.lookup.title": "Looking things up",
   "deepcharter.handbook.controls.lookup.look": "Point at an item: %s shows its recipes, %s its uses.",
