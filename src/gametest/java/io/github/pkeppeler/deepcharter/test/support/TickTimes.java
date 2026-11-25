@@ -19,8 +19,12 @@ public final class TickTimes {
         if (!installed) {
             installed = true;
             ServerTickEvents.START_SERVER_TICK.register(server -> startedNanos = System.nanoTime());
-            ServerTickEvents.END_SERVER_TICK.register(
-                    server -> peakNanos = Math.max(peakNanos, System.nanoTime() - startedNanos));
+            ServerTickEvents.END_SERVER_TICK.register(server -> {
+                // The tick that installed the hook has no start.
+                if (startedNanos != 0) {
+                    peakNanos = Math.max(peakNanos, System.nanoTime() - startedNanos);
+                }
+            });
         }
         peakNanos = 0;
     }
