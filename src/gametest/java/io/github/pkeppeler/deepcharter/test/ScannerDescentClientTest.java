@@ -35,6 +35,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * #1272: digging straight down through uniform rock, the scanner must show the pod descending. The pod sits in a shaft cut in a slab of
@@ -114,7 +115,7 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
                     at.relative(facing, -1).relative(across, -1),
                     at.relative(facing, 1).relative(across, 1).above(FILL_ABOVE),
                     Blocks.AIR.defaultBlockState());
-            moveTo(pod, level, at);
+            moveTo(pod, at);
             return at;
         });
         ClientWait.until(
@@ -140,13 +141,14 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
                     lower.relative(facing, -1).relative(across, -1),
                     lower.relative(facing, 1).relative(across, 1),
                     Blocks.AIR.defaultBlockState());
-            moveTo(pod, level, lower);
+            moveTo(pod, lower);
         });
     }
 
-    private static void moveTo(PodEntity pod, ServerLevel level, BlockPos feet) {
-        pod.teleportTo(
-                level, feet.getX() + 0.5, feet.getY(), feet.getZ() + 0.5, Set.of(), pod.getYRot(), 0f, true);
+    /** Moves the pod, rider and all, to stand at {@code feet}; a teleport would put the rider off. */
+    private static void moveTo(PodEntity pod, BlockPos feet) {
+        pod.setPos(feet.getX() + 0.5, feet.getY(), feet.getZ() + 0.5);
+        pod.setDeltaMovement(Vec3.ZERO);
     }
 
     /** Waits until the client's pod stands at {@code feet} and the scanner has rescanned there, then takes a shot of the map. */
