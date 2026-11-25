@@ -26,6 +26,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -40,8 +41,8 @@ import org.jspecify.annotations.Nullable;
  * Client GameTest for #1266 (a): R and U over an item in any slot open its recipes or uses. On the inventory (a screen with the
  * catalogue beside it) a slot of the main inventory and of the hotbar look the item up in the catalogue's own recipe console. On a chest,
  * which has no catalogue, a chest slot and a hotbar slot open the recipe console on a screen of its own, and closing it comes back to
- * the same chest, still open on the server. An item the charter knows nothing of opens nothing and changes nothing: a note by the cursor
- * says so, and no recipe of it is drawn.
+ * the same chest, still open on the server. An item the charter knows nothing of opens nothing and changes nothing: a note over the cursor,
+ * clear of the item's tooltip, says so, and no recipe of it is drawn.
  */
 public class CatalogueAnySlotClientTest implements FabricClientGameTest {
     private static final Item DRILL = HangarParts.DRILL_HEAD;
@@ -188,6 +189,7 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
                                     : "deepcharter.catalogue.none.uses")
                     .getString();
             require(drawn.contains(none), "a note by the cursor says '" + none + "', drew " + drawn);
+            requireClearOfTheTooltip(context, chest, none);
             require(!drawn.contains("DIAMOND SWORD"), "nothing is titled with the unknown item, drew " + drawn);
         }
         context.setScreen(() -> null);
@@ -241,6 +243,27 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
         require(
                 String.join(" ", drawn).contains(title) && drawn.contains(counter),
                 what + " shows '" + title + "' at '" + counter + "', drew " + drawn);
+    }
+
+    /**
+     * The note {@code text} sits above where the hovered item's tooltip starts, its frame {@link TooltipRenderUtil#MOUSE_OFFSET} and
+     * {@link TooltipRenderUtil#PADDING_TOP} above the cursor, so the tooltip, which the game draws over everything, does not cover it.
+     */
+    private static void requireClearOfTheTooltip(ClientGameTestContext context, Screen screen, String text) {
+        context.runOnClient(client -> {
+            var window = client.getWindow();
+            int mouseX = (int) client.mouseHandler.getScaledXPos(window);
+            int mouseY = (int) client.mouseHandler.getScaledYPos(window);
+            DrawnText.Drawn note = DrawnText.of(screen, mouseX, mouseY).stream()
+                    .filter(drawn -> drawn.text().equals(text))
+                    .findFirst()
+                    .orElseThrow();
+            int tooltipTop = mouseY - TooltipRenderUtil.MOUSE_OFFSET - TooltipRenderUtil.PADDING_TOP;
+            require(
+                    note.box().bottom() <= tooltipTop,
+                    "the note '" + text + "' ends at y " + note.box().bottom() + ", above the item's tooltip at y "
+                            + tooltipTop + ", so the tooltip does not cover it");
+        });
     }
 
     private static List<String> texts(ClientGameTestContext context, Screen screen) {

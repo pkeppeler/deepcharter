@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.inventory.Slot;
@@ -17,14 +18,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * R and U over a slot of a container screen with no catalogue beside it: a chest, a barrel, the creative inventory, a modded container.
  * An item the charter knows a recipe or a use of opens the {@link RecipeConsoleScreen} over the container. One it knows nothing of opens
- * nothing and moves nothing (the lookup and its history stay as they were); a short note under the cursor says so, so no unknown recipe
+ * nothing and moves nothing (the lookup and its history stay as they were); a short note over the cursor says so, so no unknown recipe
  * is ever shown and the press is not lost in silence. A text field that has the keyboard (the creative search, an anvil's name) keeps
  * its R and U.
  */
 final class SlotLookup {
     private final AbstractContainerScreen<?> screen;
     private int ticks;
-    /** What the note under the cursor says, or null while there is none. */
+    /** What the note over the cursor says, or null while there is none. */
     private @Nullable String note;
 
     private int noteEndsAt;
@@ -77,7 +78,11 @@ final class SlotLookup {
         }
     }
 
-    /** The note in a strip under the cursor, kept inside the screen. */
+    /**
+     * The note in a strip over the cursor, kept inside the screen. The hovered item's tooltip, which the game draws over everything, starts
+     * {@link TooltipRenderUtil#MOUSE_OFFSET} and its frame above the cursor and runs down beside it, so the note sits above that; under the
+     * cursor only when there is no room above.
+     */
     private void extract(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         String shown = note;
         if (shown == null) {
@@ -89,9 +94,9 @@ final class SlotLookup {
         int width = CatalogueHardware.termWidth(client.font, shown) + 2 * inset;
         int height = client.font.lineHeight + 2 * inset;
         int x = Math.clamp(mouseX, 0, Math.max(0, screen.width - width));
-        int y = mouseY + CatalogueHardware.ICON;
-        if (y + height > screen.height) {
-            y = mouseY - CatalogueHardware.ICON - height;
+        int y = mouseY - TooltipRenderUtil.MOUSE_OFFSET - TooltipRenderUtil.PADDING_TOP - look.nameStripGap() - height;
+        if (y < 0) {
+            y = Math.min(mouseY + CatalogueHardware.ICON, screen.height - height);
         }
         CatalogueHardware.strip(graphics, client.font, List.of(shown), x, Math.max(0, y), inset);
     }
