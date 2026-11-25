@@ -96,7 +96,8 @@
             16,
             16
           ],
-          "texture": "#gills"
+          "texture": "#gills",
+          "shade": false
         }
       },
       "rotation": {
@@ -109,7 +110,7 @@
         "y": 45,
         "z": 0
       },
-      "light_emission": 7
+      "light_emission": 15
     },
     {
       "from": [

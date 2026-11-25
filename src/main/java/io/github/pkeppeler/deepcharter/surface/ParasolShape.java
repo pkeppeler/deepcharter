@@ -16,14 +16,16 @@ import java.util.function.IntUnaryOperator;
 import net.minecraft.core.Direction;
 
 /**
- * The shape of a parasol (#1202): a tall, slender stem, curving gently, under a broad domed cap with glowing gills
- * underneath and a thin glowing rim, like a lamp-post of the deep. The real-world model is the parasol mushroom
+ * The shape of a parasol (#1202): a tall stem, curving gently, on a flared foot, under a broad, flat cap with glowing
+ * gills underneath and a thin glowing rim, like a lamp-post of the deep. The real-world model is the parasol mushroom
  * (<i>Macrolepiota</i>). The generator rolls {@link Params} from a seed and makes the blocks as a {@link GiantLayout},
  * pure data, so the shape can be inspected without a world.
  *
- * <p>The cap is a height field: each column's top is the plane of the dome at its middle, so the cap slopes instead of
- * stepping. Its edge is a ring of rim cells, a thin lip that hangs past the gills. A cap is never wider than a chunk
- * (ADR 0088): its radius is at most {@link #MOST_RADIUS}.
+ * <p>The stem is three cells thick (#1218): a core with an arm on each side, leaning as the core leans. Its foot is a
+ * root flare two cells out, so it stands rather than sticks up. The cap is a height field: each column's top is the
+ * plane of the dome at its middle, so the cap slopes instead of stepping, and its dome rises in proportion to its
+ * radius, so a cap stays flat however wide it is. Its edge is a ring of rim cells, a thin lip that hangs past the
+ * gills. A cap is never wider than a chunk (ADR 0088): its radius is at most {@link #MOST_RADIUS}.
  */
 public final class ParasolShape {
     /** The shortest stem a parasol grows: under this much room a site grows spires instead. */
@@ -48,6 +50,10 @@ public final class ParasolShape {
     private static final double LEAST_TOP = 18;
 
     private static final double UMBO = 0.22;
+    /** How many cells out from the stem its foot's flare reaches. */
+    private static final int FOOT = 2;
+    /** The widest cap a twin has: wider, and it reaches under the first's cap to its stem. */
+    private static final int TWIN_RADIUS = 3;
 
     private ParasolShape() {}
 
@@ -152,8 +158,8 @@ public final class ParasolShape {
         }
         Stage stage = style.pick(random.applyAsInt(style.bell() + style.open() + style.old()));
         int height = Math.min(LEAST_STEM + random.applyAsInt(MOST_STEM - LEAST_STEM + 1), mostStem);
-        // About 0.28 of the height, give or take one, so radius 7 is rare and 5 to 6 the norm.
-        int radius = (int) Math.round(0.28 * height) + random.applyAsInt(3) - 1 + style.radiusBonus();
+        // A cell over 0.28 of the height, give or take one, so a cap is wide for its stem (#1218): 6 to 7 the norm.
+        int radius = (int) Math.round(0.28 * height) + random.applyAsInt(3) + style.radiusBonus();
         if (stage == Stage.BELL) {
             radius--;
         }
@@ -168,11 +174,13 @@ public final class ParasolShape {
         }
         int leanRows = 2 + 5 * cells < height * 0.55 ? 5 : 3;
         double tilt = cells == 0 ? 0 : between(random, 0, MOST_TILT_DEGREES);
-        double dome = switch (stage) {
-            case BELL -> between(random, 30, 44);
-            case OPEN -> between(random, 16, 28);
-            case OLD -> between(random, 18, 24);
-        };
+        // The dome's rise in pixels for each cell of radius, so a wide cap is as flat as a narrow one (#1218).
+        double dome = radius
+                * switch (stage) {
+                    case BELL -> between(random, 3.5, 4.5);
+                    case OPEN -> between(random, 1.6, 2.4);
+                    case OLD -> between(random, 1.8, 2.4);
+                };
         int lobes = 3 + random.applyAsInt(4);
         double lobeDepth = between(random, 0, 1);
         double lobePhase = between(random, 0, 2 * Math.PI);
@@ -202,8 +210,8 @@ public final class ParasolShape {
 
     /**
      * The same parasol made to fit a site where its cap does not have room: a stem {@code rows} shorter (down to {@link
-     * #LEAST_STEM}, its ring kept on it) and a cap {@code narrower} cells narrower (down to {@link #LEAST_RADIUS});
-     * empty when neither can give.
+     * #LEAST_STEM}, its ring kept on it) and a cap {@code narrower} cells narrower (down to {@link #LEAST_RADIUS}), its
+     * dome lowered with it so it stays as flat; empty when neither can give.
      */
     public static Optional<Params> smaller(Params params, int rows, int narrower) {
         int height = Math.max(LEAST_STEM, params.stemHeight() - rows);
@@ -220,7 +228,7 @@ public final class ParasolShape {
                 params.drift(),
                 params.leanRows(),
                 params.tilt(),
-                params.dome(),
+                params.dome() * radius / params.radius(),
                 params.lobes(),
                 params.lobeDepth(),
                 params.lobePhase(),
@@ -238,8 +246,8 @@ public final class ParasolShape {
      */
     public static GiantLayout layout(Params params, IntUnaryOperator random) {
         GiantLayout.Builder cells = new GiantLayout.Builder();
-        Cell top = grow(cells, params, new Cell(0, 0, 0), 1);
-        flare(cells, new Cell(0, 0, 0));
+        Cell top = grow(cells, params, new Cell(0, 0, 0), 1, true);
+        foot(cells);
         lamps(cells, params, top, random);
         if (params.twin()) {
             twin(cells, params, random);
@@ -249,10 +257,11 @@ public final class ParasolShape {
     }
 
     /**
-     * Grows one parasol's stem and cap from {@code foot}, as part {@code owner}; returns the cell under the middle of
-     * its cap.
+     * Grows one parasol's stem and cap from {@code foot}, as part {@code owner}, a {@code thick} stem with an arm on
+     * each side of its core from the row over the foot up; returns the cell under the middle of its cap.
      */
-    private static Cell grow(GiantLayout.Builder cells, Params params, Cell foot, int owner) {
+    private static Cell grow(GiantLayout.Builder cells, Params params, Cell foot, int owner, boolean thick) {
+        List<Cell> core = new ArrayList<>();
         Cell at = foot;
         int row = 0;
         List<Direction> drift = params.drift();
@@ -265,7 +274,8 @@ public final class ParasolShape {
                     if (row >= params.stemHeight()) {
                         break;
                     }
-                    cells.put(at, new GiantPiece.Stem(piece, way), owner);
+                    cells.put(at, new GiantPiece.Stem(piece, way, GiantPiece.Arm.NONE), owner);
+                    core.add(at);
                     if (piece.stepsAside()) {
                         at = at.offset(way.getStepX(), 0, way.getStepZ());
                     } else {
@@ -278,13 +288,43 @@ public final class ParasolShape {
             }
             GiantPiece piece = row == params.ringRow()
                     ? new GiantPiece.Ring()
-                    : new GiantPiece.Stem(RodPiece.STRAIGHT, Direction.NORTH);
+                    : new GiantPiece.Stem(RodPiece.STRAIGHT, Direction.NORTH, GiantPiece.Arm.NONE);
             cells.put(at, piece, owner);
+            core.add(at);
             at = at.offset(0, 1, 0);
             row++;
         }
+        if (thick) {
+            arms(cells, core, foot.y(), owner);
+        }
         cap(cells, params, at, owner);
         return at;
+    }
+
+    /**
+     * An arm on each side of every cell of the core above {@code footRow}, where the core itself is not: a cell of a
+     * split row has its other half beside it, which draws the arm that would be there.
+     */
+    private static void arms(GiantLayout.Builder cells, List<Cell> core, int footRow, int owner) {
+        for (Cell cell : core) {
+            if (cell.y() == footRow) {
+                continue;
+            }
+            RodPiece piece = RodPiece.STRAIGHT;
+            Direction facing = Direction.NORTH;
+            if (cells.piece(cell) instanceof GiantPiece.Stem stem) {
+                piece = stem.piece();
+                facing = stem.facing();
+            }
+            for (GiantPiece.Arm arm :
+                    List.of(GiantPiece.Arm.FRONT, GiantPiece.Arm.BACK, GiantPiece.Arm.LEFT, GiantPiece.Arm.RIGHT)) {
+                Direction side = arm.side(facing);
+                Cell next = cell.offset(side.getStepX(), 0, side.getStepZ());
+                if (!cells.has(next)) {
+                    cells.put(next, new GiantPiece.Stem(piece, facing, arm), owner);
+                }
+            }
+        }
     }
 
     /**
@@ -446,17 +486,31 @@ public final class ParasolShape {
         return new GiantPiece.Gills(faces[eighth / 2], eighth % 2 == 1, lit);
     }
 
-    /** The low root flare round the stem's foot: a wedge in each of the eight cells round it, facing the stem. */
-    private static void flare(GiantLayout.Builder cells, Cell foot) {
-        for (Direction side : Direction.Plane.HORIZONTAL) {
-            cells.putOptional(
-                    foot.offset(side.getStepX(), 0, side.getStepZ()),
-                    new GiantPiece.Flare(side.getOpposite(), false, false));
-            Direction next = side.getClockWise();
-            // The corner between side and next; the stem is toward the corner between their opposites.
-            cells.putOptional(
-                    foot.offset(side.getStepX() + next.getStepX(), 0, side.getStepZ() + next.getStepZ()),
-                    new GiantPiece.Flare(side.getOpposite(), true, false));
+    /**
+     * The root flare round the stem's foot, {@link #FOOT} cells out (#1218): a tall wedge in each of the eight cells
+     * round the core, under its arms, and a low one in each cell of the ring outside them, each rising toward the stem.
+     */
+    private static void foot(GiantLayout.Builder cells) {
+        for (int dx = -FOOT; dx <= FOOT; dx++) {
+            for (int dz = -FOOT; dz <= FOOT; dz++) {
+                int out = Math.max(Math.abs(dx), Math.abs(dz));
+                if (out == 0) {
+                    continue;
+                }
+                boolean corner = Math.abs(dx) == out && Math.abs(dz) == out;
+                Direction toward;
+                if (corner) {
+                    // Named by the face whose clockwise neighbour is the other: toward the stem in x, then in z.
+                    Direction inX = dx > 0 ? Direction.WEST : Direction.EAST;
+                    Direction inZ = dz > 0 ? Direction.NORTH : Direction.SOUTH;
+                    toward = inX.getClockWise() == inZ ? inX : inZ;
+                } else if (Math.abs(dx) == out) {
+                    toward = dx > 0 ? Direction.WEST : Direction.EAST;
+                } else {
+                    toward = dz > 0 ? Direction.NORTH : Direction.SOUTH;
+                }
+                cells.putOptional(new Cell(dx, 0, dz), new GiantPiece.Flare(toward, corner, out == 1));
+            }
         }
     }
 
@@ -475,12 +529,12 @@ public final class ParasolShape {
         }
     }
 
-    /** {@code count} glowcaps round the foot, two to three and a half cells out, where nothing else is. */
+    /** {@code count} glowcaps round the foot, just outside its flare, where nothing else is. */
     static void glowcaps(GiantLayout.Builder cells, int count, IntUnaryOperator random) {
         int placed = 0;
         for (int tries = 0; placed < count && tries < count * 8; tries++) {
             double angle = between(random, 0, 2 * Math.PI);
-            double distance = between(random, 2, 3.5);
+            double distance = between(random, FOOT + 1, FOOT + 2.5);
             Cell cell = new Cell(
                     (int) Math.round(Math.cos(angle) * distance), 0, (int) Math.round(Math.sin(angle) * distance));
             if (!cells.has(cell)) {
@@ -491,11 +545,13 @@ public final class ParasolShape {
     }
 
     /**
-     * A smaller parasol from the same flare, two cells off the stem's foot and curving away from it, 50 to 70% as tall
-     * with a cap two cells narrower. Left out where any of it would touch the first.
+     * A smaller parasol beside the first, just outside its flare and curving away from it, 50 to 70% as tall on a
+     * slender stem, with a cap two cells narrower than the first's and at most {@link #TWIN_RADIUS}. Left out where any
+     * of it would touch the first, or make the whole wider than {@link GiantLayout#MOST_ACROSS}.
      */
     private static void twin(GiantLayout.Builder cells, Params params, IntUnaryOperator random) {
-        if (params.radius() - 2 < 3) {
+        int radius = Math.min(params.radius() - 2, TWIN_RADIUS);
+        if (radius < 3) {
             return;
         }
         Direction away = params.drift().isEmpty()
@@ -505,7 +561,7 @@ public final class ParasolShape {
         Params small = new Params(
                 params.stage(),
                 height,
-                params.radius() - 2,
+                radius,
                 List.of(away),
                 3,
                 params.tilt(),
@@ -520,13 +576,19 @@ public final class ParasolShape {
                 0,
                 false);
         GiantLayout.Builder trial = new GiantLayout.Builder();
-        Cell foot = new Cell(2 * away.getStepX(), 0, 2 * away.getStepZ());
-        grow(trial, small, foot, 2);
+        Cell foot = new Cell((FOOT + 2) * away.getStepX(), 0, (FOOT + 2) * away.getStepZ());
+        grow(trial, small, foot, 2, false);
         GiantLayout twin = trial.build();
         for (Cell cell : twin.pieces().keySet()) {
             if (!cells.freeFor(cell, 2)) {
                 return;
             }
+        }
+        GiantLayout first = cells.build();
+        int acrossX = Math.max(first.maxX(), twin.maxX()) - Math.min(first.minX(), twin.minX()) + 1;
+        int acrossZ = Math.max(first.maxZ(), twin.maxZ()) - Math.min(first.minZ(), twin.minZ()) + 1;
+        if (acrossX > GiantLayout.MOST_ACROSS || acrossZ > GiantLayout.MOST_ACROSS) {
+            return;
         }
         twin.pieces().forEach((cell, piece) -> cells.put(cell, piece, 2));
     }

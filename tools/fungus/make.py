@@ -35,22 +35,26 @@ BLOCKS = ("parasol_stem", "parasol_ring", "parasol_gills", "parasol_cap", "paras
 # The emission of each drawn glow, 0 to 15: what light the faces are drawn at, whatever the light round them.
 GLOW = {
     "rim": 12,      # the hair-line along a parasol's rim
-    "gills": 7,     # the gills under a cap, faint
-    "lamp": 11,     # the gills of a gill lamp, which also gives real light
+    "gills": 15,    # the gills under a cap, unshaded, so the whole underside reads in a dark cave (#1218)
+    "lamp": 15,     # the gills of a gill lamp, which also gives real light
     "needle": 13,   # a spire's needle
     "shaft": 9,     # the glowing cells of girth 1 under a needle
 }
 
-STEM_WIDTH = 10
+# A parasol's stem is a thick core with an arm on each side (#1218): each arm a rod ARM_OFFSET pixels from the core's middle, in
+# the cell beside it, so the stem is about two and a half cells across.
+STEM_WIDTH = 18
+ARM_WIDTH = 12
+ARM_OFFSET = 14
 SPIRE_WIDTH = {1: 5, 2: 8, 3: 11, 4: 14}
 # A rod piece's ends reach this far past its row, so two pieces overlap at a joint and no seam shows at a bend.
 JOIN = 0.4
 # A cap's scale reaches this far past its cell on every side, over its neighbours, like the scales of a real cap.
 SCALE_OVERLAP = 1.5
 SCALE_THICKNESS = 4
-# How far a rim's lip reaches past its cell, and how deep the skirt under it hangs, by lip.
-RIM_REACH = 2
-SKIRT = {"down": 7, "deep": 14, "up": 3}
+# How far a rim's lip reaches past its cell, and how deep the skirt under it hangs, by lip: a flat brim (#1218).
+RIM_REACH = 3
+SKIRT = {"down": 3, "deep": 8, "up": 3}
 FACINGS = {"east": 0, "south": 90, "west": 180, "north": 270}
 
 
@@ -92,11 +96,10 @@ def r(value: float) -> float:
 
 
 def rod(x0: float, y0: float, x1: float, y1: float, w0: float, w1: float, texture: str, *, emission: int = 0,
-        segments: int = 1) -> list[dict]:
-    """The elements of an octagonal rod from (x0, y0) to (x1, y1) in the plane z, leaning east: a square prism and the same turned 45
-    degrees about its own axis, as segments that narrow from w0 to w1, in the middle of the cell across. The side faces map the texture by
-    height, so rods tile down a spire."""
-    z = 8
+        segments: int = 1, z: float = 8) -> list[dict]:
+    """The elements of an octagonal rod from (x0, y0) to (x1, y1) in the plane z (the middle of the cell across, unless given), leaning
+    east: a square prism and the same turned 45 degrees about its own axis, as segments that narrow from w0 to w1. The side faces map the
+    texture by height, so rods tile down a spire."""
     out = []
     for i in range(segments):
         a, b = i / segments, (i + 1) / segments
@@ -108,7 +111,8 @@ def rod(x0: float, y0: float, x1: float, y1: float, w0: float, w1: float, textur
         mx, my = (sx0 + sx1) / 2, (sy0 + sy1) / 2
         half = length / 2 + JOIN
         v0, v1 = max(0.0, 16 - sy1 - JOIN), min(16.0, 16 - sy0 + JOIN)
-        u0, u1 = 8 - w / 2, 8 + w / 2
+        # A rod wider than the cell maps the middle of the texture.
+        u0, u1 = max(0.0, 8 - w / 2), min(16.0, 8 + w / 2)
         for turn in (0, 45):
             faces = {side: {"uv": [r(u0), r(v0), r(u1), r(v1)], "texture": texture} for side in ("north", "south", "east", "west")}
             faces["up"] = {"uv": [r(u0), r(u0), r(u1), r(u1)], "texture": texture}
@@ -148,12 +152,36 @@ def branch(width: float, texture: str) -> list[dict]:
     return rod(8 + c0, y0, 8 + c1, y1, width, width, texture)
 
 
+# The sides of a stem's core an arm can be on, seen facing east as every model is drawn: the arm's shift along x and its z.
+ARMS = {"front": (ARM_OFFSET - 16, 8), "back": (16 - ARM_OFFSET, 8), "left": (0, 8 - ARM_OFFSET + 16), "right": (0, 8 + ARM_OFFSET - 16)}
+# The two halves of each split row: the lo half in the first cell, the hi half in the cell beside it, east.
+SPLITS = {"s1_0lo": "s1_0hi", "s3_1lo": "s3_1hi", "s5_2lo": "s5_2hi"}
+
+
+def arm_piece(piece: str, side: str) -> list[dict]:
+    """The arm of a stem's core of `piece` on `side`, drawn in the cell on that side."""
+    y0, y1, c0, c1 = PIECES[piece]
+    dx, z = ARMS[side]
+    return rod(8 + c0 + dx, y0, 8 + c1 + dx, y1, ARM_WIDTH, ARM_WIDTH, "#stem", z=z)
+
+
 def stem_models() -> dict[str, dict]:
+    """A stem's core of each piece, and its arm on each side. Each half of a split row also draws the arm the other half's cell would
+    have held: the hi half's back arm is in the lo half's cell, and the lo half's front arm in the hi half's."""
     out = {}
+    textures = {"stem": tex("parasol_stem"), "particle": tex("parasol_stem")}
+    # The lo half's cell is the hi half's back cell, and the hi half's cell the lo half's front cell.
+    halves = {lo: ("back", hi) for lo, hi in SPLITS.items()} | {hi: ("front", lo) for lo, hi in SPLITS.items()}
     for piece in PIECES:
         if piece == "fork":
             continue
-        out[f"stem_{piece}"] = model(rod_piece(piece, STEM_WIDTH, "#stem"), {"stem": tex("parasol_stem"), "particle": tex("parasol_stem")})
+        elements = rod_piece(piece, STEM_WIDTH, "#stem")
+        if piece in halves:
+            side, other = halves[piece]
+            elements += arm_piece(other, side)
+        out[f"stem_{piece}"] = model(elements, textures)
+        for side in ARMS:
+            out[f"stem_{piece}_{side}"] = model(arm_piece(piece, side), textures)
     return out
 
 
@@ -272,7 +300,8 @@ def gill_models() -> dict[str, dict]:
             gills = tex(f"parasol_gills{'_lamp' if lamp else ''}{'_diagonal' if diagonal else ''}")
             elements = [
                 cube(16, {f: "#side" for f in ("up", "north", "south", "east", "west")}, cull=True),
-                {"from": [0, 0, 0], "to": [16, 0, 16], "faces": {"down": {"uv": [0, 0, 16, 16], "texture": "#gills", "cullface": "down"}},
+                {"from": [0, 0, 0], "to": [16, 0, 16],
+                 "faces": {"down": {"uv": [0, 0, 16, 16], "texture": "#gills", "cullface": "down", "shade": False}},
                  "light_emission": GLOW["lamp" if lamp else "gills"]},
             ]
             out[f"gills{'_lamp' if lamp else ''}{'_diagonal' if diagonal else ''}"] = model(
@@ -281,8 +310,9 @@ def gill_models() -> dict[str, dict]:
 
 
 def outer(level: float, lip: str) -> float:
-    """The height of a rim's lip at its outer edge, for the height of its inner side."""
-    return {"down": level - 10, "deep": level - 14, "up": level + 2}[lip]
+    """The height of a rim's lip at its outer edge, for the height of its inner side: a brim that falls only a little, so the cap reads
+    as a parasol and not a ball (#1218)."""
+    return {"down": level - 5, "deep": level - 10, "up": level + 2}[lip]
 
 
 def tilted(x0: float, y0: float, x1: float, y1: float, z0: float, z1: float, thickness: float, faces: dict, *,
@@ -359,7 +389,7 @@ def rim_models() -> dict[str, dict]:
             plate_faces = {"up": {"uv": [0, 0, 16, 16], "texture": "#top"},
                            "north": {"uv": [0, 0, 16, 3], "texture": "#side"}, "south": {"uv": [0, 0, 16, 3], "texture": "#side"},
                            "west": {"uv": [0, 0, 16, 3], "texture": "#side"}, "east": {"uv": [0, 0, 16, 3], "texture": "#side"}}
-            under = {"down": {"uv": [0, 0, 16, 16], "texture": "#gills"}}
+            under = {"down": {"uv": [0, 0, 16, 16], "texture": "#gills", "shade": False}}
             # Clamped to the 48 pixels an element may span.
             skirt_low = max(-16, out_y - skirt if lip != "up" else out_y - 3)
             skirt_high = min(32, out_y if lip != "up" else out_y + skirt)
@@ -412,13 +442,14 @@ def flare_models() -> dict[str, dict]:
 
 
 def ring_model() -> dict:
-    """A straight cell of stem with a drooping collar round it: eight panels, each tilted down and out from the stem."""
+    """A straight cell of a stem's core with a drooping collar round it, outside the arms: eight panels, each tilted down and out from the
+    stem. The panels end at the 32 pixels an element may reach."""
     elements = rod_piece("straight", STEM_WIDTH, "#stem")
     panel_faces = {side: {"uv": [0, 0, 16, 4], "texture": "#ring"} for side in ("north", "south", "east", "west")}
     panel_faces["up"] = {"uv": [0, 0, 16, 16], "texture": "#ring"}
     panel_faces["down"] = {"uv": [0, 0, 16, 16], "texture": "#ring"}
     for k in range(8):
-        panel = [plate_south(8 + 3, 12, 8 + 11, 7, 8 - 4.5, 8 + 4.5, 1.2, panel_faces)]
+        panel = [plate_south(8 + 14, 12, 8 + 22, 6, 8 - 6, 8 + 6, 1.2, panel_faces)]
         elements += turned_about_y(panel, k * 45)
     return model(elements, {"stem": tex("parasol_stem"), "ring": tex("parasol_ring"), "particle": tex("parasol_ring")})
 
@@ -460,8 +491,10 @@ PIECE_NAMES = list(PIECES)
 def blockstates() -> dict[str, dict]:
     out = {}
     facings = list(FACINGS)
-    out["parasol_stem"] = variants({"piece": PIECE_NAMES, "facing": facings},
-                                   lambda s: ref(f"stem_{'straight' if s['piece'] == 'fork' else s['piece']}", s["facing"]))
+    out["parasol_stem"] = variants(
+        {"piece": PIECE_NAMES, "facing": facings, "arm": ["none", *ARMS]},
+        lambda s: ref(f"stem_{'straight' if s['piece'] == 'fork' else s['piece']}{'' if s['arm'] == 'none' else '_' + s['arm']}",
+                      s["facing"]))
     out["parasol_ring"] = {"variants": {"": ref("ring")}}
     out["parasol_gills"] = variants(
         {"facing": facings, "diagonal": BOOL, "lit": BOOL},

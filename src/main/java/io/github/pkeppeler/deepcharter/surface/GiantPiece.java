@@ -28,11 +28,49 @@ public sealed interface GiantPiece {
         return first.getClockWise() == second ? first : second;
     }
 
-    /** A cell of a parasol's stem. {@code facing} is the way it leans, if it leans. */
-    record Stem(RodPiece piece, Direction facing) implements GiantPiece {
+    /**
+     * A cell of a parasol's stem. {@code facing} is the way it leans, if it leans. The stem is a core with an arm on
+     * each side of it (#1218): {@code arm} is which side of the core this cell is on, seen facing {@code facing}, or
+     * {@link Arm#NONE} for the core. An arm leans as its core does.
+     */
+    record Stem(RodPiece piece, Direction facing, Arm arm) implements GiantPiece {
         @Override
         public Stem mirrored(Direction.Axis axis) {
-            return new Stem(piece, mirror(facing, axis));
+            // A mirror swaps left and right, whichever way the stem faces.
+            Arm turned = switch (arm) {
+                case LEFT -> Arm.RIGHT;
+                case RIGHT -> Arm.LEFT;
+                default -> arm;
+            };
+            return new Stem(piece, mirror(facing, axis), turned);
+        }
+    }
+
+    /**
+     * Which side of a thick stem's core a cell of it is on, seen facing the way the stem leans: ahead, behind, to the
+     * left (the face counter-clockwise of it, seen from above) or to the right; or the core itself.
+     */
+    enum Arm implements StringRepresentable {
+        NONE,
+        FRONT,
+        BACK,
+        LEFT,
+        RIGHT;
+
+        /** The side of a core facing {@code facing} that this arm is on. */
+        Direction side(Direction facing) {
+            return switch (this) {
+                case NONE -> throw new IllegalStateException("the core is on no side of itself");
+                case FRONT -> facing;
+                case BACK -> facing.getOpposite();
+                case LEFT -> facing.getCounterClockWise();
+                case RIGHT -> facing.getClockWise();
+            };
+        }
+
+        @Override
+        public String getSerializedName() {
+            return name().toLowerCase(Locale.ROOT);
         }
     }
 

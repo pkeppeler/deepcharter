@@ -40,7 +40,8 @@ public final class GiantFungus {
                 GiantFungusBlocks.PARASOL_STEM
                         .defaultBlockState()
                         .setValue(GiantFungusBlocks.PIECE, stem.piece())
-                        .setValue(GiantFungusBlocks.FACING, stem.facing());
+                        .setValue(GiantFungusBlocks.FACING, stem.facing())
+                        .setValue(GiantFungusBlocks.ARM, stem.arm());
             case GiantPiece.Ring ignored -> GiantFungusBlocks.PARASOL_RING.defaultBlockState();
             case GiantPiece.Gills gills ->
                 GiantFungusBlocks.PARASOL_GILLS

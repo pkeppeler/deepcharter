@@ -90,10 +90,11 @@
             16
           ],
           "texture": "#gills",
-          "cullface": "down"
+          "cullface": "down",
+          "shade": false
         }
       },
-      "light_emission": 7
+      "light_emission": 15
     }
   ]
 }

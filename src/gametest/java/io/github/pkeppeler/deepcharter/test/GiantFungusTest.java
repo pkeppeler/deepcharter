@@ -123,8 +123,8 @@ public class GiantFungusTest {
         expect(helper, near(twins, 0.15), "%s twins", twins);
         expect(
                 helper,
-                radii[7] < radii[5] && radii[7] < radii[6],
-                "radius 7 is not rarer than 5 and 6: %s",
+                radii[6] + radii[7] > radii[4] + radii[5],
+                "radius 6 to 7 is not the norm: %s",
                 Arrays.toString(radii));
         helper.succeed();
     }
@@ -363,6 +363,160 @@ public class GiantFungusTest {
             expect(helper, gills >= 9, "seed %s: %s gill cells", seed, gills);
         }
         expect(helper, domes > SEEDS * 0.95, "only %s of %s caps fall both ways", domes, SEEDS);
+        helper.succeed();
+    }
+
+    /**
+     * Every column under a parasol's cap is gills from below (#1218): its lowest cell is a gill block, or a rim, which
+     * draws gills under its lip. The gills glow in their model, so the whole underside reads in a dark cave.
+     */
+    @GameTest
+    public void aParasolsWholeUndersideIsGills(GameTestHelper helper) {
+        for (long seed = 0; seed < SEEDS; seed++) {
+            ParasolShape.Params p = parasol(seed);
+            GiantLayout layout = ParasolShape.layout(p, random(seed + 1));
+            Map<Long, Cell> lowest = new HashMap<>();
+            layout.pieces().forEach((cell, piece) -> {
+                boolean capPart = piece instanceof GiantPiece.Gills
+                        || piece instanceof GiantPiece.Cap
+                        || piece instanceof GiantPiece.Rim;
+                if (capPart && layout.owners().getOrDefault(cell, 0) == 1) {
+                    lowest.merge(column(cell), cell, (a, b) -> a.y() <= b.y() ? a : b);
+                }
+            });
+            int gills = 0;
+            for (Cell cell : lowest.values()) {
+                GiantPiece piece = layout.pieces().get(cell);
+                gills += piece instanceof GiantPiece.Gills || piece instanceof GiantPiece.Rim ? 1 : 0;
+            }
+            expect(
+                    helper,
+                    gills == lowest.size() && !lowest.isEmpty(),
+                    "seed %s: %s of the cap's %s columns are gills from below",
+                    seed,
+                    gills,
+                    lowest.size());
+        }
+        helper.succeed();
+    }
+
+    private static long column(Cell cell) {
+        return ((long) cell.x() << 32) ^ (cell.z() & 0xFFFFFFFFL);
+    }
+
+    /**
+     * A parasol's stem is thick (#1218), not a stick: every row of it over the foot is at least three cells across both
+     * ways, a core with an arm on each side. Its foot flares: every cell within two of the foot, on the floor, is stem or
+     * flare. Two
+     * of the largest parasols and a great stalk on them (its yield, 90) still fall in one collapse, which lowers at most
+     * 2048 blocks ({@code StalkCollapse.MOST_BLOCKS}).
+     */
+    @GameTest
+    public void aParasolsStemIsThickAndFlaresAtItsFoot(GameTestHelper helper) {
+        int largest = 0;
+        for (String zone : List.of("garden", "spore_fields", "quiet")) {
+            ParasolShape.Style style = zoneFeature(helper, zone).parasol();
+            for (long seed = 0; seed < SEEDS; seed++) {
+                ParasolShape.Params p =
+                        ParasolShape.roll(random(seed), ROOM, style).orElseThrow();
+                GiantLayout layout = ParasolShape.layout(p, random(seed + 1));
+                largest = Math.max(largest, layout.pieces().size());
+                Map<Integer, List<Cell>> rows = new HashMap<>();
+                layout.pieces().forEach((cell, piece) -> {
+                    boolean stem = piece instanceof GiantPiece.Stem || piece instanceof GiantPiece.Ring;
+                    if (stem && layout.owners().getOrDefault(cell, 0) == 1) {
+                        rows.computeIfAbsent(cell.y(), y -> new ArrayList<>()).add(cell);
+                    }
+                });
+                for (int y = 1; y < p.stemHeight(); y++) {
+                    List<Cell> row = rows.getOrDefault(y, List.of());
+                    int acrossX = row.stream().mapToInt(Cell::x).max().orElse(0)
+                            - row.stream().mapToInt(Cell::x).min().orElse(0)
+                            + 1;
+                    int acrossZ = row.stream().mapToInt(Cell::z).max().orElse(0)
+                            - row.stream().mapToInt(Cell::z).min().orElse(0)
+                            + 1;
+                    expect(
+                            helper,
+                            !row.isEmpty() && acrossX >= 3 && acrossZ >= 3,
+                            "%s seed %s: stem row %s is %s by %s cells",
+                            zone,
+                            seed,
+                            y,
+                            acrossX,
+                            acrossZ);
+                }
+                for (int dx = -2; dx <= 2; dx++) {
+                    for (int dz = -2; dz <= 2; dz++) {
+                        GiantPiece piece = layout.pieces().get(new Cell(dx, 0, dz));
+                        expect(
+                                helper,
+                                piece instanceof GiantPiece.Stem || piece instanceof GiantPiece.Flare,
+                                "%s seed %s: the foot has %s at %s, %s",
+                                zone,
+                                seed,
+                                piece,
+                                dx,
+                                dz);
+                    }
+                }
+            }
+        }
+        expect(helper, 2 * largest + 90 < 2048, "the largest parasol is %s blocks", largest);
+        helper.succeed();
+    }
+
+    /**
+     * A parasol's cap is flat and wide (#1218), a parasol and not a round blob: its height over the bottom of its gills
+     * is at most a third of its width, a fifth on average, and its radius is at least 5.5 cells on average.
+     */
+    @GameTest
+    public void aParasolsCapIsFlatAndWide(GameTestHelper helper) {
+        int radii = 0;
+        double ratios = 0;
+        for (long seed = 0; seed < SEEDS; seed++) {
+            ParasolShape.Params p = parasol(seed);
+            radii += p.radius();
+            GiantLayout layout = ParasolShape.layout(p, random(seed + 1));
+            int gillRow = p.stemHeight();
+            int height = 0;
+            int minX = Integer.MAX_VALUE;
+            int maxX = Integer.MIN_VALUE;
+            int minZ = Integer.MAX_VALUE;
+            int maxZ = Integer.MIN_VALUE;
+            for (Map.Entry<Cell, GiantPiece> entry : layout.pieces().entrySet()) {
+                Cell cell = entry.getKey();
+                if (layout.owners().getOrDefault(cell, 0) != 1 || cell.y() < gillRow) {
+                    continue;
+                }
+                switch (entry.getValue()) {
+                    case GiantPiece.Cap cap -> height = Math.max(height, (cell.y() - gillRow) * 16 + cap.level());
+                    case GiantPiece.Rim rim -> height = Math.max(height, rim.level());
+                    default -> {}
+                }
+                if (cell.y() == gillRow) {
+                    minX = Math.min(minX, cell.x());
+                    maxX = Math.max(maxX, cell.x());
+                    minZ = Math.min(minZ, cell.z());
+                    maxZ = Math.max(maxZ, cell.z());
+                }
+            }
+            int across = Math.max(maxX - minX + 1, maxZ - minZ + 1);
+            double ratio = height / (16.0 * across);
+            expect(
+                    helper,
+                    ratio <= 1 / 3.0,
+                    "seed %s: a %s cap %s pixels high and %s cells across, %s",
+                    seed,
+                    p.stage(),
+                    height,
+                    across,
+                    ratio);
+            ratios += ratio;
+        }
+        // Before #1218 the caps rose to 0.54 of their width, 0.27 on average, at 5.3 cells of radius.
+        expect(helper, ratios / SEEDS <= 0.2, "caps rise %s of their width on average", ratios / SEEDS);
+        expect(helper, (double) radii / SEEDS >= 5.5, "the mean radius is %s", (double) radii / SEEDS);
         helper.succeed();
     }
 
@@ -624,9 +778,9 @@ public class GiantFungusTest {
     }
 
     /**
-     * A giant falls as a great stalk does ({@code StalkCollapse}): break a parasol's stem low down and its cap comes
-     * down with it, the flare and glowcaps on the floor stay; break one spire of a cluster and it falls, and the others
-     * stand.
+     * A giant falls as a great stalk does ({@code StalkCollapse}): break the core of a parasol's thick stem low down and
+     * the stem above it comes down with its cap, while the arms beside the break, the flare and the glowcaps stand;
+     * break one spire of a cluster and it falls, and the others stand.
      *
      * <p>The collapse steps on scheduled ticks, which run only in a ticking chunk, and the spires stand 40 blocks off
      * the test, so both giants are grown once every chunk they span is entity-ticking.
@@ -666,8 +820,9 @@ public class GiantFungusTest {
                         parasol.pieces().forEach((cell, piece) -> {
                             boolean standing = !level.getBlockState(parasolBase.offset(cell.x(), cell.y(), cell.z()))
                                     .isAir();
-                            // A twin (part 2) stands on its own stem.
-                            boolean broken = parasol.owners().getOrDefault(cell, 0) == 1 && cell.y() >= stem.y();
+                            // A twin (part 2) stands on its own stem, and the arms beside the break on theirs.
+                            boolean broken = parasol.owners().getOrDefault(cell, 0) == 1
+                                    && (cell.y() > stem.y() || cell.equals(stem));
                             expect(
                                     helper,
                                     standing != broken,

@@ -72,6 +72,8 @@ public class GiantFungiScenario extends EvidenceScenario {
     private static final int CLOSE = 12;
 
     private static final int FAR = 30;
+    /** How far to either side of a close form the camera must see past, in blocks: about the frame's side thirds. */
+    private static final int CLOSE_FLANK = 6;
     /** The sheets of six seeds are shot from this far off, so the widest cap and the tallest spire fit the frame. */
     private static final int VARIETY_DISTANCE = 22;
     /** How high up a form the camera aims, as a share of its height. */
@@ -399,7 +401,16 @@ public class GiantFungiScenario extends EvidenceScenario {
      * foot: on the side of the stage's own camera if it can, the stage's own camera if no side has one.
      */
     private static BlockPos back(ServerLevel level, Spot stage, Vec3 target, int distance) {
-        return GiantFungiSpots.cameraAt(level, stage.tall(), target, distance, stage.yaw())
+        // Close up, a rock beside the camera fills a side of the frame: the camera there sees past both sides of the
+        // form, if any can.
+        if (distance == CLOSE) {
+            Optional<BlockPos> clear =
+                    GiantFungiSpots.cameraAt(level, stage.tall(), target, distance, stage.yaw(), CLOSE_FLANK);
+            if (clear.isPresent()) {
+                return clear.get();
+            }
+        }
+        return GiantFungiSpots.cameraAt(level, stage.tall(), target, distance, stage.yaw(), 0)
                 .orElse(stage.feet());
     }
 

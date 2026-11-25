@@ -3,10 +3,13 @@ in the span 26.3 reads (-16 to 32 pixels), every state of every block names a mo
 import importlib.util
 import json
 import re
+import sys
 import unittest
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(TOOLS))
+import pngio  # noqa: E402
 # Loaded under its own name: tools/layer_concepts has a make.py too, and the test run shares one module table.
 _SPEC = importlib.util.spec_from_file_location("fungus_make", TOOLS / "fungus/make.py")
 make = importlib.util.module_from_spec(_SPEC)
@@ -48,6 +51,27 @@ class FungusModelsTest(unittest.TestCase):
         for name in make.all_models():
             if name.startswith(("rim_", "tip_")):
                 self.assertIn(name, glowing)
+
+    def test_the_gills_under_a_cap_read_in_a_dark_cave(self):
+        """#1218: every gill face under a cap, in the gill blocks and under the rims, is drawn at full light and unshaded, on a texture
+        bright enough to show. At emission 7 on a near-black texture only a few specks showed in the cave's real light."""
+        faces = 0
+        for name, body in make.all_models().items():
+            for element in body.get("elements", []):
+                face = element["faces"].get("down")
+                if face is None or face["texture"] != "#gills":
+                    continue
+                faces += 1
+                with self.subTest(model=name):
+                    self.assertEqual(15, element.get("light_emission"))
+                    self.assertIs(False, face.get("shade"))
+        self.assertGreater(faces, 0)
+        for texture in ("parasol_gills", "parasol_gills_diagonal"):
+            image = pngio.decode((make.ASSETS / f"textures/block/{texture}.png").read_bytes(), texture)
+            pixels = image.pixels
+            luma = [(0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2]) / 255 for i in range(0, len(pixels), 4)]
+            with self.subTest(texture=texture):
+                self.assertGreaterEqual(sum(luma) / len(luma), 0.25)
 
     def test_the_rod_pieces_are_rodpieces(self):
         java = ROD_PIECE.read_text()

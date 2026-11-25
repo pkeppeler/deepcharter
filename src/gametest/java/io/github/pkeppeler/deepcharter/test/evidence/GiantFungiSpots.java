@@ -695,10 +695,12 @@ final class GiantFungiSpots {
 
     /**
      * The feet of a camera about {@code distance} blocks from {@code base} (2 either way) on a floor within 10 rows of
-     * it, whose eye sees both {@code target} and the cell over {@code base}, the heading nearest {@code prefer} first;
-     * empty if no heading has one.
+     * it, whose eye sees both {@code target} and the cell over {@code base}, and, {@code flank} blocks to either side
+     * of each, the points beside them, so no rock near the camera fills a side of the frame (0 for no such check); the
+     * heading nearest {@code prefer} first; empty if no heading has one.
      */
-    static Optional<BlockPos> cameraAt(ServerLevel level, BlockPos base, Vec3 target, int distance, float prefer) {
+    static Optional<BlockPos> cameraAt(
+            ServerLevel level, BlockPos base, Vec3 target, int distance, float prefer, int flank) {
         BlockPos foot = base.above(2);
         for (int turn = 0; turn < 32; turn++) {
             // 0, +1, -1, +2, -2 ... steps of 11.25 degrees from the preferred heading.
@@ -715,11 +717,32 @@ final class GiantFungiSpots {
                 Vec3 eye = new Vec3(feet.getX() + 0.5, feet.getY() + EYE, feet.getZ() + 0.5);
                 if (open(level.getBlockState(BlockPos.containing(eye)))
                         && inSight(level, eye, BlockPos.containing(target))
-                        && inSight(level, eye, foot)) {
+                        && inSight(level, eye, foot)
+                        && flanksInSight(level, eye, target, foot, flank)) {
                     return Optional.of(feet);
                 }
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Whether the eye sees the points {@code flank} blocks to either side of {@code target} and of {@code foot}, across
+     * its line of sight.
+     */
+    private static boolean flanksInSight(ServerLevel level, Vec3 eye, Vec3 target, BlockPos foot, int flank) {
+        if (flank == 0) {
+            return true;
+        }
+        Vec3 across =
+                new Vec3(target.z - eye.z, 0, eye.x - target.x).normalize().scale(flank);
+        for (Vec3 point : List.of(target, Vec3.atCenterOf(foot))) {
+            for (int sign : new int[] {-1, 1}) {
+                if (!inSight(level, eye, BlockPos.containing(point.add(across.scale(sign))))) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

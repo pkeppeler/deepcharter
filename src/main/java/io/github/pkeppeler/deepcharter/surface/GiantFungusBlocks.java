@@ -40,6 +40,7 @@ public final class GiantFungusBlocks {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final EnumProperty<RodPiece> PIECE = EnumProperty.create("piece", RodPiece.class);
     public static final EnumProperty<GiantPiece.Lip> LIP = EnumProperty.create("lip", GiantPiece.Lip.class);
+    public static final EnumProperty<GiantPiece.Arm> ARM = EnumProperty.create("arm", GiantPiece.Arm.class);
     /** A cap cell's height at its middle, in steps of 4 pixels. */
     public static final IntegerProperty LEVEL = IntegerProperty.create("level", 1, 4);
     /** A cap cell's rise across it toward {@code facing}, in steps of 4 pixels. */
@@ -51,8 +52,12 @@ public final class GiantFungusBlocks {
 
     public static final IntegerProperty GIRTH = IntegerProperty.create("girth", 1, 4);
     private static final double PIXELS = 16;
-    /** The width of a parasol's stem, in pixels. */
-    static final double STEM_WIDTH = 10;
+    /** The width of a parasol stem's core, in pixels. */
+    static final double STEM_WIDTH = 18;
+    /** The width of an arm of a parasol's stem, in pixels, and how far its middle is from the core's. */
+    static final double ARM_WIDTH = 12;
+
+    static final double ARM_OFFSET = 14;
     /** The width of a spire of each girth, 1 to 4, in pixels. */
     static final double[] SPIRE_WIDTH = {5, 8, 11, 14};
 
@@ -117,30 +122,58 @@ public final class GiantFungusBlocks {
      * clipped to the cell. A leaning rod's box is its middle's, so a player walks into it about where it is drawn.
      */
     static VoxelShape rod(RodPiece piece, Direction facing, double width) {
-        double middle = 8 + (piece.from() + piece.to()) / 2;
-        double low = Math.clamp(middle - width / 2, 0, PIXELS - 1);
-        double high = Math.clamp(middle + width / 2, low + 1, PIXELS);
-        double side = (PIXELS - width) / 2;
-        return turned(low, piece.bottom(), side, high, piece.top(), PIXELS - side, facing);
+        return rod(piece, facing, width, 0, 0);
     }
 
-    /** A cell of a parasol's stem: a slender rod, leaning where it curves. */
+    /**
+     * The box of {@link #rod(RodPiece, Direction, double)} moved {@code along} pixels toward {@code facing} and {@code
+     * across} toward the face clockwise of it, clipped to the cell.
+     */
+    private static VoxelShape rod(RodPiece piece, Direction facing, double width, double along, double across) {
+        double middle = 8 + (piece.from() + piece.to()) / 2 + along;
+        double low = Math.clamp(middle - width / 2, 0, PIXELS - 1);
+        double high = Math.clamp(middle + width / 2, low + 1, PIXELS);
+        double sideLow = Math.clamp(8 + across - width / 2, 0, PIXELS - 1);
+        double sideHigh = Math.clamp(8 + across + width / 2, sideLow + 1, PIXELS);
+        return turned(low, piece.bottom(), sideLow, high, piece.top(), sideHigh, facing);
+    }
+
+    /**
+     * The box of an arm of a parasol's stem: a rod beside its core's, {@link #ARM_OFFSET} pixels from the core's
+     * middle, so the cell's own part of it hugs the core's side.
+     */
+    static VoxelShape arm(RodPiece piece, Direction facing, GiantPiece.Arm arm) {
+        double toward = ARM_OFFSET - PIXELS;
+        return switch (arm) {
+            case NONE -> rod(piece, facing, STEM_WIDTH);
+            case FRONT -> rod(piece, facing, ARM_WIDTH, toward, 0);
+            case BACK -> rod(piece, facing, ARM_WIDTH, -toward, 0);
+            case LEFT -> rod(piece, facing, ARM_WIDTH, 0, -toward);
+            case RIGHT -> rod(piece, facing, ARM_WIDTH, 0, toward);
+        };
+    }
+
+    /**
+     * A cell of a parasol's stem: its core, a thick rod, or an arm beside the core, leaning where the stem curves.
+     */
     static final class StemBlock extends GreatStalkBlock {
         StemBlock(Properties properties) {
             super(properties.noOcclusion(), false);
-            registerDefaultState(
-                    defaultBlockState().setValue(PIECE, RodPiece.STRAIGHT).setValue(FACING, Direction.EAST));
+            registerDefaultState(defaultBlockState()
+                    .setValue(PIECE, RodPiece.STRAIGHT)
+                    .setValue(FACING, Direction.EAST)
+                    .setValue(ARM, GiantPiece.Arm.NONE));
         }
 
         @Override
         protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
             super.createBlockStateDefinition(builder);
-            builder.add(PIECE, FACING);
+            builder.add(PIECE, FACING, ARM);
         }
 
         @Override
         protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-            return rod(state.getValue(PIECE), state.getValue(FACING), STEM_WIDTH);
+            return arm(state.getValue(PIECE), state.getValue(FACING), state.getValue(ARM));
         }
     }
 

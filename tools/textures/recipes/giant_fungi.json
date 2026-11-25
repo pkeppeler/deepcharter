@@ -48,32 +48,32 @@
       {"op": "speckle", "colours": ["basalt.0"], "density": 0.05, "seed": 120232}
     ]},
     "block/parasol_gills": {"kind": "opaque", "layers": [
-      {"op": "fill", "colour": "basalt.0"},
-      {"op": "rect", "rect": [0, 1, 16, 1], "colour": "cold.2"},
-      {"op": "rect", "rect": [0, 4, 16, 1], "colour": "cold.1"},
-      {"op": "rect", "rect": [0, 7, 16, 1], "colour": "cold.2"},
-      {"op": "rect", "rect": [0, 10, 16, 1], "colour": "cold.1"},
-      {"op": "rect", "rect": [0, 13, 16, 1], "colour": "cold.2"},
-      {"op": "speckle", "colours": ["cold.3"], "density": 0.03, "seed": 120241, "rect": [0, 1, 16, 1]},
-      {"op": "speckle", "colours": ["cold.3"], "density": 0.03, "seed": 120242, "rect": [0, 7, 16, 1]},
-      {"op": "speckle", "colours": ["basalt.1"], "density": 0.04, "seed": 120243}
-    ]},
-    "block/parasol_gills_diagonal": {"kind": "opaque", "layers": [
-      {"op": "fill", "colour": "basalt.0"},
-      {"op": "stripes", "colours": ["cold.2", "basalt.0", "basalt.0"], "period": 3, "direction": "\\"},
-      {"op": "speckle", "colours": ["basalt.1"], "density": 0.04, "seed": 120244}
-    ]},
-    "block/parasol_gills_lamp": {"kind": "opaque", "layers": [
-      {"op": "fill", "colour": "cold.0"},
+      {"op": "fill", "colour": "cold.2"},
       {"op": "rect", "rect": [0, 1, 16, 1], "colour": "cold.4"},
       {"op": "rect", "rect": [0, 4, 16, 1], "colour": "cold.3"},
-      {"op": "rect", "rect": [0, 7, 16, 1], "colour": "cold.5"},
+      {"op": "rect", "rect": [0, 7, 16, 1], "colour": "cold.4"},
       {"op": "rect", "rect": [0, 10, 16, 1], "colour": "cold.3"},
-      {"op": "rect", "rect": [0, 13, 16, 1], "colour": "cold.4"}
+      {"op": "rect", "rect": [0, 13, 16, 1], "colour": "cold.4"},
+      {"op": "speckle", "colours": ["cold.5"], "density": 0.05, "seed": 120241, "rect": [0, 1, 16, 1]},
+      {"op": "speckle", "colours": ["cold.5"], "density": 0.05, "seed": 120242, "rect": [0, 7, 16, 1]},
+      {"op": "speckle", "colours": ["cold.1"], "density": 0.06, "seed": 120243}
+    ]},
+    "block/parasol_gills_diagonal": {"kind": "opaque", "layers": [
+      {"op": "fill", "colour": "cold.2"},
+      {"op": "stripes", "colours": ["cold.4", "cold.2", "cold.3"], "period": 3, "direction": "\\"},
+      {"op": "speckle", "colours": ["cold.1"], "density": 0.06, "seed": 120244}
+    ]},
+    "block/parasol_gills_lamp": {"kind": "opaque", "layers": [
+      {"op": "fill", "colour": "cold.3"},
+      {"op": "rect", "rect": [0, 1, 16, 1], "colour": "cold.5"},
+      {"op": "rect", "rect": [0, 4, 16, 1], "colour": "cold.4"},
+      {"op": "rect", "rect": [0, 7, 16, 1], "colour": "cold.5"},
+      {"op": "rect", "rect": [0, 10, 16, 1], "colour": "cold.4"},
+      {"op": "rect", "rect": [0, 13, 16, 1], "colour": "cold.5"}
     ]},
     "block/parasol_gills_lamp_diagonal": {"kind": "opaque", "layers": [
-      {"op": "fill", "colour": "cold.0"},
-      {"op": "stripes", "colours": ["cold.4", "cold.1", "cold.0"], "period": 3, "direction": "\\"}
+      {"op": "fill", "colour": "cold.3"},
+      {"op": "stripes", "colours": ["cold.5", "cold.4", "cold.3"], "period": 3, "direction": "\\"}
     ]},
     "block/parasol_rim": {"kind": "cutout", "layers": [
       {"op": "fibres", "ramp": ["fungus.0", "fungus.1", "fungus.1", "fungus.2"], "seed": 120251, "breaks": 2, "spread": 1},
