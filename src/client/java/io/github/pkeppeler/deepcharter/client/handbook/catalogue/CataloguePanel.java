@@ -611,13 +611,12 @@ public final class CataloguePanel {
         }
     }
 
-    /** Draws the ghost over the grid: each ingredient faint in its slot, the ones the player lacks tinted and ringed, and the result faint too. */
+    /** Draws the ghost over the grid: each ingredient faint in its slot, the ones the player lacks tinted red, and the result faint too. */
     private void drawGhost(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look) {
         Ghost shown = ghost;
         if (shown == null) {
             return;
         }
-        CrtTuning crt = CrtTuning.current();
         List<Slot> grid = gridSlots();
         graphics.nextStratum();
         for (RecipeFill.Placed cell : shown.cells()) {
@@ -629,9 +628,6 @@ public final class CataloguePanel {
             graphics.fill(x, y, x + ICON, y + ICON, veil);
             graphics.fakeItem(cycled(cell.choices()), x, y);
             graphics.fill(x, y, x + ICON, y + ICON, veil);
-            if (missing) {
-                CrtDraw.border(graphics, x - 1, y - 1, x + ICON + 1, y + ICON + 1, crt.phosphorColor());
-            }
         }
         if (screen.getMenu() instanceof AbstractCraftingMenu crafting) {
             Slot result = crafting.getResultSlot();

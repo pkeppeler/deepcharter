@@ -69,6 +69,9 @@ public class SpecSheetClientTest implements FabricClientGameTest {
     /** The first slot of the main inventory, below the hotbar. */
     private static final int INVENTORY_SLOT = 9;
 
+    /** A GUI pixel off the sheet's console, in the window's top left corner. */
+    private static final int SCREEN_EDGE = 2;
+
     private static final int[][] SIZES = {{WIDTH, HEIGHT}, {NARROWEST, HEIGHT}, {SMALLEST_WIDTH, HEIGHT}};
 
     @Override
@@ -373,7 +376,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         // A click off the console, on the screen's edge, puts it away too.
         context.runOnClient(client -> SpecSheetOpener.show(drill));
         ClientWait.until(context, "the sheet again", client -> panel.sheetItem() == drill);
-        ClientCursor.moveTo(context, 2, 2);
+        ClientCursor.moveTo(context, SCREEN_EDGE, SCREEN_EDGE);
         RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
         require(
                 context.computeOnClient(client -> panel.sheetItem()) == null,
