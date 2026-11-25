@@ -15,10 +15,9 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * Something a first-generation miner left in a shaft of layer 1 (#1277, LORE section 11): a lunch pail, a prayer card. It faces one of
- * four ways; its model is drawn facing north and turned by its blockstate file, and its shape, given facing north, turns with it. Placed
- * by hand it faces the player.
- */
+ * Something a first-generation miner left in a shaft of layer 1 (#1277, LORE section 11): a lunch pail, a prayer card.
+ * It faces one of four ways; its model is drawn facing north and turned by its blockstate file, and its shape, given
+ * facing north, turns with it. Placed by hand it faces the player. /
 final class ClaimRelicBlock extends HorizontalDirectionalBlock {
     private final Map<Direction, VoxelShape> shapes;
 

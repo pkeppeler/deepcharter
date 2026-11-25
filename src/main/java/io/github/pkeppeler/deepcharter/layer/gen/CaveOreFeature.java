@@ -28,13 +28,14 @@ import net.minecraft.world.level.levelgen.feature.Feature;
 import org.jspecify.annotations.Nullable;
 
 /**
- * An ore exposure on a cave wall of a layer (#1277): a seam of one ore across the face of the rock where a cave or a shaft opens it, what
- * a first-generation miner would have followed by lamplight. From the origin it looks up and down for open space beside the layer's rock,
- * and turns {@code minSize} to {@code maxSize} blocks of that rock's face into the ore, in the rock it replaces ({@link OreBlock#in}). The
- * ore is picked by weight from the table of the zone the face is in, so a Deep Claim wall shows Deep Claim's ores.
+ * An ore exposure on a cave wall of a layer (#1277): a seam of one ore across the face of the rock where a cave or a
+ * shaft opens it, what a first-generation miner would have followed by lamplight. From the origin it looks up and down
+ * for open space beside the layer's rock, and turns {@code minSize} to {@code maxSize} blocks of that rock's face into
+ * the ore, in the rock it replaces ({@link OreBlock#in}). The ore is picked by weight from the table of the zone the
+ * face is in, so a Deep Claim wall shows Deep Claim's ores.
  *
- * <p>It reads and writes only its own chunk (ADR 0088): a block on the chunk's side counts its neighbours outside as rock, so a chunk
- * decides the same whatever its neighbours have grown.
+ * <p>It reads and writes only its own chunk (ADR 0088): a block on the chunk's side counts its neighbours outside as
+ * rock, so a chunk decides the same whatever its neighbours have grown.
  *
  * @param layer   the layer, counted from 1
  * @param zones   the ores of each zone, top zone first, each with its weight
@@ -142,7 +143,8 @@ public record CaveOreFeature(int layer, List<List<Weighted>> zones, int minSize,
         return !placed.isEmpty();
     }
 
-    /** The first block of the layer's rock beside open space in the column at {@code at}'s row, looking at the six neighbours; null for none. */
+    /** The first block of the layer's rock beside open space in the column at {@code at}'s row, looking at the six
+     * neighbours; null for none. */
     private static @Nullable BlockPos faceAt(ChunkAccess chunk, ChunkPos chunkPos, BlockPos at) {
         if (!chunk.getBlockState(at).isAir()) {
             return null;

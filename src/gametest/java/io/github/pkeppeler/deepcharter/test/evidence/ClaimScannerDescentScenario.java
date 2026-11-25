@@ -24,17 +24,18 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Evidence scenario "claim-scanner-descent" (#1277): the pilot's view of a pod with a tier 2 scanner going down a bore through layer 1, The
- * Claim, from the top of its rock to the last live rows over the floor's signal decay. The bore is cut first, as the drill would cut it, and
- * the pod is held at each step of the way down; a frame every two rows shows the scanner's slice: the caves that open up, and the bands of
- * Topsoil Claims' hardpan, Stone Benches' packed shale and Deep Claim's black shale passing up the panel. A still at the middle of each zone.
- */
+ * Evidence scenario "claim-scanner-descent" (#1277): the pilot's view of a pod with a tier 2 scanner going down a bore
+ * through layer 1, The Claim, from the top of its rock to the last live rows over the floor's signal decay. The bore is
+ * cut first, as the drill would cut it, and the pod is held at each step of the way down; a frame every two rows shows
+ * the scanner's slice: the caves that open up, and the bands of Topsoil Claims' hardpan, Stone Benches' packed shale
+ * and Deep Claim's black shale passing up the panel. A still at the middle of each zone. /
 public class ClaimScannerDescentScenario extends EvidenceScenario {
     private static final int X = 3000;
     private static final int Z = 3000;
     private static final int TIER = 2;
     private static final int STEP = 2;
-    /** The pod this scenario holds, and the Y it is held at; Fabric events cannot be unregistered, so the pin acts only on this pod. */
+    /** The pod this scenario holds, and the Y it is held at; Fabric events cannot be unregistered, so the pin acts only
+     * on this pod. */
     private static final AtomicReference<@Nullable UUID> HELD = new AtomicReference<>();
 
     private static final AtomicReference<Double> HELD_Y = new AtomicReference<>(0.0);

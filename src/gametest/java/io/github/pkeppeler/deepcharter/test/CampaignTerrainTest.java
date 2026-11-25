@@ -77,18 +77,18 @@ public class CampaignTerrainTest {
     /** The cave stalks of layer 1's first zone are the one thing besides rock that its biomes place. */
     private static final String STALK = "deepcharter:fungal_stalk";
     /**
-     * Layer 1's rock by zone (#1277), and what its abandoned shafts and salvage caches put in it: rubble, timber, a lunch pail, a prayer
-     * card, a crate, and the shafts' ladders and candle stubs, the two vanilla blocks the campaign world generates.
-     */
-    private static final Set<String> CLAIM_SHAFT_BLOCKS = Set.of(
-            "deepcharter:packed_shale_rubble",
-            "deepcharter:stalk_planks",
-            "deepcharter:lunch_pail",
-            "deepcharter:prayer_card",
-            "deepcharter:salvage_crate",
-            "minecraft:ladder",
-            "minecraft:candle");
-    /**
+     * Layer 1's rock by zone (#1277), and what its abandoned shafts and salvage caches put in it: rubble, timber, a
+     * lunch pail, a prayer card, a crate, and the shafts' ladders and candle stubs, the two vanilla blocks the campaign
+     * world generates. /
+     * private static final Set<String> CLAIM_SHAFT_BLOCKS = Set.of(
+     * "deepcharter:packed_shale_rubble",
+     * "deepcharter:stalk_planks",
+     * "deepcharter:lunch_pail",
+     * "deepcharter:prayer_card",
+     * "deepcharter:salvage_crate",
+     * "minecraft:ladder",
+     * "minecraft:candle");
+     * /**
      * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the glowcaps and the surface's own
      * stalks and great stalks.
      */

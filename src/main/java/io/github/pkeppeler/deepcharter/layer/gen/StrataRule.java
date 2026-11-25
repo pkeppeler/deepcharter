@@ -18,14 +18,15 @@ import net.minecraft.world.level.levelgen.material.rule.RuleEvaluator;
 import net.minecraft.world.level.levelgen.synth.NormalNoise;
 
 /**
- * A layer's strata as one material rule (#1277): rocks stacked one over the next, each contact at its own height, moved in every column
- * by {@code amplitude} times a 2D noise (rounded to a row, at most {@link #MAX_SHIFT} either way) and raised by the column's surface depth
- * times {@code surface_depth_multiplier}. A contact's two rows over it hold the upper rock, the next {@value #BED_ROWS} a thin bed of the
- * rock under it, and from there up the upper rock again, so a contact reads as bedding. Under the last contact is {@code bottom}.
+ * A layer's strata as one material rule (#1277): rocks stacked one over the next, each contact at its own height, moved
+ * in every column by {@code amplitude} times a 2D noise (rounded to a row, at most {@link #MAX_SHIFT} either way) and
+ * raised by the column's surface depth times {@code surface_depth_multiplier}. A contact's two rows over it hold the
+ * upper rock, the next {@value #BED_ROWS} a thin bed of the rock under it, and from there up the upper rock again, so a
+ * contact reads as bedding. Under the last contact is {@code bottom}.
  *
- * <p>It is one rule rather than a tree of vanilla conditions because the material rule runs for every block of the layer and each
- * condition it tests costs about the same: a contact made of a dozen noise bins tested per block doubled layer 1's cost per row. This rule
- * works out its contacts once a column and then compares rows.
+ * <p>It is one rule rather than a tree of vanilla conditions because the material rule runs for every block of the
+ * layer and each condition it tests costs about the same: a contact made of a dozen noise bins tested per block doubled
+ * layer 1's cost per row. This rule works out its contacts once a column and then compares rows.
  *
  * @param contacts                the contacts, top first, each at the row its upper rock starts from before the shifts
  * @param bottom                  the rock under the last contact
@@ -47,7 +48,8 @@ public record StrataRule(
     /** The most rows the noise moves a contact either way. */
     private static final int MAX_SHIFT = 6;
 
-    /** One contact: the upper rock starts at {@code y} (before the shifts), and {@code bed} is the thin bed of the lower rock in it. */
+    /** One contact: the upper rock starts at {@code y} (before the shifts), and {@code bed} is the thin bed of the
+     * lower rock in it. */
     public record Contact(int y, BlockState upper, BlockState bed) {
         static final Codec<Contact> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                         Codec.INT.fieldOf("y").forGetter(Contact::y),
