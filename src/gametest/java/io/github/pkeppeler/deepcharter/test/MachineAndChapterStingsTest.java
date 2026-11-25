@@ -35,7 +35,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -97,6 +96,10 @@ public class MachineAndChapterStingsTest {
                 .toList();
     }
 
+    private static String name(MockPlayer mock) {
+        return mock.player().getGameProfile().name();
+    }
+
     private static MockPlayer survivor(GameTestHelper helper, String name) {
         MockPlayer mock = MockPlayers.join(helper, name);
         mock.player().setGameMode(GameType.SURVIVAL);
@@ -117,15 +120,46 @@ public class MachineAndChapterStingsTest {
         CharterId charter =
                 Charters.charterOfOrThrow(server, founder).orElseThrow().id();
         for (MockPlayer member : crew) {
-            UUID joiner = member.player().getUUID();
-            expect(
-                    helper,
-                    Charters.apply(server, joiner, charter).isEmpty()
-                            && Charters.approve(server, founder, joiner).isEmpty(),
-                    "%s should join the charter",
-                    member.player().getGameProfile().name());
+            join(helper, charter, director, member);
         }
         return charter;
+    }
+
+    private static void join(GameTestHelper helper, CharterId charter, MockPlayer director, MockPlayer member) {
+        MinecraftServer server = helper.getLevel().getServer();
+        UUID joiner = member.player().getUUID();
+        expect(
+                helper,
+                Charters.apply(server, joiner, charter).isEmpty()
+                        && Charters.approve(server, director.player().getUUID(), joiner)
+                                .isEmpty(),
+                "%s should join the charter",
+                name(member));
+    }
+
+    private static void expectSleepRecorded(GameTestHelper helper, MockPlayer mock) {
+        expect(
+                helper,
+                HandbookProgress.completedFor(
+                                helper.getLevel().getServer(), mock.player().getUUID())
+                        .contains(SLEEP),
+                "the poll should record the sleep directive for %s",
+                name(mock));
+    }
+
+    /** Each of {@code mocks} has heard the phrase {@code phrases} times and completed exactly {@code chapters}. */
+    private static void expectPhrases(
+            GameTestHelper helper, int phrases, List<Identifier> chapters, String what, MockPlayer... mocks) {
+        for (MockPlayer mock : mocks) {
+            expect(
+                    helper,
+                    heard(mock, PHRASE) == phrases && completedFor(mock).equals(chapters),
+                    "%s, %s heard %s and completed %s",
+                    what,
+                    name(mock),
+                    mock.soundsHeard(),
+                    completedFor(mock));
+        }
     }
 
     /** Puts {@code mock} {@code distance} blocks east of the pump at {@code pump}, eyes level with it, and returns where they stand. */
@@ -136,10 +170,15 @@ public class MachineAndChapterStingsTest {
         return mock.player().position();
     }
 
-    private static void insert(GameTestHelper helper, ServerPlayer player, BlockPos pump, Item part) {
-        Optional<TerminalRefusal> refusal = TerminalParts.insert(player, pump, part);
-        if (refusal.isPresent()) {
-            throw failure(helper, "inserting %s should succeed, was refused: %s", part, refusal.get());
+    /** Gives {@code fitter} each of {@code parts}, then has them insert every one into the terminal at {@code pos}. */
+    private static void fit(GameTestHelper helper, MockPlayer fitter, BlockPos pos, List<Item> parts) {
+        ServerPlayer player = fitter.player();
+        parts.forEach(part -> player.getInventory().add(new ItemStack(part)));
+        for (Item part : parts) {
+            Optional<TerminalRefusal> refusal = TerminalParts.insert(player, pos, part);
+            if (refusal.isPresent()) {
+                throw failure(helper, "inserting %s should succeed, was refused: %s", part, refusal.get());
+            }
         }
     }
 
@@ -159,10 +198,8 @@ public class MachineAndChapterStingsTest {
         BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP);
         Vec3 at = standBy(fitter, helper, pump, 2);
         standBy(onlooker, helper, pump, 3.5);
-        List<Item> parts = TerminalTypes.FUEL_PUMP.parts();
         WorldData.with(server, RepairState.TYPE, new RepairState(), () -> {
-            parts.forEach(part -> fitter.player().getInventory().add(new ItemStack(part)));
-            parts.forEach(part -> insert(helper, fitter.player(), pump, part));
+            fit(helper, fitter, pump, TerminalTypes.FUEL_PUMP.parts());
             expect(helper, RepairState.get(server).repaired(TerminalTypes.FUEL_PUMP), "the pump should be repaired");
         });
         helper.runAfterDelay(DRAIN_TICKS, () -> {
@@ -171,7 +208,7 @@ public class MachineAndChapterStingsTest {
                         helper,
                         heardAt(mock, at).equals(List.of(POWER_ON, ONLINE)),
                         "%s should hear the power-on, then the chord, once each, where the fitter stands, heard %s",
-                        mock.player().getGameProfile().name(),
+                        name(mock),
                         heardAt(mock, at));
             }
             helper.succeed();
@@ -185,10 +222,8 @@ public class MachineAndChapterStingsTest {
         found(helper, fitter);
         BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP);
         Vec3 at = standBy(fitter, helper, pump, 2);
-        Item first = TerminalTypes.FUEL_PUMP.parts().getFirst();
         WorldData.with(server, RepairState.TYPE, new RepairState(), () -> {
-            fitter.player().getInventory().add(new ItemStack(first));
-            insert(helper, fitter.player(), pump, first);
+            fit(helper, fitter, pump, List.of(TerminalTypes.FUEL_PUMP.parts().getFirst()));
             expect(
                     helper,
                     !RepairState.get(server).repaired(TerminalTypes.FUEL_PUMP),
@@ -206,7 +241,6 @@ public class MachineAndChapterStingsTest {
 
     @GameTest(maxTicks = POLL_BUDGET_TICKS)
     public void theLastDirectiveOfAChapterPlaysThePhraseOnceToEachOnlineMember(GameTestHelper helper) {
-        MinecraftServer server = helper.getLevel().getServer();
         MockPlayer director = MockPlayers.join(helper, "ChapterDirector");
         MockPlayer crew = MockPlayers.join(helper, "ChapterCrew");
         found(helper, director, crew);
@@ -215,36 +249,26 @@ public class MachineAndChapterStingsTest {
         HymnMomentsProbe.forget(crew.player());
         helper.startSequence()
                 .thenExecute(() -> CriteriaTriggers.SLEPT_IN_BED.trigger(crew.player()))
-                .thenWaitUntil(() -> expect(
-                        helper,
-                        HandbookProgress.completedFor(server, director.player().getUUID())
-                                .contains(SLEEP),
-                        "the poll should record the sleep directive for the charter"))
+                .thenWaitUntil(() -> expectSleepRecorded(helper, director))
                 .thenIdle(DRAIN_TICKS)
                 .thenExecute(() -> {
-                    for (MockPlayer mock : List.of(director, crew)) {
-                        expect(
-                                helper,
-                                heard(mock, PHRASE) == 0 && completedFor(mock).isEmpty(),
-                                "a directive that leaves the chapter open plays nothing, %s heard %s and completed %s",
-                                mock.player().getGameProfile().name(),
-                                mock.soundsHeard(),
-                                completedFor(mock));
-                    }
+                    expectPhrases(
+                            helper,
+                            0,
+                            List.of(),
+                            "a directive that leaves the chapter open plays nothing",
+                            director,
+                            crew);
                     Directives.fire(director.player(), CUSTOM);
                 })
                 // The phrase is queued for the next tick at the earliest, and longer while another test's chord rings.
-                .thenWaitUntil(() -> {
-                    for (MockPlayer mock : List.of(director, crew)) {
-                        expect(
-                                helper,
-                                heard(mock, PHRASE) == 1 && completedFor(mock).equals(List.of(SAMPLE_CHAPTER)),
-                                "the last directive plays the phrase once to each member, %s heard %s and completed %s",
-                                mock.player().getGameProfile().name(),
-                                mock.soundsHeard(),
-                                completedFor(mock));
-                    }
-                })
+                .thenWaitUntil(() -> expectPhrases(
+                        helper,
+                        1,
+                        List.of(SAMPLE_CHAPTER),
+                        "the last directive plays the phrase once to each member",
+                        director,
+                        crew))
                 .thenExecute(() -> {
                     // Done again, by anyone and however, it is no news: the hymn rule cannot be what keeps it quiet.
                     HymnMomentsProbe.forget(director.player());
@@ -253,38 +277,20 @@ public class MachineAndChapterStingsTest {
                     CriteriaTriggers.SLEPT_IN_BED.trigger(director.player());
                 })
                 .thenIdle(HandbookTuning.DEFAULT.progressPollTicks() * 2)
-                .thenExecute(() -> {
-                    for (MockPlayer mock : List.of(director, crew)) {
-                        expect(
-                                helper,
-                                heard(mock, PHRASE) == 1 && completedFor(mock).equals(List.of(SAMPLE_CHAPTER)),
-                                "a chapter completes once, %s heard %s and completed %s",
-                                mock.player().getGameProfile().name(),
-                                mock.soundsHeard(),
-                                completedFor(mock));
-                    }
-                })
+                .thenExecute(() ->
+                        expectPhrases(helper, 1, List.of(SAMPLE_CHAPTER), "a chapter completes once", director, crew))
                 .thenSucceed();
     }
 
     @GameTest(maxTicks = POLL_BUDGET_TICKS)
     public void aPlayerOnNoCharterHearsThePhraseForTheirOwnChapter(GameTestHelper helper) {
-        MinecraftServer server = helper.getLevel().getServer();
         MockPlayer loner = MockPlayers.join(helper, "ChapterLoner");
         helper.startSequence()
                 .thenExecute(() -> CriteriaTriggers.SLEPT_IN_BED.trigger(loner.player()))
-                .thenWaitUntil(() -> expect(
-                        helper,
-                        HandbookProgress.completedFor(server, loner.player().getUUID())
-                                .contains(SLEEP),
-                        "the poll should record the sleep directive for the loner"))
+                .thenWaitUntil(() -> expectSleepRecorded(helper, loner))
                 .thenExecute(() -> Directives.fire(loner.player(), CUSTOM))
-                .thenWaitUntil(() -> expect(
-                        helper,
-                        heard(loner, PHRASE) == 1 && completedFor(loner).equals(List.of(SAMPLE_CHAPTER)),
-                        "the loner's own chapter plays the phrase once, heard %s and completed %s",
-                        loner.soundsHeard(),
-                        completedFor(loner)))
+                .thenWaitUntil(() -> expectPhrases(
+                        helper, 1, List.of(SAMPLE_CHAPTER), "the loner's own chapter plays the phrase once", loner))
                 .thenSucceed();
     }
 
@@ -298,21 +304,10 @@ public class MachineAndChapterStingsTest {
         MockPlayer[] newcomer = new MockPlayer[1];
         helper.startSequence()
                 .thenExecute(() -> {
-                    UUID joiner = returner[0].player().getUUID();
-                    expect(
-                            helper,
-                            Charters.apply(server, joiner, charter).isEmpty()
-                                    && Charters.approve(
-                                                    server, director.player().getUUID(), joiner)
-                                            .isEmpty(),
-                            "the returner should join the charter");
+                    join(helper, charter, director, returner[0]);
                     CriteriaTriggers.SLEPT_IN_BED.trigger(director.player());
                 })
-                .thenWaitUntil(() -> expect(
-                        helper,
-                        HandbookProgress.completedFor(server, director.player().getUUID())
-                                .contains(SLEEP),
-                        "the poll should record the sleep directive"))
+                .thenWaitUntil(() -> expectSleepRecorded(helper, director))
                 .thenExecute(() -> {
                     Directives.fire(director.player(), CUSTOM);
                     expect(
@@ -322,14 +317,7 @@ public class MachineAndChapterStingsTest {
                             completedFor(returner[0]));
                     returner[0].leave();
                     newcomer[0] = MockPlayers.join(helper, "DoneNewcomer");
-                    UUID joiner = newcomer[0].player().getUUID();
-                    expect(
-                            helper,
-                            Charters.apply(server, joiner, charter).isEmpty()
-                                    && Charters.approve(
-                                                    server, director.player().getUUID(), joiner)
-                                            .isEmpty(),
-                            "the newcomer should join the charter");
+                    join(helper, charter, director, newcomer[0]);
                     returner[0] = MockPlayers.join(helper, "DoneReturner", returnerId);
                 })
                 .thenIdle(HandbookTuning.DEFAULT.progressPollTicks() * 2)
@@ -345,7 +333,7 @@ public class MachineAndChapterStingsTest {
                                 helper,
                                 heard(mock, PHRASE) == 0,
                                 "%s joined with the chapter done and should hear no phrase, heard %s",
-                                mock.player().getGameProfile().name(),
+                                name(mock),
                                 mock.soundsHeard());
                     }
                     expect(
@@ -388,9 +376,7 @@ public class MachineAndChapterStingsTest {
                         }
                     }
                     at[0] = standBy(fitter, helper, terminal, 2);
-                    List<Item> parts = TerminalTypes.UPGRADE_TERMINAL.parts();
-                    parts.forEach(part -> fitter.player().getInventory().add(new ItemStack(part)));
-                    parts.forEach(part -> insert(helper, fitter.player(), terminal, part));
+                    fit(helper, fitter, terminal, TerminalTypes.UPGRADE_TERMINAL.parts());
                 }))
                 .thenIdle(DRAIN_TICKS)
                 .thenExecute(() -> expect(
@@ -431,11 +417,7 @@ public class MachineAndChapterStingsTest {
                     found(helper, founder);
                     CriteriaTriggers.SLEPT_IN_BED.trigger(founder.player());
                 })
-                .thenWaitUntil(() -> expect(
-                        helper,
-                        HandbookProgress.completedFor(server, founder.player().getUUID())
-                                .contains(SLEEP),
-                        "the poll should record the sleep directive"))
+                .thenWaitUntil(() -> expectSleepRecorded(helper, founder))
                 .thenExecute(() -> {
                     Directives.fire(founder.player(), CUSTOM);
                     expect(
@@ -459,10 +441,14 @@ public class MachineAndChapterStingsTest {
                             "the dropped phrase must not come back, heard %s",
                             founder.soundsHeard());
                     HymnMomentsProbe.forget(founder.player());
-                    ServerLevel surface = server.overworld();
                     BreachEvents.CROSSED
                             .invoker()
-                            .onCrossed(founder.player(), surface, TestLayers.level(server, 1), LayerChain.SURFACE, 1);
+                            .onCrossed(
+                                    founder.player(),
+                                    server.overworld(),
+                                    TestLayers.level(server, 1),
+                                    LayerChain.SURFACE,
+                                    1);
                 })
                 .thenWaitUntil(() -> expect(
                         helper,

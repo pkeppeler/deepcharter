@@ -57,34 +57,39 @@ class CommittedSoundsTest(unittest.TestCase):
             self.assertLess(error / energy, 0.25, f"{name}: the OGG is not the sound its recipe makes")
 
 
+SOUND_TUNING = Path(__file__).resolve().parents[2] / "src/main/java/io/github/pkeppeler/deepcharter/sound/SoundTuning.java"
+
+
+def ticks_played(name):
+    """How long the recipe's sound plays, in ticks, rounded up."""
+    return math.ceil(len(recipes.render(name).left) / recipes.RATE * 20)
+
+
+def tuning(field):
+    """A number in SoundTuning.DEFAULT, by the record component's name."""
+    java = SOUND_TUNING.read_text()
+    fields = re.search(r"record SoundTuning\((.*?)\)\s*\{", java, re.S).group(1)
+    names = [part.split()[-1] for part in re.split(r",(?![^<]*>)", fields)]
+    values = re.split(r",(?![^(]*\))", re.search(r"new SoundTuning\((.*?)\);", java, re.S).group(1))
+    return int(values[names.index(field)])
+
+
 class HymnLengthTest(unittest.TestCase):
     def test_the_game_knows_how_long_each_hymn_plays(self):
         # HymnMoments does not start a hymn on top of the player's last one; it counts SoundTuning.hymnTicks, which must match the files.
-        java = (Path(__file__).resolve().parents[2] / "src/main/java/io/github/pkeppeler/deepcharter/sound/SoundTuning.java").read_text()
-        ticks = [int(n) for n in re.search(r"hymnTicks\b.*?List\.of\(([\d, ]+)\)", java, re.S).group(1).split(",")]
-        made = [math.ceil(len(recipes.render(f"hymn/{name}").left) / recipes.RATE * 20) for name in ("colony", "layer_1", "layer_2")]
+        ticks = [int(n) for n in re.search(r"hymnTicks\b.*?List\.of\(([\d, ]+)\)", SOUND_TUNING.read_text(), re.S).group(1).split(",")]
+        made = [ticks_played(f"hymn/{name}") for name in ("colony", "layer_1", "layer_2")]
         self.assertEqual(made, ticks)
-
-    @staticmethod
-    def tuning(field):
-        """A number in SoundTuning.DEFAULT, by the record component's name."""
-        java = (Path(__file__).resolve().parents[2] / "src/main/java/io/github/pkeppeler/deepcharter/sound/SoundTuning.java").read_text()
-        fields = re.search(r"record SoundTuning\((.*?)\)\s*\{", java, re.S).group(1)
-        names = [part.split()[-1] for part in re.split(r",(?![^<]*>)", fields)]
-        values = re.split(r",(?![^(]*\))", re.search(r"new SoundTuning\((.*?)\);", java, re.S).group(1))
-        return int(values[names.index(field)])
 
     def test_the_game_knows_how_long_the_chapter_phrase_plays(self):
         # The chapter phrase follows the hymns' rule (#1267): HymnMoments counts SoundTuning.chapterPhraseTicks, which must match the file.
-        ticks = self.tuning("chapterPhraseTicks")
-        made = math.ceil(len(recipes.render("hymn/chapter").left) / recipes.RATE * 20)
-        self.assertEqual(made, ticks)
+        ticks = tuning("chapterPhraseTicks")
+        self.assertEqual(ticks_played("hymn/chapter"), ticks)
         self.assertTrue(3 * 20 <= ticks <= 5 * 20, f"the phrase lasts {ticks} ticks, not 3 to 5 seconds")
 
     def test_the_game_knows_how_long_the_online_chord_plays(self):
         # No chapter phrase starts while a machine's chord rings (#1267): HymnMoments holds them for SoundTuning.terminalOnlineTicks.
-        made = math.ceil(len(recipes.render("terminal/online").left) / recipes.RATE * 20)
-        self.assertEqual(made, self.tuning("terminalOnlineTicks"))
+        self.assertEqual(ticks_played("terminal/online"), tuning("terminalOnlineTicks"))
 
 
 class GateTest(unittest.TestCase):
