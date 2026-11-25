@@ -96,8 +96,8 @@ public final class ClientWait {
 
     /**
      * Waits until the server has settled the light of the chunks round the square of {@code radius} at ({@code x},
-     * {@code z}) in {@code layer}. Call it after a carve, before a pod with a pilot moves in (#1249, #1303):
-     * a pending LightSync re-send makes isChunkTracked false, and updatePlayer drops the ridden pod while it is.
+     * {@code z}) in {@code layer}. Call it after a carve, before a pod with a pilot moves in: a pod dropped while a
+     * chunk send is queued stays off its pilot's client until the send lands (#1249, #1303, ADR 0092).
      */
     public static void lightSettled(
             ClientGameTestContext context, TestServerContext server, int layer, int x, int z, int radius) {
