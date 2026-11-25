@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.requireNone;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -14,7 +15,6 @@ import io.github.pkeppeler.deepcharter.test.support.OpenGround;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.Arrays;
-import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -140,7 +140,6 @@ public class PodMovementClientTest implements FabricClientGameTest {
                 context.waitTick();
                 trail[tick] = lagBlocks(context, two, ownPodId);
             }
-            Optional<String> fault = TrailJudge.fault(trail);
             LOGGER.info(
                     "PodMovementClientTest: client pod trailed the server pod by {} blocks at tick {}, {}: {}",
                     trail[DRIVE_TICKS - 1],
@@ -160,10 +159,10 @@ public class PodMovementClientTest implements FabricClientGameTest {
             require(
                     !(mockEnd.subtract(mockStart).horizontalDistance() < 2),
                     "The client should see the mock pilot's pod move, it moved " + mockStart.distanceTo(mockEnd));
-            require(
-                    fault.isEmpty(),
-                    "The client's pod trailed the server's more than late moves explain, " + fault.orElse("")
-                            + " (every tick: " + Arrays.toString(trail) + ")");
+            requireNone(
+                    "The client's pod trailed the server's more than late moves explain (every tick: "
+                            + Arrays.toString(trail) + ")",
+                    TrailJudge.fault(trail));
         }
     }
 

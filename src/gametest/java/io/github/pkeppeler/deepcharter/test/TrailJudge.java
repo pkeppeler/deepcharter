@@ -18,22 +18,20 @@ final class TrailJudge {
 
     /** Why {@code trail} fails {@link PodMovementClientTest}'s limits, as {@link #summary}, or empty when it passes. */
     static Optional<String> fault(double[] trail) {
-        double bound = PodMovementClientTest.MAX_LAG_BLOCKS;
-        boolean passes = longestRunOver(trail, bound) <= PodMovementClientTest.MAX_TICKS_OVER
-                && ticksOver(trail, bound) <= PodMovementClientTest.MAX_TICKS_OVER_IN_ALL
+        boolean passes = longestRunOver(trail) <= PodMovementClientTest.MAX_TICKS_OVER
+                && ticksOver(trail) <= PodMovementClientTest.MAX_TICKS_OVER_IN_ALL
                 && worst(trail) <= PodMovementClientTest.MAX_WORST_BLOCKS;
         return passes ? Optional.empty() : Optional.of(summary(trail));
     }
 
     /** The run, the total ticks over and the worst tick of {@code trail}, each beside its limit. */
     static String summary(double[] trail) {
-        double bound = PodMovementClientTest.MAX_LAG_BLOCKS;
         return String.format(
                 "over %s blocks for %s ticks in a row (allowed %s) and %s ticks in all (allowed %s), worst %s (allowed %s)",
-                bound,
-                longestRunOver(trail, bound),
+                PodMovementClientTest.MAX_LAG_BLOCKS,
+                longestRunOver(trail),
                 PodMovementClientTest.MAX_TICKS_OVER,
-                ticksOver(trail, bound),
+                ticksOver(trail),
                 PodMovementClientTest.MAX_TICKS_OVER_IN_ALL,
                 worst(trail),
                 PodMovementClientTest.MAX_WORST_BLOCKS);
@@ -43,19 +41,20 @@ final class TrailJudge {
         return Arrays.stream(trail).max().orElse(0);
     }
 
-    /** The most ticks in a row that {@code trail} is over {@code bound}. */
-    static int longestRunOver(double[] trail, double bound) {
+    /** The most ticks in a row that {@code trail} is over {@link PodMovementClientTest#MAX_LAG_BLOCKS}. */
+    private static int longestRunOver(double[] trail) {
         int longest = 0;
         int run = 0;
         for (double blocks : trail) {
-            run = blocks > bound ? run + 1 : 0;
+            run = blocks > PodMovementClientTest.MAX_LAG_BLOCKS ? run + 1 : 0;
             longest = Math.max(longest, run);
         }
         return longest;
     }
 
-    /** The ticks that {@code trail} is over {@code bound}, in a row or not. */
-    static int ticksOver(double[] trail, double bound) {
-        return (int) Arrays.stream(trail).filter(blocks -> blocks > bound).count();
+    private static int ticksOver(double[] trail) {
+        return (int) Arrays.stream(trail)
+                .filter(blocks -> blocks > PodMovementClientTest.MAX_LAG_BLOCKS)
+                .count();
     }
 }
