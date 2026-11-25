@@ -841,18 +841,7 @@ public final class CataloguePanel {
         CatalogueHardware.body(graphics, look, now.recipe(), now.recipeGlass(), card.vents());
         graphics.nextStratum();
 
-        List<String> title = titleLines(card);
-        int last = title.size() - 1;
-        for (int i = 0; i < last; i++) {
-            glow(graphics, title.get(i), card.left(), card.titleY() + i * font.lineHeight, crt);
-        }
-        CrtDraw.header(
-                graphics,
-                font,
-                CrtText.terminal(title.get(last)),
-                card.left(),
-                card.titleY() + last * font.lineHeight,
-                card.right());
+        CatalogueHardware.title(graphics, font, titleLines(card), card.left(), card.titleY(), card.right());
         if (recipe == null) {
             String none = text(lookup.mode() == CatalogueState.Mode.RECIPES ? "none.recipes" : "none.uses");
             dim(graphics, fit(none, width), card.left(), card.stationY(), panel);

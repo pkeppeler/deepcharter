@@ -132,23 +132,7 @@ final class SpecSheetView {
         CatalogueHardware.body(graphics, look, layout.casing(), layout.glass(), List.of());
         graphics.nextStratum();
 
-        int last = plan.title().size() - 1;
-        for (int i = 0; i < last; i++) {
-            CrtDraw.glowText(
-                    graphics,
-                    font,
-                    CrtText.terminal(plan.title().get(i)),
-                    layout.left(),
-                    layout.titleY() + i * font.lineHeight,
-                    crt.phosphorColor());
-        }
-        CrtDraw.header(
-                graphics,
-                font,
-                CrtText.terminal(plan.title().get(last)),
-                layout.left(),
-                layout.titleY() + last * font.lineHeight,
-                layout.right());
+        CatalogueHardware.title(graphics, font, plan.title(), layout.left(), layout.titleY(), layout.right());
         Rect cell = plan.cell();
         CrtDraw.border(graphics, cell.x(), cell.y(), cell.right(), cell.bottom(), crt.phosphorColor());
         graphics.item(new ItemStack(sheet.item()), cell.x() + look.iconInset(), cell.y() + look.iconInset());
