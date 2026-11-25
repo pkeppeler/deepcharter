@@ -27,7 +27,7 @@ public final class DeathMockupPodScenario extends EvidenceScenario {
     private static final int Z = 5200;
     private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final float LOOK_DOWN = 22f;
-    private static final float HULL_LEFT = 6f;
+    private static final float HULL_LEFT = 28f;
     private static final int DEATH_LIMIT_TICKS = 600;
 
     private final DeathFootage footage = new DeathFootage(this);
