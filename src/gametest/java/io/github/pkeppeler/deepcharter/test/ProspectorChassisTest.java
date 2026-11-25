@@ -373,7 +373,7 @@ public class ProspectorChassisTest {
         List<FarChunks.At> chunks = new ArrayList<>(chunksOf(level, ordinary));
         chunks.addAll(chunksOf(level, prospector));
         boolean[] generated = {false};
-        FarChunks.awaitLoaded(helper, chunks, () -> generated[0] = true);
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> generated[0] = true);
         helper.succeedWhen(() -> {
             if (!generated[0]) {
                 throw helper.assertionException("the wreck sites' chunks are not loaded yet");

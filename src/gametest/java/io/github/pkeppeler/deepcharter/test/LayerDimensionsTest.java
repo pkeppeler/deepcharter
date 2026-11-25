@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -56,8 +57,8 @@ public class LayerDimensionsTest {
 
     /**
      * {@code TestLayers.band} of a level that does not hold the layer fails loud: the flat test overworld holds the surface only, and the
-     * Nether is no layer's level. ({@code TestLayers.dimension(server, n)} returns the overworld for a layer once the overworld is the
-     * campaign level (#803), so that branch has no test before then.)
+     * Nether is no layer's level. (The GameTest server's overworld is flat, so {@code TestLayers.dimension(server, n)} returns
+     * the sample here; its overworld branch is tested in {@code CampaignWorldClientTest}, in a default-preset world.)
      */
     @GameTest
     public void aLevelThatDoesNotHoldALayerHasNoBandForIt(GameTestHelper helper) {
@@ -104,7 +105,7 @@ public class LayerDimensionsTest {
     public void testPresetMatchesTheShippedDimensions(GameTestHelper helper) throws IOException {
         JsonObject preset = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject();
-        for (String name : List.of("layer_1", "layer_2", "campaign_sample")) {
+        for (String name : List.of("layer_1", "layer_2", "campaign_sample", "campaign_full")) {
             String id = "deepcharter:" + name;
             JsonElement shipped = read(helper, "/data/deepcharter/dimension/" + name + ".json");
             if (!shipped.equals(preset.getAsJsonObject("dimensions").get(id))) {
@@ -259,10 +260,12 @@ public class LayerDimensionsTest {
                 throw helper.assertionException("player placed at y=%s, outside the layer", pos.y);
             }
             try {
-                server.getCommands().getDispatcher().execute("deepcharter layer goto 3", source);
-                throw helper.assertionException("goto 3 should fail: only 2 layers exist");
+                int past = CampaignBands.lastLayer() + 1;
+                server.getCommands().getDispatcher().execute("deepcharter layer goto " + past, source);
+                throw helper.assertionException(
+                        "goto %s should fail: only %s layers exist", past, CampaignBands.lastLayer());
             } catch (CommandSyntaxException outOfRange) {
-                if (!String.valueOf(outOfRange.getMessage()).contains("No layer 3")) {
+                if (!String.valueOf(outOfRange.getMessage()).contains("No layer " + (CampaignBands.lastLayer() + 1))) {
                     throw helper.assertionException(
                             "expected the no-such-layer failure, got %s", String.valueOf(outOfRange.getMessage()));
                 }
@@ -276,7 +279,7 @@ public class LayerDimensionsTest {
     /** The motion-blocking heightmap counts the mod's blocks as ground (#350): goto stands the player on one, not inside it. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void gotoStandsOnAModBlock(GameTestHelper helper) {
-        FarChunks.whenLoaded(
+        FarChunks.whenBlocksLoaded(
                 helper, List.of(new FarChunks.At(TestLayers.level(helper, 2), 300_000 >> 4, 300_000 >> 4)), () -> {
                     try {
                         gotoStandsOnAModBlockLoaded(helper);

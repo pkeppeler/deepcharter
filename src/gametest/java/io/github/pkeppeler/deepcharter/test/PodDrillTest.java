@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
@@ -280,16 +281,16 @@ public class PodDrillTest {
         int[] shallowTicks = {-1};
         int[] deepTicks = {-1};
         TestTicks.each(helper, () -> {
-            if (!shallow.pod.isPresent() || !deep.pod.isPresent()) {
-                return;
-            }
+            // Each pod is timed on its own, not once both exist: the first would be read late (#1083).
             if (shallowTicks[0] < 0
+                    && shallow.pod.isPresent()
                     && level.getBlockState(new BlockPos(shallowX, shallowFloor - 1, Z))
                             .isAir()) {
                 shallowTicks[0] = shallow.pod.get().tickCount;
                 shallow.pilot.releaseInput();
             }
             if (deepTicks[0] < 0
+                    && deep.pod.isPresent()
                     && level.getBlockState(new BlockPos(deepX, deepFloor - 1, Z))
                             .isAir()) {
                 deepTicks[0] = deep.pod.get().tickCount;
@@ -614,8 +615,8 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
         int x = 3576;
-        ServerLevel two = TestLayers.level(helper, 2);
-        int floor = TestLayers.band(two, 2).minY();
+        ServerLevel two = TestLayers.level(helper, CampaignBands.lastLayer());
+        int floor = TestLayers.band(two, CampaignBands.lastLayer()).minY();
         RoomCarver.carve(two, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
         RoomCarver.carve(two, x - 2, x + 2, floor + 3, floor + 10, Z - 2, Z + 2, Blocks.AIR);
         Rig rig = Rig.await(helper, two, new Vec3(x, floor + 3, Z), 0f, "drill-last-crust", SPRINT);

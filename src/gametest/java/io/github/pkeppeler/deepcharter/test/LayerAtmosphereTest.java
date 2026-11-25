@@ -63,7 +63,7 @@ public class LayerAtmosphereTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void everyZoneBiomeSetsItsLayersFogLightAndBedRules(GameTestHelper helper) {
-        FarChunks.whenLoaded(helper, originChunks(helper), () -> everyZoneBiomeSetsItsAtmosphere(helper));
+        FarChunks.whenBlocksLoaded(helper, originChunks(helper), () -> everyZoneBiomeSetsItsAtmosphere(helper));
     }
 
     private static void everyZoneBiomeSetsItsAtmosphere(GameTestHelper helper) {
@@ -119,7 +119,7 @@ public class LayerAtmosphereTest {
     /** The value a player's client and the server read at a place in the layer is the biome's, through the level's attribute system. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void theLevelReadsTheBiomeValueAtEachZone(GameTestHelper helper) {
-        FarChunks.whenLoaded(helper, originChunks(helper), () -> theLevelReadsTheBiomeValue(helper));
+        FarChunks.whenBlocksLoaded(helper, originChunks(helper), () -> theLevelReadsTheBiomeValue(helper));
     }
 
     private static void theLevelReadsTheBiomeValue(GameTestHelper helper) {

@@ -79,8 +79,9 @@ public final class MockPlayers {
 
     /**
      * Join a mock player at {@code spawn} in {@code level}; it stays until the server stops or {@link MockPlayer#leave}
-     * is called (or, in an unloaded chunk for {@link FarChunks#AWAIT_BUDGET_TICKS} ticks, leaves with an error in the log). The spawn is required because a bare join lands at the origin, inside the rock of the surface (the
-     * ground is at y 63), where the mock suffocates within seconds and a dead mock cannot be teleported.
+     * is called (or, in an unloaded chunk for {@link FarChunks#AWAIT_BUDGET_TICKS} ticks, leaves with an error in the
+     * log). The spawn is required because a bare join lands at the origin, inside the rock of the surface (the ground
+     * is at y 63), where the mock suffocates within seconds and a dead mock cannot be teleported.
      */
     public static MockPlayer join(MinecraftServer server, String name, ServerLevel level, Vec3 spawn) {
         return join(server, name, level, spawn, 0f);
@@ -149,7 +150,7 @@ public final class MockPlayers {
     }
 
     // GameTestHelper has no public accessor for its test, and this is the only way to know when it ends.
-    private static GameTestInfo testInfo(GameTestHelper helper) {
+    public static GameTestInfo testInfo(GameTestHelper helper) {
         try {
             Field field = GameTestHelper.class.getDeclaredField("testInfo");
             field.setAccessible(true);

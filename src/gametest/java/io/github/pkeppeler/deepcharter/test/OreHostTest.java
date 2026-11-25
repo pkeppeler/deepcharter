@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreBlock.Host;
@@ -52,14 +53,23 @@ public class OreHostTest {
     /** The ore blocks the zone fill places across {@link #SIDE} x {@link #SIDE} chunks must be at least this many in each layer, or the check proves nothing. */
     private static final int AT_LEAST = 50;
 
+    /** Every layer of the campaign world has ore. */
+    private static final int LAYERS = CampaignBands.lastLayer();
+
+    /** The rock of {@code layer}: a layer with no case here fails, so a new layer must name its host. */
     private static Host expectedHost(int layer) {
-        return layer == 1 ? Host.PACKED_SHALE : Host.GREEN_SHALE;
+        return switch (layer) {
+            case 1 -> Host.PACKED_SHALE;
+            case 2 -> Host.GREEN_SHALE;
+            case 3 -> Host.BASALT_CORE;
+            default -> throw new IllegalArgumentException("layer " + layer + " has no host rock in OreHostTest");
+        };
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void generatedOreInEachLayerSitsInThatLayersRock(GameTestHelper helper) {
         List<FarChunks.At> chunks = new ArrayList<>();
-        for (int layer = 1; layer <= 2; layer++) {
+        for (int layer = 1; layer <= LAYERS; layer++) {
             chunks.addAll(FarChunks.rect(
                     TestLayers.level(helper, layer),
                     FIRST_CHUNK,
@@ -67,11 +77,11 @@ public class OreHostTest {
                     FIRST_CHUNK + SIDE - 1,
                     FIRST_CHUNK + SIDE - 1));
         }
-        FarChunks.whenLoaded(helper, chunks, () -> generatedOreSitsInThatLayersRock(helper));
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> generatedOreSitsInThatLayersRock(helper));
     }
 
     private static void generatedOreSitsInThatLayersRock(GameTestHelper helper) {
-        for (int layer = 1; layer <= 2; layer++) {
+        for (int layer = 1; layer <= LAYERS; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             LayerChain.Band levelBand = TestLayers.band(level, layer);
             Map<Host, Integer> found = new EnumMap<>(Host.class);
@@ -108,7 +118,7 @@ public class OreHostTest {
     @GameTest
     public void anOreItemPlacedInALayerTakesThatLayersRock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "ore-host-place");
-        for (int layer = 1; layer <= 2; layer++) {
+        for (int layer = 1; layer <= LAYERS; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             BlockPos floor = TestLayers.pos(layer, 7400, 80, 3000 + layer * 8);
             mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above(4)), 0, 0);

@@ -66,7 +66,10 @@ public class CompanyRecoveryTest {
     private static final int Z = 12_000;
     private static final RecoveryTuning TUNING = RecoveryTuning.DEFAULT;
     private static final int HEIGHT_IN_LAYER = 40;
-    /** A batch of its own: the blocked landing floods the colony's pad and the world spawn, which every colony test of a shared batch reads. */
+    /**
+     * A batch of its own: the blocked landing floods the colony's pad and the world spawn, which every colony test of a
+     * shared batch reads.
+     */
     private static final String ALONE = "deepcharter-test:alone";
 
     private static final int LONG_RUN = FarChunks.AWAIT_BUDGET_TICKS + 4000;
@@ -665,8 +668,8 @@ public class CompanyRecoveryTest {
     }
 
     /**
-     * The blocks the flood can have reached: a block round each block of its layer, which the water makes sources between. The two places
-     * it floods (the pad and the world spawn) can lie far apart, so this is not one box.
+     * The blocks the flood can have reached: a block round each block of its layer, which the water makes sources
+     * between. The two places it floods (the pad and the world spawn) can lie far apart, so this is not one box.
      */
     private static Set<BlockPos> floodedArea(Map<BlockPos, BlockState> flooded) {
         Set<BlockPos> area = new HashSet<>();
@@ -690,9 +693,10 @@ public class CompanyRecoveryTest {
     }
 
     /**
-     * Puts the flooded layer back, then clears the water that ran from it: water makes sources of its own between two sources, which the
-     * layer's saved blocks do not name, and nothing else would take them away from the pad that the colony tests read. The blocks are
-     * written for the clients only, so that no neighbour update starts the flow again.
+     * Puts the flooded layer back, then clears the water that ran from it: water makes sources of its own between two
+     * sources, which the layer's saved blocks do not name, and nothing else would take them away from the pad that the
+     * colony tests read. The blocks are written for the clients only, so that no neighbour update starts the flow
+     * again.
      */
     private static void restore(MinecraftServer server, Map<BlockPos, BlockState> flooded, Set<BlockPos> area) {
         ServerLevel overworld = server.overworld();

@@ -320,7 +320,7 @@ public class ColonyTest {
         // A lake 181 blocks across on the flat ground, far from every other test.
         int lake = 9000;
         int half = 90;
-        FarChunks.whenLoaded(
+        FarChunks.whenBlocksLoaded(
                 helper,
                 FarChunks.overBlocks(level, lake - half, lake - half, lake + half, lake + half),
                 () -> aSpawnInWaterMakesTheBuildSearch(helper, level, lake, half));
@@ -813,7 +813,7 @@ public class ColonyTest {
         BlockPos centre = colony.center();
         Map<BlockPos, BlockState> land = new LinkedHashMap<>();
         for (BlockPos at : BlockPos.betweenClosed(centre.offset(half + 1, -3, -20), centre.offset(half + 32, 8, 20))) {
-            // sync-load: the caller waited for the strip's chunks with FarChunks.awaitLoaded (eastLandChunks)
+            // sync-load: the caller waited for the strip's chunks with FarChunks.whenBlocksLoaded (eastLandChunks)
             level.getChunk(at.getX() >> 4, at.getZ() >> 4);
             land.put(at.immutable(), level.getBlockState(at));
         }
@@ -840,7 +840,7 @@ public class ColonyTest {
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
         boolean[] stripLoaded = {false};
-        FarChunks.awaitLoaded(helper, eastLandChunks(level, colony), () -> stripLoaded[0] = true);
+        FarChunks.whenBlocksLoaded(helper, eastLandChunks(level, colony), () -> stripLoaded[0] = true);
         whenThePadTicks(helper, colony, () -> stripLoaded[0], () -> {
             int half = ColonyTuning.DEFAULT.padSize() / 2;
             BlockPos centre = colony.center();
@@ -891,7 +891,7 @@ public class ColonyTest {
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
         boolean[] stripLoaded = {false};
-        FarChunks.awaitLoaded(helper, eastLandChunks(level, colony), () -> stripLoaded[0] = true);
+        FarChunks.whenBlocksLoaded(helper, eastLandChunks(level, colony), () -> stripLoaded[0] = true);
         whenThePadTicks(helper, colony, () -> stripLoaded[0], () -> {
             int half = ColonyTuning.DEFAULT.padSize() / 2;
             BlockPos centre = colony.center();

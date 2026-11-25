@@ -434,8 +434,8 @@ public class LightSyncSafetyNetTest {
     }
 
     /**
-     * Loads the chunks round the player's chunk to FULL, held by a ticket that loads and does not simulate; the chunks load on the
-     * worker threads. True once all of them are loaded.
+     * Loads the chunks round the player's chunk to FULL, held by a ticket that loads and does not simulate; the chunks
+     * load on the worker threads. True once all of them are loaded.
      */
     private static boolean loadAround(ServerLevel level, ChunkPos home) {
         boolean loaded = true;

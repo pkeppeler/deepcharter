@@ -884,10 +884,13 @@ public class ColonyPlacementTest {
     /** Runs {@code body} once the chunks over the columns {@code x1..x2}, {@code z1..z2} are loaded. */
     private static void whenColumnsLoaded(
             GameTestHelper helper, ServerLevel level, int x1, int x2, int z1, int z2, Runnable body) {
-        FarChunks.whenLoaded(helper, FarChunks.overBlocks(level, x1, z1, x2, z2), body);
+        FarChunks.whenBlocksLoaded(helper, FarChunks.overBlocks(level, x1, z1, x2, z2), body);
     }
 
-    /** The chunks over the columns {@code x1..x2}, {@code z1..z2}, loaded already; indexed from the chunk of {@code x1}, {@code z1}. */
+    /**
+     * The chunks over the columns {@code x1..x2}, {@code z1..z2}, loaded already; indexed from the chunk of {@code x1},
+     * {@code z1}.
+     */
     private static LevelChunk[][] loadedChunks(ServerLevel level, int x1, int x2, int z1, int z2) {
         LevelChunk[][] chunks = new LevelChunk[(x2 >> 4) - (x1 >> 4) + 1][(z2 >> 4) - (z1 >> 4) + 1];
         for (int i = 0; i < chunks.length; i++) {

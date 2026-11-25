@@ -65,8 +65,8 @@ public final class AtmosphereScenes {
             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "campaign_sample"));
 
     /**
-     * Today's layer 1 dimension, which the scenes compare the campaign type with. TODO(#804): {@code TestLayers} never resolves to a layer
-     * dimension, so this names it; #804 deletes the dimension and the comparison with it.
+     * Today's layer 1 dimension, which the scenes compare the campaign type with. {@code TestLayers} never resolves to a layer
+     * dimension, so this names it. The layer dimensions stay as the base of the dimension seam (ADR 0085).
      */
     public static final ResourceKey<Level> TODAY =
             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "layer_1"));

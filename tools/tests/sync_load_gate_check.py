@@ -1,7 +1,10 @@
-"""Tests the sync-load gate in gradle/gametest.gradle.kts: a getChunk or getChunkAt in src/gametest server test or support code, which loads the chunk on the server thread, fails the build unless a `// sync-load: <why>` marker sits on its statement or the comment line above it.
+"""Tests the sync-load gate in gradle/gametest.gradle.kts: a getChunk or getChunkAt in src/gametest server test or
+support code, which loads the chunk on the server thread, fails the build unless a `// sync-load: <why>` marker sits on
+its statement or the comment line above it.
 
-Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
-repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so
+it needs the repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no
+JDK 25; the build job and the pre-push hook run it.
 Usage: tools/py tools/tests/gate_checks.py sync_load
 """
 import unittest
@@ -26,7 +29,7 @@ CLEAN = {
 public class WaitsTest {
     @GameTest
     public void waits(GameTestHelper helper) {
-        FarChunks.whenLoaded(helper, FarChunks.rect(level, 3, 4, 5, 6), () -> level.getChunkSource().getChunkNow(3, 4));
+        FarChunks.whenBlocksLoaded(helper, FarChunks.rect(level, 3, 4, 5, 6), () -> level.getChunkSource().getChunkNow(3, 4));
         FarChunks.awaitEntityTicking(helper, level, pos, () -> level.getChunkSource().hasChunk(3, 4));
         ChunkAccess absent = level.getChunk(3, 4, ChunkStatus.FULL, false);
         ChunkAccess wrapped = level.getChunk(
@@ -136,7 +139,7 @@ class SyncLoadGateTest(unittest.TestCase):
         self.assertFalse(result.ok, f"the gate should fail the build for {label}")
         module = name.removesuffix(".java").replace("/", ".")
         self.assertIn(f"{module}:{line} loads a chunk synchronously", result.message)
-        self.assertIn("FarChunks.whenLoaded", result.message)
+        self.assertIn("FarChunks.whenBlocksLoaded", result.message)
         self.assertIn("FarChunks.awaitEntityTicking", result.message)
         self.assertIn("sync-load:", result.message)
         for clean in ("WaitsTest", "MarkedTest", "MentionsTest", "FixtureClientTest", "EvidenceWorld"):

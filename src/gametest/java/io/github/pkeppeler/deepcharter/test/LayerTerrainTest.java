@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -117,7 +118,7 @@ public class LayerTerrainTest {
                 }
             }
         }
-        FarChunks.whenLoaded(helper, sample, () -> terrainIsNoiseWithCavesOnceLoaded(helper));
+        FarChunks.whenBlocksLoaded(helper, sample, () -> terrainIsNoiseWithCavesOnceLoaded(helper));
     }
 
     private static void terrainIsNoiseWithCavesOnceLoaded(GameTestHelper helper) {
@@ -150,7 +151,7 @@ public class LayerTerrainTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void onlyTheRetainedSpawnNaturally(GameTestHelper helper) {
-        FarChunks.whenLoaded(helper, spawnChunks(helper), () -> onlyTheRetainedSpawnNaturallyOnceLoaded(helper));
+        FarChunks.whenBlocksLoaded(helper, spawnChunks(helper), () -> onlyTheRetainedSpawnNaturallyOnceLoaded(helper));
     }
 
     /** Chunk (0, 0) of each layer, where the zone tests read a biome and the mobs the generator lists. */
@@ -212,7 +213,9 @@ public class LayerTerrainTest {
     /** A layer past the named ones has no zone, and never throws: callers pass any player Y every tick. */
     @GameTest
     public void anUnnamedLayerHasNoZone(GameTestHelper helper) {
-        if (Zones.of(3, 0, 192, 100).isPresent() || Zones.of(0, 0, 192, 100).isPresent()) {
+        int unnamed = CampaignBands.lastLayer() + 1;
+        if (Zones.of(unnamed, 0, 192, 100).isPresent()
+                || Zones.of(0, 0, 192, 100).isPresent()) {
             throw failure(helper, "a layer without names has a zone");
         }
         if (Zones.of(1, 0, 192, 100).isEmpty()) {
@@ -221,12 +224,12 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** The names must cover every layer in the chain; this is the start-up check, run here as well. */
+    /** The names must cover every layer in the chain, as the campaign world lays it out; this is the start-up check, run here as well. */
     @GameTest
     public void zoneNamesCoverEveryLayerInTheChain(GameTestHelper helper) {
-        Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()));
+        Zones.requireNamesFor(CampaignBands.lastLayer());
         try {
-            Zones.requireNamesFor(LayerChain.count(helper.getLevel().registryAccess()) + 1);
+            Zones.requireNamesFor(CampaignBands.lastLayer() + 1);
         } catch (IllegalStateException expected) {
             helper.succeed();
             return;
@@ -236,7 +239,7 @@ public class LayerTerrainTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void eachZoneHasItsOwnBiomeNamedInTheLore(GameTestHelper helper) {
-        FarChunks.whenLoaded(helper, spawnChunks(helper), () -> eachZoneHasItsOwnBiomeOnceLoaded(helper));
+        FarChunks.whenBlocksLoaded(helper, spawnChunks(helper), () -> eachZoneHasItsOwnBiomeOnceLoaded(helper));
     }
 
     private static void eachZoneHasItsOwnBiomeOnceLoaded(GameTestHelper helper) {
@@ -368,7 +371,7 @@ public class LayerTerrainTest {
     /** The generator's own copies of the layers' ranges must equal the level's and the band table's, or zones and terrain drift apart. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void generatorMatchesTheBands(GameTestHelper helper) {
-        FarChunks.whenLoaded(
+        FarChunks.whenBlocksLoaded(
                 helper, List.of(new FarChunks.At(TestLayers.level(helper, 1), 0, 0)), () -> generatorMatches(helper));
     }
 

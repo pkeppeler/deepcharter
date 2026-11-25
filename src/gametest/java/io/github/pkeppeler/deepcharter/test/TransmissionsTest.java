@@ -790,7 +790,7 @@ public class TransmissionsTest {
         // The crew crosses once the arrival area in layer 2 is loaded, so the crossing does not load it on the server
         // thread.
         int arrival = (int) BREACH_COLUMN / 16;
-        FarChunks.whenLoaded(
+        FarChunks.whenBlocksLoaded(
                 helper,
                 FarChunks.rect(two, arrival - 2, arrival - 2, arrival + 2, arrival + 2),
                 () -> crossBreach(helper, one));

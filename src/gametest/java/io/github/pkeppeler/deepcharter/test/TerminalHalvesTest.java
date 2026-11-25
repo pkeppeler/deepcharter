@@ -39,7 +39,7 @@ public class TerminalHalvesTest {
     private static final List<String> OPENED = new ArrayList<>();
 
     static {
-        TerminalEvents.OPENED.register((server, type, player) ->
+        TerminalEvents.OPENED.register((server, type, player, pos) ->
                 OPENED.add(type.id() + "/" + player.getGameProfile().name()));
     }
 

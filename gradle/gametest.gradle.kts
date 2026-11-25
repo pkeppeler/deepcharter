@@ -17,6 +17,7 @@ tasks.named("runGameTest") { dependsOn(deleteGameTestWorld) }
 //   client GameTest    implements FabricClientGameTest        -> fabric-client-gametest
 //   evidence scenario  extends EvidenceScenario               -> fabric-client-gametest
 // Filter: -PclientTests=<name or glob>[,...] keeps only matching client classes, so one client test can run alone (see .claude/skills/deepcharter-conventions/tests.md).
+// Shard: -PclientShard=i/n keeps the i-th of n shards of what is left, so CI runs the suite in parallel jobs (weights: gradle/client-test-weights.txt).
 // Order: classes are listed sorted by name. The suite must not depend on that order: -PgametestOrder=reverse
 // lists them in reverse name order, to catch a test that leaks world state into a later one.
 //
@@ -63,18 +64,24 @@ object GametestScan {
 	// or the comment line above it.
 	private const val FORCE_MARKER = "// force-ok:"
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
-	// A synchronous chunk load on the server thread (getChunk or getChunkAt, which load or generate the chunk and wait for it) stalls the one thread
-	// that every server GameTest in the batch shares, so a test beside it makes no progress; the suite spent most of its time there (#1016, #1020).
-	// A server test or its support waits with FarChunks.whenLoaded or awaitEntityTicking, which load the chunk on the worker threads, or marks the
-	// load with the comment below, with a reason, on its statement or the comment line above it: a load that must happen in one tick (under a
-	// WorldData.with), a chunk of the test's own structure or one an earlier wait loaded, which loads nothing. A getChunk or getChunkAt call or method reference is flagged; one whose last argument is the
-	// literal false does not load and is exempt. Client tests and evidence (test/evidence) run in a world of their own and are exempt too.
+	// A synchronous chunk load on the server thread (getChunk or getChunkAt, which load or generate the chunk and wait
+	// for it) stalls the one thread that every server GameTest in the batch shares, so a test beside it makes no
+	// progress; the suite spent most of its time there (#1016, #1020). A server test or its support waits with
+	// FarChunks.whenBlocksLoaded or awaitEntityTicking, which load the chunk on the worker threads, or marks the load
+	// with the comment below, with a reason, on its statement or the comment line above it: a load that must happen in
+	// one tick (under a WorldData.with), a chunk of the test's own structure or one an earlier wait loaded, which loads
+	// nothing. A getChunk or getChunkAt call or method reference is flagged; one whose last argument is the literal
+	// false does not load and is exempt. Client tests and evidence (test/evidence) run in a world of their own and are
+	// exempt too.
 	private const val SYNC_LOAD_MARKER = "// sync-load:"
 	private val chunkLoad = Regex("""\bgetChunk(?:At)?\s*\(|::\s*getChunk(?:At)?\b""")
 	private val nonLoadingArgument = Regex(""",\s*false\s*$""")
 	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
 	private val onEachTickCall = Regex("""\bonEachTick\b""")
+	// A dedicated server a client test starts goes through DedicatedServerRelease.createServer, which gives it no watchdog; a raw createServer
+	// leaves the stopped server on the heap for a minute and the next test pays for it (#914).
+	private val rawCreateServer = Regex("""\bworldBuilder\s*\(\s*\)\s*\.\s*createServer\b""")
 	// A copy of test/support/Failures: a static failure(...) or fail(...), or a void expect(...) or require(...) over a boolean, with or without a GameTestHelper before it.
 	private val failureNameCopy = Regex("""\bstatic\s+[\w.<>?]+\s+(?:failure|fail)\s*\(""")
 	private val conditionCopy = Regex("""\bstatic\s+void\s+(?:expect|require)\s*\(\s*(?:final\s+)?(?:@\w+\s+)*(?:GameTestHelper\s+\w+\s*,\s*(?:final\s+)?(?:@\w+\s+)*)?boolean\b""")
@@ -92,6 +99,18 @@ object GametestScan {
 	private val pollCall = Regex("""\b(?:succeedWhen|thenWaitUntil)\s*\(""")
 	private val flagSet = Regex("""\]\s*=\s*true\s*;|\bthis\s*\.\s*\w+\s*=\s*true\s*;|\.\s*set\s*\(\s*true\s*\)""")
 	private val oneShotCheck = Regex("""\bthrow\b|\bfail\s*\(|\bassert\w*\s*\(|\bexpect\w*\s*\(\s*helper\b""")
+
+	// Block light is made on Util.backgroundExecutor(), which other tests' chunk work can fill, so a server GameTest that counts ticks for light flakes
+	// (#1042, #1048). A light read (getBrightness(LightLayer..., getLightEngine) in a server GameTest class is flagged when it sits inside a
+	// thenWaitUntil or succeedWhen call, which counts ticks, or in an @GameTest method that never awaits a Deadline (`.await(` on a name declared with a `Deadline` type in the file, a
+	// `[n]` index of one included, or on `FarChunks.deadline()` inline). Wait under a Deadline, polled from TestTicks.each. A read that is not a wait (an assertion after a deadline-based wait,
+	// a call from a helper the method's deadline covers) carries the comment below, with a reason, on its statement or the comment line above it.
+	// Heuristic: a read in a helper method outside every @GameTest method is only flagged inside a poll call of its own; an await on a Deadline anywhere in the method counts,
+	// even one that guards another wait.
+	private const val LIGHT_WAIT_MARKER = "// light-wait-ok:"
+	private val lightRead = Regex("""\bgetBrightness\s*\(\s*LightLayer\b|\bgetLightEngine\b""")
+	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
+	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
@@ -153,6 +172,42 @@ object GametestScan {
 		return problems
 	}
 
+	private fun lightWaitProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val polls = pollCall.findAll(text).map { it.range.last to closing(text, it.range.last) }.filter { it.second > 0 }.toList()
+		val methods = gameTestAnnotation.findAll(text).mapNotNull { annotation ->
+			var from = annotation.range.last + 1
+			if (text.substring(from).trimStart().startsWith("(")) {
+				from = closing(text, text.indexOf('(', from)) + 1
+			}
+			val bodyOpen = text.indexOf('{', from)
+			val bodyClose = if (bodyOpen < 0) -1 else closing(text, bodyOpen)
+			if (bodyClose < 0) null else bodyOpen..bodyClose
+		}.toList()
+		val deadlineAwait = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
+			.takeIf { it.isNotEmpty() }
+			?.let { names -> Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
+		val problems = mutableListOf<String>()
+		for (read in lightRead.findAll(text)) {
+			val at = read.range.first
+			val inPoll = polls.any { at > it.first && at < it.second }
+			val method = methods.firstOrNull { at in it }
+			val noDeadline = method != null && text.substring(method.first, method.last).let {
+				!inlineDeadlineAwait.containsMatchIn(it) && deadlineAwait?.containsMatchIn(it) != true
+			}
+			val line = lineOf(text, at)
+			if ((inPoll || noDeadline) && !marked(markedNear, rawLines, line, LIGHT_WAIT_MARKER)) {
+				val where = if (inPoll) "inside thenWaitUntil or succeedWhen, which count ticks" else "in a test method that awaits no FarChunks.Deadline"
+				problems.add("$className:${line + 1} reads block light $where, and the light engine runs on Util.backgroundExecutor(), which other tests' chunk work can starve; wait for it under FarChunks.Deadline (poll from TestTicks.each, see #1042 and #1048), or mark a read that is not a wait with '$LIGHT_WAIT_MARKER <reason>'")
+			}
+		}
+		return problems
+	}
+
 	private fun oneShotProblems(
 		className: String,
 		text: String,
@@ -209,6 +264,54 @@ object GametestScan {
 	private fun marked(markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean, rawLines: List<String>, line: Int, marker: String): Boolean =
 		markedNear(rawLines, line) { hasMarker(it, marker) }
 
+	/** A class with no entry in client-test-weights.txt counts as this many seconds, so a new class lands in a shard without anyone editing the file. */
+	const val DEFAULT_CLIENT_WEIGHT = 10
+
+	/**
+	 * Shard `i/n` (1-based) of [classes]: longest-processing-time-first onto the lightest shard, by [weights] (fully qualified or simple class name to seconds; the full name wins).
+	 * Every shard computes the same partition from the same list, and each class lands in exactly one, so the union of the n shards is the whole list.
+	 */
+	fun shardOf(classes: List<String>, shard: String, weights: Map<String, Int>): List<String> {
+		val match = Regex("""(\d+)/(\d+)""").matchEntire(shard)
+		val index = match?.groupValues?.get(1)?.toInt() ?: 0
+		val count = match?.groupValues?.get(2)?.toInt() ?: 0
+		if (index < 1 || index > count) {
+			throw GradleException("-PclientShard is '$shard', expected i/n with 1 <= i <= n, like 2/3")
+		}
+		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)] ?: DEFAULT_CLIENT_WEIGHT
+		val loads = IntArray(count)
+		val mine = mutableListOf<String>()
+		for (name in classes.sortedWith(compareBy({ -weight(it) }, { it }))) {
+			val target = loads.indices.minBy { loads[it] }
+			loads[target] += weight(name)
+			if (target == index - 1) {
+				mine.add(name)
+			}
+		}
+		if (mine.isEmpty()) {
+			throw GradleException("-PclientShard=$shard selects no client class: only ${classes.size} class(es) to share among $count shards")
+		}
+		return mine
+	}
+
+	/** Lines of `<simple class name> <seconds>`; blank lines and `#` comments are skipped. */
+	fun parseWeights(file: File): Map<String, Int> {
+		val weights = mutableMapOf<String, Int>()
+		for ((number, raw) in file.readLines().withIndex()) {
+			val line = raw.substringBefore("#").trim()
+			if (line.isEmpty()) {
+				continue
+			}
+			val parts = line.split(Regex("\\s+"))
+			val seconds = parts.getOrNull(1)?.toIntOrNull()
+			if (parts.size != 2 || seconds == null || seconds < 1) {
+				throw GradleException("${file.name}:${number + 1} is '$raw', expected '<client class name> <seconds>'")
+			}
+			weights[parts[0]] = seconds
+		}
+		return weights
+	}
+
 	/**
 	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [mainSources] and
 	 * [guardSource] are the files WorldDataGuard must list every saved-data record of the mod in, or it misses a swap of a new one.
@@ -216,6 +319,8 @@ object GametestScan {
 	fun scan(
 		javaRoot: File,
 		clientFilter: String?,
+		clientShard: String?,
+		clientWeights: Map<String, Int>,
 		order: String,
 		mainSources: Collection<File>,
 		guardSource: File,
@@ -246,7 +351,8 @@ object GametestScan {
 					}
 				}
 			}
-			if (text.contains("LayerChain.dimension(")) {
+			// A layer dimension is reached through LayerChain.dimension or, in tests, TestLayers.layerDimension.
+			if (text.contains("LayerChain.dimension(") || text.contains("layerDimension(")) {
 				for (carve in carveWrite.findAll(text)) {
 					val line = lineOf(text, carve.range.first)
 					if (!marked(markedNear, rawLines, line, CARVE_MARKER)) {
@@ -302,11 +408,19 @@ object GametestScan {
 					val arguments = if (text[open] == '(') text.substring(open + 1, closing(text, open).coerceAtLeast(open + 1)) else ""
 					val line = lineOf(text, load.range.first)
 					if (!nonLoadingArgument.containsMatchIn(arguments) && !marked(markedNear, rawLines, line, SYNC_LOAD_MARKER)) {
-						problems.add("$className:${line + 1} loads a chunk synchronously on the server thread, which stalls every test in the batch; wait for it with FarChunks.whenLoaded(helper, chunks, body) or FarChunks.awaitEntityTicking(helper, level, pos, body) (test/support), which load it on the worker threads, or mark a load that must be synchronous, or of a chunk that is loaded already, with '$SYNC_LOAD_MARKER <why>'")
+						problems.add("$className:${line + 1} loads a chunk synchronously on the server thread, which stalls every test in the batch; wait for it with FarChunks.whenBlocksLoaded(helper, chunks, body) or FarChunks.awaitEntityTicking(helper, level, pos, body) (test/support), which load it on the worker threads, or mark a load that must be synchronous, or of a chunk that is loaded already, with '$SYNC_LOAD_MARKER <why>'")
 					}
 				}
 			}
+			if (source.name != "DedicatedServerRelease.java") {
+				for (raw in rawCreateServer.findAll(text)) {
+					problems.add("$className:${lineOf(text, raw.range.first) + 1} creates a dedicated server with worldBuilder().createServer, which keeps a watchdog thread holding the stopped server (#914); use DedicatedServerRelease.createServer(context, properties) (test/support)")
+				}
+			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
+			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
+				problems.addAll(lightWaitProblems(className, text, rawLines, markedNear))
+			}
 			problems.addAll(campaignEnvironmentProblems(className, text, sourceText, campaignEnvironments))
 			if (abstractClass.containsMatchIn(text)) {
 				continue
@@ -361,6 +475,9 @@ object GametestScan {
 			}
 			client = client.filter { kept.contains(it) }.toMutableList()
 		}
+		if (clientShard != null) {
+			client = shardOf(client, clientShard, clientWeights).toMutableList()
+		}
 
 		fun ordered(names: List<String>): List<String> = if (order == "reverse") names.sorted().reversed() else names.sorted()
 		return GametestFound(ordered(server), ordered(client))
@@ -387,6 +504,11 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	// An input, so changing the filter regenerates the list.
 	val clientFilter = providers.gradleProperty("clientTests").orNull
 	inputs.property("clientTests", clientFilter).optional(true)
+	// -PclientShard=i/n keeps the i-th of n balanced shards of the client list (after -PclientTests), weighted by client-test-weights.txt.
+	val clientShard = providers.gradleProperty("clientShard").orNull
+	inputs.property("clientShard", clientShard).optional(true)
+	val weightsFile = file("gradle/client-test-weights.txt")
+	inputs.file(weightsFile).withPropertyName("clientWeights")
 	val outputFile = generatedGametestResources.map { it.file("fabric.mod.json") }
 	val sources = fileTree(javaRoot) { include("**/*.java") }
 	inputs.files(sources).withPropertyName("gametestSources")
@@ -394,7 +516,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
 	doLast {
-		val found = GametestScan.scan(javaRoot, clientFilter, order, mainSources.files, guardSource, blankLiterals, markedNear)
+		val found = GametestScan.scan(javaRoot, clientFilter, clientShard, GametestScan.parseWeights(weightsFile), order, mainSources.files, guardSource, blankLiterals, markedNear)
 		var json = template.readText()
 		mapOf("SERVER_TESTS" to found.server, "CLIENT_TESTS" to found.client).forEach { (token, names) ->
 			val placeholder = "\"@$token@\""
@@ -407,7 +529,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -500,7 +622,7 @@ tasks.register("checkGametestFixtures") {
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue
 				}
-				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, "name", mainSources.files, guardSource, blankLiterals, markedNear)
+				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, c["clientShard"] as String?, (c["clientWeights"] as Map<*, *>? ?: emptyMap<String, Int>()).entries.associate { it.key as String to (it.value as Number).toInt() }, "name", mainSources.files, guardSource, blankLiterals, markedNear)
 				report[name] = linkedMapOf("ok" to true, "message" to "", "server" to found.server, "client" to found.client)
 			} catch (e: GradleException) {
 				report[name] = linkedMapOf("ok" to false, "message" to e.message!!, "server" to emptyList<String>(), "client" to emptyList<String>())

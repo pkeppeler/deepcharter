@@ -30,7 +30,12 @@ import net.minecraft.world.phys.Vec3;
  */
 public class PodDriveStepTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 700;
-    private static final int X = 4024;
+    /**
+     * Layer 1 columns x 4260-4269, z 2996-3148, all in chunk column 266: no other test stages here. PodDrillTest's nudge test
+     * shared x 4024 and in reverse order ran in one batch (#1178).
+     */
+    private static final int X = 4264;
+
     private static final int Z = 3000;
     private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final float EAST = -90f;
@@ -48,16 +53,6 @@ public class PodDriveStepTest {
         List<MockPlayer> pilots = new ArrayList<>();
         List<Arrival<PodEntity>> arrivals = new ArrayList<>();
         for (int i = 0; i < PODS; i++) {
-            int z = Z + i * ROW;
-            RoomCarver.carve(level, X - 4, X + 5, FLOOR - 8, FLOOR - 1, z - 4, z + 4, Blocks.STONE);
-            RoomCarver.carve(level, X - 4, X + 5, FLOOR, FLOOR + 10, z - 4, z + 4, Blocks.AIR);
-            for (int x = X + 3; x < X + 3 + SLABS; x++) {
-                for (int y = FLOOR; y <= FLOOR + 10; y++) {
-                    for (int dz = -3; dz <= 3; dz++) {
-                        level.setBlock(new BlockPos(x, y, z + dz), Blocks.STONE.defaultBlockState(), 2);
-                    }
-                }
-            }
             Vec3 at = start(i);
             MockPlayer pilot = MockPlayers.join(helper, "drive-step-" + i);
             pilot.teleportTo(level, at, EAST, 0f);
@@ -66,6 +61,8 @@ public class PodDriveStepTest {
             spots.add(BlockPos.containing(at));
         }
         FarChunks.awaitEntityTicking(helper, level, spots, i -> {
+            // Cut once the row's chunk ticks: an earlier cut can unload unsaved (#1083).
+            room(level, i);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(start(i));
             level.addFreshEntity(pod);
@@ -111,8 +108,39 @@ public class PodDriveStepTest {
             }
             if (finished == PODS) {
                 helper.succeed();
+            } else if (helper.getTick() >= MAX_TICKS - 2) {
+                throw failure(helper, "pods not done:%s", describe(arrivals, done, last));
             }
         });
+    }
+
+    /** Which pods never arrived or never finished, and where each one stopped. */
+    private static String describe(List<Arrival<PodEntity>> arrivals, boolean[] done, Vec3[] last) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < PODS; i++) {
+            if (!done[i]) {
+                text.append("\n  pod %s: %s, %s"
+                        .formatted(
+                                i,
+                                arrivals.get(i).isPresent() ? "arrived" : "never arrived",
+                                last[i] == null ? "no position yet" : "last at " + last[i]));
+            }
+        }
+        return text.toString();
+    }
+
+    /** Row {@code i}: a room with a stone bed and {@link #SLABS} slabs of stone for the pod to drill. */
+    private static void room(ServerLevel level, int i) {
+        int z = Z + i * ROW;
+        RoomCarver.carve(level, X - 4, X + 5, FLOOR - 8, FLOOR - 1, z - 4, z + 4, Blocks.STONE);
+        RoomCarver.carve(level, X - 4, X + 5, FLOOR, FLOOR + 10, z - 4, z + 4, Blocks.AIR);
+        for (int x = X + 3; x < X + 3 + SLABS; x++) {
+            for (int y = FLOOR; y <= FLOOR + 10; y++) {
+                for (int dz = -3; dz <= 3; dz++) {
+                    level.setBlock(new BlockPos(x, y, z + dz), Blocks.STONE.defaultBlockState(), 2);
+                }
+            }
+        }
     }
 
     private static Vec3 start(int i) {

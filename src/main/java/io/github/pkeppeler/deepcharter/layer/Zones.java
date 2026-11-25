@@ -18,7 +18,8 @@ public final class Zones {
     /** Zone names per layer (index 0 is layer 1), top to bottom. A layer with no entry has no zones yet. */
     private static final List<List<String>> NAMES = List.of(
             List.of("topsoil_claims", "stone_benches", "deep_claim"),
-            List.of("upper_levels", "shift_change", "prospectors_run"));
+            List.of("upper_levels", "shift_change", "prospectors_run"),
+            List.of("garden", "spore_fields", "quiet"));
 
     private Zones() {}
 

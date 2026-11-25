@@ -634,7 +634,8 @@ public class LayerStructuresTest {
     }
 
     /**
-     * The Kells' shaft (#716) hangs off the end of the rail line of its cell and runs down to the first block above the crust.
+     * The Kells' shaft (#716) hangs off the end of the rail line of its cell and runs down to the first block above the crust, and
+     * through the crust into layer 3 (#972).
      * Its hollow is a clear 2 x 2, its top meets the line's last column through a drift with a rail, and its lava is the
      * gaps: each is one lava block in a ring of slag brick, backed by one more, with a bulkhead of brick across the hollow at its row, and each has {@value StructureKind#KELLS_RESERVE_PER_GAP} bricks in the reserve at the head.
      */
@@ -810,6 +811,20 @@ public class LayerStructuresTest {
         if (gaps.size() < 2 || gaps.size() > 4) {
             unmet.add(gaps.size() + " gaps, expected 2 to 4");
         }
+        // The layer 3 end: the crust under the hollow is broken through.
+        for (int y = -LayerTuning.DEFAULT.crustThickness(); y < 0; y++) {
+            for (int u = -1; u <= 0; u++) {
+                for (int v = -1; v <= 0; v++) {
+                    BlockState state = level.getBlockState(at(shaft, u, y, v));
+                    if (!state.isAir()) {
+                        unmet.add(String.format(
+                                "the crust under the hollow at (%d, %d, %d) is %s, not broken through",
+                                u, y, v, state));
+                        return unmet;
+                    }
+                }
+            }
+        }
         for (int[] gap : gaps) {
             // The lava is backed by one more block, away from the hollow.
             StructureKind.RingSide side = ringSide(gap[0], gap[2]);
@@ -930,7 +945,7 @@ public class LayerStructuresTest {
         MinecraftServer server = server(helper);
         ColonySite.Placed colony = Colony.placed(server).orElseThrow(() -> failure(helper, "the colony was not built"));
         BlockPos around = colony.center();
-        FarChunks.whenLoaded(
+        FarChunks.whenBlocksLoaded(
                 helper,
                 FarChunks.overBlocks(
                         server.overworld(),

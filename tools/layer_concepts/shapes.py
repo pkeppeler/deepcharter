@@ -10,8 +10,8 @@ lives in the scene: benches and slots, faults and rubble heaps, a field of colum
                    little, each variant of its own width and offset. The open joints between columns are the formation, and they repeat at the
                    size of a block; the rendered check (grid.py) reports how much.
 
-Layers 1 and 2 have rock blocks of their own (#241). Layer 3 has none until M3 (#504): vanilla andesite is its rock and diorite its rubble, and
-the Grain pack redraws their blockstates.
+Layers 1 and 2 have rock blocks of their own (#241), and layer 3 has its columnar basalt and the basalt core behind it (#972, #504). The
+scenes still draw layer 3 on vanilla andesite (rock) and diorite (rubble), which the Grain pack redraws.
 """
 import math
 import sys

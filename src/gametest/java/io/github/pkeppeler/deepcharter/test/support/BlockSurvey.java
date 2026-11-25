@@ -15,7 +15,7 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 public final class BlockSurvey {
     private BlockSurvey() {}
 
-    /** The chunks within {@code chunks} of the origin, for {@link FarChunks#whenLoaded}. */
+    /** The chunks within {@code chunks} of the origin, for {@link FarChunks#whenBlocksLoaded}. */
     public static List<FarChunks.At> area(ServerLevel level, int chunks) {
         List<FarChunks.At> area = new ArrayList<>();
         for (int chunkX = -chunks; chunkX <= chunks; chunkX++) {
@@ -28,16 +28,17 @@ public final class BlockSurvey {
 
     /**
      * Every position of {@code wanted} in the chunks within {@code chunks} of the origin, which must be loaded already: a server
-     * GameTest loads them with {@code FarChunks.whenLoaded(helper, BlockSurvey.area(...), ...)}, so the generation does not run on the
+     * GameTest loads them with {@code FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(...), ...)}, so the generation does not run on the
      * server thread (#1016).
      */
     public static List<BlockPos> find(ServerLevel level, int chunks, Block wanted) {
         return find(chunks, wanted, (chunkX, chunkZ) -> {
             LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
             if (chunk == null) {
-                throw new IllegalStateException("chunk (" + chunkX + ", " + chunkZ + ") of "
-                        + level.dimension().identifier()
-                        + " is not loaded; call FarChunks.whenLoaded(helper, BlockSurvey.area(level, n), ...) first");
+                throw new IllegalStateException(
+                        "chunk (" + chunkX + ", " + chunkZ + ") of "
+                                + level.dimension().identifier()
+                                + " is not loaded; call FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, n), ...) first");
             }
             return chunk;
         });

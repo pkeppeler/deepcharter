@@ -5,6 +5,7 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.layer.FloorCrust;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -28,18 +29,24 @@ import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
  * section edge, so no cell straddles two bands.
  *
  * <p>Registered as {@code deepcharter:bands}: {@code surface_min_y}, {@code surface} (a {@code multi_noise} source without its type),
- * {@code layers} (each its {@code min_y}, {@code height} and one biome per zone, top to bottom, ending at or below
- * {@code surface_min_y}) and {@code unbuilt}.
+ * {@code layers} (each its {@code min_y}, {@code height}, one biome per zone, top to bottom, and an optional {@code floor_crust}, ending at or
+ * below {@code surface_min_y}) and {@code unbuilt}.
  */
 public final class BandBiomeSource extends BiomeSource {
-    /** One layer's span and its zone biomes, top to bottom. */
-    public record Layer(int minY, int height, List<Holder<Biome>> biomes) {
+    /**
+     * One layer's span, its zone biomes top to bottom, and what its layer data says about the crust at its floor ({@code floor_crust},
+     * {@code draw} when left out): the boundary to the band below.
+     */
+    public record Layer(int minY, int height, List<Holder<Biome>> biomes, FloorCrust floorCrust) {
         private static final Codec<Layer> CODEC = RecordCodecBuilder.<Layer>create(instance -> instance.group(
                                 Codec.INT.fieldOf("min_y").forGetter(Layer::minY),
                                 Codec.intRange(Zones.COUNT, Integer.MAX_VALUE)
                                         .fieldOf("height")
                                         .forGetter(Layer::height),
-                                Biome.CODEC.listOf().fieldOf("biomes").forGetter(Layer::biomes))
+                                Biome.CODEC.listOf().fieldOf("biomes").forGetter(Layer::biomes),
+                                FloorCrust.CODEC
+                                        .optionalFieldOf("floor_crust", FloorCrust.DRAW)
+                                        .forGetter(Layer::floorCrust))
                         .apply(instance, Layer::new))
                 .validate(Layer::onePerZone);
 

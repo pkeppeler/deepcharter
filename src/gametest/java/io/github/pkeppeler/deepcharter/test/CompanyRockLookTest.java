@@ -91,7 +91,7 @@ public class CompanyRockLookTest {
                     FIRST_CHUNK + SIDE - 1,
                     FIRST_CHUNK + SIDE - 1));
         }
-        FarChunks.whenLoaded(helper, chunks, () -> generatedCompanyRockSitsInThatLayersRock(helper));
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> generatedCompanyRockSitsInThatLayersRock(helper));
     }
 
     private static void generatedCompanyRockSitsInThatLayersRock(GameTestHelper helper) {

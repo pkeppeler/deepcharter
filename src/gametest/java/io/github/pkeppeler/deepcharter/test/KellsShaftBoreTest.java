@@ -269,8 +269,9 @@ public class KellsShaftBoreTest {
     }
 
     /**
-     * The shaft of a spacing cell. Its chunks are made by the wait for the probes beside it ({@link FarChunks#awaitEntityTicking}): a
-     * ticking chunk holds its neighbours loaded, and the straight bores go down at most {@link #BESIDE} blocks from the shaft.
+     * The shaft of a spacing cell. Its chunks are made by the wait for the probes beside it
+     * ({@link FarChunks#awaitEntityTicking}): a ticking chunk holds its neighbours loaded, and the straight bores go
+     * down at most {@link #BESIDE} blocks from the shaft.
      */
     private static StructureSite shaftIn(ServerLevel level, BlockPos conduit, int cellX) {
         LayerChain.Band band = TestLayers.band(level, LAYER);

@@ -64,24 +64,14 @@ public class PodLinerTest {
     private static final int DRILL_TICKS = 2600;
     private static final int RING_TICKS = 400;
 
-    /**
-     * A bed of stone with the pod's room above it, walled so that the only open cells beside the pod are those of the east column (x + 1, the
-     * pod's two Z). With {@code column} that column runs down through the bed, so a ring that reaches below the pod has cells to line there.
-     */
-    private static void shaft(ServerLevel level, int x, int depth, boolean column) {
-        shaftWithoutLava(level, x, depth, column);
-        // A liner lines only what lava can reach (#432): a source in the wall beside the east column floods it. A ring
-        // test lays its ring on the
-        // first tick, before the lava has flowed a block. A drilling pod has a source in view for each ring: the first
-        // ring bricks the lava
-        // that is in its view, so the next stretch has a source of its own, 4 slabs further down than the ring before
-        // it can see.
+    /** Pours the shaft's lava once the chunk ticks, so its overdue flow cannot flood the ring on the first tick (#1083). */
+    private static void pourLava(ServerLevel level, int x, boolean column) {
         for (BlockPos pocket : lavaPockets(x, column)) {
             level.setBlock(pocket, Blocks.LAVA.defaultBlockState(), 3);
         }
     }
 
-    /** The wall cells that hold the lava of {@link #shaft}: level with the pod's feet, or at 5, 9 and 12 slabs under them where the pod drills down the column. */
+    /** The wall cells that hold the lava of {@link #pourLava}: level with the pod's feet, or at 5, 9 and 12 slabs under them where the pod drills down the column. */
     private static List<BlockPos> lavaPockets(int x, boolean column) {
         return column
                 ? List.of(
@@ -91,6 +81,10 @@ public class PodLinerTest {
                 : List.of(new BlockPos(x + 2, FLOOR, Z));
     }
 
+    /**
+     * A bed of stone with the pod's room above it, walled so that the only open cells beside the pod are those of the east column (x + 1, the
+     * pod's two Z). With {@code column} that column runs down through the bed, so a ring that reaches below the pod has cells to line there.
+     */
     private static void shaftWithoutLava(ServerLevel level, int x, int depth, boolean column) {
         RoomCarver.carve(
                 level, x - RADIUS, x + RADIUS + 1, FLOOR - depth, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
@@ -167,7 +161,8 @@ public class PodLinerTest {
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
-            shaft(level, x, 8, false);
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
             setup.accept(level);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), tier, rack);
             armed.pod.setAttached(
@@ -433,7 +428,8 @@ public class PodLinerTest {
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
-            shaft(level, x, 8, false);
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), 1, 10);
             armed.pod.setAttached(
                     PodLiner.STATE,
@@ -460,7 +456,8 @@ public class PodLinerTest {
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
-            shaft(level, x, 8, false);
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), 1, 10);
             // The anchor is at the pod's own height in the column beside: a sidestep puts the pod in a new column, and
             // the ring is due with no slab sunk.
@@ -502,7 +499,8 @@ public class PodLinerTest {
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
-            shaft(level, x, 8, false);
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
             // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
             pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
@@ -569,7 +567,8 @@ public class PodLinerTest {
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
-            shaft(level, x, 8, false);
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
             for (BlockPos cell : ringCells(x).subList(0, blocked)) {
                 level.setBlock(cell, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
             }
@@ -806,7 +805,10 @@ public class PodLinerTest {
 
     private void drillTenSlabs(GameTestHelper helper, int tier, int x, List<Ring> expected) {
         ServerLevel level = TestLayers.level(helper, 1);
-        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true, () -> shaft(level, x, 14, true));
+        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true, () -> {
+            shaftWithoutLava(level, x, 14, true);
+            pourLava(level, x, true);
+        });
         TestTicks.each(helper, () -> {
             if (!rig.seated.isPresent()) {
                 return;
