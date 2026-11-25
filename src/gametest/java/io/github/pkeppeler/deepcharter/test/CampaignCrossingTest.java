@@ -173,8 +173,8 @@ public class CampaignCrossingTest {
                 throw failure(helper, "expected one descent from layer 1 to 2, saw %s", crossings(player));
             }
             List<Identifier> delivered = DELIVERED.getOrDefault(player.getUUID(), List.of());
-            if (!delivered.contains(id("t05"))) {
-                throw failure(helper, "the descent into layer 2 should send t05, sent %s", delivered);
+            if (!delivered.contains(id("t11"))) {
+                throw failure(helper, "the descent into layer 2 should send t11, sent %s", delivered);
             }
             Set<Identifier> done = HandbookProgress.completedFor(server, player.getUUID());
             if (!done.contains(breachDirective)) {

@@ -19,7 +19,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * An item's spec sheet on a screen of its own, in the recipe console's look: where a sheet pops up when no inventory with the parts
  * catalogue is open to hold it (nothing open, or a window too small for the catalogue's consoles, once the screen over it has
- * closed). Any click or any key closes it, so the next sheet waiting ({@link SpecSheetOpener}) can follow.
+ * closed). Any key, the close switch and a click off the console close it, so the next sheet waiting ({@link SpecSheetOpener}) can
+ * follow; the Recipes link closes it and shows the item's recipes in the catalogue, over the inventory.
  */
 public final class SpecSheetScreen extends Screen {
     private final Item item;
@@ -49,16 +50,41 @@ public final class SpecSheetScreen extends Screen {
         return now == null ? null : now.layout().glass();
     }
 
+    /** The Recipes link; null before the screen has opened. */
+    // test-seam: the client test clicks the link
+    public @Nullable Rect recipesLink() {
+        Placed now = placed;
+        return now == null ? null : now.layout().recipes();
+    }
+
+    /** Whether the Recipes link does anything: the window has room for the catalogue it opens. */
+    // test-seam: the client test reads whether the link is lit
+    public boolean recipesLinkActive() {
+        return CatalogueScreens.canOpen();
+    }
+
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         Placed now = Objects.requireNonNull(placed, "<built by init() when the screen opens>");
-        SpecSheetView.draw(graphics, font, now.layout(), sheet, now.plan(), mouseX, mouseY);
+        SpecSheetView.draw(graphics, font, now.layout(), sheet, now.plan(), mouseX, mouseY, CatalogueScreens.canOpen());
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        onClose();
+        Placed now = Objects.requireNonNull(placed, "<built by init() when the screen opens>");
+        switch (SpecSheetView.clickAt(now.layout(), event.x(), event.y())) {
+            case RECIPES -> {
+                // A window too small for the catalogue has nothing to show, so the link is dim and a press keeps the
+                // sheet.
+                if (CatalogueScreens.canOpen()) {
+                    onClose();
+                    CatalogueScreens.open(sheet.item());
+                }
+            }
+            case CLOSE -> onClose();
+            case NONE -> {}
+        }
         return true;
     }
 

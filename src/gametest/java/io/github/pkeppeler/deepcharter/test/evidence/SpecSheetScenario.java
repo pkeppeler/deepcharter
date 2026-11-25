@@ -38,7 +38,6 @@ import net.minecraft.world.item.Items;
  */
 public class SpecSheetScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
-    private static final int LEFT_MOUSE = 0;
     /** The advancement toasts of the first items held, which sit over the top of the screen, fade by now. */
     private static final int TOAST_TICKS = 60;
     /** The inventory's crafting grid is 2 x 2: slots 1 to 4, the result is slot 0. */
@@ -85,7 +84,7 @@ public class SpecSheetScenario extends EvidenceScenario {
         context.waitTicks(2);
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         CatalogueScene.hover(context, layout.card().spec());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         ClientWait.until(
                 context, "the scanner unit's sheet", client -> panel.sheetItem() == ScannerRegistry.SCANNER_UNIT);
         CatalogueScene.parkCursor(context, layout);

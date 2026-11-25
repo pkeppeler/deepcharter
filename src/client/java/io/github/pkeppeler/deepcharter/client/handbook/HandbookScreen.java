@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
@@ -116,6 +117,9 @@ public final class HandbookScreen extends Screen {
 
     /** Absent until {@link #init} has built the widgets. */
     private @Nullable Buttons buttons;
+
+    /** Ticks since the screen opened: the clock an any-of slot's icon cycles on. */
+    private int cycleTicks;
 
     /** The screen closing returns to; none returns to the game. */
     private @Nullable Screen parent;
@@ -543,6 +547,7 @@ public final class HandbookScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        cycleTicks++;
         if (flipTicks > 0) {
             flipTicks--;
         }
@@ -622,7 +627,7 @@ public final class HandbookScreen extends Screen {
             }
             QuestMap.CardItem item = card.itemAt(event.x(), event.y());
             if (item != null) {
-                CatalogueScreens.open(item.item());
+                CatalogueScreens.open(item.shown(cycleTicks));
                 return true;
             }
             if (card.box().contains(event.x(), event.y())) {
@@ -689,6 +694,7 @@ public final class HandbookScreen extends Screen {
             case HandbookPage.Slip slip -> drawSlip(graphics);
             case HandbookPage.Letter letter -> drawLetter(graphics);
             case HandbookPage.Contents contents -> drawContents(graphics, contents);
+            case HandbookPage.Controls controls -> drawControls(graphics, controls);
             case HandbookPage.ChapterText text -> drawChapterText(graphics, text);
             case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
             case HandbookPage.Pencil pencil -> drawPencil(graphics, pencil);
@@ -862,6 +868,31 @@ public final class HandbookScreen extends Screen {
         };
     }
 
+    /** A page of the controls: its label and title, then each line, with the keys the player has bound now. */
+    private void drawControls(GuiGraphicsExtractor graphics, HandbookPage.Controls controls) {
+        int y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("controls.label", controls.part(), controls.parts()),
+                textLeft,
+                paperTop + tuning().topMargin(),
+                textWidth,
+                tuning().faintInkColor());
+        y = PaperDraw.wrapped(
+                graphics,
+                font,
+                Component.translatable(HandbookControls.titleKey(controls.part())),
+                textLeft,
+                y + 3,
+                textWidth,
+                tuning().inkColor());
+        y = titleRule(graphics, y);
+        for (Component line : HandbookControls.lines(controls.part(), Minecraft.getInstance().options)) {
+            y = PaperDraw.wrapped(graphics, font, line, textLeft, y, textWidth, tuning().inkColor())
+                    + tuning().paragraphGap();
+        }
+    }
+
     /** A page of the text of a chapter: its label and title, the text, and the margin note beside it if the language file has one. */
     private void drawChapterText(GuiGraphicsExtractor graphics, HandbookPage.ChapterText text) {
         int y = PaperDraw.wrapped(
@@ -1002,6 +1033,24 @@ public final class HandbookScreen extends Screen {
                 this::heldItems);
     }
 
+    // test-seam: where the index card of a chapter's picked step draws the icon of {@code item}, which the client test
+    // clicks to
+    // see the click open the item's recipes; null when the card has no such item
+    public @Nullable Rect indexCardItemBox(int chapterNumber, Item item) {
+        HandbookPage.Chapter chapter = Objects.requireNonNull(
+                chapters.get(chapterNumber), () -> "chapter " + chapterNumber + " has no chapter page");
+        for (QuestMap.CardItem shown : indexCard(chapter).items()) {
+            if (shown.items().contains(item)) {
+                return new Rect(
+                        shown.box().x(),
+                        shown.box().y(),
+                        shown.box().w(),
+                        shown.box().h());
+            }
+        }
+        return null;
+    }
+
     // test-seam: the number the first impression rests on, which no drawn text shows: how many pixels of the sheet a
     // chapter's map leaves unused (negative when it would overflow). The fits test holds it at 0 or more for every
     // shipped chapter
@@ -1048,7 +1097,6 @@ public final class HandbookScreen extends Screen {
                 Colors.opaque(tuning().inkColor()));
         QuestMap.Model model = QuestMap.model(chapters, chapter.number());
         QuestMap.Layout layout = mapLayout(chapter);
-        HandbookPage.Chapter ahead = model.ahead();
         QuestMap.drawChart(
                 graphics,
                 font,
@@ -1058,10 +1106,7 @@ public final class HandbookScreen extends Screen {
                 frame.originY(),
                 frame.clip(),
                 mapNote(chapter),
-                tr("chapter.stamp.classified"),
-                ahead == null
-                        ? Component.empty()
-                        : tr("quest.ahead", ahead.number(), ahead.chapter().title()));
+                tr("chapter.stamp.classified"));
         int stampX = textLeft + QuestMapTuning.current().stampLeft();
         int stampY = paperTop + tuning().topMargin() + QuestMapTuning.current().stampTop();
         if (chapter.visibility() == HandbookVisibility.PREVIEW) {
@@ -1072,7 +1117,8 @@ public final class HandbookScreen extends Screen {
         if (full) {
             HandbookChapter.Entry step = QuestMap.shown(chapter, memory.picked(chapter.number()));
             QuestMap.Card card = indexCard(chapter);
-            QuestMap.drawCard(graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter));
+            QuestMap.drawCard(
+                    graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter), cycleTicks);
         }
     }
 
