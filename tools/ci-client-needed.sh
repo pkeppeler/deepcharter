@@ -3,8 +3,8 @@
 # paths on stdin, one per line; prints `true` when the suite runs, `false` when it is skipped.
 # It runs when the PR changes src/main (resources included), src/client, src/gametest or src/lang, or when
 # the `gameplay` label is set, the manual override. It also runs when the PR changes what runs the suite: the
-# workflow, the action, the shard weights or the scan in gametest.gradle.kts (#1325). Docs and tools skip it. Why: a missed label let a
-# src/main change break the suite on main (#885).
+# workflow, the action, the shard weights or the scan in gametest.gradle.kts (#1325). Docs and tools skip it.
+# Why: a missed label let a src/main change break the suite on main (#885).
 # Usage: git diff --name-only BASE HEAD | tools/ci-client-needed.sh <gameplay-label-present: 1|0>
 set -euo pipefail
 

@@ -1,5 +1,5 @@
 # Client GameTest weights for -PclientShard=i/n (gradle/gametest.gradle.kts): `<simple class name> <seconds>`.
-# Seconds: the mean over CI runs 45590213665 and 45601179307 (#1322 and #1330) of the gap between a class's START line and the next one in each shard's client job log, rounded; the last class of a shard runs to the shard's last test log line.
+# Seconds: the mean over CI runs 45590213665 and 45601179307 (#1322 and #1330) of the gap between a class's START line and the next one in each shard's client job log, rounded (at least 1, the least the file accepts); the last class of a shard runs to the shard's last test log line.
 # A name is simple, or fully qualified when two classes share a simple name (the full name wins). A class not listed counts as 10 s, so a new class needs no entry here and the shards still cover every
 # class; an entry for a class that no longer exists is ignored. Stale numbers only unbalance the shards, never
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
@@ -90,7 +90,7 @@ StepToastClearOfHudClientTest 15
 StepToastClearOfSonarClientTest 27
 StepToastClientTest 11
 StepToastPlaceClientTest 1
-SuitGaugeClientTest 17
+SuitGaugeClientTest 16
 TallyClientTest 18
 TerminalFrameworkClientTest 20
 TerminalPanelClientTest 56
@@ -100,8 +100,8 @@ TowingClientTest 26
 TransmissionsClientTest 77
 TwoPlayerClientTest 70
 UiThemeClientTest 38
-UnbuiltDepthClientTest 36
+UnbuiltDepthClientTest 33
 UpgradeScreenLayoutClientTest 10
-UpgradeTerminalClientTest 15
+UpgradeTerminalClientTest 13
 WatchdogHangClientTest 1
-WorldLoadWaitClientTest 15
+WorldLoadWaitClientTest 13

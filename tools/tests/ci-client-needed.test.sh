@@ -28,6 +28,8 @@ check "shard weights change runs" true 0 gradle/client-test-weights.txt
 check "gametest scan change runs" true 0 gradle/gametest.gradle.kts
 check "other gradle file skips" false 0 gradle/libs.versions.toml .github/actions/merge-main/action.yml
 check "similar prefix skips" false 0 src/mainframe/x src/clients/y
+check "near-miss suite paths skip" false 0 .github/workflows/client-tests.yml.bak .github/actions/client-gametest-old/action.yml \
+  gradle/client-test-weights.txt~ gradle/gametest.gradle.kts.orig x/gradle/gametest.gradle.kts
 check "no changed paths skips" false 0
 check "label overrides docs-only" true 1 docs/a.md
 check "label with no paths runs" true 1
