@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.SettlingRooms;
 import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
@@ -33,7 +34,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
@@ -76,9 +76,9 @@ public class TerminalPartSlotsTest {
         WorldData.with(helper.getLevel().getServer(), RepairState.TYPE, fresh, () -> body.accept(fresh));
     }
 
-    private static BlockPos placePump(GameTestHelper helper) {
+    private static BlockPos place(GameTestHelper helper, TerminalType type) {
         BlockPos relative = new BlockPos(0, 1, 0);
-        helper.setBlock(relative, PUMP.block().defaultBlockState());
+        helper.setBlock(relative, type.block().defaultBlockState());
         return helper.absolutePos(relative);
     }
 
@@ -114,14 +114,7 @@ public class TerminalPartSlotsTest {
     }
 
     private static int count(ServerPlayer player, Item item) {
-        Inventory inventory = player.getInventory();
-        int total = 0;
-        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-            if (inventory.getItem(slot).is(item)) {
-                total += inventory.getItem(slot).getCount();
-            }
-        }
-        return total;
+        return SettlingRooms.count(player.getInventory(), item);
     }
 
     /** What the menu's part slot {@code index} shows once the server has broadcast. */
@@ -137,7 +130,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void shiftClickPutsAPartIntoItsSlot(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             ServerPlayer player = standBy(helper, "ShiftClicker", pump, false).player();
             player.getInventory().add(new ItemStack(VALVE, 3));
             RepairMenu menu = open(helper, player, pump);
@@ -160,7 +153,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void aSlotClickPutsAPartIntoItsSlot(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             ServerPlayer player = standBy(helper, "Dragger", pump, false).player();
             player.getInventory().add(new ItemStack(MOTOR, 2));
             RepairMenu menu = open(helper, player, pump);
@@ -187,7 +180,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void aWrongItemIsRefusedWithAReason(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             ServerPlayer player = standBy(helper, "Bungler", pump, false).player();
             player.getInventory().add(new ItemStack(Items.STICK));
             player.getInventory().add(new ItemStack(VALVE));
@@ -234,9 +227,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void aPartBeforeItsTerminalIsUnlockedIsRefused(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos relative = new BlockPos(0, 1, 0);
-            helper.setBlock(relative, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState());
-            BlockPos processor = helper.absolutePos(relative);
+            BlockPos processor = place(helper, TerminalTypes.ORE_PROCESSOR);
             ServerPlayer player = standBy(helper, "Hasty", processor, false).player();
             Item coil = TerminalTypes.ORE_PROCESSOR.parts().getFirst();
             player.getInventory().add(new ItemStack(coil));
@@ -255,7 +246,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void aPartInASlotNeverComesOut(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             ServerPlayer player = standBy(helper, "Taker", pump, false).player();
             player.getInventory().add(new ItemStack(MOTOR));
             RepairMenu menu = open(helper, player, pump);
@@ -266,8 +257,8 @@ public class TerminalPartSlotsTest {
             click(menu, player, motorSlot, ContainerInput.PICKUP);
             click(menu, player, motorSlot, ContainerInput.QUICK_MOVE);
             click(menu, player, motorSlot, ContainerInput.THROW);
-            menu.clicked(motorSlot, 0, ContainerInput.SWAP, player);
-            menu.clicked(motorSlot, 0, ContainerInput.PICKUP_ALL, player);
+            click(menu, player, motorSlot, ContainerInput.SWAP);
+            click(menu, player, motorSlot, ContainerInput.PICKUP_ALL);
             expect(
                     helper,
                     shown(menu, 0).is(MOTOR) && menu.getCarried().isEmpty() && count(player, MOTOR) == 0,
@@ -309,7 +300,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void closingMidRepairKeepsWhatWentInAndLosesNothing(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             ServerPlayer player = standBy(helper, "Quitter", pump, false).player();
             player.getInventory().add(new ItemStack(MOTOR, 2));
             player.getInventory().add(new ItemStack(VALVE));
@@ -350,7 +341,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void theLastPartBringsTheTerminalOnline(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             ServerPlayer player = standBy(helper, "Finisher", pump, false).player();
             player.getInventory().add(new ItemStack(MOTOR));
             player.getInventory().add(new ItemStack(VALVE));
@@ -381,7 +372,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void usingAPartOnTheTerminalPutsItIn(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             ServerPlayer player = standBy(helper, "Shortcut", pump, false).player();
             player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(MOTOR, 2));
             BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false);
@@ -412,9 +403,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void aPrerequisiteRepairedWhileOpenUnlocksTheClientsSlots(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos relative = new BlockPos(0, 1, 0);
-            helper.setBlock(relative, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState());
-            BlockPos processor = helper.absolutePos(relative);
+            BlockPos processor = place(helper, TerminalTypes.ORE_PROCESSOR);
             ServerPlayer player = standBy(helper, "Patient", processor, false).player();
             Item coil = TerminalTypes.ORE_PROCESSOR.parts().getFirst();
             Terminals.open(player, processor);
@@ -462,7 +451,7 @@ public class TerminalPartSlotsTest {
         int[] container = new int[1];
         MockPlayer[] mock = new MockPlayer[1];
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             mock[0] = standBy(helper, "Told", pump, false);
             mock[0].announceChannel(MenuRefusalPayload.TYPE);
             ServerPlayer player = mock[0].player();
@@ -483,7 +472,7 @@ public class TerminalPartSlotsTest {
     @GameTest
     public void aDragAcrossSlotsPutsOnePartInItsOwnSlot(GameTestHelper helper) {
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             ServerPlayer player = standBy(helper, "Spreader", pump, false).player();
             player.getInventory().add(new ItemStack(MOTOR, 2));
             RepairMenu menu = open(helper, player, pump);
@@ -535,7 +524,7 @@ public class TerminalPartSlotsTest {
     public void walkingAwayClosesTheMenu(GameTestHelper helper) {
         MockPlayer[] mock = new MockPlayer[1];
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             mock[0] = standBy(helper, "Wanderer", pump, false);
             ServerPlayer player = mock[0].player();
             RepairMenu menu = open(helper, player, pump);
@@ -555,7 +544,7 @@ public class TerminalPartSlotsTest {
     public void aRemovedTerminalClosesTheMenu(GameTestHelper helper) {
         MockPlayer[] mock = new MockPlayer[1];
         withFreshState(helper, state -> {
-            BlockPos pump = placePump(helper);
+            BlockPos pump = place(helper, PUMP);
             mock[0] = standBy(helper, "Bystander", pump, false);
             ServerPlayer player = mock[0].player();
             RepairMenu menu = open(helper, player, pump);

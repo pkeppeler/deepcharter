@@ -160,7 +160,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
                 "the processor is offline and locked while the pump is not repaired, the locked text names what to repair first, got '"
                         + screen.typewriter().text() + "'");
         Item coil = TerminalTypes.ORE_PROCESSOR.parts().getFirst();
-        SlotClicks.shiftClick(context, screen, inventorySlot(context, screen, coil));
+        SlotClicks.shiftClick(context, screen, SlotClicks.inventorySlot(context, screen, coil));
         ClientWait.until(
                 context,
                 "the refusal on screen",
@@ -186,7 +186,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         Item motor = TerminalTypes.FUEL_PUMP.parts().get(0);
         Item valve = TerminalTypes.FUEL_PUMP.parts().get(1);
 
-        SlotClicks.click(context, screen, inventorySlot(context, screen, motor));
+        SlotClicks.click(context, screen, SlotClicks.inventorySlot(context, screen, motor));
         SlotClicks.click(context, screen, screen.getMenu().ruleSlots().get(0));
         ClientWait.until(
                 context,
@@ -203,7 +203,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
                         && screen.getMenu().getCarried().isEmpty()),
                 "one part of two leaves the repair screen open, the motor shown in its slot");
 
-        SlotClicks.shiftClick(context, screen, inventorySlot(context, screen, valve));
+        SlotClicks.shiftClick(context, screen, SlotClicks.inventorySlot(context, screen, valve));
         // The repaired pump opens its own screen (#69), not the generic online one.
         ClientWait.until(context, "the fuel pump screen open", client -> client.gui.screen() instanceof FuelPumpScreen);
         boolean repaired = singleplayer
@@ -218,11 +218,6 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
                         .getInventory()
                         .countItem(motor));
         require(carried == 0, "the part left the inventory, " + carried + " remain");
-    }
-
-    /** The slot of the player's inventory in {@code screen} that holds {@code item}. */
-    private static Slot inventorySlot(ClientGameTestContext context, RepairScreen screen, Item item) {
-        return context.computeOnClient(client -> SlotClicks.inventorySlot(screen.getMenu(), item));
     }
 
     private static void onlineScreenOpensOnceRepaired(ClientGameTestContext context, Scene scene) {
@@ -283,7 +278,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
                 client -> "unlocked " + screen.getMenu().unlocked() + ", text '"
                         + screen.typewriter().text() + "'");
         Item board = TerminalTypes.UPGRADE_TERMINAL.parts().getFirst();
-        SlotClicks.shiftClick(context, screen, inventorySlot(context, screen, board));
+        SlotClicks.shiftClick(context, screen, SlotClicks.inventorySlot(context, screen, board));
         ClientWait.until(
                 context,
                 "the board in, on the server",

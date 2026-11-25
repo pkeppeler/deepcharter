@@ -14,8 +14,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -61,12 +59,7 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
             screenshot(context, "terminal-offline");
 
             for (Item part : TerminalTypes.FUEL_PUMP.parts()) {
-                Slot held = context.computeOnClient(client -> screen.getMenu().slots.stream()
-                        .filter(slot -> slot.container instanceof Inventory
-                                && slot.getItem().is(part))
-                        .findFirst()
-                        .orElseThrow(() -> new AssertionError("the player carries no " + part)));
-                SlotClicks.shiftClick(context, screen, held);
+                SlotClicks.shiftClick(context, screen, SlotClicks.inventorySlot(context, screen, part));
                 hold(context);
             }
 

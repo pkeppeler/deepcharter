@@ -75,16 +75,16 @@ public class TerminalPartSlotsScenario extends EvidenceScenario {
             hold(context);
             screenshot(context, "slots-empty");
 
-            drag(context, screen, inventorySlot(context, screen, Items.STICK), motorSlot);
+            drag(context, screen, SlotClicks.inventorySlot(context, screen, Items.STICK), motorSlot);
             ClientWait.until(
                     context,
                     "the refusal on screen",
                     client -> screen.getMenu().refusal().isPresent());
             hold(context);
             screenshot(context, "wrong-item-refused");
-            SlotClicks.click(context, screen, inventorySlot(context, screen, Items.AIR));
+            SlotClicks.click(context, screen, SlotClicks.inventorySlot(context, screen, Items.AIR));
 
-            drag(context, screen, inventorySlot(context, screen, motor), motorSlot);
+            drag(context, screen, SlotClicks.inventorySlot(context, screen, motor), motorSlot);
             ClientWait.until(
                     context,
                     "the motor in, on the server",
@@ -97,7 +97,7 @@ public class TerminalPartSlotsScenario extends EvidenceScenario {
             hold(context);
             screenshot(context, "motor-in");
 
-            Slot valveInInventory = inventorySlot(context, screen, valve);
+            Slot valveInInventory = SlotClicks.inventorySlot(context, screen, valve);
             SlotClicks.hover(context, screen, valveInInventory);
             hold(context);
             SlotClicks.shiftClick(context, screen, valveInInventory);
@@ -127,14 +127,6 @@ public class TerminalPartSlotsScenario extends EvidenceScenario {
             frame(context);
         }
         RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
-    }
-
-    /**
-     * The slot of the player's inventory in {@code screen} that holds {@code item}; {@code Items.AIR} finds an empty
-     * one.
-     */
-    private static Slot inventorySlot(ClientGameTestContext context, RepairScreen screen, Item item) {
-        return context.computeOnClient(client -> SlotClicks.inventorySlot(screen.getMenu(), item));
     }
 
     private void hold(ClientGameTestContext context) {

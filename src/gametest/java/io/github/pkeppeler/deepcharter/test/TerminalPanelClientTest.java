@@ -39,8 +39,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Client GameTest for the terminal panel (#246). With no pack the panel is on and the terminal font is Unscii. Every one of the seven terminal
  * screens at the default window (427 x 240) keeps each button, each line of text and each slot (the repair screen's,
- * #1265) inside the panel's
- * content rectangle, no button overlaps another, and no label is wider than its button in the font that is drawn.
+ * #1265) inside the panel's content rectangle, no button overlaps another, and no label is wider than its button in
+ * the font that is drawn.
  */
 public class TerminalPanelClientTest implements FabricClientGameTest {
     /** The smallest GUI the game allows: too small for the panel, so the screens are the plain CRT. */

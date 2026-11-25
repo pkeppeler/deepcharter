@@ -58,12 +58,12 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
     }
 
     /** The x where content starts: the panel's left inset, or the margin without the panel. */
-    protected final int contentLeft() {
+    private int contentLeft() {
         return PanelLook.drawn() ? PanelLook.current().content().left() : MARGIN;
     }
 
     /** The y where content starts: the panel's top inset, or the margin without the panel. */
-    protected final int contentTop() {
+    private int contentTop() {
         return PanelLook.drawn() ? PanelLook.current().content().top() : MARGIN;
     }
 

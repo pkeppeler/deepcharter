@@ -27,6 +27,11 @@ public final class SlotClicks {
                 .orElseThrow(() -> new AssertionError("no inventory slot holds " + item));
     }
 
+    /** {@link #inventorySlot(AbstractContainerMenu, Item)} of {@code screen}'s menu, read on the client thread. */
+    public static Slot inventorySlot(ClientGameTestContext context, AbstractContainerScreen<?> screen, Item item) {
+        return context.computeOnClient(client -> inventorySlot(screen.getMenu(), item));
+    }
+
     /** Puts the cursor on the middle of {@code slot} of {@code screen}. */
     public static void hover(ClientGameTestContext context, AbstractContainerScreen<?> screen, Slot slot) {
         int left = ContainerScreenFields.intField(screen, "leftPos");
