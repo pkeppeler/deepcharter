@@ -228,8 +228,7 @@ public class TowingTest {
                                 towed.getY());
                     }
                     // The tower drives east, so the pod trailing it faces the way it was dragged (yaw -90), not the yaw
-                    // it
-                    // was left with (#1281).
+                    // it was left with (#1281).
                     float off = Mth.wrapDegrees(towed.getYRot() - EAST_YAW);
                     if (Math.abs(off) > 5f) {
                         throw failure(
