@@ -1,10 +1,10 @@
 package io.github.pkeppeler.deepcharter.client.layer;
 
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.sounds.SoundEvents;
 
 /**
  * What the client does after a crossing: a rumble (a sound and a short HUD jitter) and a fade to black
@@ -48,7 +48,7 @@ public final class BreachEffects {
         HOLD.begin(fades);
         Minecraft.getInstance()
                 .getSoundManager()
-                .play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EXPLODE.value(), 0.4f, 0.8f));
+                .play(SimpleSoundInstance.forUI(DeepSound.BREACH_RUMBLE.event(), 1.0f, 0.8f));
     }
 
     /**
