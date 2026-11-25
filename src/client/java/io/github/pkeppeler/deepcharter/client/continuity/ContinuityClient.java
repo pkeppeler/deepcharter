@@ -43,10 +43,10 @@ public final class ContinuityClient {
     }
 
     /**
-     * The screen for {@code player}'s death, in place of vanilla's: the live one if this player carries it on, so a screen cleared while the
-     * person is dead shows the same sequence where it was; otherwise a new sequence, written in the numbers the server sent. Without them
-     * (a death the server sent no numbers for, or a world joined dead), the number reads as unknown and the employee number is worked out
-     * here, as the server would; numbers that come after the sequence began are written into it at the next call.
+     * The screen for {@code player}'s death, in place of vanilla's: the live one if this player carries it on, so a screen cleared while
+     * the person is dead shows the same sequence where it was; otherwise a new sequence, written in the numbers the server sent. Without
+     * them (a death the server sent no numbers for, or a world joined dead), the number reads as unknown and the employee number is worked
+     * out here, as the server would; numbers that come after the sequence began are written into it at the next call.
      */
     public static ContinuityScreen screenFor(LocalPlayer player) {
         ContinuityScreen screen = live;
