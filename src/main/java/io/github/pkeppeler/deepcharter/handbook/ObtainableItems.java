@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -50,11 +49,10 @@ public final class ObtainableItems {
      * are bound to the items, which is after the recipes load.
      */
     public static HolderLookup<Recipe<?>> loadable(HolderLookup<Recipe<?>> recipes) {
-        List<Holder<Item>> obtainable = new ArrayList<>();
-        BuiltInRegistries.ITEM
+        List<Holder.Reference<Item>> obtainable = BuiltInRegistries.ITEM
                 .listElements()
                 .filter(ObtainableItems::isObtainable)
-                .forEach(obtainable::add);
+                .toList();
         return new HolderLookup<>() {
             @Override
             public Stream<Holder.Reference<Recipe<?>>> listElements() {
@@ -84,7 +82,7 @@ public final class ObtainableItems {
      * not obtainable either. The station is not checked: a kept recipe whose station the world lacks crafts nothing,
      * and the gate's derivation, which does need the station, lists no item that only such a recipe makes.
      */
-    private static boolean keeps(Recipe<?> recipe, List<Holder<Item>> obtainable) {
+    private static boolean keeps(Recipe<?> recipe, List<Holder.Reference<Item>> obtainable) {
         for (Ingredient ingredient : recipe.placementInfo().ingredients()) {
             if (obtainable.stream().noneMatch(ingredient::acceptsItem)) {
                 return false;

@@ -71,7 +71,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.display.RecipeDisplay;
 import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
@@ -263,23 +262,8 @@ public class ObtainableItemsTest {
         MinecraftServer server = helper.getLevel().getServer();
         BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT)
                 .orElseThrow(() -> failure(helper, "the colony was not built"));
-        List<Site> sites = new ArrayList<>();
-        for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = TestLayers.level(helper, layer);
-            LayerChain.Band band = TestLayers.band(level, layer);
-            for (StructureKind kind : StructureKind.inLayer(layer)) {
-                sites.add(new Site(
-                        level,
-                        band,
-                        StructureSite.in(level.getSeed(), kind, band.minY(), band.height(), CELL, CELL, conduit),
-                        false));
-            }
-        }
         ServerLevel wrecks = TestLayers.level(helper, StructureKind.WRECK.layer());
-        Optional<StructureSite> prospector = LayerStructures.prospector(wrecks);
-        expect(helper, prospector.isPresent(), "the layer of wrecks has no Prospector site");
-        sites.add(
-                new Site(wrecks, TestLayers.band(wrecks, StructureKind.WRECK.layer()), prospector.orElseThrow(), true));
+        List<Site> sites = sites(helper, conduit, wrecks);
         // Loaded on the worker threads; a synchronous getChunk here would hold the server thread (#1016).
         for (Site site : sites) {
             for (var chunk : LayerStructuresTest.chunksOf(site.site())) {
@@ -288,27 +272,7 @@ public class ObtainableItemsTest {
         }
         FarChunks.Deadline deadline = FarChunks.deadline();
         TestTicks.each(helper, () -> {
-            List<String> standing = new ArrayList<>();
-            for (Site site : sites) {
-                if (!LayerStructuresTest.loaded(site.level(), site.site())) {
-                    standing.add(site.site().kind() + " not loaded yet");
-                    continue;
-                }
-                List<String> unmet = LayerStructuresTest.unmet(
-                        site.level(),
-                        site.band().minY(),
-                        site.band().height(),
-                        site.site(),
-                        LayerStructuresTest.census(site.level(), site.site()));
-                if (site.prospector()) {
-                    unmet = unmet.stream()
-                            .filter(line -> !line.startsWith("Notes"))
-                            .toList();
-                }
-                if (!unmet.isEmpty()) {
-                    standing.add(site.site().kind() + " " + unmet);
-                }
-            }
+            List<String> standing = notStanding(sites);
             if (!standing.isEmpty()) {
                 deadline.await(
                         helper, wrecks, false, () -> String.format("the layer structures did not stand: %s", standing));
@@ -333,6 +297,51 @@ public class ObtainableItemsTest {
             compare(helper, derived);
             helper.succeed();
         });
+    }
+
+    /** One site of each layer structure kind, and the Prospector's. */
+    private static List<Site> sites(GameTestHelper helper, BlockPos conduit, ServerLevel wrecks) {
+        List<Site> sites = new ArrayList<>();
+        for (int layer = 1; layer <= 2; layer++) {
+            ServerLevel level = TestLayers.level(helper, layer);
+            LayerChain.Band band = TestLayers.band(level, layer);
+            for (StructureKind kind : StructureKind.inLayer(layer)) {
+                sites.add(new Site(
+                        level,
+                        band,
+                        StructureSite.in(level.getSeed(), kind, band.minY(), band.height(), CELL, CELL, conduit),
+                        false));
+            }
+        }
+        Optional<StructureSite> prospector = LayerStructures.prospector(wrecks);
+        expect(helper, prospector.isPresent(), "the layer of wrecks has no Prospector site");
+        sites.add(
+                new Site(wrecks, TestLayers.band(wrecks, StructureKind.WRECK.layer()), prospector.orElseThrow(), true));
+        return sites;
+    }
+
+    /** What keeps each site from standing yet; empty once every one stands. */
+    private static List<String> notStanding(List<Site> sites) {
+        List<String> standing = new ArrayList<>();
+        for (Site site : sites) {
+            if (!LayerStructuresTest.loaded(site.level(), site.site())) {
+                standing.add(site.site().kind() + " not loaded yet");
+                continue;
+            }
+            List<String> unmet = LayerStructuresTest.unmet(
+                    site.level(),
+                    site.band().minY(),
+                    site.band().height(),
+                    site.site(),
+                    LayerStructuresTest.census(site.level(), site.site()));
+            if (site.prospector()) {
+                unmet = unmet.stream().filter(line -> !line.startsWith("Notes")).toList();
+            }
+            if (!unmet.isEmpty()) {
+                standing.add(site.site().kind() + " " + unmet);
+            }
+        }
+        return standing;
     }
 
     private static void compare(GameTestHelper helper, Set<Item> derived) {
@@ -500,7 +509,7 @@ public class ObtainableItemsTest {
             this.at = helper.absolutePos(new BlockPos(2, 2, 2));
             this.context = SlotDisplayContext.fromLevel(level);
             blocks.addAll(world);
-            this.creatures = Set.copyOf(creatures);
+            this.creatures = creatures;
             BuiltInRegistries.ITEM
                     .listElements()
                     .filter(holder -> !holder.key().identifier().getNamespace().equals(Identifier.DEFAULT_NAMESPACE))
@@ -721,7 +730,6 @@ public class ObtainableItemsTest {
                     .lookup()
                     .lookupOrThrow(Registries.RECIPE)
                     .listElements()
-                    .map(holder -> new RecipeHolder<>(holder.key(), holder.value()))
                     .forEach(holder -> {
                         Recipe<?> recipe = holder.value();
                         if (recipe.isSpecial() || recipe.placementInfo().isImpossibleToPlace()) {
