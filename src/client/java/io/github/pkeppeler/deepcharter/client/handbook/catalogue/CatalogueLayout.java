@@ -94,6 +94,7 @@ public record CatalogueLayout(
      * @param gridY the top of the recipe grid
      * @param needTop the top of the first have/need row
      * @param needRows how many have/need rows fit
+     * @param needBottom the y under which no have/need row may reach
      * @param spec the spec sheet switch, a plate with its legend
      * @param vents the vents under the switch
      */
@@ -105,8 +106,28 @@ public record CatalogueLayout(
             int gridY,
             int needTop,
             int needRows,
+            int needBottom,
             Rect spec,
-            List<Rect> vents) {}
+            List<Rect> vents) {
+        /**
+         * The card with its title {@code extra} pixels taller (a name that takes more lines than one): the station, the grid and the
+         * have/need rows move down by it, and fewer rows may fit.
+         */
+        public Card lowered(int extra, int needRow) {
+            int top = needTop + extra;
+            return new Card(
+                    left,
+                    right,
+                    titleY,
+                    stationY + extra,
+                    gridY + extra,
+                    top,
+                    Math.max(0, (needBottom - top) / needRow),
+                    needBottom,
+                    spec,
+                    vents);
+        }
+    }
 
     /**
      * The layout on a screen {@code width} by {@code height}, or null when the window is too narrow for the units' bands or too short for
@@ -214,7 +235,8 @@ public record CatalogueLayout(
         int upper = glass.bottom() + c.deckGap();
         Rect spec = new Rect(glass.x(), upper, glass.width(), c.deckRow());
         int needTop = gridY + look.needTop();
-        int needRows = Math.max(0, (glass.bottom() - look.contentBottom() - needTop) / look.needRow());
+        int needBottom = glass.bottom() - look.contentBottom();
+        int needRows = Math.max(0, (needBottom - needTop) / look.needRow());
         int lower = upper + c.deckRow() + c.deckRowGap();
         int slotsHeight = c.ventHeight();
         Rect vents = new Rect(
@@ -222,6 +244,6 @@ public record CatalogueLayout(
                 lower + (c.deckRow() - slotsHeight) / 2,
                 glass.width() - 2 * (c.knobSize() + c.deckGap()),
                 slotsHeight);
-        return new Card(left, right, titleY, stationY, gridY, needTop, needRows, spec, List.of(vents));
+        return new Card(left, right, titleY, stationY, gridY, needTop, needRows, needBottom, spec, List.of(vents));
     }
 }

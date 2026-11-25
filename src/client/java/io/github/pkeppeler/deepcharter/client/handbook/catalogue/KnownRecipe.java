@@ -48,6 +48,9 @@ public record KnownRecipe(
     /** The widest grid of a crafting recipe, which the other displays are laid into too. */
     private static final int CRAFTING_COLUMNS = 3;
 
+    /** The side of the inventory's crafting grid. */
+    private static final int POCKET_SIDE = 2;
+
     /** An ingredient of the recipe and how many cells of the grid hold it. */
     public record Need(List<ItemStack> choices, int count) {}
 
@@ -126,21 +129,16 @@ public record KnownRecipe(
         return null;
     }
 
-    /**
-     * Whether {@code bench} can make this recipe: it has the recipe's kind of recipe book and, for a crafting recipe, a grid it fits (a
-     * shaped recipe is as wide and high as its pattern, a shapeless one needs a cell for each ingredient).
-     */
-    public boolean makeableAt(Bench bench) {
-        if (book == null || book != bench.type()) {
+    /** Whether it is a crafting recipe the inventory's 2 x 2 grid cannot hold (a shaped one as wide or high as its pattern, a shapeless one with a cell for each ingredient), which only a crafting table makes. */
+    public boolean needsTable() {
+        if (book != RecipeBookType.CRAFTING) {
             return false;
         }
-        if (book != RecipeBookType.CRAFTING) {
-            return true;
-        }
         if (entry.display() instanceof ShapedCraftingRecipeDisplay) {
-            return columns <= bench.width() && rows <= bench.height();
+            return columns > POCKET_SIDE || rows > POCKET_SIDE;
         }
-        return cells.stream().filter(cell -> !cell.isEmpty()).count() <= (long) bench.width() * bench.height();
+        // A shapeless recipe needs a cell for each ingredient.
+        return cells.stream().filter(cell -> !cell.isEmpty()).count() > (long) POCKET_SIDE * POCKET_SIDE;
     }
 
     /** The items it makes. */

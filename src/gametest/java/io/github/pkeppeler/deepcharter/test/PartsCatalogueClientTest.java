@@ -18,10 +18,14 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.KnownRecipe;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.PartsCatalogue;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetHook;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetOpener;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.TextWrap;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
+import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -43,6 +47,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.ToIntFunction;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -211,7 +216,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         StackedItemContents enough = holding(
                 new ItemStack(Items.IRON_INGOT, 6), new ItemStack(Items.REDSTONE), new ItemStack(Items.COPPER_INGOT));
         require(shapedOnly.craftable(DRILL, enough, TABLE), "the 3 x 3 drill head is craftable at a crafting table");
-        require(!shapedOnly.craftable(DRILL, enough, POCKET), "but not in the inventory's 2 x 2 grid");
+        require(
+                shapedOnly.craftable(DRILL, enough, POCKET),
+                "and in the inventory's 2 x 2 grid too: what is in hand is what counts, the table is only where it is made");
         require(
                 !shapedOnly.craftable(DRILL, enough, new Bench(RecipeBookType.FURNACE, 1, 1)),
                 "a furnace screen does not craft it either");
@@ -231,6 +238,118 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                         holding(new ItemStack(Items.RAW_IRON)),
                         new Bench(RecipeBookType.FURNACE, 1, 1)),
                 "but is in a furnace");
+    }
+
+    private static void craftableNowCountsEveryGrid() {
+        PartsCatalogue shapedOnly =
+                PartsCatalogue.of(List.of(CatalogueFixtures.entries().getFirst()), ContextMap.EMPTY);
+        StackedItemContents enough = holding(
+                new ItemStack(Items.IRON_INGOT, 6), new ItemStack(Items.REDSTONE), new ItemStack(Items.COPPER_INGOT));
+        CatalogueState state = new CatalogueState();
+        state.toggleCraftableOnly();
+        require(
+                state.shown(shapedOnly, enough, POCKET).equals(List.of(DRILL)),
+                "a 3 x 3 recipe the inventory satisfies is listed at the 2 x 2 inventory, got "
+                        + state.shown(shapedOnly, enough, POCKET));
+        require(
+                shapedOnly.recipesFor(DRILL).getFirst().needsTable(),
+                "the 3 x 3 drill head needs the crafting table's grid");
+        require(shapedOnly.tableOnly(DRILL, enough, POCKET), "and it is marked with the table icon at the inventory");
+        PartsCatalogue all = fixtures();
+        require(
+                !all.tableOnly(DRILL, holding(new ItemStack(Items.IRON_INGOT, 2)), POCKET),
+                "a drill head that the shapeless recipe makes in the 2 x 2 grid carries no table icon");
+        require(
+                !all.recipesFor(HangarParts.ROTOR_HUB).getFirst().needsTable(),
+                "a three-ingredient shapeless recipe fits the 2 x 2 grid");
+        require(
+                state.craftableCount(shapedOnly, enough, POCKET) == 1,
+                "one item is craftable now, got " + state.craftableCount(shapedOnly, enough, POCKET));
+        require(state.craftableCount(all, holding(), POCKET) == 0, "nothing in hand makes nothing");
+        StackedItemContents hub = holding(new ItemStack(Items.IRON_INGOT), new ItemStack(Items.COPPER_INGOT, 2));
+        require(state.craftableCount(all, hub, POCKET) == 1, "an iron and two copper make the rotor hub alone");
+        state.setQuery("zzz");
+        require(
+                state.craftableCount(all, hub, POCKET) == 1,
+                "the count is of the whole catalogue: the search does not change it");
+        state.toggleCraftableOnly();
+        require(state.craftableCount(all, hub, POCKET) == 1, "nor does the switch");
+        require(
+                state.craftableCount(
+                                all, holding(new ItemStack(Items.RAW_IRON)), new Bench(RecipeBookType.FURNACE, 1, 1))
+                        == 1,
+                "a furnace screen counts what it smelts");
+    }
+
+    /** The glass's plate is as wide as the glass; the legend starts after the switch and ends at the plate's edge. */
+    private static void theCountStopsAt99AndItsLegendFitsThePlate() {
+        Minecraft client = Minecraft.getInstance();
+        CatalogueLook look = CatalogueLook.current();
+        CatalogueLayout layout = Objects.requireNonNull(
+                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight),
+                "the default window has the panels");
+        Rect plate = layout.shelf().craftable();
+        int textX = plate.x()
+                + look.casing().switchPad()
+                + look.casing().switchWidth()
+                + look.casing().switchPad();
+        require(CataloguePanel.craftableLegend(99).equals("CRAFTABLE (99)"), "99 is counted out");
+        require(CataloguePanel.craftableLegend(100).equals("CRAFTABLE 99+"), "more than 99 reads 99+");
+        for (int count : new int[] {0, 9, 99, 100, 250, 1000}) {
+            String legend = CataloguePanel.craftableLegend(count);
+            int width = client.font.width(CrtText.terminal(legend));
+            require(
+                    textX + width <= plate.right(),
+                    "the legend '" + legend + "' (" + width + " wide from " + textX + ") lies inside its plate "
+                            + plate);
+        }
+    }
+
+    /** A title of three lines moves the card down two lines; every have/need row that is left still ends inside the glass. */
+    private static void aTitleOfThreeLinesKeepsEveryNeedRowInTheCard() {
+        Minecraft client = Minecraft.getInstance();
+        CatalogueLook look = CatalogueLook.current();
+        CatalogueLayout layout = Objects.requireNonNull(
+                CatalogueLayout.of(WIDTH, HEIGHT, look, CrtTuning.current(), client.font.lineHeight),
+                "the default window has the panels");
+        CatalogueLayout.Card card = layout.card();
+        CatalogueLayout.Card lowered = card.lowered(2 * client.font.lineHeight, look.needRow());
+        require(
+                lowered.needTop() + lowered.needRows() * look.needRow() <= lowered.needBottom(),
+                "the last have/need row of the lowered card ends inside " + lowered.needBottom() + ", the card is "
+                        + lowered);
+        require(lowered.needRows() <= card.needRows(), "lowering the card never makes room for more rows");
+        require(
+                lowered.gridY() == card.gridY() + 2 * client.font.lineHeight,
+                "the grid moves down by the two extra lines");
+    }
+
+    private static void togglingCraftableNowKeepsAValidPage() {
+        CatalogueState state = new CatalogueState();
+        state.turn(4, 10);
+        state.toggleCraftableOnly();
+        require(state.page(10) == 4, "the switch keeps the page while it is still there, got " + state.page(10));
+        require(state.page(2) == 1, "with fewer pages the page shown is the last, not a page past the end");
+        require(state.page(1) == 0, "and with one page it is the first");
+        require(
+                state.page(10) == 4,
+                "a list that is briefly short does not make the catalogue forget its page, got " + state.page(10));
+        state.toggleCraftableOnly();
+        state.turn(-1, 2);
+        require(state.page(10) == 0, "a turn moves from the page shown (the last of two), got " + state.page(10));
+    }
+
+    private static void longNamesWrapWithoutLosingAWord() {
+        ToIntFunction<String> width = text -> text.length() * 6;
+        require(
+                TextWrap.lines(width, "HULL REPAIR NANOBOTS", 90).equals(List.of("HULL REPAIR", "NANOBOTS")),
+                "a name wider than the room breaks at a space, got "
+                        + TextWrap.lines(width, "HULL REPAIR NANOBOTS", 90));
+        require(TextWrap.lines(width, "IRON INGOT", 90).equals(List.of("IRON INGOT")), "a name that fits is one line");
+        String word = "ANTIDISESTABLISHMENTARIANISM";
+        List<String> broken = TextWrap.lines(width, word, 60);
+        require(String.join("", broken).equals(word), "a word wider than the room is broken, never cut, got " + broken);
+        require(broken.stream().allMatch(line -> width.applyAsInt(line) <= 60), "every piece fits, got " + broken);
     }
 
     private static void theLookupListsRecipesAndUsesAndStepsThrough() {
@@ -290,7 +409,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(state.page(2) == 0, "a new search starts on the first page");
         state.turn(1, 2);
         state.toggleCraftableOnly();
-        require(state.page(2) == 0, "the filter starts on the first page too");
+        require(state.page(2) == 1, "the filter keeps the page, which is still there");
     }
 
     private static void favouritesAreKeptPerPlayerAndSurviveReopening() {
@@ -516,6 +635,11 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 theSearchMatchesNamesIdsAndNamespaces();
                 craftableNowNeedsTheIngredientsInHand();
                 craftableNowMeansCraftableOnThisScreen();
+                craftableNowCountsEveryGrid();
+                togglingCraftableNowKeepsAValidPage();
+                longNamesWrapWithoutLosingAWord();
+                theCountStopsAt99AndItsLegendFitsThePlate();
+                aTitleOfThreeLinesKeepsEveryNeedRowInTheCard();
                 theLookupListsRecipesAndUsesAndStepsThrough();
                 pagesStopAtTheEnds();
                 favouritesAreKeptPerPlayerAndSurviveReopening();
@@ -526,9 +650,36 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
             everythingTheRealGameIsAsked(context, singleplayer);
+            // Leave the catalogue set to something, so the next world shows whether leaving this one cleared it.
+            CatalogueScene.openInventory(context);
+            CataloguePanel left = CatalogueScene.panel(context);
+            context.runOnClient(client -> {
+                left.state().setQuery("left over");
+                left.state().toggleCraftableOnly();
+                left.state().turn(1, 3);
+                left.state().look(left.catalogue(), DRILL, CatalogueState.Mode.RECIPES);
+            });
             context.setScreen(() -> null);
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
+        }
+        leavingAWorldClearsTheCatalogue(context);
+    }
+
+    /** The real disconnect, not {@code resetState()}: a new world opens on an empty catalogue. */
+    private static void leavingAWorldClearsTheCatalogue(ClientGameTestContext context) {
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            Objects.requireNonNull(singleplayer.getServer(), "a second world is running");
+            ClientWait.until(
+                    context, "the player's inventory", client -> client.player != null && client.level != null);
+            CatalogueScene.openInventory(context);
+            CatalogueState state = CatalogueScene.panel(context).state();
+            require(
+                    state.query().isEmpty() && !state.craftableOnly() && state.lookup() == null,
+                    "a new world's catalogue starts empty, got '" + state.query() + "', switch " + state.craftableOnly()
+                            + ", lookup " + state.lookup());
+            require(state.page(3) == 0, "and on the first page");
+            context.setScreen(() -> null);
         }
     }
 
@@ -553,11 +704,14 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         theSearchTakesWhatSdlDelivers(context, screen, panel, "on the inventory screen");
         favouritesStarAndPersist(context, screen, panel);
         craftableNowFiltersByWhatIsHeld(context, singleplayer, screen, panel);
+        tableRecipesAreCraftableNowWithTheirIconAndLongNamesShowWhole(context, singleplayer, screen, panel);
         thePanelsFollowTheWindowSize(context, screen);
         theCatalogueOpensAtAnItem(context);
         openingAnItemFromTheHandbookComesBackToIt(context);
         openingAnItemInAWindowTooSmallLeavesTheHandbookOpen(context);
         theCraftingTableHasTheCatalogueToo(context);
+        CatalogueScene.openInventory(context);
+        theCatalogueRemembersItsState(context, CatalogueScene.panel(context));
     }
 
     private static AbstractContainerScreen<?> screen(ClientGameTestContext context) {
@@ -667,7 +821,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             require(
                     texts.stream().anyMatch(text -> text.matches("\\d+/\\d+")),
                     "the catalogue draws its page counter " + when + ", it draws " + texts);
-            for (String expected : List.of("PARTS CATALOGUE", "FAVOURITES", "CRAFTABLE NOW")) {
+            String craftable = craftableLabel(panel);
+            for (String expected : List.of("PARTS CATALOGUE", "FAVOURITES", craftable)) {
                 require(
                         texts.contains(expected),
                         "the catalogue draws '" + expected + "' " + when + ", it draws " + texts);
@@ -675,7 +830,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             require(texts.contains("SEARCH") == hintShown, "the search field shows its hint only while empty " + when);
             CatalogueLayout.Shelf shelf = layout.shelf();
             require(
-                    labelInside(drawn, "CRAFTABLE NOW", shelf.craftable()),
+                    labelInside(drawn, craftable, shelf.craftable()),
                     "the label of the craftable toggle lies inside the toggle " + when);
             require(
                     labelInside(drawn, "<", shelf.previous()) && labelInside(drawn, ">", shelf.next()),
@@ -774,6 +929,11 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         });
     }
 
+    /** The legend of the switch: its words and how many items are craftable now. */
+    private static String craftableLabel(CataloguePanel panel) {
+        return CataloguePanel.craftableLegend(panel.craftableCount());
+    }
+
     /** The 16 by 16 item a catalogue cell draws inside its outline. */
     private static Rect icon(Rect cell, CatalogueLook look) {
         return new Rect(cell.x() + look.iconInset(), cell.y() + look.iconInset(), 16, 16);
@@ -810,7 +970,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         return item.getDefaultInstance().getHoverName().getString().length();
     }
 
-    /** With an item hovered, the strip that names it (its text, or the text cut with an ellipsis) lies in the catalogue's glass. */
+    /** With an item hovered, the strip that names it lies in the catalogue's glass and names it whole, on as many lines as it takes. */
     private static void theNameStripIsInsideTheCatalogueGlass(
             ClientGameTestContext context,
             AbstractContainerScreen<?> screen,
@@ -819,21 +979,31 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         Item hovered = Objects.requireNonNull(
                 context.computeOnClient(client -> panel.hoveredItem()), "an item of the catalogue is hovered");
         String name = hovered.getDefaultInstance().getHoverName().getString().toUpperCase(Locale.ROOT);
-        List<Drawn> drawn = context.computeOnClient(client -> drawn(client, screen));
-        Drawn strip = drawn.stream()
-                .filter(text -> text.text().equals(name) || text.text().endsWith("..."))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("the hovered " + name + " is named in a strip, drew " + drawn));
+        List<String> lines = context.computeOnClient(client -> panel.nameLines(hovered));
         require(
-                inside(
-                        new Rect(
-                                strip.box().x(),
-                                strip.box().y(),
-                                strip.box().width(),
-                                strip.box().height()),
-                        layout.catalogueGlass()),
-                "the name strip of " + name + " lies inside the catalogue glass " + layout.catalogueGlass() + ", at "
-                        + strip.box());
+                String.join(" ", lines).equals(name),
+                "the strip names " + name + " whole, in " + lines + ", with nothing cut");
+        List<Drawn> drawn = context.computeOnClient(client -> drawn(client, screen));
+        for (String line : lines) {
+            Drawn strip = drawn.stream()
+                    .filter(text -> text.text().equals(line))
+                    .findFirst()
+                    .orElseThrow(
+                            () -> new AssertionError("the hovered " + name + " draws '" + line + "', drew " + drawn));
+            require(
+                    inside(
+                            new Rect(
+                                    strip.box().x(),
+                                    strip.box().y(),
+                                    strip.box().width(),
+                                    strip.box().height()),
+                            layout.catalogueGlass()),
+                    "the name strip line '" + line + "' of " + name + " lies inside the catalogue glass "
+                            + layout.catalogueGlass() + ", at " + strip.box());
+        }
+        require(
+                drawn.stream().noneMatch(text -> text.text().contains("..")),
+                "no text is cut with dots while " + name + " is hovered, drew " + drawn);
     }
 
     private static void rAndUShowRecipesAndUsesOfAHoveredItem(
@@ -1309,6 +1479,11 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         UUID player =
                 context.computeOnClient(client -> ClientSession.player(client).getUUID());
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        // A star left in the shared file by an aborted run is not this test's: take every one off through the real API.
+        for (Item left : CatalogueFavourites.shared().items(player)) {
+            CatalogueFavourites.shared().toggle(player, left);
+        }
+        context.waitTicks(1);
         try {
             CatalogueScene.hover(
                     context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, DRILL)));
@@ -1369,6 +1544,140 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(!context.computeOnClient(client -> panel.state().craftableOnly()), "a second click turns it off");
     }
 
+    /** A 3 x 3 recipe is craftable now at the 2 x 2 inventory, marked with the table; its long name is shown whole in the strip and the title. */
+    private static void tableRecipesAreCraftableNowWithTheirIconAndLongNamesShowWhole(
+            ClientGameTestContext context,
+            TestSingleplayerContext singleplayer,
+            AbstractContainerScreen<?> screen,
+            CataloguePanel panel) {
+        Item nanobots = RepairRegistry.item(Consumable.HULL_NANOBOTS);
+        context.runOnClient(client -> {
+            ClientRecipeBook book = ClientSession.player(client).getRecipeBook();
+            book.add(CatalogueFixtures.nanobots());
+            book.rebuildCollections();
+        });
+        singleplayer.getServer().runCommand("clear @p");
+        singleplayer.getServer().runCommand("give @p minecraft:iron_ingot 8");
+        singleplayer.getServer().runCommand("give @p minecraft:redstone 1");
+        ClientWait.until(
+                context,
+                "eight iron and a redstone in the inventory, and the nanobots recipe in the catalogue",
+                client -> ClientSession.player(client).getInventory().contains(new ItemStack(Items.IRON_INGOT, 8))
+                        && ClientSession.player(client).getInventory().contains(new ItemStack(Items.REDSTONE))
+                        && !panel.catalogue().recipesFor(nanobots).isEmpty());
+        context.waitTicks(2);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        CatalogueScene.hover(context, layout.shelf().craftable());
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        List<Item> shown = context.computeOnClient(client -> panel.shownItems());
+        require(
+                shown.contains(nanobots) && shown.contains(DRILL) && !shown.contains(HangarParts.ROTOR_HUB),
+                "eight iron and a redstone make the nanobots (3 x 3 only) and the drill head, got " + shown);
+        // The server teaches the vanilla recipes the iron opens too, so the list is longer than the two fixtures.
+        require(
+                context.computeOnClient(client -> panel.craftableCount()) == shown.size(),
+                "the switch counts what the filtered list shows, " + shown.size() + ", got "
+                        + context.computeOnClient(client -> panel.craftableCount()));
+        require(
+                context.computeOnClient(client -> panel.marksTable(nanobots)),
+                "the nanobots, made only at the table, carry the table icon at the inventory");
+        require(
+                context.computeOnClient(client -> !panel.marksTable(DRILL)),
+                "the drill head the 2 x 2 grid makes carries none");
+        everyStringIsInsideItsGlass(context, screen, "with a table recipe craftable now");
+
+        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, shown.indexOf(nanobots)));
+        List<String> lines = context.computeOnClient(client -> panel.nameLines(nanobots));
+        require(lines.size() >= 2, "the nanobots' name does not fit one line of the strip, got " + lines);
+        theNameStripIsInsideTheCatalogueGlass(context, screen, panel, layout);
+        context.getInput().pressKey(InputConstants.KEY_R);
+        ClientWait.until(context, "the recipe console", client -> panel.showsRecipePanel());
+        everyStringIsInsideItsGlass(context, screen, "with a long title");
+        List<String> texts = context.computeOnClient(client -> texts(client, screen));
+        for (String line : lines) {
+            require(texts.contains(line), "the recipe title shows '" + line + "' whole, it draws " + texts);
+        }
+        context.runOnClient(client -> {
+            List<String> title = panel.titleLines();
+            CatalogueLayout.Card moved = layout.card()
+                    .lowered(
+                            (title.size() - 1) * client.font.lineHeight,
+                            CatalogueLook.current().needRow());
+            require(
+                    moved.needTop() + moved.needRows() * CatalogueLook.current().needRow() <= moved.needBottom(),
+                    "with a title of " + title.size() + " lines every need row of the 3 x 3 recipe stays in the card");
+        });
+        require(texts.stream().noneMatch(text -> text.contains("..")), "no title is cut with dots, it draws " + texts);
+
+        context.runOnClient(client -> {
+            panel.state().clear();
+            panel.state().toggleCraftableOnly();
+            CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook());
+        });
+        singleplayer.getServer().runCommand("clear @p");
+        context.waitTicks(2);
+    }
+
+    /** The search, the switch, the page and the lookup are the client's, not one screen's: they outlive the screen and are the next one's. */
+    private static void theCatalogueRemembersItsState(ClientGameTestContext context, CataloguePanel panel) {
+        CatalogueScene.hover(
+                context, CatalogueScene.layout(context, panel).shelf().search());
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(
+                context.computeOnClient(client -> panel.searchFocused()),
+                "the field is focused before the screen closes");
+        context.runOnClient(client -> {
+            CatalogueState state = panel.state();
+            state.setQuery("o");
+            if (!state.craftableOnly()) {
+                state.toggleCraftableOnly();
+            }
+            state.turn(1, 3);
+            state.look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES);
+            client.gui.setScreen(null);
+            client.gui.setScreen(new InventoryScreen(ClientSession.player(client)));
+            CataloguePanel again = panelOf(shown(client));
+            requireRemembered(again, "the reopened inventory");
+            require(again != panel, "the reopened inventory has a panel of its own");
+            require(!again.searchFocused(), "a new panel starts with the search unfocused");
+            require(
+                    !SDLKeyboard.SDL_TextInputActive(client.getWindow().handle()),
+                    "and with SDL text input off, so the first click is what starts it");
+            client.gui.setScreen(null);
+            client.gui.setScreen(craftingScreen(client));
+            requireRemembered(panelOf(shown(client)), "the crafting table");
+            // What leaving a world does: the next panel is as a new client's.
+            CatalogueScreens.resetState();
+            client.gui.setScreen(null);
+            client.gui.setScreen(new InventoryScreen(ClientSession.player(client)));
+            CatalogueState fresh = panelOf(shown(client)).state();
+            require(fresh.query().isEmpty(), "after a reset the search is empty, got '" + fresh.query() + "'");
+            require(!fresh.craftableOnly(), "after a reset the switch is off");
+            require(fresh.lookup() == null, "after a reset nothing is looked up");
+            require(fresh.page(3) == 0, "after a reset the catalogue is on its first page");
+            client.gui.setScreen(null);
+        });
+        CatalogueScene.openInventory(context);
+        context.waitTicks(1);
+    }
+
+    private static void requireRemembered(CataloguePanel panel, String where) {
+        CatalogueState state = panel.state();
+        require(state.query().equals("o"), where + " keeps the search, got '" + state.query() + "'");
+        require(state.craftableOnly(), where + " keeps the craftable switch");
+        require(state.page(3) == 1, where + " keeps the page, got " + state.page(3));
+        require(
+                lookedAt(state).item() == DRILL && lookedAt(state).mode() == CatalogueState.Mode.RECIPES,
+                where + " keeps the open recipe");
+    }
+
+    private static CraftingScreen craftingScreen(Minecraft client) {
+        return new CraftingScreen(
+                new CraftingMenu(0, ClientSession.player(client).getInventory()),
+                ClientSession.player(client).getInventory(),
+                Component.translatable("container.crafting"));
+    }
+
     private static void thePanelsFollowTheWindowSize(ClientGameTestContext context, AbstractContainerScreen<?> screen) {
         CataloguePanel panel = context.computeOnClient(client -> panelOf(screen));
         context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES));
@@ -1425,10 +1734,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
 
     private static void theCraftingTableHasTheCatalogueToo(ClientGameTestContext context) {
         context.setScreen(() -> null);
-        context.runOnClient(client -> client.gui.setScreen(new CraftingScreen(
-                new CraftingMenu(0, ClientSession.player(client).getInventory()),
-                ClientSession.player(client).getInventory(),
-                Component.translatable("container.crafting"))));
+        context.runOnClient(client -> client.gui.setScreen(craftingScreen(client)));
         ClientWait.screen(context, CraftingScreen.class);
         context.waitTicks(3);
         AbstractContainerScreen<?> table = screen(context);

@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import java.util.List;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
@@ -21,6 +22,21 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
  */
 final class CatalogueHardware {
     private CatalogueHardware() {}
+
+    /** A console's title, a line for each {@code lines} holds, the last of them on the header rule. */
+    static void title(GuiGraphicsExtractor graphics, Font font, List<String> lines, int left, int top, int right) {
+        int last = lines.size() - 1;
+        for (int i = 0; i < last; i++) {
+            CrtDraw.glowText(
+                    graphics,
+                    font,
+                    CrtText.terminal(lines.get(i)),
+                    left,
+                    top + i * font.lineHeight,
+                    CrtTuning.current().phosphorColor());
+        }
+        CrtDraw.header(graphics, font, CrtText.terminal(lines.get(last)), left, top + last * font.lineHeight, right);
+    }
 
     /** The casing of a unit, the lip round its glass, the vents and rivets on the casing, and the phosphor behind the glass's content. */
     static void body(GuiGraphicsExtractor graphics, CatalogueLook look, Rect casing, Rect glass, Iterable<Rect> vents) {
