@@ -1,9 +1,18 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.AREA_CHUNKS;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.DROP_HEIGHT;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.FIRST_SITE;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.HOLD_HEIGHT;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.MAX_TICKS;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.SITE_SPACING;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.arrivalTickets;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.fall;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.hold;
+import static io.github.pkeppeler.deepcharter.test.support.SeamSite.loadedAround;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.LayerRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.SeamStreaming;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -15,7 +24,8 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
-import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.SeamSite.Run;
+import io.github.pkeppeler.deepcharter.test.support.SeamSite.Site;
 import io.github.pkeppeler.deepcharter.test.support.SecondSeat;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -24,7 +34,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.IntConsumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -32,10 +41,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.Ticket;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -48,131 +54,10 @@ import net.minecraft.world.phys.Vec3;
  * own X, a thousand blocks apart, so no two arrival areas touch.
  */
 public class SeamStreamingTest {
-    /** Chunks in the arrival area: a square of {@code 2 * radius + 1} on a side. */
-    private static final int AREA_CHUNKS =
-            (2 * LayerTuning.DEFAULT.seamRadius() + 1) * (2 * LayerTuning.DEFAULT.seamRadius() + 1);
-    /** Blocks above the floor of layer 1 where a test holds its vehicle: inside the floor margin, so it always streams. */
-    private static final int HOLD_HEIGHT = 100;
-    /** Blocks above the floor where a falling vehicle starts, a drop of a few ticks. */
-    private static final int DROP_HEIGHT = 8;
-    /** Half the width of the air shaft cut above the floor: wide enough for a pod. */
-    private static final int SHAFT_HALF_WIDTH = 2;
     /** Ticks a negative case watches for a ticket that must not come. */
     private static final int WATCH_TICKS = 40;
     /** Ticks an approach may outlive the vehicle that left its zone: the next tick of the level it left. */
     private static final int APPROACH_SLACK_TICKS = 5;
-    /** The test's own ticks beside its chunk wait: a drop, a crossing, and the run of the ticket's timeout when the chunk work is not in the way. */
-    private static final int WORK_TICKS = 400;
-
-    private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + WORK_TICKS;
-    /** Blocks between the X of two tests, so their arrival areas stay apart. */
-    private static final int SITE_SPACING = 1000;
-    /** A chunk's middle: a shaft there stays inside one chunk. */
-    private static final double CHUNK_MIDDLE = 8.5;
-
-    private static final double FIRST_SITE = 40_000 + CHUNK_MIDDLE;
-
-    /** Where a test stands: a column of layer 1, and the layer under it. */
-    private record Site(ServerLevel one, ServerLevel two, double x, double z) {
-        static Site of(GameTestHelper helper, int index) {
-            MinecraftServer server = helper.getLevel().getServer();
-            return new Site(
-                    TestLayers.layerDimension(server, 1),
-                    TestLayers.layerDimension(server, 2),
-                    FIRST_SITE + (double) SITE_SPACING * index,
-                    FIRST_SITE);
-        }
-
-        int floorY() {
-            return TestLayers.dimensionBand(one).minY();
-        }
-
-        Vec3 at(int heightAboveFloor) {
-            return new Vec3(x, floorY() + heightAboveFloor, z);
-        }
-
-        ChunkPos centre() {
-            return ChunkPos.containing(BlockPos.containing(x, 0, z));
-        }
-
-        /** An air shaft from the floor of layer 1 up to {@code topHeight}, so a mock or a pod in it is not in rock and can fall out. */
-        void carveShaft(double shaftX, int topHeight) {
-            BlockPos column = BlockPos.containing(shaftX, floorY(), z);
-            RoomCarver.carve(
-                    one,
-                    column.offset(-SHAFT_HALF_WIDTH, 0, -SHAFT_HALF_WIDTH),
-                    column.offset(SHAFT_HALF_WIDTH, topHeight, SHAFT_HALF_WIDTH),
-                    Blocks.AIR.defaultBlockState(),
-                    Block.UPDATE_ALL);
-        }
-    }
-
-    /** One test's site, and the wall-clock limit of its wait for the arrival area. */
-    private record Run(GameTestHelper helper, Site site, FarChunks.Deadline deadline) {
-        static Run of(GameTestHelper helper, int index) {
-            return new Run(helper, Site.of(helper, index), FarChunks.deadline());
-        }
-
-        /** Whether the whole arrival area is loaded under a ticket; otherwise sleeps a little and, past the limit, fails naming what is missing. */
-        boolean arrivalReady() {
-            int loaded = loadedAround(site.two(), site.centre());
-            boolean ready = loaded == AREA_CHUNKS
-                    && !arrivalTickets(site.two(), site.centre()).isEmpty();
-            deadline.await(
-                    helper,
-                    site.two(),
-                    ready,
-                    () -> "the arrival area of " + site.centre() + " has " + loaded + " of " + AREA_CHUNKS
-                            + " chunks loaded and tickets " + arrivalTickets(site.two(), site.centre()));
-            return ready;
-        }
-
-        /**
-         * Waits until every position of {@code ticking} in layer 1 ticks entities, then runs {@code setup} once and, from the next tick,
-         * {@code step} with the ticks since. {@code step} ends the test itself.
-         */
-        void stage(List<BlockPos> ticking, Runnable setup, IntConsumer step) {
-            boolean[] ready = {false};
-            long[] placedAt = {-1};
-            FarChunks.awaitAllEntityTicking(helper, site.one(), ticking, () -> ready[0] = true);
-            TestTicks.each(helper, () -> {
-                if (placedAt[0] < 0) {
-                    if (ready[0]) {
-                        setup.run();
-                        placedAt[0] = helper.getTick();
-                    }
-                    return;
-                }
-                step.accept((int) (helper.getTick() - placedAt[0]));
-            });
-        }
-
-        void stage(Runnable setup, IntConsumer step) {
-            stage(List.of(BlockPos.containing(site.at(HOLD_HEIGHT))), setup, step);
-        }
-    }
-
-    /** How many chunks of the arrival area around {@code centre} are loaded in {@code level}. */
-    private static int loadedAround(ServerLevel level, ChunkPos centre) {
-        int radius = LayerTuning.DEFAULT.seamRadius();
-        int loaded = 0;
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-                if (level.getChunkSource().getChunkNow(centre.x() + dx, centre.z() + dz) != null) {
-                    loaded++;
-                }
-            }
-        }
-        return loaded;
-    }
-
-    /** The arrival tickets vanilla holds on {@code chunk} of {@code level}, read from its ticket storage. */
-    private static List<Ticket> arrivalTickets(ServerLevel level, ChunkPos chunk) {
-        return ((ServerChunkCacheAccess) level.getChunkSource())
-                .deepcharter$ticketStorage().getTickets(chunk.pack()).stream()
-                        .filter(ticket -> ticket.getType() == LayerRegistry.SEAM_ARRIVAL)
-                        .toList();
-    }
 
     /** Whether any level of the server holds an arrival ticket on {@code chunk}. */
     private static boolean anyArrivalTicket(MinecraftServer server, ChunkPos chunk) {
@@ -182,19 +67,6 @@ public class SeamStreamingTest {
             }
         }
         return false;
-    }
-
-    /** Lowers a vehicle that is still in layer 1 by a block, a mock's fall: it has no client gravity. */
-    private static void fall(Site site, Entity vehicle) {
-        if (vehicle.level() == site.one()) {
-            vehicle.setPos(vehicle.getX(), vehicle.getY() - 1, vehicle.getZ());
-        }
-    }
-
-    /** A vehicle at {@code height} above layer 1's floor holds there: zero speed, so a pod does not fall of its own weight. */
-    private static void hold(Site site, PodEntity pod, int height) {
-        pod.setPos(site.at(height));
-        pod.setDeltaMovement(Vec3.ZERO);
     }
 
     /** A mock held 100 blocks above layer 1's floor, inside the floor margin, gets the whole arrival area before it moves. */

@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.suit.SuitTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItem;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartUnits;
@@ -167,6 +168,7 @@ public final class SpecSheets {
             }
             case QUANTUM_TELEPORTER ->
                 ratings.add(rating("scatter", "blocks", number((float) tuning.quantumScatter())));
+            case AIR_CANISTER -> ratings.add(rating("adds", "seconds", number(SuitTuning.DEFAULT.canisterSeconds())));
             case MATTER_TRANSMITTER, TETHER, THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE, BOLT_DRIVER, BOLT -> {}
         }
     }

@@ -46,16 +46,20 @@ public final class BlockReadoutHud {
      */
     private static HudKeepClear.Rect box(Font font, Readout readout, int guiWidth, int guiHeight) {
         ReadoutLook look = ReadoutLook.current();
-        int widest = font.width(readout.name());
+        int widest = widest(font, readout);
         int height = font.lineHeight;
         if (readout.hint().isPresent()) {
-            widest = Math.max(widest, font.width(readout.hint().get()));
             height += font.lineHeight + look.lineGap();
         }
         int width = (int) Math.ceil(widest * look.scale());
         return new HudKeepClear.Rect(
                 "block readout", (guiWidth - width) / 2, guiHeight / 2 + look.offsetY(), width, (int)
                         Math.ceil(height * look.scale()));
+    }
+
+    private static int widest(Font font, Readout readout) {
+        int widest = font.width(readout.name());
+        return readout.hint().map(hint -> Math.max(widest, font.width(hint))).orElse(widest);
     }
 
     private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
@@ -104,22 +108,25 @@ public final class BlockReadoutHud {
         Font font = client.font;
         graphics.pose().pushMatrix();
         HudKeepClear.Rect box = box(font, shown.get(), graphics.guiWidth(), graphics.guiHeight());
-        int centreX = graphics.guiWidth() / 2;
-        graphics.pose().translate(centreX, box.y());
+        graphics.pose().translate(box.x(), box.y());
         graphics.pose().scale((float) look.scale(), (float) look.scale());
-        centred(graphics, font, shown.get().name(), 0, Colors.withAlpha(look.nameColor(), alpha));
+        int widest = widest(font, shown.get());
+        centred(graphics, font, widest, shown.get().name(), 0, Colors.withAlpha(look.nameColor(), alpha));
         shown.get()
                 .hint()
                 .ifPresent(hint -> centred(
                         graphics,
                         font,
+                        widest,
                         hint,
                         font.lineHeight + look.lineGap(),
                         Colors.withAlpha(look.hintColor(), alpha)));
         graphics.pose().popMatrix();
     }
 
-    private static void centred(GuiGraphicsExtractor graphics, Font font, Component text, int y, int color) {
-        graphics.text(font, text, -font.width(text) / 2, y, color, true);
+    /** Whole-pixel centring from the box's integer origin, so the text stays inside the box kept clear. */
+    private static void centred(
+            GuiGraphicsExtractor graphics, Font font, int widest, Component text, int y, int color) {
+        graphics.text(font, text, (widest - font.width(text)) / 2, y, color, true);
     }
 }

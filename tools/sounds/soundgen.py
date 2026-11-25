@@ -3,8 +3,9 @@
 
 Usage:
   tools/py tools/sounds/soundgen.py [NAME ...]    render the recipes (all, or the named ones), encode the OGGs, write the manifest
-  tools/py tools/sounds/soundgen.py --check       exit 1 on a shipped OGG with no recipe, a recipe with no OGG, a recipe that no longer
-                                                    makes the PCM it was committed with, or an OGG that is not the one committed
+  tools/py tools/sounds/soundgen.py --check       exit 1 on a shipped OGG with no recipe (and not one first_sounds.json owns), a recipe with
+                                                    no OGG, a recipe that no longer makes the PCM it was committed with, an OGG that is not
+                                                    the one committed, or a recording of tools/sounds/first_sounds.py that fails its own check
 Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --manifest FILE (default tools/sounds/manifest.json).
 
 The recipes are tools/sounds/recipes.py; each name is the path of its OGG under --out, and the sound slot `deepcharter:<name>` in
@@ -13,6 +14,12 @@ the encoder or its version: this is what proves a recipe still reproduces its so
 proves nobody replaced it by hand (an encoder writes a random stream serial, so it is not reproducible bytes). A sound whose PCM hash has
 not changed keeps its OGG, so a build with another ffmpeg does not churn the repo. A test decodes each OGG and compares it with its recipe,
 so a recipe edited without a rebuild fails too.
+
+The wax cylinders' recordings (the phonograph folder) are not recipes: they are processed recordings, made by tools/sounds/first_sounds.py
+from downloaded sources and owned by tools/sounds/first_sounds.json, which has the hash of each committed OGG. `--check` accepts exactly
+those OGGs and asks `first_sounds.check` about them. The ambience's fragments (the ambience folder) are the same kind of thing, made by
+tools/sounds/ambience.py and owned by tools/sounds/ambience.json, and `--check` asks `ambience.check` about them. The punch clock's hours and
+fragments (the clock folder, #938) are cuts of one recording, made by tools/sounds/lambert_clock.py and owned by tools/sounds/lambert_clock.json.
 
 Standard library and ffmpeg only; this Mac's ffmpeg has the native Vorbis encoder alone, which writes stereo.
 """
@@ -29,6 +36,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+import ambience  # noqa: E402
+import first_sounds  # noqa: E402
+import lambert_clock  # noqa: E402
 import recipes  # noqa: E402
 
 ROOT = HERE.parent.parent
@@ -41,8 +51,7 @@ def _sha256(path):
 
 
 def _encoder_args():
-    listing = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], check=True, capture_output=True, text=True).stdout
-    if " libvorbis " in listing:
+    if first_sounds.has_libvorbis():
         return ["-c:a", "libvorbis", "-q:a", "4"]
     return ["-c:a", "vorbis", "-strict", "-2", "-q:a", "4"]
 
@@ -68,7 +77,8 @@ def _load(manifest):
 
 def build(names, out, manifest):
     known = _load(manifest)
-    entries = {}
+    # Naming recipes rebuilds those only: the others keep their entries.
+    entries = {name: entry for name, entry in known.items() if name in recipes.RECIPES}
     for name in names:
         clip = recipes.render(name)
         pcm = clip.sha256()
@@ -98,12 +108,25 @@ def check(names, out, manifest):
             problems.append(f"{name}: {target.name} is not the file the manifest was written for; do not edit an OGG, change its recipe")
         if entry is not None and recipes.render(name).sha256() != entry["pcm_sha256"]:
             problems.append(f"{name}: the recipe no longer makes the sound it was committed with; run tools/sounds/soundgen.py and commit")
+    # The recordings' manifest sits beside the recipes' one; a manifest that is not there owns nothing, so its OGGs count as strays.
+    recordings_manifest = manifest.with_name(first_sounds.MANIFEST.name)
+    recordings = first_sounds.owned(recordings_manifest)
+    fragments_manifest = manifest.with_name(ambience.MANIFEST.name)
+    recordings |= ambience.owned(fragments_manifest)
+    lambert_manifest = manifest.with_name(lambert_clock.MANIFEST.name)
+    recordings |= lambert_clock.owned(lambert_manifest)
     for stray in sorted(out.rglob("*.ogg")):
         name = stray.relative_to(out).with_suffix("").as_posix()
-        if name not in recipes.RECIPES:
+        if name not in recipes.RECIPES and name not in recordings:
             problems.append(f"{name}.ogg: no recipe in tools/sounds/recipes.py makes this shipped sound; add the recipe or delete the file")
     for name in sorted(set(known) - set(recipes.RECIPES)):
         problems.append(f"{name}: the manifest lists a sound with no recipe")
+    if recordings_manifest.is_file():
+        problems += first_sounds.check(out, recordings_manifest)
+    if fragments_manifest.is_file():
+        problems += ambience.check(out, fragments_manifest)
+    if lambert_manifest.is_file():
+        problems += lambert_clock.check(out, lambert_manifest)
     if problems:
         print("\n".join(problems), file=sys.stderr)
         return 1
