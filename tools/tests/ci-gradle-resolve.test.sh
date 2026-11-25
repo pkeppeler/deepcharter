@@ -48,6 +48,17 @@ case ${modes[$n]} in
     echo "   > Could not GET 'https://repo.maven.apache.org/maven2/a/b/1/b-1.pom'. Received status code 429 from server: Too Many Requests"
     exit 1
     ;;
+  refused)
+    echo "FAILURE: Build failed with an exception."
+    echo "   > Connect to repo.maven.apache.org:443 [repo.maven.apache.org/1.2.3.4] failed: Connection refused"
+    exit 1
+    ;;
+  noisy-verify) # a compile failure after build output that mentions verification
+    echo "[main/INFO] Dependency verification failed is a phrase this log happens to print"
+    echo "FAILURE: Build failed with an exception."
+    echo "> Compilation failed"
+    exit 3
+    ;;
   noisy) # a test failure whose own output, before Gradle's report, looks like a download error
     echo "[Server thread/WARN] Connection reset by peer"
     echo "FAILURE: Build failed with an exception."
@@ -57,6 +68,14 @@ case ${modes[$n]} in
 esac
 S
 chmod +x "$work/gradlew"
+# A sleep stub on PATH records each wait (STUB_SLEEPS) instead of waiting.
+mkdir "$work/bin"
+cat >"$work/bin/sleep" <<'S'
+#!/usr/bin/env bash
+echo "$1" >>"$STUB_SLEEPS"
+S
+chmod +x "$work/bin/sleep"
+export PATH="$work/bin:$PATH"
 
 failures=0
 check() { # check <description> <expected> <actual>
@@ -67,15 +86,17 @@ expect_line() { # expect_line <description> <fixed string> <file>
 }
 
 # run <modes> [ARGS...]: prints "<exit status>|<gradlew calls, joined>|<modules-2 left: yes/no>" and leaves the
-# script's output in $work/out. ARGS default to "classes". Retries wait 0 s; ATTEMPTS overrides the run bound.
+# script's output in $work/out and its waits in $work/sleeps. ARGS default to "classes". The first wait is 1 s;
+# ATTEMPTS overrides the bound.
 run() {
   local modes=$1
   shift
   [[ $# -gt 0 ]] || set -- classes
-  export STUB_SEQ=$modes STUB_CALLS=$work/calls STUB_CC=$work/cc GRADLE_USER_HOME=$work/home CI_GRADLE_RESOLVE_DELAY=0
+  export STUB_SEQ=$modes STUB_CALLS=$work/calls STUB_CC=$work/cc STUB_SLEEPS=$work/sleeps GRADLE_USER_HOME=$work/home CI_GRADLE_RESOLVE_DELAY=1
   export CI_GRADLE_RESOLVE_ATTEMPTS=${ATTEMPTS:-3}
   : >"$STUB_CALLS"
   : >"$STUB_CC"
+  : >"$STUB_SLEEPS"
   rm -rf "$work/.gradle"
   mkdir -p "$work/.gradle/configuration-cache" # an entry from an earlier step
   mkdir -p "$GRADLE_USER_HOME/caches/modules-2"
@@ -100,22 +121,31 @@ check "second verification failure: fails, no third run" \
 
 check "plugin not found, then success: passes after one retry, cache kept" \
   "0|gradlew classes;gradlew classes|yes" "$(run 'plugin ok')"
-expect_line "the download retry is logged" "::warning::Gradle could not download a plugin or dependency (run 1 of 3)" "$work/out"
+expect_line "the download retry is logged" "::warning::Gradle could not download a plugin or dependency (failure 1 of 3)" "$work/out"
 expect_line "the failed run's output passes through" "was not found in any of the following sources" "$work/out"
 check "the retry runs without the configuration cache entry the failed run stored" "present;absent" "$(paste -sd ';' "$work/cc")"
 check "HTTP 429 twice, then success: passes on the third run" \
   "0|gradlew classes;gradlew classes;gradlew classes|yes" "$(run 'http http ok')"
+check "the waits double: 1 s, then 2 s" "1;2" "$(paste -sd ';' "$work/sleeps")"
+check "connection refused, then success: passes after one retry" "0|gradlew classes;gradlew classes|yes" "$(run 'refused ok')"
 check "download failure every time: fails after three runs" \
   "1|gradlew classes;gradlew classes;gradlew classes|yes" "$(run plugin)"
-expect_line "giving up says why" "::error::Gradle could not download a plugin or dependency in 3 runs" "$work/out"
+expect_line "giving up says why" "::error::Gradle failed to download a plugin or dependency 3 times" "$work/out"
 check "CI_GRADLE_RESOLVE_ATTEMPTS bounds the runs" \
   "1|gradlew classes;gradlew classes|yes" "$(ATTEMPTS=2 run plugin)"
 check "verification retry, then a download failure, then success: both retries apply" \
   "0|gradlew classes;gradlew --stop;gradlew --refresh-dependencies classes;gradlew --refresh-dependencies classes|no" \
   "$(run 'verify http ok')"
+check "verification retry, then download failures: the bound counts download failures only" \
+  "1|gradlew classes;gradlew --stop;gradlew --refresh-dependencies classes;gradlew --refresh-dependencies classes;gradlew --refresh-dependencies classes|no" \
+  "$(run 'verify http')"
+expect_line "giving up after a verification retry counts the download failures" \
+  "::error::Gradle failed to download a plugin or dependency 3 times" "$work/out"
 
 check "other failure: its status, no retry, cache kept" "3|gradlew classes|yes" "$(run 'other ok')"
 check "a download-looking line before Gradle's failure report: no retry" "4|gradlew classes|yes" "$(run 'noisy ok')"
+check "a verification-looking line before Gradle's failure report: no retry, cache kept" \
+  "3|gradlew classes|yes" "$(run 'noisy-verify ok')"
 
 status=0
 (cd "$work" && bash "$tools/ci-gradle-resolve.sh" >/dev/null 2>&1) || status=$?
