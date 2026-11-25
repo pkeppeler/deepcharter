@@ -10,10 +10,16 @@ package io.github.pkeppeler.deepcharter.handbook;
  * @param drillDownBlocks      how far below the colony's ground a pod must drill for the directive "Drill down ten blocks"
  * @param findProspectorBlocks how close a player must come to a Prospector wreck to have found it: a wreck site's bay reaches
  *                             six blocks from its middle
+ * @param pencilReachBlocks    how close to a structure a player must come to have reached the place a pencil path points to, in
+ *                             blocks beyond its bounds (the edge cell is inside; N blocks out is in, N + 1 is out)
  */
 public record HandbookTuning(
-        int progressPollTicks, int triggerPollTicks, int drillDownBlocks, int findProspectorBlocks) {
-    public static final HandbookTuning DEFAULT = new HandbookTuning(10, 10, 10, 10);
+        int progressPollTicks,
+        int triggerPollTicks,
+        int drillDownBlocks,
+        int findProspectorBlocks,
+        int pencilReachBlocks) {
+    public static final HandbookTuning DEFAULT = new HandbookTuning(10, 10, 10, 10, 8);
 
     public HandbookTuning {
         if (progressPollTicks < 1) {
@@ -27,6 +33,9 @@ public record HandbookTuning(
         }
         if (findProspectorBlocks < 1) {
             throw new IllegalArgumentException("findProspectorBlocks must be at least 1, got " + findProspectorBlocks);
+        }
+        if (pencilReachBlocks < 1) {
+            throw new IllegalArgumentException("pencilReachBlocks must be at least 1, got " + pencilReachBlocks);
         }
     }
 }

@@ -139,7 +139,7 @@ public record CatalogueLayout(
                 casing, glass, shelf(glass, look, crt, lineHeight), recipe, recipeGlass, card, inventory);
     }
 
-    private static Rect glass(Rect casing, CatalogueLook look, int deck) {
+    static Rect glass(Rect casing, CatalogueLook look, int deck) {
         CatalogueLook.Casing c = look.casing();
         return new Rect(
                 casing.x() + c.sideBezel(),
@@ -149,7 +149,7 @@ public record CatalogueLayout(
     }
 
     /** The y under a title that starts at {@code titleY}: its rule, then the gap. */
-    private static int belowTitle(int titleY, CatalogueLook look, CrtTuning crt, int lineHeight) {
+    static int belowTitle(int titleY, CatalogueLook look, CrtTuning crt, int lineHeight) {
         return titleY + lineHeight + crt.headerRuleGap() + 1 + look.titleGap();
     }
 

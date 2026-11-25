@@ -44,15 +44,23 @@ _Avoid_: town, base, hub
 A repairable machine where you sell ore, buy fuel and upgrades, repair, or sign contracts.
 _Avoid_: shop, store, vendor
 
+**Depth**:
+How far down a place is, on one axis that runs through every dimension of the campaign. A layer is defined by depth, not by dimension.
+_Avoid_: Y (that is one dimension's own height)
+
 **Layer**:
-One link in the underground chain, with its own light, fog and sky. Its floor leads into the top of the next.
+One link in the underground chain, with its own light, fog and sky. Its floor leads into the top of the next. A dimension can hold several layers, and one layer can span two dimensions.
 _Avoid_: level, biome, dimension (that is the implementation)
 
 **Campaign world**:
-The one tall world that holds the surface as its top band and the story layers, ending at the finale's floor. Crossing a breach in it has no teleport.
+The overworld, the first dimension of the stack: the surface as its top band, then as many layer bands as fit, down to y -2032. Crossing a breach inside it has no teleport.
+
+**Deep dimension**:
+A tall dimension below the campaign world, holding the next depth. Not built yet.
+_Avoid_: layer dimension, chain world
 
 **Band**:
-A fixed range of Y in the campaign world: the surface, a layer, or unbuilt depth.
+A layer's slice inside one dimension: a fixed range of Y. The surface and unbuilt depth are bands too.
 _Avoid_: level, floor
 
 **Unbuilt depth**:
@@ -60,15 +68,19 @@ The plain rock of the campaign world below the last built layer. Nothing is in i
 _Avoid_: void, empty space
 
 **Seam**:
-The join between two tall worlds, including the campaign world and the first uncharted world, crossed by a fast background swap inside a grained crust.
-_Avoid_: portal, loading screen
+The boundary between two stacked dimensions on the depth axis, such as the campaign world and the first deep dimension, or the join to the uncharted worlds. It is a storage boundary, not a layer boundary: it can fall mid-layer, or coincide with a layer boundary and carry its crust, the seam crust (grained). How seamless it must be is open.
+_Avoid_: portal, loading screen, dimension seam
+
+**Arrival area**:
+The radius-4 patch of the next dimension that the server loads under a vehicle approaching a seam, before it crosses. It is held by a timed `deepcharter:seam_arrival` ticket and lapses on its own once the approach ends.
+_Avoid_: arrival pocket (the pocket is the carved air the fallback crossing lands in)
 
 **Grained crust**:
 A crust with a vertical grain that flexes on a slow pulse. Its rules are in the SPEC. Working name.
-_Avoid_: seam crust, no-build zone
+_Avoid_: no-build zone
 
 **Decoy**:
-A grained crust that is not a seam, chosen from the world seed.
+A grained crust that is not on a seam, chosen from the world seed.
 _Avoid_: fake seam
 
 **Story layer**:
@@ -84,7 +96,7 @@ A band within a layer where ore value, hazards and creatures step up.
 _Avoid_: sub-layer
 
 **Breach**:
-The soft crust at a layer boundary. Any drill can pass, at a heavy cost. Crossing is a story event.
+The soft crust at a layer boundary, also called the breach crust. Any drill can pass, at a heavy cost. Crossing is a story event. A seam is not a breach.
 _Avoid_: barrier, wall, gate
 
 **Ramp**:
@@ -226,7 +238,7 @@ The handbook's view of its Directives: chapter tabs, and for each chapter a flow
 _Avoid_: quest book, tech tree
 
 **Pencil path**:
-A route on the quest map, drawn by earlier miners when a charter finds a Note. It is not a Directive.
+A route on the pencil sheet after the last chapter of the quest map, drawn by earlier miners when a charter finds a Note. It completes when the charter reaches the place the Note points to, and gives nothing but the place. It is not a Directive.
 _Avoid_: side quest, Directive
 
 **Parts catalogue**:

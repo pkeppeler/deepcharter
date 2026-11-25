@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodSeats;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 
@@ -76,7 +77,7 @@ public final class PodMotion {
             dz = 0;
         }
 
-        boolean piloted = pod.getControllingPassenger() != null;
+        boolean piloted = PodSeats.pilot(pod).isPresent();
         boolean powered = piloted && pod.fuel() > 0f && !pod.stranded();
         boolean drilling = pod.drilling();
         Direction drill = pod.drillDirection();

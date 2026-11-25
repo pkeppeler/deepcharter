@@ -275,6 +275,7 @@ apply(from = "gradle/record-holder-gate.gradle.kts")
 apply(from = "gradle/keep-clear-gate.gradle.kts")
 apply(from = "gradle/null-marked-gate.gradle.kts")
 apply(from = "gradle/gametest.gradle.kts")
+apply(from = "gradle/gametest-preset.gradle.kts")
 apply(from = "gradle/colour-gate.gradle.kts")
 apply(from = "gradle/test-only-gate.gradle.kts")
 apply(from = "gradle/constant-param-gate.gradle.kts")
@@ -316,7 +317,7 @@ spotless {
 
 // RELAXED: Error Prone's unused checks would flag every injector method and its Mixin-supplied parameters; any other unused code is still reported.
 val mixinHandlers = (listOf("Inject", "Redirect", "ModifyArg", "ModifyArgs", "ModifyVariable", "ModifyConstant")
-	.map { "org.spongepowered.asm.mixin.injection.$it" } + "com.llamalad7.mixinextras.injector.ModifyExpressionValue")
+	.map { "org.spongepowered.asm.mixin.injection.$it" } + listOf("ModifyExpressionValue", "wrapoperation.WrapOperation").map { "com.llamalad7.mixinextras.injector.$it" })
 	.joinToString(",")
 
 // Error Prone runs on every source set; -Werror fails on any warning.

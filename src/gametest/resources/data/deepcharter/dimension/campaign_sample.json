@@ -137,7 +137,8 @@
             "deepcharter:topsoil_claims",
             "deepcharter:stone_benches",
             "deepcharter:deep_claim"
-          ]
+          ],
+          "floor_crust": "normal"
         },
         {
           "min_y": -512,
@@ -146,11 +147,22 @@
             "deepcharter:upper_levels",
             "deepcharter:shift_change",
             "deepcharter:prospectors_run"
-          ]
+          ],
+          "floor_crust": "normal"
+        },
+        {
+          "min_y": -768,
+          "height": 256,
+          "biomes": [
+            "deepcharter:garden",
+            "deepcharter:spore_fields",
+            "deepcharter:quiet"
+          ],
+          "floor_crust": "normal"
         }
       ],
       "unbuilt": "deepcharter:unbuilt_depth"
     },
-    "settings": "deepcharter:campaign"
+    "settings": "deepcharter:campaign_sample"
   }
 }

@@ -1,0 +1,36 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/basalt_core_0"
+      },
+      {
+        "model": "deepcharter:block/basalt_core_1"
+      },
+      {
+        "model": "deepcharter:block/basalt_core_2"
+      },
+      {
+        "model": "deepcharter:block/basalt_core_3"
+      },
+      {
+        "model": "deepcharter:block/basalt_core_4"
+      },
+      {
+        "model": "deepcharter:block/basalt_core_5"
+      },
+      {
+        "model": "deepcharter:block/basalt_core_6"
+      },
+      {
+        "model": "deepcharter:block/basalt_core_7"
+      },
+      {
+        "model": "deepcharter:block/basalt_core_8"
+      },
+      {
+        "model": "deepcharter:block/basalt_core_9"
+      }
+    ]
+  }
+}
