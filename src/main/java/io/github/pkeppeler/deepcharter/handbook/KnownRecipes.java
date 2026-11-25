@@ -27,18 +27,20 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 
 /**
- * The recipes a charter knows, and what the server sends each player of them (ADR 0070, ADR 0066). A recipe becomes known when a
- * quest step that asks for its item becomes current ({@link HandbookChapters#current}), or when anyone on the charter holds the
- * recipe's result or one of its ingredients. Every recipe follows the rule, vanilla's too. A player on no charter has recipes of
- * their own ({@link KnownRecipesData}), which {@link ProgressCarry} moves into a charter they found or join. Unknown recipes still
- * craft: nothing here limits crafting.
+ * The recipes a charter knows, and what the server sends each player of them (ADR 0070, ADR 0066). A recipe becomes
+ * known when a quest step that asks for its item becomes current ({@link HandbookChapters#current}), or when anyone on
+ * the charter holds the recipe's result or one of its ingredients. Every loaded recipe follows the rule, vanilla's too;
+ * one that needs or makes an item the campaign world does not yield is not loaded at all ({@link ObtainableItems}, ADR
+ * 0093). A player on no charter has recipes of their own ({@link KnownRecipesData}), which {@link ProgressCarry} moves
+ * into a charter they found or join. Unknown recipes still craft: nothing here limits crafting.
  *
- * <p>The player's server-side recipe book holds exactly the recipes their charter knows (their own on no charter), and the
- * vanilla recipe-book packets carry it to the client. The book is made to match when it is first sent ({@link #conform}), when
- * the set grows, and when the player joins, founds or leaves a charter. {@link #knownFor} also filters vanilla unlocks.
+ * <p>The player's server-side recipe book holds exactly the recipes their charter knows (their own on no charter), and
+ * the vanilla recipe-book packets carry it to the client. The book is made to match when it is first sent
+ * ({@link #conform}), when the set grows, and when the player joins, founds or leaves a charter. {@link #knownFor} also
+ * filters vanilla unlocks.
  *
- * <p>Saved data of a version this build cannot read is logged once: no recipe is known and the book is emptied, and the saved
- * data is kept ({@link #readableData}).
+ * <p>Saved data of a version this build cannot read is logged once: no recipe is known and the book is emptied, and the
+ * saved data is kept ({@link #readableData}).
  */
 public final class KnownRecipes {
     private KnownRecipes() {}

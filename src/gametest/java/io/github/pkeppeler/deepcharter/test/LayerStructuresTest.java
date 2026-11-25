@@ -65,7 +65,7 @@ public class LayerStructuresTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(LayerStructuresTest.class);
     private static final int SPACING = 384;
     /** A spacing cell that is far from the colony's Conduit, so no structure shares its blocks. */
-    private static final int CELL = 3;
+    static final int CELL = 3;
 
     private static final int PAD_REACH = 40;
     private static final int PAD_HEIGHT = 8;
@@ -240,9 +240,10 @@ public class LayerStructuresTest {
     }
 
     /**
-     * The chunks of every site are made full on the first tick, then every condition on every site is polled under a
-     * wall-clock {@link FarChunks.Deadline}, because a tick budget is a different wall time under load. A wait that was
-     * needed is logged. See #365; the failure's census says what stands in the site's place.
+     * The chunks of every site are forced on the first tick and load on the worker threads; every tick polls, under a
+     * wall-clock {@link FarChunks.Deadline}, until they are loaded and every condition on every site holds, because a
+     * tick budget is a different wall time under load. A wait that was needed is logged. See #365; the failure's census
+     * says what stands in the site's place.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void eachStructureGeneratesInItsZone(GameTestHelper helper) {
@@ -260,8 +261,9 @@ public class LayerStructuresTest {
                         CELL,
                         conduit);
                 sites.add(site);
+                // Loaded on the worker threads; a synchronous getChunk here would hold the server thread (#1016).
                 for (ChunkPos chunk : chunksOf(site)) {
-                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                    FarChunks.force(helper, level, chunk.x(), chunk.z());
                 }
             }
         }
@@ -274,6 +276,10 @@ public class LayerStructuresTest {
                 ServerLevel level = TestLayers.level(helper, site.kind().layer());
                 // The chunk states are read first and without loading: reading a block loads an unloaded chunk.
                 String chunks = chunkStates(level, site);
+                if (!loaded(level, site)) {
+                    failing.add(String.format("%s: chunks not loaded yet: %s", site.kind(), chunks));
+                    continue;
+                }
                 Map<Block, Integer> found = census(level, site);
                 List<String> unmet = unmet(level, site, found);
                 if (!unmet.isEmpty()) {
@@ -318,6 +324,12 @@ public class LayerStructuresTest {
             }
         }
         return chunks;
+    }
+
+    /** Whether every chunk the site's bounds touch is loaded, read without loading any. */
+    static boolean loaded(ServerLevel level, StructureSite site) {
+        return chunksOf(site).stream()
+                .allMatch(chunk -> level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null);
     }
 
     /** How many of each block the site's bounds hold now. */

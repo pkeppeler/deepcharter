@@ -192,6 +192,7 @@ Implementation: [ADR 0005](adr/0005-build-our-own-handbook.md); research in [res
 Our own EMI-style viewer, styled as a Company parts catalogue ([ADR 0066](adr/0066-we-build-our-own-parts-catalogue-and-the-server-sends-each-player-only-their-charters-known-recipes.md)). It sits beside inventory screens. R on a hovered item shows its recipes, U its uses. It has search, favourites and a "craftable now" filter. Vanilla's recipe book is hidden.
 
 - A recipe is **known** per charter. It becomes known when a quest step that asks for its item becomes current, or when anyone in the charter obtains the item or one of its ingredients. Vanilla items follow the same rule.
+- Only what the campaign world yields exists. A recipe that needs or makes an item the world has none of is disabled, vanilla's included, and such items are left out of the catalogue and the creative tabs. A tag ingredient such as "any planks" shows only the members the world yields ([ADR 0093](adr/0093-recipes-and-items-the-campaign-world-does-not-yield-are-removed-by-a-derived-allowlist.md)).
 - Unknown recipes still craft. The server sends each player only their charter's known recipes.
 
 ## 6. Charters
