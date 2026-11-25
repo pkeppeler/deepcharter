@@ -130,7 +130,7 @@ def add_filament(model, i):
     direction = kit.sub(end, start)
     run = kit.length(direction)
     mid = kit.scale(kit.add(start, end), 0.5)
-    model.add(f"bulb_{i}", Cube((mid[0] - 0.45, mid[1] - run / 2, mid[2] - 0.45), (0.9, run, 0.9), paint_filament, kit.aim(direction), mid, 3.0))
+    model.add(f"bulb_{i}", Cube.strut(mid, run, 0.9, kit.aim(direction), paint_filament))
 
 
 def add_halo(model, i):
@@ -161,10 +161,7 @@ def add_head(model):
         tip_dir = kit.unit(kit.add(kit.scale(forward, 0.8), kit.scale(side, -sign * 0.45)))
         run = r * 2.2
         centre_ = kit.add(base, kit.scale(tip_dir, run / 2))
-        model.add(
-            "veil",
-            Cube((centre_[0] - 0.7, centre_[1] - run / 2, centre_[2] - 0.7), (1.4, run, 1.4), paint_jaw, kit.aim(tip_dir), centre_, 3.0),
-        )
+        model.add("veil", Cube.strut(centre_, run, 1.4, kit.aim(tip_dir), paint_jaw))
     for sign in (-1, 1):
         parent, start = "bulb_0", kit.add(kit.add(head, kit.scale(forward, length(0) * 0.35)), kit.scale(side, sign * r * 1.1))
         for k, (fwd, lat, dn) in enumerate(FEELER_TURNS):
@@ -174,10 +171,7 @@ def add_head(model):
             mid = kit.scale(kit.add(start, end), 0.5)
             name = f"feeler_{'lr'[(sign + 1) // 2]}_{'abc'[k]}"
             model.bone(name, parent, start)
-            model.add(
-                name,
-                Cube((mid[0] - width / 2, mid[1] - run / 2, mid[2] - width / 2), (width, run, width), feeler_painter(k), kit.aim(direction), mid, 3.0),
-            )
+            model.add(name, Cube.strut(mid, run, width, kit.aim(direction), feeler_painter(k)))
             parent, start = name, end
 
 

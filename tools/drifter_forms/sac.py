@@ -121,7 +121,6 @@ def paint_skin(t):
     fold = math.sin(t.y * 1.15 + 3 * kit.noise(t.x * 0.15, t.y * 0.1, t.z * 0.15, SEED + 17))
     if fold > 0.82 and t.y < CENTRE + 3:
         colour = kit.mix(colour, SHADE, 0.55 * sag(t.y) + 0.2)
-    alpha = 255.0
     glow = (*kit.mix(COLD, (235, 252, 240), lit), 70 + 50 * lit + 40 * mottle)
     patch = kit.fbm(t.x * 0.11 + 4, t.y * 0.11, t.z * 0.11, SEED + 8, 2)
     if patch > 0.68:
@@ -151,13 +150,13 @@ def paint_skin(t):
         cx, cz = body_centre(FLOOR)
         spokes = abs(math.sin(math.atan2(t.x - cx, t.z - cz) * GILLS / 2))
         colour = kit.mix((88, 104, 100), (150, 172, 160), spokes * 0.6)
-        alpha = 255
         glow = (*COLD, 40) if math.hypot(t.x - cx, t.z - cz) < 3.2 else None
-    return (*colour, alpha), glow
+    return (*colour, 255), glow
 
 
 def paint_dimple(t):
-    r = math.hypot(t.x - body_centre(t.y)[0], t.z - body_centre(t.y)[1])
+    cx, cz = body_centre(t.y)
+    r = math.hypot(t.x - cx, t.z - cz)
     colour = kit.mix((96, 112, 104), (170, 188, 170), r / 8)
     ring = abs(r - 4.2) < 0.55
     return (*kit.mix(colour, VEIN, 0.8 if ring else 0.0), 255), ((*COLD, 150) if ring else None)
@@ -298,10 +297,7 @@ def add_threads(model):
             name = f"thread_{i}_{'abc'[k]}"
             model.bone(name, parent, foot)
             turn = kit.aim(kit.scale(down, -1))
-            model.add(
-                name,
-                Cube((centre[0] - width / 2, centre[1] - run / 2, centre[2] - width / 2), (width, run, width), thread_painter(k, k == 2), turn, centre, 3.0),
-            )
+            model.add(name, Cube.strut(centre, run, width, turn, thread_painter(k, k == 2)))
             if k < 2:
                 model.add(name, Cube.plane(centre, 5.0 - 2.0 * k, run, turn, paint_ribbon, 3.0))
             parent, foot = name, end

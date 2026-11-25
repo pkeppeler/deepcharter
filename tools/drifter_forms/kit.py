@@ -237,6 +237,12 @@ class Cube:
         origin = (centre[0] - width / 2, centre[1], centre[2] - depth / 2)
         return Cube(origin, (width, 0, depth), paint, turn, centre, density)
 
+    @staticmethod
+    def strut(centre, run, width, turn, paint):
+        """A square rod `run` long and `width` thick, centred on `centre` and turned by `turn` from standing along y."""
+        origin = (centre[0] - width / 2, centre[1] - run / 2, centre[2] - width / 2)
+        return Cube(origin, (width, run, width), paint, turn, centre)
+
     def world(self, point):
         return add(self.pivot, apply(self.matrix, sub(point, self.pivot)))
 

@@ -278,17 +278,7 @@ def add_tendril(model, i):
         model.bone(name, parent, start)
         width = SEGMENT_WIDTH[k] * TENDRIL_THICK[i]
         turn = kit.aim(kit.scale(down, -1))
-        model.add(
-            name,
-            Cube(
-                (centre[0] - width / 2, centre[1] - reach / 2, centre[2] - width / 2),
-                (width, reach, width),
-                tendril_painter(k, k == len(SEGMENT_SHARE) - 1),
-                turn,
-                centre,
-                density=3.0,
-            ),
-        )
+        model.add(name, Cube.strut(centre, reach, width, turn, tendril_painter(k, k == len(SEGMENT_SHARE) - 1)))
         if k < 3:
             model.add(name, Cube.plane(centre, (4.4 - 1.2 * k) * TENDRIL_THICK[i], reach, turn, paint_ribbon, 3.0))
         parent, start = name, end
