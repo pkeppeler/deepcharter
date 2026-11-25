@@ -7,8 +7,9 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * block's name and a hint, in the account line's green and the lining line's amber. Lengths are GUI pixels, timings are
  * client ticks (20 are one second).
  *
- * <p>The block readout's bottom edge is {@code bottomOffset} above the bottom of the GUI, so the same number of pixels clears
- * vanilla's rows at every GUI scale; its lines grow upward from it. The placement readout stands above it, over the room of two lines.
+ * <p>The block readout's bottom edge is {@code bottomOffset} above the bottom of the GUI, so the same number of pixels
+ * clears vanilla's rows at every GUI scale; its lines grow upward from it. The placement readout stands above it, over
+ * the room of two lines.
  *
  * @param bottomOffset space between the bottom of the GUI and the block readout's bottom edge; never less than {@link
  *     #CLEAR_OF_VANILLA}
@@ -50,8 +51,8 @@ public record ReadoutLook(
     }
 
     /**
-     * The y of the bottom edge of the placement readout, for a font {@code lineHeight} high: above the block readout's two lines and a gap, so
-     * that both can show at once and neither moves the other.
+     * The y of the bottom edge of the placement readout, for a font {@code lineHeight} high: above the block readout's
+     * two lines and a gap, so that both can show at once and neither moves the other.
      */
     public int placementBottom(int guiHeight, int lineHeight) {
         return blockBottom(guiHeight) - (int) Math.ceil((2 * lineHeight + 2 * lineGap) * scale);

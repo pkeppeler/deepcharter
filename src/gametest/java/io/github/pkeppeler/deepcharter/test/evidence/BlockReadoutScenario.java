@@ -17,10 +17,10 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "block-readout" (#859): the name, and where there is one the hint, that appears above the hotbar. A stone platform stands in
- * the sky above the player and one block at a time is set three blocks in front of them: a plain block (name only), a contract terminal, breach
- * crust and Company rock (name and hint). A still with an item just taken in hand shows the readout above vanilla's held-item name, then a last
- * still looks at nothing.
+ * Evidence scenario "block-readout" (#859): the name, and where there is one the hint, that appears above the hotbar. A
+ * stone platform stands in the sky above the player and one block at a time is set three blocks in front of them: a
+ * plain block (name only), a contract terminal, breach crust and Company rock (name and hint). A still with an item
+ * just taken in hand shows the readout above vanilla's held-item name, then a last still looks at nothing.
  */
 public class BlockReadoutScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 6;

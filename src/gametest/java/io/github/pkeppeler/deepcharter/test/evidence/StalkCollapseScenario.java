@@ -9,11 +9,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.block.Block;
 
 /**
- * Evidence scenario "stalk-collapse" (#855): a player on foot walks up to the foot of the nearest great stalk the world grew (or, if the
- * survey of the colony's surroundings finds none, the nearest column of fungal stalk at least {@value #TALL_ENOUGH} blocks tall), breaks
- * it bare handed and backs away: everything above the break bursts at once in a spore puff, like sugar cane, and the drops scatter. The
- * stalk is the real generated feature, found by scanning the world, and the collapse is the real server logic. The frames run from the
- * break until the puff and the drops have settled; the camera drops from the middle of the stalk to the puff at the foot.
+ * Evidence scenario "stalk-collapse" (#855): a player on foot walks up to the foot of the nearest great stalk the world
+ * grew (or, if the survey of the colony's surroundings finds none, the nearest column of fungal stalk at least {@value
+ * #TALL_ENOUGH} blocks tall), breaks it bare handed and backs away: everything above the break bursts at once in a
+ * spore puff, like sugar cane, and the drops scatter. The stalk is the real generated feature, found by scanning the
+ * world, and the collapse is the real server logic. The frames run from the break until the puff and the drops have
+ * settled; the camera drops from the middle of the stalk to the puff at the foot.
  */
 public class StalkCollapseScenario extends EvidenceScenario {
     /** A great stalk is tall; an ordinary column the scenario falls back to must still have something to bring down. */
@@ -26,7 +27,10 @@ public class StalkCollapseScenario extends EvidenceScenario {
     private static final int BACK_AWAY_TICKS = 24;
     /** The quiet walk up to the foot, ending a step inside the reach of a bare hand (about 9.5 blocks from a start 13 away). */
     private static final int APPROACH_TICKS = 44;
-    /** The camera drops to this many blocks above the foot, where the puff and the drops are, over {@link #FOLLOW_TICKS}. */
+    /**
+     * The camera drops to this many blocks above the foot, where the puff and the drops are, over {@link
+     * #FOLLOW_TICKS}.
+     */
     private static final int LOW_LOOK = 1;
     /** The ticks the camera takes to drop from the middle of the stalk down to {@link #LOW_LOOK}. */
     private static final int FOLLOW_TICKS = 12;

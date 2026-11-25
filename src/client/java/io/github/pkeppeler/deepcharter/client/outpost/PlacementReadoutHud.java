@@ -31,10 +31,10 @@ import net.minecraft.world.phys.HitResult;
 /**
  * The placement readout (#989, ADR 0072): while the player holds a block and aims at a block, it says above the hotbar
  * whether that block would hold where it would be placed, HOLDS HERE or WILL NOT HOLD UNATTENDED, and for the last why.
- * What it says is {@link Placements}'; it stands above the block readout of the aimed block ({@code
- * BlockReadoutHud}), over the room of its two lines, in that readout's colours and scale ({@code theme/readout.json}), and fades in and out as the
- * block readout does ({@link ReadoutFade}). Nothing shows where the depth asks nothing (the surface, and for now layers
- * 1 and 2), and none shows while the HUD is hidden (F1), a screen is open or the player spectates.
+ * What it says is {@link Placements}'; it stands above the block readout of the aimed block ({@code BlockReadoutHud}),
+ * over the room of its two lines, in that readout's colours and scale ({@code theme/readout.json}), and fades in and
+ * out as the block readout does ({@link ReadoutFade}). Nothing shows where the depth asks nothing (the surface, and for
+ * now layers 1 and 2), and none shows while the HUD is hidden (F1), a screen is open or the player spectates.
  */
 public final class PlacementReadoutHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "placement_readout");
