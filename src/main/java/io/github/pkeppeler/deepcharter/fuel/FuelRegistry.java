@@ -25,24 +25,17 @@ public final class FuelRegistry {
 
     /** Loads the class, which registers the items, and gives the solid fuels their stack size and weight (#1280). */
     public static void register() {
-        FuelTuning tuning = FuelTuning.DEFAULT;
+        FuelTuning.Weight weight = FuelTuning.DEFAULT.weight();
         DefaultItemComponentEvents.MODIFY.register(context -> {
+            context.modify(Items.COAL, builder -> solid(builder, weight.coal()));
+            context.modify(Items.CHARCOAL, builder -> solid(builder, weight.charcoal()));
             context.modify(
-                    Items.COAL,
-                    builder -> solid(builder, tuning, tuning.weight().coal()));
-            context.modify(
-                    Items.CHARCOAL,
-                    builder -> solid(builder, tuning, tuning.weight().charcoal()));
-            context.modify(
-                    BIOFUEL,
-                    builder -> builder.set(
-                            OreRegistry.CARGO_WEIGHT,
-                            new CargoWeight(tuning.weight().biofuel())));
+                    BIOFUEL, builder -> builder.set(OreRegistry.CARGO_WEIGHT, new CargoWeight(weight.biofuel())));
         });
     }
 
-    private static void solid(DataComponentMap.Builder builder, FuelTuning tuning, float mass) {
-        builder.set(DataComponents.MAX_STACK_SIZE, tuning.solidStack())
+    private static void solid(DataComponentMap.Builder builder, float mass) {
+        builder.set(DataComponents.MAX_STACK_SIZE, FuelTuning.DEFAULT.solidStack())
                 .set(OreRegistry.CARGO_WEIGHT, new CargoWeight(mass));
     }
 
