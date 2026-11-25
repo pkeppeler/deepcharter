@@ -91,7 +91,8 @@ public class RepairStationTest {
             Map.entry(Consumable.THROWN_CHARGE, 55L),
             Map.entry(Consumable.TETHER, 90L),
             Map.entry(Consumable.BOLT_DRIVER, 175L),
-            Map.entry(Consumable.BOLT, 24L));
+            Map.entry(Consumable.BOLT, 24L),
+            Map.entry(Consumable.AIR_CANISTER, 150L));
 
     private static final long PER_HP = 1L;
     private static final int ARENA = 4;
