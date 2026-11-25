@@ -108,11 +108,12 @@ public class ClaimScannerDescentScenario extends EvidenceScenario {
                             && Math.abs(pod.getY() - target) < 0.1);
             context.waitTicks(2 * ScannerTuning.DEFAULT.rescanTicks() + 2);
             frame(context);
-            for (int i = 0; i < stills.length; i++) {
+            for (int i = 0; i < stills.length - 1; i++) {
                 if (y <= stills[i] && y > stills[i] - STEP) {
                     screenshot(context, names[i]);
                 }
             }
         }
+        screenshot(context, names[stills.length - 1]);
     }
 }
