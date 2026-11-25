@@ -33,7 +33,10 @@ public class Drifter extends Mob {
     /** Whether the drifter is drawn to a noise now. Synced, for the client's pulse. */
     private static final EntityDataAccessor<Boolean> DRAWN =
             SynchedEntityData.defineId(Drifter.class, EntityDataSerializers.BOOLEAN);
-    /** Which of the three forms it is drawn as ({@link DrifterVariant#ordinal()}). Synced, so every client draws the same one. */
+    /**
+     * Which of the three forms it is drawn as ({@link DrifterVariant#ordinal()}). Synced, so every client draws the
+     * same one.
+     */
     private static final EntityDataAccessor<Integer> VARIANT =
             SynchedEntityData.defineId(Drifter.class, EntityDataSerializers.INT);
     /** How much of the gap between its drift and the one it wants it closes each tick: it eases into a turn, it does not snap. */

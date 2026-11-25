@@ -30,11 +30,13 @@ import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "drifter-variants" (#1204): the three forms of a Drifter as turntable stills, in a closed dark hall of layer 1 filled with
- * the test pack's hollows biome, which carries the Spore Fields' gas haze (fog from 2 to 20 blocks, dust motes, no sky light). Each form is
- * shot close from four angles (front, three quarters, side, below) under a dim lamp over it, with its animation clock held at its first frame;
- * once with the HUD hidden; and all three together at 12 to 16 blocks in the haze, with no lamp, so that only their glow shows. The hall is
- * sealed rock, so the sky is never in view; the camera is in a layer, where {@code LayerSky} hides the sun and moon anyway.
+ * Evidence scenario "drifter-variants" (#1204): the three forms of a Drifter as turntable stills, in a closed dark hall
+ * of layer 1 filled with the test pack's hollows biome, which carries the Spore Fields' gas haze (fog from 2 to 20
+ * blocks, dust motes, no sky light). Each form is shot close under a dim lamp over it, with its animation clock held at
+ * its first frame: from four angles (front, three quarters, side, below); once with the HUD hidden; once mid-loop, to
+ * show its sway; and in a full turn of {@value #TURNTABLE_FRAMES} frames. Then all three are shot together at 12 to 16
+ * blocks in the haze, with no lamp, so that only their glow shows. The hall is sealed rock, so the sky is never in
+ * view; the camera is in a layer, where {@code LayerSky} hides the sun and moon anyway.
  */
 public class DrifterVariantsScenario extends EvidenceScenario {
     private static final int X = 6400;
@@ -48,10 +50,18 @@ public class DrifterVariantsScenario extends EvidenceScenario {
 
     private static final double EYE_BLOCKS = 1.62;
     private static final int LAMP_LEVEL = 9;
+    /** Frames of a turntable: one turn of the camera round a form, in even steps. */
+    private static final int TURNTABLE_FRAMES = 24;
+    /** The animation clock, in ticks, of the one still of each form taken mid-loop, so that its sway shows. */
+    private static final float SWAY_AGE = 26f;
+
     private static final double LAMP_OVER_BLOCKS = 3.5;
     private static final Identifier HOLLOWS = Identifier.fromNamespaceAndPath("deepcharter-test", "hollows");
 
-    /** How far the camera is from a form for the close stills, and the height over its feet of the point the camera looks at. */
+    /**
+     * How far the camera is from a form for the close stills, and the height over its feet of the point the camera
+     * looks at.
+     */
     private record Frame(double distance, double focusUp) {}
 
     private static Frame frame(DrifterVariant variant) {
@@ -62,7 +72,10 @@ public class DrifterVariantsScenario extends EvidenceScenario {
         };
     }
 
-    /** The turns of the camera round a form, in degrees from its front, and the way they are named; below is looking up from beneath. */
+    /**
+     * The turns of the camera round a form, in degrees from its front, and the way they are named; below is looking up
+     * from beneath.
+     */
     private record Angle(String name, double yaw, double pitch) {}
 
     private static final List<Angle> ANGLES = List.of(
@@ -125,6 +138,17 @@ public class DrifterVariantsScenario extends EvidenceScenario {
                         context, () -> screenshot(context, "drifter-variants-" + variant.id() + "-nohud"));
             }
         }
+        Angle swayed = ANGLES.get(1);
+        EvidencePins.drifterAnimationAge = SWAY_AGE;
+        look(context, singleplayer, around(focus, frame.distance(), swayed), focus);
+        screenshot(context, "drifter-variants-" + variant.id() + "-sway");
+        EvidencePins.drifterAnimationAge = 0f;
+        for (int turn = 0; turn < TURNTABLE_FRAMES; turn++) {
+            Angle step = new Angle("turn", 360.0 * turn / TURNTABLE_FRAMES, 8);
+            look(context, singleplayer, around(focus, frame.distance(), step), focus);
+            screenshot(context, "drifter-variants-%s-turn-%02d".formatted(variant.id(), turn));
+            frame(context);
+        }
         lamp(singleplayer, BlockPos.containing(feet.add(0, LAMP_OVER_BLOCKS, 0)), false);
         remove(singleplayer, id);
     }
@@ -143,7 +167,10 @@ public class DrifterVariantsScenario extends EvidenceScenario {
         made.forEach(id -> remove(singleplayer, id));
     }
 
-    /** The camera's place for a turn round {@code focus}: the turn is from the front, and the pitch is the camera's elevation. */
+    /**
+     * The camera's place for a turn round {@code focus}: the turn is from the front, and the pitch is the camera's
+     * elevation.
+     */
     private static Vec3 around(Vec3 focus, double distance, Angle angle) {
         double yaw = Math.toRadians(angle.yaw());
         double pitch = Math.toRadians(angle.pitch());
@@ -153,7 +180,10 @@ public class DrifterVariantsScenario extends EvidenceScenario {
                 distance * Math.cos(yaw) * Math.cos(pitch));
     }
 
-    /** Puts the first player's eye at {@code eye}, turned to look at {@code target}, and waits for the client to be there and the frame to settle. */
+    /**
+     * Puts the first player's eye at {@code eye}, turned to look at {@code target}, and waits for the client to be
+     * there and the frame to settle.
+     */
     private void look(ClientGameTestContext context, TestSingleplayerContext singleplayer, Vec3 eye, Vec3 target) {
         Vec3 d = target.subtract(eye);
         float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));

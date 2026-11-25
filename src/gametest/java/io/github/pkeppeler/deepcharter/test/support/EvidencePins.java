@@ -31,8 +31,8 @@ public final class EvidencePins {
     public static volatile float figureAnimationAge = -1f;
 
     /**
-     * The age in ticks that GeckoLib reads as the clock of a drifter's animation (0 or more); negative keeps the drifter's own, which runs on
-     * the entity's ticks and the frame's partial tick.
+     * The age in ticks that GeckoLib reads as the clock of a drifter's animation (0 or more); negative keeps the
+     * drifter's own, which runs on the entity's ticks and the frame's partial tick.
      */
     public static volatile float drifterAnimationAge = -1f;
 

@@ -4,8 +4,8 @@ import java.util.List;
 import net.minecraft.util.RandomSource;
 
 /**
- * The three forms a Drifter takes (#1203). A spawn picks one ({@link #pick}), and it is synced so every client draws the same. Each is one
- * model, texture, glowmask and set of animations; {@link #id()} names its files.
+ * The three forms a Drifter takes (#1203). A spawn picks one ({@link #pick}), and it is synced so every client draws
+ * the same. Each is one model, texture, glowmask and set of animations; {@link #id()} names its files.
  */
 public enum DrifterVariant {
     /** A translucent bell around a glowing core, with trailing tendrils. */
@@ -32,7 +32,10 @@ public enum DrifterVariant {
         return ordinal >= 0 && ordinal < all.length ? all[ordinal] : JELLYFISH;
     }
 
-    /** Draws one by weight, one {@link RandomSource#nextDouble()} call, so a seeded source gives the same variant each time. */
+    /**
+     * Draws one by weight, one {@link RandomSource#nextDouble()} call, so a seeded source gives the same variant each
+     * time.
+     */
     public static DrifterVariant pick(RandomSource random, List<Double> weights) {
         double total = weights.stream().mapToDouble(Double::doubleValue).sum();
         double roll = random.nextDouble() * total;

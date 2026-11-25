@@ -12,7 +12,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 
-/** The ids of each form's files, written by {@code tools/drifter.py}; a resource pack replaces them ({@code docs/design/skins.md}). */
+/**
+ * The ids of each form's files, written by {@code tools/drifter.py}; a resource pack replaces them ({@code
+ * docs/design/skins.md}).
+ */
 public final class DrifterAssets {
     private DrifterAssets() {}
 

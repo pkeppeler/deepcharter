@@ -24,7 +24,10 @@ final class DrifterModel extends GeoModel<DrifterAnimatable> {
         return DrifterAssets.texture(DrifterRenderState.variantOf(renderState));
     }
 
-    /** One stand-in animates every form, so the file cannot follow it; the animation names do, and GeckoLib tries the fallbacks for them. */
+    /**
+     * One stand-in animates every form, so the file cannot follow it; the animation names do, and GeckoLib tries the
+     * fallbacks for them.
+     */
     @Override
     public Identifier getAnimationResource(DrifterAnimatable animatable) {
         return PRIMARY;

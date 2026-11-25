@@ -18,13 +18,17 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.RandomSource;
 
 /**
- * The form of a Drifter (#1204): a drifter made by hand is a jellyfish, a pick by the spawn weights is the same under the same seed, comes up
- * about in proportion to its weight and never for a weight of zero. {@link DrifterSpawnTest} proves that {@code Drifters.spawnFor} makes the pick.
+ * The form of a Drifter (#1204): a drifter made by hand is a jellyfish, a pick by the spawn weights is the same under
+ * the same seed, comes up about in proportion to its weight and never for a weight of zero. {@link DrifterSpawnTest}
+ * proves that {@code Drifters.spawnFor} makes the pick.
  */
 public class DrifterVariantTest {
     private static final long SEED = 1204L;
     private static final int DRAWS = 30_000;
-    /** A third of {@link #DRAWS} is within this share of it: the spread of one share over that many draws is under 0.003. */
+    /**
+     * A third of {@link #DRAWS} is within this share of it: the spread of one share over that many draws is under
+     * 0.003.
+     */
     private static final double TOLERANCE = 0.02;
 
     private static Map<DrifterVariant, Integer> tally(List<Double> weights, long seed) {
@@ -49,7 +53,10 @@ public class DrifterVariantTest {
                 weights);
     }
 
-    /** Each clause of the weight guard turns one of these away; a list that passes every clause but one still fails on that one. */
+    /**
+     * Each clause of the weight guard turns one of these away; a list that passes every clause but one still fails on
+     * that one.
+     */
     @GameTest
     public void aBadWeightListIsRefused(GameTestHelper helper) {
         Map<String, List<Double>> bad = new LinkedHashMap<>();

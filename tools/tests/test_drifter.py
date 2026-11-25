@@ -1,5 +1,5 @@
-"""Tests tools/drifter.py (#973, #1204): the committed files are what it writes, each form is what the brief names, the glow is sparse, and
-the animations are the ones the renderer asks for and move bones the model has."""
+"""Tests tools/drifter.py (#973, #1204): the committed files are what it writes, each form is what the brief names, the
+glow is sparse, and the animations are the ones the renderer asks for and move bones the model has."""
 import json
 import math
 import sys
@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import drifter  # noqa: E402
+import drifter_forms.kit as kit  # noqa: E402
 import pngio  # noqa: E402
 
 BLOCK = 16
@@ -78,16 +79,41 @@ class Look(unittest.TestCase):
         domed = [cube for cube in bell if cube.size[1] > 0]
         self.assertAlmostEqual(1.0 * BLOCK, max(c.origin[1] + c.size[1] for c in domed) - 22.0, delta=2.0, msg="and about 1 block tall")
         self.assertEqual(6, sum(1 for name in held if name.endswith("_a") and name.startswith("tendril_")))
-        self.assertEqual(18, sum(1 for name in held if name.startswith("tendril_")), "six tendrils of three segments")
-        self.assertEqual(4, sum(1 for name in held if name.startswith("arm_")), "four oral arms")
+        self.assertEqual(30, sum(1 for name in held if name.startswith("tendril_")), "six tendrils of five segments")
+        self.assertEqual(4, sum(1 for name in held if name.startswith("arm_") and name.count("_") == 1), "four oral arms")
+        self.assertEqual(8, sum(1 for name in held if name.startswith("arm_")), "of two segments each")
         lobes = [cube for cube in bell if cube.density == 4.0]
-        self.assertEqual(8, len(lobes), "eight lobes round the rim")
+        self.assertEqual(16, len(lobes), "two rings of eight lobes round the rim")
+        runs = []
         for i in range(6):
-            run = sum(held[f"tendril_{i}_{k}"]["cubes"][0].size[1] for k in "abc")
-            self.assertTrue(2.5 * BLOCK - 1 <= run <= 3.0 * BLOCK + 1, f"tendril {i} is {run / BLOCK} blocks")
+            run = sum(held[f"tendril_{i}_{k}"]["cubes"][0].size[1] for k in "abcde")
+            runs.append(round(run, 1))
+            self.assertTrue(2.0 * BLOCK <= run <= 3.2 * BLOCK, f"tendril {i} is {run / BLOCK} blocks")
+        self.assertGreaterEqual(len(set(runs)), 5, "the tendrils are of different lengths")
+
+    def test_the_jellyfish_tendrils_taper_and_curl(self):
+        held = bones("jellyfish")
+        for i in range(6):
+            cubes = [held[f"tendril_{i}_{k}"]["cubes"][0] for k in "abcde"]
+            widths = [cube.size[0] for cube in cubes]
+            self.assertEqual(sorted(widths, reverse=True), widths, f"tendril {i} thins towards its tip")
+            self.assertLess(widths[-1], widths[0] * 0.5)
+            first, last = (kit.unit(kit.sub(cube.world((0, cube.origin[1] + cube.size[1], 0)), cube.world((0, cube.origin[1], 0)))) for cube in (cubes[0], cubes[-1]))
+            self.assertGreater(math.degrees(math.acos(max(-1.0, min(1.0, abs(sum(a * b for a, b in zip(first, last))))))), 30.0, f"tendril {i} curls")
+
+    def test_the_jellyfish_organ_is_soft_and_small(self):
+        model, _, glow, _ = form("jellyfish")
+        brightest = 0
+        for cube in model.bones["core"]["cubes"]:
+            for face in cube.faces:
+                x, y, w, h = cube.uv[face]
+                brightest = max(brightest, *(glow.pixels[(j * glow.size + i) * 4 + 3] for j in range(y, y + h) for i in range(x, x + w)))
+        self.assertLess(brightest, 220, "the organ is a soft glow, not a solid block of light")
+        self.assertLess(reach(model.bones["core"]["cubes"], 0), 1.0 * BLOCK, "and smaller than a block across")
 
     def test_the_jellyfish_bell_is_a_faint_translucent_sheet(self):
-        # The membrane is drawn by the glowmask, which adds light: a skin that writes depth hid the core and the tendrils behind it (#1204).
+        # The membrane is drawn by the glowmask, which adds light: a skin that writes depth hid the core and the
+        # tendrils behind it (#1204).
         model, skin, glow, _ = form("jellyfish")
         alphas = []
         for cube in bell_panels(model.bones):
@@ -100,10 +126,28 @@ class Look(unittest.TestCase):
 
     def test_the_sac_is_what_the_brief_names(self):
         held = bones("sac")
-        self.assertAlmostEqual(1.8 * BLOCK, reach(held["body"]["cubes"][:60], 0), delta=3.0, msg="about 1.8 blocks across")
+        slabs = held["body"]["cubes"][:112]
+        self.assertAlmostEqual(1.8 * BLOCK, reach(slabs, 0), delta=0.35 * BLOCK, msg="about 1.8 blocks across")
         self.assertEqual(24, len(held["gills"]["cubes"]), "a ring of gills and a shorter ring inside it")
-        self.assertEqual(6, sum(1 for name in held if name.startswith("thread_")), "three threads of two segments")
+        self.assertEqual(18, sum(1 for name in held if name.startswith("thread_")), "six threads of three segments")
         self.assertTrue(all(c.size[2] == 0 for c in held["gills"]["cubes"]), "the gills are planes")
+        self.assertEqual({"lip_l", "lip_r"}, {name for name in held if name.startswith("lip_")}, "a seam that parts")
+
+    def test_the_sac_sags_to_one_side_and_the_fringe_hangs_low(self):
+        held = bones("sac")
+        slabs = [cube for cube in held["body"]["cubes"][:200] if cube.size[1] <= 1.6]
+        low, high = min(slabs, key=lambda c: c.pivot[1]), max(slabs, key=lambda c: c.pivot[1])
+        shift = abs(low.pivot[0] - high.pivot[0])
+        self.assertGreater(shift, 4.0, "the bottom of the bag hangs off the line of its top")
+        floor = min(c.origin[1] for c in held["body"]["cubes"])
+        hang = max(floor - min(c.origin[1] for name, b in held.items() if name.startswith("thread_") for c in b["cubes"]), 0)
+        self.assertGreater(hang, 1.4 * BLOCK, "the threads hang well below the body")
+
+    def test_the_sac_pulses_unevenly(self):
+        beat = json.loads(form("sac")[3])["animations"]["animation.drifter_sac.idle"]["bones"]["body"]["scale"]
+        axes = list(zip(*beat.values()))
+        self.assertNotEqual(axes[0], axes[1], "the body does not swell the same way along every axis")
+        self.assertNotEqual(axes[0], axes[2])
 
     def test_the_chain_is_what_the_brief_names(self):
         held = bones("chain")
@@ -111,8 +155,21 @@ class Look(unittest.TestCase):
         centres = [chain_centre(i) for i in range(8)]
         along = sum(math.dist(a, b) for a, b in zip(centres, centres[1:]))
         self.assertAlmostEqual(3.5 * BLOCK, along, delta=0.5 * BLOCK, msg="about 3.5 blocks long")
-        self.assertEqual(8, drifter.chain.HEAD_RADIUS * 2)
-        self.assertEqual(4, drifter.chain.TAIL_RADIUS * 2)
+        radii = [drifter.chain.radius(i) for i in range(8)]
+        self.assertEqual(sorted(radii, reverse=True), radii, "the links taper towards the tail")
+        self.assertLess(radii[-1], radii[0] / 2.5)
+        self.assertEqual(2, sum(1 for name in held if name.startswith("feeler_") and name.endswith("_a")), "two hooked feelers")
+        self.assertTrue(any(cube.faces[0] == "up" and cube.size[1] == 0 for cube in held["bulb_0"]["cubes"]), "a maw on the head")
+
+    def test_the_chains_halos_do_not_wash_out_its_links(self):
+        glow = form("chain")[2]
+        model = form("chain")[0]
+        for i in range(8):
+            for cube in model.bones[f"bulb_{i}"]["cubes"]:
+                if cube.size[2] == 0 and cube.density == 3.0 and cube.paint.__qualname__.startswith("halo_painter"):
+                    x, y, w, h = cube.uv[cube.faces[0]]
+                    peak = max(glow.pixels[(j * glow.size + k) * 4 + 3] for j in range(y, y + h) for k in range(x, x + w))
+                    self.assertLessEqual(peak, 135, f"the halo of link {i} is a light, not a cloud")
 
     def test_the_glowmask_is_sparse(self):
         for ident in FORMS:

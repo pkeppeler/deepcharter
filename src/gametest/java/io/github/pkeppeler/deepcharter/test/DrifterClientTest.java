@@ -36,9 +36,9 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Client GameTest for #1204: every form of a Drifter is drawn by {@link DrifterRenderer} from the files of its own, GeckoLib bakes every bone
- * and both animations of each, each form is drawn with the translucent type and the glow layer, and the form the server gives a drifter is
- * the one its client copy draws, also when the server changes it.
+ * Client GameTest for #1204: every form of a Drifter is drawn by {@link DrifterRenderer} from the files of its own,
+ * GeckoLib bakes every bone and both animations of each, each form is drawn with the translucent type and the glow
+ * layer, and the form the server gives a drifter is the one its client copy draws, also when the server changes it.
  */
 public class DrifterClientTest implements FabricClientGameTest {
     private static final double SPREAD_BLOCKS = 4;
@@ -128,7 +128,10 @@ public class DrifterClientTest implements FabricClientGameTest {
         return Objects.requireNonNull(clientDrifter(client, id), "the drifter is not on the client");
     }
 
-    /** What is wrong with the way a drifter of {@code variant} is drawn: its renderer, its form in the state, its files, the translucent type and the glow layer. */
+    /**
+     * What is wrong with the way a drifter of {@code variant} is drawn: its renderer, its form in the state, its files,
+     * the translucent type and the glow layer.
+     */
     private static List<String> drawnRight(Minecraft client, Drifter drifter, DrifterVariant variant) {
         List<String> wrong = new ArrayList<>();
         if (!(client.getEntityRenderDispatcher().getRenderer(drifter) instanceof DrifterRenderer renderer)) {

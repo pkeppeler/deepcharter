@@ -107,7 +107,8 @@ public record DrifterTuning(
      * @param minBlocks      the nearest a drifter is placed to a source
      * @param maxBlocks      and the farthest
      * @param tries          places tried for each placement
-     * @param variantWeights the weight of each {@link DrifterVariant}, in its order, that a placement draws its form by: equal thirds
+     * @param variantWeights the weight of each {@link DrifterVariant}, in its order, that a placement draws its form
+     *                       by: equal thirds
      */
     public record Spawn(
             int checkTicks,

@@ -12,12 +12,16 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * While {@link EvidencePins#drifterAnimationAge} is set, the animation clock of a drifter is held at that age, so each still of its loop shows
- * the same pose. Test code only; the lampless figure's pin is {@link LamplessFigureRendererMixin}.
+ * While {@link EvidencePins#drifterAnimationAge} is set, the animation clock of a drifter is held at that age, so each
+ * still of its loop shows the same pose. Test code only; the lampless figure's pin is {@link
+ * LamplessFigureRendererMixin}.
  */
 @Mixin(value = DrifterRenderer.class, remap = false)
 public abstract class DrifterRendererMixin {
-    /** The clock is the {@code TICK} datum of the state, which has to be there before the base class's extract turns the pose into data. */
+    /**
+     * The clock is the {@code TICK} datum of the state, which has to be there before the base class's extract turns the
+     * pose into data.
+     */
     @Inject(
             method =
                     "extractRenderState(Lio/github/pkeppeler/deepcharter/creature/Drifter;Lio/github/pkeppeler/deepcharter/client/creature/DrifterRenderState;F)V",

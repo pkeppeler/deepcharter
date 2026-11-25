@@ -1,13 +1,16 @@
-"""The shared kit of the drifter forms (#1204): a model of cubes and flat planes, the texture atlas they share, a painter that colours each
-texel by where it lies on the creature (so a vein or a gradient runs on across the cubes), noise, and the animation keyframes.
+"""The shared kit of the drifter forms (#1204): a model of cubes and flat planes, the texture atlas they share, a
+painter that colours each texel by where it lies on the creature (so a vein or a gradient runs on across the cubes),
+noise, and the animation keyframes.
 
-Model space is Bedrock's: pixels, y up, 16 pixels to a block, the floor at y 0. A cube turns about its pivot, first about x, then y, then z
-(the matrix is Rz * Ry * Rx). The angles here are the maths of a right-handed frame with y up; `EMIT` maps them to the signs the model file
-wants. A flat plane is a cube with no thickness on one axis: a membrane, drawn from both sides, whose texture's alpha cuts its outline.
+Model space is Bedrock's: pixels, y up, 16 pixels to a block, the floor at y 0. A cube turns about its pivot, first
+about x, then y, then z (the matrix is Rz * Ry * Rx). The angles here are the maths of a right-handed frame with y
+up; `EMIT` maps them to the signs the model file wants. A flat plane is a cube with no thickness on one axis: a
+membrane, drawn from both sides, whose texture's alpha cuts its outline.
 
-A skin texel above the shader's alpha cut (about 25 of 255) writes depth, and the glow layer is tested against that depth, so what glows
-inside a see-through skin is hidden by it. A membrane is therefore painted with alpha 0 in the skin and carried by the glowmask, which adds light
-(the forms in the stills of #1204 showed it); only what is meant to be opaque, or has nothing glowing behind it, has skin alpha.
+A skin texel above the shader's alpha cut (about 25 of 255) writes depth, and the glow layer is tested against that
+depth, so what glows inside a see-through skin is hidden by it. A membrane is therefore painted with alpha 0 in the
+skin and carried by the glowmask, which adds light (the forms in the stills of #1204 showed it); only what is meant
+to be opaque, or has nothing glowing behind it, has skin alpha.
 """
 import json
 import math
@@ -48,6 +51,10 @@ def scale(a, k):
     return (a[0] * k, a[1] * k, a[2] * k)
 
 
+def cross(a, b):
+    return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+
 def length(a):
     return math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
 
@@ -68,9 +75,33 @@ def face_on(normal):
     return (-math.degrees(math.asin(max(-1.0, min(1.0, ny)))), math.degrees(math.atan2(nx, nz)), 0.0)
 
 
+def aim_twisted(axis, twist):
+    """The turn (rx, ry, rz) that carries the +y axis of a cube onto `axis` after the cube has been twisted `twist`
+    degrees about +y: a second box twisted 45 degrees on the first makes an octagonal prism along the axis."""
+    ax, ay, az = aim(axis)
+    m = matmul(rotation_matrix(ax, ay, az), rotation_matrix(0.0, twist, 0.0))
+    ry = math.asin(max(-1.0, min(1.0, -m[2][0])))
+    if abs(m[2][0]) > 1 - 1e-9:
+        return (math.degrees(math.atan2(-m[1][2], m[1][1])), math.degrees(ry), 0.0)
+    return (math.degrees(math.atan2(m[2][1], m[2][2])), math.degrees(ry), math.degrees(math.atan2(m[1][0], m[0][0])))
+
+
+def matmul(a, b):
+    return tuple(tuple(sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)) for i in range(3))
+
+
+def bent_down(radial, tangent, bend, turn):
+    """The unit direction of a strand that has bent `bend` degrees from straight down, towards `radial` turned `turn`
+    degrees about it towards `tangent`: the same bend at a larger turn spirals the strand round."""
+    bend, turn = math.radians(bend), math.radians(turn)
+    sideways = add(scale(radial, math.cos(turn)), scale(tangent, math.sin(turn)))
+    return add((0.0, -math.cos(bend), 0.0), scale(sideways, math.sin(bend)))
+
+
 def disc(centre, y, height, radius, strips, paint, density=2.0, cap_density=0.3):
-    """The cubes of a round slab: `strips` thin boxes through the centre, turned an even step apart, whose ends are the sides of a regular
-    polygon of 2 * strips sides and the given circumradius, about the (x, z) of `centre`. The union of the strips is the whole polygon."""
+    """The cubes of a round slab: `strips` thin boxes through the centre, turned an even step apart, whose ends are the
+    sides of a regular polygon of 2 * strips sides and the given circumradius, about the (x, z) of `centre`. The
+    union of the strips is the whole polygon."""
     half = math.pi / (2 * strips)
     run, thin = radius * math.cos(half), radius * math.sin(half)
     return [
@@ -152,7 +183,8 @@ def cells(x, y, z, seed):
 
 @dataclass
 class Texel:
-    """Where a texel lies: its place in model space at rest, the way the face looks, and where it is on its face (0 to 1)."""
+    """Where a texel lies: its place in model space at rest, the way the face looks, and where it is on its face (0 to
+    1)."""
 
     x: float
     y: float
@@ -166,9 +198,11 @@ class Texel:
 
 @dataclass
 class Cube:
-    """A box, or a plane when one size is 0. `paint` colours a texel: it returns the skin (r, g, b, a) and the glow (r, g, b, a) or None.
-
-    `density` is texels to a model pixel; `cap_density` is the same for the top and bottom faces, for a slab whose caps are hardly seen.
+    """A box, or a plane when one size is 0. `paint` colours a texel: it returns the skin (r, g, b, a) and the glow (r,
+    g, b, a) or None.
+    
+        `density` is texels to a model pixel; `cap_density` is the same for the top and bottom faces, for a slab whose
+    caps are hardly seen.
     """
 
     origin: tuple
@@ -345,7 +379,8 @@ class Model:
 
 
 def loop(period, values, phase=0.0, steps=8):
-    """Keyframes of a loop of `period` seconds: `values(angle)` at each of `steps` points of one turn, started `phase` of a turn in."""
+    """Keyframes of a loop of `period` seconds: `values(angle)` at each of `steps` points of one turn, started `phase`
+    of a turn in."""
     frames = {}
     for step in range(steps + 1):
         angle = 2 * math.pi * (step / steps + phase)

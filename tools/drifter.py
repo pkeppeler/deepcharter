@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Writes the three Drifters (#1203): a jellyfish, a spore sac and a chain, each with its model, texture, glowmask and animations.
+"""Writes the three Drifters (#1203): a jellyfish, a spore sac and a chain, each with its model, texture, glowmask and
+animations.
 
-Usage:
-  tools/py tools/drifter.py           write the files into src/main/resources
-  tools/py tools/drifter.py --check   exit 1 if a written file differs from what this script makes
+Usage: tools/py tools/drifter.py           write the files into src/main/resources tools/py tools/drifter.py --check
+exit 1 if a written file differs from what this script makes
 
-The forms are in tools/drifter_forms/: one module each over the shared kit. Each is rounded planes and thin slabs whose texture is painted by
-where a texel lies on the creature, so the detail is in the skin and the glow, not in tiny cubes. The glow is the deep's own cold light, drawn
-at full bright; the skin is see-through where the creature is. The files are seeded and the same on every run.
+The forms are in tools/drifter_forms/: one module each over the shared kit. Each is rounded planes and thin slabs
+whose texture is painted by where a texel lies on the creature, so the detail is in the skin and the glow, not in
+tiny cubes. The glow is the deep's own cold light, drawn at full bright; the skin is see-through where the creature
+is. The files are seeded and the same on every run.
 
 Model space is Bedrock's: pixels, y up, the floor at y 0, 16 pixels to a block.
 """

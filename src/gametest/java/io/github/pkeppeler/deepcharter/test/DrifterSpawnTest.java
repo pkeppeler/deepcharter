@@ -469,9 +469,10 @@ public class DrifterSpawnTest {
     }
 
     /**
-     * A placement picks the drifter's form with the source of chance it is given ({@link Drifters#seed} installs one for the tick): the same seed
-     * makes the same run of forms, another seed another, and a run of {@link #VARIANT_DRAWS} placements meets all three about as often as the
-     * equal weights say. Layer 1's middle zone, which no other test fills.
+     * A placement picks the drifter's form with the source of chance it is given ({@link Drifters#seed} installs one
+     * for the tick): the same seed makes the same run of forms, another seed another, and a run of {@link
+     * #VARIANT_DRAWS} placements meets all three about as often as the equal weights say. Layer 1's middle zone, which
+     * no other test fills.
      */
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aPlacementPicksItsFormFromTheSeed(GameTestHelper helper) {
@@ -510,8 +511,9 @@ public class DrifterSpawnTest {
     }
 
     /**
-     * The form's roll comes after the placement's, so the weights never move where a drifter appears: the same seed puts it at the same place
-     * under equal weights and under a skewed list, and the roll that picks its form is the last draw of the call, not the first.
+     * The form's roll comes after the placement's, so the weights never move where a drifter appears: the same seed
+     * puts it at the same place under equal weights and under a skewed list, and the roll that picks its form is the
+     * last draw of the call, not the first.
      */
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theFormWeightsNeverMoveWhereADrifterIsPlaced(GameTestHelper helper) {
@@ -594,7 +596,10 @@ public class DrifterSpawnTest {
         throw new IllegalStateException("no drifter was placed in " + ATTEMPTS + " calls");
     }
 
-    /** The forms of the next {@link #VARIANT_DRAWS} placements for {@code source} drawn from a source of chance made from {@code seed}. */
+    /**
+     * The forms of the next {@link #VARIANT_DRAWS} placements for {@code source} drawn from a source of chance made
+     * from {@code seed}.
+     */
     private static List<DrifterVariant> placedForms(
             GameTestHelper helper, ServerLevel level, Drifters.Source source, long seed) {
         RandomSource random = RandomSource.create(seed);

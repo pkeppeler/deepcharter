@@ -44,9 +44,10 @@ import org.jspecify.annotations.Nullable;
  */
 public class AssetCompletenessTest {
     /**
-     * Pods render GeckoLib models from their look files, with their textures under textures/entity/pod/ (see SkinAssetsTest), so they
-     * have no {@code textures/entity/<id>.png}. The thrown kit (#985) is drawn as the item it carries, each with its own item texture. A
-     * drifter has three forms, each with its own files, checked below. Every other registered entity needs one.
+     * Pods render GeckoLib models from their look files, with their textures under textures/entity/pod/ (see
+     * SkinAssetsTest), so they have no {@code textures/entity/<id>.png}. The thrown kit (#985) is drawn as the item it
+     * carries, each with its own item texture. A drifter has three forms, each with its own files, checked below.
+     * Every other registered entity needs one.
      */
     private static final Set<String> ENTITIES_DRAWN_FROM_LOOK_FILES =
             Set.of("pod", "prospector", "thrown_kit", "drifter");
