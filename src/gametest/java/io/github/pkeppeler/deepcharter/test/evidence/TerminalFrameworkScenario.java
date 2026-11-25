@@ -2,24 +2,26 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.RepairScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
-import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import java.util.Locale;
+import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Evidence scenario "m2-terminal-framework" for #59: a charter opens the offline fuel pump terminal, puts its two parts in one
- * by one, and the terminal comes online. Stills of the offline and the online screen.
+ * Evidence scenario "m2-terminal-framework" for #59: a charter opens the offline fuel pump terminal, shift-clicks its two parts
+ * into their slots one by one (#1265), and the terminal comes online. Stills of the offline and the online screen.
  */
 public class TerminalFrameworkScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
@@ -48,9 +50,8 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
             });
 
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(pump)));
-            ClientWait.screen(context, TerminalScreen.class);
-            TerminalScreen screen =
-                    context.computeOnClient(client -> ClientSession.screen(client, TerminalScreen.class));
+            ClientWait.screen(context, RepairScreen.class);
+            RepairScreen screen = context.computeOnClient(client -> ClientSession.screen(client, RepairScreen.class));
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);
@@ -58,26 +59,13 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
             hold(context);
             screenshot(context, "terminal-offline");
 
-            for (int part = 0; part < TerminalTypes.FUEL_PUMP.parts().size(); part++) {
-                String label = "INSERT "
-                        + new ItemStack(TerminalTypes.FUEL_PUMP.parts().get(part))
-                                .getHoverName()
-                                .getString()
-                                .toUpperCase(Locale.ROOT);
-                context.clickScreenButton(label);
-                int inserted = part + 1;
-                // The repaired pump opens its own screen (#69).
-                ClientWait.until(
-                        context,
-                        "the fuel pump screen, or the terminal with " + inserted + " parts inserted",
-                        client -> client.gui.screen() instanceof FuelPumpScreen
-                                || (client.gui.screen() instanceof TerminalScreen open
-                                        && ClientChecks.buttons(open).stream()
-                                                        .filter(button -> button.getMessage()
-                                                                .getString()
-                                                                .startsWith("[X] "))
-                                                        .count()
-                                                == inserted));
+            for (Item part : TerminalTypes.FUEL_PUMP.parts()) {
+                Slot held = context.computeOnClient(client -> screen.getMenu().slots.stream()
+                        .filter(slot -> slot.container instanceof Inventory
+                                && slot.getItem().is(part))
+                        .findFirst()
+                        .orElseThrow(() -> new AssertionError("the player carries no " + part)));
+                SlotClicks.shiftClick(context, screen, held);
                 hold(context);
             }
 

@@ -96,17 +96,16 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
                 });
             }
         }
+        extractText(graphics);
     }
 
-    /** The title, the intro, each typed slot's name and the refusal, drawn from the content's top left. */
-    @Override
-    protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    /** The title, the intro, each typed slot's name and the refusal, measured from the content's top left. */
+    private void extractText(GuiGraphicsExtractor graphics) {
         CrtTuning tuning = CrtTuning.current();
-        int right = contentRight() - leftPos;
-        CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), 0, 0, right);
-        int lineY = INTRO_Y;
-        for (String line : CrtText.wrap(font, intro.visible(), right)) {
-            CrtDraw.glowText(graphics, font, line, 0, lineY, tuning.phosphorColor());
+        CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), leftPos, topPos, contentRight());
+        int lineY = topPos + INTRO_Y;
+        for (String line : CrtText.wrap(font, intro.visible(), contentRight() - leftPos)) {
+            CrtDraw.glowText(graphics, font, line, leftPos, lineY, tuning.phosphorColor());
             lineY += font.lineHeight + tuning.lineSpacing();
         }
         int below = 0;
@@ -116,19 +115,24 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
             if (rule.ghost().isPresent()) {
                 String name = rule.ghost().get().label().getString().toUpperCase(Locale.ROOT);
                 int color = slot.hasItem() ? tuning.phosphorColor() : tuning.dimColor();
-                CrtDraw.glowText(graphics, font, name, slot.x + LABEL_X, slot.y + (SLOT - font.lineHeight) / 2, color);
+                int y = topPos + slot.y + (SLOT - font.lineHeight) / 2;
+                CrtDraw.glowText(graphics, font, name, leftPos + slot.x + LABEL_X, y, color);
             }
         }
-        int refusalY = below + 1;
+        int refusalY = topPos + below + 1;
         menu.refusal()
                 .ifPresent(reason -> CrtDraw.glowText(
                         graphics,
                         font,
                         reason.getString().toUpperCase(Locale.ROOT),
-                        0,
+                        leftPos,
                         refusalY,
                         tuning.refusalColor()));
     }
+
+    /** The panel draws its own title and labels, so nothing is left for the default ones. */
+    @Override
+    protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {}
 
     /** The glass and the scanlines go over the slots and their items; the carried item and the tooltip stay clear of them. */
     @Override

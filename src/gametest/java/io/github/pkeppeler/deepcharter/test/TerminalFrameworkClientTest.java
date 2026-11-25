@@ -4,24 +4,23 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.RepairScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
-import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
-import io.github.pkeppeler.deepcharter.terminal.TerminalType;
+import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -33,13 +32,16 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Client GameTest for #59: the offline screen opens and renders, a part button puts a part in through the server, the screen
- * flips to online when the last part is in, a locked terminal's buttons are dead, and the server refuses an open request from
- * too far.
+ * Client GameTest for #59 and #1265: an offline terminal opens its repair screen, with a ghost in each part slot; a part dragged
+ * into its slot, then one shift-clicked, go in through the server, and the online screen opens when the last is in; a locked
+ * terminal's slots refuse its parts with the reason on screen; and the server refuses an open request from too far.
  */
 public class TerminalFrameworkClientTest implements FabricClientGameTest {
     private static final int FAR_BLOCKS = 20;
@@ -55,9 +57,9 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
             Scene scene = singleplayer.getServer().computeOnServer(TerminalFrameworkClientTest::setUp);
 
             farRequestIsRefused(context, scene);
-            offlineScreenOpensAndRenders(context, scene);
-            lockedTerminalHasDeadButtons(context, scene);
-            partButtonsRepairThroughTheServer(context, singleplayer, scene);
+            repairScreenOpensWithAGhostPerPart(context, scene);
+            lockedTerminalRefusesItsParts(context, singleplayer, scene);
+            partsGoInByDragAndShiftClick(context, singleplayer, scene);
             onlineScreenOpensOnceRepaired(context, scene);
             customScreenUpdatesInPlace(context, scene);
         }
@@ -93,9 +95,15 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(pos)));
     }
 
-    private static TerminalScreen awaitScreen(ClientGameTestContext context) {
-        ClientWait.screen(context, TerminalScreen.class);
-        return context.computeOnClient(client -> ClientSession.screen(client, TerminalScreen.class));
+    private static RepairScreen awaitRepairScreen(ClientGameTestContext context) {
+        ClientWait.screen(context, RepairScreen.class);
+        RepairScreen screen = context.computeOnClient(client -> ClientSession.screen(client, RepairScreen.class));
+        ClientWait.until(
+                context,
+                "the repair screen finished typing",
+                client -> screen.typewriter().done(),
+                client -> "typewriter text '" + screen.typewriter().text() + "'");
+        return screen;
     }
 
     private static void farRequestIsRefused(ClientGameTestContext context, Scene scene) {
@@ -106,82 +114,80 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
                 "an open request from " + FAR_BLOCKS + " blocks away must not open a screen");
     }
 
-    private static void offlineScreenOpensAndRenders(ClientGameTestContext context, Scene scene) {
+    private static void repairScreenOpensWithAGhostPerPart(ClientGameTestContext context, Scene scene) {
         request(context, scene.pump());
-        TerminalScreen screen = awaitScreen(context);
-        ClientWait.until(
-                context,
-                "the terminal screen finished typing",
-                client -> screen.typewriter().done(),
-                client -> "typewriter text '" + screen.typewriter().text() + "'");
+        RepairScreen screen = awaitRepairScreen(context);
         require(
-                screen.typewriter().text().contains("OFFLINE"),
-                "an unrepaired terminal opens offline, the text says so, got '"
+                screen.typewriter().text().contains("OFFLINE")
+                        && screen.typewriter().text().contains("INSERT EVERY PART"),
+                "the pump has no prerequisite, so its text asks for every part, got '"
                         + screen.typewriter().text() + "'");
+        List<Item> ghosts = context.computeOnClient(client -> screen.getMenu().ruleSlots().stream()
+                .map(slot -> slot.rule().ghost().orElseThrow().icon().getItem())
+                .toList());
+        List<Item> parts = TerminalTypes.FUEL_PUMP.parts();
+        require(ghosts.equals(parts), "one slot per part, each showing its part's ghost: " + ghosts + " vs " + parts);
         require(
-                screen.typewriter().text().contains("INSERT EVERY PART"),
-                "the pump has no prerequisite, so its parts can go in, got '"
-                        + screen.typewriter().text() + "'");
-        require(
-                buttons(context, screen).stream()
-                                .filter(button -> button.active)
-                                .count()
-                        == TerminalTypes.FUEL_PUMP.parts().size() + 1,
-                "every part button and CLOSE are live");
+                context.computeOnClient(
+                        client -> screen.getMenu().ruleSlots().stream().noneMatch(slot -> slot.hasItem())),
+                "every part slot starts empty");
         context.waitTicks(5);
         context.setScreen(() -> null);
     }
 
-    private static void lockedTerminalHasDeadButtons(ClientGameTestContext context, Scene scene) {
+    private static void lockedTerminalRefusesItsParts(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
         request(context, scene.processor());
-        TerminalScreen screen = awaitScreen(context);
-        ClientWait.until(
-                context,
-                "the terminal screen finished typing",
-                client -> screen.typewriter().done(),
-                client -> "typewriter text '" + screen.typewriter().text() + "'");
+        RepairScreen screen = awaitRepairScreen(context);
         require(
                 screen.typewriter().text().contains("OFFLINE")
                         && screen.typewriter().text().contains("FIRST"),
                 "the processor is offline and locked while the pump is not repaired, the locked text names what to repair first, got '"
                         + screen.typewriter().text() + "'");
+        Item coil = TerminalTypes.ORE_PROCESSOR.parts().getFirst();
+        SlotClicks.shiftClick(context, screen, inventorySlot(context, screen, coil));
+        ClientWait.until(
+                context,
+                "the refusal on screen",
+                client -> screen.getMenu().refusal().isPresent(),
+                client -> "refusal " + screen.getMenu().refusal());
         require(
-                buttons(context, screen).stream()
-                                .filter(button -> button.active)
-                                .count()
-                        == 1,
-                "only CLOSE is live on a locked terminal");
+                screen.getMenu().refusal().orElseThrow().equals(TerminalRefusal.PREREQUISITE_UNREPAIRED.message()),
+                "the screen says to repair the earlier terminal first, got "
+                        + screen.getMenu().refusal());
+        require(
+                !singleplayer
+                        .getServer()
+                        .computeOnServer(server -> RepairState.get(server).inserted(TerminalTypes.ORE_PROCESSOR))
+                        .contains(coil),
+                "the server put nothing in");
         context.setScreen(() -> null);
     }
 
-    private static void partButtonsRepairThroughTheServer(
+    private static void partsGoInByDragAndShiftClick(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
         request(context, scene.pump());
-        TerminalScreen screen = awaitScreen(context);
-        String firstLabel = "INSERT " + partLabel(TerminalTypes.FUEL_PUMP, 0);
-        context.clickScreenButton(firstLabel);
-        String insertedLabel = "[X] " + partLabel(TerminalTypes.FUEL_PUMP, 0);
+        RepairScreen screen = awaitRepairScreen(context);
+        Item motor = TerminalTypes.FUEL_PUMP.parts().get(0);
+        Item valve = TerminalTypes.FUEL_PUMP.parts().get(1);
+
+        SlotClicks.click(context, screen, inventorySlot(context, screen, motor));
+        SlotClicks.click(context, screen, screen.getMenu().ruleSlots().get(0));
         ClientWait.until(
                 context,
-                "the first part inserted",
-                client -> buttonsOf(screen).stream()
-                        .anyMatch(button -> button.getMessage().getString().equals(insertedLabel)),
-                client -> "buttons "
-                        + buttonsOf(screen).stream()
-                                .map(button -> button.getMessage().getString())
-                                .toList());
-        // A repaired terminal's view is not accepted by the offline screen (TerminalScreen.accepts), so the screen is
-        // replaced; this one stays.
+                "the motor in its slot, on the server",
+                client -> singleplayer
+                        .getServer()
+                        .computeOnServer(server -> RepairState.get(server).inserted(TerminalTypes.FUEL_PUMP))
+                        .contains(motor),
+                client -> "slot " + screen.getMenu().ruleSlots().get(0).getItem());
         require(
-                context.computeOnClient(client -> client.gui.screen() == screen)
-                        && screen.typewriter().text().contains("OFFLINE"),
-                "one part of two does not repair the pump, the offline screen stays");
-        require(
-                buttons(context, screen).stream()
-                        .noneMatch(button -> button.getMessage().getString().equals(firstLabel)),
-                "the inserted part's button now reads inserted");
+                context.computeOnClient(client -> client.gui.screen() == screen
+                        && screen.getMenu().ruleSlots().get(0).getItem().is(motor)
+                        && screen.getMenu().getCarried().isEmpty()),
+                "one part of two leaves the repair screen open, the motor shown in its slot");
 
-        context.clickScreenButton("INSERT " + partLabel(TerminalTypes.FUEL_PUMP, 1));
+        SlotClicks.shiftClick(context, screen, inventorySlot(context, screen, valve));
         // The repaired pump opens its own screen (#69), not the generic online one.
         ClientWait.until(context, "the fuel pump screen open", client -> client.gui.screen() instanceof FuelPumpScreen);
         boolean repaired = singleplayer
@@ -194,8 +200,17 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
                         .getPlayers()
                         .getFirst()
                         .getInventory()
-                        .countItem(TerminalTypes.FUEL_PUMP.parts().getFirst()));
+                        .countItem(motor));
         require(carried == 0, "the part left the inventory, " + carried + " remain");
+    }
+
+    /** The slot of the player's inventory in {@code screen} that holds {@code item}. */
+    private static Slot inventorySlot(ClientGameTestContext context, RepairScreen screen, Item item) {
+        return context.computeOnClient(client -> screen.getMenu().slots.stream()
+                .filter(slot ->
+                        slot.container instanceof Inventory && slot.getItem().is(item))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the player carries no " + item)));
     }
 
     private static void onlineScreenOpensOnceRepaired(ClientGameTestContext context, Scene scene) {
@@ -219,12 +234,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         context.setScreen(() -> null);
 
         request(context, scene.processor());
-        TerminalScreen processor = awaitScreen(context);
-        ClientWait.until(
-                context,
-                "the processor screen finished typing",
-                client -> processor.typewriter().done(),
-                client -> "typewriter text '" + processor.typewriter().text() + "'");
+        RepairScreen processor = awaitRepairScreen(context);
         require(
                 processor.typewriter().text().contains("INSERT EVERY PART"),
                 "with the pump repaired the processor's parts can go in, got '"
@@ -305,20 +315,5 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         int updates() {
             return updates;
         }
-    }
-
-    private static String partLabel(TerminalType type, int index) {
-        return new ItemStack(type.parts().get(index)).getHoverName().getString().toUpperCase(Locale.ROOT);
-    }
-
-    private static List<CrtButton> buttons(ClientGameTestContext context, TerminalScreen screen) {
-        return context.computeOnClient(client -> buttonsOf(screen));
-    }
-
-    private static List<CrtButton> buttonsOf(TerminalScreen screen) {
-        return screen.children().stream()
-                .filter(CrtButton.class::isInstance)
-                .map(CrtButton.class::cast)
-                .toList();
     }
 }

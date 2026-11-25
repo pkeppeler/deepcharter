@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.client.outpost.IncidentReportScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
+import io.github.pkeppeler.deepcharter.client.ui.CrtMenuScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
@@ -38,6 +39,7 @@ import io.github.pkeppeler.deepcharter.outpost.VisitCause;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.suit.OutpostRisks;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
+import io.github.pkeppeler.deepcharter.terminal.RepairMenu;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeatureProbe;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
@@ -61,6 +63,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,8 +97,8 @@ import net.minecraft.world.inventory.Slot;
  * content. Each widget lies inside the screen and no two widgets overlap; a failure names the screen, the widget and the overflow in pixels.
  *
  * <p>The screens are found, not listed. The terminal screens come from {@link TerminalTypes#all()} through {@link TerminalScreens#create},
- * so a new terminal is built the way the game builds it (the generic {@code TerminalScreen} is the offline screen of every type, and the online one of
- * a type that registers none); the container screens come from the menu types the mod registered and the screen
+ * so a new terminal is built the way the game builds it (the generic {@code TerminalScreen} is the online one of a type that registers none; an
+ * unrepaired terminal opens the repair menu, a container screen); the container screens come from the menu types the mod registered and the screen
  * each registered with {@code MenuScreens}. A terminal type that adds a feature, or a menu type, with no fixture below fails the test and
  * says so, so a new one cannot be skipped. Only the screens nothing registers are named by hand ({@link #standalone}), and
  * {@code tools/tests/test_screen_layout_gate.py} fails when a screen class is neither registered nor named in this file.
@@ -456,6 +459,10 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 
     /** A typewriter draws the text it has revealed, so the layout is checked with all of it revealed: a step long enough to type any intro. The screen keeps its typewriters in a private map. */
     private static void finishTyping(Screen screen) {
+        if (screen instanceof CrtMenuScreen<?> menu) {
+            menu.typewriter().advance(TYPING_SECONDS);
+            return;
+        }
         if (!(screen instanceof CrtScreen)) {
             return;
         }
@@ -489,18 +496,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                             + (registers
                                     ? " adds a view feature but has no fixture in ScreenLayoutClientTest.features()"
                                     : " has a fixture there but registers no feature"));
-            List<TerminalView.PartStatus> missing = type.parts().stream()
-                    .map(part -> new TerminalView.PartStatus(BuiltInRegistries.ITEM.getKey(part), false))
-                    .toList();
             String id = type.id().getPath();
-            if (type.needsRepair()) {
-                TerminalView locked = new TerminalView(POS, type.id(), false, false, missing, Optional.empty());
-                TerminalView open = new TerminalView(POS, type.id(), false, true, missing, Optional.empty());
-                if (type.prerequisite().isPresent()) {
-                    cases.add(new Case(id + " offline, locked", () -> TerminalScreens.create(locked)));
-                }
-                cases.add(new Case(id + " offline, parts missing", () -> TerminalScreens.create(open)));
-            }
             TerminalView online = onlineView(type, features);
             List<Variant> variants = List.of();
             if (type == ContractTerminal.TYPE) {
@@ -722,6 +718,20 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         Map<MenuType<?>, MenuFixture> fixtures = new LinkedHashMap<>();
         int bay = Math.round(PodTuning.Cargo.DEFAULT.slots()
                 * UpgradeTuning.DEFAULT.ratio(ComponentTrack.CARGO_BAY, ComponentTrack.CARGO_BAY.maxTier()));
+        TerminalType mostParts = TerminalTypes.all().stream()
+                .filter(type -> type.id().getNamespace().equals(DeepCharter.MOD_ID))
+                .max(Comparator.comparingInt(type -> type.parts().size()))
+                .orElseThrow();
+        fixtures.put(
+                RepairMenu.TYPE,
+                new MenuFixture(
+                        id -> new RepairMenu(
+                                id,
+                                ClientSession.player(Minecraft.getInstance()).getInventory(),
+                                new RepairMenu.Opening(POS, mostParts.id(), true)),
+                        mostParts.id().getPath() + " offline, "
+                                + mostParts.parts().size() + " parts",
+                        Component.translatable(mostParts.block().getDescriptionId())));
         fixtures.put(
                 OreRegistry.CARGO_MENU,
                 new MenuFixture(

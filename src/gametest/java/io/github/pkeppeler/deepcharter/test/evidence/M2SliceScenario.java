@@ -10,7 +10,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.RepairScreen;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
@@ -55,6 +55,7 @@ import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
+import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -63,7 +64,6 @@ import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -93,6 +93,8 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
@@ -375,13 +377,9 @@ public class M2SliceScenario extends EvidenceScenario {
             stand(Vec3.atBottomCenterOf(console.west(2)), Vec3.atCenterOf(console));
             ctx.waitTicks(20);
             useKey();
-            ClientWait.screen(ctx, TerminalScreen.class);
+            ClientWait.screen(ctx, RepairScreen.class);
             snap(HOLD_FRAMES);
-            for (var part : HangarParts.ALL) {
-                click("INSERT " + new ItemStack(part).getHoverName().getString().toUpperCase(Locale.ROOT));
-                ctx.waitTicks(8);
-                snap(2);
-            }
+            insertParts(HangarParts.ALL);
             ClientWait.screen(ctx, HangarScreen.class);
             snap(HOLD_FRAMES);
             still("10-hangar-console-online");
@@ -1316,17 +1314,28 @@ public class M2SliceScenario extends EvidenceScenario {
         private void repairTerminal(
                 TerminalType type, ColonyAnchor anchor, Class<? extends Screen> online, String name) {
             BlockPos pos = TestColony.anchor(site.colony(), anchor);
-            openTerminal(new Vec3(pos.getX() + 0.5, site.pad().y, pos.getZ() + 2.5), pos, TerminalScreen.class);
+            openTerminal(new Vec3(pos.getX() + 0.5, site.pad().y, pos.getZ() + 2.5), pos, RepairScreen.class);
             snap(HOLD_FRAMES);
-            for (var part : type.parts()) {
-                click("INSERT " + new ItemStack(part).getHoverName().getString().toUpperCase(Locale.ROOT));
-                ctx.waitTicks(8);
-                snap(2);
-            }
+            insertParts(type.parts());
             ClientWait.screen(ctx, online);
             snap(HOLD_FRAMES);
             still(name);
             ctx.setScreen(() -> null);
+        }
+
+        /** Shift-clicks each of {@code parts} from the inventory into its slot of the open repair screen. */
+        private void insertParts(List<Item> parts) {
+            RepairScreen screen = ctx.computeOnClient(client -> ClientSession.screen(client, RepairScreen.class));
+            for (Item part : parts) {
+                Slot held = ctx.computeOnClient(client -> screen.getMenu().slots.stream()
+                        .filter(slot -> slot.container instanceof Inventory
+                                && slot.getItem().is(part))
+                        .findFirst()
+                        .orElseThrow(() -> new AssertionError("the player carries no " + part)));
+                SlotClicks.shiftClick(ctx, screen, held);
+                ctx.waitTicks(8);
+                snap(2);
+            }
         }
 
         /** Opens the handbook at the chapter's directives, takes a still, and closes it. */
