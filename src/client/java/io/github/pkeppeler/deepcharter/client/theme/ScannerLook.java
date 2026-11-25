@@ -36,6 +36,7 @@ import java.util.Map;
  * @param oreMarkColors the mark of each of the mod's ores in a small cell: bright, and told apart by hue
  * @param rulerTickBlocks blocks of depth between the ticks of the depth ruler down the map's left edge
  * @param rulerLabelBlocks blocks of depth between its labelled ticks; a multiple of it where cells are too small for labels this close
+ * @param rulerLabelGapPixels the fewest GUI pixels from one label's row to the next: where cells are small, labels skip rows to keep it
  * @param rulerTickPixels GUI pixels a tick reaches in from the edge
  * @param rulerLabelTickPixels GUI pixels a labelled tick reaches in; its label starts just past it
  * @param rulerPodMarkPixels GUI pixels the mark on the player's row reaches in
@@ -74,6 +75,7 @@ public record ScannerLook(
         Map<OreType, Integer> oreMarkColors,
         int rulerTickBlocks,
         int rulerLabelBlocks,
+        int rulerLabelGapPixels,
         int rulerTickPixels,
         int rulerLabelTickPixels,
         int rulerPodMarkPixels,
@@ -118,6 +120,7 @@ public record ScannerLook(
                 marks,
                 d.integer("rulerTickBlocks", 1),
                 d.integer("rulerLabelBlocks", 1),
+                d.integer("rulerLabelGapPixels", 0),
                 d.integer("rulerTickPixels", 0),
                 d.integer("rulerLabelTickPixels", 0),
                 d.integer("rulerPodMarkPixels", 0),

@@ -185,6 +185,7 @@ public class ThemeLooksTest {
                                 0xFFFFC8E4),
                         5,
                         10,
+                        20,
                         2,
                         4,
                         5,

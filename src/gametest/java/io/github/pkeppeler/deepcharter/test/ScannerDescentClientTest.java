@@ -258,7 +258,8 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
                     .orElseGet(() -> ScannerHud.cellSize(guiWidth, guiHeight, AREA));
             int top = seated.map(layout -> ScannerHud.windowCellTop(guiHeight, layout.scanner(), AREA, AREA.up()))
                     .orElseGet(() -> ScannerHud.cellTop(guiWidth, guiHeight, AREA, AREA.up()));
-            int halfLine = (client.font.lineHeight - 1) / 2;
+            // A digit fills the top lineHeight - 2 rows of its line; its middle is the row's.
+            int halfLine = (client.font.lineHeight - 2) / 2;
             List<DrawnText.Drawn> labels = drawn.stream()
                     .filter(text -> DEPTH_LABEL.matcher(text.text()).matches())
                     .toList();

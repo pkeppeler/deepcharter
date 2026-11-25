@@ -69,15 +69,19 @@ final class ScannerRuler {
     }
 
     /**
-     * Blocks of depth between labels: {@link ScannerLook#rulerLabelBlocks()}, or the smallest multiple of it whose rows are a line of
-     * text and a pixel tall, so that small cells do not stack the labels on each other.
+     * Blocks of depth between labels: {@link ScannerLook#rulerLabelBlocks()}, or the smallest multiple of it whose rows span
+     * {@link ScannerLook#rulerLabelGapPixels()} and a line of text, so that small cells do not stack the labels over the map.
      */
     private static int labelBlocks(ScannerLook look, int cell, int lineHeight) {
         int step = look.rulerLabelBlocks();
-        return step * Math.max(1, Math.ceilDiv(lineHeight + 1, step * cell));
+        int gap = Math.max(look.rulerLabelGapPixels(), lineHeight + 1);
+        return step * Math.max(1, Math.ceilDiv(gap, step * cell));
     }
 
-    /** The label {@code text} centred on the row whose middle is {@code middle}, on its backing; left out where it would cross the map's top or bottom edge. */
+    /**
+     * The label {@code text} centred on the row whose middle is {@code middle}, on its backing; left out where it would cross the map's top
+     * or bottom edge. A digit fills the top {@code lineHeight - 2} rows of a line, so that is what is centred.
+     */
     private static void label(
             GuiGraphicsExtractor graphics,
             Font font,
@@ -88,7 +92,7 @@ final class ScannerRuler {
             int mapTop,
             int mapBottom) {
         int x = left + look.rulerLabelTickPixels() + 1;
-        int y = middle - (font.lineHeight - 1) / 2;
+        int y = middle - (font.lineHeight - 2) / 2;
         if (y - 1 < mapTop || y + font.lineHeight > mapBottom) {
             return;
         }
