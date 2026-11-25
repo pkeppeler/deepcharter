@@ -29,13 +29,15 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Client GameTest for #1317: a real client on foot in a bore carved in the campaign world, dropped onto each of our blocks, standing,
- * walking and hauled up by the tether's winch, makes vanilla's server log no "standing on air - force-sending blocks below". That line
- * means the client reports on-ground where the server's last move found nothing below, so a block the client holds and the server does
- * not would make it. A mock player cannot show that: only a real client holds its own copy of the chunks and does its own collision.
+ * Client GameTest for #1317: a real client on foot in a bore carved in the campaign world, dropped onto each of our
+ * blocks, standing, walking and hauled up by the tether's winch, makes vanilla's server log no "standing on air -
+ * force-sending blocks below". That line means the client reports on-ground where the server's last move found
+ * nothing below, so a block the client holds and the server does not would make it. A mock player cannot show that:
+ * only a real client holds its own copy of the chunks and does its own collision.
  *
- * <p>Jumping is left out on purpose. Vanilla's own check is a false alarm on a jump's take-off and landing, one tick apart between
- * client and server: a client holding the jump key on a plain stone slab in the End logged the line too, with none of our blocks near.
+ * <p>Jumping is left out on purpose. Vanilla's own check is a false alarm on a jump's take-off and landing, one tick
+ * apart between client and server: a client holding the jump key on a plain stone slab in the End logged the line
+ * too, with none of our blocks near.
  */
 public class OnFootForceSendClientTest implements FabricClientGameTest {
     private static final int X = 29000;
@@ -142,7 +144,9 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         }
     }
 
-    /** A stone bed with a 3 by 3 bore over it, whose floor holds each of {@link #PATCHES}, and a room round its mouth. */
+    /**
+     * A stone bed with a 3 by 3 bore over it, whose floor holds each of {@link #PATCHES}, and a room round its mouth.
+     */
     private static void carve(ServerLevel level, int floor) {
         RoomCarver.carve(level, X - 3, X + 3, floor - 1, floor - 1, X - 3, X + 3, Blocks.STONE);
         RoomCarver.carve(level, X - 1, X + 1, floor, floor + DROP + 2, X - 1, X + 1, Blocks.AIR);

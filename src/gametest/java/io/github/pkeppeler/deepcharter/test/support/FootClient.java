@@ -10,10 +10,10 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * A client that walks a mock on foot the way vanilla's local player does vertically: gravity, a collision that clips the fall, an
- * on-ground flag that is the collision below, and the position packet rule (a move, or a reminder every 20 ticks, otherwise a status
- * only packet when the flag changed). {@code phantoms} are shapes the client holds that the server has as air. The server's own
- * player is moved by the packets alone.
+ * A client that walks a mock on foot the way vanilla's local player does vertically: gravity, a collision that clips
+ * the fall, an on-ground flag that is the collision below, and the position packet rule (a move, or a reminder every
+ * 20 ticks, otherwise a status only packet when the flag changed). {@code phantoms} are shapes the client holds that
+ * the server has as air. The server's own player is moved by the packets alone.
  */
 public final class FootClient {
     private static final int REMINDER_TICKS = 20;

@@ -23,12 +23,13 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * Server GameTests for the line vanilla logs when a player on foot reports on-ground with no collision under the server's last move,
- * "standing on air - force-sending blocks below" (#1317). A mock player stands in for the client with {@link FootClient}'s physics, so
- * the bore, the fall and the standing are the campaign world's own. Columns 28000 to 28999 are this class's.
+ * Server GameTests for the line vanilla logs when a player on foot reports on-ground with no collision under the
+ * server's last move, "standing on air - force-sending blocks below" (#1317). A mock player stands in for the client
+ * with {@link FootClient}'s physics, so the bore, the fall and the standing are the campaign world's own. Columns
+ * 28000 to 28999 are this class's.
  *
- * <p>Vanilla sends nothing in the first 200 ticks of a connection and then at most one line in 200, so a run is longer than that
- * and its jumps start after {@link #JUMPS_FROM_TICK}.
+ * <p>Vanilla sends nothing in the first 200 ticks of a connection and then at most one line in 200, so a run is
+ * longer than that and its jumps start after {@link #JUMPS_FROM_TICK}.
  */
 public class OnFootForceSendTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -41,7 +42,9 @@ public class OnFootForceSendTest {
         run(helper, "foot-bore", 28000, List.of(), 0);
     }
 
-    /** The control: a block only the client holds is what the line is for, so the counter and the packets must see it. */
+    /**
+     * The control: a block only the client holds is what the line is for, so the counter and the packets must see it.
+     */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
     public void aBlockOnlyTheClientHoldsForcesSends(GameTestHelper helper) {
         VoxelShape ledge = Shapes.create(-2, 6, -2, 3, 7, 3);
@@ -49,10 +52,12 @@ public class OnFootForceSendTest {
     }
 
     /**
-     * Drops a mock from the top of a carved bore onto a stone bed and lets it stand and jump there for {@link #RUN_TICKS} ticks.
-     * {@code ledges} are shapes the client holds that the server has as air, in blocks from the bore's floor and centre.
+     * Drops a mock from the top of a carved bore onto a stone bed and lets it stand and jump there for
+     * {@link #RUN_TICKS} ticks. {@code ledges} are shapes the client holds that the server has as air, in blocks from
+     * the bore's floor and centre.
      *
-     * @param atLeast the lines the run must log: 0 for none at all, otherwise the least that proves the check is reached
+     * @param atLeast the lines the run must log: 0 for none at all, otherwise the least that proves the check is
+     * reached
      */
     private static void run(GameTestHelper helper, String name, int column, List<VoxelShape> ledges, int atLeast) {
         ServerLevel level = helper.getLevel();

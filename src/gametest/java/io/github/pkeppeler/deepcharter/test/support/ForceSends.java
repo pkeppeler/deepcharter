@@ -9,8 +9,9 @@ import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.Property;
 
 /**
- * Counts vanilla's "standing on air - force-sending blocks below" lines (#1317): the server found a client on foot reporting on-ground
- * with no collision under its last move. Attached once and never detached, like {@link LogCapture}.
+ * Counts vanilla's "standing on air - force-sending blocks below" lines (#1317): the server found a client on foot
+ * reporting on-ground with no collision under its last move. Attached once and never detached, like
+ * {@link LogCapture}.
  */
 public final class ForceSends {
     private static final Appender APPENDER = Appender.attach();
