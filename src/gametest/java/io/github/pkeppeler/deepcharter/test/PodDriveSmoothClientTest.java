@@ -227,7 +227,11 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      * its progress.
      */
     private record Late(
-            int stallAt, int stallTicks, int releaseAt, double dropBlocks, boolean settles, boolean recovers) {
+            int stallAt, int stallTicks, int releaseAt, double dropBlocks, boolean settles, boolean recovers,
+            boolean lags) {
+        Late(int stallAt, int stallTicks, int releaseAt, double dropBlocks, boolean settles, boolean recovers) {
+            this(stallAt, stallTicks, releaseAt, dropBlocks, settles, recovers, false);
+        }
         boolean stops() {
             return releaseAt >= 0 || dropBlocks > 0;
         }
@@ -277,6 +281,18 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 true,
                                 false,
                                 new Late(STALL_AT_TICK, SHORT_STALL_TICKS, -1, 0, true, true)));
+                for (int lag : new int[] {1, 2}) {
+                    drive(
+                            context,
+                            rig,
+                            Drive.forward(
+                                    "flat drive through a connection " + lag + " ticks slower",
+                                    STALL_DRIVE_TICKS,
+                                    flatSpeed,
+                                    true,
+                                    false,
+                                    new Late(STALL_AT_TICK, lag, -1, 0, true, true, true)));
+                }
                 drive(
                         context,
                         rig,
@@ -429,8 +445,15 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                 if (tick == SETTLE_TICKS) {
                     context.runOnClient(client -> PacketJitter.resetMoveless());
                 }
+                io.github.pkeppeler.deepcharter.pod.PodGlideTrace.on = late != null && (late.stallTicks() == SHORT_STALL_TICKS || late.lags()) && tick >= 15; // TRACE
                 if (late != null && tick == late.stallAt()) {
-                    context.runOnClient(client -> PacketJitter.stall(late.stallTicks()));
+                    context.runOnClient(client -> {
+                        if (late.lags()) {
+                            PacketJitter.lag(late.stallTicks());
+                        } else {
+                            PacketJitter.stall(late.stallTicks());
+                        }
+                    });
                 }
                 if (late != null && tick == late.releaseAt()) {
                     drive.keys().forEach(key -> context.getInput().releaseKey(key));
@@ -448,9 +471,18 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     }
                     drilled[0] |= watchedPod instanceof PodEntity pod && pod.drilling();
                 });
+                if (late != null && tick >= 15 && (late.stallTicks() == SHORT_STALL_TICKS || late.lags())) { // TRACE
+                    int n = pilot.frames().size();
+                    LOGGER.info("TRACE {} tick {} moveless {} pilotDz {} ownDz {} watchedDz {}", drive.name(), tick,
+                            context.computeOnClient(c -> PacketJitter.movelessTicks()),
+                            pilot.frames().get(n - 1).z - pilot.frames().get(n - 1 - FRAMES).z,
+                            ownPod.frames().get(n - 1).z - ownPod.frames().get(n - 1 - FRAMES).z,
+                            watched.frames().get(n - 1).z - watched.frames().get(n - 1 - FRAMES).z);
+                }
             }
             moveless = context.computeOnClient(client -> PacketJitter.movelessTicks());
         } finally {
+            context.runOnClient(client -> PacketJitter.endLag());
             drive.keys().forEach(key -> context.getInput().releaseKey(key));
             two.server().runOnServer(server -> two.mock().releaseInput());
             // The server acts on the last input the client sent until the release reaches it; a pod put on its start
@@ -750,6 +782,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     "the watched pod standing at its place before the wall",
                     () -> context.computeOnClient(client -> standsAt(client, rig.mockPodId(), at)),
                     () -> "watched pod on the client " + onClient(context, rig.mockPodId()) + " for " + at);
+            io.github.pkeppeler.deepcharter.pod.PodGlideTrace.on = true; // TRACE
             context.runOnClient(client -> {
                 Entity pod = TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId());
                 pod.setDeltaMovement(0, 0, FAST_COAST_SPEED);
@@ -765,6 +798,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                         .maxZ));
             }
         } finally {
+            io.github.pkeppeler.deepcharter.pod.PodGlideTrace.on = false; // TRACE
             context.runOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId())
                     .setDeltaMovement(Vec3.ZERO));
             rig.two().server().runOnServer(server -> {
