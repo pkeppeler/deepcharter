@@ -187,6 +187,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      */
     private static final double STEP_MARGIN = 1.4;
 
+    /**
+     * The most moveless ticks a lagged drive's pod is judged for: the lag's own and the jitter's skipped tick. A connection that stays
+     * slower leaves the coast's reach already used by the lag, so a server late on its own on top of it is not covered (#1112).
+     */
+    private static final int COVERED_LAGGED_MOVELESS_TICKS = SLOWER_TICKS + 1;
+
     /** The most client ticks in a row without a move that the glide covers (ADR 0082); a steady drive that saw more is not judged. */
     private static final int COVERED_MOVELESS_TICKS = 6;
 
@@ -380,6 +386,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         }
     }
 
+    /** The moveless ticks the {@code drive}'s pod is judged for. */
+    private static int coveredMoveless(Drive drive) {
+        Late late = drive.late();
+        return late != null && late.lags() ? COVERED_LAGGED_MOVELESS_TICKS : COVERED_MOVELESS_TICKS;
+    }
+
     /**
      * Puts both pods on their start, behind a wall when the drive drills, holds the keys, samples every frame of the drive, and asserts
      * what the pilot's camera and the watched pod drew.
@@ -388,7 +400,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         List<Integer> late = new ArrayList<>();
         for (int attempt = 1; attempt <= DRIVE_ATTEMPTS; attempt++) {
             int moveless = driveOnce(context, rig, drive);
-            if (!drive.steady() || moveless <= COVERED_MOVELESS_TICKS) {
+            if (!drive.steady() || moveless <= coveredMoveless(drive)) {
                 return;
             }
             late.add(moveless);
@@ -397,14 +409,14 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                             + " up to {}); attempt {} of {}",
                     drive.name(),
                     moveless,
-                    COVERED_MOVELESS_TICKS,
+                    coveredMoveless(drive),
                     attempt,
                     DRIVE_ATTEMPTS);
         }
         require(
                 false,
                 drive.name() + ": late in all " + DRIVE_ATTEMPTS + " attempts: " + late
-                        + " moveless ticks, the pod is judged up to " + COVERED_MOVELESS_TICKS);
+                        + " moveless ticks, the pod is judged up to " + coveredMoveless(drive));
     }
 
     /** One run of {@code drive}; returns the most client ticks in a row it saw without an entity move handled. */
@@ -491,7 +503,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             // before that would drive on from the start.
             context.waitTicks(INPUT_LAG_TICKS);
         }
-        boolean judgeFloor = moveless <= COVERED_MOVELESS_TICKS;
+        boolean judgeFloor = moveless <= coveredMoveless(drive);
         if (drive.wall()) {
             require(drilled[0], "The watched pod never drilled, so the drilling drive was not a drilling drive");
         }
