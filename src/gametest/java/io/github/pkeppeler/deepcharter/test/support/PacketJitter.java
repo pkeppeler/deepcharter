@@ -20,15 +20,6 @@ public final class PacketJitter {
     /** Every third client tick holds the moves. */
     private static final int PERIOD = 3;
 
-    /** The {@link #phase} of a tick that handles one tick's moves: the one before the skipped tick. */
-    public static final int SINGLE_TICK = 0;
-
-    /** The {@link #phase} of the skipped tick, which handles no move. */
-    public static final int SKIPPED_TICK = 1;
-
-    /** The {@link #phase} of the tick after the skipped one, which handles its own moves and the skipped tick's. */
-    public static final int DOUBLE_TICK = 2;
-
     private static int period;
     /** The client game time until which every move is held; -1 when no stall is on. */
     private static long stallUntil = -1;
@@ -90,8 +81,7 @@ public final class PacketJitter {
     public static void lag(int ticks) {
         registerOnce();
         // A move the jitter holds now is one the server sent: hand it over, never drop it, or the client's position is
-        // a move short
-        // for the rest of the drive (a lag that starts right after the skipped tick).
+        // a move short for the rest of the drive (a lag that starts right after the skipped tick).
         replayHeld();
         LAGGED_DUE.clear();
         lagTicks = ticks;
@@ -102,11 +92,6 @@ public final class PacketJitter {
         lagTicks = 0;
         LAGGED_DUE.clear();
         replayHeld();
-    }
-
-    /** Where a client tick at {@code gameTime} falls in the jitter's period: {@link #SINGLE_TICK}, {@link #SKIPPED_TICK} or {@link #DOUBLE_TICK}. */
-    public static int phase(long gameTime) {
-        return (int) (gameTime % PERIOD);
     }
 
     /** Starts counting the longest stretch of client ticks with no move of any entity handled from now. */

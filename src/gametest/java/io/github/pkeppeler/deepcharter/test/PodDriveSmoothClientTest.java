@@ -54,9 +54,8 @@ import org.slf4j.LoggerFactory;
  * stalls beyond 6 ticks: a longer one stands the pod for the rest of it, and a gap over {@code snapGap} blocks glides over as before
  * (ADR 0082). A connection that gets two ticks slower and stays so (#1112, {@link PacketJitter#lag}) hands the moves over one a tick, each
  * stale, so the pod has coasted past every move it gets: it must go on at its speed, never turn back to the stale position. A server
- * that runs two ticks late for three ticks and catches up hands over one stale move alone and then a burst, the pattern behind CI's
- * 0.0674533 (#1112). Where a late part begins against the jitter's period changes how far the pod trails its target when the moves
- * stop, so the drives that need one start on a fixed {@link PacketJitter#phase}.
+ * that runs two ticks late for four ticks and catches up hands over stale moves and then a burst, the pattern behind CI's
+ * 0.0674533 (#1112).
  *
  * <p>A steady drive is judged for the stall it injects, not a longer one: when the real test server also ran late and the drive saw more
  * moveless ticks than the glide covers ({@link #COVERED_MOVELESS_TICKS}), it is run again (#1168).
@@ -111,10 +110,11 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
     /**
      * A server that runs {@link #SLOWER_TICKS} late for this many client ticks and then catches up (#1112): the client sees no move for
-     * two ticks, then one move alone, then the rest in one burst. CI's loaded runners did this, and the pod that had coasted a tick
-     * read the lone move as an overshoot and stood (0.0674533 against the 0.1 floor, the same to every digit on five CI runs).
+     * two ticks, then stale moves, then the rest in one burst. CI's loaded runners did this, and a pod that had coasted a tick read a
+     * stale move a rounding step behind it as an overshoot and stood (0.0674533 against the 0.1 floor, the same to every digit on five
+     * CI runs).
      */
-    private static final int CATCH_UP_AFTER_TICKS = 3;
+    private static final int CATCH_UP_AFTER_TICKS = 4;
 
     /** Client ticks of the stall that hides a stop: the keys are released one tick into it, so the server stops while the client is blind. */
     private static final int STOP_STALL_TICKS = 4;
@@ -259,9 +259,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      * A drive through a late server (#1041): where the stall begins and how long it lasts, when the keys are released ({@code -1} for
      * never), how far above its start the pod is dropped, whether the drawn pod must settle on the server's, and whether it must keep
      * its progress. A lagged one ({@link PacketJitter#lag}) holds every move for {@code stallTicks} instead, until it ends {@code
-     * lagTicks} ticks in ({@code -1} for never). {@code phase} is the step of the jitter's period the late part must start on (a
-     * {@link PacketJitter#phase}, {@code -1} for whichever comes at {@code stallAt}): the harness's lockstep makes each step deterministic,
-     * and each gives the pod a different gap to its target when the moves stop.
+     * lagTicks} ticks in ({@code -1} for never).
      */
     private record Late(
             int stallAt,
@@ -271,20 +269,14 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             boolean settles,
             boolean recovers,
             boolean lags,
-            int lagTicks,
-            int phase) {
+            int lagTicks) {
         Late(int stallAt, int stallTicks, int releaseAt, double dropBlocks, boolean settles, boolean recovers) {
-            this(stallAt, stallTicks, releaseAt, dropBlocks, settles, recovers, false, -1, -1);
+            this(stallAt, stallTicks, releaseAt, dropBlocks, settles, recovers, false, -1);
         }
 
-        /** A stall of {@code stallTicks} in a steady drive, from the jitter's {@code phase}. */
-        static Late stall(int stallTicks, int phase) {
-            return new Late(STALL_AT_TICK, stallTicks, -1, 0, true, true, false, -1, phase);
-        }
-
-        /** A connection {@code lateBy} ticks slower in a steady drive, from the jitter's {@code phase}, for {@code lagTicks} ticks. */
-        static Late lag(int lateBy, int lagTicks, int phase) {
-            return new Late(STALL_AT_TICK, lateBy, -1, 0, true, true, true, lagTicks, phase);
+        /** A connection {@code lateBy} ticks slower in a steady drive, for {@code lagTicks} ticks ({@code -1} for the rest of it). */
+        static Late lag(int lateBy, int lagTicks) {
+            return new Late(STALL_AT_TICK, lateBy, -1, 0, true, true, true, lagTicks);
         }
 
         boolean stops() {
@@ -343,7 +335,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 flatSpeed,
                                 true,
                                 false,
-                                Late.stall(SHORT_STALL_TICKS, -1)));
+                                new Late(STALL_AT_TICK, SHORT_STALL_TICKS, -1, 0, true, true)));
                 drive(
                         context,
                         rig,
@@ -353,7 +345,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 flatSpeed,
                                 true,
                                 false,
-                                Late.lag(SLOWER_TICKS, CATCH_UP_AFTER_TICKS, PacketJitter.SINGLE_TICK)));
+                                Late.lag(SLOWER_TICKS, CATCH_UP_AFTER_TICKS)));
                 drive(
                         context,
                         rig,
@@ -363,9 +355,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 flatSpeed,
                                 true,
                                 false,
-                                Late.lag(SLOWER_TICKS, -1, PacketJitter.SINGLE_TICK)));
-                // From the double tick the stall leaves the pod no glide left to its last target: the longest moveless
-                // stretch the glide is judged for, which runs it to the coast's reach (#1112).
+                                Late.lag(SLOWER_TICKS, -1)));
                 drive(
                         context,
                         rig,
@@ -375,7 +365,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 flatSpeed,
                                 true,
                                 false,
-                                Late.stall(LAGGED_STALL_TICKS, PacketJitter.DOUBLE_TICK)));
+                                new Late(STALL_AT_TICK, LAGGED_STALL_TICKS, -1, 0, true, true)));
                 drive(
                         context,
                         rig,
@@ -522,7 +512,6 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         int[] inside = {0};
         boolean[] drilled = {false};
         int moveless;
-        int lateFrom = -1;
         try {
             drive.keys().forEach(key -> context.getInput().holdKey(key));
             two.server().runOnServer(server -> two.mock().setInput(drive.mockInput()));
@@ -530,8 +519,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                 if (tick == SETTLE_TICKS) {
                     context.runOnClient(client -> PacketJitter.resetMoveless());
                 }
-                if (late != null && lateFrom < 0 && tick >= late.stallAt() && onPhase(context, late)) {
-                    lateFrom = tick;
+                if (late != null && tick == late.stallAt()) {
                     context.runOnClient(client -> {
                         if (late.lags()) {
                             PacketJitter.lag(late.stallTicks());
@@ -540,7 +528,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                         }
                     });
                 }
-                if (late != null && late.lags() && lateFrom >= 0 && tick == lateFrom + late.lagTicks()) {
+                if (late != null && late.lags() && late.lagTicks() >= 0 && tick == late.stallAt() + late.lagTicks()) {
                     context.runOnClient(client -> PacketJitter.endLag());
                 }
                 if (late != null && tick == late.releaseAt()) {
@@ -607,14 +595,6 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             expectSettled(drive.name(), rig, context);
         }
         return moveless;
-    }
-
-    /** Whether the client tick the drive is on now starts the late part on the step of the jitter's period it asks for. */
-    private static boolean onPhase(ClientGameTestContext context, Late late) {
-        return late.phase() < 0
-                || context.computeOnClient(client -> PacketJitter.phase(
-                                ClientLight.clientLevel(client).getGameTime()))
-                        == late.phase();
     }
 
     /** How far along the drive (south) the pod is drawn past the last position the server sent for it. */
