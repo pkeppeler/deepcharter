@@ -4,11 +4,14 @@ import io.github.pkeppeler.deepcharter.surface.GiantFungus;
 import io.github.pkeppeler.deepcharter.surface.GiantLayout;
 import io.github.pkeppeler.deepcharter.surface.GiantPiece;
 import io.github.pkeppeler.deepcharter.test.evidence.GiantFungiSpots.Spot;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -26,6 +29,8 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 final class GiantMockups {
     private static final int SET = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+    /** The most cells {@link Snapshot#clearGiants} clears: a few giants touching, well past one. */
+    private static final int MOST_CLEARED = 8_000;
 
     private GiantMockups() {}
 
@@ -45,6 +50,39 @@ final class GiantMockups {
                 snapshot.states.put(pos.immutable(), level.getBlockState(pos));
             }
             return snapshot;
+        }
+
+        /**
+         * Clears every giant the world grew that has a block in the box from {@code from} to {@code to}, whole, each
+         * followed face to face through its blocks (up to {@link #MOST_CLEARED}), and returns what it cleared, to be
+         * put back.
+         */
+        static Snapshot clearGiants(ServerLevel level, BlockPos from, BlockPos to) {
+            Snapshot cleared = new Snapshot();
+            Deque<BlockPos> queue = new ArrayDeque<>();
+            for (BlockPos pos : BlockPos.betweenClosed(from, to)) {
+                if (GiantFungiSpots.giant(level.getBlockState(pos))) {
+                    queue.add(pos.immutable());
+                }
+            }
+            while (!queue.isEmpty() && cleared.states.size() < MOST_CLEARED) {
+                BlockPos pos = queue.poll();
+                BlockState state = level.getBlockState(pos);
+                if (cleared.states.containsKey(pos) || !GiantFungiSpots.giant(state)) {
+                    continue;
+                }
+                cleared.states.put(pos, state);
+                for (Direction side : Direction.values()) {
+                    queue.add(pos.relative(side));
+                }
+            }
+            cleared.states.keySet().forEach(pos -> level.setBlock(pos, Blocks.AIR.defaultBlockState(), SET));
+            return cleared;
+        }
+
+        /** How many cells it holds. */
+        int size() {
+            return states.size();
         }
 
         void restore(ServerLevel level) {
@@ -80,18 +118,6 @@ final class GiantMockups {
                     entry.getKey().x(), entry.getKey().y(), entry.getKey().z());
             if (GiantFungus.open(level.getBlockState(pos))) {
                 level.setBlock(pos, GiantFungus.state(entry.getValue()), SET);
-                set++;
-            }
-        }
-        return set;
-    }
-
-    /** Sets every giant fungus block in the box from {@code from} to {@code to} to air. Returns how many it set. */
-    static int clear(ServerLevel level, BlockPos from, BlockPos to) {
-        int set = 0;
-        for (BlockPos pos : BlockPos.betweenClosed(from, to)) {
-            if (GiantFungiSpots.giant(level.getBlockState(pos))) {
-                level.setBlock(pos, Blocks.AIR.defaultBlockState(), SET);
                 set++;
             }
         }

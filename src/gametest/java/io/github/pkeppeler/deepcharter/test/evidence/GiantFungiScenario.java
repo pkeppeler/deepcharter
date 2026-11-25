@@ -46,8 +46,8 @@ import org.slf4j.LoggerFactory;
  * EvidencePins#skyHidden}, #1161). Each view is taken as played and, named {@code -nv}, with night vision.
  *
  * <ol>
- * <li>The mix the world grew: two Garden giants of two forms in neighbouring chunks, inside the fog, and a view
- * each of the Spore Fields and the Quiet chosen for the most giants in it.
+ * <li>The mix the world grew, in each zone: two giants of two forms in neighbouring chunks, inside the fog, or where
+ * the zone has no such pair, the view with the most giants in it.
  * <li>Before and after: the #1149 mock-ups ({@link GiantMockups}) and the new forms, grown at the same place in a
  * Garden cavern and seen from the same camera.
  *   <li>Each form close (12 blocks off) and far (30 blocks off).
@@ -181,10 +181,9 @@ public class GiantFungiScenario extends EvidenceScenario {
             Optional<GiantFungiSpots.MixView> view = server.computeOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 LayerChain.Band band = TestLayers.band(level, LAYER);
-                // The Garden grows a site in one chunk in three, so two neighbours of two forms are near.
-                return zone == 0
-                        ? GiantFungiSpots.pair(level, band, zone, x, REGION_Z)
-                        : GiantFungiSpots.mix(level, band, zone, x, REGION_Z);
+                // Two neighbours of two forms where the zone has them; a zone of rare sites may not.
+                return GiantFungiSpots.pair(level, band, zone, x, REGION_Z)
+                        .or(() -> GiantFungiSpots.mix(level, band, zone, x, REGION_Z));
             });
             if (view.isPresent()) {
                 LOGGER.info(
@@ -357,16 +356,17 @@ public class GiantFungiScenario extends EvidenceScenario {
         BlockPos eye = middle.atY(Math.max(outlineY + TOP_DOWN_OVER, top + 4));
         Snapshot under = server.computeOnServer(s ->
                 Snapshot.around(TestLayers.level(s, LAYER), middle, TOP_DOWN_RADIUS, TOP_DOWN_BELOW, TOP_DOWN_ABOVE));
+        Snapshot cleared = server.computeOnServer(s -> Snapshot.clearGiants(
+                TestLayers.level(s, LAYER),
+                middle.offset(-TOP_DOWN_RADIUS, -TOP_DOWN_BELOW, -TOP_DOWN_RADIUS),
+                middle.offset(TOP_DOWN_RADIUS, TOP_DOWN_ABOVE, TOP_DOWN_RADIUS)));
         try {
             server.runOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 LOGGER.info(
                         "[giant-fungi] top down: {} grown cells cleared, parasol {} cells, spires {} cells, outlines {}"
                                 + " and {} cells at Y {}",
-                        GiantMockups.clear(
-                                level,
-                                middle.offset(-TOP_DOWN_RADIUS, -TOP_DOWN_BELOW, -TOP_DOWN_RADIUS),
-                                middle.offset(TOP_DOWN_RADIUS, TOP_DOWN_ABOVE, TOP_DOWN_RADIUS)),
+                        cleared.size(),
                         GiantMockups.grow(level, parasol.layout(), parasolBase),
                         GiantMockups.grow(level, spires.layout(), spiresBase),
                         GiantMockups.outline(
@@ -385,6 +385,7 @@ public class GiantFungiScenario extends EvidenceScenario {
             server.runOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 under.restore(level);
+                cleared.restore(level);
                 LightSync.holdSendUntilLit(level, parasolBase.offset(-24, 0, -24), spiresBase.offset(24, 0, 24));
             });
             awaitLight(context, server);
@@ -446,7 +447,10 @@ public class GiantFungiScenario extends EvidenceScenario {
         frame(context);
     }
 
-    /** Builds round the stage, runs {@code shots}, then puts the cavern back as the world grew it. */
+    /**
+     * Clears the giants the world grew round the stage, whole, and builds there, runs {@code shots}, then puts the
+     * cavern back as the world grew it.
+     */
     private void built(
             ClientGameTestContext context,
             TestServerContext server,
@@ -455,6 +459,10 @@ public class GiantFungiScenario extends EvidenceScenario {
             Runnable shots) {
         Snapshot snapshot = server.computeOnServer(
                 s -> Snapshot.around(TestLayers.level(s, LAYER), stage.tall(), BUILD_RADIUS, BUILD_BELOW, BUILD_ABOVE));
+        Snapshot cleared = server.computeOnServer(s -> Snapshot.clearGiants(
+                TestLayers.level(s, LAYER),
+                stage.tall().offset(-BUILD_RADIUS, -BUILD_BELOW, -BUILD_RADIUS),
+                stage.tall().offset(BUILD_RADIUS, BUILD_ABOVE, BUILD_RADIUS)));
         try {
             Object made = server.computeOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
@@ -469,6 +477,7 @@ public class GiantFungiScenario extends EvidenceScenario {
             server.runOnServer(s -> {
                 ServerLevel level = TestLayers.level(s, LAYER);
                 snapshot.restore(level);
+                cleared.restore(level);
                 resendLight(level, stage.tall());
             });
             awaitLight(context, server);
