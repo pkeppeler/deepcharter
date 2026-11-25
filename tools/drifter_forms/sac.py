@@ -88,7 +88,7 @@ def shadow(t):
     # A ragged edge, as through cloudy skin.
     near += 1.6 * (kit.fbm(t.x * 0.35, t.y * 0.35, t.z * 0.35, SEED + 29, 2) - 0.5)
     depth = kit.smooth(1.0 - near / 3.4)
-    core = kit.smooth(-near / 1.1)
+    core = kit.smooth(0.4 - near / 1.8)
     rim = kit.smooth(1.0 - abs(near - 1.5) / 0.9) * (1 - depth**4)
     return depth, core, rim
 
@@ -129,11 +129,11 @@ def paint_skin(t):
     depth, core, rim = shadow(t)
     # The shape behind the skin: dim and murky where it is deep, darkest only along its spine, with the skin's own
     # milk laid over it, and a pale rim where it presses.
-    murk = kit.mix((96, 116, 110), (30, 40, 38), core)
-    colour = kit.mix(colour, kit.mix(murk, BONE, 0.14), 0.8 * depth)
-    colour = kit.mix(colour, (176, 214, 196), 0.3 * rim)
+    murk = kit.mix((84, 102, 98), (26, 36, 34), core)
+    colour = kit.mix(colour, kit.mix(murk, BONE, 0.1), 0.9 * depth)
+    colour = kit.mix(colour, (176, 214, 196), 0.45 * rim)
     if depth > 0.05 or rim > 0.05:
-        glow = (*COLD, max(glow[3] * (1 - depth), 22 * depth + 60 * rim))
+        glow = (*COLD, max(glow[3] * (1 - depth), 22 * depth + 95 * rim))
     near, far = kit.cells(t.x * 0.085, t.y * 0.085, t.z * 0.085, SEED + 11)
     web = far - near
     if web < 0.06:
