@@ -95,6 +95,9 @@ public final class CataloguePanel {
         screenWidth = width;
         screenHeight = height;
         planSheet();
+        if (searchFocused) {
+            focusSearch(layout != null);
+        }
     }
 
     /** Shows the spec sheet of {@code item} over the screen, until a click or Escape puts it away. */
@@ -162,21 +165,17 @@ public final class CataloguePanel {
         return searchFocused;
     }
 
-    /**
-     * Gives the search field the keyboard, or takes it away. On SDL, which 26.3 runs on, the window gets no text events
-     * until text input is switched on, and key presses alone never type: the caret showed and nothing arrived. The
-     * switch is what vanilla's {@code EditBox} flips on focus, with the same owner so only the field that took it
-     * gives it back.
-     */
+    /** Gives the search field the keyboard, or takes it away; SDL sends no text until text input is on (what {@code EditBox} does too). */
     private void focusSearch(boolean focused) {
-        searchFocused = focused;
+        CatalogueLayout now = layout;
+        searchFocused = focused && now != null;
         TextInputManager input = Minecraft.getInstance().textInputManager();
-        if (!focused) {
-            input.stopTextInput(this);
-        } else if (layout != null) {
-            Rect search = layout.shelf().search();
+        if (now != null && searchFocused) {
+            Rect search = now.shelf().search();
             input.setTextInputArea(search.x(), search.y(), search.right(), search.bottom());
             input.startTextInput(this);
+        } else {
+            input.stopTextInput(this);
         }
     }
 
