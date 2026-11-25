@@ -1,13 +1,16 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import com.google.common.base.Splitter;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 import javax.management.JMException;
@@ -36,9 +39,38 @@ public final class HeapHistogram {
                     + "|world\\.level\\.chunk\\.LevelChunkSection|client\\.Minecraft|server\\.dedicated\\.\\w+|server\\.network\\.\\w+|network\\.Connection)"
                     + "|io\\.github\\.pkeppeler\\.deepcharter\\.[\\w.$]+)(?:\\s+\\([^)]*\\))?\\s*$");
 
+    private static final Splitter ROW = Splitter.onPattern("\\s+");
+
     private static int count;
 
     private HeapHistogram() {}
+
+    /**
+     * The live instances of each class named in {@code classes} (binary names), after a full collection: a class with none is
+     * counted as 0. Always runs, whatever {@link #DIR_ENV} says, so a test can assert on what a client or server holds.
+     */
+    public static Map<String, Long> liveCounts(Set<String> classes) {
+        Map<String, Long> counts = new HashMap<>();
+        classes.forEach(name -> counts.put(name, 0L));
+        try {
+            String histogram = (String) ManagementFactory.getPlatformMBeanServer()
+                    .invoke(
+                            new ObjectName("com.sun.management:type=DiagnosticCommand"),
+                            "gcClassHistogram",
+                            new Object[] {new String[0]},
+                            new String[] {String[].class.getName()});
+            // A row is "num: instances bytes class (module)"; a class is named by its binary name.
+            for (String line : histogram.lines().toList()) {
+                List<String> row = ROW.splitToList(line.trim());
+                if (row.size() >= 4 && classes.contains(row.get(3))) {
+                    counts.put(row.get(3), Long.parseLong(row.get(1)));
+                }
+            }
+        } catch (JMException failure) {
+            throw new IllegalStateException("The class histogram could not be read", failure);
+        }
+        return counts;
+    }
 
     /** Writes the histogram of the heap as it stands before {@code test} starts, when {@link #DIR_ENV} is set. */
     public static synchronized void record(String test) {
