@@ -601,7 +601,6 @@ public class ThemeLooksTest {
                 "hud",
                 "transmission",
                 "breach",
-                "cargo",
                 "pod",
                 "panel",
                 "cockpit",
