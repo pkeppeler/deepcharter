@@ -475,13 +475,14 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                 widest = Math.max(widest, font.width(readout.hint().get()));
             }
             double scale = look.scale();
+            int boxHeight = (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale);
             hud.put(
                     "block readout",
                     new Box(
                             (width - (int) Math.ceil(widest * scale)) / 2,
-                            look.stackTop(height, font.lineHeight),
+                            look.blockBottom(height) - boxHeight,
                             (int) Math.ceil(widest * scale),
-                            (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale)));
+                            boxHeight));
         });
         if (TransmissionOverlay.active()) {
             TransmissionLook look = TransmissionLook.current();

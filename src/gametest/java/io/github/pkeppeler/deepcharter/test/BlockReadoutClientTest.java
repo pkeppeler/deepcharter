@@ -129,10 +129,10 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
             require(
                     kept.x() == (width - expectedWidth) / 2
                             && kept.width() == expectedWidth
-                            && kept.y() == look.stackTop(height, client.font.lineHeight)
+                            && kept.bottom() == look.blockBottom(height)
                             && kept.height() == expectedHeight,
                     "the kept box " + kept + " is centred, " + expectedWidth + " wide (the wider line) and "
-                            + expectedHeight + " high (its lines), at the stack's top above the hotbar");
+                            + expectedHeight + " high (its lines), with its bottom edge above the hotbar");
             expectTheBoxClearsVanilla(client, readout);
             require(width % 2 == 1, "this check needs an odd GUI width to catch the half-pixel overflow, got " + width);
             List<Drawn> drawn = drawn(client);

@@ -37,7 +37,7 @@ import net.minecraft.world.phys.HitResult;
  * block there, a rated one or not, the readout says nothing and never fades in; a block's tooltip states its ratings; and the longest line the
  * readout can say fits the narrowest GUI the cockpit draws at. What the words are for a depth that asks something is {@code OutpostRatingsTest}'s,
  * checked against an example row. Where a depth has no rated material (the campaign's unbuilt depth, today) the readout is up, and the box {@link HudKeepClear} gives
- * for it is the box its text is drawn in, two lines under the block readout's, so a popup keeps clear of what is drawn; it is gone once the readout
+ * for it is the box its text is drawn in, above the block readout's two lines, so a popup keeps clear of what is drawn; it is gone once the readout
  * is. It otherwise reads the HUD's state, not its pixels.
  */
 public class PlacementReadoutClientTest implements FabricClientGameTest {
@@ -138,9 +138,12 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
                     kept.x() == (width - expectedWidth) / 2 && kept.width() == expectedWidth,
                     "the kept box " + kept + " is centred and as wide as the wider line, " + expectedWidth);
             require(
-                    kept.y() == look.placementTop(height, client.font.lineHeight)
+                    kept.bottom() == look.placementBottom(height, client.font.lineHeight)
                             && kept.height() == (int) Math.ceil((client.font.lineHeight + line) * (float) look.scale()),
-                    "the kept box " + kept + " is two lines under the block readout and holds both lines");
+                    "the kept box " + kept + " is above the block readout's two lines and holds both lines");
+            require(
+                    kept.bottom() < look.blockBottom(height) - 2 * client.font.lineHeight,
+                    "the kept box " + kept + " overlaps the two lines the block readout takes");
             require(
                     VanillaHudRows.clashes(kept, width, height).isEmpty(),
                     "the kept box " + kept + " overlaps vanilla's " + VanillaHudRows.clashes(kept, width, height));
