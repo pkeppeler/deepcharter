@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.test.support.ForceSends;
 import io.github.pkeppeler.deepcharter.test.support.HeapHistogram;
 import io.github.pkeppeler.deepcharter.test.support.SeamPodScene;
 import io.github.pkeppeler.deepcharter.test.support.SeamSite.Site;
+import io.github.pkeppeler.deepcharter.test.support.ServerTickets;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.test.support.TwoSeatPods;
@@ -15,11 +16,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +41,13 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     private static final int TRIPS = 10;
     private static final double X = 15000.5;
     private static final double Z = 3000.5;
-    /** Chunks the last trip may hold over the two-thirds mark: tickets lapse on a timer, so the count wanders. */
-    private static final double CHUNK_SLACK = 1.1;
+    /**
+     * Ticket types left out of the count. A player's tickets follow the player, whose number the test holds constant,
+     * and are added a few at a time after each crossing (the whole view area takes about 300 ticks), so their count
+     * depends on when the sample falls. {@code UNKNOWN} is the one-tick ticket of any chunk read that misses the cache.
+     */
+    private static final Set<TicketType> UNCOUNTED =
+            Set.of(TicketType.PLAYER_LOADING, TicketType.PLAYER_SIMULATION, TicketType.UNKNOWN);
 
     private static final String CLIENT_LEVEL = "net.minecraft.client.multiplayer.ClientLevel";
     private static final String NET_WATCH = "io.github.pkeppeler.deepcharter.layer.LightSync$NetWatch";
@@ -56,6 +64,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             double msptMillis,
             int forceSends,
             int layerChunks,
+            Map<String, Integer> layerTickets,
             long heapMb) {}
 
     @Override
@@ -121,11 +130,20 @@ public class BoreTripsClientTest implements FabricClientGameTest {
         require(
                 last.forceSends() == 0,
                 "vanilla force-sent the blocks below a player " + last.forceSends() + " times in " + TRIPS + " trips");
-        Tripped third = trips.get(TRIPS * 2 / 3);
-        require(
-                last.layerChunks() <= third.layerChunks() * CHUNK_SLACK,
-                "the server holds more chunks after " + TRIPS + " trips than after the first two thirds: "
-                        + last.layerChunks() + " against " + third.layerChunks());
+        // The tickets and not the loaded chunks: each crossing moves both players' view areas, which load over
+        // about 300 ticks, longer than a trip, so the loaded count is wherever that load had got to (#1301). Every
+        // loaded chunk is held by a ticket, so a chunk kept across trips shows here as a ticket that stays.
+        Map<String, Integer> early = new TreeMap<>();
+        trips.stream()
+                .limit(TRIPS * 2 / 3)
+                .forEach(trip -> trip.layerTickets().forEach((type, count) -> early.merge(type, count, Math::max)));
+        // The rider ends each trip above layer 1's floor, so layer 2 holds its arrival area.
+        require(!early.isEmpty(), "no ticket was counted in the first two thirds: the count is blind");
+        last.layerTickets()
+                .forEach((type, count) -> require(
+                        count <= early.getOrDefault(type, 0),
+                        "the layers hold " + count + " " + type + " tickets after " + TRIPS + " trips, at most "
+                                + early.getOrDefault(type, 0) + " in the first two thirds"));
     }
 
     private static void requireClass(String name) {
@@ -182,6 +200,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
         int chunks = two.server()
                 .computeOnServer(server -> site.one().getChunkSource().getLoadedChunksCount()
                         + site.two().getChunkSource().getLoadedChunksCount());
+        Map<String, Integer> tickets = two.server().computeOnServer(server -> heldTickets(site));
         Map<String, Long> live = HeapHistogram.liveCounts(TRACKED);
         long heapMb = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
         double mspt = two.server().computeOnServer(MinecraftServer::getAverageTickTimeNanos) / 1_000_000.0;
@@ -195,6 +214,17 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                 mspt,
                 ForceSends.total() - forceSendsBefore,
                 chunks,
+                tickets,
                 heapMb));
+    }
+
+    /** The tickets both layers hold, by level and type, without the {@link #UNCOUNTED} types. */
+    private static Map<String, Integer> heldTickets(Site site) {
+        Map<String, Integer> held = new TreeMap<>();
+        ServerTickets.byType(site.one(), type -> !UNCOUNTED.contains(type))
+                .forEach((type, count) -> held.put("layer1 " + type, count));
+        ServerTickets.byType(site.two(), type -> !UNCOUNTED.contains(type))
+                .forEach((type, count) -> held.put("layer2 " + type, count));
+        return held;
     }
 }
