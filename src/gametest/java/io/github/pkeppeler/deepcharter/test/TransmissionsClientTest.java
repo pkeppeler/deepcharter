@@ -38,9 +38,7 @@ import net.minecraft.server.level.ServerPlayer;
 public class TransmissionsClientTest implements FabricClientGameTest {
     private static final String CREW_NAME = "Overlay Crew";
     private static final String TWO_PLAYER_NAME = "Two Player Overlay";
-    /** The whole header of a live transmission from the employer, as t01 and t05 are. */
     private static final String LIVE_FROM_THE_EMPLOYER = "> LIVE FROM THE EMPLOYER";
-
     private static final double X = 2400.5;
     private static final double Z = 2400.5;
     /** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
@@ -140,7 +138,6 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                 BreachEffects.begin(true);
                 TransmissionOverlay.enqueue(new TransmissionPayload(id("t01"), CREW_NAME, player));
             });
-            // The shot waits for what it checks: the whole header typed, the fade still black, and no screen open.
             // A screen covers the HUD and stops the overlay typing while the fade runs on to black under it (#1245).
             ClientWait.until(
                     context,
