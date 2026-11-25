@@ -8,10 +8,10 @@ The parts catalogue's console stands where vanilla draws the inventory's active 
 
 ## Decision
 
-- **A client mixin cancels the list while the panels are shown.** `EffectsInInventoryMixin` injects at the head of `EffectsInInventory.extractRenderState(GuiGraphicsExtractor, int, int)` and cancels when `CatalogueScreens.panelOf(screen)` is a panel with `panelsShown()` (a layout, and not put away by the toggle). `screen` is the effect list's own `AbstractContainerScreen` field, so the answer is the screen being rendered, not a global.
+- **A client mixin cancels the list while the panels are shown.** `EffectsInInventoryMixin` injects at the head of `EffectsInInventory.extractRenderState(GuiGraphicsExtractor, int, int)` and cancels when `CatalogueScreens.panelOf(screen)` is a panel with `panelsShown()` (a layout, and not put away by the toggle).
 - **Why no event or API reaches it.** The list is drawn by `InventoryScreen.extractRenderState` before its `super` call, and gated by `EffectsInInventory.canSeeEffects`, which is computed from `leftPos`, `imageWidth` and the screen's `width`. Changing those to make the list refuse would move the whole screen, the slots and the recipe book with it. `InventoryScreen.effects` is private and final.
 - **What stays vanilla.** `canSeeEffects` and `InventoryScreen.showsActiveEffects` are untouched, so `Hud` still skips its top-right icons while the inventory is open. When the panels are put away with the toggle, or the window is too narrow or too short for them (the narrow and short fallbacks), vanilla's list draws as ever.
-- **How it fails.** The mixin config has `defaultRequire: 1`, so a game update that renames or moves the target stops the client at launch with the injector's name. `CatalogueEffectsClientTest` checks that no vanilla effect tile is drawn and no vanilla tooltip shown with the panels up, and that both return when they are put away.
+- **How it fails.** `defaultRequire: 1` stops the client at launch if a game update moves the target. `CatalogueEffectsClientTest` checks that no vanilla effect tile is drawn and no vanilla tooltip shown with the panels up, and that both return when they are put away.
 
 ## Considered options
 

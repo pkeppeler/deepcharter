@@ -104,9 +104,10 @@ public final class CatalogueEffects {
     public static List<Rect> boxes(Rect row, int centre, int count) {
         int tile = CatalogueLayout.EFFECT_TILE;
         int icon = CatalogueLayout.EFFECT_ICON;
-        boolean tiles = row.height() >= tile && fits(row.width(), tile, TILE_PITCH, TILE_CLEAR_PITCH, count);
+        boolean tiles = row.height() >= tile
+                && (count < 2 || pitch(row.width(), tile, TILE_PITCH, count) >= TILE_CLEAR_PITCH);
         int side = tiles ? tile : icon;
-        int pitch = count < 2 ? 0 : Math.min(tiles ? TILE_PITCH : ICON_PITCH, (row.width() - side) / (count - 1));
+        int pitch = pitch(row.width(), side, tiles ? TILE_PITCH : ICON_PITCH, count);
         int total = (count - 1) * pitch + side;
         int x = Math.clamp(centre - total / 2, row.x(), Math.max(row.x(), row.right() - total));
         int y = row.y() + (row.height() - side) / 2;
@@ -117,12 +118,9 @@ public final class CatalogueEffects {
         return boxes;
     }
 
-    /**
-     * Whether {@code count} boxes {@code side} wide stand at least {@code least} apart in {@code width}, at their pitch
-     * or the room's.
-     */
-    private static boolean fits(int width, int side, int pitch, int least, int count) {
-        return count < 2 || Math.min(pitch, (width - side) / (count - 1)) >= least;
+    /** The pitch of {@code count} boxes {@code side} wide: {@code wanted}, or less where {@code width} is short. */
+    private static int pitch(int width, int side, int wanted, int count) {
+        return count < 2 ? 0 : Math.min(wanted, (width - side) / (count - 1));
     }
 
     /** An effect's name, then its level in numerals from the second, as vanilla's list words it. */
