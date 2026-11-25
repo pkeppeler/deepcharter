@@ -49,6 +49,7 @@ NETWORK_SIGNATURES=(
   'Temporary failure in name resolution'
   'Premature end of'
 )
+network_re=$(IFS='|' && echo "${NETWORK_SIGNATURES[*]}")
 
 log=$(mktemp)
 report=$(mktemp)
@@ -73,14 +74,7 @@ while true; do
     continue
   fi
 
-  matched=
-  for signature in "${NETWORK_SIGNATURES[@]}"; do
-    if grep -Eq -- "$signature" "$report"; then
-      matched=1
-      break
-    fi
-  done
-  if [[ -z $matched ]]; then
+  if ! grep -Eq -- "$network_re" "$report"; then
     exit "$status"
   fi
   if [[ $run -ge $attempts ]]; then
