@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
+import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.ClientRecipeBook;
@@ -80,6 +82,34 @@ public final class CatalogueFixtures {
                         java.util.OptionalInt.empty(),
                         RecipeBookCategories.FURNACE_MISC,
                         Optional.of(List.of(Ingredient.of(Items.RAW_IRON)))));
+    }
+
+    /**
+     * A fifth recipe, kept out of {@link #entries()} so the four-recipe checks stand: the hull repair nanobots, a name too long for one
+     * line of the catalogue, made only in the 3 x 3 grid (eight iron round a redstone).
+     */
+    public static RecipeDisplayEntry nanobots() {
+        SlotDisplay iron = item(Items.IRON_INGOT);
+        return new RecipeDisplayEntry(
+                new RecipeDisplayId(FIRST_ID + 10),
+                new ShapedCraftingRecipeDisplay(
+                        3,
+                        3,
+                        List.of(iron, iron, iron, iron, item(Items.REDSTONE), iron, iron, iron, iron),
+                        item(RepairRegistry.item(Consumable.HULL_NANOBOTS)),
+                        TABLE),
+                java.util.OptionalInt.empty(),
+                RecipeBookCategories.CRAFTING_MISC,
+                Optional.of(List.of(
+                        Ingredient.of(Items.IRON_INGOT),
+                        Ingredient.of(Items.IRON_INGOT),
+                        Ingredient.of(Items.IRON_INGOT),
+                        Ingredient.of(Items.IRON_INGOT),
+                        Ingredient.of(Items.REDSTONE),
+                        Ingredient.of(Items.IRON_INGOT),
+                        Ingredient.of(Items.IRON_INGOT),
+                        Ingredient.of(Items.IRON_INGOT),
+                        Ingredient.of(Items.IRON_INGOT))));
     }
 
     /** Every item the fixtures name: what the catalogue lists when it knows these and nothing else. */

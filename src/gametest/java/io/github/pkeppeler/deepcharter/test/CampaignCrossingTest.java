@@ -315,8 +315,8 @@ public class CampaignCrossingTest {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel campaign = helper.getLevel();
         ServerLevel overworld = server.overworld();
-        BreachPayload inPlace = BreachPayload.of(campaign, campaign, 1, 2);
-        BreachPayload moved = BreachPayload.of(overworld, campaign, 0, 1);
+        BreachPayload inPlace = BreachPayload.of(campaign, campaign, 1, 2, false);
+        BreachPayload moved = BreachPayload.of(overworld, campaign, 0, 1, false);
         if (inPlace.fades() || !moved.fades()) {
             throw failure(helper, "in place: %s, between levels: %s", inPlace, moved);
         }

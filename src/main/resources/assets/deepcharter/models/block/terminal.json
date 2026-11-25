@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "particle": "#side",
+    "particle": "#casing",
     "casing": "deepcharter:block/terminal_casing",
     "casing_top": "deepcharter:block/terminal_casing_top"
   },

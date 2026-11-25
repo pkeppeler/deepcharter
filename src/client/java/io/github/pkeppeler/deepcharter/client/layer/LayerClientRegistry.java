@@ -10,13 +10,16 @@ public final class LayerClientRegistry {
 
     public static void register() {
         ClientPlayNetworking.registerGlobalReceiver(
-                BreachPayload.TYPE, (payload, context) -> BreachEffects.begin(payload.fades()));
+                BreachPayload.TYPE,
+                (payload, context) ->
+                        BreachEffects.begin(payload.fades() || (payload.swapped() && SeamClient.takeSwapFailure())));
         ClientTickEvents.END_CLIENT_TICK.register(client -> BreachEffects.tick());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BreachEffects.reset());
         BreachHud.init();
         BlockReadoutHud.init();
         BreachVoidCover.init();
         SeamClient.init();
+        HandBreakClient.init();
         LayerSky.init();
     }
 }
