@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import java.util.List;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
@@ -21,6 +22,21 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
  */
 final class CatalogueHardware {
     private CatalogueHardware() {}
+
+    /** A console's title, a line for each {@code lines} holds, the last of them on the header rule. */
+    static void title(GuiGraphicsExtractor graphics, Font font, List<String> lines, int left, int top, int right) {
+        int last = lines.size() - 1;
+        for (int i = 0; i < last; i++) {
+            CrtDraw.glowText(
+                    graphics,
+                    font,
+                    CrtText.terminal(lines.get(i)),
+                    left,
+                    top + i * font.lineHeight,
+                    CrtTuning.current().phosphorColor());
+        }
+        CrtDraw.header(graphics, font, CrtText.terminal(lines.get(last)), left, top + last * font.lineHeight, right);
+    }
 
     /** The casing of a unit, the lip round its glass, the vents and rivets on the casing, and the phosphor behind the glass's content. */
     static void body(GuiGraphicsExtractor graphics, CatalogueLook look, Rect casing, Rect glass, Iterable<Rect> vents) {
@@ -217,6 +233,40 @@ final class CatalogueHardware {
         graphics.text(font, CrtText.terminal(legend), x, y, panel.labelColor(active, hot || (on && active)), false);
         if (hot && active) {
             CrtDraw.border(graphics, rect.x(), rect.y(), rect.right(), rect.bottom(), crt.dimColor());
+        }
+    }
+
+    /**
+     * The show/hide button's face: a small casing with a lit top and left and a shaded bottom and right, and on it a grid of cells like the
+     * catalogue's, in phosphor while the panels are shown and dim while they are put away; the phosphor rings the button under the mouse.
+     */
+    static void toggleButton(
+            GuiGraphicsExtractor graphics, CatalogueLook look, CrtTuning crt, Rect rect, boolean shown, boolean hot) {
+        CatalogueLook.Casing c = look.casing();
+        graphics.fill(rect.x(), rect.y(), rect.right(), rect.bottom(), c.casingColor());
+        graphics.fill(rect.x(), rect.y(), rect.right(), rect.y() + 1, c.casingLightColor());
+        graphics.fill(rect.x(), rect.y(), rect.x() + 1, rect.bottom(), c.casingLightColor());
+        graphics.fill(rect.x(), rect.bottom() - 1, rect.right(), rect.bottom(), c.casingDarkColor());
+        graphics.fill(rect.right() - 1, rect.y(), rect.right(), rect.bottom(), c.casingDarkColor());
+        int cell = look.buttonCell();
+        int gap = look.buttonCellGap();
+        int columns = look.buttonColumns();
+        int rows = look.buttonRows();
+        int width = columns * cell + (columns - 1) * gap;
+        int height = rows * cell + (rows - 1) * gap;
+        int left = rect.x() + (rect.width() - width) / 2;
+        int top = rect.y() + (rect.height() - height) / 2;
+        graphics.fill(left - 2, top - 2, left + width + 2, top + height + 2, c.plateColor());
+        int color = shown ? crt.phosphorColor() : crt.dimColor();
+        for (int row = 0; row < rows; row++) {
+            for (int column = 0; column < columns; column++) {
+                int x = left + column * (cell + gap);
+                int y = top + row * (cell + gap);
+                graphics.fill(x, y, x + cell, y + cell, color);
+            }
+        }
+        if (hot) {
+            CrtDraw.border(graphics, rect.x(), rect.y(), rect.right(), rect.bottom(), crt.phosphorColor());
         }
     }
 

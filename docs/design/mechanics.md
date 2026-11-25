@@ -1811,13 +1811,87 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **The pieces.**
 - **A phonograph** a player crafts from planks, an iron ingot and a copper ingot (what the salvage crates give). A wax cylinder in it plays; an empty hand stops and starts it; a sneaking empty hand takes the cylinder out; breaking it drops the cylinder and stops the sound. It plays at the block, audible about 24 blocks out, with no "Now playing" text. A player who walks into earshot while it plays hears it start again from the top; its stop reaches only the players it was sent to.
 - **Wax cylinders**, one recording each (Gamme de la Voix 1860, Jeune Jouvencelle 1857, Othello 1860), found in the lockers of wreck bays (about three in ten) and rarely in salvage crates (about one in twenty-five). Never crafted. "Au clair de la lune" is never one: it is the wreck's song (#861).
-- **The colony's phonograph** on the Lamp and Pick's counter: Company property that holds a rack of the three, which cannot be ejected or taken. Each play starts the next. The whole charter shares it. Rarely, at night, with nobody in the room, it starts by itself: a check every 12,000 ticks (ten minutes) in the third of the sky's cycle round its darkest point, a 4% chance each, at most once a night, so about one night in four. Atmosphere only.
+- **The colony's phonograph** on the Lamp and Pick's counter: Company property that holds a rack of the three (and, since #946, the doll and the nursery rhyme below), which cannot be ejected or taken. Each play starts the next. The whole charter shares it. Rarely, at night, with nobody in the room, it starts by itself: a check every 12,000 ticks (ten minutes) in the third of the sky's cycle round its darkest point, a 4% chance each, at most once a night, so about one night in four. Atmosphere only.
 
 **Trade-offs.** None to pay: nothing here is power. The cost is the find (a wreck bay's corner, a lucky crate), and a phonograph is a luxury in a bootstrap that wants every ingot for a pump motor.
 
 **Knobs.** `SoundTuning.phonographRange`, the `ColonyTuning.phonograph*` fields, the crate pool's `random_chance` in `loot_table/blocks/salvage_crate.json`, the locker's in `loot_table/chests/wreck_locker.json`.
 
-**Open.** The pencil path (#849) should pay out cylinders too. A fourth recording, or the processed "Au clair de la lune" of #861, is one more entry in `tools/sounds/first_sounds.py`.
+**Open.** The pencil path (#849) should pay out cylinders too. A fourth recording is one more entry in `RECORDINGS` in `tools/sounds/first_sounds.py`. "Au clair de la lune" (#861) is made there too but is never one of them.
+
+## First Sounds in the dark (#866, A)
+
+**Problem.** The wax cylinders (#864) are a find. The user also wants the oldest recordings there are to be a faint, building unease in the layers themselves, never noise. So they are heard rarely and far off, and the deeper the player is the more often and the more worn they come.
+
+**The pieces.**
+- **Fragments, not songs.** `tools/sounds/ambience.py` cuts short fragments (about 1 to 3 seconds; #946 added more: a syllable of Othello, a breath of the vocal scale, half a word of Tasso's Aminta, probably in Scott's own voice (First Sounds notes that he apologized in writing for reversing the word order, which indirectly names him as the speaker), the tuning fork surfacing from noise) and one warm-up crackle, from the same First Sounds recordings as the cylinders, each in the tiers it is made for. Its `ambience.json` holds every cut. The wreck's song (#861) is never one.
+- **Three wears.** `faint` (layer 1): low-passed, distant, quiet. `worn` (the Old Workings): band-limited with crackle and a dropout or two. `broken` (everything deeper): slowed and pitched down, heavily filtered, gated dropouts and a stutter. The deepest words (Aminta) are only in the worn and broken tiers, and since #946 a human ear's phonautogram is broken only.
+- **One client ticker** (`client/sound/AmbienceTicker`, per player, no server state: it is atmosphere and carries no rule) asks a pure `AmbienceScheduler` each tick. The gap per layer is drawn at random between two ends (`AmbienceTuning.layers`): layer 1 every 15 to 30 minutes, layer 2 every 5 to 12, deeper every 3 to 8. The surface and colony get none. A layer past the table takes its last entry, so a new layer is never silent and needs no code. A fragment never follows itself. If one falls due while the Lamp Hymn, a phonograph, a transmission or another fragment sounds (or ended within 10 seconds), it waits a drawn 20 to 90 seconds and tries again.
+- **From the dark:** a place 12 to 28 blocks away, picked for rock between it and the player, then air, then no lamp, so it seems to come from behind a wall.
+- **The Company horn** hangs from the roof over the middle of the punch clock's hall in Shift Change (layer 2), chosen because that hall holds the lore's still-ticking clock; the gallery is a dead end that few cross. A player within 24 blocks of it hears the fragments from the horn instead of from the dark (the layer's own or, since #946, one of the horn's own pool: see below), at the layer's own rate (the horn's timer replaces the layer's and never runs beside it; both are drawn again after every fragment, and the horn's gap is never shorter than the layer's). The one extra is the first fragment after arriving, not sooner than a minute: 1.3 seconds of crackle (the tuning fork's noise before it finds its note), then the fragment. It is scenery: no collision, instant to break, no drop, no rule.
+- **Beside the biome's own sounds.** A fragment may land on a vanilla-style creak or knock of the layer's biome (`ambient.layer_*_creak`, `_knock`). That is by intent: the dark is allowed to be busy for a moment, and the quiet rule keeps only the hymn, the phonograph, the transmissions and other fragments apart.
+- **Subtitles** explain nothing: "A voice, far off" and "Static".
+
+**Trade-offs.** Nothing to pay and nothing to learn: it is never a signal, so a player who mutes the ambient slider loses nothing. The risk is annoyance, which the rates answer: the first layer is a thing a player hears twice in a long session and wonders about.
+
+**Knobs.** `AmbienceTuning` (rates, retry, quiet, horn range and timer, distances); the volume and `attenuation_distance` of each event in `sounds.json`; each wear's numbers in `tools/sounds/ambience.py`.
+
+**Open.** None left from #861: it took the ticker's quiet rule and playing code and kept its own pure decision (`RetainedWarning`), since the warning has no timer.
+
+## Au clair de la lune (#861, A)
+
+**Problem.** The oldest recordings are heard rarely and far off (#866), and the Retained (#449) are the one thing in the dark that comes with no sound at all. The user's call (2026-11-21): the 1860 phonautogram of "Au clair de la lune", "wreck first, then the dark". The song is learnt where it is safe, and then it is a warning where it is not.
+
+**The pieces.**
+- **Two variants**, both made by `tools/sounds/first_sounds.py` from one source (`SONGS`, never the cylinder set `RECORDINGS`): `song/wreck.ogg`, the phonograph's treatment on the whole 21.7 seconds, and `song/dark.ogg`, the opening line (0.1 to 4.1 s, up to the singer's first breath) low-passed and distant with a three-second tail and a long reverb, at about -30 LUFS (the ambience's faint and broken voices are -26 to -32; the wreck's is -19), with no wow, so that it is the same steady tune. Mono, credited in `CREDITS.md`, listed in `first_sounds.json` with its cut. They are the sound events `song.wreck` and `song.dark`: in no cylinder, no loot table and no random ambience pool.
+- **The wreck's phonograph** (`wreck_phonograph`) stands in a corner of PROSPECTOR-0002's bay alone (Prospector's Run, layer 2: the wreck with one lamp still lit, beside Ines's log; no ordinary bay has one, so the song stays rare and meaningful and the warning is not diluted), a block of the same Company grade as the colony's phonograph: unbreakable, no item, no loot, and no cylinder, so its song cannot be taken. A player within 14 blocks starts it (it is heard to 16); a player who walks in while it sings hears it from the top. A right click switches it off, or on again.
+- **Off lasts until nobody has been within 14 blocks for five minutes** (6,000 ticks, counted from the later of when it was spent and when anyone was last near, so a visitor who lingers and steps out and back is not sung to again). A song that ends by itself is the same: it does not start again while a visitor stays. The next visitor, or the same one much later, hears it start. *Why:* a player who switches it off is not sung to again on the way out, so the off switch is believed; and the tune stays learnable for everyone. The two saved values are the game times it was last spent and last had someone near, so leaving the chunk's simulation or restarting does not make a switched-off phonograph sing at once (a playback is not saved).
+- **The warning.** A Retained 16 to 32 blocks away that the player does not see (its head and its body centre are each outside a 70 degree view cone or behind rock) for two seconds, at most once per figure and once in 7.5 minutes (9,000 ticks), makes the dark's variant come from the figure, positional, as ambient sound. Per player, on the client, no server state, and the Retained are not touched: it reads them only. It is never random: with no figure near it cannot play. `RetainedWarning` (pure) decides; `AmbienceTicker` feeds it the figures and plays the sound, with the ambience's quiet rule (no overlap with the hymn, a phonograph, a transmission, a fragment or the song itself) and a longer one of its own: not for a minute after a wreck's phonograph sounds, which also restarts the two-second count. The song is learnt in the safe place first.
+- **The margin note**, "If you hear the song and there's no radio, leave. —R.", is beside the paragraph of "Recovering Company Property" (chapter 9), which opens when the breach into the Old Workings is made, where the wrecks are. It is Roz's: it says what to do and not why.
+- **Subtitles** explain nothing: "A voice, crackling" and "A song, far off".
+
+**Trade-offs.** Nothing to pay, and nothing the player needs: a player who never hears it loses nothing, and one who learns it can leave a Retained's neighbourhood or light their pod. It is a cue, not a rule. The risk is a false teaching, which the rules answer: it plays only for a real figure, and never beside a wreck's song.
+
+**Knobs.** `SoundTuning.wreckSong*` (range, trigger range, length, re-arm time); `WarningTuning` (ranges, cooldown, count, view cone, quiet after a wreck's song); the volume and `attenuation_distance` of each song in `sounds.json`; the dark's cut, tail and reverb in `tools/sounds/first_sounds.py`.
+
+**Open.** The creatures session (#13) may later change how the Retained use the song (a figure that hums it, a sighting that ends it). The cue is a client reading of the figures and needs nothing from them. The story bay is drawn from the choice of the colony's pad, as its lamp is, so it has the phonograph whenever it has the lamp; no fallback bay is needed. The warning's suppression after a wreck's song is global (any `song.wreck` heard, one minute of grace), not by distance, which is enough while one phonograph sings; more would need a distance rule. Seen is a 70 degree view cone, not the render frustum.
+
+## The punch clock that calls the hours (#938, A)
+
+**Problem.** The lore's "punch clock still ticking" (Shift Change, layer 2) has only ever been a lit block. The user's call (2026-11-22) was to use the old recordings more widely, and Frank Lambert's 1878 talking clock, a lead cylinder of him calling out the hours (and skipping ten), is the obvious one for a clock. It must stay rare and a little wrong.
+
+**The pieces.**
+- **The clock** is a Company punch clock block (`company_clock`, scenery like the horn: no collision, instant to break, no drop, no rule) that the PUNCH_CLOCK hall places before its lit one, a few blocks from the PA horn.
+- **Rare:** a player within 24 blocks of it may hear it call an hour. `ClockCaller` (pure, in `src/main`; `AmbienceTicker` feeds it and plays the sound) draws the gap between 30 and 90 minutes of play, so about one call an hour, the first not before five minutes. Its timer runs only while a player is near and is kept when they leave, so a visitor passing through hears nothing and one who lingers hears it. It has no period to learn. It waits (a drawn 20 to 90 seconds, then tries again) while the hymn, a phonograph, a transmission, a fragment or a song sounds, and the ambience's own fragments wait for it.
+- **Right, wrong or skipped:** about 40% of the calls are the world's hour on a twelve-hour dial (0 is six in the morning; midday and midnight are twelve), 40% another hour, and 20% the hour before and then the hour after, the true one missing, as Lambert skips ten. A call is never the same hours as the one before, whatever the hour is.
+- **The sound is Lambert's own voice.** One event per hour, `ambience.clock.hour_N`, each the word of Frank Lambert's 1878 talking clock (a lead cylinder; the recording skips ten, so there is no hour 10). `tools/sounds/lambert_clock.py` cuts the eleven words of the recording's clear section (0:22 to 0:33) into `clock/hour_N.ogg`, mono, levelled to -30 LUFS under -1 dBTP, and `tools/sounds/lambert_clock.json` records the source URL, its sha256, its tags verbatim and every cut. The mp3 is never committed. The recording carries a do-not-distribute notice; it is published here at the user's direction (see `CREDITS.md`).
+- **Ten.** The clock never calls it: at ten a call is never the right one and is the hour before and then the hour after (nine, then eleven), or a wrong hour; a skip or a wrong call never strikes ten either.
+- **Deep fragments:** `ambience.clock.fragment` is one more voice in the `broken` tier's pool (four cuts of the recording's indistinct sections, slowed, pitched down and broken up by a gate), so in the layers below the Old Workings the ambience's draw sometimes gives it from the dark, rarely and never twice in a row, like any fragment.
+
+**Trade-offs.** Nothing to pay and nothing to learn: it is never a signal. The wrong hours are the point, and they teach nothing false because nothing depends on the hour. The risk is annoyance, which the rate answers.
+
+**Decisions.** The per-hour cuts (`HOURS_CUTS`) were mapped from the loudness envelope, not by ear: 12 bursts were found in the clear section for 11 hours, and the first 11 are used. They want a listen. The clock lives in the layer-2 hall only: the colony is the safe hub, and a second clock would dilute a place. The deep layers get the clock as fragments from the dark instead of a clock to find.
+
+**Knobs.** `ClockTuning` (range, gaps, shares of right, wrong and skipped calls, the word length); the volume and `attenuation_distance` of each event in `sounds.json`; `HOURS_CUTS`, `FRAGMENT_CUTS` and the target level in `tools/sounds/lambert_clock.py`.
+
+**Open.** The Lambert cuts want a listen (a bad cut is one edit to `HOURS_CUTS` and a re-run). A clock in a wreck or the colony is one more `company_clock` in a structure.
+
+## More early recordings (#946, A)
+
+**Problem.** The first three cylinders and the ambience (#864, #866) draw on a handful of Scott's phonautograms. The oldest recordings there are are more than that, and more of them would make the dark stranger without making it louder.
+
+**The pieces.**
+- **Deep fragments.** Six more fragments, in the `broken` tier only (a count that will drift: read `FRAGMENTS`): Lucae's 1862 phonautogram made with a human ear (the oldest and the deepest, so the first layers never hear it), the "Ki!" and tuning fork of Donders' 1865 noematachogram, Morey's 1874 "oo", and the 1860 vocal scale with its crosstalk, and two cuts of a far-off choir (the chorus conducted by August Manns, recorded on an Edison cylinder in 1888, sung from "Israel in Egypt"), heard as a choir far below. A hymn or a choir is found material, which LORE guardrail 4 now allows. Cut to 1 to 2 seconds and worn as the others are.
+- **The horn's pool.** The Company horn (#866) plays, after its static warm-up, either a fragment of the layer's tier or one from a pool of its own that the dark never plays (`AmbienceFragments.hornPool()`, events `ambience.horn.*`): Pouillet's 1850 diapason scale, a train on the elevated railroad (1878) and its test voices, and the Volta Laboratory's barometer (1884). They are worn as the Old Workings' are and sit near -29 LUFS. The scheduler holds the pool apart from the tiers (it is not a depth), so the dark cannot name it; near a horn each fragment of the layer's tier and of the pool is as likely as the next. The rates do not change.
+- **Five more cylinders.** Counting (about 1881), the Hamlet soliloquy (about 1884), Sullivan's toast at Little Menlo (1888), Edison's "Around the World on the Phonograph" (1888) and "The Lost Chord" (1888), each a whole recording in `tools/sounds/first_sounds.py` with the cylinder treatment, trimmed to its strongest 15 to 30 seconds, both ends in a pause so no word is clipped (counting and Hamlet are shorter and whole), and levelled with the first three (no louder than about -13.5 LUFS, true peak under -1 dBTP). They are found in wreck lockers and salvage crates like the first three, one more entry in each table's cylinder pool: the chance of a cylinder is the same, and only the choice among them widens. The colony's rack gets only the two below. The tooltip is the title and the year.
+- **Two for the colony only (at the user's direction).** The Edison talking-doll prototype's "Twinkle, twinkle, little star" (1888, 13 seconds, whole) and the Volta Laboratory's nursery rhyme as the machine winds down (1885, the first 24 seconds, ending in a pause) are appended to the colony phonograph's rack (`Recording.COLONY_RACK`), so they play in the Lamp and Pick. LORE guardrail 6 keeps a child's rhyme out of the deep: neither is in a wreck locker, a salvage crate or any ambience pool, and tests hold that.
+- **Credits.** One `CREDITS.md` entry per source, in the form its holder gives. The Volta and Edison files state no licence, so they are credited and linked with none claimed.
+
+**Trade-offs.** A player now finds a cylinder they cannot hear in the colony, and a given cylinder in a locker is rarer (one in eight, not one in three). Florence Nightingale's 1890 recording was not obtained (Wikimedia refused the download), the doll and the nursery rhyme are the colony's alone under LORE guardrail 6, and the Edison doll's "Now I lay me down to sleep" was not obtained: its NPS page says "The requested video is no longer available", and no audio link is in the page or its index.
+
+**Knobs.** The `FRAGMENTS` and `SOURCES` in `tools/sounds/ambience.py`; the cylinder entries in `RECORDINGS` in `tools/sounds/first_sounds.py`; the two loot tables' cylinder pools; each event's volume in `sounds.json`.
+
+**Open.** A sixth cylinder (Nightingale) is one more `Recording` entry once its file can be fetched and its licence read.
 
 ## Grained crust decoys (#216, A)
 
@@ -1875,6 +1949,25 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
+
+## Hand tools against pod-only blocks (#858, A)
+
+**Problem.** Crust, Company rock and rock below layer 1 were refused to hands by a cancelled break the client was not told about, so a strong pick ghost-broke a block that then came back, and nothing said why. The rule is one intended way to play with no hard block: brute force is possible, futile, and the game says so ([ADR 0069](../adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
+
+**Ladder.**
+1. **By hand: ruinous.** Any tool (a pickaxe, axe, shovel, hoe, sword or spear) breaks one block in 60 s, in any layer, whatever its enchantments. 60 s is a floor: a stop more than 20 ticks short of it is refused and charges nothing. An Unbreakable tool breaks it for free. A diamond or netherite tool spends half its durability, flat. A lesser tool (wood, stone, iron, gold, copper) is destroyed as the block goes: its durability is spent over the 60 s so it reaches its last point on the last tick, never before. Sparks, a grinding sound and a "burning out" or "this will destroy your pick" line show the cost; the first swing says a pod drill is the way. Nothing drops, and an item that is no tool, a bare hand or a fishing rod, still cannot break the block.
+2. **A pod drill** (and the charges) clears the same blocks with no cost to a pick: the intended way.
+3. **Mastery** is the pod's own ladder, unchanged: Company rock still wants a charge or a tier 3 drill, and the hand route only ever clears one block at a time.
+
+**Trade-offs.**
+- A diamond or netherite pick pays for two blocks. A wooden or iron pick pays for one, and is gone.
+- Stopping early wastes what was spent; Mending cannot refund it and Unbreaking cannot lower it.
+- It makes the default build marginally easier: any pick can now pass Company rock, which no tool could before. That is fine: a block costs half a diamond pick or a whole lesser one, so a straight shaft by hand is far dearer than the charges of [Company Rock and the straight shaft](#company-rock-and-the-straight-shaft-509-a).
+- Drops are never given, so brute force is not an ore exploit. The break still fires the hand-break events, so (A) brute-forcing a gas pocket vents it and the hazard still bites; a protection mod's veto refuses the break and charges nothing.
+
+**Knobs (`HandBreakTuning` in `LayerTuning`).** `breakTicks` (1200), `stopSlackTicks` (20), `tools` (the tag `deepcharter:hand_break/tools`), `durableShare` (0.5), `durableTools` (the tag `deepcharter:hand_break/durable`: diamond and netherite tools; a pack adds to it), `sparkTicks` (4), `soundTicks` (10), `messageTicks` (40).
+
+**Open questions.** Whether a block should drop its stone after the first deep layer; whether a pod crewmate's pick should count when the pod is the pilot's.
 
 ## The navigator's sonar (#988, A)
 
