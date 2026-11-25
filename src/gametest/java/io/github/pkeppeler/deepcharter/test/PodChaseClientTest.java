@@ -36,7 +36,9 @@ public class PodChaseClientTest implements FabricClientGameTest {
     private static final float YAW_TOLERANCE = 3f;
 
     private static final float SETTLED = 8f;
-    /** A first-person drive longer than the mouse's 20 still ticks plus a settle, short of the end of the open ground. */
+    /**
+     * A first-person drive longer than the mouse's 20 still ticks plus a settle, short of the end of the open ground.
+     */
     private static final int NEVER_SETTLES_TICKS = 50;
     /** A height in layer 1 that is open air, to move the pilot to. */
     private static final int HIGH_LOCAL_Y = 150;
@@ -108,7 +110,10 @@ public class PodChaseClientTest implements FabricClientGameTest {
                         + "), keeping its angle to the nose " + relativeBefore + ", but it is " + relativeAfter);
     }
 
-    /** The first-person view is the pilot's own: a pod that drives (backing, as the open ground ahead is spent) never swings it round behind, however long the mouse is still. */
+    /**
+     * The first-person view is the pilot's own: a pod that drives (backing, as the open ground ahead is spent) never
+     * swings it round behind, however long the mouse is still.
+     */
     private static void firstPersonNeverSettlesWhileDriving(ClientGameTestContext context) {
         setCamera(context, CameraType.FIRST_PERSON);
         context.waitTicks(30);

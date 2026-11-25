@@ -297,7 +297,10 @@ public class PodDrillTest {
         });
     }
 
-    /** In a pod-wide bore one press of D turns the pod a quarter to the next compass direction, and W then bores that branch. */
+    /**
+     * In a pod-wide bore one press of D turns the pod a quarter to the next compass direction, and W then bores that
+     * branch.
+     */
     @GameTest(maxTicks = MAX_TICKS)
     public void aPressOfDInATightBoreTurnsAQuarterAndWBoresTheBranch(GameTestHelper helper) {
         int x = ALIGN_X + 256;

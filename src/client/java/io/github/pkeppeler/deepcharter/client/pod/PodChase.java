@@ -37,8 +37,8 @@ public final class PodChase {
     private static float lastPodYaw;
 
     /**
-     * The view's yaw as this class left it at the end of the last tick. A different yaw at the next tick is the mouse's, which
-     * holds off settling and is kept.
+     * The view's yaw as this class left it at the end of the last tick. A different yaw at the next tick is the
+     * mouse's, which holds off settling and is kept.
      */
     private static float lastViewYaw;
 

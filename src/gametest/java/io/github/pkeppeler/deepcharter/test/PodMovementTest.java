@@ -223,7 +223,10 @@ public class PodMovementTest {
         });
     }
 
-    /** The boat reverses with S whatever A or D do, and turns while it does: so does the pod (unlike W with S, which cancels). */
+    /**
+     * The boat reverses with S whatever A or D do, and turns while it does: so does the pod (unlike W with S, which
+     * cancels).
+     */
     @GameTest(maxTicks = 100)
     public void backWithLeftReversesWhileTurning(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);

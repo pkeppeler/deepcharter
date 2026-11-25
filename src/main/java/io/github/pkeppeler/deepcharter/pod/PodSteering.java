@@ -50,9 +50,9 @@ final class PodSteering {
     }
 
     /**
-     * The grid's hold on a pod in a bore as wide as itself: it squares itself and ignores steering, except that one press of A or D,
-     * made while it is roughly square, turns it a quarter to the next compass direction (D clockwise), eased by the align rate, so a
-     * tunnel can branch. False when the grid has no hold and the pod steers freely.
+     * The grid's hold on a pod in a bore as wide as itself: it squares itself and ignores steering, except that one
+     * press of A or D, made while it is roughly square, turns it a quarter to the next compass direction (D clockwise),
+     * eased by the align rate, so a tunnel can branch. False when the grid has no hold and the pod steers freely.
      */
     static boolean boreTurn(PodEntity pod, Input input) {
         Direction target = pod.turnTarget();

@@ -323,8 +323,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The shipped default (#1281): taking the pilot seat switches to the third-person chase view, so the Ribbon must stand and the
-     * vanilla hotbar stay hidden there too. The test turns the chase on, boards again, and puts the first-person view back.
+     * The shipped default (#1281): taking the pilot seat switches to the third-person chase view, so the Ribbon must
+     * stand and the vanilla hotbar stay hidden there too. The test turns the chase on, boards again, and puts the
+     * first-person view back.
      */
     private void expectCockpitHidesTheVanillaHudInTheChaseViewToo(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {

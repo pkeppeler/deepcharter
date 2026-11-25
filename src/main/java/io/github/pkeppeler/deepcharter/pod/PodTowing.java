@@ -452,8 +452,9 @@ public final class PodTowing {
     }
 
     /**
-     * Turns a towed pod toward the way the line drags it, as a trailer follows its tower. The server steers the pod's yaw now
-     * (ADR 0093) and nothing else turns a pod no one pilots, so without this it would be dragged at the yaw it was left with.
+     * Turns a towed pod toward the way the line drags it, as a trailer follows its tower. The server steers the pod's
+     * yaw now (ADR 0093) and nothing else turns a pod no one pilots, so without this it would be dragged at the yaw it
+     * was left with.
      */
     private static void trail(PodEntity towed, Vec3 dragged) {
         if (dragged.x * dragged.x + dragged.z * dragged.z < TRAIL_MIN_DRAG * TRAIL_MIN_DRAG) {
