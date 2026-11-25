@@ -121,6 +121,7 @@ public final class HandbookProgress {
      */
     private static void announceChapters(
             MinecraftServer server, Set<Identifier> before, Set<Identifier> after, List<UUID> players) {
+        // Cannot throw: this runs only after a directive from directivesOrEmpty was recorded, so the registry is there.
         for (Holder.Reference<HandbookChapter> chapter : HandbookChapters.all(server)) {
             List<Identifier> directives = chapter.value().directives().stream()
                     .map(HandbookChapter.Entry::id)

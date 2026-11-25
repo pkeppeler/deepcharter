@@ -65,16 +65,26 @@ class HymnLengthTest(unittest.TestCase):
         made = [math.ceil(len(recipes.render(f"hymn/{name}").left) / recipes.RATE * 20) for name in ("colony", "layer_1", "layer_2")]
         self.assertEqual(made, ticks)
 
-    def test_the_game_knows_how_long_the_chapter_phrase_plays(self):
-        # The chapter phrase follows the hymns' rule (#1267): HymnMoments counts SoundTuning.chapterPhraseTicks, which must match the file.
+    @staticmethod
+    def tuning(field):
+        """A number in SoundTuning.DEFAULT, by the record component's name."""
         java = (Path(__file__).resolve().parents[2] / "src/main/java/io/github/pkeppeler/deepcharter/sound/SoundTuning.java").read_text()
         fields = re.search(r"record SoundTuning\((.*?)\)\s*\{", java, re.S).group(1)
-        names = [field.split()[-1] for field in re.split(r",(?![^<]*>)", fields)]
+        names = [part.split()[-1] for part in re.split(r",(?![^<]*>)", fields)]
         values = re.split(r",(?![^(]*\))", re.search(r"new SoundTuning\((.*?)\);", java, re.S).group(1))
-        ticks = int(values[names.index("chapterPhraseTicks")])
+        return int(values[names.index(field)])
+
+    def test_the_game_knows_how_long_the_chapter_phrase_plays(self):
+        # The chapter phrase follows the hymns' rule (#1267): HymnMoments counts SoundTuning.chapterPhraseTicks, which must match the file.
+        ticks = self.tuning("chapterPhraseTicks")
         made = math.ceil(len(recipes.render("hymn/chapter").left) / recipes.RATE * 20)
         self.assertEqual(made, ticks)
         self.assertTrue(3 * 20 <= ticks <= 5 * 20, f"the phrase lasts {ticks} ticks, not 3 to 5 seconds")
+
+    def test_the_game_knows_how_long_the_online_chord_plays(self):
+        # No chapter phrase starts while a machine's chord rings (#1267): HymnMoments holds them for SoundTuning.terminalOnlineTicks.
+        made = math.ceil(len(recipes.render("terminal/online").left) / recipes.RATE * 20)
+        self.assertEqual(made, self.tuning("terminalOnlineTicks"))
 
 
 class GateTest(unittest.TestCase):

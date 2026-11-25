@@ -9,14 +9,21 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.handbook.Directives;
 import io.github.pkeppeler.deepcharter.handbook.HandbookEvents;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
+import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
+import io.github.pkeppeler.deepcharter.layer.BreachEvents;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.sound.HymnMomentsProbe;
+import io.github.pkeppeler.deepcharter.sound.SoundTuning;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +35,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -50,6 +58,9 @@ public class MachineAndChapterStingsTest {
     private static final Identifier ONLINE = id("terminal.online");
     private static final Identifier PHRASE = id("hymn.chapter");
     private static final Identifier SAMPLE_CHAPTER = id("sample");
+    private static final Identifier BACK_ONLINE = id("back_online");
+    private static final Identifier COLONY_HYMN = id("hymn.colony");
+    private static final Identifier LAYER_1_HYMN = id("hymn.layer_1");
     private static final Identifier SLEEP = id("handbook/sample/sleep");
     private static final Identifier CUSTOM = id("handbook/sample/custom");
 
@@ -132,10 +143,11 @@ public class MachineAndChapterStingsTest {
         }
     }
 
-    private static BlockPos placePump(GameTestHelper helper) {
-        BlockPos relative = new BlockPos(0, 1, 0);
-        helper.setBlock(relative, TerminalTypes.FUEL_PUMP.block().defaultBlockState());
-        return helper.absolutePos(relative);
+    /** Places a whole terminal of {@code type}, both halves, in the test's structure. */
+    private static BlockPos place(GameTestHelper helper, TerminalType type) {
+        BlockPos pos = helper.absolutePos(new BlockPos(0, 1, 0));
+        TerminalBlock.place(helper.getLevel(), pos, type.block().defaultBlockState(), 3);
+        return pos;
     }
 
     @GameTest
@@ -144,7 +156,7 @@ public class MachineAndChapterStingsTest {
         MockPlayer fitter = survivor(helper, "Fitter");
         MockPlayer onlooker = survivor(helper, "Onlooker");
         found(helper, fitter);
-        BlockPos pump = placePump(helper);
+        BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP);
         Vec3 at = standBy(fitter, helper, pump, 2);
         standBy(onlooker, helper, pump, 3.5);
         List<Item> parts = TerminalTypes.FUEL_PUMP.parts();
@@ -171,7 +183,7 @@ public class MachineAndChapterStingsTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer fitter = survivor(helper, "HalfFitter");
         found(helper, fitter);
-        BlockPos pump = placePump(helper);
+        BlockPos pump = place(helper, TerminalTypes.FUEL_PUMP);
         Vec3 at = standBy(fitter, helper, pump, 2);
         Item first = TerminalTypes.FUEL_PUMP.parts().getFirst();
         WorldData.with(server, RepairState.TYPE, new RepairState(), () -> {
@@ -221,8 +233,8 @@ public class MachineAndChapterStingsTest {
                     }
                     Directives.fire(director.player(), CUSTOM);
                 })
-                .thenIdle(DRAIN_TICKS)
-                .thenExecute(() -> {
+                // The phrase is queued for the next tick at the earliest, and longer while another test's chord rings.
+                .thenWaitUntil(() -> {
                     for (MockPlayer mock : List.of(director, crew)) {
                         expect(
                                 helper,
@@ -232,6 +244,8 @@ public class MachineAndChapterStingsTest {
                                 mock.soundsHeard(),
                                 completedFor(mock));
                     }
+                })
+                .thenExecute(() -> {
                     // Done again, by anyone and however, it is no news: the hymn rule cannot be what keeps it quiet.
                     HymnMomentsProbe.forget(director.player());
                     HymnMomentsProbe.forget(crew.player());
@@ -265,8 +279,7 @@ public class MachineAndChapterStingsTest {
                                 .contains(SLEEP),
                         "the poll should record the sleep directive for the loner"))
                 .thenExecute(() -> Directives.fire(loner.player(), CUSTOM))
-                .thenIdle(DRAIN_TICKS)
-                .thenExecute(() -> expect(
+                .thenWaitUntil(() -> expect(
                         helper,
                         heard(loner, PHRASE) == 1 && completedFor(loner).equals(List.of(SAMPLE_CHAPTER)),
                         "the loner's own chapter plays the phrase once, heard %s and completed %s",
@@ -346,6 +359,116 @@ public class MachineAndChapterStingsTest {
                             "coming back to the world completes no chapter again, the returner completed %s",
                             completedFor(returner[0]));
                 })
+                .thenSucceed();
+    }
+
+    @GameTest(maxTicks = POLL_BUDGET_TICKS)
+    public void aRepairThatFinishesAChapterPlaysThePhraseOnlyOnceTheChordIsOver(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer fitter = survivor(helper, "ChapterFitter");
+        CharterId charter = found(helper, fitter);
+        HymnMomentsProbe.forget(fitter.player());
+        // Chapter 2 asks for three repairs; the first two are done, so the upgrade terminal's repair finishes it.
+        HandbookProgressData.get(server).complete(charter, id("handbook/back_online/repair_fuel_pump"));
+        HandbookProgressData.get(server).complete(charter, id("handbook/back_online/repair_ore_processor"));
+        BlockPos terminal = place(helper, TerminalTypes.UPGRADE_TERMINAL);
+        Vec3[] at = new Vec3[1];
+        int chord = SoundTuning.DEFAULT.terminalOnlineTicks();
+        helper.startSequence()
+                .thenExecute(() -> WorldData.with(server, RepairState.TYPE, new RepairState(), () -> {
+                    RepairState state = RepairState.get(server);
+                    for (TerminalType before : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
+                        for (Item part : before.parts()) {
+                            expect(
+                                    helper,
+                                    state.insert(before, part).isEmpty(),
+                                    "%s should take %s",
+                                    before.id(),
+                                    part);
+                        }
+                    }
+                    at[0] = standBy(fitter, helper, terminal, 2);
+                    List<Item> parts = TerminalTypes.UPGRADE_TERMINAL.parts();
+                    parts.forEach(part -> fitter.player().getInventory().add(new ItemStack(part)));
+                    parts.forEach(part -> insert(helper, fitter.player(), terminal, part));
+                }))
+                .thenIdle(DRAIN_TICKS)
+                .thenExecute(() -> expect(
+                        helper,
+                        heardAt(fitter, at[0]).equals(List.of(POWER_ON, ONLINE))
+                                && completedFor(fitter).equals(List.of(BACK_ONLINE))
+                                && heard(fitter, PHRASE) == 0,
+                        "the repair plays power-on and chord and ends chapter 2, heard %s here and %s, completed %s",
+                        heardAt(fitter, at[0]),
+                        fitter.soundsHeard(),
+                        completedFor(fitter)))
+                .thenIdle(chord - DRAIN_TICKS - 2)
+                .thenExecute(() -> expect(
+                        helper,
+                        heard(fitter, PHRASE) == 0,
+                        "the phrase waits for the chord's %s ticks, heard %s",
+                        chord,
+                        fitter.soundsHeard()))
+                .thenWaitUntil(() -> expect(
+                        helper,
+                        heard(fitter, PHRASE) == 1,
+                        "the phrase plays once the chord is over, heard %s",
+                        fitter.soundsHeard()))
+                .thenIdle(DRAIN_TICKS)
+                .thenExecute(() -> expect(
+                        helper, heard(fitter, PHRASE) == 1, "the phrase plays once, heard %s", fitter.soundsHeard()))
+                .thenSucceed();
+    }
+
+    @GameTest(maxTicks = POLL_BUDGET_TICKS)
+    public void aChapterFinishedWhileTheFoundingHymnPlaysGetsNoPhrase(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer founder = MockPlayers.join(helper, "HymnFounder");
+        int hymnTicks = SoundTuning.DEFAULT.hymnTicks().getFirst();
+        helper.startSequence()
+                // Founded after the batch's first tick, when HymnMomentsTest resets all hymn state.
+                .thenExecute(() -> {
+                    found(helper, founder);
+                    CriteriaTriggers.SLEPT_IN_BED.trigger(founder.player());
+                })
+                .thenWaitUntil(() -> expect(
+                        helper,
+                        HandbookProgress.completedFor(server, founder.player().getUUID())
+                                .contains(SLEEP),
+                        "the poll should record the sleep directive"))
+                .thenExecute(() -> {
+                    Directives.fire(founder.player(), CUSTOM);
+                    expect(
+                            helper,
+                            completedFor(founder).equals(List.of(SAMPLE_CHAPTER)),
+                            "the chapter should complete for the founder, completed %s",
+                            completedFor(founder));
+                })
+                .thenIdle(DRAIN_TICKS)
+                .thenExecute(() -> expect(
+                        helper,
+                        heard(founder, COLONY_HYMN) == 1 && heard(founder, PHRASE) == 0,
+                        "the founding hymn plays and the phrase gives way to it, heard %s",
+                        founder.soundsHeard()))
+                // Past the founding hymn's end: a phrase that had only been put off would have played by now.
+                .thenIdle(hymnTicks)
+                .thenExecute(() -> {
+                    expect(
+                            helper,
+                            heard(founder, PHRASE) == 0,
+                            "the dropped phrase must not come back, heard %s",
+                            founder.soundsHeard());
+                    HymnMomentsProbe.forget(founder.player());
+                    ServerLevel surface = server.overworld();
+                    BreachEvents.CROSSED
+                            .invoker()
+                            .onCrossed(founder.player(), surface, TestLayers.level(server, 1), LayerChain.SURFACE, 1);
+                })
+                .thenWaitUntil(() -> expect(
+                        helper,
+                        heard(founder, LAYER_1_HYMN) == 1,
+                        "a later hymn moment still plays, heard %s",
+                        founder.soundsHeard()))
                 .thenSucceed();
     }
 }

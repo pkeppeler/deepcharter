@@ -613,7 +613,8 @@ Only names and uses are given here. No audio is copied, played into a recording,
 - The drone beds (#249) are `ambient_sounds` in each biome: `ambient.surface_loop` with `ambient.surface_groan`, `ambient.layer_1_loop` with its creak and knock, `ambient.layer_2_loop` with its creak and knock. The Lamp Hymn
   (`hymn.colony`, `hymn.layer_1`, `hymn.layer_2`) plays from `main/sound/HymnMoments.java` on founding or joining a charter, going down a breach and coming up into the colony; its first three
   notes (`hymn.chapter`, about four seconds) play to each online member when a handbook chapter's last directive is done (`handbook/HandbookEvents.CHAPTER_COMPLETED`, fired by
-  `HandbookProgress.sweep`, never for progress already held on joining), unless that player's hymn is still playing (#1267).
+  `HandbookProgress.sweep`, never for progress already held on joining). The phrase is queued: it plays on the next tick at the earliest, not
+  while a repaired machine's chord rings, and not at all if that player's hymn is still playing then (#1267).
 - Groups and where they play: pod (engine idle, drive, drill side and down, rotor, transform land and launch, crash, explosion, the seep sounder's hiss `pod.seep_hiss`, repeating faster as a gas pocket nears, the heat shield's crackle `pod.glaze_burn` for each brick it burns, the signal decay's crackle `pod.signal_crackle` and heartbeat `pod.signal_lost`, #502), drill (dig, blocked, lava, dynamite,
   plastic), cargo (collect, jettison, full), fuel (low, refuel), repair (nanobots), breach (rumble, cross), scanner (ping, sweep), UI (typewriter, hover, select, confirm,
   purchase, sale, error, refused), terminal (power on, online chord, teleport; a repair that brings a terminal online plays the power-on and the chord in the world where the repairer stands, `main/sound/TerminalSounds.java`, #1267), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
