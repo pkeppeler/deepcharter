@@ -89,6 +89,7 @@ public final class HandbookControls {
     }
 
     /** Every binding a line of any sheet names, as {@code options} binds them now. */
+    // test-seam: the keys-are-all-listed guard reads the sheets' bindings, which no draw path needs as a set
     public static Set<KeyMapping> mappings(Options options) {
         Set<KeyMapping> mappings = new LinkedHashSet<>();
         for (Sheet sheet : SHEETS) {
