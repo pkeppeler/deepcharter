@@ -179,8 +179,8 @@ public class ColonyPhonographTest {
             long period = period(level);
             long midnight = period / 2;
             expect(helper, !phonograph.isPlaying(), "the phonograph was playing when the test began");
-            // The save test leaves a night of its own on this shared block, so what must not change is whatever stood
-            // here.
+            // The save test leaves a night of its own on this shared block, so what must not change is whatever
+            // stood here.
             Optional<Long> nightBefore = phonograph.lastAutoNight();
             // Out of earshot first: nobody could hear it start, so it does not, and the night is not used up.
             visitor.teleportTo(level, Vec3.atBottomCenterOf(pos).add(100, 0, 0), 0f, 0f);
