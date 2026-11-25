@@ -38,4 +38,4 @@ Issue [#1160](https://github.com/pkeppeler/deepcharter/issues/1160), part of [#1
 
 ## Amended
 
-2026-11-25, [#1277](https://github.com/pkeppeler/deepcharter/issues/1277): the one-pair cache is now each thread's last eight pairs. Layer 1's strata make a column write a few pairs in turn, and the worker threads each write their own chunk's, so one pair shared by every thread missed on most writes: layer 1 cost about 1.4 times as much per row with three rocks as with one, and the same with the cache per thread is within noise of one rock (numbers in the PR).
+2026-11-25, [#1277](https://github.com/pkeppeler/deepcharter/issues/1277): the one-pair cache is now a table of every pair judged, shared by the worker threads and replaced whole when a pair is added (`SurfaceWrites.known`, at most 64). Layer 1's strata make a column write a few pairs in turn, and the worker threads each write their own chunk's, so one last pair shared by every thread missed on most writes: layer 1's window cost about 1.4 times as much with three rocks as with one (numbers in the PR).

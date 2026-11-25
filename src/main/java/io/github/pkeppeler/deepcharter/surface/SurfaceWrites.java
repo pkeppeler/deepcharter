@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.surface;
 
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents;
@@ -39,13 +40,15 @@ public final class SurfaceWrites {
      */
     private record Verdict(int generation, BlockState was, BlockState now, boolean neutral) {}
 
-    private static final int PAIRS = 8;
+    /** The most verdicts kept: worldgen writes a few dozen pairs, so more means a leak, and the table starts again. */
+    private static final int MOST_PAIRS = 64;
 
     /**
-     * The pairs this thread judged last, the latest first. A column writes a few pairs in turn (layer 1's strata, #1277) and each
-     * worker thread writes its own chunk's, so one pair shared by every thread was a miss on most writes and doubled layer 1's cost.
+     * Every pair judged so far, oldest first, shared by every worker thread and replaced whole when a pair is added. A column writes a
+     * few pairs in turn (layer 1's strata, #1277) and each thread writes its own chunk's, so the one last pair this used to keep missed
+     * on most writes and doubled layer 1's cost; a table read through one volatile field is as cheap as that one pair on a hit.
      */
-    private static final ThreadLocal<@Nullable Verdict[]> SEEN = ThreadLocal.withInitial(() -> new Verdict[PAIRS]);
+    private static volatile Verdict[] known = new Verdict[0];
 
     private SurfaceWrites() {}
 
@@ -115,17 +118,22 @@ public final class SurfaceWrites {
     /** Whether writing {@code now} over {@code was} leaves every side effect of {@code ProtoChunk.setBlockState} a no-op. */
     public static boolean neutral(BlockState was, BlockState now) {
         int generation = TAGS_GENERATION.get();
-        @Nullable Verdict[] seen = SEEN.get();
-        for (@Nullable Verdict verdict : seen) {
-            if (verdict != null && verdict.generation == generation && verdict.was == was && verdict.now == now) {
+        for (Verdict verdict : known) {
+            if (verdict.was == was && verdict.now == now && verdict.generation == generation) {
                 return verdict.neutral;
             }
         }
         boolean neutral = judge(was, now);
         // The generation read before judging: a reload in between makes this a miss on its next read.
-        System.arraycopy(seen, 0, seen, 1, PAIRS - 1);
-        seen[0] = new Verdict(generation, was, now, neutral);
+        remember(new Verdict(generation, was, now, neutral));
         return neutral;
+    }
+
+    private static synchronized void remember(Verdict verdict) {
+        Verdict[] was = known;
+        Verdict[] now = was.length < MOST_PAIRS ? Arrays.copyOf(was, was.length + 1) : new Verdict[1];
+        now[now.length - 1] = verdict;
+        known = now;
     }
 
     private static boolean judge(BlockState was, BlockState now) {
