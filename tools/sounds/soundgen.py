@@ -21,7 +21,7 @@ those OGGs and asks `first_sounds.check` about them. The ambience's fragments (t
 tools/sounds/ambience.py and owned by tools/sounds/ambience.json, and `--check` asks `ambience.check` about them. The punch clock's hours and
 fragments (the clock folder, #938) are cuts of one recording, made by tools/sounds/lambert_clock.py and owned by tools/sounds/lambert_clock.json.
 
-Standard library and ffmpeg only; this Mac's ffmpeg has the native Vorbis encoder alone, which writes stereo.
+Standard library and ffmpeg only; this Mac's ffmpeg has the native Vorbis encoder alone. A name in recipes.MONO is encoded mono (the game pans and fades only a mono sound), the rest stereo.
 """
 import argparse
 import hashlib
@@ -57,7 +57,7 @@ def _encoder_args():
     return ["-c:a", "vorbis", "-strict", "-2", "-q:a", "4"]
 
 
-def _encode(clip, target):
+def _encode(clip, target, channels):
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "clip.wav"
@@ -67,7 +67,7 @@ def _encode(clip, target):
             out.setframerate(recipes.RATE)
             out.writeframes(clip.interleaved().tobytes())
         subprocess.run(
-            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source), "-map_metadata", "-1", "-ac", "2", *_encoder_args(), str(target)],
+            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source), "-map_metadata", "-1", "-ac", str(channels), *_encoder_args(), str(target)],
             check=True,
         )
 
@@ -88,7 +88,7 @@ def build(names, out, manifest):
         if old and old["pcm_sha256"] == pcm and target.is_file() and _sha256(target) == old["ogg_sha256"]:
             entries[name] = old
             continue
-        _encode(clip, target)
+        _encode(clip, target, 1 if name in recipes.MONO else 2)
         entries[name] = {"pcm_sha256": pcm, "ogg_sha256": _sha256(target)}
         print(f"built {name}")
     manifest.write_text(json.dumps(entries, indent=2, sort_keys=True) + "\n")

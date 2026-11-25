@@ -1,4 +1,4 @@
-"""Every sound the mod ships, as a recipe: a function that makes a stereo Clip from nothing but arithmetic and a fixed seed.
+"""Every sound the mod ships, as a recipe: a function that makes a Clip from nothing but arithmetic and a fixed seed.
 
 soundgen.py renders each recipe, hashes its PCM into manifest.json and encodes it to
 src/main/resources/assets/deepcharter/sounds/<name>.ogg. The names are the paths `sounds.json` points at. The sounds are original: no
@@ -515,7 +515,8 @@ def cave_in():
     _stones(rng, mix, [0.05 + 0.9 * rng.random() for _ in range(10)], (120, 400), 0.08, lambda at: 0.6)
     _stones(rng, mix, [1.3 + 1.2 * rng.random() for _ in range(40)], (600, 2400), 0.02, lambda at: 0.1 * (1 - (at - 1.3) / 1.3))
     room = dsp.reverb(dsp.filt(mix, "lp", 3500, 0.7), 1.0, 0.3)
-    return dsp.normalize(dsp.widen(dsp.fade(room, 0.0, 0.9), 15), 0.8)
+    faded = dsp.fade(room, 0.0, 0.9)
+    return dsp.normalize(Clip(faded, list(faded)), 0.8)
 
 
 def rest():
@@ -523,6 +524,10 @@ def rest():
     count = dsp.seconds(3.0)
     return Clip([0.0] * count, [0.0] * count)
 
+
+# Sounds the game plays in the world, from a place: encoded mono, because OpenAL pans and fades only a mono source. Their Clip has
+# the same signal in both channels.
+MONO = frozenset({"layer/cave_in"})
 
 RECIPES = {
     "ambient/surface_loop": surface_loop,

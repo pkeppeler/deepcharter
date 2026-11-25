@@ -16,6 +16,7 @@ SOUNDS = Path(__file__).resolve().parent.parent / "sounds"
 sys.path.insert(0, str(SOUNDS))
 
 import dsp  # noqa: E402
+import first_sounds  # noqa: E402
 import recipes  # noqa: E402
 import soundgen  # noqa: E402
 
@@ -189,6 +190,19 @@ class BreachSoundTest(unittest.TestCase):
         self.assertLess(max(abs(v) for v in bright), 0.08 * max(abs(v) for v in left))
         self.assertGreater(self.rms(left, 0.0, 0.3), 4 * self.rms(left, 2.0, 0.3))
         self.assertLess(self.rms(left, len(left) / recipes.RATE - 0.3, 0.25), self.rms(left, 0.0, 0.3) / 100)
+
+
+class ChannelTest(unittest.TestCase):
+    def channels(self, name):
+        return first_sounds.ogg_channels(soundgen.OUT / f"{name}.ogg")
+
+    def test_the_cave_in_is_mono_so_the_game_places_it_and_the_breach_is_stereo(self):
+        self.assertEqual(1, self.channels("layer/cave_in"))
+        self.assertEqual(2, self.channels("breach/rumble"))
+
+    def test_only_the_sounds_listed_mono_are_mono(self):
+        for name in recipes.RECIPES:
+            self.assertEqual(1 if name in recipes.MONO else 2, self.channels(name), name)
 
 
 if __name__ == "__main__":
