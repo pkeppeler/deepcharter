@@ -475,13 +475,7 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
     }
 
     private static List<String> texts(ClientGameTestContext context, Screen screen) {
-        return context.computeOnClient(client -> {
-            var window = client.getWindow();
-            return DrawnText.of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
-                            client.mouseHandler.getScaledYPos(window))
-                    .stream()
-                    .map(DrawnText.Drawn::text)
-                    .toList();
-        });
+        return context.computeOnClient(client ->
+                DrawnText.atCursor(screen).stream().map(DrawnText.Drawn::text).toList());
     }
 }

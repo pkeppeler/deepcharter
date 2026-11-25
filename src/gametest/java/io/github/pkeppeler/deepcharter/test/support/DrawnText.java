@@ -62,6 +62,14 @@ public final class DrawnText {
         return of(recorder -> screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f));
     }
 
+    /** Like {@link #of(Screen)} with the mouse where the cursor is now. Client thread. */
+    public static List<Drawn> atCursor(Screen screen) {
+        Minecraft client = Minecraft.getInstance();
+        var window = client.getWindow();
+        return of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
+                client.mouseHandler.getScaledYPos(window));
+    }
+
     /** Runs {@code draw} on a recorder and returns the strings it drew, for something that is not a screen, such as a toast. Client thread. */
     public static List<Drawn> of(Consumer<GuiGraphicsExtractor> draw) {
         Recorder recorder = new Recorder(Minecraft.getInstance());

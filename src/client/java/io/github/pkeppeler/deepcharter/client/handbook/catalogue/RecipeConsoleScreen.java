@@ -83,8 +83,7 @@ public final class RecipeConsoleScreen extends Screen {
         this.mouseX = mouseX;
         this.mouseY = mouseY;
         CatalogueLayout.Console now = layout;
-        CatalogueState.Lookup lookup = state.lookup();
-        if (now == null || lookup == null) {
+        if (now == null) {
             return;
         }
         RecipeConsole.Hit hit = console.hitAt(now.card(), mouseX, mouseY);

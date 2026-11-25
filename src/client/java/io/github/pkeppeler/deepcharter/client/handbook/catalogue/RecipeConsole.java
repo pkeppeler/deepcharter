@@ -116,8 +116,7 @@ final class RecipeConsole {
      * The item the console is titled with, whose favourite the star shows and toggles: what the shown recipe makes, or the item looked
      * up while no recipe is shown; null while nothing is looked up. In U the two differ: the uses of iron are titled with what they make.
      */
-    @Nullable
-    Item titled() {
+    private @Nullable Item titled() {
         ItemStack titled = titledStack();
         return titled == null ? null : titled.getItem();
     }
@@ -257,7 +256,7 @@ final class RecipeConsole {
             dim(graphics, font, fit(font, none, width), card.left(), card.stationY());
         } else {
             dim(graphics, font, fit(font, recipe.station(), width), card.left(), card.stationY());
-            drawRecipe(graphics, card, look, recipe, hit, crt);
+            drawRecipe(graphics, card, look, lookup, recipe, hit, crt);
         }
 
         graphics.nextStratum();
@@ -302,6 +301,7 @@ final class RecipeConsole {
             GuiGraphicsExtractor graphics,
             Card card,
             CatalogueLook look,
+            CatalogueState.Lookup lookup,
             KnownRecipe recipe,
             @Nullable Hit hit,
             CrtTuning crt) {
@@ -330,8 +330,7 @@ final class RecipeConsole {
         graphics.itemDecorations(font, made, result.x() + look.iconInset(), result.y() + look.iconInset());
 
         List<KnownRecipe> found = state.found(catalogue);
-        CatalogueState.Lookup lookup = state.lookup();
-        if (found.size() > 1 && lookup != null) {
+        if (found.size() > 1) {
             String key = lookup.mode() == CatalogueState.Mode.RECIPES ? "counter.recipes" : "counter.uses";
             String counter = Component.translatable("deepcharter.catalogue." + key, lookup.index() + 1, found.size())
                     .getString();

@@ -103,11 +103,7 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
     }
 
     private static List<Drawn> drawn(ClientGameTestContext context, Screen screen) {
-        return context.computeOnClient(client -> {
-            var window = client.getWindow();
-            return DrawnText.of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
-                    client.mouseHandler.getScaledYPos(window));
-        });
+        return context.computeOnClient(client -> DrawnText.atCursor(screen));
     }
 
     private static boolean inside(Drawn text, Rect rect) {

@@ -178,11 +178,7 @@ public class CatalogueHistoryClientTest implements FabricClientGameTest {
     }
 
     private static List<Drawn> drawn(ClientGameTestContext context, Screen screen) {
-        return context.computeOnClient(client -> {
-            var window = client.getWindow();
-            return DrawnText.of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
-                    client.mouseHandler.getScaledYPos(window));
-        });
+        return context.computeOnClient(client -> DrawnText.atCursor(screen));
     }
 
     /** The "<" drawn inside {@code knob}, the back knob's label, if it is drawn. */

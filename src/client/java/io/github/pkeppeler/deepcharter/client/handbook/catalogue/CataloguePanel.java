@@ -426,10 +426,6 @@ public final class CataloguePanel {
         return new Rect(shelf.left() + index * look.gridCell(), shelf.favouritesY(), look.slotSize(), look.slotSize());
     }
 
-    private List<Item> favourites() {
-        return console.favourites();
-    }
-
     /** What the mouse is over in a panel, or null. */
     private RecipeConsole.@Nullable Hit hitAt(double x, double y) {
         CatalogueLayout now = layout;
@@ -447,7 +443,7 @@ public final class CataloguePanel {
                 return new RecipeConsole.Hit(shown.get(first + i), cell);
             }
         }
-        List<Item> favourites = favourites();
+        List<Item> favourites = console.favourites();
         int offset = state.favouriteOffset(favourites.size(), shelf.columns());
         for (int i = 0; i < shelf.columns() && offset + i < favourites.size(); i++) {
             Rect cell = favouriteCell(shelf, look, i);
@@ -932,7 +928,7 @@ public final class CataloguePanel {
                 search.right(),
                 search.bottom(),
                 searchFocused ? crt.phosphorColor() : crt.dimColor());
-        drawSearch(graphics, search, look, crt, panel);
+        drawSearch(graphics, search, look, crt);
 
         List<Item> shown = shown();
         int perPage = shelf.perPage();
@@ -943,22 +939,22 @@ public final class CataloguePanel {
             drawCell(graphics, cell, look, shown.get(first + i), hit);
         }
         if (shown.isEmpty()) {
-            dim(
+            CatalogueHardware.dim(
                     graphics,
+                    font,
                     fit(text("empty"), shelf.columns() * look.gridCell()),
                     shelf.left(),
-                    shelf.gridY() + 2,
-                    panel);
+                    shelf.gridY() + 2);
         }
 
-        dim(graphics, text("favourites"), shelf.left(), shelf.favouritesLabelY(), panel);
-        List<Item> favourites = favourites();
+        CatalogueHardware.dim(graphics, font, text("favourites"), shelf.left(), shelf.favouritesLabelY());
+        List<Item> favourites = console.favourites();
         int offset = state.favouriteOffset(favourites.size(), shelf.columns());
         for (int i = 0; i < shelf.columns() && offset + i < favourites.size(); i++) {
             drawCell(graphics, favouriteCell(shelf, look, i), look, favourites.get(offset + i), hit);
         }
         if (favourites.isEmpty()) {
-            drawFavouritesHint(graphics, shelf, panel);
+            drawFavouritesHint(graphics, shelf);
         }
 
         graphics.nextStratum();
@@ -1006,7 +1002,7 @@ public final class CataloguePanel {
      * What the empty favourites row says instead: the favourite key, as bound now, and the recipe console's hollow star, drawn in the line
      * where the hint holds {@link #STAR_MARK}.
      */
-    private void drawFavouritesHint(GuiGraphicsExtractor graphics, CatalogueLayout.Shelf shelf, PanelLook panel) {
+    private void drawFavouritesHint(GuiGraphicsExtractor graphics, CatalogueLayout.Shelf shelf) {
         String key =
                 CatalogueKeys.FAVOURITE.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT);
         String hint = Component.translatable("deepcharter.catalogue.favourites.hint", key, STAR_MARK)
@@ -1020,7 +1016,7 @@ public final class CataloguePanel {
                     ? CatalogueHardware.fit(
                             this::hintWidth, String.join(" ", lines.subList(i, lines.size())), row.width())
                     : lines.get(i);
-            drawHintLine(graphics, line, shelf.left(), shelf.favouritesY() + i * font.lineHeight, panel);
+            drawHintLine(graphics, line, shelf.left(), shelf.favouritesY() + i * font.lineHeight);
         }
     }
 
@@ -1031,7 +1027,7 @@ public final class CataloguePanel {
     }
 
     /** A line of the favourites hint at ({@code x}, {@code y}): its text dim, and the hollow star, dim too, where it holds the mark. */
-    private void drawHintLine(GuiGraphicsExtractor graphics, String line, int x, int y, PanelLook panel) {
+    private void drawHintLine(GuiGraphicsExtractor graphics, String line, int x, int y) {
         List<String> parts = Splitter.on(STAR_MARK).splitToList(line);
         int at = x;
         for (int i = 0; i < parts.size(); i++) {
@@ -1042,14 +1038,13 @@ public final class CataloguePanel {
             String part = parts.get(i);
             String words = part.strip();
             if (!words.isEmpty()) {
-                dim(graphics, words, at + termWidth(part.substring(0, part.indexOf(words))), y, panel);
+                CatalogueHardware.dim(graphics, font, words, at + termWidth(part.substring(0, part.indexOf(words))), y);
             }
             at += termWidth(part);
         }
     }
 
-    private void drawSearch(
-            GuiGraphicsExtractor graphics, Rect search, CatalogueLook look, CrtTuning crt, PanelLook panel) {
+    private void drawSearch(GuiGraphicsExtractor graphics, Rect search, CatalogueLook look, CrtTuning crt) {
         int textX = search.x() + look.searchPad();
         int textY = search.y() + look.searchPad();
         int caretWidth = termWidth("_");
@@ -1058,7 +1053,7 @@ public final class CataloguePanel {
         boolean caretOn = !searchFocused || (ticks / crt.cursorBlinkTicks()) % 2 == 0;
         if (query.isEmpty() && !searchFocused) {
             String hint = fit(text("search"), room);
-            dim(graphics, hint, textX, textY, panel);
+            CatalogueHardware.dim(graphics, font, hint, textX, textY);
             textX += termWidth(hint + " ");
         } else {
             // Shown in capitals like the rest of the terminal; the search itself ignores case.
@@ -1104,10 +1099,6 @@ public final class CataloguePanel {
                         fillLegend(),
                         fit == RecipeFill.Fit.FILL,
                         fit == RecipeFill.Fit.FILL || fit == RecipeFill.Fit.GHOST));
-    }
-
-    private void dim(GuiGraphicsExtractor graphics, String text, int x, int y, PanelLook panel) {
-        graphics.text(font, CrtText.terminal(text), x, y, panel.dimTextColor(), false);
     }
 
     private int termWidth(String text) {
