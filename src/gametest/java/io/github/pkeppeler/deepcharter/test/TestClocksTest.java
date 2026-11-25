@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.test.support.TestClocks;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -29,9 +31,12 @@ public class TestClocksTest {
 
         TestClocks.paused(server, sky, PINNED, () -> {
             if (clock.totalTicks() != PINNED || !clock.isPaused()) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the clock should be paused at %s in the body, was %s (paused: %s)",
-                        PINNED, clock.totalTicks(), clock.isPaused());
+                        PINNED,
+                        clock.totalTicks(),
+                        clock.isPaused());
             }
         });
         expectRestored(helper, clock, ticksBefore, pausedBefore);
@@ -40,7 +45,7 @@ public class TestClocksTest {
             TestClocks.paused(server, sky, PINNED, () -> {
                 throw new IllegalStateException("body failed");
             });
-            throw helper.assertionException("the body's exception should reach the caller");
+            throw failure(helper, "the body's exception should reach the caller");
         } catch (IllegalStateException expected) {
             expectRestored(helper, clock, ticksBefore, pausedBefore);
         }
@@ -49,9 +54,13 @@ public class TestClocksTest {
 
     private static void expectRestored(GameTestHelper helper, ClockInstance clock, long ticks, boolean paused) {
         if (clock.totalTicks() != ticks || clock.isPaused() != paused) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "the clock should be back at %s ticks, paused %s, was %s, %s",
-                    ticks, paused, clock.totalTicks(), clock.isPaused());
+                    ticks,
+                    paused,
+                    clock.totalTicks(),
+                    clock.isPaused());
         }
     }
 }

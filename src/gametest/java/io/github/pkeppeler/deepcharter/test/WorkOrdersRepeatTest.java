@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -63,7 +65,7 @@ public class WorkOrdersRepeatTest {
         helper.getLevel().addFreshEntity(pod);
         for (OreType ore : ores) {
             if (!pod.cargo().tryAdd(pod, OreRegistry.stack(ore))) {
-                throw helper.assertionException("the test pod should have a free slot for %s", ore);
+                throw failure(helper, "the test pod should have a free slot for %s", ore);
             }
         }
         return pod;
@@ -90,9 +92,15 @@ public class WorkOrdersRepeatTest {
         WorkOrderData data = WorkOrderData.get(server);
         CharterId id = WorkOrdersTest.charter(server, player).id();
         if (data.delivered(id, order) != delivered || data.rounds(id, order) != rounds) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s: %s should stand at %s delivered with %s rounds done, got %s and %s",
-                    when, order, delivered, rounds, data.delivered(id, order), data.rounds(id, order));
+                    when,
+                    order,
+                    delivered,
+                    rounds,
+                    data.delivered(id, order),
+                    data.rounds(id, order));
         }
     }
 
@@ -121,8 +129,12 @@ public class WorkOrdersRepeatTest {
                     Terminals.act(player, processor, WorkOrders.DELIVER, WorkOrdersTest.orderArgs(MORALE)),
                     "the first round");
             if (balance(server, player) != before + MORALE.reward()) {
-                throw helper.assertionException(
-                        "round one should pay $%s: balance %s -> %s", MORALE.reward(), before, balance(server, player));
+                throw failure(
+                        helper,
+                        "round one should pay $%s: balance %s -> %s",
+                        MORALE.reward(),
+                        before,
+                        balance(server, player));
             }
             expectProgress(helper, server, player, MORALE, 0, 1, "after round one");
 
@@ -133,7 +145,7 @@ public class WorkOrdersRepeatTest {
                     "a partial second round");
             expectProgress(helper, server, player, MORALE, 4, 1, "four into round two");
             if (balance(server, player) != before + MORALE.reward()) {
-                throw helper.assertionException("a partial round pays nothing");
+                throw failure(helper, "a partial round pays nothing");
             }
 
             WorkOrdersTest.carry(player, OreType.SILVERIUM, 20);
@@ -144,15 +156,20 @@ public class WorkOrdersRepeatTest {
             expectProgress(helper, server, player, MORALE, 0, 2, "after round two");
             if (balance(server, player) != before + 2 * MORALE.reward()
                     || WorkOrdersTest.carried(player, OreType.SILVERIUM) != 14) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "round two should take the six still owed and pay again: balance %s -> %s, %s Silverium left",
-                        before, balance(server, player), WorkOrdersTest.carried(player, OreType.SILVERIUM));
+                        before,
+                        balance(server, player),
+                        WorkOrdersTest.carried(player, OreType.SILVERIUM));
             }
             WorkOrdersView view = view(server, player, processor);
             if (!view.orders().contains(new WorkOrdersView.Entry(MORALE, 0, 2))
                     || view.orders().stream().anyMatch(entry -> entry.order() == MORALE && entry.done())) {
-                throw helper.assertionException(
-                        "the view should show two rounds done and a repeatable order never finished, got %s", view);
+                throw failure(
+                        helper,
+                        "the view should show two rounds done and a repeatable order never finished, got %s",
+                        view);
             }
         });
         helper.succeed();
@@ -174,7 +191,8 @@ public class WorkOrdersRepeatTest {
                     "a delivery of 25");
             expectProgress(helper, server, player, MORALE, 0, 1, "after one delivery of 25");
             if (WorkOrdersTest.carried(player, OreType.SILVERIUM) != 15) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "one delivery takes one round (10), %s of 25 left",
                         WorkOrdersTest.carried(player, OreType.SILVERIUM));
             }
@@ -219,7 +237,7 @@ public class WorkOrdersRepeatTest {
                     ServerPlayer player = mock.player();
                     BlockPos processor = WorkOrdersTest.processorFor(helper, mock);
                     if (WorkOrder.FOUNDERS_HANDS.repeatable() || !MORALE.repeatable()) {
-                        throw helper.assertionException("only the Morale Initiative repeats");
+                        throw failure(helper, "only the Morale Initiative repeats");
                     }
                     WorkOrdersTest.carry(player, OreType.BRONZIUM, 30);
                     WorkOrdersTest.expectDone(
@@ -239,10 +257,10 @@ public class WorkOrdersRepeatTest {
                             "a second round of the Founder's hands");
                     expectProgress(helper, server, player, WorkOrder.FOUNDERS_HANDS, 10, 0, "after the order is done");
                     if (WorkOrdersTest.carried(player, OreType.BRONZIUM) != 20 || balance(server, player) != paid) {
-                        throw helper.assertionException("a finished one-shot order takes no more ore and pays no more");
+                        throw failure(helper, "a finished one-shot order takes no more ore and pays no more");
                     }
                     if (!view(server, player, processor).orders().getFirst().done()) {
-                        throw helper.assertionException("the view should show the Founder's hands done");
+                        throw failure(helper, "the view should show the Founder's hands done");
                     }
                 }));
     }
@@ -257,7 +275,7 @@ public class WorkOrdersRepeatTest {
             BlockPos processor = WorkOrdersTest.processorFor(helper, mock);
             WorkOrdersTest.carry(player, OreType.SILVERIUM, 10);
             if (view(server, player, processor).orders().stream().anyMatch(entry -> entry.order() == MORALE)) {
-                throw helper.assertionException("a charter above layer 3 is not offered the Morale Initiative");
+                throw failure(helper, "a charter above layer 3 is not offered the Morale Initiative");
             }
             WorkOrdersTest.expectKey(
                     helper,
@@ -270,11 +288,11 @@ public class WorkOrdersRepeatTest {
                     Terminals.act(player, processor, WorkOrders.DELIVER, WorkOrdersTest.orderArgs(MORALE)),
                     "a delivery before layer 3");
             if (WorkOrdersTest.carried(player, OreType.SILVERIUM) != 10) {
-                throw helper.assertionException("a locked order takes no ore");
+                throw failure(helper, "a locked order takes no ore");
             }
             reachLayerThree(server, player);
             if (view(server, player, processor).orders().stream().noneMatch(entry -> entry.order() == MORALE)) {
-                throw helper.assertionException("a charter that reached layer 3 is offered the Morale Initiative");
+                throw failure(helper, "a charter that reached layer 3 is offered the Morale Initiative");
             }
         });
         helper.succeed();
@@ -299,21 +317,25 @@ public class WorkOrdersRepeatTest {
                 if (WorkOrdersTest.carried(player, OreType.SILVERIUM) != 0
                         || pod.cargoUsed() != 3
                         || pod.cargo().entries().size() != 3) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "six from the inventory and four of the seven in the hold: %s carried, %s left in the hold",
-                            WorkOrdersTest.carried(player, OreType.SILVERIUM), pod.cargoUsed());
+                            WorkOrdersTest.carried(player, OreType.SILVERIUM),
+                            pod.cargoUsed());
                 }
                 float mass = (float) pod.cargo().entries().stream()
                         .mapToDouble(entry -> entry.mass())
                         .sum();
                 if (Math.abs(pod.cargoMass() - mass) > 1e-4f) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "the pod's synced cargo mass must follow the removal, got %s for %s",
-                            pod.cargoMass(), mass);
+                            pod.cargoMass(),
+                            mass);
                 }
                 expectProgress(helper, server, player, MORALE, 0, 1, "after the mixed delivery");
                 if (balance(server, player) != before + MORALE.reward()) {
-                    throw helper.assertionException("the completed round should pay");
+                    throw failure(helper, "the completed round should pay");
                 }
                 // The hold alone is enough, and another ore in a nearer hold is left alone.
                 PodEntity mixed = podBeside(helper, processor, 3, ores(OreType.GOLDIUM, 2));
@@ -324,9 +346,11 @@ public class WorkOrdersRepeatTest {
                             "a delivery from the cargo alone");
                     expectProgress(helper, server, player, MORALE, 3, 1, "three from the hold alone");
                     if (pod.cargoUsed() != 0 || mixed.cargoUsed() != 2) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "the hold is emptied of Silverium and the Goldium stays: %s, %s",
-                                pod.cargoUsed(), mixed.cargoUsed());
+                                pod.cargoUsed(),
+                                mixed.cargoUsed());
                     }
                 } finally {
                     mixed.discard();
@@ -360,8 +384,7 @@ public class WorkOrdersRepeatTest {
                         WorkOrders.deliver(WorkOrdersTest.context(server, player, processor), MORALE),
                         "a delivery with only a rival's pod and a far pod");
                 if (theirs.cargoUsed() != 7 || far.cargoUsed() != 7) {
-                    throw helper.assertionException(
-                            "neither pod may be touched: %s, %s", theirs.cargoUsed(), far.cargoUsed());
+                    throw failure(helper, "neither pod may be touched: %s, %s", theirs.cargoUsed(), far.cargoUsed());
                 }
                 expectProgress(helper, server, player, MORALE, 0, 0, "after the refused delivery");
             } finally {
@@ -390,7 +413,7 @@ public class WorkOrdersRepeatTest {
                 tag.putInt("cargo_version", 99);
                 pod.cargo().load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag), pod);
                 if (pod.cargo().isReadable()) {
-                    throw helper.assertionException("the test needs unreadable cargo");
+                    throw failure(helper, "the test needs unreadable cargo");
                 }
                 Map<String, Runnable> paths = new LinkedHashMap<>();
                 paths.put(
@@ -418,12 +441,11 @@ public class WorkOrdersRepeatTest {
                         "a delivery from the inventory beside unreadable cargo");
                 expectProgress(helper, server, player, MORALE, 3, 0, "three from the inventory");
                 if (pod.cargo().isReadable()) {
-                    throw helper.assertionException("the unreadable cargo must stay unreadable");
+                    throw failure(helper, "the unreadable cargo must stay unreadable");
                 }
                 try {
                     pod.cargo().take(pod, OreType.SILVERIUM, 1);
-                    throw helper.assertionException(
-                            "taking from unreadable cargo should throw: it is an explicit call");
+                    throw failure(helper, "taking from unreadable cargo should throw: it is an explicit call");
                 } catch (IllegalStateException expected) {
                     // refused, and the cargo is kept as it was read
                 }
@@ -455,23 +477,30 @@ public class WorkOrdersRepeatTest {
                 if (WorkOrdersTest.carried(player, OreType.SILVERIUM) != 0
                         || near.cargoUsed() != 0
                         || far.cargoUsed() != 2) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "3 from the inventory, 4 from the nearer hold and 3 of the 5 in the farther: %s carried, %s near, %s far",
-                            WorkOrdersTest.carried(player, OreType.SILVERIUM), near.cargoUsed(), far.cargoUsed());
+                            WorkOrdersTest.carried(player, OreType.SILVERIUM),
+                            near.cargoUsed(),
+                            far.cargoUsed());
                 }
                 for (PodEntity pod : new PodEntity[] {near, far}) {
                     float mass = (float) pod.cargo().entries().stream()
                             .mapToDouble(entry -> entry.mass())
                             .sum();
                     if (pod.cargoUsed() != pod.cargo().entries().size() || Math.abs(pod.cargoMass() - mass) > 1e-4f) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "a pod's synced cargo must follow the removal: used %s for %s entries, mass %s for %s",
-                                pod.cargoUsed(), pod.cargo().entries().size(), pod.cargoMass(), mass);
+                                pod.cargoUsed(),
+                                pod.cargo().entries().size(),
+                                pod.cargoMass(),
+                                mass);
                     }
                 }
                 expectProgress(helper, server, player, MORALE, 0, 1, "after the delivery across holds");
                 if (balance(server, player) != before + MORALE.reward()) {
-                    throw helper.assertionException("exactly one round should be paid");
+                    throw failure(helper, "exactly one round should be paid");
                 }
             } finally {
                 near.discard();
@@ -505,8 +534,8 @@ public class WorkOrdersRepeatTest {
                 if (WorkOrders.deliver(WorkOrdersTest.context(server, player, processor), MORALE)
                         .filter(CharterRefusal.ACCOUNT_FULL.message()::equals)
                         .isEmpty()) {
-                    throw helper.assertionException(
-                            "a reward that does not fit the account should refuse the completing delivery");
+                    throw failure(
+                            helper, "a reward that does not fit the account should refuse the completing delivery");
                 }
                 expectHoldsUntouched(helper, pod, second, server, player, "the full account");
             } finally {
@@ -530,9 +559,12 @@ public class WorkOrdersRepeatTest {
                 || second.cargoUsed() != 3
                 || second.cargo().entries().size() != 3
                 || second.cargo().count(OreType.SILVERIUM) != 3) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s: the holds must keep their 10 Silverium, used %s and %s",
-                    when, pod.cargoUsed(), second.cargoUsed());
+                    when,
+                    pod.cargoUsed(),
+                    second.cargoUsed());
         }
         expectProgress(helper, server, player, MORALE, 0, 0, when);
     }
@@ -551,25 +583,25 @@ public class WorkOrdersRepeatTest {
             if (pod.cargo().take(pod, OreType.IRONIUM, 2) != 2
                     || pod.cargoUsed() != 3
                     || pod.cargo().entries().size() != 3) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "two Ironium should leave and three ore stay: %s",
                         pod.cargo().entries());
             }
             if (pod.cargo().take(pod, OreType.IRONIUM, 5) != 1 || pod.cargoUsed() != 2) {
-                throw helper.assertionException(
-                        "asking for more than the hold has takes what is there, and reports it");
+                throw failure(helper, "asking for more than the hold has takes what is there, and reports it");
             }
             if (pod.cargo().take(pod, OreType.GOLDIUM, 1) != 0 || pod.cargoUsed() != 2) {
-                throw helper.assertionException("an ore the hold does not have takes nothing");
+                throw failure(helper, "an ore the hold does not have takes nothing");
             }
             if (pod.cargo().entries().stream()
                     .anyMatch(entry -> OreRegistry.typeOf(entry.stack()).orElseThrow() != OreType.SILVERIUM)) {
-                throw helper.assertionException(
-                        "only Silverium should be left: %s", pod.cargo().entries());
+                throw failure(
+                        helper, "only Silverium should be left: %s", pod.cargo().entries());
             }
             float expected = 2 * OreType.SILVERIUM.mass();
             if (Math.abs(pod.cargoMass() - expected) > 1e-4f) {
-                throw helper.assertionException("the cargo mass should be %s, got %s", expected, pod.cargoMass());
+                throw failure(helper, "the cargo mass should be %s, got %s", expected, pod.cargoMass());
             }
             boolean threw = false;
             try {
@@ -578,7 +610,7 @@ public class WorkOrdersRepeatTest {
                 threw = true;
             }
             if (!threw) {
-                throw helper.assertionException("taking none is a bug and should throw");
+                throw failure(helper, "taking none is a bug and should throw");
             }
         } finally {
             pod.discard();
@@ -618,22 +650,22 @@ public class WorkOrdersRepeatTest {
                 progressEntry(finished, "founders_hands", 10, null));
         WorkOrderData loaded = WorkOrderData.CODEC.parse(NbtOps.INSTANCE, v1).getOrThrow();
         if (WorkOrderData.VERSION != 2 || !loaded.isReadable()) {
-            throw helper.assertionException("version 1 must stay readable after the bump to %s", WorkOrderData.VERSION);
+            throw failure(helper, "version 1 must stay readable after the bump to %s", WorkOrderData.VERSION);
         }
         if (loaded.delivered(partial, WorkOrder.FOUNDERS_HANDS) != 7
                 || loaded.delivered(finished, WorkOrder.FOUNDERS_HANDS) != 10
                 || loaded.rounds(partial, WorkOrder.FOUNDERS_HANDS) != 0) {
-            throw helper.assertionException("version 1 progress should read as it was saved");
+            throw failure(helper, "version 1 progress should read as it was saved");
         }
         Tag rewritten = WorkOrderData.CODEC.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow();
         if (!(rewritten instanceof CompoundTag compound)
                 || compound.getInt("version").orElse(0) != 2) {
-            throw helper.assertionException("version 1 data is written back as version 2, got %s", rewritten);
+            throw failure(helper, "version 1 data is written back as version 2, got %s", rewritten);
         }
         WorkOrderData again =
                 WorkOrderData.CODEC.parse(NbtOps.INSTANCE, rewritten).getOrThrow();
         if (!again.isReadable() || again.delivered(partial, WorkOrder.FOUNDERS_HANDS) != 7) {
-            throw helper.assertionException("the rewritten data should read back, got %s", rewritten);
+            throw failure(helper, "the rewritten data should read back, got %s", rewritten);
         }
         // Version 1 that does not parse is kept unread and written back as it was, version and all.
         CompoundTag broken = saved(1, progressEntry(partial, "founders_hands", 99, null));
@@ -643,7 +675,7 @@ public class WorkOrdersRepeatTest {
                 || !broken.equals(WorkOrderData.CODEC
                         .encodeStart(NbtOps.INSTANCE, unreadable)
                         .getOrThrow())) {
-            throw helper.assertionException("bad version 1 data should be kept unread and written back unchanged");
+            throw failure(helper, "bad version 1 data should be kept unread and written back unchanged");
         }
         helper.succeed();
     }
@@ -672,7 +704,7 @@ public class WorkOrdersRepeatTest {
                     WorkOrderData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
             CharterId id = WorkOrdersTest.charter(server, player).id();
             if (!loaded.isReadable() || loaded.delivered(id, MORALE) != 5 || loaded.rounds(id, MORALE) != 1) {
-                throw helper.assertionException("5 delivered and 1 round done should survive a reload, got %s", saved);
+                throw failure(helper, "5 delivered and 1 round done should survive a reload, got %s", saved);
             }
         });
         helper.succeed();
@@ -697,7 +729,7 @@ public class WorkOrdersRepeatTest {
                     || !tag.equals(WorkOrderData.CODEC
                             .encodeStart(NbtOps.INSTANCE, parsed)
                             .getOrThrow())) {
-                throw helper.assertionException("%s should be kept unread and written back unchanged", tag);
+                throw failure(helper, "%s should be kept unread and written back unchanged", tag);
             }
         }
         helper.succeed();
@@ -714,11 +746,12 @@ public class WorkOrdersRepeatTest {
                         != Math.round(MORALE.quantity() * MORALE.ore().value() * 1.25)
                 || MORALE.unlockLayer() != 3
                 || WorkOrder.FOUNDERS_HANDS.unlockLayer() != 0) {
-            throw helper.assertionException(
-                    "the Morale Initiative is saved as morale_initiative: 10 Silverium for $1250 from layer 3");
+            throw failure(
+                    helper, "the Morale Initiative is saved as morale_initiative: 10 Silverium for $1250 from layer 3");
         }
         if (WorkOrder.values().length != 2) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "work orders are saved by name, so a new one needs its own pin: %s",
                     Arrays.toString(WorkOrder.values()));
         }

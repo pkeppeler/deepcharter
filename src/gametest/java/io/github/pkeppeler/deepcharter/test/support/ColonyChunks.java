@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
@@ -16,7 +18,6 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Display;
@@ -74,11 +75,10 @@ public final class ColonyChunks {
                 throw failed[0];
             }
             if (ticking[0] < positions.size()) {
-                throw helper.assertionException(
-                        Component.literal("waiting for the chunks to tick: " + ticking[0] + " of " + positions.size()));
+                throw failure(helper, "waiting for the chunks to tick: %s of %s", ticking[0], positions.size());
             }
             if (!ready.getAsBoolean()) {
-                throw helper.assertionException(Component.literal("waiting for the entities of the chunks to load"));
+                throw failure(helper, "waiting for the entities of the chunks to load");
             }
             if (ran[0]) {
                 return;
