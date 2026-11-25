@@ -414,12 +414,6 @@ public class CampaignTerrainTest {
             expectedAnchors.add(layer.minY());
             expectedAnchors.add(layer.minY() + crust);
         }
-        // Layer 1's strata (#1277): at each zone edge, the contact 6 under it and the thin bed 2 and 4 above that.
-        Band claim = CampaignBands.LAYER_1;
-        for (int zone = 0; zone < Zones.COUNT - 1; zone++) {
-            int edge = Zones.span(claim.minY(), claim.height(), zone).low();
-            expectedAnchors.addAll(List.of(edge - 6, edge - 4, edge - 2));
-        }
         expect(helper, anchors.equals(expectedAnchors), "rule anchors %s, expected %s", anchors, expectedAnchors);
 
         JsonObject dimension =

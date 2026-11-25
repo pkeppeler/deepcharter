@@ -59,6 +59,7 @@ public class ClaimTourScenario extends EvidenceScenario {
     private static final int RUN = 24;
 
     private static final double LOOK = 10;
+    private static final int ROOF = 10;
     private static final double EYE = 1.62;
     /** A cut face: blocks to each side of the start column, rows each way from the contact, and how deep the cut runs south. */
     private static final int CUT_HALF_WIDTH = 34;
@@ -160,18 +161,33 @@ public class ClaimTourScenario extends EvidenceScenario {
         frame(context);
     }
 
-    /** A miner's lamp: light blocks at the eye and along the line of sight, in open cells only, so nothing in view is replaced. */
+    /**
+     * Lamps: light blocks at the eye and along the line of sight, as a miner carries them, and a ring of them two blocks short of what the
+     * view looks at, as the Company would hang them on a wall; in open cells only, so nothing in view is replaced.
+     */
     private static List<BlockPos> lamps(ServerLevel level, View view) {
         List<BlockPos> placed = new ArrayList<>();
         Vec3 step = view.target().subtract(view.eye()).normalize();
         for (int along = 0; along <= 12; along += 4) {
-            BlockPos at = BlockPos.containing(view.eye().add(step.scale(along)));
-            if (level.getBlockState(at).isAir()) {
-                level.setBlock(at, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, LAMP), Block.UPDATE_ALL);
-                placed.add(at.immutable());
+            lamp(level, BlockPos.containing(view.eye().add(step.scale(along))), placed);
+        }
+        Vec3 near = Vec3.atCenterOf(subject(level, view)).subtract(step.scale(2.5));
+        Vec3 flat = step.cross(new Vec3(0, 1, 0));
+        // A view straight up or down has no side of its own: any horizontal one does.
+        Vec3 side = flat.length() < 0.1 ? new Vec3(1, 0, 0) : flat.normalize();
+        for (int across = -16; across <= 16; across += 8) {
+            for (int up = -12; up <= 12; up += 6) {
+                lamp(level, BlockPos.containing(near.add(side.scale(across)).add(0, up, 0)), placed);
             }
         }
         return placed;
+    }
+
+    private static void lamp(ServerLevel level, BlockPos at, List<BlockPos> placed) {
+        if (level.getBlockState(at).isAir()) {
+            level.setBlock(at, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, LAMP), Block.UPDATE_ALL);
+            placed.add(at.immutable());
+        }
     }
 
     private static void look(
@@ -191,22 +207,39 @@ public class ClaimTourScenario extends EvidenceScenario {
                     level(server), view.eye().x, view.eye().y - EYE, view.eye().z, Set.of(), yaw, pitch, true);
         });
         BlockPos eye = BlockPos.containing(view.eye());
+        BlockPos subject = singleplayer.getServer().computeOnServer(server -> subject(level(server), view));
         ClientWait.until(
-                context, "the view at " + eye.toShortString() + " rendered", client -> ready(client, eye, nightVision));
-        // tick-wait: the light engine and the section meshes settle a few ticks after the last change; nothing reports
-        // it
+                context,
+                "the view at " + eye.toShortString() + " rendered",
+                client -> ready(client, eye, subject, nightVision));
+        // tick-wait: the light and the section meshes settle a few ticks after the last change; nothing reports that
         context.waitTicks(40);
         ClientWait.until(
                 context,
                 "the view at " + eye.toShortString() + " rendered again",
-                client -> ready(client, eye, nightVision));
+                client -> ready(client, eye, subject, nightVision));
     }
 
-    private static boolean ready(Minecraft client, BlockPos eye, boolean nightVision) {
+    /** The first block the line of sight meets: the client holds the view once it holds this block. */
+    private static BlockPos subject(ServerLevel level, View view) {
+        Vec3 step = view.target().subtract(view.eye()).normalize().scale(0.5);
+        Vec3 at = view.eye();
+        for (int i = 0; i < 128; i++) {
+            at = at.add(step);
+            BlockPos pos = BlockPos.containing(at);
+            if (!level.getBlockState(pos).isAir() && !level.getBlockState(pos).is(Blocks.LIGHT)) {
+                return pos;
+            }
+        }
+        throw new AssertionError("nothing in view from " + view.eye() + " towards " + view.target());
+    }
+
+    private static boolean ready(Minecraft client, BlockPos eye, BlockPos subject, boolean nightVision) {
         return client.player != null
                 && LayerChain.isCampaign(ClientLight.clientLevel(client))
                 && client.player.blockPosition().distManhattan(eye) <= 2
                 && client.player.hasEffect(MobEffects.NIGHT_VISION) == nightVision
+                && !ClientLight.clientLevel(client).getBlockState(subject).isAir()
                 && client.levelRenderer.hasRenderedAllSections();
     }
 
@@ -225,7 +258,8 @@ public class ClaimTourScenario extends EvidenceScenario {
                     BlockPos feet = new BlockPos(x, y, z);
                     if (!level.getBlockState(feet).isAir()
                             || !level.getBlockState(feet.above()).isAir()
-                            || !level.getBlockState(feet.below()).isSolidRender()) {
+                            || !level.getBlockState(feet.below()).isSolidRender()
+                            || !roofed(level, feet)) {
                         continue;
                     }
                     for (Direction direction : Direction.Plane.HORIZONTAL) {
@@ -250,6 +284,16 @@ public class ClaimTourScenario extends EvidenceScenario {
         Vec3 eye = Vec3.atBottomCenterOf(best).add(0, EYE, 0);
         Vec3 ahead = Vec3.atLowerCornerOf(bestDirection.getUnitVec3i()).scale(LOOK);
         return new View(eye, eye.add(ahead).add(0, -1.5, 0));
+    }
+
+    /** A cave has a roof: rock within {@value #ROOF} blocks over the feet, so the open room over the rock's top is no cave. */
+    private static boolean roofed(ServerLevel level, BlockPos feet) {
+        for (int up = 2; up <= ROOF; up++) {
+            if (!level.getBlockState(feet.above(up)).isAir()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Cuts a room south of the start column across the contact near {@code edge}, so its north face shows the strata either side. */
@@ -318,12 +362,17 @@ public class ClaimTourScenario extends EvidenceScenario {
         return candle;
     }
 
-    /** The highest open row of the shaft's hollow over its foot. */
+    /** The highest rung of the shaft's ladder: the top of the shaft that is still in the rock. */
     private static int shaftTop(ServerLevel level, BlockPos axis, BlockPos pail) {
-        int y = pail.getY();
-        while (level.getBlockState(axis.atY(y + 1)).isAir() && y < pail.getY() + 64) {
-            y++;
+        int top = pail.getY();
+        for (int y = pail.getY(); y < pail.getY() + 64; y++) {
+            for (BlockPos at : BlockPos.betweenClosed(
+                    axis.atY(y).offset(-1, 0, -1), axis.atY(y).offset(1, 0, 1))) {
+                if (level.getBlockState(at).is(Blocks.LADDER)) {
+                    top = y;
+                }
+            }
         }
-        return y;
+        return top;
     }
 }

@@ -64,10 +64,10 @@ public class TheClaimTest {
     private static final int TOP_SKIN = 4;
 
     /**
-     * Rows either side of a zone's edge where the contact between two strata may lie: the material rule lays it 6 under the edge, raised by
-     * up to twice the column's surface depth, and a thin bed of the lower rock lies up to 4 above it.
+     * Rows either side of a zone's edge where the contact between two strata may lie: the material rule lays it 6 under the edge, moved 5 down
+     * to 6 up by the contact noise and raised by the column's surface depth, and a thin bed of the lower rock lies up to 4 above it.
      */
-    private static final int CONTACT_BELOW = 6;
+    private static final int CONTACT_BELOW = 12;
 
     private static final int CONTACT_ABOVE = 12;
 
@@ -206,7 +206,7 @@ public class TheClaimTest {
                 edge);
         expect(
                 helper,
-                highestContact - lowestContact >= 4,
+                highestContact - lowestContact >= 8,
                 "the hardpan's contact is flat, from y=%s to y=%s: a ruled line, not rock",
                 lowestContact,
                 highestContact);
