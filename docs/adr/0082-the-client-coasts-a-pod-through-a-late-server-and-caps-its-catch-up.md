@@ -65,6 +65,27 @@ Two causes, both in the tick after a stall. (1) A moveless stretch of 4 ticks wa
 
 The invariant is unchanged: a pod is never drawn more than `coastTicks - 1 + coastTailShare` ticks of speed past where the server put it. A move that arrives one tick late carries a stale position, so a pod that has coasted is already ahead of it. The old rule read that as an overshoot and gave it back at `settleShare` (a 0.024 step backward, then a stand: the 0.025 of #871 and the near freeze of #897 and #1095).
 
-- A move that advances the target along the coast (by at least half the server's reported speed along the coast) is a late move, not a stop: the pod goes on, a whole tick or its tail share and never less, within the reach above counted in blocks past the target, and stands when it is used up. It no longer gives the excess back while moves keep advancing.
+- A move that advances the target along the coast (by at least half the server's reported speed along the coast) is a late move, not a stop: the pod goes on a whole tick, or by what is left of the reach above (counted in blocks past the target) when that is less, and stands at its end. It no longer gives the excess back while moves keep advancing.
 - While no move has arrived and the server reports the pod moving, the pod goes on within the same reach (it stood for the whole wait before), for `settleDelayTicks`.
 - A move that does not advance, or a pod the server reports still, settles back as before.
+
+### The 0.0674533 of five CI runs
+
+Every CI failure (#897, #976, #1257, #1307, #1318) reported 0.06745330749075862, the pilot's view in the short-stall drive, on `main`'s `PodGlide`. Two roundings put a late move a hair behind a coasted pod:
+
+- the reported speed travels as an `LpVec3`, so 0.2 arrives as 2 × 19660 / 32766 − 1 = 0.2000244, or 819.3000 position quanta (1/4096);
+- a position travels rounded to a quantum, and three moves in five step 819 quanta, not 819.2.
+
+A pod that arrived on its target and coasted one tick on is 819.3000 quanta past it. A move one tick late moves the target 819 quanta, which lands 0.30000610 quanta (7.3244e-5 blocks) behind the pod. `main` read that as an overshoot and settled: the pod snapped back 7.3244e-5 and stood for the tick. The next tick the rest came in a burst, and the pod caught up at the capped 1.35 × 0.2000244 = 0.270033. The test measures a tick from the frame a quarter into it, so three quarters of the tick before counts: 0.75 × −7.3244e-5 + 0.25 × 0.270033 = 0.0674533, with the same 0.0675082 longest frame step and −1.8311e-5 backward step that CI logged. (The first amendment's reading of 0.0675 as half of 0.135 was wrong.) A server that runs two ticks late for four ticks and then catches up reproduces it in the client test.
+
+### Three hitches of the same kind
+
+A 1-D model of `PodGlide` under `PacketJitter`, matched to a per-tick client trace to the last digit, judged every pattern of one to three ticks of extra lateness on five moves around each late drive. Three hitches were left after the late-move rule above, each fixed:
+
+- The go-on step was a whole tick, the tail share, or nothing, so a pod a rounding step short of the tail's reach stood. It now draws what is left of the reach and stands at its end.
+- A capped catch-up drew the cap and then a sliver of the gap, and a coast after that sliver made a short tick. Capped steps of a moving pod now split the gap evenly, each still under the cap.
+- A coasted pod within a tick of its target draws the whole tick past it, and that part counts against the reach.
+
+### A pod at the reach is not held to the floor
+
+A stale move resets the client's moveless count but not the pod's lead over the last position the server sent, so a server late before an injected stall can run the pod to the reach with fewer moveless ticks than the coast covers. The invariant then makes the pod stand. `PodDriveSmoothClientTest` leaves out of the floor check the two ticks that take in a tick where the pod stood at the reach past the last position the server sent (read from the entity's position codec). It holds every other tick to half the speed. The bounds scale with the reported speed. The drives pass at 1.4 times the stock speed (#1276). The watch window for a pinned pod is derived from `settleDelayTicks` and `settleShare` at the pod's speed, because a faster pod coasts further past the pin.
