@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.TourShots.EYE;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -142,8 +144,6 @@ import org.jspecify.annotations.Nullable;
  * taken and no earlier still changes for it. {@link HollowsTourScenario} shoots the layer 3 stops alone.
  */
 public class DesignTourScenario extends EvidenceScenario {
-    private static final double EYE = TourShots.EYE;
-
     private static final int ORBIT_FRAMES = 26;
     private static final int ORBIT_RADIUS = 58;
     private static final int ORBIT_HEIGHT = 34;
@@ -610,7 +610,7 @@ public class DesignTourScenario extends EvidenceScenario {
             TourShots.overviews(colony).forEach(this::shoot);
 
             // The orbit for the GIF.
-            Vec3 middle = p(0, 6, -6);
+            Vec3 middle = TourShots.middle(colony);
             for (int i = 0; i < ORBIT_FRAMES; i++) {
                 double angle = 2 * Math.PI * i / ORBIT_FRAMES + Math.PI / 2;
                 Vec3 eye = p(Math.cos(angle) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(angle) * ORBIT_RADIUS);

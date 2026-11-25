@@ -67,9 +67,14 @@ public final class TourShots {
         return Vec3.atBottomCenterOf(TestColony.anchor(colony, anchor)).add(dx, dy, dz);
     }
 
+    /** The point the views from the air and the orbit look at. */
+    public static Vec3 middle(ColonySite.Placed colony) {
+        return p(colony, 0, 6, -6);
+    }
+
     /** The views of the town from the air and from its margin, which the tour shoots before its orbit. */
     public static List<Shot> overviews(ColonySite.Placed colony) {
-        Vec3 middle = p(colony, 0, 6, -6);
+        Vec3 middle = middle(colony);
         return List.of(
                 new Shot("colony-aerial-south", p(colony, 0, 38, 62), middle, 80, TOWN),
                 new Shot("colony-aerial-northwest", p(colony, -52, 38, -52), middle, 30, TOWN),
