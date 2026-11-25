@@ -201,7 +201,7 @@ public class TetherScenario extends EvidenceScenario {
         return TestEntities.require(level(server), id, PodEntity.class);
     }
 
-    /** A hall in layer 1 with a shelf along its west side and a pit east of it. */
+    /** A hall in layer 1, a shelf along its west side, a pit east of it, and the person on the shelf with a tether. */
     private static void build(net.minecraft.server.MinecraftServer server) {
         ServerLevel one = level(server);
         RoomCarver.carve(
@@ -237,15 +237,15 @@ public class TetherScenario extends EvidenceScenario {
         for (int z = Z - 36; z <= Z + 36; z += 8) {
             one.setBlock(new BlockPos(X - 15, SHELF_TOP + 3, z), Blocks.GLOWSTONE.defaultBlockState(), 3);
         }
-    }
-
-    /** A pod and a wreck on the shelf, the person beside the pod with a tether. */
-    private static void place(net.minecraft.server.MinecraftServer server, UUID[] pods) {
-        ServerLevel one = level(server);
         ServerPlayer player = player(server);
         player.setGameMode(GameType.SURVIVAL);
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(RepairRegistry.item(Consumable.TETHER)));
         player.teleportTo(one, X - 0.5, SHELF_TOP, Z + 0.5, Set.of(), FACING_SOUTH, 0, true);
+    }
+
+    /** A pod and a wreck on the shelf. */
+    private static void place(net.minecraft.server.MinecraftServer server, UUID[] pods) {
+        ServerLevel one = level(server);
         PodEntity pod = TestEntities.create(PodRegistry.POD, one);
         pod.setPos(X - 4.5, SHELF_TOP, Z + 0.5);
         one.addFreshEntity(pod);

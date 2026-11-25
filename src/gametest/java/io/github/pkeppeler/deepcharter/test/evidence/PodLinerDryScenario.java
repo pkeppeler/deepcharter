@@ -68,13 +68,14 @@ public class PodLinerDryScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 build(one);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                player.setGameMode(GameType.SURVIVAL);
+                player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_NORTH, LOOK_DOWN, true);
             });
             ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, RADIUS);
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.setGameMode(GameType.SURVIVAL);
-                player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_NORTH, LOOK_DOWN, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setYRot(FACING_NORTH);
