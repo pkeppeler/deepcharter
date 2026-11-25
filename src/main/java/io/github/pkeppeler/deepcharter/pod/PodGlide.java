@@ -82,6 +82,7 @@ final class PodGlide extends AbstractInterpolationHandler {
         }
         // The direction of the coast, the size of the server's speed: the coast's own vector is shrunk by its tail and
         // by goOn.
+        if (System.getProperty("pgt") != null) { org.slf4j.LoggerFactory.getLogger("PGT").info("MOVE id {} t {} z {} newtz {} v {}", entity.getId(), entity.level().getGameTime(), entity.getZ(), path.endPosition().z, entity.getDeltaMovement().z); }
         Vec3 coast = coastDirection;
         advancing = coast != null
                 && path.endPosition().subtract(target.position()).dot(coast.normalize())
@@ -100,6 +101,9 @@ final class PodGlide extends AbstractInterpolationHandler {
         sinceMove++;
         Vec3 reported = entity.getDeltaMovement();
         boolean moving = reported.lengthSqr() > ARRIVED * ARRIVED;
+        if (entity.level().isClientSide() && System.getProperty("pgt") != null) {
+            org.slf4j.LoggerFactory.getLogger("PGT").info("GLIDE id {} t {} z {} tz {} rem {} coasted {} coasting {} since {} adv {} dirNull {} v {}", entity.getId(), entity.level().getGameTime(), entity.getZ(), target.position().z, remaining, coasted, coasting, sinceMove, advancing, coastDirection == null, reported.z);
+        }
         if (coasting) {
             if (coastOn(tuning, reported, moving)) {
                 return;
