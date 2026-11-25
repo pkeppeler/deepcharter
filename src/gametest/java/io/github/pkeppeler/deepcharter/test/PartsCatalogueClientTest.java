@@ -1568,8 +1568,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.waitTicks(2);
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         CatalogueScene.hover(context, layout.shelf().craftable());
-        context.getInput().pressMouse(LEFT_MOUSE);
-        context.waitTicks(1);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
         List<Item> shown = context.computeOnClient(client -> panel.shownItems());
         require(
                 shown.contains(nanobots) && shown.contains(DRILL) && !shown.contains(HangarParts.ROTOR_HUB),
@@ -1623,8 +1622,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     private static void theCatalogueRemembersItsState(ClientGameTestContext context, CataloguePanel panel) {
         CatalogueScene.hover(
                 context, CatalogueScene.layout(context, panel).shelf().search());
-        context.getInput().pressMouse(LEFT_MOUSE);
-        context.waitTicks(1);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
         require(
                 context.computeOnClient(client -> panel.searchFocused()),
                 "the field is focused before the screen closes");
