@@ -25,12 +25,15 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.server.level.ChunkLevel;
+import net.minecraft.server.level.FullChunkStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.TicketStorage;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.Vec3;
 
@@ -42,8 +45,15 @@ public class TeleportArrivalTest {
     /** How long the arrival is watched, in ticks. */
     private static final int WATCH_TICKS = 200;
 
+    /**
+     * Ticks from the teleport to the client's answer to it, which is what moves the pilot's own chunk tickets to the
+     * arrival: a 250 ms round trip, or a server running behind. Any answer later than the one-tick ticket of the landing
+     * look-up lets the arrival chunk drop with no ticket at all (#1353: 2, 3, 5 and 20 all did, 1 did not).
+     */
+    private static final int ANSWER_DELAY = 5;
+
     @GameTest(maxTicks = WATCH_TICKS + 100)
-    public void aTeleportedPodStaysLoadedAndInThePilotsSight(GameTestHelper helper) {
+    public void theArrivalChunkHoldsUntilTheLatePilotsTicketsArrive(GameTestHelper helper) {
         ServerLevel overworld = helper.getLevel().getServer().overworld();
         int x = 14_000;
         ChunkPos arrival = ChunkPos.containing(TestLayers.pos(TestLayers.SURFACE, x, 64, 0));
@@ -53,6 +63,8 @@ public class TeleportArrivalTest {
                 "chunk %s should be cold before the test",
                 arrival);
         MockPlayer pilot = MockPlayers.join(helper, "Arriver");
+        // The join teleports the mock into the structure: answer it, so the server sends it the chunks around it there.
+        pilot.acknowledgeTeleports();
         Charters.found(
                         overworld.getServer(),
                         pilot.player().getUUID(),
@@ -67,6 +79,71 @@ public class TeleportArrivalTest {
         PodComponents.register(pod, charter.id());
         expect(helper, pilot.player().startRiding(pod, true, false), "the pilot could not board the pod");
         int podId = pod.getId();
+        long[] sent = {-1};
+        String[] last = {""};
+        boolean[] everLoaded = {false};
+        List<String> lapses = new ArrayList<>();
+        TestTicks.each(helper, () -> {
+            ServerPlayer player = pilot.player();
+            if (sent[0] < 0) {
+                // The pilot's client holds its pod before it teleports, as a pilot's has long done.
+                if (clientHolds(pilot, podId)) {
+                    send(helper, overworld, pilot, x);
+                    expect(
+                            helper,
+                            ChunkPos.containing(pod.blockPosition()).equals(arrival),
+                            "the pod should be in %s, is at %s",
+                            arrival,
+                            pod.position());
+                    sent[0] = helper.getTick();
+                }
+                return;
+            }
+            long tick = helper.getTick() - sent[0];
+            // A real client answers the teleport once, then reports its look every tick: each moves its chunk tickets.
+            // A
+            // second answer to the same teleport would disconnect it.
+            if (tick == ANSWER_DELAY) {
+                pilot.acknowledgeTeleports();
+            }
+            if (tick > ANSWER_DELAY && player.isPassenger()) {
+                player.connection.handleMovePlayer(
+                        new ServerboundMovePlayerPacket.Rot(player.getYRot(), player.getXRot(), false, false));
+            }
+            long key = arrival.pack();
+            int level = overworld.getChunkSource().chunkMap.getDistanceManager().getChunkLevel(key, false);
+            boolean loaded = overworld.areEntitiesLoaded(key);
+            String state = String.format(
+                    "level=%d tickets=%s entitiesLoaded=%s entityTicking=%s clientHoldsPod=%s podRemoved=%s",
+                    level,
+                    overworld
+                            .getDataStorage()
+                            .computeIfAbsent(TicketStorage.TYPE)
+                            .getTickets(key),
+                    loaded,
+                    overworld.isPositionEntityTicking(pod.blockPosition()),
+                    clientHolds(pilot, podId),
+                    pod.isRemoved());
+            if (!state.equals(last[0])) {
+                DeepCharter.LOGGER.info("[teleport-arrival] tick={} {}", tick, state);
+                last[0] = state;
+            }
+            everLoaded[0] |= loaded;
+            if (level > ChunkLevel.byStatus(FullChunkStatus.FULL) || (everLoaded[0] && !loaded)) {
+                lapses.add(String.format("tick %d: level %d, entities loaded %s", tick, level, loaded));
+            }
+            if (tick >= WATCH_TICKS) {
+                expect(helper, lapses.isEmpty(), "the arrival chunk lapsed: %s", lapses);
+                expect(helper, !pod.isRemoved(), "the pod was removed: %s", pod.getRemovalReason());
+                expect(helper, clientHolds(pilot, podId), "the pilot's client should hold its pod at the end");
+                expect(helper, player.getVehicle() == pod, "the pilot should still ride the pod");
+                helper.succeed();
+            }
+        });
+    }
+
+    /** The pilot uses a Matter Transmitter with the colony unbuilt and the world spawn at column {@code x}, 0. */
+    private static void send(GameTestHelper helper, ServerLevel overworld, MockPlayer pilot, int x) {
         WorldData.with(overworld.getServer(), ColonySite.TYPE, new ColonySite(), () -> {
             LevelData.RespawnData original = overworld.getRespawnData();
             try {
@@ -91,51 +168,11 @@ public class TeleportArrivalTest {
                 overworld.setRespawnData(original);
             }
         });
-        expect(
-                helper,
-                ChunkPos.containing(pod.blockPosition()).equals(arrival),
-                "the pod should be in %s, is at %s",
-                arrival,
-                pod.position());
-        long start = helper.getTick();
-        List<String> lapses = new ArrayList<>();
-        TestTicks.each(helper, () -> {
-            long tick = helper.getTick() - start;
-            ServerPlayer player = pilot.player();
-            // A real client answers the teleport and then reports its look every tick, which moves its chunk tickets.
-            pilot.acknowledgeTeleports();
-            if (player.isPassenger()) {
-                player.connection.handleMovePlayer(
-                        new ServerboundMovePlayerPacket.Rot(player.getYRot(), player.getXRot(), false, false));
-            }
-            long key = arrival.pack();
-            int level = overworld.getChunkSource().chunkMap.getDistanceManager().getChunkLevel(key, false);
-            boolean loaded = overworld.areEntitiesLoaded(key);
-            boolean ticking = overworld.isPositionEntityTicking(pod.blockPosition());
-            boolean seen = clientHolds(pilot, podId);
-            DeepCharter.LOGGER.info(
-                    "[teleport-arrival] tick={} level={} entitiesLoaded={} entityTicking={} clientHoldsPod={} vehicle={}",
-                    tick,
-                    level,
-                    loaded,
-                    ticking,
-                    seen,
-                    player.getVehicle() == null ? "none" : player.getVehicle().getId());
-            if (!loaded) {
-                lapses.add("tick " + tick + ": entities unloaded at level " + level);
-            }
-            if (tick >= WATCH_TICKS) {
-                expect(helper, lapses.isEmpty(), "the arrival chunk lapsed: %s", lapses);
-                expect(helper, seen, "the pilot's client should hold its pod at the end");
-                expect(helper, player.getVehicle() == pod, "the pilot should still ride the pod");
-                helper.succeed();
-            }
-        });
     }
 
     /** Whether the pilot's client holds the pod, from the add and remove packets it was sent. */
     private static boolean clientHolds(MockPlayer pilot, int podId) {
-        boolean holds = true;
+        boolean holds = false;
         for (Object packet : pilot.sequence()) {
             if (packet instanceof ClientboundAddEntityPacket add && add.getId() == podId) {
                 holds = true;
