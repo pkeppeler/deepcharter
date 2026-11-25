@@ -848,7 +848,7 @@ public class TerminalFrameworkTest {
     public void anOversizedActionPayloadDoesNotDecode(GameTestHelper helper) {
         BlockPos pos = helper.absolutePos(BlockPos.ZERO);
         CompoundTag small = new CompoundTag();
-        small.putString(Terminals.PART_KEY, "deepcharter:pump_motor");
+        small.putString("part", "deepcharter:pump_motor");
         CompoundTag big = new CompoundTag();
         big.putString("junk", "x".repeat(TerminalActionPayload.MAX_ARGS_BYTES * 4));
         if (!decodes(helper, pos, small)) {
@@ -864,7 +864,7 @@ public class TerminalFrameworkTest {
         RegistryFriendlyByteBuf buf =
                 new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
         BlockPos.STREAM_CODEC.encode(buf, pos);
-        Identifier.STREAM_CODEC.encode(buf, Terminals.INSERT_PART);
+        Identifier.STREAM_CODEC.encode(buf, Identifier.fromNamespaceAndPath("deepcharter_test", "any_action"));
         ByteBufCodecs.COMPOUND_TAG.encode(buf, args);
         try {
             TerminalActionPayload payload = TerminalActionPayload.CODEC.decode(buf);

@@ -10,8 +10,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 
 /**
- * Which screen a terminal opens. An unrepaired terminal always opens the generic {@link TerminalScreen}, offline. A repaired one
- * opens the screen its feature registered with {@link #register}, or the generic online screen when there is none.
+ * Which screen a working terminal opens: the screen its feature registered with {@link #register}, or the generic online
+ * {@link TerminalScreen} when there is none. An unrepaired terminal sends no view: it opens its {@link RepairScreen}.
  */
 public final class TerminalScreens {
     private static final Map<TerminalType, Function<TerminalView, ? extends Screen>> ONLINE = new HashMap<>();
@@ -35,10 +35,14 @@ public final class TerminalScreens {
         client.gui.setScreen(create(view));
     }
 
-    /** The screen {@code view} opens: the offline screen when it is not repaired, else the type's online screen. A test builds every screen through this. */
+    /** The screen {@code view} opens: the type's online screen. A test builds every terminal screen through this. */
     public static Screen create(TerminalView view) {
         TerminalType type = TerminalTypes.get(view.type())
                 .orElseThrow(() -> new IllegalStateException("unknown terminal type " + view.type()));
-        return view.repaired() ? ONLINE.getOrDefault(type, TerminalScreen::new).apply(view) : new TerminalScreen(view);
+        if (!view.repaired()) {
+            throw new IllegalArgumentException(
+                    "terminal " + view.type() + " is not repaired: it opens its repair menu");
+        }
+        return ONLINE.getOrDefault(type, TerminalScreen::new).apply(view);
     }
 }

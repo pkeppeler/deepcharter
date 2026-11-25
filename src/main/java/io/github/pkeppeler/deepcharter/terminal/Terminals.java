@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.terminal;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -10,7 +9,6 @@ import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -33,41 +31,36 @@ import net.minecraft.world.phys.Vec3;
  * Call everything on the server thread.
  */
 public final class Terminals {
-    /** The built-in action: put the part named by {@code args.part} (an item id) into an unrepaired terminal. */
-    public static final Identifier INSERT_PART = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "insert_part");
-    /** The key of the part id in the args of {@link #INSERT_PART}. */
-    public static final String PART_KEY = "part";
-
     private Terminals() {}
 
     /**
-     * Opens the terminal at {@code pos} for {@code player}: sends the client its {@link TerminalView}. An unrepaired terminal
-     * opens too, as its offline screen, which is where parts go in. The upper half of a terminal opens its lower half.
+     * Opens the terminal at {@code pos} for {@code player}. A working terminal sends the client its {@link TerminalView}; an
+     * unrepaired one opens its {@link RepairMenu}, where the parts go in. The upper half of a terminal opens its lower half.
      */
     public static Optional<TerminalRefusal> open(ServerPlayer player, BlockPos clicked) {
         BlockPos pos = TerminalBlock.lowerHalf(player.level(), clicked);
         return switch (access(player, pos)) {
             case Access.Denied denied -> refuse(player, denied.refusal());
             case Access.Granted granted -> {
-                sendView(player, pos, granted);
+                RepairState state = RepairState.get(player.level().getServer());
+                if (state.online(granted.type())) {
+                    sendView(player, pos, granted);
+                } else {
+                    RepairMenu.open(player, pos, granted.type(), unlocked(state, granted.type()));
+                }
                 TerminalEvents.OPENED.invoker().onOpened(player.level().getServer(), granted.type(), player, pos);
                 yield Optional.empty();
             }
         };
     }
 
-    /**
-     * Runs {@code action} at the terminal at {@code pos} for {@code player}. {@link #INSERT_PART} works on an unrepaired terminal
-     * only; every other action needs a repaired one and a handler from {@link TerminalActions#register}.
-     */
+    /** Runs {@code action} at the terminal at {@code pos} for {@code player}: it needs a repaired terminal and a handler from {@link TerminalActions#register}. */
     public static Optional<TerminalRefusal> act(
             ServerPlayer player, BlockPos pos, Identifier action, CompoundTag args) {
         return switch (access(player, pos)) {
             case Access.Denied denied -> refuse(player, denied.refusal());
             case Access.Granted granted -> {
-                Optional<TerminalRefusal> refusal = action.equals(INSERT_PART)
-                        ? insert(player, granted, args)
-                        : run(player, granted, pos, action, args);
+                Optional<TerminalRefusal> refusal = run(player, granted, pos, action, args);
                 if (refusal.isPresent()) {
                     yield refuse(player, refusal.get());
                 }
@@ -143,26 +136,45 @@ public final class Terminals {
         return new Access.Granted(type, charter);
     }
 
-    private static Optional<TerminalRefusal> insert(ServerPlayer player, Access.Granted access, CompoundTag args) {
-        if (!access.type().needsRepair()) {
-            return Optional.of(TerminalRefusal.ALREADY_REPAIRED);
+    /**
+     * Puts one {@code part} from the player's inventory into the unrepaired terminal at {@code pos}: the right-click shortcut
+     * of the {@link RepairMenu}, which holds the same rules. A refusal takes nothing, and the player is told why.
+     */
+    public static Optional<TerminalRefusal> insert(ServerPlayer player, BlockPos clicked, Item part) {
+        BlockPos pos = TerminalBlock.lowerHalf(player.level(), clicked);
+        Optional<TerminalRefusal> refusal = insertRefusal(player, pos, part);
+        if (refusal.isEmpty() && takeOne(player.getInventory(), part).isEmpty()) {
+            refusal = Optional.of(TerminalRefusal.MISSING_PART);
+        }
+        if (refusal.isPresent()) {
+            return refuse(player, refusal.get());
+        }
+        commit(player, pos, part);
+        return Optional.empty();
+    }
+
+    /** Why {@code player} cannot put {@code part} into the terminal at {@code pos} now, or empty when they can. Changes nothing. */
+    static Optional<TerminalRefusal> insertRefusal(ServerPlayer player, BlockPos pos, Item part) {
+        return switch (access(player, pos)) {
+            case Access.Denied denied -> Optional.of(denied.refusal());
+            case Access.Granted granted ->
+                granted.type().needsRepair()
+                        ? RepairState.get(player.level().getServer()).check(granted.type(), part)
+                        : Optional.of(TerminalRefusal.ALREADY_REPAIRED);
+        };
+    }
+
+    /**
+     * Records {@code part}, already taken from the player, as in the terminal at {@code pos}, and fires
+     * {@link TerminalEvents#REPAIRED} if it was the last. Call only after {@link #insertRefusal} found nothing on this tick.
+     */
+    static void commit(ServerPlayer player, BlockPos pos, Item part) {
+        if (!(access(player, pos) instanceof Access.Granted access)) {
+            throw new IllegalStateException("a part that passed the check lost its access at " + pos);
         }
         MinecraftServer server = player.level().getServer();
         RepairState state = RepairState.get(server);
-        Optional<Item> part =
-                args.getString(PART_KEY).map(Identifier::tryParse).flatMap(BuiltInRegistries.ITEM::getOptional);
-        if (part.isEmpty()) {
-            return Optional.of(TerminalRefusal.NOT_A_PART);
-        }
-        Optional<TerminalRefusal> refusal = state.check(access.type(), part.get());
-        if (refusal.isPresent()) {
-            return refusal;
-        }
-        Optional<ItemStack> held = takeOne(player.getInventory(), part.get());
-        if (held.isEmpty()) {
-            return Optional.of(TerminalRefusal.MISSING_PART);
-        }
-        state.insert(access.type(), part.get()).ifPresent(unexpected -> {
+        state.insert(access.type(), part).ifPresent(unexpected -> {
             throw new IllegalStateException("a part that passed the check was refused: " + unexpected);
         });
         if (state.repaired(access.type())) {
@@ -170,7 +182,18 @@ public final class Terminals {
                     .invoker()
                     .onRepaired(server, access.type(), access.charter().orElseThrow(), player);
         }
-        return Optional.empty();
+    }
+
+    /** True while {@code player} may still use the repair menu of {@code type} at {@code pos}: access holds and it is still unrepaired. */
+    static boolean stillOpen(ServerPlayer player, BlockPos pos, TerminalType type) {
+        return access(player, pos) instanceof Access.Granted granted
+                && granted.type() == type
+                && !RepairState.get(player.level().getServer()).online(type);
+    }
+
+    /** Parts can go into {@code type}: its prerequisite, if any, is repaired. */
+    private static boolean unlocked(RepairState state, TerminalType type) {
+        return type.prerequisite().map(state::repaired).orElse(true);
     }
 
     /** Takes one {@code item} from the inventory, or returns empty and changes nothing when there is none. */
