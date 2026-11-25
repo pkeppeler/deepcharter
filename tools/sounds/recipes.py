@@ -440,7 +440,8 @@ def lamp_out():
         click = dsp.times(dsp.filt(dsp.noise(rng, length), "bp", 3200, 1.4), dsp.decay(length, 0.003))
         for i, v in enumerate(click):
             out[start + i] += v * level
-    return dsp.normalize(dsp.widen(out, 3), 0.6)
+    # Mono (MONO below): the lamp plays where the crewmate fell, and Minecraft attenuates and pans mono sounds only.
+    return dsp.normalize(dsp.Clip(out, list(out)), 0.6)
 
 
 def rest():
@@ -485,6 +486,10 @@ RECIPES = {
     "continuity/needle": needle,
     "continuity/lamp_out": lamp_out,
 }
+
+# Recipes the game plays at a place in the world: written as mono Vorbis, because Minecraft attenuates and pans mono sounds only. Their
+# recipe makes a Clip whose two channels are the same.
+MONO = frozenset({"continuity/lamp_out"})
 
 
 @cache

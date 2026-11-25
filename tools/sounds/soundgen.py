@@ -23,7 +23,8 @@ fragments (the clock folder, #938) are cuts of one recording, made by tools/soun
 The Continuity Event's laugh (continuity/laugh, #1337) is a treated cut of the Okeh Laughing Record, made by tools/sounds/okeh_laugh.py and
 owned by tools/sounds/okeh_laugh.json.
 
-Standard library and ffmpeg only; this Mac's ffmpeg has the native Vorbis encoder alone, which writes stereo.
+Standard library and ffmpeg only. A recipe is written as stereo, except those in `recipes.MONO` (sounds the game plays at a place in the world),
+which need an ffmpeg with libvorbis: the native Vorbis encoder writes stereo only.
 """
 import argparse
 import hashlib
@@ -59,7 +60,10 @@ def _encoder_args():
     return ["-c:a", "vorbis", "-strict", "-2", "-q:a", "4"]
 
 
-def _encode(clip, target):
+def _encode(clip, target, mono):
+    """Writes `clip` to `target`; a `mono` one (recipes.MONO) as one channel, which only libvorbis writes."""
+    if mono and not first_sounds.has_libvorbis():
+        raise SystemExit(f"soundgen: {target.name} is mono, and ffmpeg has no libvorbis; its native Vorbis encoder writes stereo")
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "clip.wav"
@@ -68,8 +72,9 @@ def _encode(clip, target):
             out.setsampwidth(2)
             out.setframerate(recipes.RATE)
             out.writeframes(clip.interleaved().tobytes())
+        channels = "1" if mono else "2"
         subprocess.run(
-            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source), "-map_metadata", "-1", "-ac", "2", *_encoder_args(), str(target)],
+            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source), "-map_metadata", "-1", "-ac", channels, *_encoder_args(), str(target)],
             check=True,
         )
 
@@ -90,7 +95,7 @@ def build(names, out, manifest):
         if old and old["pcm_sha256"] == pcm and target.is_file() and _sha256(target) == old["ogg_sha256"]:
             entries[name] = old
             continue
-        _encode(clip, target)
+        _encode(clip, target, name in recipes.MONO)
         entries[name] = {"pcm_sha256": pcm, "ogg_sha256": _sha256(target)}
         print(f"built {name}")
     manifest.write_text(json.dumps(entries, indent=2, sort_keys=True) + "\n")
@@ -109,6 +114,8 @@ def check(names, out, manifest):
             problems.append(f"{name}: the manifest has no entry; run tools/sounds/soundgen.py")
         elif _sha256(target) != entry["ogg_sha256"]:
             problems.append(f"{name}: {target.name} is not the file the manifest was written for; do not edit an OGG, change its recipe")
+        elif name in recipes.MONO and first_sounds.ogg_channels(target) != 1:
+            problems.append(f"{name}: {target.name} is not mono; it plays in the world, and Minecraft positions mono sounds only")
         if entry is not None and recipes.render(name).sha256() != entry["pcm_sha256"]:
             problems.append(f"{name}: the recipe no longer makes the sound it was committed with; run tools/sounds/soundgen.py and commit")
     # The recordings' manifest sits beside the recipes' one; a manifest that is not there owns nothing, so its OGGs count as strays.
