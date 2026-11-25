@@ -33,6 +33,9 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     private static final int TRIPS = 10;
     private static final double X = 15000.5;
     private static final double Z = 3000.5;
+    /** Chunks the last trip may hold over the two thirds mark: tickets lapse on a timer, so the count wanders a little. */
+    private static final double CHUNK_SLACK = 1.1;
+
     private static final String CLIENT_LEVEL = "net.minecraft.client.multiplayer.ClientLevel";
     private static final String HOLD = "io.github.pkeppeler.deepcharter.layer.LightSync$Hold";
     private static final String NET_WATCH = "io.github.pkeppeler.deepcharter.layer.LightSync$NetWatch";
@@ -51,7 +54,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             String sounds,
             double msptMillis,
             int forceSends,
-            String serverChunks,
+            int layerChunks,
             long heapMb) {}
 
     @Override
@@ -78,7 +81,43 @@ public class BoreTripsClientTest implements FabricClientGameTest {
         } finally {
             TwoSeatPods.armClient(false);
         }
-        require(!trips.isEmpty(), "no trip ran");
+        expectSteady(trips);
+    }
+
+    /**
+     * Fails on a count that grows with the trips. The counts are read after a full collection, so they are what is held and
+     * not what is waiting to be freed. What is compared is the last trip with the first (light watches come and go within a
+     * few seconds of a trip, so those are compared with the most of the first three).
+     */
+    private static void expectSteady(List<Tripped> trips) {
+        Tripped first = trips.getFirst();
+        Tripped last = trips.getLast();
+        require(trips.size() == TRIPS, "only " + trips.size() + " of " + TRIPS + " trips ran");
+        require(
+                last.clientLevels() <= first.clientLevels(),
+                "the client holds " + last.clientLevels() + " levels after " + TRIPS + " trips, " + first.clientLevels()
+                        + " after the first: a level is kept for each crossing");
+        require(
+                last.clientEntities() <= first.clientEntities(),
+                "the client holds " + last.clientEntities() + " entities after " + TRIPS + " trips, "
+                        + first.clientEntities() + " after the first");
+        long watches = trips.stream()
+                .limit(3)
+                .mapToLong(Tripped::lightNetWatches)
+                .max()
+                .orElse(0);
+        require(
+                last.lightHolds() <= first.lightHolds() && last.lightNetWatches() <= watches && last.lightOffers() <= 1,
+                "LightSync holds more after " + TRIPS + " trips than in the first three: " + last + " against "
+                        + first);
+        require(
+                last.forceSends() == 0,
+                "vanilla force-sent the blocks below a player " + last.forceSends() + " times in " + TRIPS + " trips");
+        require(
+                last.layerChunks() <= trips.get(TRIPS * 2 / 3).layerChunks() * CHUNK_SLACK,
+                "the server holds more chunks after " + TRIPS + " trips than after the first two thirds: "
+                        + last.layerChunks() + " against "
+                        + trips.get(TRIPS * 2 / 3).layerChunks());
     }
 
     private static void trip(ClientGameTestContext context, TwoPlayerServer two, UUID clientId, Site site) {
@@ -100,7 +139,8 @@ public class BoreTripsClientTest implements FabricClientGameTest {
         two.server().runOnServer(server -> {
             two.mock().player().stopRiding();
             ServerPlayer real = SeamPodScene.player(server, clientId);
-            real.getRootVehicle().setPos(site.x(), site.two().getMaxY() + 1.5, site.z());
+            real.getRootVehicle()
+                    .setPos(site.x(), TestLayers.dimensionBand(site.two()).maxY() + 1.5, site.z());
         });
         ClientWait.until(
                 context,
@@ -122,11 +162,9 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     }
 
     private static Tripped sample(ClientGameTestContext context, TwoPlayerServer two, int trip, Site site) {
-        String chunks = two.server()
-                .computeOnServer(
-                        server -> "layer1 " + site.one().getChunkSource().getLoadedChunksCount() + " layer2 "
-                                + site.two().getChunkSource().getLoadedChunksCount() + " overworld "
-                                + server.overworld().getChunkSource().getLoadedChunksCount());
+        int chunks = two.server()
+                .computeOnServer(server -> site.one().getChunkSource().getLoadedChunksCount()
+                        + site.two().getChunkSource().getLoadedChunksCount());
         Map<String, Long> live = HeapHistogram.liveCounts(TRACKED);
         long heapMb = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
         double mspt = two.server().computeOnServer(MinecraftServer::getAverageTickTimeNanos) / 1_000_000.0;
