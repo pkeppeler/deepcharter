@@ -29,38 +29,41 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The design tour's stills that have a subject, and the check that the subject is in sight. The colony's views are measured from
- * the anchors of the buildings they show, so {@code ColonyPlacementTest} checks them on the server GameTest's own colony: a change to
- * the town that hides a subject (#869 lowered the terminals into the line of a lamp post, #1291) fails there, not half an hour into
- * a tour.
+ * The design tour's stills that have a subject, and the check that the subject is in sight. The colony's views are
+ * measured from the anchors of the buildings they show, so {@code ColonyPlacementTest} checks them on the server
+ * GameTest's own colony: a change to the town that hides a subject (#869 lowered the terminals into the line of a lamp
+ * post, #1291) fails there, not half an hour into a tour.
  */
 public final class TourShots {
     /** How far a player's eyes are above the feet. */
     public static final double EYE = 1.62;
-    /** The Host's plinth is this many blocks high (tools/colony/town.py PLINTH_TOP): his anchor is the block over it. */
+    /** The Host's plinth is this high (tools/colony/town.py PLINTH_TOP); his anchor is the block over it. */
     private static final int PLINTH_TOP = 5;
     /** The kit's blocks: the public block fields of {@link ColonyKit}. */
     private static final Set<Block> KIT = kitBlocks();
+
+    /** The town as a whole, the subject of the views from the air and the orbit. */
+    public static final Subject TOWN = new Subject("the town", TourShots::isColony, 40);
 
     private TourShots() {}
 
     /** What a still is of: a block that must stand within {@code radius} blocks of the point the camera looks at. */
     public record Subject(String what, Predicate<BlockState> test, double radius) {}
 
-    /** A still of the colony: its name, where the camera stands and looks, the ticks it settles there, and what it shows. */
+    /** A still of the colony: its name, where the camera stands and looks, its settle ticks, and what it shows. */
     public record Shot(String name, Vec3 eye, Vec3 target, int settleTicks, Subject subject) {}
 
-    /** The town as a whole, the subject of the views from the air and the orbit. */
-    public static final Subject TOWN = new Subject("the town", TourShots::isColony, 40);
-
-    /** A point {@code dx} east and {@code dz} south of the middle of the square (the foot of its plinth), {@code h} above the square's paving. */
+    /**
+     * A point {@code dx} east and {@code dz} south of the middle of the square (the foot of its plinth), {@code h}
+     * above the square's paving.
+     */
     public static Vec3 p(ColonySite.Placed colony, double dx, double h, double dz) {
         // The statue's anchor is the block he stands in, over his plinth: the paving's block is the plinth's height
         // below it.
         return rel(colony, ColonyAnchor.STATUE, dx, h - PLINTH_TOP, dz);
     }
 
-    /** A point {@code dx} east, {@code dy} up and {@code dz} south of the bottom centre of the block of {@code anchor}. */
+    /** A point {@code dx} east, {@code dy} up and {@code dz} south of the bottom centre of {@code anchor}'s block. */
     public static Vec3 rel(ColonySite.Placed colony, ColonyAnchor anchor, double dx, double dy, double dz) {
         return Vec3.atBottomCenterOf(TestColony.anchor(colony, anchor)).add(dx, dy, dz);
     }
@@ -87,8 +90,8 @@ public final class TourShots {
     }
 
     /**
-     * The close-ups, which the tour shoots after its orbit, each from the open side of its building (the square for the terminals,
-     * the street for the doors).
+     * The close-ups, which the tour shoots after its orbit, each from the open side of its building (the square for the
+     * terminals, the street for the doors).
      */
     public static List<Shot> closeUps(ColonySite.Placed colony) {
         List<Shot> shots = new ArrayList<>();
@@ -199,8 +202,8 @@ public final class TourShots {
     }
 
     /**
-     * Why {@code subject} is not in sight from {@code eye} looking at {@code target}, or null if it is: no block of the subject is
-     * within its radius of {@code target}, or something else stands in the line of sight and hides it.
+     * Why {@code subject} is not in sight from {@code eye} looking at {@code target}, or null if it is: no block of the
+     * subject is within its radius of {@code target}, or something else stands in the line of sight and hides it.
      */
     public static @Nullable String problem(ServerLevel level, Vec3 eye, Vec3 target, Subject subject) {
         BlockPos centre = BlockPos.containing(target);
@@ -225,7 +228,7 @@ public final class TourShots {
         return null;
     }
 
-    /** A block of the colony's kit: what the colony is made of, so a view of the town or of a wall of it has a subject. */
+    /** A block of the colony's kit: what the colony is made of, so a view of the town or of a wall has a subject. */
     private static boolean isColony(BlockState state) {
         return KIT.contains(state.getBlock()) || state.is(ColonyBlocks.CONDUIT) || state.is(ColonyBlocks.COMPANY_LAMP);
     }

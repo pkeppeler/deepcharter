@@ -803,8 +803,9 @@ public class ColonyPlacementTest {
     }
 
     /**
-     * Every still the design tour takes of the colony from over the pad has its subject in sight (#1291). A view from beyond the
-     * pad's edge crosses natural ground, which this world does not share with the tour's fixed seed, so only the tour checks it.
+     * Every still the design tour takes of the colony from over the pad has its subject in sight (#1291). A view from
+     * beyond the pad's edge crosses natural ground, which this world does not share with the tour's fixed seed, so only
+     * the tour checks it.
      */
     @GameTest(maxTicks = 100)
     public void everyDesignTourViewFromOverThePadSeesItsSubject(GameTestHelper helper) {
