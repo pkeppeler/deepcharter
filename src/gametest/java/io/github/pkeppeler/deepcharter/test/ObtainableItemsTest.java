@@ -254,8 +254,8 @@ public class ObtainableItemsTest {
 
     /**
      * The gate: the list is what the world yields, both ways. The layer structures are read as they generate, so the
-     * chunks of one site of each kind (and the Prospector's) are made full first and polled under a wall-clock deadline
-     * until each stands.
+     * chunks of one site of each kind (and the Prospector's) are forced first and polled under a wall-clock deadline
+     * until they are loaded and each stands.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theListIsWhatTheCampaignWorldYields(GameTestHelper helper) {
