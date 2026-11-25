@@ -14,17 +14,27 @@ import net.minecraft.util.StringRepresentable;
  * One transmission, as the data file describes it: who sends it, how the signal is framed, what makes it fire, and what
  * else comes with it. The text is not here: it lives in the lang fragment, under {@link #bodyKey()}.
  *
- * @param sender the sender's name, a key under {@code deepcharter.transmission.sender.}
+ * @param sender the sender's name, a key under {@code deepcharter.transmission.sender.}; for a relay, the serial of the pod whose
+ *               beacon repeats it
+ * @param loop   for a relay, and only for one, how many times it had looped when the colony was settled again: the header's
+ *               loop counter starts there and gains one each day of the world ({@link #loopOn})
  * @param replay true for a repair transmission: a charter founded after it first fired is sent it too
  * @param bonus  the employer bonus credited once to the charter that fires it live, never on a replay
  */
 public record Transmission(
-        Identifier id, String sender, Framing framing, Trigger trigger, Optional<Bonus> bonus, boolean replay) {
+        Identifier id,
+        String sender,
+        Framing framing,
+        Trigger trigger,
+        Optional<Integer> loop,
+        Optional<Bonus> bonus,
+        boolean replay) {
     public static final Codec<Transmission> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                     Identifier.CODEC.fieldOf("id").forGetter(Transmission::id),
                     Codec.STRING.fieldOf("sender").forGetter(Transmission::sender),
                     Framing.CODEC.fieldOf("framing").forGetter(Transmission::framing),
                     Trigger.CODEC.fieldOf("trigger").forGetter(Transmission::trigger),
+                    Codec.intRange(0, Integer.MAX_VALUE).optionalFieldOf("loop").forGetter(Transmission::loop),
                     Bonus.CODEC.optionalFieldOf("bonus").forGetter(Transmission::bonus),
                     Codec.BOOL.optionalFieldOf("replay", false).forGetter(Transmission::replay))
             .apply(instance, Transmission::new));
@@ -34,10 +44,20 @@ public record Transmission(
         Objects.requireNonNull(sender, "sender");
         Objects.requireNonNull(framing, "framing");
         Objects.requireNonNull(trigger, "trigger");
+        Objects.requireNonNull(loop, "loop");
         Objects.requireNonNull(bonus, "bonus");
         if (sender.isBlank()) {
             throw new IllegalArgumentException("transmission " + id + " has no sender");
         }
+        if (loop.isPresent() != (framing == Framing.RELAY)) {
+            throw new IllegalArgumentException("transmission " + id + " is framed " + framing.getSerializedName()
+                    + ": a relay has a loop counter, and nothing else has one");
+        }
+    }
+
+    /** The loop counter of a relay heard on {@code day}, counted from 0, the world's first day: one loop a day. */
+    public long loopOn(long day) {
+        return loop.orElseThrow(() -> new IllegalStateException(id + " is not a relay")) + day;
     }
 
     /** The lang key of the sender's display name. */
@@ -45,18 +65,21 @@ public record Transmission(
         return "deepcharter.transmission.sender." + sender;
     }
 
-    /** The lang key of the text. It may hold the fields {@code [CHARTER]} and {@code [DIRECTOR]}. */
+    /** The lang key of the text, without the framing's lines. It may hold the fields {@code [CHARTER]} and {@code [DIRECTOR]}. */
     public String bodyKey() {
         return "deepcharter.transmission." + id.getPath() + ".body";
     }
 
-    /** How the signal reaches the charter. This sets the header's wording and colour, and the sound. */
+    /** How the signal reaches the charter. This sets the header's and the closing line's wording, the header's colour, and the sound. */
     public enum Framing implements StringRepresentable {
-        /** The sender is speaking now. */
+        /** The sender is speaking now: {@code ▌INCOMING — <sender>} … {@code ▌END OF MESSAGE}. */
         LIVE("live"),
-        /** A recording or message passed on by something else. */
+        /**
+         * A wreck's beacon repeating a dead crew's last words, once a day since they were recorded:
+         * {@code ▌AUTOMATIC RELAY — POD <serial> — LOOP <n>} … {@code ▌RELAY RESTARTS}.
+         */
         RELAY("relay"),
-        /** Nobody can say where it comes from. */
+        /** A fragment nobody can place: {@code ▌INCOMING — [SOURCE UNKNOWN]} … {@code ▌SIGNAL LOST}. */
         UNKNOWN("unknown");
 
         public static final Codec<Framing> CODEC = StringRepresentable.fromEnum(Framing::values);
@@ -72,9 +95,14 @@ public record Transmission(
             return serializedName;
         }
 
-        /** The lang key of the header line's wording; it takes the sender's name. */
+        /** The lang key of the header line's wording; it takes the sender's name and, for a relay, the loop counter. */
         public String headerKey() {
             return "deepcharter.transmission.framing." + serializedName;
+        }
+
+        /** The lang key of the line that closes the text. */
+        public String endKey() {
+            return headerKey() + ".end";
         }
     }
 
@@ -122,8 +150,11 @@ public record Transmission(
             }
         }
 
-        /** A charter member stands in the zone: {@code zone} is 0 for the top third of the layer, 2 for the bottom. */
-        record Zone(int layer, int zone) implements Trigger {
+        /**
+         * A charter member stands in the zone: {@code zone} is 0 for the top third of the layer, 2 for the bottom. With
+         * {@code lowerHalf}, only the lower half of the zone counts.
+         */
+        record Zone(int layer, int zone, boolean lowerHalf) implements Trigger {
             public Zone {
                 if (layer < 1 || zone < 0 || zone >= Zones.COUNT) {
                     throw new IllegalArgumentException("no such zone: layer " + layer + ", zone " + zone);
@@ -160,7 +191,8 @@ public record Transmission(
                     "zone",
                     RecordCodecBuilder.<Zone>mapCodec(instance -> instance.group(
                                     Codec.INT.fieldOf("layer").forGetter(Zone::layer),
-                                    Codec.INT.fieldOf("zone").forGetter(Zone::zone))
+                                    Codec.INT.fieldOf("zone").forGetter(Zone::zone),
+                                    Codec.BOOL.optionalFieldOf("lower_half", false).forGetter(Zone::lowerHalf))
                             .apply(instance, Zone::new))),
             BREACH(
                     "breach",

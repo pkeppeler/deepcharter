@@ -38,6 +38,7 @@ import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
+import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.ArrayList;
@@ -78,6 +79,8 @@ public class FoundingMoleHangarTest {
 
     static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + MOLE_LOAD_TICKS + 200;
     static final long RICH = 100_000;
+    /** What T06, the first Mole a charter buys, pays it. */
+    private static final long MOLE_BONUS = Transmission.Bonus.B1.amount();
     private static final int FLOOR = 9; // fixed-pos: the side of a square pad, not a Y
     private static final String FUTURE_HANGAR = "7741";
     private static final String FUTURE_SERIALS = "7742";
@@ -486,6 +489,10 @@ public class FoundingMoleHangarTest {
                                 act(buyer.player(), console, HangarTerminal.BUY_MOLE),
                                 "buying a refurbished Mole with " + owned + " pods");
                         expected -= price;
+                        if (owned == 1) {
+                            // A charter's first bought Mole brings T06 and its bonus.
+                            expected += MOLE_BONUS;
+                        }
                         expect(
                                 helper,
                                 balance(helper, buyer) == expected,
@@ -517,8 +524,8 @@ public class FoundingMoleHangarTest {
                     expectDone(helper, act(newcomer.player(), console, HangarTerminal.BUY_MOLE), "the newcomer buying");
                     expect(
                             helper,
-                            newcomerBefore - balance(helper, newcomer) == 150 + 75 * 2,
-                            "the newcomer has two pods, so it pays $300: it paid %s",
+                            newcomerBefore - balance(helper, newcomer) == 150 + 75 * 2 - MOLE_BONUS,
+                            "the newcomer has two pods, so it pays $300, less the bonus of its first bought Mole: it paid %s",
                             newcomerBefore - balance(helper, newcomer));
                     clearFloor(helper);
                     helper.succeed();
@@ -584,8 +591,8 @@ public class FoundingMoleHangarTest {
                             "buying with exactly the price");
                     expect(
                             helper,
-                            balance(helper, buyer) == 0,
-                            "exactly the price empties the account, it holds %s",
+                            balance(helper, buyer) == MOLE_BONUS,
+                            "exactly the price empties the account, and T06 pays its bonus into it: it holds %s",
                             balance(helper, buyer));
                     PodEntity bought = madeSince(helper, before).getFirst();
                     // The refused purchase used no serial: the pod made before it is MOLE-0001, so this one is

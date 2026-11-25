@@ -83,19 +83,23 @@ public final class TransmissionHud {
         CrtDraw.glowText(graphics, font, TransmissionOverlay.headerShown(), x, y, headerColor);
         y += step + look.headerGap();
 
-        // The panel is sized for the whole text, and the letters appear in it, so the lines never re-wrap as they type.
-        int remaining = TransmissionOverlay.bodyShown().length();
+        // The panel is sized for the whole text, and the letters appear in it, so the lines never re-wrap as they type. A line is found in
+        // the whole text to know how much of it is typed: the wrap drops the line breaks and the spaces it breaks at.
+        String full = TransmissionOverlay.bodyFull();
+        int typed = TransmissionOverlay.bodyShown().length();
+        int from = 0;
         int lastX = x;
         int lastY = y;
         for (String line : lines) {
-            if (remaining <= 0) {
+            int start = full.indexOf(line, from);
+            if (start < 0 || start >= typed) {
                 break;
             }
-            String shown = line.substring(0, Math.min(line.length(), remaining));
+            from = start + line.length();
+            String shown = line.substring(0, Math.min(line.length(), typed - start));
             CrtDraw.glowText(graphics, font, shown, x, y, look.textColor());
             lastX = x + font.width(shown);
             lastY = y;
-            remaining -= line.length();
             y += step;
         }
         if (!TransmissionOverlay.typed()) {

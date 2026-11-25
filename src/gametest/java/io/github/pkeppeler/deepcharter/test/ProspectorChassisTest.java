@@ -35,6 +35,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
+import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -649,8 +650,9 @@ public class ProspectorChassisTest {
                             "restoring the Prospector");
                     expect(
                             helper,
-                            FoundingMoleHangarTest.balance(helper, owner) == FoundingMoleHangarTest.RICH - PRICE,
-                            "restoring a Prospector costs $1,390, the account holds %s",
+                            FoundingMoleHangarTest.balance(helper, owner)
+                                    == FoundingMoleHangarTest.RICH - PRICE + Transmission.Bonus.B3.amount(),
+                            "restoring a Prospector costs $1,390 and T17 pays B3, the account holds %s",
                             FoundingMoleHangarTest.balance(helper, owner));
                     expect(
                             helper,

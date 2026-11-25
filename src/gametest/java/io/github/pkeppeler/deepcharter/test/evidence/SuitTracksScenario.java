@@ -22,7 +22,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,7 +36,6 @@ public class SuitTracksScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
     private static final int HOLD_FRAMES = 8;
     private static final int TYPING_FRAMES = 45;
-    private static final Identifier FIRST_BONUS = Identifier.fromNamespaceAndPath("deepcharter", "t05");
     private static final int OUTSIDE_X = 8000;
     private static final float FACE_NORTH = 180f;
     private static final float LOOK_SLIGHTLY_DOWN = 8f;
@@ -57,13 +55,15 @@ public class SuitTracksScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
-            // The layer 2 breach pays the Company's first bonus when the scenario drops into the unbuilt depth. It is
-            // marked fired now, so
-            // the balance the stills show stays the one the purchases leave.
+            // The breach and the zones on the way down pay Personnel's bonuses when the scenario drops into the unbuilt
+            // depth. Every transmission with a bonus is marked fired now, so the balance the stills show stays the one the
+            // scenario leaves.
             singleplayer
                     .getServer()
-                    .runOnServer(server -> TransmissionData.get(server)
-                            .fire(scene.charter().id(), TransmissionCatalog.require(FIRST_BONUS)));
+                    .runOnServer(server -> TransmissionCatalog.all().stream()
+                            .filter(transmission -> transmission.bonus().isPresent())
+                            .forEach(transmission ->
+                                    TransmissionData.get(server).fire(scene.charter().id(), transmission)));
             ClientWait.until(
                     context,
                     "the charter's balance",
