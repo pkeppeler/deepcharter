@@ -22,8 +22,8 @@ import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * The collapse of a fungal stalk: breaking any block of one brings everything above it down at once, as breaking sugar cane does, in a
- * spore puff. Atmosphere only: it gives a player nothing and takes nothing from one.
+ * The collapse of a fungal stalk: breaking any block of one brings everything above it down at once, as breaking sugar
+ * cane does, in a spore puff. Atmosphere only: it gives a player nothing and takes nothing from one.
  *
  * <p>What falls is what hangs from the break. An ordinary stalk is a column of upright stalk blocks: everything above the break. A great
  * stalk ({@link GreatStalkBlock}, a braid of three thin trunks with shelves, {@link GreatStalkBraid}) is every great block above the break
@@ -33,10 +33,10 @@ import net.minecraft.world.level.block.state.BlockState;
  * stand, and so does a shelf held by one. A block that was only joined through the broken cell, sideways (the dog-leg where a trunk
  * steps round the ring, the outer half of a shelf), is no longer joined to the ground and falls too.
  *
- * <p>Every block of it bursts in the tick of the break. No drop is made here but the burst's own: a burst block drops what
- * {@link Block#getDrops} gives for it, the loot table that breaking it by hand rolls, and every block is removed exactly once, so what a
- * collapse drops is what breaking each of its blocks by hand drops, none lost and none twice. The drops fly out from the block instead of
- * popping up from it.
+ * <p>Every block of it bursts in the tick of the break. No drop is made here but the burst's own: a burst block drops
+ * what {@link Block#getDrops} gives for it, the loot table that breaking it by hand rolls, and every block is removed
+ * exactly once, so what a collapse drops is what breaking each of its blocks by hand drops, none lost and none twice.
+ * The drops fly out from the block instead of popping up from it.
  */
 final class StalkCollapse {
     /** The most blocks one collapse takes, so that no chain of touching great stalks makes a collapse cost a lot. */
@@ -54,8 +54,8 @@ final class StalkCollapse {
     };
 
     /**
-     * True while a collapse changes blocks: the blocks it sets to air are removals that must not start a collapse of their own. The
-     * server thread is the only one that changes blocks, so no lock.
+     * True while a collapse changes blocks: the blocks it sets to air are removals that must not start a collapse of
+     * their own. The server thread is the only one that changes blocks, so no lock.
      */
     private static boolean bursting;
 
@@ -101,10 +101,10 @@ final class StalkCollapse {
     }
 
     /**
-     * A block of a stalk, {@code removed}, was removed at {@code pos}: what was above it, and what hung from it and has nothing else to
-     * hang from, bursts in the same tick. A great block's removal takes the great block above it (and all that touches that) whatever
-     * else holds it; a block beside or below it falls only if nothing joins it to the ground any more. An upright stalk never holds a
-     * great block up.
+     * A block of a stalk, {@code removed}, was removed at {@code pos}: what was above it, and what hung from it and has
+     * nothing else to hang from, bursts in the same tick. A great block's removal takes the great block above it (and
+     * all that touches that) whatever else holds it; a block beside or below it falls only if nothing joins it to the
+     * ground any more. An upright stalk never holds a great block up.
      */
     static void removed(ServerLevel level, BlockPos pos, BlockState removed) {
         if (bursting || collapses(level.getBlockState(pos))) {
@@ -147,9 +147,9 @@ final class StalkCollapse {
     }
 
     /**
-     * Whether the stalk blocks joined to {@code start}, face to face, stand on the ground: one of them has something solid under it that
-     * is not a stalk block. What it cannot tell (more blocks than a collapse takes, or a join into a chunk that is not loaded) it
-     * counts as standing.
+     * Whether the stalk blocks joined to {@code start}, face to face, stand on the ground: one of them has something
+     * solid under it that is not a stalk block. What it cannot tell (more blocks than a collapse takes, or a join into
+     * a chunk that is not loaded) it counts as standing.
      */
     private static boolean grounded(ServerLevel level, BlockPos start) {
         Set<BlockPos> found = new HashSet<>();
@@ -224,8 +224,8 @@ final class StalkCollapse {
     }
 
     /**
-     * The blocks that fall with {@code start}: up the columns, across between great stalk blocks that touch, and down the cap blocks
-     * that hang free under them.
+     * The blocks that fall with {@code start}: up the columns, across between great stalk blocks that touch, and down
+     * the cap blocks that hang free under them.
      */
     private static Set<BlockPos> connected(ServerLevel level, BlockPos start) {
         Set<BlockPos> found = new LinkedHashSet<>();

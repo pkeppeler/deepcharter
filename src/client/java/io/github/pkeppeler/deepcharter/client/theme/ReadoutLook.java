@@ -3,13 +3,16 @@ package io.github.pkeppeler.deepcharter.client.theme;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 
 /**
- * How the block readout just above the hotbar looks ({@code theme/readout.json}, #859, #1261): two centred lines, the block's name and a hint,
- * in the account line's green and the lining line's amber. Lengths are GUI pixels, timings are client ticks (20 are one second).
+ * How the block readout just above the hotbar looks ({@code theme/readout.json}, #859, #1261): two centred lines, the
+ * block's name and a hint, in the account line's green and the lining line's amber. Lengths are GUI pixels, timings are
+ * client ticks (20 are one second).
  *
- * <p>The readouts stand as one stack whose bottom edge is {@code bottomOffset} above the bottom of the GUI, so the same number of pixels clears
- * vanilla's rows at every GUI scale. The block readout takes the stack's first two lines and the placement readout the last two.
+ * <p>The readouts stand as one stack whose bottom edge is {@code bottomOffset} above the bottom of the GUI, so the same
+ * number of pixels clears vanilla's rows at every GUI scale. The block readout takes the stack's first two lines and
+ * the placement readout the last two.
  *
- * @param bottomOffset space between the bottom of the GUI and the stack's bottom edge; never less than {@link #CLEAR_OF_VANILLA}
+ * @param bottomOffset space between the bottom of the GUI and the stack's bottom edge; never less than {@link
+ *     #CLEAR_OF_VANILLA}
  * @param lineGap space between the name and the hint, on top of the font height
  * @param scale how large the text is drawn, as a multiple of the font
  * @param nameColor the block's name
@@ -32,9 +35,9 @@ public record ReadoutLook(
     static final int MAX_TICKS = 40;
 
     /**
-     * The least {@code bottomOffset}: the top of the backdrop of vanilla's highest centred line above the hotbar, the action bar, drawn at
-     * {@code guiHeight - 72} with two pixels of backdrop (the held item's name sits lower, at {@code guiHeight - 59}). A pack cannot lower the
-     * readout onto them.
+     * The least {@code bottomOffset}: the top of the backdrop of vanilla's highest centred line above the hotbar, the
+     * action bar, drawn at {@code guiHeight - 72} with two pixels of backdrop (the held item's name sits lower, at
+     * {@code guiHeight - 59}). A pack cannot lower the readout onto them.
      */
     public static final int CLEAR_OF_VANILLA = 74;
 
@@ -50,7 +53,10 @@ public record ReadoutLook(
         return (int) Math.ceil(PLACEMENT_LINES_BELOW * (lineHeight + lineGap) * (float) scale);
     }
 
-    /** The y of the stack's top on a GUI {@code guiHeight} high: the bottom edge is {@link #bottomOffset} up, and the stack grows upward from it. */
+    /**
+     * The y of the stack's top on a GUI {@code guiHeight} high: the bottom edge is {@link #bottomOffset} up, and the
+     * stack grows upward from it.
+     */
     public int stackTop(int guiHeight, int lineHeight) {
         int step = lineHeight + lineGap;
         int below = placementDrop(lineHeight) + (int) Math.ceil((lineHeight + step) * (float) scale);

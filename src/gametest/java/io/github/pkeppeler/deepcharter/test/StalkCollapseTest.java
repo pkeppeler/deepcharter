@@ -191,7 +191,10 @@ public class StalkCollapseTest {
         }
     }
 
-    /** Breaking a segment drops everything above it in the tick of the break; the segments below stay, and the drops are the by-hand drops. */
+    /**
+     * Breaking a segment drops everything above it in the tick of the break; the segments below stay, and the drops are
+     * the by-hand drops.
+     */
     @GameTest(maxTicks = COUNT_MAX_TICKS, environment = SINGLE_ALONE)
     public void breakingASegmentCollapsesEverythingAboveIt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -248,7 +251,9 @@ public class StalkCollapseTest {
                 .thenSucceed();
     }
 
-    /** Breaking a segment takes the whole column above it in the same tick, as sugar cane goes: nothing sags or waits. */
+    /**
+     * Breaking a segment takes the whole column above it in the same tick, as sugar cane goes: nothing sags or waits.
+     */
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void theColumnCollapsesInTheTickOfTheBreak(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();

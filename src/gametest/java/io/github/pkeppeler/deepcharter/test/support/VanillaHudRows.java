@@ -48,9 +48,9 @@ public final class VanillaHudRows {
     }
 
     /**
-     * The rows of vanilla's HUD that a box of the mod's HUD, drawn above the hotbar, overlaps on a GUI {@code guiWidth} x {@code guiHeight}: the
-     * hotbar, the status rows, the held item's name and the action bar. The title and subtitle are left out: they sit mid-screen and show for
-     * a moment.
+     * The rows of vanilla's HUD that a box of the mod's HUD, drawn above the hotbar, overlaps on a GUI {@code guiWidth}
+     * x {@code guiHeight}: the hotbar, the status rows, the held item's name and the action bar. The title and subtitle
+     * are left out: they sit mid-screen and show for a moment.
      */
     public static List<String> clashes(HudKeepClear.Rect box, int guiWidth, int guiHeight) {
         List<String> rows = List.of("hotbar", "status rows", "held item name", "action bar");

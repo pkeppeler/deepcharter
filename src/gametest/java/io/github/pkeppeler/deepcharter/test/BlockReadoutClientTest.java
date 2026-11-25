@@ -35,7 +35,9 @@ import net.minecraft.world.level.block.Blocks;
  * real client. It reads the HUD's state, not its pixels.
  */
 public class BlockReadoutClientTest implements FabricClientGameTest {
-    /** The GUI scales the box is checked at: the window has them all, from the smallest to the largest vanilla offers. */
+    /**
+     * The GUI scales the box is checked at: the window has them all, from the smallest to the largest vanilla offers.
+     */
     private static final int GUI_SCALES = 4;
 
     @Override
@@ -149,8 +151,8 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The readout's box, worked out for the GUI sizes the window gives at scales 1 to 4, overlaps none of vanilla's rows above the hotbar (the
-     * held item's name and the action bar above it among them).
+     * The readout's box, worked out for the GUI sizes the window gives at scales 1 to 4, overlaps none of vanilla's
+     * rows above the hotbar (the held item's name and the action bar above it among them).
      */
     private static void expectTheBoxClearsVanilla(Minecraft client, Readout readout) {
         for (int scale = 1; scale <= GUI_SCALES; scale++) {
