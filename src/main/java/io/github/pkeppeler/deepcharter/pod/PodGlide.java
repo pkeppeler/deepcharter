@@ -59,7 +59,7 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     private boolean active;
 
-    private PodGlide(Entity pod) {
+    PodGlide(Entity pod) {
         super(pod, PodGlideTuning.DEFAULT.steps());
     }
 
