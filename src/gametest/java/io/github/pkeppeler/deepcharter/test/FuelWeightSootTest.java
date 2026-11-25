@@ -388,9 +388,9 @@ public class FuelWeightSootTest {
 
     /**
      * Ticks {@code pod} {@code ticks} times within this server tick, its pilot sprinting (drilling down), with {@code
-     * repairs} as the world's repair state, then puts the world's back. The repair state is world-global and swapped for
-     * one tick only ({@code WorldData}), so the ticks are run here, as {@code ServerLevel.tickNonPassenger} runs them;
-     * the input is released after, so the pod's own ticks drill nothing.
+     * repairs} as the world's repair state, then puts the world's back. The repair state is world-global and swapped
+     * for one tick only ({@code WorldData}), so the ticks are run here, as {@code ServerLevel.tickNonPassenger} runs
+     * them; the input is released after, so the pod's own ticks drill nothing.
      */
     private static void sprintWith(
             GameTestHelper helper, RepairState repairs, PodEntity pod, MockPlayer pilot, int ticks) {
