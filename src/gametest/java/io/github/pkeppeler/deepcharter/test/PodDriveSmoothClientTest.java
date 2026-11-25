@@ -1033,8 +1033,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             Vec3 step = frames.get(i).subtract(frames.get(i - 1));
             longest = Math.max(longest, step.length());
             worstBackward = Math.min(worstBackward, climbing ? Math.min(step.z, step.y) : step.z);
-            int tick = i / FRAMES;
             if (i % FRAMES == 0 && i >= (SETTLE_TICKS + 1) * FRAMES) {
+                int tick = i / FRAMES;
                 if (subject.leads().get(tick - 1) >= reach || subject.leads().get(tick - 2) >= reach) {
                     atReach++;
                 } else {
