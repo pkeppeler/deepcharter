@@ -651,9 +651,36 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
             everythingTheRealGameIsAsked(context, singleplayer);
+            // Leave the catalogue set to something, so the next world shows whether leaving this one cleared it.
+            CatalogueScene.openInventory(context);
+            CataloguePanel left = CatalogueScene.panel(context);
+            context.runOnClient(client -> {
+                left.state().setQuery("left over");
+                left.state().toggleCraftableOnly();
+                left.state().turn(1, 3);
+                left.state().look(left.catalogue(), DRILL, CatalogueState.Mode.RECIPES);
+            });
             context.setScreen(() -> null);
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
+        }
+        leavingAWorldClearsTheCatalogue(context);
+    }
+
+    /** The real disconnect, not {@code resetState()}: a new world opens on an empty catalogue. */
+    private static void leavingAWorldClearsTheCatalogue(ClientGameTestContext context) {
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            Objects.requireNonNull(singleplayer.getServer(), "a second world is running");
+            ClientWait.until(
+                    context, "the player's inventory", client -> client.player != null && client.level != null);
+            CatalogueScene.openInventory(context);
+            CatalogueState state = CatalogueScene.panel(context).state();
+            require(
+                    state.query().isEmpty() && !state.craftableOnly() && state.lookup() == null,
+                    "a new world's catalogue starts empty, got '" + state.query() + "', switch " + state.craftableOnly()
+                            + ", lookup " + state.lookup());
+            require(state.page(3) == 0, "and on the first page");
+            context.setScreen(() -> null);
         }
     }
 
@@ -1428,6 +1455,11 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         UUID player =
                 context.computeOnClient(client -> ClientSession.player(client).getUUID());
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        // A star left in the shared file by an aborted run is not this test's: take every one off through the real API.
+        for (Item left : CatalogueFavourites.shared().items(player)) {
+            CatalogueFavourites.shared().toggle(player, left);
+        }
+        context.waitTicks(1);
         try {
             CatalogueScene.hover(
                     context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, DRILL)));
