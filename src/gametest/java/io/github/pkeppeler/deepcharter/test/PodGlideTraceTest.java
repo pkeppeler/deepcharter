@@ -4,9 +4,11 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodGlideProbe;
+import io.github.pkeppeler.deepcharter.pod.PodGlideTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.DriveJudge;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import java.util.stream.IntStream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -47,19 +49,24 @@ public class PodGlideTraceTest {
     /** Blocks above the test's floor the pod is held at: nothing for its coast to run into. */
     private static final int HELD_ABOVE = 40;
 
-    /** Ticks after the last late move a pod has to be back on its on-time course: the window ADR 0082's model holds every late spell to. */
+    /**
+     * Ticks after the last late move a pod has to be back on its on-time course: the window ADR 0082's model sweep holds every late spell
+     * to. It is not {@code PodMovementClientTest.MAX_TICKS_OVER}, which counts ticks over a fixed trail bound from the first late move;
+     * this counts from the last one, against the on-time replay.
+     */
     private static final int RECOVERY_TICKS = 6;
 
     /** Blocks a recovered pod may still be behind its on-time course: {@code PodMovementClientTest}'s trail margin. */
-    private static final double RECOVERED_WITHIN = 0.05;
+    private static final double RECOVERED_WITHIN = PodMovementClientTest.MARGIN_BLOCKS;
 
-    /** The drive with no extra lateness: each move two ticks after the server sends it, and the jitter's held tick one more. */
-    private static final int[] ON_TIME = {
-        2, 3, 5, 5, 6, 8, 8, 9, 11, 11, 12, 14, 14, 15, 17, 17, 18, 20, 20, 21, 23, 23, 24, 26, 26, 27, 29, 29, 30, 32,
-        32, 33, 35, 35, 36, 38, 38, 39, 41, 41, 42, 44, 44, 45, 47, 47, 48, 50, 50, 51, 53, 53, 54, 56, 56, 57, 59, 59,
-        60, 62, 62, 63, 65, 65, 66, 68, 68, 69, 71, 71, 72, 74, 74, 75, 77, 77, 78, 80, 80, 81, 83, 83, 84, 86, 86, 87,
-        89, 89
-    };
+    /**
+     * The drive with no extra lateness: each move two ticks after the server sends it, every third one more for the jitter's held tick,
+     * up to the drive's last tick.
+     */
+    private static final int[] ON_TIME = IntStream.range(0, TICKS)
+            .map(n -> n + 2 + (n % 3 == 2 ? 1 : 0))
+            .filter(tick -> tick < TICKS)
+            .toArray();
 
     /**
      * {@link #ON_TIME} with the server four moves a tick late (two show past the jitter's held tick), a slip it closes with three moves
@@ -67,12 +74,7 @@ public class PodGlideTraceTest {
      * speed settled on a step of exactly that speed: the pod trailed its on-time course by a tick of speed for the rest of the drive.
      * The split now counts the target's own advance, so every step closes some of the gap.
      */
-    private static final int[] SLIP_CLOSED_AT_ONCE = {
-        2, 3, 5, 5, 6, 8, 8, 9, 11, 11, 12, 14, 14, 15, 17, 17, 18, 20, 20, 21, 23, 23, 24, 26, 26, 27, 29, 29, 30, 32,
-        32, 33, 35, 35, 36, 38, 38, 39, 41, 42, 44, 44, 44, 45, 47, 47, 48, 50, 50, 51, 53, 53, 54, 56, 56, 57, 59, 59,
-        60, 62, 62, 63, 65, 65, 66, 68, 68, 69, 71, 71, 72, 74, 74, 75, 77, 77, 78, 80, 80, 81, 83, 83, 84, 86, 86, 87,
-        89, 89
-    };
+    private static final int[] SLIP_CLOSED_AT_ONCE = later(ON_TIME, 39, 1, 2);
 
     /**
      * A 3-tick stall that ends in a burst big enough for the catch-up cap: a cap and then a sliver of the gap drew the sliver's tick
@@ -122,7 +124,7 @@ public class PodGlideTraceTest {
 
     /**
      * Three moves one, two and one tick late. A pod that has coasted and sits within a tick of a target the moves keep advancing would
-     * arrive on it and draw the tick short (0.0668 in tick 36, 0.0501 with the still split); it draws the whole tick. A local {@code
+     * arrive on it and draw the tick short (0.0668 in tick 36); it draws the whole tick. A local {@code
      * PodDriveLateClientTest} no longer meets it.
      */
     private static final int[] WITHIN_A_TICK = {
@@ -187,6 +189,39 @@ public class PodGlideTraceTest {
             }
         }
         helper.succeed();
+    }
+
+    /** {@code PodGlide.splitCatchUp} divides by the cap less the speed, so a catch-up of 1 or less is refused, not drawn as NaN. */
+    @GameTest
+    public void aCatchUpNoFasterThanTheSpeedIsRefused(GameTestHelper helper) {
+        for (double catchUp : new double[] {1.0, 0.5, Double.NaN}) {
+            PodGlideTuning stock = PodGlideTuning.DEFAULT;
+            try {
+                new PodGlideTuning(
+                        stock.steps(),
+                        catchUp,
+                        stock.catchUpTicks(),
+                        stock.coastTicks(),
+                        stock.coastTailShare(),
+                        stock.settleDelayTicks(),
+                        stock.settleShare(),
+                        stock.snapGap(),
+                        stock.coastSweepSteps());
+            } catch (IllegalArgumentException expected) {
+                continue;
+            }
+            throw failure(helper, "a glide tuning with a catch-up of %s should be refused", catchUp);
+        }
+        helper.succeed();
+    }
+
+    /** {@code handedAt} with the moves from {@code first} on handed over {@code extraTicks} later, one count per move. */
+    private static int[] later(int[] handedAt, int first, int... extraTicks) {
+        int[] late = handedAt.clone();
+        for (int i = 0; i < extraTicks.length; i++) {
+            late[first + i] += extraTicks[i];
+        }
+        return late;
     }
 
     /** {@link #replay}, then fails on the first judged tick under the floor; returns the replay's positions. */

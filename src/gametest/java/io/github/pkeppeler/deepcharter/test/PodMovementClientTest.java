@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 public class PodMovementClientTest implements FabricClientGameTest {
     private static final double SPEED = PodTuning.DEFAULT.movement().horizontalSpeed();
 
-    private static final double MARGIN_BLOCKS = 0.05;
+    static final double MARGIN_BLOCKS = 0.05;
 
     /** Input lag (SPEC section 7): 2 ticks the harness lags a pod, 1 for the client's slide (#961), at the pod's speed, plus a margin. */
     static final double MAX_LAG_BLOCKS = (2 + 1) * SPEED + MARGIN_BLOCKS;

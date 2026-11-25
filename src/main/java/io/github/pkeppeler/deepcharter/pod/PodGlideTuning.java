@@ -38,4 +38,10 @@ public record PodGlideTuning(
         double snapGap,
         int coastSweepSteps) {
     public static final PodGlideTuning DEFAULT = new PodGlideTuning(2, 1.35, 12, 4, 0.6, 10, 0.12, 16.0, 8);
+
+    public PodGlideTuning {
+        if (!(catchUp > 1)) {
+            throw new IllegalArgumentException("catchUp must exceed 1: PodGlide.splitCatchUp divides by cap - speed");
+        }
+    }
 }
