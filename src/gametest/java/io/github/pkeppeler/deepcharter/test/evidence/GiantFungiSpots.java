@@ -16,6 +16,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
@@ -409,19 +410,24 @@ final class GiantFungiSpots {
     /** A view of the mix the world grew: the camera's feet, and the point among the giants it looks at. */
     record MixView(String zone, BlockPos feet, Vec3 target, int giants) {}
 
-    /** The mix's camera sees a giant's mark from this near to this far, within {@link #GLOW_CONE} of its heading. */
+    /**
+     * The mix's camera sees a giant's mark from this near to this far, within {@link #GLOW_CONE} of its heading, and
+     * never past {@link #IN_FOG} of the zone's fog.
+     */
     private static final int MIX_NEAR = 8;
 
     private static final int MIX_FAR = 26;
+    /** The share of a zone's fog distance a camera sees a giant within: past it the fog has nearly hidden it. */
+    private static final double IN_FOG = 0.7;
     /** Candidate cameras for the mix stand every this many blocks. */
     private static final int MIX_GRID = 4;
 
     /**
      * A camera on the giants of zone {@code zone} the world grew round ({@code x}, {@code z}): of the floors every
      * {@link #MIX_GRID} blocks and the eight headings, the one that sees the most giants' marks (a rim, a needle, a
-     * great stalk's cap) {@link #MIX_NEAR} to {@link #MIX_FAR} blocks off with nothing in the way, a giant counted
-     * once, and of those the one whose view runs furthest open; it looks at the middle of the giants it sees. Empty if
-     * it sees none.
+     * great stalk's cap) {@link #MIX_NEAR} to {@link #MIX_FAR} blocks off, inside the fog, with nothing in the way, a
+     * giant counted once, and of those the one whose view runs furthest open; it looks at the middle of the giants it
+     * sees. Empty if it sees none.
      */
     static Optional<MixView> mix(ServerLevel level, LayerChain.Band band, int zone, int x, int z) {
         Zones.Span span = Zones.span(band.minY(), band.height(), zone);
@@ -431,6 +437,7 @@ final class GiantFungiSpots {
                 .getPath();
         List<BlockPos> marks = scan(level, x, z, span, GiantFungiSpots::landmark);
         LOGGER.info("[giant-fungi] {}: {} giant marks round {}, {}", name, marks.size(), x, z);
+        double far = Math.min(MIX_FAR, IN_FOG * fogEnd(level, span, x, z));
         MixView best = null;
         int bestSeen = 0;
         for (int cx = x - SEARCH_RADIUS; cx <= x + SEARCH_RADIUS; cx += MIX_GRID) {
@@ -445,7 +452,7 @@ final class GiantFungiSpots {
                         float yaw = heading * 45f;
                         List<BlockPos> seen = new ArrayList<>();
                         for (BlockPos mark : marks) {
-                            if (inCone(feet, yaw, mark, MIX_NEAR, MIX_FAR, GLOW_CONE)
+                            if (inCone(feet, yaw, mark, MIX_NEAR, far, GLOW_CONE)
                                     && seen.stream().noneMatch(other -> other.distSqr(mark) < 25)
                                     && inSight(level, eye, mark)) {
                                 seen.add(mark);
@@ -498,7 +505,10 @@ final class GiantFungiSpots {
 
     /** The cells of a giant a camera is checked against. */
     private static final int PAIR_SAMPLES = 16;
-    /** A pair's camera stands this near to this far from the middle of each giant: inside the Garden's 40-block fog. */
+    /**
+     * A pair's camera stands this near to this far from the middle of each giant, and never past {@link #IN_FOG} of the
+     * zone's fog; nearer still in a zone of thick fog, at half that.
+     */
     private static final int PAIR_NEAR = 12;
 
     private static final int PAIR_FAR = 30;
@@ -538,7 +548,8 @@ final class GiantFungiSpots {
 
     /**
      * A camera on two giants the world grew in neighbouring chunks of zone {@code zone} round ({@code x}, {@code z}),
-     * of two forms, both {@link #PAIR_NEAR} to {@link #PAIR_FAR} blocks off and whole in the frame; of those, the one
+     * of two forms, both {@link #PAIR_NEAR} to {@link #PAIR_FAR} blocks off, inside the fog and whole in the frame; of
+     * those, the one
      * that sees the most of the less seen giant, then of both. It looks at the middle of the two as the frame sees
      * them. Empty if no two such giants have a camera.
      */
@@ -602,12 +613,14 @@ final class GiantFungiSpots {
         PairView best = null;
         int cx0 = (int) Math.floor(middle.x);
         int cz0 = (int) Math.floor(middle.z);
+        double far = Math.min(PAIR_FAR, IN_FOG * fogEnd(level, span, cx0, cz0));
+        double near = Math.min(PAIR_NEAR, far / 2);
         for (int cx = cx0 - PAIR_FAR; cx <= cx0 + PAIR_FAR; cx += PAIR_GRID) {
             for (int cz = cz0 - PAIR_FAR; cz <= cz0 + PAIR_FAR; cz += PAIR_GRID) {
                 double toA = Math.hypot(middleA.x - cx - 0.5, middleA.z - cz - 0.5);
                 double toB = Math.hypot(middleB.x - cx - 0.5, middleB.z - cz - 0.5);
                 boolean inRegion = Math.abs(cx - x) <= reach && Math.abs(cz - z) <= reach;
-                if (!inRegion || toA < PAIR_NEAR || toA > PAIR_FAR || toB < PAIR_NEAR || toB > PAIR_FAR) {
+                if (!inRegion || toA < near || toA > far || toB < near || toB > far) {
                     continue;
                 }
                 for (int y = span.high() - ZONE_INSET; y >= span.low() + ZONE_INSET; y--) {
@@ -662,6 +675,12 @@ final class GiantFungiSpots {
         double pitch = Math.toRadians((low + high) / 2);
         return Optional.of(eye.add(
                 Math.cos(yaw) * Math.cos(pitch) * 10, Math.sin(pitch) * 10, Math.sin(yaw) * Math.cos(pitch) * 10));
+    }
+
+    /** The distance the fog of the zone {@code span} ends at, read halfway up its rows at ({@code x}, {@code z}). */
+    private static float fogEnd(ServerLevel level, Zones.Span span, int x, int z) {
+        BlockPos at = new BlockPos(x, (span.low() + span.high()) / 2, z);
+        return level.environmentAttributes().getValue(EnvironmentAttributes.FOG_END_DISTANCE, at);
     }
 
     private static int seen(ServerLevel level, Vec3 eye, List<BlockPos> samples) {
