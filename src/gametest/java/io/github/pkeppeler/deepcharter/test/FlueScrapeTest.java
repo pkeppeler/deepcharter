@@ -14,10 +14,12 @@ import io.github.pkeppeler.deepcharter.repair.FlueScrape;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.Failures;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.Inputs;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -53,6 +55,8 @@ public class FlueScrapeTest {
     private static final float COAL_LIMP = 13f;
     private static final BlockPos FLOOR = new BlockPos(4, 1, 2);
     private static final CompoundTag NO_ARGS = new CompoundTag();
+    /** How far past a radius the pilot or the pod is moved, so leaving does not hang on a rounding. */
+    private static final double CLEAR_OF = 4;
 
     /** A repaired station, the pilot standing in its reach on a charter that owns the pod parked over a stone floor. */
     private record Scene(BlockPos station, MockPlayer pilot, CharterId charter, PodEntity pod) {}
@@ -226,14 +230,16 @@ public class FlueScrapeTest {
                 0,
                 pressed ->
                         expect(helper, press(pressed, RepairStation.SCRAPE_FLUE).isEmpty(), "the scrape should start"));
-        helper.runAfterDelay(
-                100,
-                () -> scene.pilot()
-                        .teleportTo(
-                                helper.getLevel(),
-                                Vec3.atBottomCenterOf(scene.station().south(8)),
-                                0,
-                                0));
+        helper.runAfterDelay(100, () -> {
+            expect(helper, FlueScrape.running(scene.pod()), "the scrape should still run before the pilot walks away");
+            BlockPos away = scene.station().south((int) Math.ceil(TerminalTuning.DEFAULT.maxDistance() + CLEAR_OF));
+            scene.pilot().teleportTo(helper.getLevel(), Vec3.atBottomCenterOf(away), 0, 0);
+            expect(
+                    helper,
+                    !Terminals.inReach(scene.pilot().player(), scene.station()),
+                    "the pilot at %s should be out of the station's reach",
+                    scene.pilot().player().position());
+        });
         helper.runAfterDelay(110, () -> {
             expect(helper, !FlueScrape.running(scene.pod()), "walking away should stop the scrape");
             expect(
@@ -258,7 +264,12 @@ public class FlueScrapeTest {
         });
     }
 
-    @GameTest(maxTicks = 1600)
+    /**
+     * The pod moves past the parked radius from the station's middle, into a chunk awaited as entity-ticking: the
+     * scrape stops on the pod's own tick, which a chunk that ticks no entities never runs. The move may wait for that
+     * chunk until the scrape would end, so the budget is two scrapes ({@link #TICKS}) and a margin.
+     */
+    @GameTest(maxTicks = 2600)
     public void aScrapeCutShortByThePodLeavingTheStationClearsNothing(GameTestHelper helper) {
         Scene scene = withScene(
                 helper,
@@ -267,30 +278,46 @@ public class FlueScrapeTest {
                 0,
                 pressed ->
                         expect(helper, press(pressed, RepairStation.SCRAPE_FLUE).isEmpty(), "the scrape should start"));
-        helper.runAfterDelay(100, () -> {
-            PodEntity pod = scene.pod();
-            pod.setPos(pod.position().add(6, 0, 0));
-        });
-        helper.runAfterDelay(110, () -> {
-            expect(helper, !FlueScrape.running(scene.pod()), "a pod that leaves the station stops the scrape");
-            expect(
-                    helper,
-                    heard(scene.pilot(), "stopped"),
-                    "the pilot should be told, heard %s",
-                    scene.pilot().actionBarMessages());
-        });
-        helper.runAfterDelay(TICKS + 20, () -> {
-            try {
-                expect(
-                        helper,
-                        EngineSoot.soot(scene.pod()) == COAL_LIMP,
-                        "a scrape cut short should clear nothing, left %s L",
-                        EngineSoot.soot(scene.pod()));
-                helper.succeed();
-            } finally {
-                scene.pilot().leave();
-                scene.pod().discard();
-            }
-        });
+        PodEntity pod = scene.pod();
+        Vec3 centre = Vec3.atCenterOf(scene.station());
+        double radius = TerminalTuning.DEFAULT.parkedRadius();
+        Vec3 away = new Vec3(centre.x + radius + CLEAR_OF, pod.getY(), centre.z);
+        boolean[] ticking = {false};
+        FarChunks.awaitEntityTicking(helper, helper.getLevel(), BlockPos.containing(away), () -> ticking[0] = true);
+        helper.startSequence()
+                .thenIdle(100)
+                .thenWaitUntil(() -> expect(helper, ticking[0], "the chunk the pod moves to should tick entities"))
+                .thenExecute(() -> {
+                    expect(helper, FlueScrape.running(pod), "the scrape should still run before the pod leaves");
+                    pod.setPos(away);
+                    expect(
+                            helper,
+                            pod.position().distanceTo(centre) > radius,
+                            "the pod at %s should be past the parked radius",
+                            pod.position());
+                })
+                .thenIdle(10)
+                .thenExecute(() -> {
+                    expect(helper, !FlueScrape.running(pod), "a pod that leaves the station stops the scrape");
+                    expect(
+                            helper,
+                            heard(scene.pilot(), "stopped"),
+                            "the pilot should be told, heard %s",
+                            scene.pilot().actionBarMessages());
+                })
+                .thenIdle(TICKS)
+                .thenExecute(() -> {
+                    try {
+                        expect(
+                                helper,
+                                EngineSoot.soot(pod) == COAL_LIMP,
+                                "a scrape cut short should clear nothing, left %s L",
+                                EngineSoot.soot(pod));
+                        helper.succeed();
+                    } finally {
+                        scene.pilot().leave();
+                        pod.discard();
+                    }
+                });
     }
 }
