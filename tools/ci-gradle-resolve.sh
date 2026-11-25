@@ -19,10 +19,14 @@
 #    holds a "not found". A bare "Could not resolve all" is not a signature: a lock-state or verification
 #    failure says it too, and retrying those only wastes time. A failed download of the Gradle distribution itself
 #    prints no "FAILURE:" line and is not retried.
+# 3. A throttled Maven Central (#1365, ADR 0101). On GitHub Actions (GITHUB_ACTIONS=true) the script first copies
+#    gradle/ci-central-mirror.init.gradle.kts into $GRADLE_USER_HOME/init.d, so this run and every later Gradle call
+#    in the job resolve Central's artifacts from Google's mirror of it. A dev machine never gets the file. The
+#    first-call gate (ci-gradle-resolve-gate.test.sh) is what makes "every later call" true.
 #
 # Usage: tools/ci-gradle-resolve.sh ARGS...   (run from the repo root, after setup-gradle)
 # Env: GRADLE_USER_HOME (default $HOME/.gradle); CI_GRADLE_RESOLVE_ATTEMPTS (download failures allowed, default 3);
-#      CI_GRADLE_RESOLVE_DELAY (seconds before the first rerun, default 30)
+#      CI_GRADLE_RESOLVE_DELAY (seconds before the first rerun, default 30); GITHUB_ACTIONS (true installs the mirror)
 set -euo pipefail
 
 if [[ $# -eq 0 ]]; then
@@ -53,11 +57,22 @@ NETWORK_SIGNATURES=(
 )
 network_re=$(IFS='|' && echo "${NETWORK_SIGNATURES[*]}")
 
-# Probed on a download failure when the report names no artifact: one file each host has served for years.
+# The Maven repositories probed on a download failure (diagnose): the Plugin Portal, Central, and on GitHub Actions
+# Google's mirror of Central, which the build resolves from there.
+PROBE_REPOS=(https://plugins.gradle.org/m2 https://repo.maven.apache.org/maven2)
+# Probed when the report names no artifact: one file each host has served for years.
 KNOWN_GOOD=(
   https://plugins.gradle.org/m2/org/gradle/toolchains/foojay-resolver-convention/org.gradle.toolchains.foojay-resolver-convention.gradle.plugin/1.0.0/org.gradle.toolchains.foojay-resolver-convention.gradle.plugin-1.0.0.pom
   https://repo.maven.apache.org/maven2/junit/junit/4.13.2/junit-4.13.2.pom
 )
+if [[ ${GITHUB_ACTIONS:-} == true ]]; then
+  init_d="${GRADLE_USER_HOME:-$HOME/.gradle}/init.d"
+  mkdir -p "$init_d"
+  cp "$(dirname "${BASH_SOURCE[0]}")/../gradle/ci-central-mirror.init.gradle.kts" "$init_d/"
+  mirror=https://maven-central.storage-download.googleapis.com/maven2
+  PROBE_REPOS+=("$mirror")
+  KNOWN_GOOD+=("$mirror/junit/junit/4.13.2/junit-4.13.2.pom")
+fi
 
 log=$(mktemp)
 report=$(mktemp)
@@ -65,7 +80,7 @@ trap 'rm -f "$log" "$report"' EXIT
 
 # diagnose: a collapsed group saying why this run could not download, for telling a throttle from a cached "not
 # found" (#1358): a retry's --info lines that name an HTTP status or a cached result, then a direct probe of the
-# artifact the report names (or of KNOWN_GOOD). Nothing here can fail the script.
+# artifact the report names on each of PROBE_REPOS (or of KNOWN_GOOD). Nothing here can fail the script.
 diagnose() {
   echo "::group::Download diagnostics (failure $run of $attempts)"
   if [[ $run -gt 1 ]]; then
@@ -82,7 +97,8 @@ diagnose() {
   gav=${gav%.} # Gradle ends "Could not find g:a:v." with a full stop that is not part of the version
   if [[ $gav =~ ^([^:]+):([^:]+):([^:]+)$ ]]; then
     local path="${BASH_REMATCH[1]//.//}/${BASH_REMATCH[2]}/${BASH_REMATCH[3]}/${BASH_REMATCH[2]}-${BASH_REMATCH[3]}.pom"
-    urls=("https://plugins.gradle.org/m2/$path" "https://repo.maven.apache.org/maven2/$path")
+    local repo
+    for repo in "${PROBE_REPOS[@]}"; do urls+=("$repo/$path"); done
   else
     urls=("${KNOWN_GOOD[@]}")
   fi

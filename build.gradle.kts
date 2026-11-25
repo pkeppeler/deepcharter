@@ -113,12 +113,16 @@ repositories {
 	}
 }
 
-// Stands in for FAIL_ON_PROJECT_REPOS (see settings.gradle.kts): only Loom's repositories and GeckoLib's may exist.
-val allowedRepositoryUrls = setOf(
+// Stands in for FAIL_ON_PROJECT_REPOS (see settings.gradle.kts): only Loom's repositories and GeckoLib's may exist. On GitHub
+// Actions, gradle/ci-central-mirror.init.gradle.kts gives Central's repository the URL of Google's mirror of it (ADR 0101).
+val allowedRepositoryUrls = setOfNotNull(
 	"https://maven.fabricmc.net/",
 	"https://libraries.minecraft.net/",
 	"https://repo.maven.apache.org/maven2/",
 	"https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/",
+	"https://maven-central.storage-download.googleapis.com/maven2/".takeIf {
+		providers.environmentVariable("GITHUB_ACTIONS").orNull == "true"
+	},
 )
 gradle.projectsEvaluated {
 	val unexpected = repositories.filter { repo ->

@@ -4,7 +4,9 @@
 # (#1358) is retried with backoff up to the attempt bound and then fails with a clear message; any other failure,
 # including a download-looking line in the build's own output before Gradle's failure report, is not retried. Each
 # download failure prints diagnostics (a retry's --info lines about HTTP statuses and cached results, and curl probes,
-# whose failure never fails the script), and the last retry adds --refresh-dependencies.
+# whose failure never fails the script), and the last retry adds --refresh-dependencies. On GitHub Actions only, the
+# script installs the Central mirror init script into the Gradle home's init.d before the first run (#1365), and the
+# probes ask the mirror too.
 # Usage: tools/tests/ci-gradle-resolve.test.sh
 set -euo pipefail
 
@@ -122,12 +124,14 @@ run() {
   [[ $# -gt 0 ]] || set -- classes
   export STUB_SEQ=$modes STUB_CALLS=$work/calls STUB_CC=$work/cc STUB_SLEEPS=$work/sleeps STUB_CURL=$work/curl GRADLE_USER_HOME=$work/home CI_GRADLE_RESOLVE_DELAY=1
   export CI_GRADLE_RESOLVE_ATTEMPTS=${ATTEMPTS:-3}
+  export GITHUB_ACTIONS=${ACTIONS:-} # CI runs these tests on GitHub Actions too: each case says which it plays
   : >"$STUB_CALLS"
   : >"$STUB_CC"
   : >"$STUB_SLEEPS"
   : >"$STUB_CURL"
   rm -rf "$work/.gradle"
   mkdir -p "$work/.gradle/configuration-cache" # an entry from an earlier step
+  rm -rf "$GRADLE_USER_HOME/init.d"
   mkdir -p "$GRADLE_USER_HOME/caches/modules-2"
   local status=0
   (cd "$work" && bash "$tools/ci-gradle-resolve.sh" "$@" >"$work/out" 2>&1) || status=$?
@@ -192,6 +196,22 @@ check "other failure: its status, no retry, cache kept" "3|gradlew classes|yes" 
 check "a download-looking line before Gradle's failure report: no retry" "4|gradlew classes|yes" "$(run 'noisy ok')"
 check "a verification-looking line before Gradle's failure report: no retry, cache kept" \
   "3|gradlew classes|yes" "$(run 'noisy-verify ok')"
+
+# The Central mirror (#1365): installed on GitHub Actions only, before the first run, and probed there.
+init_script=ci-central-mirror.init.gradle.kts
+mirror=https://maven-central.storage-download.googleapis.com/maven2
+check "not on GitHub Actions: no init script is installed" "no" \
+  "$(run ok >/dev/null; [[ -e $work/home/init.d ]] && echo yes || echo no)"
+check "on GitHub Actions: the mirror init script is installed unchanged" "same" \
+  "$(ACTIONS=true run ok >/dev/null; cmp -s "$tools/../gradle/$init_script" "$work/home/init.d/$init_script" && echo same || echo differs)"
+check "on GitHub Actions: the probe asks the mirror too" \
+  "$portal/$marker;$central/$marker;$mirror/$marker" "$(ACTIONS=true run 'plugin ok' >/dev/null; paste -sd ';' "$work/curl")"
+check "on GitHub Actions, no artifact named: the probe asks a known-good URL on the mirror too" "yes" \
+  "$(ACTIONS=true run 'http ok' >/dev/null; grep -qxF "$mirror/junit/junit/4.13.2/junit-4.13.2.pom" "$work/curl" && echo yes || echo no)"
+# The mirror's URL is written in three places; they must agree.
+for f in "$tools/../gradle/$init_script" "$tools/../build.gradle.kts"; do
+  expect_line "$(basename "$f") names the same mirror URL" "\"$mirror/\"" "$f"
+done
 
 status=0
 (cd "$work" && bash "$tools/ci-gradle-resolve.sh" >/dev/null 2>&1) || status=$?
