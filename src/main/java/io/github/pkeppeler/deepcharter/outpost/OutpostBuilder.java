@@ -11,6 +11,8 @@ import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -18,11 +20,19 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Builds the outpost of a charter at the floor of layer 1 (the band at the clicked block's Y, in a campaign world), the start of layer 2: a lit steel hall with the colony's fuel pump and ore processor
@@ -35,8 +45,10 @@ import net.minecraft.world.phys.AABB;
  * ends over the hall stays open and a pod can drop in. A pod that climbs out of layer 2 arrives in the hall (the crossing keeps the column), where
  * the pump fills its tank and the terminal buys its ore, at {@link OutpostRates}.
  *
- * <p>The shell is sealed against lava and gas before the cut ({@link RoomSeal}); a block entity or any entity but the builder in the hall's volume, or another outpost within two
- * halls' reach, refuses the build, and every check is made before the first block, so a refusal keeps the kit and changes nothing. The outpost is recorded in {@link OutpostData}.
+ * <p>The shell is sealed against lava and gas before the cut ({@link RoomSeal}); a block entity or anything but a loose item or orb (and the builder) in the hall's volume (a mob, another player, a pod, or
+ * the items of a player on another charter: the refusal names the first), or another outpost within two halls' reach, refuses the build, and
+ * every check is made before the first block, so a refusal keeps the kit and changes nothing. Loose items and XP orbs in the volume do not refuse it
+ * (they are swept to the builder). The outpost is recorded in {@link OutpostData}.
  */
 public final class OutpostBuilder {
     static final int RADIUS_BLOCKS = 4;
@@ -49,6 +61,8 @@ public final class OutpostBuilder {
     private static final int HATCH = 2;
     /** The layer where the kit works: the floor of the first layer is the start of the second. */
     private static final int LAYER = 1;
+    /** How many cells further out than the wall the overflow looks for a place to lie. */
+    private static final int SEARCH = 4;
     /** Blocks set tell the clients and wake nothing, as a layer carve does. */
     private static final int FLAGS = Block.UPDATE_CLIENTS;
 
@@ -88,19 +102,138 @@ public final class OutpostBuilder {
         if (level.isOutsideBuildHeight(shellMax)) {
             return refusal("no_room_above");
         }
-        AABB shell = AABB.encapsulatingFullBlocks(shellMin, shellMax);
-        // entity-query: the hall is cut with whatever stands in it, so any entity but the builder refuses the kit
-        if (!level.getEntities(player, shell).isEmpty()) {
-            return refusal("occupied");
+        AABB shell = shellOf(clicked);
+        // entity-query: the hall is cut with whatever stands in it, so anything but a sweepable item or orb refuses the
+        // kit
+        List<Entity> inShell = level.getEntities(player, shell);
+        for (Entity entity : inShell) {
+            Optional<Component> blocked = blockedBy(server, charter.get(), entity);
+            if (blocked.isPresent()) {
+                return blocked;
+            }
         }
         for (BlockPos pos : BlockPos.betweenClosed(shellMin, shellMax)) {
             if (level.getBlockEntity(pos) != null) {
                 return refusal("blocked");
             }
         }
+        List<ItemStack> overflow = sweep(player, level, inShell);
         cut(level, clicked);
-        data.add(new OutpostData.Outpost(charter.get().id(), LAYER, clicked.immutable()));
+        placeOverflow(player, level, data, clicked, overflow);
+        data.add(new OutpostData.Outpost(charter.get().id(), LAYER, level.dimension(), clicked.immutable()));
         return Optional.empty();
+    }
+
+    /** Why {@code entity} refuses the kit of {@code builders}, or empty if it is swept. */
+    private static Optional<Component> blockedBy(MinecraftServer server, Charter builders, Entity entity) {
+        if (entity instanceof ExperienceOrb) {
+            return Optional.empty();
+        }
+        if (entity instanceof ItemEntity item) {
+            // Sweeping another crew's death pile into the builder's pockets would be looting it.
+            if (item.getOwner() instanceof ServerPlayer owner
+                    && Charters.readableCharterOf(server, owner.getUUID())
+                            .map(Charter::id)
+                            .filter(builders.id()::equals)
+                            .isEmpty()) {
+                return Optional.of(
+                        Component.translatable("message.deepcharter.outpost.occupied_items", owner.getName()));
+            }
+            return Optional.empty();
+        }
+        return Optional.of(Component.translatable("message.deepcharter.outpost.occupied", entity.getName()));
+    }
+
+    /**
+     * Moves the hall's loose items and orbs to the builder before the cut, so the cut never entombs them, and returns what the inventory
+     * did not take. An orb is touched once for each orb it merged, because only the touch pays and each pays its own experience. The
+     * touches are bounded by that count, so an orb that holds none (26.3 loads a {@code Count} of 0 or less as 1, so this is a guard) is
+     * discarded unpaid, never touched forever.
+     */
+    private static List<ItemStack> sweep(ServerPlayer player, ServerLevel level, List<Entity> inShell) {
+        List<ItemStack> overflow = new ArrayList<>();
+        for (Entity entity : inShell) {
+            if (entity instanceof ItemEntity item) {
+                ItemStack stack = item.getItem().copy();
+                item.discard();
+                player.getInventory().add(stack);
+                if (!stack.isEmpty()) {
+                    overflow.add(stack);
+                }
+            } else if (entity instanceof ExperienceOrb orb) {
+                for (int touches = mergedCount(level, orb); touches > 0 && !orb.isRemoved(); touches--) {
+                    player.takeXpDelay = 0;
+                    orb.playerTouch(player);
+                }
+                orb.discard();
+            }
+        }
+        return overflow;
+    }
+
+    /** How many orbs {@code orb} holds: its {@code Count}, which has no getter. */
+    private static int mergedCount(ServerLevel level, ExperienceOrb orb) {
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+        orb.saveWithoutId(output);
+        return output.buildResult().getIntOr("Count", 0);
+    }
+
+    /** Drops the overflow after the cut, each stack where {@link #overflowSpot} says. */
+    private static void placeOverflow(
+            ServerPlayer player, ServerLevel level, OutpostData data, BlockPos floor, List<ItemStack> overflow) {
+        if (overflow.isEmpty()) {
+            return;
+        }
+        Vec3 spot = overflowSpot(player, level, data, floor);
+        for (ItemStack stack : overflow) {
+            ItemEntity entity = new ItemEntity(level, spot.x, spot.y, spot.z, stack);
+            entity.setDeltaMovement(Vec3.ZERO);
+            level.addFreshEntity(entity);
+        }
+    }
+
+    /**
+     * Where what does not fit lies, after the cut, and never by setting a block: at the builder if the builder stands outside the shell. Else the
+     * first of: the cell just outside the wall on the builder's side if it is air; an air cell with a sturdy top under it, up to
+     * {@value #SEARCH} cells further out on that line and in no other outpost's hall; a cell inside the new hall that the cut leaves as air
+     * (not entombed, and the sealed hall is not lootable by others).
+     */
+    private static Vec3 overflowSpot(ServerPlayer player, ServerLevel level, OutpostData data, BlockPos floor) {
+        if (!shellOf(floor).intersects(player.getBoundingBox())) {
+            return player.position();
+        }
+        int dx = player.getBlockX() - floor.getX();
+        int dz = player.getBlockZ() - floor.getZ();
+        int out = EDGE + 1;
+        int x = Mth.clamp(dx, -EDGE, EDGE);
+        int z = Mth.clamp(dz, -EDGE, EDGE);
+        Direction away;
+        if (Math.abs(dx) >= Math.abs(dz)) {
+            x = dx >= 0 ? out : -out;
+            away = dx >= 0 ? Direction.EAST : Direction.WEST;
+        } else {
+            z = dz >= 0 ? out : -out;
+            away = dz >= 0 ? Direction.SOUTH : Direction.NORTH;
+        }
+        int y = Mth.clamp(player.getBlockY(), floor.getY() + 1, floor.getY() + HEIGHT);
+        BlockPos spot = floor.offset(x, y - floor.getY(), z);
+        if (level.getBlockState(spot).isAir()) {
+            return Vec3.atBottomCenterOf(spot);
+        }
+        for (int step = 1; step <= SEARCH; step++) {
+            BlockPos cell = spot.relative(away, step);
+            BlockPos below = cell.below();
+            if (level.getBlockState(cell).isAir()
+                    && level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)
+                    && data.containing(LAYER, cell).isEmpty()) {
+                return Vec3.atBottomCenterOf(cell);
+            }
+        }
+        return Vec3.atBottomCenterOf(floor.offset(HATCH, 1, HATCH));
+    }
+
+    private static AABB shellOf(BlockPos floor) {
+        return AABB.encapsulatingFullBlocks(floor.offset(-EDGE, 0, -EDGE), floor.offset(EDGE, HEIGHT + 1, EDGE));
     }
 
     private static Optional<Component> refusal(String key) {

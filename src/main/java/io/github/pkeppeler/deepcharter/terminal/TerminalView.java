@@ -4,6 +4,8 @@ import io.netty.buffer.ByteBuf;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
@@ -16,6 +18,7 @@ import net.minecraft.resources.Identifier;
  * @param unlocked its prerequisite is repaired, so parts can go in. Always true for a repaired terminal.
  * @param parts    each of the type's parts, in the type's order, and whether it is in
  * @param feature  what the type adds ({@link TerminalFeatures}): present for a repaired terminal of a type that has one
+ * @param notices  the lines to show under the header ({@link TerminalNotices}): sent with the view, never saved
  */
 public record TerminalView(
         BlockPos pos,
@@ -23,7 +26,11 @@ public record TerminalView(
         boolean repaired,
         boolean unlocked,
         List<PartStatus> parts,
-        Optional<TerminalFeature> feature) {
+        Optional<TerminalFeature> feature,
+        List<Component> notices) {
+    private static final StreamCodec<ByteBuf, List<Component>> NOTICES_CODEC =
+            ComponentSerialization.TRUSTED_CONTEXT_FREE_STREAM_CODEC.apply(ByteBufCodecs.list());
+
     public static final StreamCodec<ByteBuf, TerminalView> STREAM_CODEC = new StreamCodec<>() {
         @Override
         public TerminalView decode(ByteBuf buffer) {
@@ -39,7 +46,8 @@ public record TerminalView(
                     repaired,
                     unlocked,
                     parts,
-                    TerminalFeatures.codec(type).decode(buffer));
+                    TerminalFeatures.codec(type).decode(buffer),
+                    NOTICES_CODEC.decode(buffer));
         }
 
         @Override
@@ -50,6 +58,7 @@ public record TerminalView(
             ByteBufCodecs.BOOL.encode(buffer, view.unlocked);
             PartStatus.STREAM_CODEC.apply(ByteBufCodecs.list()).encode(buffer, view.parts);
             TerminalFeatures.codec(view.type).encode(buffer, view.feature);
+            NOTICES_CODEC.encode(buffer, view.notices);
         }
     };
 
@@ -59,13 +68,25 @@ public record TerminalView(
                 Identifier.STREAM_CODEC, PartStatus::part, ByteBufCodecs.BOOL, PartStatus::inserted, PartStatus::new);
     }
 
-    public TerminalView {
-        parts = List.copyOf(parts);
+    /** A view with no notices. */
+    public TerminalView(
+            BlockPos pos,
+            Identifier type,
+            boolean repaired,
+            boolean unlocked,
+            List<PartStatus> parts,
+            Optional<TerminalFeature> feature) {
+        this(pos, type, repaired, unlocked, parts, feature, List.of());
     }
 
-    /** This view with {@code feature}. */
-    TerminalView withFeature(Optional<TerminalFeature> feature) {
-        return new TerminalView(pos, type, repaired, unlocked, parts, feature);
+    public TerminalView {
+        parts = List.copyOf(parts);
+        notices = List.copyOf(notices);
+    }
+
+    /** This view with {@code feature} and {@code notices}. */
+    TerminalView with(Optional<TerminalFeature> feature, List<Component> notices) {
+        return new TerminalView(pos, type, repaired, unlocked, parts, feature, notices);
     }
 
     /** The feature if the view carries one of class {@code kind}. */

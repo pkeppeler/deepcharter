@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -13,7 +15,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
@@ -59,12 +60,11 @@ public class PodRenamesTest {
         ServerLevel level = helper.getLevel();
         Identifier retired = Identifier.parse(RETIRED);
         if (BuiltInRegistries.ENTITY_TYPE.containsKey(retired)) {
-            throw helper.assertionException(Component.literal(
-                    "the old id must not be registered, or vanilla would load it without the rename"));
+            throw failure(helper, "the old id must not be registered, or vanilla would load it without the rename");
         }
         List<Entity> loaded = loadAsAChunkDoes(level, savedPodUnder(level, RETIRED));
         if (loaded.size() != 1 || !(loaded.getFirst() instanceof PodEntity pod) || pod.getType() != PodRegistry.POD) {
-            throw helper.assertionException(Component.literal("the pod must load as the new type, got " + loaded));
+            throw failure(helper, "the pod must load as the new type, got %s", loaded);
         }
         if (pod.chassis() != PodRegistry.chassisOf(PodRegistry.POD)
                 || pod.hull() != 11.5f
@@ -74,13 +74,14 @@ public class PodRenamesTest {
                 || pod.cargo().entries().getFirst().stack().getItem()
                         != OreRegistry.stack(OreType.IRONIUM).getItem()
                 || pod.cargoUsed() != 1) {
-            throw helper.assertionException(Component.literal(String.format(
+            throw failure(
+                    helper,
                     "the renamed pod must keep its chassis, hull, fuel, stranded flag and cargo, got %s hull %s fuel %s stranded %s cargo %s",
                     pod.chassis().id(),
                     pod.hull(),
                     pod.fuel(),
                     pod.stranded(),
-                    pod.cargo().entries())));
+                    pod.cargo().entries());
         }
         helper.succeed();
     }
@@ -90,8 +91,7 @@ public class PodRenamesTest {
         ServerLevel level = helper.getLevel();
         List<Entity> loaded = loadAsAChunkDoes(level, savedPodUnder(level, "deepcharter:never_a_pod_type"));
         if (!loaded.isEmpty()) {
-            throw helper.assertionException(
-                    Component.literal("an unknown id outside the table must not load, got " + loaded));
+            throw failure(helper, "an unknown id outside the table must not load, got %s", loaded);
         }
         helper.succeed();
     }
@@ -101,13 +101,11 @@ public class PodRenamesTest {
             PodRenames.validate(Map.of(Identifier.parse(old), Identifier.parse(current)));
         } catch (IllegalStateException e) {
             if (!expected.equals(e.getMessage())) {
-                throw helper.assertionException(
-                        Component.literal("expected \"" + expected + "\", got \"" + e.getMessage() + "\""));
+                throw failure(helper, "expected \"%s\", got \"%s\"", expected, e.getMessage());
             }
             return;
         }
-        throw helper.assertionException(
-                Component.literal("the table entry " + old + " -> " + current + " must be rejected"));
+        throw failure(helper, "the table entry %s -> %s must be rejected", old, current);
     }
 
     @GameTest

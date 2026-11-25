@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "#deepcharter:terminals",
+    "deepcharter:salvage_heap"
+  ]
+}

@@ -111,6 +111,10 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
         while (high + 1 < minY + height && Zones.index(minY, height, high + 1) == zone) {
             high++;
         }
+        // A level cut to part of a band (the cost test's floors, ADR 0086) holds only some of the zone's rows. Every
+        // shipped level holds whole bands, so this changes nothing there.
+        low = Math.max(low, chunk.getMinY());
+        high = Math.min(high, chunk.getMinY() + chunk.getHeight() - 1);
         // The rolls and the states they place do not change from block to block, and the rock hardly does: a layer is
         // mostly one state, so its ore states are worked out once for each new rock. A section that holds nothing but
         // ground is not read block by block: its blocks are only rolled for, and the few that place something are read.

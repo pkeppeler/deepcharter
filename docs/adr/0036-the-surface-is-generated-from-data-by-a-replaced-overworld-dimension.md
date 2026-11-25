@@ -94,3 +94,10 @@ CPU ms per column, `tall_baseline_biomes` (layers only) against `tall_surface_bi
 Ratio, surface over layers only: 1.075x on the pooled medians (131.52 over 122.31), 1.049x on the pooled minimums. By run, the medians give 1.04x, 1.10x and 1.08x, and the minimums 1.06x, 1.03x and 1.08x. The same world differs by up to 4.7% in its median between runs (`tall_surface_biomes`; 1.5% for `tall_baseline_biomes`), so one pair cannot settle a ratio this close, and the pooled figures can.
 
 Not settled: the heap. The fifth round of every run reads a negative heap (the garbage collector ran between the two readings), and the other four vary by about 2x within one world, as before, so no heap ratio is claimed.
+
+## Note, 2026-11-21 (#803)
+
+The overworld is the campaign world: `data/minecraft/dimension/overworld.json` now has the generator of `campaign_sample` (`deepcharter:campaign` noise settings, the `deepcharter:bands` biome source) and a new `data/minecraft/dimension_type/overworld.json` has the campaign type. The surface above is its surface band, from y -64 to 319. The generator's height query for the surface band is identical to the one this ADR describes over 262,144 columns of the old `surface_sample`; the biomes are identical too. Two differences remain, and both are in the made chunk: the top block differs in about 14% of sampled columns, and the features are not all at the same place (see `SurfaceBandParityTest` in the first commit of #803). The layers' density terms ran above their bands and raised columns of ground to the top of the band in 0.5% of the columns; the campaign density now ends them at the band's floor.
+
+`surface_sample` is deleted. The GameTest server still bakes a flat overworld, now of a short test type (`deepcharter:test_overworld`, vanilla's 384-tall type), and `SurfaceTerrainTest` runs in the surface band of `campaign_sample`, the test pack's copy of the new overworld. The user approved the look on 2026-11-21 (#214).
+

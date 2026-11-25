@@ -23,6 +23,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  CLIENT_SHARDS: 4
+
 jobs:
   changes:
     name: client-changes
@@ -41,24 +44,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: main
-          path: .ci-main
-          sparse-checkout: |
-            .github/actions/merge-main
-            tools/ci-merge-main.sh
-          persist-credentials: false
-      # bootstrap-979: until main has the action, use the PR's own copy. Delete this step once #982 is on main.
-      - shell: bash
-        run: |
-          if [ ! -f .ci-main/.github/actions/merge-main/action.yml ]; then
-            mkdir -p .ci-main/.github/actions .ci-main/tools
-            cp -r .github/actions/merge-main .ci-main/.github/actions/
-            cp tools/ci-merge-main.sh .ci-main/tools/
-          fi
       - id: merge
-        uses: ./.ci-main/.github/actions/merge-main
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
       - id: decide
         env:
           GAMEPLAY_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'gameplay') && '1' || '0' }}
@@ -67,33 +54,86 @@ jobs:
           git diff --no-renames --name-only "$MAIN_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
           echo "run=$(tools/ci-client-needed.sh "$GAMEPLAY_LABEL" < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
 
-  client-gametest:
-    name: client-gametest
+  # The suite runs as CLIENT_SHARDS parallel jobs, each its own runner and Minecraft client. Each takes the
+  # shard `i/n` of the client classes that gradle/gametest.gradle.kts picks by weight (-PclientShard), so every class
+  # runs in exactly one shard. The matrix and CLIENT_SHARDS must agree: tools/tests/test_client_shards.py checks it.
+  client-shard:
+    name: client-gametest-shard ${{ matrix.shard }}
     needs: changes
     if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # One shard is ~1/4 of the suite by measured weight (gradle/client-test-weights.txt): about 11 minutes of tests, with 3 minutes of setup before it.
+    # The action's own deadline is 20 minutes of test time; this leaves room for setup and the post steps.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      # The shard's merged main sha, for the aggregate (a matrix job's output holds one shard's value, so a file per shard).
+      # Uploaded before the tests so a failed shard still hands it over.
+      - env:
+          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
+        run: echo "$MAIN_SHA" > "$RUNNER_TEMP/main-sha-${{ matrix.shard }}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: merged-main-${{ matrix.shard }}
+          # A re-run uploads the same name again, which v4+ rejects without this. After `--failed` the aggregate
+          # reads the earlier sha of each shard that did not re-run; if main moved, the shas differ and it fails.
+          overwrite: true
+          path: ${{ runner.temp }}/main-sha-${{ matrix.shard }}
+          retention-days: 1
+      - uses: ./.github/actions/client-gametest
+        with:
+          client-shard: ${{ matrix.shard }}/${{ env.CLIENT_SHARDS }}
+          artifact-suffix: -${{ matrix.shard }}
+
+  # The one name tools/merge-pr.sh requires for the suite (#1079). Succeeds only when every shard did; skipped
+  # when the shards were (the changes job decided no run), which the gate reads as "skipping" like any skipped run.
+  # It also records the shards' agreed `merged-main` notice (tools/ci-shard-main.sh), for the gate on main. It never
+  # merges main itself (that could record a sha the shards did not test).
+  client-gametest:
+    name: client-gametest
+    needs: [changes, client-shard]
+    if: ${{ always() && needs.changes.outputs.run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          SHARDS: ${{ needs.client-shard.result }}
+        run: |
+          if [ "$SHARDS" != success ]; then
+            echo "::error::The client shards finished as '$SHARDS', not success"
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          sparse-checkout: tools/ci-shard-main.sh
+          persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           path: .ci-main
-          sparse-checkout: |
-            .github/actions/merge-main
-            tools/ci-merge-main.sh
+          sparse-checkout: tools/ci-shard-main.sh
           persist-credentials: false
-      # bootstrap-979: until main has the action, use the PR's own copy. Delete this step once #982 is on main.
+      # bootstrap-1093: until main has the script, use the PR's own copy. Delete this step once #1093 is on main.
       - shell: bash
         run: |
-          if [ ! -f .ci-main/.github/actions/merge-main/action.yml ]; then
-            mkdir -p .ci-main/.github/actions .ci-main/tools
-            cp -r .github/actions/merge-main .ci-main/.github/actions/
-            cp tools/ci-merge-main.sh .ci-main/tools/
+          if [ ! -f .ci-main/tools/ci-shard-main.sh ]; then
+            mkdir -p .ci-main/tools
+            cp tools/ci-shard-main.sh .ci-main/tools/
           fi
-      - uses: ./.ci-main/.github/actions/merge-main
-      - uses: ./.github/actions/client-gametest
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: merged-main-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/shard-main
+      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$CLIENT_SHARDS"

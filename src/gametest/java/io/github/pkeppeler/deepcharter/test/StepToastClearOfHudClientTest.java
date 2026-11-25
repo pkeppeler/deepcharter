@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook.Layout;
@@ -35,6 +36,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -76,14 +78,14 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     private static final int FEET_Y = TestLayers.worldY(1, 150);
     private static final int ROOM_RADIUS = 8;
     private static final int ROOM_HEIGHT = 30;
-    private static final int GUI_SCALE = 2;
+    static final int GUI_SCALE = 2;
     /** The GUI sizes with a cockpit: the game's smallest (320 x 240), the default window's (427 x 240), and two larger. */
-    private static final int[][] COCKPIT_GUIS = {{320, 240}, {427, 240}, {640, 360}, {854, 480}};
+    static final int[][] COCKPIT_GUIS = {{320, 240}, {427, 240}, {640, 360}, {854, 480}};
     /** A GUI too small for the cockpit, where the plain HUD is drawn. */
     private static final int[] PLAIN_GUI = {300, 200};
 
-    private static final String SHORT_STEP = "Reach the Deep Claim.";
-    private static final String LONG_STEP =
+    static final String SHORT_STEP = "Reach the Deep Claim.";
+    static final String LONG_STEP =
             "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
                     + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
     private static final String CHARTER = "Toast Charter";
@@ -98,7 +100,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             EvidencePins.handsHidden = true;
             try {
                 seatThePilot(context, singleplayer);
-                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, "in the cockpit", true);
+                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, LONG_STEP, "in the cockpit", true);
                 expectTheSlipIsClearOnEveryCockpitGui(context);
                 expectTheSlipIsClearOnAGuiTooSmallForTheCockpit(context);
                 expectTheSlipIsClearOfATransmission(context);
@@ -110,7 +112,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                         context,
                         "the pilot out of the pod",
                         client -> client.player != null && client.player.getVehicle() == null);
-                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, "on foot", false);
+                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, LONG_STEP, "on foot", false);
                 expectTheSlipIsClearOnFoot(context);
             } finally {
                 EvidencePins.reset();
@@ -163,13 +165,13 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
      * The popup the toast manager really draws, at the window's own GUI. It is drawn where {@link StepToast#placement} says (the text
      * the manager draws is inside that box, read through a recorder, not taken from the toast's own figures); that box is where
      * {@link StepToast#place} puts it; none of the HUD, as worked out here from the theme, is under it; and none of the text the real
-     * HUD layers draw is. {@code cockpit} says whether the cockpit is up.
+     * HUD layers draw is. {@code step} is its text and {@code cockpit} says whether the cockpit is up.
      */
-    private static void expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(
-            ClientGameTestContext context, String when, boolean cockpit) {
+    static void expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(
+            ClientGameTestContext context, String step, String when, boolean cockpit) {
         StepToast[] toast = {null};
         context.runOnClient(client -> {
-            toast[0] = StepToast.of(Component.literal(LONG_STEP));
+            toast[0] = StepToast.of(Component.literal(step));
             client.gui.toastManager().addToast(toast[0]);
         });
         ClientWait.until(
@@ -180,9 +182,8 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                     if (placed.isEmpty()) {
                         return false;
                     }
-                    List<Drawn> drawn =
-                            DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics));
                     Box slip = box(placed.get());
+                    List<Drawn> drawn = probeText(client, slip);
                     return !drawn.isEmpty()
                             && drawn.stream()
                                     .allMatch(text -> text.box().x() >= slip.x()
@@ -201,6 +202,12 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             Box slip = box(toast[0].placement().orElseThrow());
             Map<String, Box> hud = critical(client, width, height);
             requireClear("the step popup " + when + " at " + width + " x " + height, slip, hud);
+            for (HudKeepClear.Rect kept : HudKeepClear.rects(client, width, height)) {
+                require(
+                        !ClientChecks.overlaps(slip, box(kept)),
+                        "the step popup " + when + " at " + slip + " covers the registered keep-clear '" + kept.what()
+                                + "' at " + box(kept));
+            }
             if (cockpit) {
                 require(hud.containsKey("hull and alert lamps"), "the cockpit HUD has lamps to keep clear of");
                 if (width <= COCKPIT_GUIS[1][0]) {
@@ -214,6 +221,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                                     toast[0].width(),
                                     toast[0].height(),
                                     HudKeepClear.rects(client, width, height))
+                            .map(StepToast.Placement::slip)
                             .map(StepToastClearOfHudClientTest::box)
                             .equals(Optional.of(slip)),
                     "the popup is where StepToast.place puts it, not somewhere the toast manager moved it");
@@ -227,6 +235,16 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             }
         });
         context.runOnClient(client -> client.gui.toastManager().clear());
+    }
+
+    /**
+     * The text the toast manager draws for the probe alone. Other toasts (the campaign's step popups) draw too, and are not the probe's:
+     * the probe's text is its step's words, and its heading, which is whatever else lands on its box.
+     */
+    private static List<Drawn> probeText(Minecraft client, Box slip) {
+        return DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics)).stream()
+                .filter(text -> LONG_STEP.contains(text.text()) || ClientChecks.overlaps(slip, text.box()))
+                .toList();
     }
 
     private static void expectTheSlipIsClearOnEveryCockpitGui(ClientGameTestContext context) {
@@ -263,19 +281,21 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     }
 
     private static void expectTheSlipIsClearOfATransmission(ClientGameTestContext context) {
-        context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(
-                Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t01"), CHARTER, "Director")));
-        ClientWait.until(context, "a transmission on screen", client -> TransmissionOverlay.active());
-        context.runOnClient(client -> {
-            for (int[] gui : COCKPIT_GUIS) {
-                Map<String, Box> hud = critical(client, gui[0], gui[1]);
-                require(
-                        hud.containsKey("transmission"),
-                        "the transmission is among the HUD on " + gui[0] + " x " + gui[1]);
-                requireClearOrNowhere(client, gui, SHORT_STEP, hud, false);
-            }
-            TransmissionOverlay.reset();
-        });
+        try (var _ = QuietTransmissions.shown()) {
+            context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(
+                    Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t01"), CHARTER, "Director")));
+            ClientWait.until(context, "a transmission on screen", client -> TransmissionOverlay.active());
+            context.runOnClient(client -> {
+                for (int[] gui : COCKPIT_GUIS) {
+                    Map<String, Box> hud = critical(client, gui[0], gui[1]);
+                    require(
+                            hud.containsKey("transmission"),
+                            "the transmission is among the HUD on " + gui[0] + " x " + gui[1]);
+                    requireClearOrNowhere(client, gui, SHORT_STEP, hud, false);
+                }
+                TransmissionOverlay.reset();
+            });
+        }
     }
 
     private static void expectTheSlipIsClearOnFoot(ClientGameTestContext context) {
@@ -294,15 +314,15 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
 
     /**
      * The popup of {@code step} on {@code gui}: where {@link StepToast#place} puts it against the HUD's own rectangles, and that it is
-     * clear of {@code hud}, worked out here. Where it finds no place, that every place in the left column is under some part of the
-     * HUD. {@code placed} says it must find one.
+     * clear of {@code hud}, worked out here. Where it finds no place, that every place in the left and in the right column is under some
+     * part of the HUD. {@code placed} says it must find one.
      */
-    private static void requireClearOrNowhere(
-            Minecraft client, int[] gui, String step, Map<String, Box> hud, boolean placed) {
+    static void requireClearOrNowhere(Minecraft client, int[] gui, String step, Map<String, Box> hud, boolean placed) {
         StepToast toast = StepToast.of(Component.literal(step));
         String when = "'" + step.substring(0, Math.min(24, step.length())) + "' on " + gui[0] + " x " + gui[1];
         Optional<Box> slip = StepToast.place(
                         gui[0], gui[1], toast.width(), toast.height(), HudKeepClear.rects(client, gui[0], gui[1]))
+                .map(StepToast.Placement::slip)
                 .map(StepToastClearOfHudClientTest::box);
         if (slip.isPresent()) {
             requireClear("the step popup " + when, slip.get(), hud);
@@ -310,11 +330,13 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         }
         require(!placed, "the step popup " + when + " finds a place");
         int margin = QuestMapTuning.current().toastMargin();
-        for (int y = margin; y + toast.height() <= gui[1] - margin; y++) {
-            Box candidate = new Box(margin, y, toast.width(), toast.height());
-            require(
-                    hud.values().stream().anyMatch(part -> ClientChecks.overlaps(candidate, part)),
-                    "the step popup " + when + " found no place, but " + candidate + " is clear of the HUD");
+        for (int x : new int[] {margin, gui[0] - margin - toast.width()}) {
+            for (int y = margin; y + toast.height() <= gui[1] - margin; y++) {
+                Box candidate = new Box(x, y, toast.width(), toast.height());
+                require(
+                        hud.values().stream().anyMatch(part -> ClientChecks.overlaps(candidate, part)),
+                        "the step popup " + when + " found no place, but " + candidate + " is clear of the HUD");
+            }
         }
     }
 
@@ -338,6 +360,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                         BreachHud::extractAltimeter,
                         AccountHud::extract,
                         BlockReadoutHud::extract,
+                        SonarHud::extract,
                         TransmissionHud::extract)) {
             drawn.addAll(DrawnText.of(graphics -> part.accept(graphics, tracker)));
         }
@@ -360,9 +383,11 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     /**
      * Every part of the HUD that is up for the local player on a GUI {@code width} x {@code height}, from the theme and the HUD's
      * public figures: in the cockpit the ribbon, each gauge, the lamps, the scanner window and bezel and the readout plate; without
-     * it the plain pod readout and scanner panel; the altimeter, the account line and a transmission wherever they are drawn.
+     * it the plain pod readout and scanner panel; the altimeter, the account line and a transmission wherever they are drawn. The
+     * navigator's sonar scope is the one part read from {@link HudKeepClear}: its layout is private to the HUD, so
+     * {@link StepToastClearOfSonarClientTest} checks that rectangle against what the scope draws.
      */
-    private static Map<String, Box> critical(Minecraft client, int width, int height) {
+    static Map<String, Box> critical(Minecraft client, int width, int height) {
         Map<String, Box> hud = new LinkedHashMap<>();
         var font = client.font;
         var player = ClientSession.player(client);
@@ -422,6 +447,9 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                             ScannerHud.cellLeft(width, height, area, area.halfWidth()) + cell + 1 - left + 1,
                             bottom + 1 - margin));
         }
+        if (SonarHud.frame(client).isPresent()) {
+            hud.put("sonar scope", sonarScope(client, width, height));
+        }
         if (seated.isEmpty()) {
             Component reading = Altimeter.reading(level, player.getBlockY());
             hud.put(
@@ -476,11 +504,21 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         return hud;
     }
 
+    /** The rectangle the sonar HUD registers to be kept clear, as it stands on a GUI {@code width} x {@code height}. */
+    static Box sonarScope(Minecraft client, int width, int height) {
+        return HudKeepClear.rects(client, width, height).stream()
+                .filter(rect -> rect.what().equals("sonar scope"))
+                .findFirst()
+                .map(StepToastClearOfHudClientTest::box)
+                .orElseThrow(() -> new AssertionError(
+                        "the sonar HUD registers no keep-clear rectangle on " + width + " x " + height));
+    }
+
     private static Box box(Decal decal, int width, int height) {
         return new Box(decal.left(width), decal.top(height), decal.width(), decal.height());
     }
 
-    private static Box box(HudKeepClear.Rect rect) {
+    static Box box(HudKeepClear.Rect rect) {
         return new Box(rect.x(), rect.y(), rect.width(), rect.height());
     }
 }

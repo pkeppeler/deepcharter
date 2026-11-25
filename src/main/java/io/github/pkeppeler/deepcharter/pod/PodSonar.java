@@ -139,6 +139,7 @@ public final class PodSonar {
         SonarPingPayload.register();
         SonarMarkPayload.register();
         SonarEchoes.init();
+        SonarLure.init();
         PodEvents.AFTER_TICK.register(PodSonar::afterTick);
     }
 

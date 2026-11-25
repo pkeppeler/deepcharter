@@ -63,8 +63,8 @@ public class SoundAmbienceTest {
     }
 
     /**
-     * The biomes of the surface, read from the mod's own {@code data/minecraft/dimension/overworld.json}: the GameTest world replaces the
-     * overworld's generator with a flat one, so the level in the test has none of them.
+     * The biomes of the surface band, read from the mod's own {@code data/minecraft/dimension/overworld.json}: the GameTest world replaces
+     * the overworld's generator with a flat one, so the level in the test has none of them.
      */
     private static Set<Identifier> surfaceBiomes(GameTestHelper helper) {
         var stream = SoundAmbienceTest.class.getResourceAsStream("/data/minecraft/dimension/overworld.json");
@@ -74,7 +74,8 @@ public class SoundAmbienceTest {
             JsonObject source = JsonParser.parseReader(reader)
                     .getAsJsonObject()
                     .getAsJsonObject("generator")
-                    .getAsJsonObject("biome_source");
+                    .getAsJsonObject("biome_source")
+                    .getAsJsonObject("surface");
             for (JsonElement entry : source.getAsJsonArray("biomes")) {
                 ids.add(Identifier.parse(entry.getAsJsonObject().get("biome").getAsString()));
             }

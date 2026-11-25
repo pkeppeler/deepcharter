@@ -48,12 +48,7 @@ public final class WorldFormatGate {
 
     /** Why the world of {@code server} may not start, or empty when it may. */
     public static Optional<Refusal> refusal(MinecraftServer server) {
-        return refusal(server, WorldFormat.CURRENT);
-    }
-
-    // test-seam: the tests run the gate at format 2, the number #803 makes real, while CURRENT is still 1
-    public static Optional<Refusal> refusal(MinecraftServer server, int current) {
-        return refusal(server.getDataStorage(), current);
+        return refusal(server.getDataStorage(), WorldFormat.CURRENT);
     }
 
     /** Why the world in {@code storage} may not start, or empty when it may: the client asks it before a server exists. */
@@ -66,7 +61,7 @@ public final class WorldFormatGate {
      * empty one, is {@link WorldFormat#LEGACY}. It reads with {@code get}, never {@code computeIfAbsent}: that would make a default
      * record, which is dirty, and the next save would write a file into a world that is refused.
      */
-    // test-seam: the tests run the gate at format 2, the number #803 makes real, while CURRENT is still 1
+    // test-seam: a test asks the gate at the legacy format, to show that a world with no stamp file starts there
     public static Optional<Refusal> refusal(SavedDataStorage storage, int current) {
         ColonySite site = storage.get(ColonySite.TYPE);
         // An unreadable colony is another build's data: its own accessors log it and skip.

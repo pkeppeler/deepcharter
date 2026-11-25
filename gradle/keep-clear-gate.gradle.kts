@@ -4,8 +4,9 @@
 // call, and has a call line without `// keep-clear-ok: <reason>` on it or the contiguous `//` lines above it.
 //
 // The scan is source text, as the other gates are. It is per file, not per element: a file that registers a rectangle is taken to
-// register every element it draws; a reviewer reads the rectangle against the draw code, and the client test (StepToastClearOfHudClientTest)
-// draws the real HUD and checks that the popup covers none of its text. Comments are blanked before the match, so a mention in prose
+// register every element it draws; a reviewer reads the rectangle against the draw code, and the client tests
+// (StepToastClearOfHudClientTest, and StepToastClearOfSonarClientTest for the navigator's scope) draw the real HUD and check that
+// the popup covers none of its text. Comments are blanked before the match, so a mention in prose
 // neither makes a call nor registers one.
 //
 // tools/tests/keep_clear_gate_check.py runs the scan over fixture trees (checkGametestFixtures in gametest.gradle.kts).

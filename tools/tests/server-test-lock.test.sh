@@ -58,6 +58,8 @@ real_home=${GRADLE_USER_HOME:-$HOME/.gradle}
 export GRADLE_USER_HOME=$work/gradle-home
 mkdir -p "$GRADLE_USER_HOME"
 if [[ -d $real_home/wrapper ]]; then ln -s "$real_home/wrapper" "$GRADLE_USER_HOME/wrapper"; fi
+# gradlew would register these daemons in the live checkout's registry (#1120), where the cleanup --stop would reach a real build.
+export GRADLE_OPTS="-Dorg.gradle.daemon.registry.base=$GRADLE_USER_HOME/daemon"
 printf '%s\n' "org.gradle.daemon.idletimeout=60000" "org.gradle.jvmargs=-Xmx192m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xshare:auto" \
   >"$GRADLE_USER_HOME/gradle.properties"
 

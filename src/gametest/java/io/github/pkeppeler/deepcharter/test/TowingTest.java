@@ -86,6 +86,7 @@ public class TowingTest {
     private static final int SKY_X = 15100;
     private static final int SHAFT_X = 15300;
     private static final int RELOAD_X = 15500;
+    private static final int PILLAR_X = 15700;
     private static final int CHUNK_X = 15600;
     /** Blocks that the floor of a shaft's gallery is above the floor of its shaft. */
     private static final int GALLERY_FLOOR = 10; // fixed-pos: a height above the shaft floor, not a world Y
@@ -281,6 +282,253 @@ public class TowingTest {
                                 behind);
                     }
                     return true;
+                });
+    }
+
+    /**
+     * The tower stands on a 3 x 3 ledge in open air and its towed pod starts a full line away at the same height, over a drop with no
+     * floor beneath it (where a crossing leaves it, #1122). The pod falls on its first tick. The line must not read the tower's
+     * ledge as rock in the pod's way and snap the pod onto its tower: it keeps its line, falls below where it started, and comes to
+     * rest there.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void aTowedPodOverADropBesideTheTowersLedgeFallsAndRestsWithoutSnappingOntoIt(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Vec3 start = ledgeRoom(level, SKY_X + 200);
+        double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
+        Vec3[] resting = {Vec3.ZERO};
+        towScene(
+                helper,
+                level,
+                columns(SKY_X + 200, SKY_X + 240, TOW_Z),
+                start,
+                start.add(trail, 0, 0),
+                step -> start,
+                (tower, towed, age) -> {
+                    double gap = tower.position().distanceTo(towed.position());
+                    if (gap < 0.9 * trail) {
+                        throw failure(
+                                helper,
+                                "on tick %s the towed pod is %s from its tower, a line of %s: it was snapped onto it",
+                                age,
+                                gap,
+                                trail);
+                    }
+                    requireNoWalls(helper, towed);
+                    if (age == 80) {
+                        resting[0] = towed.position();
+                    }
+                    if (age < 120) {
+                        return false;
+                    }
+                    if (towed.getY() > start.y - 1.0) {
+                        throw failure(
+                                helper,
+                                "the towed pod should have fallen away from its start height %s, it is at %s",
+                                start.y,
+                                towed.position());
+                    }
+                    requireAtRest(helper, 80, resting[0], towed);
+                    return true;
+                });
+    }
+
+    /**
+     * As above with the pod only 3 from the tower, on a slack line: it falls past the ledge's lip and the line drapes over the lip,
+     * so the pod hangs most of a line below the tower and does not stop in the air where the straight line first grazes the lip.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void aTowedPodOnASlackLineFallsPastTheTowersLedgeAndHangsFromItsLip(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Vec3 start = ledgeRoom(level, SKY_X + 300);
+        double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
+        Vec3[] resting = {Vec3.ZERO};
+        towScene(
+                helper,
+                level,
+                columns(SKY_X + 300, SKY_X + 340, TOW_Z),
+                start,
+                start.add(3.0, 0, 0),
+                step -> start,
+                (tower, towed, age) -> {
+                    requireNoWalls(helper, towed);
+                    if (age == 120) {
+                        resting[0] = towed.position();
+                    }
+                    if (age < 160) {
+                        return false;
+                    }
+                    double below = tower.getY() - towed.getY();
+                    if (below < 0.6 * trail) {
+                        throw failure(
+                                helper,
+                                "the towed pod should hang from the lip at least %s below its tower, it is %s below at %s",
+                                0.6 * trail,
+                                below,
+                                towed.position());
+                    }
+                    requireAtRest(helper, 120, resting[0], towed);
+                    return true;
+                });
+    }
+
+    /**
+     * The tower stands 2.5 in from the lip of a long ledge and the pod starts level with it 4.2 out, over the drop (the recorded
+     * scene of #1122). The hull's bottom corners meet the lip when the pod has dropped about 0.46, so the line is blocked well
+     * before the pod has dropped half a block: it must still drape over the lip, not be snapped onto its tower.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void aTowedPodOnALongLedgesLipHangsFromItAfterAShortDrop(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Vec3 start = skyRoom(level, SKY_X + 500);
+        BlockPos below = BlockPos.containing(start).below();
+        RoomCarver.carve(level, below.offset(-2, -2, -1), below.offset(10, 0, 1), Blocks.STONE.defaultBlockState());
+        double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
+        Vec3[] resting = {Vec3.ZERO};
+        towScene(
+                helper,
+                level,
+                columns(SKY_X + 500, SKY_X + 540, TOW_Z),
+                start,
+                start.add(-4.2, 0, 0),
+                step -> start,
+                (tower, towed, age) -> {
+                    requireNoWalls(helper, towed);
+                    double gap = tower.position().distanceTo(towed.position());
+                    if (gap < 0.9 * 4.2) {
+                        throw failure(
+                                helper,
+                                "on tick %s the towed pod is %s from its tower, a line of %s: it was snapped onto it",
+                                age,
+                                gap,
+                                trail);
+                    }
+                    if (age == 120) {
+                        resting[0] = towed.position();
+                    }
+                    if (age < 160) {
+                        return false;
+                    }
+                    if (tower.getY() - towed.getY() < 2.0) {
+                        throw failure(
+                                helper,
+                                "the towed pod should hang below the lip, it is %s below its tower",
+                                tower.getY() - towed.getY());
+                    }
+                    requireAtRest(helper, 120, resting[0], towed);
+                    return true;
+                });
+    }
+
+    /**
+     * The pod hangs from the lip of the tower's ledge, then the tower drives away, far past a line's length. The line draped over the
+     * lip runs out: the pod is hauled up and follows its tower, never thrown to the far side of the lip or beyond the line.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    public void aTowerDrivingAwayFromAPodHangingOverItsLedgeHaulsThePodAfterIt(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Vec3 start = ledgeRoom(level, SKY_X + 400);
+        double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
+        int driveFrom = 150;
+        towScene(
+                helper,
+                level,
+                columns(SKY_X + 400, SKY_X + 440, TOW_Z),
+                start,
+                start.add(-3.0, 0, 0),
+                step -> start.add(0.2 * Math.max(0, Math.min(step - driveFrom, 150)), 0, 0),
+                (tower, towed, age) -> {
+                    requireNoWalls(helper, towed);
+                    double gap = tower.position().distanceTo(towed.position());
+                    if (gap > trail + 0.25) {
+                        throw failure(
+                                helper,
+                                "on tick %s the towed pod is %s from its tower, more than the line %s, at %s",
+                                age,
+                                gap,
+                                trail,
+                                towed.position());
+                    }
+                    if (age < driveFrom + 250) {
+                        return false;
+                    }
+                    if (towed.getX() < start.x + 20) {
+                        throw failure(
+                                helper,
+                                "the towed pod should follow its tower at %s, it is at %s",
+                                tower.position(),
+                                towed.position());
+                    }
+                    return true;
+                });
+    }
+
+    /** The tower leaves up a shaft, turns into a gallery and stops within the line's reach: the pod is carried up the shaft after it, not left at the bottom. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+    public void aTowerThatTurnsACornerAndStopsWithinTheLineStillBringsThePodUp(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Vec3 base = shaft(level, SHAFT_X + 256);
+        towScene(
+                helper,
+                level,
+                columns(SHAFT_X + 256, SHAFT_X + 276, TOW_Z + 103),
+                base.add(0, 4, 0),
+                base,
+                step -> step <= 40
+                        ? base.add(0, 4 + 0.15 * step, 0)
+                        : base.add(0.15 * Math.min(step - 40, 27), GALLERY_FLOOR, 0),
+                (tower, towed, age) -> {
+                    requireNoWalls(helper, towed);
+                    if (age < 240) {
+                        return false;
+                    }
+                    double trail = TowTuning.DEFAULT.trailDistance(tower, towed);
+                    double gap = tower.position().distanceTo(towed.position());
+                    if (gap > trail + 0.1 || towed.getY() < base.y + 5) {
+                        throw failure(
+                                helper,
+                                "the tower stopped at %s within the line of %s: the pod should be up with it, it is at %s",
+                                tower.position(),
+                                trail,
+                                towed.position());
+                    }
+                    return true;
+                });
+    }
+
+    /**
+     * The tower's centre line to its pod clears a pillar by 0.5, but the pod is 1.9 wide and its hull would cut the pillar's edge:
+     * the line is not left through it, as the swept box before #1122 did not.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aLineThatWouldCutAPillarsEdgeWithThePodsHullIsNotLeftThere(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        int x = PILLAR_X;
+        RoomCarver.carve(level, x, x + 40, TOW_FLOOR - 12, TOW_FLOOR - 1, TOW_Z, TOW_Z + 10, Blocks.STONE);
+        RoomCarver.carve(level, x, x + 40, TOW_FLOOR, TOW_FLOOR + 8, TOW_Z, TOW_Z + 10, Blocks.AIR);
+        RoomCarver.carve(level, x + 10, x + 10, TOW_FLOOR, TOW_FLOOR + 6, TOW_Z + 6, TOW_Z + 6, Blocks.STONE);
+        Vec3 tower = new Vec3(x + 14.5, TOW_FLOOR, TOW_Z + 5.5);
+        Vec3 pod = new Vec3(x + 8.5, TOW_FLOOR, TOW_Z + 5.5);
+        towScene(
+                helper,
+                level,
+                columns(PILLAR_X, PILLAR_X + 40, TOW_Z),
+                tower,
+                pod,
+                step -> tower,
+                (anchor, towed, age) -> {
+                    requireNoWalls(helper, towed);
+                    if (age < 10) {
+                        return false;
+                    }
+                    if (towed.getX() < PILLAR_X + 10.99 && towed.getX() > PILLAR_X + 6) {
+                        throw failure(
+                                helper,
+                                "on tick %s the pod is at %s, left on a line that cuts the pillar's edge",
+                                age,
+                                towed.position());
+                    }
+                    return age >= 30;
                 });
     }
 
@@ -1377,6 +1625,25 @@ public class TowingTest {
                 z + 3,
                 Blocks.AIR);
         return new Vec3(x + 3.0, TOW_FLOOR, z + 3.0);
+    }
+
+    /** A sky room with a 3 x 3 stone ledge under its start point; returns the start point. */
+    private static Vec3 ledgeRoom(ServerLevel level, int x) {
+        Vec3 start = skyRoom(level, x);
+        BlockPos ledge = BlockPos.containing(start).below();
+        RoomCarver.carve(level, ledge.offset(-1, 0, -1), ledge.offset(1, 0, 1), Blocks.STONE.defaultBlockState());
+        return start;
+    }
+
+    private static void requireAtRest(GameTestHelper helper, int tick, Vec3 was, PodEntity towed) {
+        if (towed.position().distanceTo(was) > 0.1) {
+            throw failure(
+                    helper,
+                    "the towed pod should be at rest by tick %s, it was at %s and is at %s",
+                    tick,
+                    was,
+                    towed.position());
+        }
     }
 
     private static void requireNoWalls(GameTestHelper helper, PodEntity towed) {

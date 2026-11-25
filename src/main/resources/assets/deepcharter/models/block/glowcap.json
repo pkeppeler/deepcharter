@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "deepcharter:block/glowcap",
+    "particle": "deepcharter:block/glowcap"
+  }
+}

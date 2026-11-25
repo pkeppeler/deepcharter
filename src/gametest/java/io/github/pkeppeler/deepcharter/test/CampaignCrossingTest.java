@@ -3,6 +3,11 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.BreachPayload;
@@ -17,6 +22,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -107,13 +113,13 @@ public class CampaignCrossingTest {
                 new Step(layer1Floor + crust + 0.5, "1>2", "2>1"),
                 new Step(layer1Floor + 2, "1>2", "2>1"),
                 new Step(layer1Floor - 0.5, "1>2", "2>1", "1>2"),
-                new Step(CampaignBands.UNBUILT.minY() + 100, "1>2", "2>1", "1>2"),
-                new Step(layer1Floor + 100, "1>2", "2>1", "1>2", "2>1"),
-                new Step(surfaceFloor + crust + 0.5, "1>2", "2>1", "1>2", "2>1", "1>0"),
-                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>1", "1>0"),
-                new Step(surfaceFloor - 0.5, "1>2", "2>1", "1>2", "2>1", "1>0", "0>1"),
-                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>1", "1>0", "0>1"),
-                new Step(surfaceFloor + 100, "1>2", "2>1", "1>2", "2>1", "1>0", "0>1", "1>0"));
+                new Step(CampaignBands.UNBUILT.minY() + 100, "1>2", "2>1", "1>2", "2>3"),
+                new Step(layer1Floor + 100, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1"),
+                new Step(surfaceFloor + crust + 0.5, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0"),
+                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0"),
+                new Step(surfaceFloor - 0.5, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0", "0>1"),
+                new Step(surfaceFloor + 1, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0", "0>1"),
+                new Step(surfaceFloor + 100, "1>2", "2>1", "1>2", "2>3", "3>2", "2>1", "1>0", "0>1", "1>0"));
         TestTicks.each(helper, () -> {
             long tick = helper.getTick();
             int index = (int) (tick / STEP_TICKS);
@@ -167,8 +173,8 @@ public class CampaignCrossingTest {
                 throw failure(helper, "expected one descent from layer 1 to 2, saw %s", crossings(player));
             }
             List<Identifier> delivered = DELIVERED.getOrDefault(player.getUUID(), List.of());
-            if (!delivered.contains(id("t05"))) {
-                throw failure(helper, "the descent into layer 2 should send t05, sent %s", delivered);
+            if (!delivered.contains(id("t11"))) {
+                throw failure(helper, "the descent into layer 2 should send t11, sent %s", delivered);
             }
             Set<Identifier> done = HandbookProgress.completedFor(server, player.getUUID());
             if (!done.contains(breachDirective)) {
@@ -309,8 +315,8 @@ public class CampaignCrossingTest {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel campaign = helper.getLevel();
         ServerLevel overworld = server.overworld();
-        BreachPayload inPlace = BreachPayload.of(campaign, campaign, 1, 2);
-        BreachPayload moved = BreachPayload.of(overworld, campaign, 0, 1);
+        BreachPayload inPlace = BreachPayload.of(campaign, campaign, 1, 2, false);
+        BreachPayload moved = BreachPayload.of(overworld, campaign, 0, 1, false);
         if (inPlace.fades() || !moved.fades()) {
             throw failure(helper, "in place: %s, between levels: %s", inPlace, moved);
         }
@@ -322,16 +328,119 @@ public class CampaignCrossingTest {
         helper.succeed();
     }
 
+    /**
+     * A crossing moves nobody (ADR 0061), so the old pocket (a carved room that skipped the Conduit's casing) is gone, and a pod that
+     * crosses a band boundary in the Conduit's own column leaves the casing whole. Cycle-2 review of #818 found this untested.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1000)
+    public void aPodCrossingInPlaceAtTheConduitsColumnLeavesTheConduitWhole(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ColonySite.Placed colony = Colony.placed(level.getServer())
+                .orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
+        BlockPos centre = TestColony.anchor(colony, ColonyAnchor.CONDUIT);
+        int radius = ColonyTuning.DEFAULT.conduitRadius();
+        int top = colony.groundY() + ColonyTuning.DEFAULT.conduitStack();
+        int layer1Floor = CampaignBands.LAYER_1.minY();
+        int surfaceFloor = CampaignBands.SURFACE.minY();
+        // The corners of the casing name every chunk that holds a part of it.
+        List<BlockPos> corners = List.of(
+                centre.offset(-radius, 0, -radius).atY(layer1Floor + 8),
+                centre.offset(-radius, 0, radius).atY(layer1Floor + 8),
+                centre.offset(radius, 0, -radius).atY(layer1Floor + 8),
+                centre.offset(radius, 0, radius).atY(layer1Floor + 8));
+        MockPlayer mock = MockPlayers.join(helper, "cross-conduit");
+        mock.player().setPermanentlyInvulnerable(true);
+        PodEntity[] pods = {null};
+        long[] startTick = {-1};
+        int[] loaded = {0};
+        FarChunks.awaitEntityTicking(helper, level, corners, index -> loaded[0]++);
+        double x = centre.getX() + 0.5;
+        double z = centre.getZ() + 0.5;
+        // One crossing at each boundary between bands, down and up, with the pod in the Conduit's own column.
+        List<Step> steps = List.of(
+                new Step(layer1Floor + 100),
+                new Step(layer1Floor - 0.5, "1>2"),
+                new Step(layer1Floor + CampaignBands.crustRows() + 0.5, "1>2", "2>1"),
+                new Step(surfaceFloor + CampaignBands.crustRows() + 0.5, "1>2", "2>1", "1>0"),
+                new Step(surfaceFloor - 0.5, "1>2", "2>1", "1>0", "0>1"));
+        TestTicks.each(helper, () -> {
+            if (loaded[0] < corners.size()) {
+                return;
+            }
+            if (pods[0] == null) {
+                expectConduitWhole(helper, level, centre, radius, top, "before the crossings");
+                pods[0] = TestEntities.create(PodRegistry.POD, level);
+                pods[0].setNoGravity(true);
+                pods[0].setPos(x, steps.get(0).y(), z);
+                level.addFreshEntity(pods[0]);
+                mock.teleportTo(level, new Vec3(x, steps.get(0).y(), z), 0, 0);
+                if (!mock.player().startRiding(pods[0], true, false)) {
+                    throw failure(helper, "the mock could not board the pod");
+                }
+                startTick[0] = helper.getTick();
+                return;
+            }
+            long since = helper.getTick() - startTick[0];
+            if (since == 1) {
+                // The first tick after the pilot is placed sees the band the pilot joined in and the band it was put in
+                // as one crossing.
+                CROSSED.remove(mock.player().getUUID());
+                return;
+            }
+            if (since % STEP_TICKS != STEP_TICKS - 1 || since / STEP_TICKS >= steps.size()) {
+                return;
+            }
+            int index = (int) (since / STEP_TICKS);
+            if (!crossings(mock.player()).equals(steps.get(index).crossings())) {
+                throw failure(
+                        helper,
+                        "with the pod at y=%s (step %d) the crossings should be %s, were %s",
+                        steps.get(index).y(),
+                        index,
+                        steps.get(index).crossings(),
+                        crossings(mock.player()));
+            }
+            if (pods[0].level() != level || pods[0].getX() != x || pods[0].getZ() != z) {
+                throw failure(
+                        helper,
+                        "the crossing moved the pod to %s in %s",
+                        pods[0].position(),
+                        pods[0].level().dimension().identifier());
+            }
+            if (index == steps.size() - 1) {
+                expectConduitWhole(helper, level, centre, radius, top, "after the crossings");
+                helper.succeed();
+                return;
+            }
+            pods[0].setPos(x, steps.get(index + 1).y(), z);
+        });
+    }
+
+    /** The casing runs unbroken from the floor of the deepest layer to the top of its stack, in the whole column of the square. */
+    private static void expectConduitWhole(
+            GameTestHelper helper, ServerLevel level, BlockPos centre, int radius, int top, String when) {
+        for (int cx = centre.getX() - radius; cx <= centre.getX() + radius; cx++) {
+            for (int cz = centre.getZ() - radius; cz <= centre.getZ() + radius; cz++) {
+                for (int y = CampaignBands.LAYER_2.minY(); y <= top; y++) {
+                    if (!level.getBlockState(new BlockPos(cx, y, cz)).is(ColonyBlocks.CONDUIT)) {
+                        throw failure(helper, "%s: the Conduit has a gap at %s %s %s", when, cx, y, cz);
+                    }
+                }
+            }
+        }
+    }
+
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void theBandTableReadsTheSameForEveryY(GameTestHelper helper) {
         List<String> seen = new ArrayList<>();
-        for (int y : new int[] {319, -64, -65, -256, -257, -512, -513}) {
+        for (int y : new int[] {319, -64, -65, -256, -257, -512, -513, -768, -769}) {
             seen.add(y + "="
                     + CampaignBands.bandAt(y)
                             .map(band -> String.valueOf(band.layer()))
                             .orElse("none"));
         }
-        List<String> expected = List.of("319=0", "-64=0", "-65=1", "-256=1", "-257=2", "-512=2", "-513=none");
+        List<String> expected =
+                List.of("319=0", "-64=0", "-65=1", "-256=1", "-257=2", "-512=2", "-513=3", "-768=3", "-769=none");
         if (!seen.equals(expected)) {
             throw failure(helper, "expected %s, got %s", expected, seen);
         }

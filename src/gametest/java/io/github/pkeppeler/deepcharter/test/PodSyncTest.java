@@ -48,21 +48,25 @@ public class PodSyncTest {
     /** How far a hacked client claims the vehicle went in one tick: five blocks, where the pod's own top speed is a fifth of one. */
     private static final double CLAIMED_STEP = 5;
 
-    /** Lays the floor and forces the chunks under it, which are far from every player, so the vehicles on it tick. */
-    private static void floor(GameTestHelper helper) {
+    /** Lays the floor and awaits entity ticking in every chunk under it; the result is true once they all tick (#1083). */
+    private static boolean[] floor(GameTestHelper helper) {
         BlockPos low = helper.absolutePos(BlockPos.ZERO);
         BlockPos high = helper.absolutePos(new BlockPos(2 * FLOOR_RADIUS, 0, 2 * FLOOR_RADIUS));
+        List<BlockPos> chunks = new ArrayList<>();
         for (int chunkX = low.getX() >> 4; chunkX <= high.getX() >> 4; chunkX++) {
             for (int chunkZ = low.getZ() >> 4; chunkZ <= high.getZ() >> 4; chunkZ++) {
-                FarChunks.force(helper, helper.getLevel(), chunkX, chunkZ);
+                chunks.add(new BlockPos(chunkX << 4, FLOOR_Y, chunkZ << 4));
             }
         }
+        boolean[] ticking = {false};
+        FarChunks.awaitAllEntityTicking(helper, helper.getLevel(), chunks, () -> ticking[0] = true);
         for (int x = -FLOOR_RADIUS; x <= FLOOR_RADIUS; x++) {
             for (int z = -FLOOR_RADIUS; z <= FLOOR_RADIUS; z++) {
                 helper.setBlock(
                         new BlockPos(x + FLOOR_RADIUS, FLOOR_Y, z + FLOOR_RADIUS), Blocks.STONE.defaultBlockState());
             }
         }
+        return ticking;
     }
 
     private static Vec3 spawnAt() {
@@ -85,9 +89,9 @@ public class PodSyncTest {
      * that differs. A second {@code ServerEntity} is read here rather than the pilot's own packets, because a mock pilot's tracking starts some
      * ticks into a far-away test and would leave a gap that is the harness's.
      */
-    @GameTest(maxTicks = 400)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void driveSendsOneSteadyMoveEveryTick(GameTestHelper helper) {
-        floor(helper);
+        boolean[] floorTicks = floor(helper);
         PodEntity pod = helper.spawn(PodRegistry.POD, spawnAt());
         MockPlayer pilot = pilotOf(helper, pod);
         List<Packet<?>> sent = new ArrayList<>();
@@ -119,7 +123,7 @@ public class PodSyncTest {
         TestTicks.each(helper, () -> {
             // The structure is far from the world's players: the pod starts ticking some ticks into the test.
             if (!driving[0]) {
-                if (pod.tickCount < 1) {
+                if (!floorTicks[0] || pod.tickCount < 1) {
                     return;
                 }
                 driving[0] = true;
@@ -164,11 +168,11 @@ public class PodSyncTest {
      * The control for {@link #pilotsClaimedMoveDoesNotMoveThePod}: the same claim from the pilot of a vanilla boat does move the boat, so
      * the claim reaches the handler and a pod that stays put is the pod's doing, not the harness's.
      */
-    @GameTest(maxTicks = 400)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void controlBoatTakesTheClaimedMove(GameTestHelper helper) {
-        floor(helper);
+        boolean[] floorTicks = floor(helper);
         Entity boat = helper.spawn(EntityTypes.OAK_BOAT, spawnAt());
-        claimAfterRiding(helper, boat, moved -> {
+        claimAfterRiding(helper, boat, floorTicks, moved -> {
             if (moved.x < CLAIMED_STEP - 1) {
                 throw helper.assertionException(
                         "the control: a vanilla boat should take the claimed %s blocks, moved %s", CLAIMED_STEP, moved);
@@ -181,11 +185,11 @@ public class PodSyncTest {
      * simulates) must not move a pod: the pod is simulated by the server from the pilot's input, so a modified client that claims a
      * faster move than the pod's top speed would otherwise be a speed exploit.
      */
-    @GameTest(maxTicks = 400)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void pilotsClaimedMoveDoesNotMoveThePod(GameTestHelper helper) {
-        floor(helper);
+        boolean[] floorTicks = floor(helper);
         PodEntity pod = helper.spawn(PodRegistry.POD, spawnAt());
-        claimAfterRiding(helper, pod, moved -> {
+        claimAfterRiding(helper, pod, floorTicks, moved -> {
             if (moved.lengthSqr() > EPSILON) {
                 throw helper.assertionException(
                         "the pilot claimed the vehicle moved %s blocks and the server took it: it moved %s",
@@ -198,11 +202,12 @@ public class PodSyncTest {
      * Seats a mock pilot in {@code vehicle}, waits until it has ticked, sends the packet a vanilla client sends for a vehicle it
      * simulates with the vehicle {@link #CLAIMED_STEP} blocks east, and hands {@code check} how far the vehicle moved on the spot.
      */
-    private static void claimAfterRiding(GameTestHelper helper, Entity vehicle, Consumer<Vec3> check) {
+    private static void claimAfterRiding(
+            GameTestHelper helper, Entity vehicle, boolean[] floorTicks, Consumer<Vec3> check) {
         MockPlayer pilot = pilotOf(helper, vehicle);
         boolean[] claimed = {false};
         TestTicks.each(helper, () -> {
-            if (claimed[0] || vehicle.tickCount < CLAIM_AFTER_TICKS) {
+            if (claimed[0] || !floorTicks[0] || vehicle.tickCount < CLAIM_AFTER_TICKS) {
                 return;
             }
             claimed[0] = true;

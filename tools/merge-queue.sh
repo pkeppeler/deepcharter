@@ -4,8 +4,10 @@
 # Merges the given PRs one at a time, in order, through tools/merge-pr.sh (the gate).
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
-#   - refusal carrying the "[stale-base]" marker (stale base): close and reopen the PR, sleep, wait
-#     for CI again, retry (up to MERGE_QUEUE_STALE_RETRIES, default 3)
+#   - refusal carrying the "[stale-base]" marker (stale base): re-run the whole runs holding the head's
+#     newest non-skipped build, tool-tests and client-gametest jobs (see rerun_ci; the PR's state and head are
+#     never touched), sleep, wait for CI again, retry
+#     (up to MERGE_QUEUE_STALE_RETRIES, default 3). No such job for the sha, or a refused re-run, stops the queue
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
 # After a merge, cleanup never loses work. It removes the PR's worktree only when that
@@ -32,7 +34,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 merge_pr=${MERGE_PR:-$root/tools/merge-pr.sh}
 lock=${MERGE_QUEUE_LOCK:-$HOME/.cache/deepcharter/merge-queue.lock}
 ci_poll=${MERGE_QUEUE_CI_POLL:-20}
-# Must stay above the longest CI job limit (client-gametest, 60 minutes) plus the changes job lead time.
+# Must stay above the longest CI job limit (the build job, 45 minutes) plus the changes job lead time.
 ci_max=${MERGE_QUEUE_CI_MAX:-4200}
 stale_sleep=${MERGE_QUEUE_STALE_SLEEP:-90}
 unknown_sleep=${MERGE_QUEUE_UNKNOWN_SLEEP:-30}
@@ -115,6 +117,58 @@ wait_ci() {
     say "waiting for CI on ${sha:0:9} ($(tr '\n' ' ' <<<"$pending")) ..."
     sleep "$ci_poll"
   done
+}
+
+# rerun_ci <pr> <sha>: re-run the workflow runs holding the jobs whose `merged-main` record the gate reads (build,
+# tool-tests and, when it ran, client-gametest; each merges the live main itself). The `client-gametest` aggregate is
+# matched, not a shard: it sits in the same `Client tests` run as every `client-gametest-shard <i>` job (#1079), is
+# skipped exactly when the shards are, and is the legacy single job in CI from before sharding. Never a single job: a job re-run
+# copies the run's other finished jobs without their annotations, so the gate calls the base stale again (#1094).
+# Per job it takes the newest non-skipped one across the head sha's runs (#1092), then re-runs each distinct run whole.
+# Returns 1 and sets $rerun_err when build or tool-tests has no such job, a listing fails or the API refuses a re-run.
+# An unfinished run is skipped (the API refuses to re-run into it); if it finishes stale, the next retry re-runs it.
+rerun_ci() {
+  local sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit handled=","
+  rerun_err=
+  rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" --paginate \
+    --jq '.workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
+    || { rerun_err="PR #$1: could not list the workflow runs of ${sha:0:9}"; return 1; }
+  for target in "CI|build|0" "CI|tool-tests|0" "Client tests|client-gametest|1"; do
+    IFS='|' read -r workflow job optional <<<"$target"
+    hit=
+    # The API lists newest first. A skipped run (a label event adds one) has only skipped jobs; an unfinished
+    # job has no conclusion, so it counts as not skipped.
+    while IFS=$'\t' read -r run_id run_status; do
+      jobs_rows=$(gh api "repos/$repo/actions/runs/$run_id/jobs?per_page=100" --paginate \
+        --jq '.jobs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
+        || { rerun_err="PR #$1: could not list the jobs of $workflow run $run_id"; return 1; }
+      if [[ -n $(awk -F'\t' -v j="$job" '$2 == j && $4 != "skipped" { print $1; exit }' <<<"$jobs_rows") ]]; then
+        hit="$run_id"$'\t'"$workflow"$'\t'"$run_status"
+        break
+      fi
+    done < <(awk -F'\t' -v w="$workflow" '$2 == w && $4 != "skipped" { print $1 "\t" $3 }' <<<"$rows")
+    if [[ -n $hit ]]; then
+      picks+="$hit"$'\n'
+    elif [[ $optional == 0 ]]; then
+      rerun_err="PR #$1: no non-skipped $job job of $workflow exists for $sha to re-run"
+      rerun_err+=" (push, or start the workflows by hand)"
+      return 1
+    fi
+  done
+  while IFS=$'\t' read -r run_id workflow run_status; do
+    [[ -n $run_id && $handled != *",$run_id,"* ]] || continue
+    handled+="$run_id,"
+    if [[ $run_status != completed ]]; then
+      say "run $run_id ($workflow) is still in progress ($run_status): not re-running it"
+      continue
+    fi
+    say "re-running $workflow run $run_id"
+    gh api -X POST "repos/$repo/actions/runs/$run_id/rerun" >/dev/null 2>&1 \
+      || {
+        rerun_err="PR #$1: GitHub refused to re-run $workflow run $run_id (older than 30 days? push a commit instead)"
+        return 1
+      }
+  done <<<"$picks"
 }
 
 # real <dir>: physical path of a directory, empty if it does not exist.
@@ -286,13 +340,9 @@ run_pr() {
         return 0
       fi
       stale_n=$((stale_n + 1))
-      say "PR #$pr has a stale base; close and reopen to rerun CI ($stale_n of $stale_max)"
-      if ! gh api -X PATCH "repos/$repo/pulls/$pr" -f state=closed >/dev/null; then
-        detail="PR #$pr: closing it failed"
-        return 0
-      fi
-      if ! gh api -X PATCH "repos/$repo/pulls/$pr" -f state=open >/dev/null; then
-        detail="PR #$pr: reopening it failed (the PR is closed now)"
+      say "PR #$pr has a stale base; re-running CI ($stale_n of $stale_max)"
+      if ! rerun_ci "$pr" "$sha"; then
+        detail=$rerun_err
         return 0
       fi
       sleep "$stale_sleep"

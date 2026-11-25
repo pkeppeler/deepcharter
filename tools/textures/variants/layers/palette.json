@@ -1,9 +1,8 @@
 {
-  "description": "Layer concept rounds 1 and 2 (docs/design/layer-concepts.md, layer-concepts-2.md; basalt3 is layer 3's columns, bluer again), over the default palette (which holds the rock of layers 1 and 2, shale1 and shale2, and the lavaglow ramp): the basalt of option C's columns (a cool grey-black, bluer in layer 2: the amber lamp tint warms everything toward brown, so a warm basalt reads as wood), basalt for the plugs, weathered Company concrete and its grime, and a lighter crust than the default (the breach crust). Ramps run dark to light.",
+  "description": "Layer concept rounds 1 and 2 (docs/design/layer-concepts.md, layer-concepts-2.md), over the default palette (which holds the rock of layers 1 to 3, shale1, shale2 and basalt3, and the lavaglow ramp): the basalt of option C's columns (a cool grey-black, bluer in layer 2: the amber lamp tint warms everything toward brown, so a warm basalt reads as wood), basalt for the plugs, weathered Company concrete and its grime, and a lighter crust than the default (the breach crust). Ramps run dark to light.",
   "colours": {
     "basalt1": ["#111113", "#222326", "#35363b", "#4a4c52", "#62656d", "#7d818a"],
     "basalt2": ["#0b0e0e", "#171c1d", "#252c2e", "#363f42", "#4a565a", "#62727a"],
-    "basalt3": ["#080a10", "#12161f", "#1d232e", "#2a313e", "#394252", "#4b576b"],
     "plug": ["#08090c", "#0f1116", "#171a21", "#20242d", "#2b303b", "#3a4150"],
     "concrete": ["#14130f", "#24221e", "#363330", "#4b4741", "#625d55", "#7a746a"],
     "crust": ["#1a1210", "#2e211c", "#47342b", "#63493b", "#7d6050", "#987a68"],

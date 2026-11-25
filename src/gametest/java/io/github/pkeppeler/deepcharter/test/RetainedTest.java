@@ -18,9 +18,12 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigures;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.BlockLightOracle;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -60,6 +63,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -864,6 +868,7 @@ public class RetainedTest {
         FarChunks.awaitEntityTicking(helper, nether, spot, () -> {
             List<LamplessFigure> naturals = new ArrayList<>();
             for (int i = 0; i < TUNING.maxPerBand(); i++) {
+                // Counted and discarded in this callback, before the figure's first tick (#1237).
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, nether);
                 figure.markNatural();
                 figure.setNoAi(true);
@@ -943,11 +948,12 @@ public class RetainedTest {
     private record DarkRoom(int layer, ServerLevel level, BlockPos column) {}
 
     /**
-     * In a dark room of layer 1 and of layer 2 a figure may appear; beside a light, over air, and in a level that holds the cap it may not;
-     * and in the overworld (where the colony and the hangar stand), the Nether and the End it may not appear at all. The light takes a few
-     * ticks to spread, so the test waits for it, in three phases: dark, lit, dark again.
+     * In a dark room of layer 1 and of layer 2 a figure may appear; beside a light and over air it may not;
+     * and in the overworld (where the colony and the hangar stand), the Nether and the End it may not appear at all. The light engine works
+     * off the server thread, so the test waits on a wall clock for the light of each phase: dark (the cut's own light work done), lit, dark
+     * again. Each room is shut in stone, so no light from outside it, a neighbour's or the rock's own lava, reaches the column (#1104).
      */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = 4 * FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aFigureMayAppearInTheDarkOfLayersOneAndTwoAndNowhereElse(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         // The two layers are bands of one level: each has its own room, at the same height over its floor.
@@ -959,27 +965,51 @@ public class RetainedTest {
         BlockPos overworldPos = slot(5).above(2);
         int[] ready = {0};
         int[] phase = {0};
-        int[] since = {0};
-        FarChunks.Deadline[] lightDeadline = {FarChunks.deadline()};
+        FarChunks.Deadline[] lightDeadline = {null};
+        List<BlockLightOracle.Field> darkness = new ArrayList<>();
+        Runnable built = () -> {
+            if (++ready[0] == 3) {
+                rooms.forEach(room -> darkness.add(BlockLightOracle.expected(room.level(), airOf(room.column()))));
+                lightDeadline[0] = FarChunks.deadline();
+            }
+        };
         TestTicks.each(helper, () -> {
             if (ready[0] < 3) {
                 return;
             }
-            since[0]++;
             switch (phase[0]) {
                 case 0 -> {
+                    List<String> unsettled = new ArrayList<>();
+                    for (int i = 0; i < rooms.size(); i++) {
+                        DarkRoom room = rooms.get(i);
+                        List<BlockLightOracle.Mismatch> cells =
+                                BlockLightOracle.mismatches(room.level(), darkness.get(i));
+                        if (!cells.isEmpty()) {
+                            unsettled.add(String.format(
+                                    "layer %s: %s cells, first %s", room.layer(), cells.size(), cells.getFirst()));
+                        }
+                    }
+                    if (!unsettled.isEmpty()) {
+                        lightDeadline[0].await(
+                                helper,
+                                rooms.getFirst().level(),
+                                false,
+                                () -> "the light of the dark rooms did not settle in " + FarChunks.WAIT_SECONDS + " s: "
+                                        + unsettled);
+                        return;
+                    }
                     LamplessFigures.clearRespawnDelays();
                     for (DarkRoom room : rooms) {
                         expect(
                                 helper,
                                 LamplessFigures.canAppearAt(room.level(), room.column()),
-                                "a figure may not appear in the dark room of layer %s",
-                                room.layer());
+                                "a figure may not appear in the dark room of layer %s, %s",
+                                room.layer(),
+                                inputsOf(room.level(), room.column()));
                         room.level().setBlock(room.column().above(), light(15), 3);
                     }
                     expectNowhereElse(helper, server, overworld, overworldPos, column);
                     phase[0] = 1;
-                    since[0] = 0;
                     lightDeadline[0] = FarChunks.deadline();
                 }
                 case 1 -> {
@@ -996,7 +1026,6 @@ public class RetainedTest {
                             room.level().setBlock(room.column().above(), Blocks.AIR.defaultBlockState(), 3);
                         }
                         phase[0] = 2;
-                        since[0] = 0;
                         lightDeadline[0] = FarChunks.deadline();
                     } else {
                         // Wall-clock, not ticks: the light engine works off the server thread, and a loaded runner
@@ -1017,8 +1046,9 @@ public class RetainedTest {
                             expect(
                                     helper,
                                     LamplessFigures.canAppearAt(room.level(), room.column()),
-                                    "the room is dark again and a figure may not appear in layer %s",
-                                    room.layer());
+                                    "the room is dark again and a figure may not appear in layer %s, %s",
+                                    room.layer(),
+                                    inputsOf(room.level(), room.column()));
                             expectNotOverAir(helper, room.level(), room.column());
                         }
                         helper.succeed();
@@ -1035,12 +1065,12 @@ public class RetainedTest {
         for (DarkRoom room : rooms) {
             FarChunks.awaitEntityTicking(helper, room.level(), room.column(), () -> {
                 buildDarkRoom(room.level(), room.column());
-                ready[0]++;
+                built.run();
             });
         }
         FarChunks.awaitEntityTicking(helper, overworld, overworldPos, () -> {
             buildDarkRoom(overworld, overworldPos);
-            ready[0]++;
+            built.run();
         });
     }
 
@@ -1070,6 +1100,30 @@ public class RetainedTest {
                     "a figure may appear in %s",
                     other.dimension().identifier());
         }
+    }
+
+    /**
+     * Each input {@link LamplessFigures#canAppearAt} reads at {@code column}, for a failure message: the band, whether the place ticks,
+     * the stored block light beside the light the blocks give ({@link BlockLightOracle}), the floor, and the cells a figure stands in.
+     */
+    private static String inputsOf(ServerLevel level, BlockPos column) {
+        BlockPos floor = column.below();
+        StringBuilder cells = new StringBuilder();
+        for (int up = 0; up < TUNING.natural().roomBlocks(); up++) {
+            cells.append(up == 0 ? "" : ", ").append(level.getBlockState(column.above(up)));
+        }
+        return String.format(
+                "at %s: band %s, entity ticking %s, block light stored %s and from the blocks %s (lit at %s), floor %s"
+                        + " (sturdy %s), cells [%s]",
+                column.toShortString(),
+                LayerChain.bandAt(level, column.getY()),
+                level.isPositionEntityTicking(column),
+                level.getBrightness(LightLayer.BLOCK, column),
+                BlockLightOracle.expected(level, new BoundingBox(column)).at(column),
+                TUNING.litBlockLight(),
+                level.getBlockState(floor),
+                level.getBlockState(floor).isFaceSturdy(level, floor, Direction.UP),
+                cells);
     }
 
     private static void expectNotOverAir(GameTestHelper helper, ServerLevel layer, BlockPos column) {
@@ -1220,24 +1274,31 @@ public class RetainedTest {
         }
     }
 
-    /** A sealed room of air, 4 high with a stone floor, whose floor-level cell at {@code feet} is where a figure would stand. */
+    /** The air of a dark room: 5 by 5 and 5 high, whose floor-level cell at {@code feet} is where a figure would stand. */
+    private static BoundingBox airOf(BlockPos feet) {
+        return BoundingBox.fromCorners(feet.offset(-2, 0, -2), feet.offset(2, 4, 2));
+    }
+
+    /** A room of {@link #airOf} air shut in a one-block shell of stone. */
     private static void buildDarkRoom(ServerLevel level, BlockPos feet) {
+        BoundingBox air = airOf(feet);
+        BoundingBox shell = air.inflatedBy(1);
+        BlockPos low = new BlockPos(shell.minX(), shell.minY(), shell.minZ());
+        BlockPos high = new BlockPos(shell.maxX(), shell.maxY(), shell.maxZ());
         if (level.dimension().equals(Level.OVERWORLD)) {
-            for (int u = -3; u <= 3; u++) {
-                for (int v = -3; v <= 3; v++) {
-                    for (int y = -1; y <= 5; y++) {
-                        boolean shell = y == -1 || y == 5 || Math.abs(u) == 3 || Math.abs(v) == 3;
-                        // room-carver: a closed room of its own stone shell in the overworld test structure, not layer
-                        // rock
-                        level.setBlock(
-                                feet.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
-                    }
-                }
+            for (BlockPos pos : BlockPos.betweenClosed(low, high)) {
+                // room-carver: a closed room of its own stone shell in the overworld test structure, not layer rock
+                level.setBlock(pos, (air.isInside(pos) ? Blocks.AIR : Blocks.STONE).defaultBlockState(), 3);
             }
             return;
         }
-        RoomCarver.carve(level, feet.offset(-3, -1, -3), feet.offset(3, -1, 3), Blocks.STONE.defaultBlockState());
-        RoomCarver.carve(level, feet.offset(-2, 0, -2), feet.offset(2, 4, 2), Blocks.AIR.defaultBlockState());
+        // Stone first, so the walls are not whatever the rock was.
+        RoomCarver.carve(level, low, high, Blocks.STONE.defaultBlockState());
+        RoomCarver.carve(
+                level,
+                new BlockPos(air.minX(), air.minY(), air.minZ()),
+                new BlockPos(air.maxX(), air.maxY(), air.maxZ()),
+                Blocks.AIR.defaultBlockState());
     }
 
     private static BlockPos slot(int index) {

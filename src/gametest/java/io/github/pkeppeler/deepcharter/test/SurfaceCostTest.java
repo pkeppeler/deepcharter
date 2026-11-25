@@ -20,8 +20,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Measures what generating the surface costs a new column of the tall campaign world (ADR 0029): CPU and heap per column of a
- * 2352 block world (the surface above the layers) against the layers alone at 2048, whose ratio the ADR bars at 1.15. By default it
- * generates a few columns of each world and checks they exist. With the number of rounds in the environment, for example
+ * 2352 block world (the surface above the layers) against the layers alone at 2048, a tracked ratio (the bar is per band in
+ * {@code CampaignCostTest}, ADR 0086). By default it generates a few columns of each world and checks they exist. With the number of
+ * rounds in the environment, for example
  * {@code DEEPCHARTER_SURFACE_COST=3 tools/gametest.sh 'surface_cost_test*'}, it generates {@value ColumnCost#MEASURED_RADIUS} chunks to each side of
  * a fresh centre per world and round (after a warm-up), and prints the lines that start with {@code [surface-cost]}: per world the
  * median over the rounds, and the ratio of each surface world to the layers-only world with the same biome source. The heap of a round
@@ -100,10 +101,17 @@ public class SurfaceCostTest {
         JsonObject dimensions = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject()
                 .getAsJsonObject("dimensions");
-        JsonElement shippedBiomes = read(helper, "/data/minecraft/dimension/overworld.json")
-                .getAsJsonObject()
-                .getAsJsonObject("generator")
-                .get("biome_source");
+        // The shipped overworld's surface band holds the biomes the tall fixtures' multi_noise source takes.
+        JsonObject shippedBiomes = new JsonObject();
+        shippedBiomes.addProperty("type", "minecraft:multi_noise");
+        shippedBiomes.add(
+                "biomes",
+                read(helper, "/data/minecraft/dimension/overworld.json")
+                        .getAsJsonObject()
+                        .getAsJsonObject("generator")
+                        .getAsJsonObject("biome_source")
+                        .getAsJsonObject("surface")
+                        .get("biomes"));
         for (String world : List.of("tall_surface_biomes", "tall_baseline_biomes")) {
             if (!dimensions
                     .getAsJsonObject("deepcharter:" + world)
@@ -169,7 +177,8 @@ public class SurfaceCostTest {
 
     private static void report(Map<String, List<Measurement>> results) {
         LOGGER.info(
-                "[surface-cost] {} columns per world and round, the median of {} rounds; ADR 0029 bar: 1.15x the layers-only world",
+                "[surface-cost] {} columns per world and round, the median of {} rounds; tracked, the bar is per band in"
+                        + " CampaignCostTest (ADR 0086)",
                 ColumnCost.measuredColumns(),
                 Objects.requireNonNull(results.get(WORLDS.getFirst()), "results.get(WORLDS.getFirst()) is absent")
                         .size());

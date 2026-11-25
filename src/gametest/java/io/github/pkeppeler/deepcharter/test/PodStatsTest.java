@@ -60,7 +60,7 @@ public class PodStatsTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final float SOUTH = 0f;
-    /** Layer 1 at these columns is the test's own: PodDrillTest uses x 3000 to 3704. */
+    /** Layer 1 at these columns is the test's own: PodDrillTest uses x 2996 to 4157 at z 2996 to 3004. */
     private static final int Z = 3000;
 
     private static final int FAR_MARGIN_TICKS = 1000;
@@ -402,8 +402,9 @@ public class PodStatsTest {
     @GameTest
     public void theBuiltInFuelsAreInTheTableToo(GameTestHelper helper) {
         for (var fuel : List.of(Items.COAL, Items.CHARCOAL)) {
-            if (PodFuelItems.litresOf(new ItemStack(fuel)).orElse(0) != 2.0) {
-                throw helper.assertionException("%s should give 2 litres from the data table", fuel);
+            double expected = fuel == Items.COAL ? 2.0 : 1.0;
+            if (PodFuelItems.litresOf(new ItemStack(fuel)).orElse(0) != expected) {
+                throw helper.assertionException("%s should give %s litres from the data table", fuel, expected);
             }
         }
         if (PodFuelItems.litresOf(new ItemStack(Items.STICK)).isPresent()) {

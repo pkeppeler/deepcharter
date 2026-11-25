@@ -6,13 +6,17 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.SavedState;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
@@ -20,11 +24,12 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * The outposts of the world: which charter built each, in which layer, and where its middle is. A charter has at most one outpost in a
  * layer. An outpost belongs to its charter (SPEC section 6) and is never destroyed (its blocks are Company property), so the list only grows.
  *
- * <p>The saved form has a {@link #VERSION}. Data of another version loads as unreadable, is written back unchanged, and every use of it
+ * <p>The saved form has a {@link #VERSION}. Version 1 saved no dimension; it reads with the dimension of the outpost's layer, and the next
+ * save is version 2. Data of another version loads as unreadable, is written back unchanged, and every use of it
  * throws, as for {@code RepairState}: callers on a callback check {@link #isReadable()} first.
  */
 public final class OutpostData extends SavedData {
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
     /** The saved id of the data: never renamed, or every charter's outposts are orphaned. */
     public static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "outposts");
 
@@ -33,14 +38,39 @@ public final class OutpostData extends SavedData {
      *
      * @param charter the charter that built it
      * @param layer   the layer it stands in (1 is the first below the surface)
+     * @param dimension the level its hall is in: away settling finds the hall's chunks there
      * @param centre  the middle of its hall, on the hall's floor
      */
-    public record Outpost(CharterId charter, int layer, BlockPos centre) {
+    public record Outpost(CharterId charter, int layer, ResourceKey<Level> dimension, BlockPos centre) {
         private static final Codec<Outpost> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                         CharterId.CODEC.fieldOf("charter").forGetter(Outpost::charter),
                         Codec.INT.fieldOf("layer").forGetter(Outpost::layer),
+                        Level.RESOURCE_KEY_CODEC.fieldOf("dimension").forGetter(Outpost::dimension),
                         BlockPos.CODEC.fieldOf("centre").forGetter(Outpost::centre))
                 .apply(instance, Outpost::new));
+
+        /** Version 1 saved no dimension: an outpost stood in the dimension of its layer. */
+        private static final Codec<Outpost> V1_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                        CharterId.CODEC.fieldOf("charter").forGetter(Outpost::charter),
+                        Codec.INT.fieldOf("layer").forGetter(Outpost::layer),
+                        BlockPos.CODEC.fieldOf("centre").forGetter(Outpost::centre))
+                .apply(
+                        instance,
+                        (charter, layer, centre) -> new Outpost(charter, layer, LayerChain.dimension(layer), centre)));
+
+        /** True when {@code pos} is inside the hall: the room that the shell closes, not the shell, floor and ceiling included. */
+        public boolean encloses(BlockPos pos) {
+            int dy = pos.getY() - centre.getY();
+            return Math.abs(pos.getX() - centre.getX()) < OutpostBuilder.EDGE
+                    && Math.abs(pos.getZ() - centre.getZ()) < OutpostBuilder.EDGE
+                    && dy > 0
+                    && dy < OutpostBuilder.HEIGHT + 1;
+        }
+
+        /** The middle of the top row inside the hall, just under its ceiling. */
+        public BlockPos insideTop() {
+            return centre.above(OutpostBuilder.HEIGHT);
+        }
 
         /** True when {@code pos} is in the hall: inside its shell, from the floor to the ceiling. */
         public boolean contains(BlockPos pos) {
@@ -52,8 +82,10 @@ public final class OutpostData extends SavedData {
         }
     }
 
-    private static final Codec<Versioned<List<Outpost>>> VERSIONED_CODEC =
-            Versioned.codec(VERSION, Outpost.CODEC.listOf().fieldOf("outposts"));
+    private static final Codec<Versioned<List<Outpost>>> VERSIONED_CODEC = Versioned.codec(
+            VERSION,
+            Outpost.CODEC.listOf().fieldOf("outposts"),
+            Map.of(1, Outpost.V1_CODEC.listOf().fieldOf("outposts")));
 
     /** The codec of the saved data, which never fails to decode. */
     public static final Codec<OutpostData> CODEC = VERSIONED_CODEC.xmap(OutpostData::new, OutpostData::versioned);
@@ -86,6 +118,11 @@ public final class OutpostData extends SavedData {
         return state.isReadable();
     }
 
+    /** Every outpost, in the order built. */
+    public List<Outpost> all() {
+        return List.copyOf(state.orThrow());
+    }
+
     /** The charter's outpost in {@code layer}, if it has built one. */
     public Optional<Outpost> of(CharterId charter, int layer) {
         return state.orThrow().stream()
@@ -97,6 +134,13 @@ public final class OutpostData extends SavedData {
     public Optional<Outpost> containing(int layer, BlockPos pos) {
         return state.orThrow().stream()
                 .filter(outpost -> outpost.layer() == layer && outpost.contains(pos))
+                .findFirst();
+    }
+
+    /** The outpost, of any charter, whose hall encloses {@code pos} in {@code dimension}: the room inside its shell. Halls never touch, so there is at most one. */
+    public Optional<Outpost> enclosing(ResourceKey<Level> dimension, BlockPos pos) {
+        return state.orThrow().stream()
+                .filter(outpost -> outpost.dimension().equals(dimension) && outpost.encloses(pos))
                 .findFirst();
     }
 

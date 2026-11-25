@@ -9,6 +9,7 @@
     "deepcharter:cable",
     "deepcharter:canteen",
     "deepcharter:cicatrium_ore",
+    "deepcharter:colony_phonograph",
     "deepcharter:company_lamp",
     "deepcharter:company_rock",
     "deepcharter:concrete_footing",
@@ -34,6 +35,7 @@
     "deepcharter:ochre_regolith",
     "deepcharter:ore_car",
     "deepcharter:ore_processor",
+    "deepcharter:phonograph",
     "deepcharter:pipe",
     "deepcharter:pipe_brass",
     "deepcharter:platinium_ore",
@@ -45,6 +47,7 @@
     "deepcharter:riveted_plate",
     "deepcharter:riveted_plate_red",
     "deepcharter:salvage_crate",
+    "deepcharter:salvage_heap",
     "deepcharter:silverium_ore",
     "deepcharter:slag_brick",
     "deepcharter:steel_beam",
@@ -52,9 +55,12 @@
     "deepcharter:upgrade_terminal",
     "deepcharter:wall_lamp",
     "deepcharter:window_glass",
+    "deepcharter:wreck_phonograph",
     "deepcharter:packed_shale",
     "deepcharter:packed_shale_rubble",
     "deepcharter:green_shale",
-    "deepcharter:green_shale_rubble"
+    "deepcharter:green_shale_rubble",
+    "deepcharter:basalt_core",
+    "deepcharter:columnar_basalt"
   ]
 }

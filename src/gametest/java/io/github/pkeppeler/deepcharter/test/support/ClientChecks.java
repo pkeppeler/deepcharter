@@ -94,6 +94,21 @@ public final class ClientChecks {
     }
 
     /**
+     * Runs {@code body} with the client's render distance at {@code chunks}, then puts it back as it was, in a finally, also when
+     * {@code body} throws. Every client test shares one client.
+     */
+    public static void withRenderDistance(ClientGameTestContext context, int chunks, Runnable body) {
+        int was = context.computeOnClient(
+                client -> client.options.renderDistance().get());
+        try {
+            context.runOnClient(client -> client.options.renderDistance().set(chunks));
+            body.run();
+        } finally {
+            context.runOnClient(client -> client.options.renderDistance().set(was));
+        }
+    }
+
+    /**
      * A screenshot of the surface sky once the client has caught up, with minimal particles and the HUD hidden: the sky's dark, random
      * {@code dust_mote} would otherwise speckle the pixels a test reads (#1043).
      */

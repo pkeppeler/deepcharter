@@ -61,12 +61,11 @@ import org.slf4j.LoggerFactory;
  * Server GameTests for the bootstrap of #245 (art direction section 11): the colony's salvage crates lie within the yard radius and not
  * beyond it, fungal stalks grow only on the floors of craters and in caves, and a new player reaches the first crafting goals (tools, a
  * light, the first terminal repair) with the real recipes, starting from nothing but what crates and stalks drop. The surface runs in
- * {@code deepcharter:surface_sample}, a copy of the shipped overworld in the test mod's preset (see {@link SurfaceTerrainTest}).
+ * the surface band of {@code deepcharter:campaign_sample}, the test pack's copy of the shipped overworld (see {@link SurfaceTerrainTest}).
  */
 public class SalvageBootstrapTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SalvageBootstrapTest.class);
-    private static final String SAMPLE = "deepcharter:surface_sample";
-    private static final String CAMPAIGN = "deepcharter:campaign_sample";
+    private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final String YARD = "deepcharter:salvage_yard";
     private static final int MAX_TICKS = 12_000;
     /** The survey covers the chunks within this many of the origin, a little past the yard so that its edge shows. */
@@ -176,12 +175,19 @@ public class SalvageBootstrapTest {
         return Math.sqrt((double) pos.getX() * pos.getX() + (double) pos.getZ() * pos.getZ());
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    /** The campaign level's layers hold crates and stalks of their own: the yard is the surface band's. */
+    private static List<BlockPos> inSurface(ServerLevel level, List<BlockPos> positions) {
+        return positions.stream()
+                .filter(pos -> TestLayers.isIn(level, pos, TestLayers.SURFACE))
+                .toList();
+    }
+
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void cratesLieAroundTheColonyWithinTheYardRadiusAndNoFurther(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        FarChunks.whenLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
             int radius = yardRadius();
-            List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
+            List<BlockPos> crates = inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate")));
             List<BlockPos> beyondThePad =
                     crates.stream().filter(pos -> distance(pos) >= PAD_RADIUS).toList();
             double farthest = crates.stream()
@@ -231,7 +237,7 @@ public class SalvageBootstrapTest {
     }
 
     /** The yard's edges are read in biome cells of 4 blocks, at the corner of each, so it is exact to a cell: a block a cell and a block inside is in, a cell outside is out. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theYardEndsAtItsRadiusOnTheBlock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int yardRadius = yardRadius();
@@ -248,7 +254,7 @@ public class SalvageBootstrapTest {
                 chunks.add(new FarChunks.At(level, (direction[0] * distance) >> 4, (direction[1] * distance) >> 4));
             }
         }
-        FarChunks.whenLoaded(helper, chunks, () -> {
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> {
             int radius = yardRadius();
             for (int[] direction : new int[][] {{1, 0}, {0, -1}, {-1, 0}}) {
                 BlockPos inside = new BlockPos(
@@ -282,11 +288,11 @@ public class SalvageBootstrapTest {
     }
 
     /** Stalks grow on the floors of craters, and in patches among the crates of the yard (#855), and nowhere else on the plains. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void stalksStandOnlyInCratersAndTheYardsPatches(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        FarChunks.whenLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
-            List<BlockPos> stalks = BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"));
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
+            List<BlockPos> stalks = inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk")));
             List<BlockPos> bases = columnBases(stalks);
             LOGGER.info("[salvage] {} stalk blocks in {} columns", stalks.size(), bases.size());
             if (bases.size() < STALK_COLUMNS / 2) {
@@ -322,12 +328,13 @@ public class SalvageBootstrapTest {
     }
 
     /** How far a player walks from a crate to the nearest stalk column: the wood is a walk from the salvage, not a trek. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        FarChunks.whenLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
-            List<BlockPos> bases = columnBases(BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk")));
-            List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
+            List<BlockPos> bases =
+                    columnBases(inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"))));
+            List<BlockPos> crates = inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate")));
             double[] nearest = crates.stream()
                     .mapToDouble(crate -> bases.stream()
                             .mapToDouble(base -> Math.sqrt(horizontalDistanceSqr(crate, base)))
@@ -365,10 +372,10 @@ public class SalvageBootstrapTest {
                 + (double) (a.getZ() - b.getZ()) * (a.getZ() - b.getZ());
     }
 
-    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void stalksGrowOnTheFloorsOfLayerOneCaves(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        FarChunks.whenLoaded(helper, BlockSurvey.area(level, 6), () -> {
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, 6), () -> {
             // The campaign level holds the surface and both layers: only the stalks in layer 1's band are this test's.
             List<BlockPos> stalks = BlockSurvey.find(level, 6, block("fungal_stalk")).stream()
                     .filter(pos -> TestLayers.isIn(level, pos, 1))

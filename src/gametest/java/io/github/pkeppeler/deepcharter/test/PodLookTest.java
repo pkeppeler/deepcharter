@@ -15,7 +15,6 @@ import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -44,8 +43,13 @@ public class PodLookTest {
             for (Map.Entry<Integer, String> entry : expected.entrySet()) {
                 String shown = look.cutterFor(entry.getKey());
                 if (!shown.equals(entry.getValue())) {
-                    throw helper.assertionException(Component.literal(chassis.id() + "'s drill tier " + entry.getKey()
-                            + " should show the " + entry.getValue() + ", shows the " + shown));
+                    throw failure(
+                            helper,
+                            "%s's drill tier %s should show the %s, shows the %s",
+                            chassis.id(),
+                            entry.getKey(),
+                            entry.getValue(),
+                            shown);
                 }
             }
             expect(

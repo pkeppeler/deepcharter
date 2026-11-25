@@ -4,13 +4,13 @@ Deep Charter is a co-op Minecraft mod in the spirit of Motherload: drive a pod d
 
 You get two files from the host: `deepcharter-friends-{{VERSION}}.mrpack` (the client) and an address to join. The host also runs `deepcharter-server-{{VERSION}}.zip`.
 
-**Start a new world for this version.** The colony replaces what stands at the world spawn, so a world with a build there loses it. The surface terrain changed too: in an old world, new chunks have red regolith land and the old chunks keep their grass and trees, so the two meet in a hard seam. The old colony stays where it was, with no flat ground. A new world has none of this. A later version will not open an old world at all: see [Old worlds](#old-worlds).
+**Start a new world for this version.** The overworld is one tall campaign world: the surface and layers 1 to 3 are bands of one dimension, and a breach is a dig with no teleport. A world made by an earlier version is not opened: see [Old worlds](#old-worlds).
 
 ## Old worlds
 
-This version opens a world made by the version before it, with the problems above. The version that makes the overworld the tall campaign world does not: chunks saved in an old world would have air under them, and players and pods left in the old layer dimensions would be lost. So a world made before it is not migrated.
+This version does not open a world made by the version before it. Chunks saved in an old world would have air under them, and players and pods left in the old layer dimensions would be lost. So a world made before it is not migrated.
 
-Such a version refuses the old world, and changes nothing in it. Singleplayer shows "This world cannot be opened", and a dedicated server logs the reason and stops. The older Deep Charter that made the world can still open it. A version that changes the world format again needs a new world in the same way.
+It refuses the old world, and changes nothing in it. Singleplayer shows "This world cannot be opened", and a dedicated server logs the reason and stops. The older Deep Charter that made the world can still open it. A version that changes the world format again needs a new world in the same way.
 
 To start a new world: in singleplayer, **Create New World**. On a server, delete or move the `world` folder, then start it again.
 
@@ -20,7 +20,7 @@ You need a Minecraft Java Edition account.
 
 1. Install [Prism Launcher](https://prismlauncher.org/) and sign in with your Microsoft account.
 2. Click **Add Instance**, then **Import**, and choose the `.mrpack` file (or drag it in).
-3. Prism creates an instance with Minecraft 26.3, Fabric Loader 0.19.5, Fabric API 0.162.0, Sodium 0.9.2, Lithium 0.26.2 and Deep Charter. It downloads the mods from Modrinth.
+3. Prism creates an instance with Minecraft 26.3, Fabric Loader 0.19.5, Fabric API 0.164.0, Sodium 0.9.2, Lithium 0.26.2 and Deep Charter. It downloads the mods from Modrinth.
 4. Java 25 is required. Prism can download it: **Settings, Java, Auto-detect or Download**.
 5. Launch the instance.
 
@@ -36,10 +36,14 @@ You need a Minecraft Java Edition account.
 - **Move:** W A S D steer the pod.
 - **Rotor:** hold jump (Space) to lift.
 - **Drill:** sprint (default Left Ctrl). Sprint while on the ground drills down; push into a wall to drill sideways.
-- **Refuel:** right-click the pod while holding coal or charcoal. The low-fuel tone sounds at 21% of the tank. A full tank is about four minutes of drilling, driving and climbing, so a first trip down 40 blocks and home leaves fuel to spare.
-- **Stranded:** a pod that runs dry goes dark. Refuel it (a fuel item, or a reserve tank) and it wakes. If nobody does, the HUD counts down a minute and the Company's winch crew hauls you and the pod home for a recovery fee of $30 for each layer you are down (layer 2 is $60). The fee comes from your charter's account, up to what it holds. A bare account costs hull instead, a point a dollar, never debt, and never below 10 hull. Any ore in the bay stays where the pod stopped, for about 30 minutes, and the crew leaves a litre of fuel to drive to the pump.
+- **Refuel:** right-click the pod while holding coal, charcoal or biofuel. They stack to 16, weigh like ore (a pack slows you on foot and cuts your pod's lift), and give 2, 1 and 3 litres. They are for the field, where there is no pump: pump fuel is cheaper per litre once the soot is paid for. Coal and charcoal leave soot, and biofuel a little. Past 3 litres of soot the engine loses speed and burns more, and at 12 litres it limps (30% of the speed, twice the burn) but never stops. Once the colony's repair station works, a pod in limp mode will not launch from the colony: the repair station's SERVICE ENGINE clears the soot for $10 a litre, or as many whole litres as the account pays for, and with no money SCRAPE FLUE is free: wait a minute at the station and the pod leaves just under the limit, still slow. Biofuel is three stalk mash, fermented. The low-fuel tone sounds at 21% of the tank. A full tank is about four minutes of drilling, driving and climbing, so a first trip down 40 blocks and home leaves fuel to spare.
+- **Stranded:** a pod that runs dry goes dark. Refuel it (a fuel item, or a reserve tank) and it wakes. If nobody does, the HUD counts down a minute and the Company's winch crew hauls you and the pod home for a recovery fee of $30 for each layer you are down (layer 2 is $60, layer 3 $90). The fee comes from your charter's account, up to what it holds. A bare account costs hull instead, a point a dollar, never debt, and never below 10 hull. Any ore in the bay stays where the pod stopped, for about 30 minutes, and the crew leaves a litre of fuel to drive to the pump.
 - **Terminals:** right-click one in the colony (fuel pump, ore processor, upgrade terminal, repair station, hangar console). A terminal that is offline takes the parts that repair it: put them in from its screen. Park your pod beside a terminal to use it on the pod.
-- **Handbook:** press H. It lists nine chapters of directives that tick off as you do them. Right-click a sheet of paper in the world to file its Note.
+- **Handbook:** press H. It lists nine chapters of directives that tick off as you do them, drawn as a flowchart per chapter. Right-click a sheet of paper in the world to file its Note.
+- **Parts catalogue:** in the inventory, a crafting table or a furnace, click an item (or hover it and press R) for its recipes, right-click it (or press U) for what it is used in, press A to star it. On a recipe, FILL GRID moves the ingredients into the open crafting grid (hold Shift for as many as fit); if you lack some, it shows the recipe as a ghost over the grid with the missing slots in red. A recipe that needs the 3x3 grid says it needs a crafting table when you are at the inventory. SPEC SHEET on the recipe opens the item's spec sheet, and the sheet's RECIPES link comes back to the recipes. A Company part's spec sheet also opens by itself the first time you craft it, or buy it at the repair station or the upgrade terminal (it waits until you close the terminal).
+- **Sonar (navigator):** sit in the Prospector's second seat. V pings, and G marks the echo you are looking at on the pilot's HUD. A ping is loud.
+- **Thrown kit and tether:** buy flares, decoys, charges and the tether at the repair station, and use them from the hand on foot, not from a seat.
+- **Suit:** from layer 3 down the suit on your back runs on a reserve of about 3 minutes. A powered pod seat or a sound outpost hall refills it, and an air canister adds a minute.
 - **Tow cable:** ride a pod, hold a tow cable and right-click another pod. Right-click a towed pod with the cable to take it off.
 - **Operator commands** (ops only): `/deepcharter pod spawn` puts a pod next to you, `/deepcharter layer goto <n>` moves you to the surface of layer n, `/deepcharter pod dump` empties the ridden pod's cargo.
 
@@ -64,7 +68,7 @@ Host only: with the extracted originals in `original_flash_game/extracted/sounds
 
 ## Known issues
 
-- Content is partial: only the surface and layers 1 and 2 exist, with placeholder text, sounds and models. The lore and the creatures are unfinished.
+- Content is partial: only the surface and layers 1 to 3 exist, with placeholder text, sounds and models. The lore and the creatures are unfinished.
 - Sodium and Lithium are speed mods and are not ours. If something looks wrong, remove them from the instance (**Edit, Mods**) and check whether the problem goes away. Say so in your report.
 - Do not add other mods, except the optional one above. Old Sodium add-ons are blocked by it. Iris 1.11.7 now supports Sodium 0.9.2, but only as a dev opt-in, not for friends: see [iris-audit.md](tooling/iris-audit.md).
 - Back up your world before updating the build.

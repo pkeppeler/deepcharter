@@ -20,30 +20,14 @@ jobs:
     name: build
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45 # green runs took 17-29 min on 2026-11-25; cutting the server suite's time is #1327
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: main
-          path: .ci-main
-          sparse-checkout: |
-            .github/actions/merge-main
-            tools/ci-merge-main.sh
-          persist-credentials: false
-      # bootstrap-979: until main has the action, use the PR's own copy. Delete this step once #982 is on main.
-      - shell: bash
-        run: |
-          if [ ! -f .ci-main/.github/actions/merge-main/action.yml ]; then
-            mkdir -p .ci-main/.github/actions .ci-main/tools
-            cp -r .github/actions/merge-main .ci-main/.github/actions/
-            cp tools/ci-merge-main.sh .ci-main/tools/
-          fi
-      - uses: ./.ci-main/.github/actions/merge-main
+      - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
       - uses: ./.github/actions/setup-python-uv
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
@@ -55,7 +39,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: false
-      # First Gradle call: retries once if the restored cache fails dependency verification (#830).
+      # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
+      # if a repository fails to answer (#1358).
       - run: tools/ci-gradle-resolve.sh build
       - name: gate checks on fixtures
         run: tools/py tools/tests/gate_checks.py
@@ -76,23 +61,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: main
-          path: .ci-main
-          sparse-checkout: |
-            .github/actions/merge-main
-            tools/ci-merge-main.sh
-          persist-credentials: false
-      # bootstrap-979: until main has the action, use the PR's own copy. Delete this step once #982 is on main.
-      - shell: bash
-        run: |
-          if [ ! -f .ci-main/.github/actions/merge-main/action.yml ]; then
-            mkdir -p .ci-main/.github/actions .ci-main/tools
-            cp -r .github/actions/merge-main .ci-main/.github/actions/
-            cp tools/ci-merge-main.sh .ci-main/tools/
-          fi
-      - uses: ./.ci-main/.github/actions/merge-main
+      - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
       # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
       # has, reads or needs the original game audio.
       - uses: ./.github/actions/setup-python-uv

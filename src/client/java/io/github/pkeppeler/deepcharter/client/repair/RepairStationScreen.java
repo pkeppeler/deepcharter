@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.repair;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
@@ -12,11 +13,18 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.FlueScrape;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
+import io.github.pkeppeler.deepcharter.suit.SuitShop;
+import io.github.pkeppeler.deepcharter.suit.SuitTrack;
+import io.github.pkeppeler.deepcharter.suit.SuitTracks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -28,6 +36,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -51,13 +60,20 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     private static final int CLOSE_WIDTH = 90;
     private static final int[] REPAIR_STEPS = {10, 25, 50};
 
-    /** One button of the list: what it says, and the action it sends. */
-    private record Row(Component label, Identifier action, CompoundTag args) {}
+    /** One button of the list: what it says, the action it sends, and whether it can be pressed (a track at its top tier cannot). */
+    private record Row(Component label, Identifier action, CompoundTag args, boolean active) {
+        Row(Component label, Identifier action, CompoundTag args) {
+            this(label, action, args, true);
+        }
+    }
 
     /** One line of text beside the list, where it is drawn: in the theme's phosphor colour, or its dim colour when {@code dim}. */
     public record TextLine(String text, int x, int y, boolean dim) {}
 
     private TerminalView view;
+    /** The labels of the rows as the list was last built, so {@link #tick} rebuilds it only when one changes. */
+    private List<Component> builtLabels = List.of();
+
     private final ScrollList scroll =
             new ScrollList("screen.deepcharter.repair.scroll", this::rowCount, this::visibleRows, this::rebuildWidgets);
     private final Typewriter typewriter;
@@ -84,7 +100,20 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
         return typewriter;
     }
 
-    private static List<Row> rows() {
+    /**
+     * The soot rows change with no answer from the server (the soot, the balance and the scrape's countdown are
+     * synced), so the list is rebuilt when a label it shows has changed.
+     */
+    @Override
+    public void tick() {
+        super.tick();
+        List<Component> labels = rows().stream().map(Row::label).toList();
+        if (!labels.equals(builtLabels)) {
+            rebuildWidgets();
+        }
+    }
+
+    private List<Row> rows() {
         List<Row> rows = new ArrayList<>();
         for (int hp : REPAIR_STEPS) {
             long cost = hp * RepairTuning.DEFAULT.repairCostPerHp();
@@ -97,10 +126,9 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                 Component.translatable("screen.deepcharter.repair.total"),
                 RepairStation.REPAIR_TOTAL,
                 new CompoundTag()));
+        rows.addAll(sootRows());
+        rows.addAll(suitRows());
         for (Consumable consumable : Consumable.values()) {
-            if (!consumable.sold()) {
-                continue;
-            }
             CompoundTag args = new CompoundTag();
             args.putString(RepairStation.ITEM_KEY, consumable.itemId().toString());
             String name = new ItemStack(RepairRegistry.item(consumable))
@@ -112,6 +140,96 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                             "screen.deepcharter.repair.buy_pack", name, consumable.perPurchase(), consumable.price())
                     : Component.translatable("screen.deepcharter.repair.buy", name, consumable.price());
             rows.add(new Row(label, RepairStation.BUY, args));
+        }
+        return rows;
+    }
+
+    /**
+     * The rows of the engine's soot (#1280), from the synced attachments and the charter's balance. The service row
+     * shows once the nearest pod has a litre or more: what the account's money clears and costs, or, short of a litre's
+     * price, the price and nothing to press. The scrape row shows only while the pod is in limp mode at the colony,
+     * counting down while a scrape runs.
+     */
+    private List<Row> sootRows() {
+        List<Row> rows = new ArrayList<>();
+        Optional<PodEntity> shown = nearbyPod();
+        long soot = shown.map(pod -> Math.round(EngineSoot.soot(pod))).orElse(0);
+        if (soot < 1) {
+            return rows;
+        }
+        PodEntity pod = shown.get();
+        long account = ClientCharter.view().map(charter -> charter.balance()).orElse(0L);
+        rows.add(EngineSoot.quote(pod, account)
+                .map(quote -> new Row(
+                        quote.all()
+                                ? Component.translatable("screen.deepcharter.repair.service", soot, quote.cost())
+                                : Component.translatable(
+                                        "screen.deepcharter.repair.service_part", quote.litres(), soot, quote.cost()),
+                        RepairStation.SERVICE_ENGINE,
+                        new CompoundTag()))
+                .orElseGet(() -> new Row(
+                        Component.translatable(
+                                "screen.deepcharter.repair.service_unpaid",
+                                FuelTuning.DEFAULT.soot().servicePerLitre()),
+                        RepairStation.SERVICE_ENGINE,
+                        new CompoundTag(),
+                        false)));
+        if (EngineSoot.limpAtColony(pod)) {
+            rows.add(FlueScrape.secondsLeft(pod)
+                    .map(seconds -> new Row(
+                            Component.translatable("screen.deepcharter.repair.scraping", seconds),
+                            RepairStation.SCRAPE_FLUE,
+                            new CompoundTag(),
+                            false))
+                    .orElseGet(() -> new Row(
+                            Component.translatable("screen.deepcharter.repair.scrape"),
+                            RepairStation.SCRAPE_FLUE,
+                            new CompoundTag())));
+        }
+        return rows;
+    }
+
+    /**
+     * One row for each suit track (#1064): the next tier and its price, from the tracks the server sent, or the track's name and "(TOP)"
+     * with nothing to press once it is fully fitted. A suit log that cannot be read shows one inactive row that says so.
+     */
+    private static List<Row> suitRows() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        List<Row> rows = new ArrayList<>();
+        if (player == null) {
+            return rows;
+        }
+        Optional<SuitTracks> held = Versioned.readable(player, SuitRegistry.TRACKS);
+        if (held.isEmpty()) {
+            rows.add(new Row(
+                    Component.translatable("hud.deepcharter.suit.unreadable"),
+                    SuitShop.SUIT_BUY,
+                    new CompoundTag(),
+                    false));
+            return rows;
+        }
+        for (SuitTrack track : SuitTrack.values()) {
+            Component name = Component.translatable("hud.deepcharter.suit.track." + track.id());
+            int current = held.get().tier(track);
+            if (current >= track.maxTier()) {
+                rows.add(new Row(
+                        Component.translatable("screen.deepcharter.repair.suit_top", name),
+                        SuitShop.SUIT_BUY,
+                        new CompoundTag(),
+                        false));
+                continue;
+            }
+            CompoundTag args = new CompoundTag();
+            args.putString(SuitShop.TRACK_KEY, track.id());
+            args.putInt(SuitShop.TIER_KEY, current + 1);
+            rows.add(new Row(
+                    Component.translatable(
+                            "screen.deepcharter.repair.suit",
+                            name,
+                            current + 1,
+                            String.format(Locale.ROOT, "%,d", track.price(current + 1))),
+                    SuitShop.SUIT_BUY,
+                    args));
         }
         return rows;
     }
@@ -173,6 +291,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     @Override
     protected void layout() {
         List<Row> rows = rows();
+        builtLabels = rows.stream().map(Row::label).toList();
         int visible = visibleRows();
         scroll.beginLayout();
         int firstRow = scroll.first();
@@ -186,6 +305,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                     row.label(),
                     pressed ->
                             ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), row.action(), row.args())));
+            button.active = row.active();
             addRenderableWidget(scroll.shown(button));
         }
         addRenderableWidget(new CrtButton(

@@ -54,6 +54,28 @@ CASES = {
 }
 
 
+def real_weights() -> dict[str, int]:
+    """The checked-in weights, so the real-tree shards are the ones CI runs."""
+    lines = (REPO / "gradle/client-test-weights.txt").read_text().splitlines()
+    pairs = [line.split("#")[0].split() for line in lines if line.split("#")[0].strip()]
+    return {name: int(seconds) for name, seconds in pairs}
+
+
+WEIGHTS = {"AlphaClientTest": 100}
+SHARD_COUNTS = (1, 2, 3, 4)
+SHARDS = {
+    **{f"shard {i}/{n}": Case(FILES, None, client_shard=f"{i}/{n}") for n in SHARD_COUNTS for i in range(1, n + 1)},
+    **{f"weighted shard {i}/2": Case(FILES, None, client_shard=f"{i}/2", client_weights=WEIGHTS) for i in (1, 2)},
+    **{f"real shard {i}/{n}": Case(REPO / "src/gametest/java", None, client_shard=f"{i}/{n}", client_weights=real_weights())
+       for n in (2, 3, 4) for i in range(1, n + 1)},
+    "real whole": Case(REPO / "src/gametest/java", None),
+    "filtered shard": Case(FILES, "Pod*,Alpha*,Beta*", client_shard="2/2"),
+    **{f"bad shard {spec}": Case(FILES, None, client_shard=spec) for spec in ("0/2", "3/2", "1", "a/b", "1/0", "1/2/3")},
+    "more shards than classes": Case(FILES, None, client_shard="5/5"),
+}
+CASES.update(SHARDS)
+
+
 def outcome(label: str) -> gate_batch.Result:
     return gate_batch.result(f"{__name__}/{label}")
 
@@ -104,6 +126,67 @@ class ClientFilterTest(unittest.TestCase):
         self.assertEqual(listed, REAL_CLASSES)
 
 
+class ClientShardTest(unittest.TestCase):
+    """-PclientShard=i/n: the n shards partition the client list, so a class is never missed or run twice."""
+
+    def shards(self, prefix: str, count: int) -> list[tuple[str, ...]]:
+        out = []
+        for i in range(1, count + 1):
+            result = outcome(f"{prefix}{i}/{count}")
+            self.assertTrue(result.ok, result.message)
+            out.append(result.client)
+        return out
+
+    def assert_partition(self, shards: list[tuple[str, ...]], whole: tuple[str, ...]):
+        flat = [name for shard in shards for name in shard]
+        self.assertEqual(len(flat), len(set(flat)), f"a class is in two shards: {shards}")
+        self.assertEqual(sorted(flat), sorted(whole), "a class is in no shard")
+        for shard in shards:
+            self.assertEqual(list(shard), sorted(shard), "a shard is listed in name order")
+
+    def test_the_fixture_shards_partition_the_list(self):
+        whole = names("AlphaClientTest", "BetaClientTest", "FixtureScenario", "PodDrillClientTest")
+        for count in SHARD_COUNTS:
+            with self.subTest(count):
+                self.assert_partition(self.shards("shard ", count), whole)
+
+    def test_the_real_shards_partition_the_real_list(self):
+        whole = outcome("real whole").client
+        self.assertGreater(len(whole), len(REAL_CLASSES))
+        for count in (2, 3, 4):
+            with self.subTest(count):
+                self.assert_partition(self.shards("real shard ", count), whole)
+
+    def test_the_real_shards_are_balanced_by_weight(self):
+        weights = real_weights()
+        for count in (2, 3, 4):
+            loads = [sum(weights.get(name.rsplit(".", 1)[1], 10) for name in shard) for shard in self.shards("real shard ", count)]
+            with self.subTest(count):
+                self.assertLessEqual(max(loads) - min(loads), max(weights.values()))
+
+    def test_a_heavy_class_gets_a_shard_to_itself(self):
+        heavy, rest = (outcome(f"weighted shard {i}/2").client for i in (1, 2))
+        self.assertEqual(heavy, names("AlphaClientTest"))
+        self.assertEqual(rest, names("BetaClientTest", "FixtureScenario", "PodDrillClientTest"))
+
+    def test_a_shard_applies_after_the_filter(self):
+        result = outcome("filtered shard")
+        self.assertTrue(result.ok, result.message)
+        self.assertEqual(result.client, names("BetaClientTest"))
+
+    def test_a_malformed_shard_fails_and_says_so(self):
+        for spec in ("0/2", "3/2", "1", "a/b", "1/0", "1/2/3"):
+            with self.subTest(spec):
+                result = outcome(f"bad shard {spec}")
+                self.assertFalse(result.ok)
+                self.assertIn("-PclientShard", result.message)
+
+    def test_an_empty_shard_fails_instead_of_running_nothing(self):
+        result = outcome("more shards than classes")
+        self.assertFalse(result.ok)
+        self.assertIn("selects no client class", result.message)
+
+
 class GenerationTest(unittest.TestCase):
     """The real task, which the batched scan does not run: it writes the mod json from the scan and regenerates when the filter changes."""
     GENERATED = REPO / "build/generated/gametest-resources/fabric.mod.json"
@@ -132,6 +215,10 @@ class GenerationTest(unittest.TestCase):
             self.assertEqual(alpha["fabric-gametest"], list(names("FixtureTest")))
             beta = self.generate(tree, "-PclientTests=BetaClientTest")
             self.assertEqual(beta["fabric-client-gametest"], list(names("BetaClientTest")))
+            # PodDrillClientTest is a real class, so its checked-in weight (17 s, over the 10 s default) puts it alone in shard 1.
+            for i, expected in ((1, names("PodDrillClientTest")), (2, names("AlphaClientTest", "BetaClientTest"))):
+                shard = self.generate(tree, f"-PclientShard={i}/2", "-PclientTests=*ClientTest")
+                self.assertEqual(shard["fabric-client-gametest"], list(expected))
             reverse = self.generate(tree, "-PgametestOrder=reverse")
             self.assertEqual(
                 reverse["fabric-client-gametest"],

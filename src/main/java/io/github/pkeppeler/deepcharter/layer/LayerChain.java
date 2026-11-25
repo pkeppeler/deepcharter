@@ -11,6 +11,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -28,12 +29,8 @@ public final class LayerChain {
 
     private static final String PREFIX = "layer_";
 
-    /**
-     * The dimension type of the campaign world's test dimension, where a layer is a Y band of one level ({@link CampaignBands}). The
-     * shipped campaign type joins it at the cutover (#214).
-     */
-    private static final Identifier CAMPAIGN_TYPE =
-            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "campaign_sample");
+    /** The dimension type of the campaign world (#214): the overworld's own, which is tall, with a band for the surface and for each layer. */
+    private static final Identifier CAMPAIGN_TYPE = BuiltinDimensionTypes.OVERWORLD.identifier();
 
     private LayerChain() {}
 
@@ -96,6 +93,16 @@ public final class LayerChain {
     }
 
     /**
+     * The {@link #campaignLayers} inside {@code level}'s height: every one in a campaign world, and only its own in a level of the
+     * campaign generator cut to one band's rows (the cost test's band windows, ADR 0086), where another band would lie outside it.
+     */
+    public static List<Band> campaignLayersIn(ServerLevel level) {
+        return campaignLayers(level).stream()
+                .filter(band -> !level.isOutsideBuildHeight(band.minY()) && !level.isOutsideBuildHeight(band.maxY()))
+                .toList();
+    }
+
+    /**
      * The band of layer {@code layer} as {@code generator} lays it out in a level: a band of a campaign world, or the whole level of a
      * layer dimension. {@code feature} names the caller, for the failure when a campaign world has no such layer.
      */
@@ -114,6 +121,15 @@ public final class LayerChain {
     /** {@link #bandAt} for a layer; empty on the surface too. */
     public static Optional<Band> layerAt(Level level, int y) {
         return bandAt(level, y).filter(Band::isLayer);
+    }
+
+    /** The loaded level of layer {@code layer} of the chain; fails when the registry holds the layer but its level is not loaded. */
+    public static ServerLevel levelOf(MinecraftServer server, int layer) {
+        ServerLevel level = server.getLevel(dimension(layer));
+        if (level == null) {
+            throw new IllegalStateException("Layer " + layer + " is in the registry but its level is not loaded");
+        }
+        return level;
     }
 
     public static ResourceKey<Level> dimension(int layer) {
@@ -204,11 +220,13 @@ public final class LayerChain {
                 + types.getValueOrThrow(type(last)).height();
     }
 
-    /** Layer 1 starts at the overworld's floor; each later layer starts where the one above ends. */
+    /**
+     * Layer 1 starts at the floor of the surface band (the overworld's floor, before the overworld became the campaign world); each later
+     * layer starts where the one above ends.
+     */
     public static int topDepth(RegistryAccess registries, int layer) {
         Registry<DimensionType> types = registries.lookupOrThrow(Registries.DIMENSION_TYPE);
-        int depth = LayerTuning.DEFAULT.seaLevel()
-                - types.getValueOrThrow(BuiltinDimensionTypes.OVERWORLD).minY();
+        int depth = LayerTuning.DEFAULT.seaLevel() - CampaignBands.SURFACE.minY();
         for (int above = 1; above < layer; above++) {
             depth += types.getValueOrThrow(type(above)).height();
         }

@@ -11,14 +11,19 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OutpostScene;
 import io.github.pkeppeler.deepcharter.test.support.OutpostScene.Scene;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -36,16 +41,28 @@ public class OutpostClientTest implements FabricClientGameTest {
         PodEvents.IS_POWERED.register(pod -> !pod.entityTags().contains(FROZEN));
     }
 
+    /** The pod's chunk is entity-ticking and the parked-pod query at the pump, which FILL UP asks, finds the pod. */
+    private static boolean podFindable(MinecraftServer server, Scene scene, UUID podId) {
+        ServerLevel level = TestLayers.level(server, 1);
+        PodEntity pod = (PodEntity) level.getEntity(podId);
+        return pod != null
+                && level.isPositionEntityTicking(pod.blockPosition())
+                && Terminals.parkedPods(level, scene.pump()).stream()
+                        .anyMatch(parked -> parked.getUUID().equals(podId));
+    }
+
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             long[] tank = new long[1];
+            PodEntity[] parked = new PodEntity[1];
             Scene scene = singleplayer.getServer().computeOnServer(server -> {
                 Scene staged = OutpostScene.stage(server);
                 OutpostScene.build(server, staged);
                 OutpostScene.standIn(server, staged, 0.5, 0.5, 180f, 0f);
                 PodEntity pod = OutpostScene.parkPod(server, staged, 3.0, 0.5, 0f);
+                parked[0] = pod;
                 pod.addTag(FROZEN);
                 tank[0] = Math.round(PodStats.of(pod).tankLitres());
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -54,6 +71,41 @@ public class OutpostClientTest implements FabricClientGameTest {
                 }
                 return staged;
             });
+            // The staging loaded the shaft's chunk without a ticket and the pod was added to it, so the chunk may
+            // unload and come back
+            // from storage as another instance, and until it is entity-ticking the pump's and the processor's
+            // parked-pod query finds
+            // no pod: FILL UP and SELL would do nothing. Wait for what the query itself needs, a pod it finds, not for
+            // this instance.
+            UUID podId = parked[0].getUUID();
+            ClientWait.until(
+                    context,
+                    "the parked pod findable on the server",
+                    () -> singleplayer.getServer().computeOnServer(server -> podFindable(server, scene, podId)),
+                    () -> singleplayer.getServer().computeOnServer(server -> {
+                        ServerLevel level = TestLayers.level(server, 1);
+                        return "pod at " + parked[0].blockPosition().toShortString() + ", chunk entity-ticking "
+                                + level.isPositionEntityTicking(parked[0].blockPosition()) + ", the level holds it "
+                                + (level.getEntity(podId) != null) + ", the pump finds "
+                                + Terminals.parkedPods(level, scene.pump()).size() + " pods; the chunk is loaded "
+                                + level.getChunkSource()
+                                        .hasChunk(
+                                                parked[0].chunkPosition().x(),
+                                                parked[0].chunkPosition().z())
+                                + "; the player is at "
+                                + server.getPlayerList()
+                                        .getPlayers()
+                                        .getFirst()
+                                        .blockPosition()
+                                        .toShortString()
+                                + " in "
+                                + server.getPlayerList()
+                                        .getPlayers()
+                                        .getFirst()
+                                        .level()
+                                        .dimension()
+                                        .identifier();
+                    }));
             ClientWait.until(
                     context,
                     "the charter view with its starting balance",
