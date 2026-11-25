@@ -318,39 +318,51 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** Control for the no-drop checks: the same stone in layer 1 is an ordinary block, which does drop. */
-    @GameTest
+    /**
+     * Control for the no-drop checks: the same stone in layer 1 is an ordinary block, which does drop. It reads the
+     * drop only once the chunk is entity-ticking, as the other tests that count drops do: an item added to a chunk the
+     * server has not yet promoted is not found by an entity query, and a read at tick 0 once counted none (#872, seen
+     * on #1235).
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void deepRockInLayerOneStaysANormalBlockThatDrops(GameTestHelper helper) {
         Rig rig = rig(helper, 1, X_LAYER_ONE_ROCK, "hb-rock-1");
         BlockPos pos = rig.cell(0);
         BlockState stone = Blocks.STONE.defaultBlockState();
         rig.level.setBlock(pos, stone, 3);
-        if (HandBreak.isPodOnly(rig.level, pos, stone)) {
-            throw failure(helper, "deep rock in layer 1 is pod-only");
-        }
-        ItemStack pick = new ItemStack(Items.IRON_PICKAXE);
-        hold(rig.player(), pick);
-        float progress = stone.getDestroyProgress(rig.player(), rig.level, pos);
-        if (progress <= 0 || progress == BREAK_PROGRESS) {
-            throw failure(helper, "stone in layer 1 has progress %s, expected the vanilla one", progress);
-        }
-        InteractionResult swing = AttackBlockCallback.EVENT
-                .invoker()
-                .interact(rig.player(), rig.level, InteractionHand.MAIN_HAND, pos, Direction.UP);
-        if (swing != InteractionResult.PASS) {
-            throw failure(helper, "a swing at stone in layer 1 gave %s, expected PASS", swing);
-        }
-        if (!rig.player().gameMode.destroyBlock(pos)
-                || !rig.level.getBlockState(pos).isAir()) {
-            throw failure(helper, "an iron pick could not break stone in layer 1");
-        }
-        if (pick.getDamageValue() > 1) {
-            throw failure(helper, "stone in layer 1 cost %d durability", pick.getDamageValue());
-        }
-        if (dropsAround(rig.level, pos) == 0) {
-            throw failure(helper, "stone in layer 1 dropped nothing, so the no-drop checks prove nothing");
-        }
-        helper.succeed();
+        boolean[] ready = {false};
+        FarChunks.awaitEntityTicking(helper, rig.level, pos, () -> ready[0] = true);
+        TestTicks.each(helper, () -> {
+            if (!ready[0]) {
+                return;
+            }
+            if (HandBreak.isPodOnly(rig.level, pos, stone)) {
+                throw failure(helper, "deep rock in layer 1 is pod-only");
+            }
+            ItemStack pick = new ItemStack(Items.IRON_PICKAXE);
+            hold(rig.player(), pick);
+            float progress = stone.getDestroyProgress(rig.player(), rig.level, pos);
+            if (progress <= 0 || progress == BREAK_PROGRESS) {
+                throw failure(helper, "stone in layer 1 has progress %s, expected the vanilla one", progress);
+            }
+            InteractionResult swing = AttackBlockCallback.EVENT
+                    .invoker()
+                    .interact(rig.player(), rig.level, InteractionHand.MAIN_HAND, pos, Direction.UP);
+            if (swing != InteractionResult.PASS) {
+                throw failure(helper, "a swing at stone in layer 1 gave %s, expected PASS", swing);
+            }
+            if (!rig.player().gameMode.destroyBlock(pos)
+                    || !rig.level.getBlockState(pos).isAir()) {
+                throw failure(helper, "an iron pick could not break stone in layer 1");
+            }
+            if (pick.getDamageValue() > 1) {
+                throw failure(helper, "stone in layer 1 cost %d durability", pick.getDamageValue());
+            }
+            if (dropsAround(rig.level, pos) == 0) {
+                throw failure(helper, "stone in layer 1 dropped nothing, so the no-drop checks prove nothing");
+            }
+            helper.succeed();
+        });
     }
 
     /** A pick without the durability for a whole block is used up and the block stays. */
