@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.outpost;
 
 import com.mojang.serialization.Codec;
 import io.netty.buffer.ByteBuf;
+import java.util.Locale;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.ByIdMap;
@@ -13,7 +14,7 @@ import net.minecraft.util.StringRepresentable;
  */
 public enum VisitCause implements StringRepresentable {
     /** The Retained came because the hall was dark. */
-    DARK("dark");
+    DARK;
 
     /** The most causes a report carries, so a client never reads an unbounded list. */
     public static final int MAX = 8;
@@ -22,14 +23,8 @@ public enum VisitCause implements StringRepresentable {
     public static final StreamCodec<ByteBuf, VisitCause> STREAM_CODEC = ByteBufCodecs.idMapper(
             ByIdMap.continuous(VisitCause::ordinal, values(), ByIdMap.OutOfBoundsStrategy.ZERO), VisitCause::ordinal);
 
-    private final String serialized;
-
-    VisitCause(String serialized) {
-        this.serialized = serialized;
-    }
-
     @Override
     public String getSerializedName() {
-        return serialized;
+        return name().toLowerCase(Locale.ROOT);
     }
 }

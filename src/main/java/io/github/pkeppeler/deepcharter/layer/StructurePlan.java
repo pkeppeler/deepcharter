@@ -129,7 +129,9 @@ final class StructurePlan {
                 .setValue(RailBlock.SHAPE, site.alongZ() ? RailShape.NORTH_SOUTH : RailShape.EAST_WEST);
     }
 
-    /** The world direction of the structure's own east, {@code +u}: east, or south for a structure that runs along z. */
+    /**
+     * The world direction of the structure's own east, {@code +u}: east, or south for a structure that runs along z.
+     */
     Direction east() {
         return site.alongZ() ? Direction.SOUTH : Direction.EAST;
     }

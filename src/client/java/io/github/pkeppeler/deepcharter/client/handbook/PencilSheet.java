@@ -30,6 +30,8 @@ final class PencilSheet {
      * {@link QuestMapTuning#pencilRowPitch()} each, less when there is not that much room; a box is never shorter than one line of
      * text.
      */
+    // const-param: the screen passes font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font);
+    // the parameter keeps the layout tied to the font
     static Layout layout(
             List<HandbookPage.PencilEntry> entries, int left, int top, int width, int bottom, int lineHeight) {
         QuestMapTuning q = QuestMapTuning.current();

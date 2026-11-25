@@ -62,7 +62,10 @@ public abstract class CrtScreen extends Screen implements PanelScreen {
         }
     }
 
-    /** Starts typing {@code text} in the theme's phosphor colour, which a reload changes while the screen is open. The hook is where a feature plays its letter sound. Call from the constructor, never from {@link #layout()}. */
+    /**
+     * Starts typing {@code text} in the theme's phosphor colour, which a reload changes while the screen is open. The hook is where a feature
+     * plays its letter sound. Call from the constructor, never from {@link #layout()}.
+     */
     protected Typewriter typewriter(Component text, Typewriter.LetterHook hook) {
         if (inLayout) {
             throw new IllegalStateException(
