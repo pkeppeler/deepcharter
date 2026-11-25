@@ -2,7 +2,7 @@
 
 Issue [#1214](https://github.com/pkeppeler/deepcharter/issues/1214), PR [#1215](https://github.com/pkeppeler/deepcharter/pull/1215). A look round for [#471](https://github.com/pkeppeler/deepcharter/issues/471), the wrecked prefabs that give scrap when broken. This round only shows what a wreck could be. How a wreck loots, how often it spawns and how it renews are not decided here: #471 decides them after the pick.
 
-**Picked:** pending.
+**Picked:** A, with B's mast: the downed lander, with the derrick's fallen lattice mast lying nearby. The user's feedback, verbatim: "they need to look more like the thing they are supposed to look like. I think they're 70% of the way there." That is the bar for the #471 build: the lander must read unmistakably as a crashed lander, and the mast as a derrick mast.
 
 ## What the round is
 
