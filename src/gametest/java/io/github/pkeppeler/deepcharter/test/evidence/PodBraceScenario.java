@@ -48,8 +48,9 @@ public class PodBraceScenario extends EvidenceScenario {
     private static final float CRUST = 24f;
     private static final int ORE = 4;
     /**
-     * Air under the crust: one row, so the pod crosses on a 2-block drop, under its hard-landing speed. The 8-row pocket of the
-     * crossing tests is a 9-block drop that takes about 27 hull, and the braced pod crosses with 8 (#1374).
+     * Air under the crust: one row, so the pod crosses on a 2-block drop, under its hard-landing speed. The 8-row
+     * pocket of the crossing tests is a 9-block drop that takes about 27 hull, and the braced pod crosses with 8
+     * (#1374).
      */
     private static final int POCKET_ROWS = 1;
 
