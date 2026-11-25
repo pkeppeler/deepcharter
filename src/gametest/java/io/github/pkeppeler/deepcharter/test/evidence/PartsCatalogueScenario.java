@@ -23,7 +23,6 @@ import net.minecraft.world.item.Item;
  */
 public class PartsCatalogueScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
-    private static final int LEFT_MOUSE = 0;
     private static final int FAVOURITES = 5;
     /** The advancement toasts of the first items held, which sit over the top of the catalogue, fade by now. */
     private static final int TOAST_TICKS = 60;
@@ -65,7 +64,7 @@ public class PartsCatalogueScenario extends EvidenceScenario {
         screenshot(context, "console-hover");
 
         CatalogueScene.hover(context, layout.shelf().search());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.getInput().typeChars("iron");
         context.waitTicks(2);
         hold(context);

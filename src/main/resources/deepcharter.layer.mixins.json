@@ -7,8 +7,10 @@
     "EntitySeamAccess",
     "EnvironmentAttributeSystemBuilderMixin",
     "EnvironmentAttributeSystemInvoker",
+    "BlockStateBaseMixin",
     "PlayerChunkSenderMixin",
     "ServerChunkCacheMixin",
+    "ServerPlayerGameModeMixin",
     "ServerPlayerSeamAccess"
   ],
   "injectors": {

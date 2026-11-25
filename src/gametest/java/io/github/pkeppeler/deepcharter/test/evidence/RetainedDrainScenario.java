@@ -100,6 +100,9 @@ public class RetainedDrainScenario extends EvidenceScenario {
 
         private void setUp() {
             chamber.enterLayer(
+                    LENGTH,
+                    HALF_WIDTH,
+                    HEIGHT,
                     RetainedChamber.FLOOR.getX() + POD_X,
                     RetainedChamber.FLOOR.getY() + 3,
                     RetainedChamber.FLOOR.getZ() + POD_Z,
@@ -107,7 +110,6 @@ public class RetainedDrainScenario extends EvidenceScenario {
                     12f);
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
-                RetainedChamber.buildChamber(level, LENGTH, HALF_WIDTH, HEIGHT);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 Charters.found(server, player.getUUID(), "Demo Charter");
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
@@ -159,6 +161,7 @@ public class RetainedDrainScenario extends EvidenceScenario {
         }
 
         private void sendFigure() {
+            chamber.awaitEntityTicking(RetainedChamber.at(FIGURE_X, 1, FIGURE_Z));
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);

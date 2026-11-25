@@ -106,7 +106,8 @@ public class SeamSwapTest {
                     d.seamRecentreChunks(),
                     d.seamBytesPerTick(),
                     d.seamMissedWindowTicks(),
-                    swapRadius);
+                    swapRadius,
+                    d.handBreak());
         }
     }
 

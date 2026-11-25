@@ -30,6 +30,13 @@ public final class EvidencePins {
      */
     public static volatile float figureAnimationAge = -1f;
 
+    /**
+     * The attack button counts as held, whatever the mouse does. The test client's mouse is not grabbed, so vanilla
+     * sees the button up on every tick and aborts the block being mined; with this on, the game's own mining runs as
+     * it does for a player who holds the button.
+     */
+    public static volatile boolean attackHeld;
+
     private EvidencePins() {}
 
     /** Puts every switch back to the game's own behaviour. */
@@ -43,5 +50,6 @@ public final class EvidencePins {
         figureSpawningOff = false;
         cardinalLightNether = false;
         figureAnimationAge = -1f;
+        attackHeld = false;
     }
 }
