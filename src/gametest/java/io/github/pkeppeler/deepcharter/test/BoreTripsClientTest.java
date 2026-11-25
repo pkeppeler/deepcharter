@@ -22,6 +22,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
@@ -47,8 +48,14 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     /** Where the test holds a ticket of its own in each layer, far from the site, so the census cannot read empty. */
     private static final ChunkPos CONTROL =
             new ChunkPos(SectionPos.blockToSectionCoord(X) + 64, SectionPos.blockToSectionCoord(Z));
+    /**
+     * The control ticket's radius: one level past {@code ChunkLevel.MAX_LEVEL}, so it loads nothing. At radius 0 it
+     * loaded a chunk and its generation area, about 1000 tall chunks over the two layers. {@code DRAGON} has no
+     * timeout and does not keep a dimension active, which {@code FORCED} does.
+     */
+    private static final int CONTROL_RADIUS = -(ChunkLevel.RADIUS_AROUND_FULL_CHUNK + 1);
 
-    private static final String CONTROL_TYPE = "minecraft:forced";
+    private static final String CONTROL_TYPE = "minecraft:dragon";
     /**
      * Ticket types left out of the count. A player's tickets follow the player, whose number the test holds constant,
      * and are added a few at a time after each crossing (the whole view area takes about 300 ticks), so their count
@@ -95,8 +102,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             two.server()
                     .runOnServer(server -> List.of(site.one(), site.two())
                             .forEach(level -> level.getChunkSource()
-                                    // force-ok: client test, no GameTestHelper; released in the finally below
-                                    .addTicketWithRadius(TicketType.FORCED, CONTROL, 0)));
+                                    .addTicketWithRadius(TicketType.DRAGON, CONTROL, CONTROL_RADIUS)));
             try {
                 for (int trip = 1; trip <= TRIPS; trip++) {
                     trip(context, two, clientId, site);
@@ -107,8 +113,8 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             } finally {
                 two.server()
                         .runOnServer(server -> List.of(site.one(), site.two())
-                                .forEach(level ->
-                                        level.getChunkSource().removeTicketWithRadius(TicketType.FORCED, CONTROL, 0)));
+                                .forEach(level -> level.getChunkSource()
+                                        .removeTicketWithRadius(TicketType.DRAGON, CONTROL, CONTROL_RADIUS)));
             }
         } finally {
             TwoSeatPods.armClient(false);
