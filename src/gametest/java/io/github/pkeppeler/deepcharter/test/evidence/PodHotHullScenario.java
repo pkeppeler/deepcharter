@@ -55,6 +55,10 @@ public class PodHotHullScenario extends EvidenceScenario {
                         new BlockPos[] {new BlockPos(X + 5, FLOOR_Y + 9, Z), new BlockPos(X - 5, FLOOR_Y + 9, Z)}) {
                     one.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);
                 }
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 6);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);

@@ -83,6 +83,10 @@ public class PodChargeScenario extends EvidenceScenario {
                         one.setBlock(new BlockPos(X + x, FLOOR_Y + 8, Z + z), Blocks.GLOWSTONE.defaultBlockState(), 3);
                     }
                 }
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 13);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
