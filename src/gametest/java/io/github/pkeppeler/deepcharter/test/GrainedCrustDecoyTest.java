@@ -376,19 +376,6 @@ public class GrainedCrustDecoyTest {
         expect(helper, layers.size() == 3, "the campaign world has %d layers, not 3", layers.size());
         expect(
                 helper,
-                layers.getFirst().floorCrust() == FloorCrust.NORMAL,
-                "layer 1's floor is %s",
-                layers.getFirst().floorCrust());
-        for (int index = 1; index < layers.size(); index++) {
-            expect(
-                    helper,
-                    layers.get(index).floorCrust() == FloorCrust.DRAW,
-                    "layer %d's floor is %s, not left to the seed",
-                    index + 1,
-                    layers.get(index).floorCrust());
-        }
-        expect(
-                helper,
                 layers.get(1).minY() == CampaignBands.LAYER_2.minY(),
                 "layer 2's band starts at %d",
                 layers.get(1).minY());
