@@ -20,9 +20,10 @@ public final class ContinuityClientInit {
         ClientLifecycleEvents.CLIENT_STARTED.register(
                 client -> client.getSoundManager().addListener(RecentSounds.INSTANCE));
         ClientTickEvents.END_CLIENT_TICK.register(ContinuityClient::tick);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+        // The event can fire on a network thread; the sequence and the ear are the client thread's.
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
             ContinuityClient.forget();
             RecentSounds.INSTANCE.clear();
-        });
+        }));
     }
 }

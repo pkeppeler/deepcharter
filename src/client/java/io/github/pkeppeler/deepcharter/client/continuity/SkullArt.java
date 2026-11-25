@@ -163,7 +163,7 @@ final class SkullArt {
             int y1 = Math.round(y + cellHeight);
             for (int layer = 1; layer <= look.bloomLayers(); layer++) {
                 int reach = layer * look.bloomSpread();
-                graphics.fill(x0 - reach, y0 - reach / 2, x1 + reach, y1 + reach / 2, color);
+                graphics.fill(x0 - reach, y0 - reach, x1 + reach, y1 + reach, color);
             }
         }
     }

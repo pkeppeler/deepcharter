@@ -3,7 +3,9 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.pkeppeler.deepcharter.client.continuity.ContinuityClient;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
+import io.github.pkeppeler.deepcharter.client.continuity.Silence;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
@@ -15,13 +17,16 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.DeathScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.client.sounds.WeighedSoundEvents;
@@ -36,8 +41,9 @@ import net.minecraft.world.level.GameType;
  * Client GameTest for #1337's Continuity Event, through a real death (a burn, on the integrated server): vanilla's death screen never
  * opens; the screen goes black and silent at once, and no sound of the world gets through until the person is back; the record skips
  * three times on the last sound, each pass lower, each with the needle, then the laugh; nothing shows or answers before RETURN TO WORK,
- * which comes when the laugh ends; Esc then shows DISCONNECT; a click on RETURN TO WORK brings the person back alive, and the world's
- * sounds with them.
+ * which comes when the laugh ends; a container closed or a screen opened and shut over it while the person is dead neither brings back
+ * vanilla's death screen nor cuts the laugh; Esc then shows DISCONNECT; a click on RETURN TO WORK brings the person back alive, and the
+ * world's sounds with them; a second death is No. 2 and plays again; leaving the world mid-sequence lifts the silence.
  */
 public class ContinuityClientTest implements FabricClientGameTest {
     private static final Identifier ANVIL = SoundEvents.ANVIL_LAND.location();
@@ -54,14 +60,17 @@ public class ContinuityClientTest implements FabricClientGameTest {
     private static final AtomicLong OPENED = new AtomicLong();
 
     /** Every sound the engine starts, with its pitch and when. */
-    private record Played(Identifier id, float pitch, long millis) {}
+    private record Played(SoundInstance sound, Identifier id, float pitch, long millis) {}
+
+    /** The game messages the client was shown, as text: set by a listener that cannot be removed. */
+    private static final List<String> CHAT = new CopyOnWriteArrayList<>();
 
     private static final class Heard implements SoundEventListener {
         private final List<Played> played = new CopyOnWriteArrayList<>();
 
         @Override
         public void onPlaySound(SoundInstance sound, WeighedSoundEvents events, float range) {
-            played.add(new Played(sound.getIdentifier(), sound.getPitch(), Util.getMillis()));
+            played.add(new Played(sound, sound.getIdentifier(), sound.getPitch(), Util.getMillis()));
         }
 
         List<Played> since(long millis) {
@@ -80,6 +89,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
                 OPENED.compareAndSet(0, Util.getMillis());
             }
         });
+        ClientReceiveMessageEvents.GAME.register((message, overlay) -> CHAT.add(message.getString()));
         Heard heard = new Heard();
         context.runOnClient(client -> client.getSoundManager().addListener(heard));
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
@@ -115,6 +125,32 @@ public class ContinuityClientTest implements FabricClientGameTest {
                 require(ClientChecks.visibleWidgets(shown(client)).isEmpty(), "Esc shows nothing before the button");
             });
             // The world's sounds are cut off: an anvil now is never started.
+            anvil(singleplayer);
+
+            // Once the laugh plays, nothing that clears or covers the screen while the person is dead ends the sequence: vanilla would
+            // build its death screen again for a container the server closes and for a screen shut over it.
+            ClientWait.until(
+                    context, "the laugh started", client -> heard.since(opened).stream()
+                            .anyMatch(p -> p.id().equals(LAUGH)));
+            SoundInstance laugh = heard.since(opened).stream()
+                    .filter(p -> p.id().equals(LAUGH))
+                    .findFirst()
+                    .orElseThrow()
+                    .sound();
+            Screen sequence = context.computeOnClient(ContinuityClientTest::shown);
+            context.runOnClient(client -> {
+                Objects.requireNonNull(client.player, "<in the world>").clientSideCloseContainer();
+                require(client.gui.screen() == sequence, "a closed container leaves the same sequence on screen");
+                require(client.getSoundManager().isActive(laugh), "a closed container does not cut the laugh");
+                client.gui.setScreen(new ChatScreen("", false));
+            });
+            ClientWait.until(context, "the chat open over the sequence", client -> client.gui.screen() instanceof ChatScreen);
+            context.runOnClient(client -> {
+                require(client.getSoundManager().isActive(laugh), "a screen over the sequence does not cut the laugh");
+                client.gui.setScreen(null);
+                require(client.gui.screen() == sequence, "shutting the screen over it shows the same sequence again");
+                require(client.getSoundManager().isActive(laugh), "and the laugh goes on");
+            });
             anvil(singleplayer);
 
             ClientWait.until(
@@ -160,9 +196,34 @@ public class ContinuityClientTest implements FabricClientGameTest {
                     context,
                     "the world's sounds back",
                     client -> heard.since(back).stream().anyMatch(p -> p.id().equals(ANVIL)));
+
+            // A second death in the same session is a sequence of its own, No. 2, laugh and all.
+            long second = context.computeOnClient(client -> Util.getMillis());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                player.hurtServer(player.level(), player.level().damageSources().lava(), 1000f);
+            });
+            ClientWait.until(
+                    context,
+                    "a second sequence",
+                    client -> client.gui.screen() instanceof ContinuityScreen screen && screen != sequence);
+            ClientWait.until(
+                    context,
+                    "the second laugh",
+                    client -> heard.since(second).stream().anyMatch(p -> p.id().equals(LAUGH)));
+            require(
+                    CHAT.stream().anyMatch(line -> line.contains("(No. 2)")),
+                    "the second death is No. 2, the chat was " + CHAT);
+            require(!SAW_DEATH_SCREEN.get(), "vanilla's death screen never opened");
+            context.runOnClient(client -> require(Silence.refuses(click()), "the second sequence holds the silence"));
         } finally {
             context.runOnClient(client -> client.getSoundManager().removeListener(heard));
         }
+        // Leaving the world mid-sequence ends it: the silence lifts and nothing is left in sequence.
+        context.runOnClient(client -> {
+            require(!Silence.refuses(click()), "leaving the world lifts the silence");
+            require(!ContinuityClient.inSequence(), "leaving the world ends the sequence");
+        });
     }
 
     /**
@@ -190,6 +251,11 @@ public class ContinuityClientTest implements FabricClientGameTest {
         require(
                 passes.get(2).millis() <= laughs.getFirst().millis(),
                 "the laugh comes after the last pass, heard " + sequence);
+    }
+
+    /** A sound of the game's own, not the sequence's: one the silence refuses while it holds. */
+    private static SoundInstance click() {
+        return SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f);
     }
 
     /** An anvil lands at the player, loud. */
