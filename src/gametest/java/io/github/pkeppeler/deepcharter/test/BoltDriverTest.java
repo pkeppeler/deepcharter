@@ -26,9 +26,9 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.BoltDriverTuning;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.BoltRoom.Corridor;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
-import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -96,8 +96,10 @@ public class BoltDriverTest {
     private static final int ROCK_SETTLES_TICKS = 40;
 
     private static final Identifier CREAK = SoundEvents.CREAKING_TWITCH.location();
-    private static final Identifier CAVE_IN_SOUND = DeepSound.CAVE_IN_COLLAPSE.event().location();
-    private static final Identifier EXPLOSION = SoundEvents.GENERIC_EXPLODE.value().location();
+    private static final Identifier CAVE_IN_SOUND =
+            DeepSound.CAVE_IN_COLLAPSE.event().location();
+    private static final Identifier EXPLOSION =
+            SoundEvents.GENERIC_EXPLODE.value().location();
 
     /** How far from the collapse a sound still counts as the collapse's: the stretch is a few blocks wide. */
     private static final double COLLAPSE_EARSHOT = 4.0;
