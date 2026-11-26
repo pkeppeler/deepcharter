@@ -21,7 +21,7 @@ import net.minecraft.world.level.block.Blocks;
 /**
  * Evidence scenario "pod-stranded" (#1430): a pilot with no fuel item and no money runs dry at the bottom of a shaft in layer 1. The
  * pod goes dark and the readout says STRANDED, with no countdown and no fee under it: the Company sends no crew (ADR 0104). Longer
- * than the old crew's minute later, the pod is still dark at the bottom of the shaft.
+ * after the old crew's minute, the pod is still dark at the bottom of the shaft.
  */
 public class PodStrandedScenario extends EvidenceScenario {
     private static final int X = 5800;

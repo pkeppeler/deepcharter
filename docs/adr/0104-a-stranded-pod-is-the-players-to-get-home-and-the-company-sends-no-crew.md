@@ -22,5 +22,5 @@ Supersedes [ADR 0073](0073-the-company-winches-a-stranded-pod-home-for-a-fee-tha
 ## Consequences
 
 - Fuel, reserve tanks, tow cables and crewmates carry the whole weight of getting home. The low-fuel tone and the handbook's chapter 4 are the warning.
-- The emergency teleporters (SPEC section 11) are still a bought way home, and the flue scrape still frees a limp pod at the colony ([ADR 0097](0097-solid-fuel-weighs-through-a-default-cargo-weight-component-and-fouls-the-engine-through-a-versioned-soot-attachment.md)): a teleporter is a bought way home the pilot must carry, not a rescue, and the scrape is a gate of the game's own, not a way home.
+- The emergency teleporters (SPEC section 11) stay: a teleporter is a bought way home the pilot must carry, not a rescue. The flue scrape still frees a limp pod at the colony ([ADR 0097](0097-solid-fuel-weighs-through-a-default-cargo-weight-component-and-fouls-the-engine-through-a-versioned-soot-attachment.md)): it opens a gate of the game's own, not a way home.
 - `Teleports` loses what only the crew used: the longer spill life of the ore left behind, and the second try at the world spawn when the colony's column is blocked.

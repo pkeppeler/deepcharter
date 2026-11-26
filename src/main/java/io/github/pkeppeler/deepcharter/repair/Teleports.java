@@ -35,13 +35,11 @@ final class Teleports {
      * Where the teleporters take a pod: the colony's respawn point, or the world spawn while the colony is not built or its
      * data is unreadable.
      */
-    static GlobalPos destination(MinecraftServer server) {
-        return Colony.respawnPoint(server).orElseGet(() -> worldSpawn(server));
-    }
-
-    private static GlobalPos worldSpawn(MinecraftServer server) {
-        LevelData.RespawnData spawn = server.overworld().getRespawnData();
-        return GlobalPos.of(spawn.dimension(), spawn.pos());
+    private static GlobalPos destination(MinecraftServer server) {
+        return Colony.respawnPoint(server).orElseGet(() -> {
+            LevelData.RespawnData spawn = server.overworld().getRespawnData();
+            return GlobalPos.of(spawn.dimension(), spawn.pos());
+        });
     }
 
     /** Sends {@code pod}, at most {@code scatter} blocks from the destination. Empty when it went, or the reason it did not. */

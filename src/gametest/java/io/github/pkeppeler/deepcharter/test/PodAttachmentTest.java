@@ -127,12 +127,7 @@ public class PodAttachmentTest {
                 // Expected.
             }
 
-            TagValueOutput output = TagValueOutput.createWithContext(
-                    ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
-            loaded.saveWithoutId(output);
-            CompoundTag saved = output.buildResult()
-                    .getCompound(ATTACHMENTS_KEY)
-                    .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
+            CompoundTag saved = savedAttachments(helper, loaded);
             if (!future.equals(Objects.requireNonNull(saved.get(exampleKey), "saved.get(exampleKey) is absent"))) {
                 throw failure(helper, "the unreadable data was not written back unchanged: %s", saved.get(exampleKey));
             }
@@ -174,12 +169,7 @@ public class PodAttachmentTest {
                         "the retired clock cost the pod its other attachment: %s",
                         loaded.getAttached(TestAttachments.OTHER));
             }
-            TagValueOutput output = TagValueOutput.createWithContext(
-                    ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
-            loaded.saveWithoutId(output);
-            CompoundTag saved = output.buildResult()
-                    .getCompound(ATTACHMENTS_KEY)
-                    .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
+            CompoundTag saved = savedAttachments(helper, loaded);
             if (saved.contains(retiredKey)) {
                 throw failure(helper, "the retired clock was written back: %s", saved.get(retiredKey));
             }
@@ -291,6 +281,16 @@ public class PodAttachmentTest {
                         arrived.getAttached(TestAttachments.EXAMPLE));
             }
         });
+    }
+
+    /** The attachments {@code entity} writes when it is saved. */
+    private static CompoundTag savedAttachments(GameTestHelper helper, Entity entity) {
+        TagValueOutput output = TagValueOutput.createWithContext(
+                ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
+        entity.saveWithoutId(output);
+        return output.buildResult()
+                .getCompound(ATTACHMENTS_KEY)
+                .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
     }
 
     /** Saves {@code pod} (replacing its attachments with {@code attachments} if given), discards it and loads a new pod from the data. */

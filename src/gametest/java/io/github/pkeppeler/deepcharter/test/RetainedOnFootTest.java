@@ -12,7 +12,7 @@ import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
-import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -906,16 +906,7 @@ public class RetainedOnFootTest {
                     if (!player.startRiding(pod[0], true, false)) {
                         throw failure(helper, "the held person could not mount the pod");
                     }
-                    player.setItemInHand(
-                            InteractionHand.MAIN_HAND,
-                            new ItemStack(RepairRegistry.item(Consumable.MATTER_TRANSMITTER)));
-                    if (!player.gameMode
-                            .useItem(
-                                    player,
-                                    level,
-                                    player.getItemInHand(InteractionHand.MAIN_HAND),
-                                    InteractionHand.MAIN_HAND)
-                            .consumesAction()) {
+                    if (!ChargeUse.use(player, Consumable.MATTER_TRANSMITTER).consumesAction()) {
                         throw failure(helper, "the held pilot's matter transmitter did not work");
                     }
                     boardedAt[0] = helper.getTick();
