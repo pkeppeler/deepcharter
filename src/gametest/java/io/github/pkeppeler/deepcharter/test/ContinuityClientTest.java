@@ -9,7 +9,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityClient;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
 import io.github.pkeppeler.deepcharter.client.continuity.Silence;
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.continuity.ContinuityRecord;
 import io.github.pkeppeler.deepcharter.continuity.ContinuityRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
@@ -383,7 +383,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
         });
     }
 
-    /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would. */
+    /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would: its repair screen. */
     private static void openTerminal(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         BlockPos pump = singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -393,7 +393,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
             return at;
         });
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(pump)));
-        ClientWait.until(context, "the terminal open", client -> client.gui.screen() instanceof TerminalViewScreen);
+        ClientWait.until(context, "the terminal open", client -> TerminalScreens.isTerminalScreen(client.gui.screen()));
     }
 
     /** The labels of the widgets the open screen shows. */

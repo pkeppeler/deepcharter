@@ -1,6 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.sound;
 
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -12,8 +12,9 @@ import net.minecraft.util.RandomSource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The terminal's music: one loop from the tick a terminal screen opens to the tick it closes. The level's own background music is
- * stopped when it starts, and the level may start its music again while the terminal is open.
+ * The terminal's music: one loop from the tick a terminal screen opens to the tick it closes, a working
+ * terminal's or an unrepaired one's ({@link TerminalScreens#isTerminalScreen}). The level's own background
+ * music is stopped when it starts, and the level may start its music again while the terminal is open.
  */
 public final class TerminalMusic {
     private static @Nullable Music playing;
@@ -26,7 +27,7 @@ public final class TerminalMusic {
     }
 
     private static void tick(Minecraft client) {
-        if (!(client.gui.screen() instanceof TerminalViewScreen)) {
+        if (!TerminalScreens.isTerminalScreen(client.gui.screen())) {
             return;
         }
         client.getMusicManager().stopPlaying();
@@ -51,7 +52,7 @@ public final class TerminalMusic {
 
         @Override
         public void tick() {
-            if (!(Minecraft.getInstance().gui.screen() instanceof TerminalViewScreen)) {
+            if (!TerminalScreens.isTerminalScreen(Minecraft.getInstance().gui.screen())) {
                 stop();
             }
         }
