@@ -417,7 +417,7 @@
   "deepcharter.spec.value.hull": "%s HP",
   "deepcharter.spec.value.lights": "LIGHT %s",
   "deepcharter.spec.value.liner": "RING / %s SLABS",
-  "deepcharter.spec.value.radiator": "HEAT x%s",
+  "deepcharter.spec.value.radiator": "HEAT %s%%",
   "deepcharter.spec.value.scanner": "%s DOWN",
   "deepcharter.spec.value.sounder": "HEARS %s DOWN",
   "deepcharter.spec.value.spoil_hopper": "KEEPS SPOIL"

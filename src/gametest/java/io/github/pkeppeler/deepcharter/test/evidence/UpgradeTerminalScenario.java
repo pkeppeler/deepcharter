@@ -43,7 +43,7 @@ public class UpgradeTerminalScenario extends EvidenceScenario {
             hold(context);
             screenshot(context, "hull-prices");
 
-            // Tier 1 is crafted and not sold (#536): the row says so, and the first purchase is tier 2.
+            // Tier 1 is crafted and not sold (#536), so it has no row (#1440): the first purchase is tier 2.
             context.clickScreenButton("BUY TIER 2  $500");
             ClientWait.until(
                     context,

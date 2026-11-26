@@ -195,11 +195,15 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return features;
     }
 
-    /** A pod with every track at its best tier and a cap below it, so each row carries the longest label. */
+    /**
+     * A pod with nothing fitted and a cap below the best tiers: each track offers every tier it sells, the tiers above
+     * the cap carry the longest labels, and a track that waits for its crafted unit shows its locked row and the unit's
+     * line.
+     */
     private static UpgradeView upgradeView() {
         List<UpgradeView.Slot> slots = new ArrayList<>();
         for (ComponentTrack track : ComponentTrack.values()) {
-            slots.add(new UpgradeView.Slot(track, track.maxTier(), Math.min(track.maxTier(), 3)));
+            slots.add(new UpgradeView.Slot(track, 0, 0));
         }
         return new UpgradeView(Optional.of(new UpgradeView.Pod("PROSPECTOR-9999", 3, slots)), false);
     }
@@ -537,7 +541,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                         }))
                         .toList();
             } else if (type == TerminalTypes.UPGRADE_TERMINAL) {
-                variants = upgradeTrackVariants();
+                variants = upgradeTrackVariants(false);
             } else if (type == TerminalTypes.ORE_PROCESSOR) {
                 // WITHDRAW ORE swaps the sheet for the list of ores, here all seven at the largest count.
                 variants = List.of(new Variant("withdraw list", (context, screen) -> {
@@ -546,6 +550,13 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                 }));
             }
             cases.add(new Case(id + " online", () -> TerminalScreens.create(online), variants));
+            if (type == TerminalTypes.UPGRADE_TERMINAL) {
+                TerminalView voided = new TerminalView(POS, type.id(), Optional.of(voidPartsView()), List.of());
+                cases.add(new Case(
+                        id + " online, void top parts over the cap",
+                        () -> TerminalScreens.create(voided),
+                        upgradeTrackVariants(true)));
+            }
             if (type == TerminalTypes.FUEL_PUMP || type == TerminalTypes.ORE_PROCESSOR) {
                 TerminalView risky = riskyView(online);
                 cases.add(new Case(id + " online, longest risk line", () -> TerminalScreens.create(risky)));
@@ -704,8 +715,23 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                         Optional.empty()));
     }
 
-    /** Chooses each track in turn: the right column lists that track's tiers, so its length changes. */
-    private static List<Variant> upgradeTrackVariants() {
+    /**
+     * Every track with its best tier fitted, void (another charter's part) and over the cap: the longest fitted line,
+     * "FITTED  TIER 6  (WORKS AS TIER 3)  (VOID)", over every tier for sale.
+     */
+    private static UpgradeView voidPartsView() {
+        List<UpgradeView.Slot> slots = new ArrayList<>();
+        for (ComponentTrack track : ComponentTrack.values()) {
+            slots.add(new UpgradeView.Slot(track, track.maxTier(), 0));
+        }
+        return new UpgradeView(Optional.of(new UpgradeView.Pod("PROSPECTOR-9999", 3, slots)), false);
+    }
+
+    /**
+     * Chooses each track in turn: the right column lists that track's tiers, so its length changes. {@code topFitted}
+     * says the fixture has every track at its best tier, which the track buttons show.
+     */
+    private static List<Variant> upgradeTrackVariants(boolean topFitted) {
         List<Variant> variants = new ArrayList<>();
         for (ComponentTrack track : ComponentTrack.values()) {
             variants.add(new Variant("track " + track.id() + " chosen", (context, screen) -> {
@@ -715,7 +741,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                                 "screen.deepcharter.upgrade.track",
                                 Component.translatable("deepcharter.upgrade.track." + track.id())
                                         .getString(),
-                                track.maxTier())
+                                topFitted ? track.maxTier() : 0)
                         .getString());
                 UpgradeScreen upgrade = (UpgradeScreen) screen;
                 context.runOnClient(client -> UpgradeShown.reveal(upgrade, track));

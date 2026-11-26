@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.RecipeConsoleScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -40,9 +41,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Client GameTest for #73: the upgrade screen lists the parts of a track with their prices, marks the tiers above the Mole's cap
- * and shows the cap, buys through the server, shows the installed part (and the cap on it), and leaves a part the charter cannot
- * pay for dead.
+ * Client GameTest for #73 and #1440: the upgrade screen says what a track does, what is fitted and what the next tier
+ * gains, lists the tiers for sale with their prices (never the crafted tier 1), marks the tiers above the Mole's cap
+ * and shows the cap, buys through the server, shows the fitted part (and the cap on it), leaves a part the charter
+ * cannot pay for dead, and locks a track that waits for its crafted unit, with a line that opens the unit's recipe.
  */
 public class UpgradeTerminalClientTest implements FabricClientGameTest {
     private static final long ACCOUNT = 30_000;
@@ -84,20 +86,29 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                     context, "the hull track lit", client -> UpgradeShown.isChosen(screen, ComponentTrack.HULL));
             List<String> hull = labels(context, screen);
             require(
-                    hull.contains("TIER 1  CRAFTED, NOT SOLD") && hull.contains("BUY TIER 2  $500"),
-                    "the hull shows tier 1 as crafted and the others with their prices, got " + hull);
-            require(!button(context, screen, "TIER 1  CRAFTED, NOT SOLD").active, "a crafted tier is not for sale");
+                    hull.contains("BUY TIER 2  $500")
+                            && hull.stream()
+                                    .noneMatch(label -> label.startsWith("TIER 1") || label.contains("CRAFTED")),
+                    "the hull offers tier 2 at its price, and its crafted tier 1 is no row, got " + hull);
             require(
                     hull.contains("BUY TIER 3  $1250  (WORKS AS TIER 2)")
                             && hull.contains("BUY TIER 4  $5000  (WORKS AS TIER 2)"),
                     "tiers above the cap say so, got " + hull);
+            // #1440: what the hull does, what is fitted, and the next tier's gain from the pod's stats.
+            requireDrawn(
+                    context,
+                    screen,
+                    "SURVIVES HARDER HITS AND LANDINGS",
+                    "FITTED  STOCK PART",
+                    "TIER 2  HULL 100 -> 300");
 
-            // A Mole has a stock hull, so tier 2 is bought over it with no tier 1 fitted.
+            // A Mole has a stock hull, so tier 2 is bought over it with no tier 1 fitted (ADR 0053).
             context.clickScreenButton("BUY TIER 2  $500");
             ClientWait.until(
                     context,
-                    "the tier 2 install label",
-                    client -> labels(screen).contains("TIER 2  INSTALLED"));
+                    "the fitted tier 2 hull",
+                    client -> drawn(screen).contains("FITTED  TIER 2"),
+                    client -> "drawn " + drawn(screen));
             require(
                     singleplayer
                             .getServer()
@@ -105,12 +116,16 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                                     .map(label -> label.tier() == 2)
                                     .orElse(false)),
                     "the server installed the tier 2 hull");
+            require(
+                    labels(context, screen).stream().noneMatch(label -> label.startsWith("BUY TIER 2")),
+                    "the fitted tier is no longer for sale, got " + labels(context, screen));
 
             context.clickScreenButton("BUY TIER 4  $5000  (WORKS AS TIER 2)");
             ClientWait.until(
                     context,
-                    "the tier 4 install label",
-                    client -> labels(screen).contains("TIER 4  INSTALLED  (WORKS AS TIER 2)"));
+                    "the fitted tier 4 hull, capped",
+                    client -> drawn(screen).contains("FITTED  TIER 4  (WORKS AS TIER 2)"),
+                    client -> "drawn " + drawn(screen));
             boolean cappedAndDropped = singleplayer.getServer().computeOnServer(server2 -> {
                 PodEntity pod = pod(server2, scene);
                 boolean capped = PodComponents.effectiveTier(pod, ComponentTrack.HULL) == 2;
@@ -132,6 +147,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
             require(
                     cappedAndDropped,
                     "the tier 4 hull works as tier 2, the tier 2 hull dropped, and the account paid 5500 in all");
+            requireDrawn(context, screen, "TIER 5 WORKS AS TIER 2 IN THIS POD");
 
             CrtButton unaffordable = context.computeOnClient(client -> screen.children().stream()
                     .filter(CrtButton.class::isInstance)
@@ -141,8 +157,8 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                     .orElseThrow());
             require(!unaffordable.active, "a part the account cannot pay for is dead");
 
-            // #483: the scanner's tier 1 is crafted, so its row is not for sale and the next tier waits for it to be
-            // fitted.
+            // #483, #1440: the scanner's tier 1 is crafted, so its next purchase is locked until the unit is fitted,
+            // and the line naming the unit opens its recipe.
             context.clickScreenButton("SCANNER  T0");
             ClientWait.until(
                     context,
@@ -150,12 +166,34 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                     client -> UpgradeShown.isChosen(screen, ComponentTrack.SCANNER));
             List<String> bare = labels(context, screen);
             require(
-                    bare.contains("TIER 1  CRAFTED, NOT SOLD") && bare.contains("BUY TIER 2  $500  (FIT TIER 1 FIRST)"),
-                    "the scanner shows tier 1 as crafted and tier 2 as waiting for it, got " + bare);
+                    bare.contains("BUY TIER 2  $500  LOCKED")
+                            && bare.contains("FIT A CRAFTED SCANNER UNIT FIRST")
+                            && bare.stream().noneMatch(label -> label.startsWith("BUY TIER 3")),
+                    "the scanner shows tier 2 locked and what unlocks it, and nothing else for sale, got " + bare);
+            require(!button(context, screen, "BUY TIER 2  $500  LOCKED").active, "the locked tier cannot be bought");
+            requireDrawn(context, screen, "FITTED  NOTHING");
+            context.clickScreenButton("FIT A CRAFTED SCANNER UNIT FIRST");
+            ClientWait.screen(context, RecipeConsoleScreen.class);
+            context.runOnClient(client ->
+                    ClientSession.screen(client, RecipeConsoleScreen.class).onClose());
+            ClientWait.until(
+                    context,
+                    "the upgrade screen back from the recipe",
+                    client -> client.gui.screen() == screen,
+                    client -> "screen " + client.gui.screen());
+
+            // The spoil hopper's one tier is crafted: nothing is for sale, and the line says how to get it.
+            context.runOnClient(client -> UpgradeShown.reveal(screen, ComponentTrack.SPOIL_HOPPER));
+            context.clickScreenButton("SPOIL HOPPER  T0");
+            ClientWait.until(
+                    context,
+                    "the spoil hopper track selected",
+                    client -> UpgradeShown.isChosen(screen, ComponentTrack.SPOIL_HOPPER));
+            List<String> hopper = labels(context, screen);
             require(
-                    !button(context, screen, "TIER 1  CRAFTED, NOT SOLD").active
-                            && !button(context, screen, "BUY TIER 2  $500  (FIT TIER 1 FIRST)").active,
-                    "neither scanner row can be bought");
+                    hopper.contains("CRAFT A SPOIL HOPPER UNIT AND FIT IT")
+                            && hopper.stream().noneMatch(label -> label.startsWith("BUY")),
+                    "the spoil hopper sells nothing and says how to get one, got " + hopper);
 
             singleplayer.getServer().runOnServer(server2 -> {
                 ServerPlayer player = server2.getPlayerList().getPlayers().getFirst();
@@ -181,13 +219,15 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                     client -> UpgradeShown.isChosen(fitted, ComponentTrack.SCANNER));
             List<String> after = labels(context, fitted);
             require(
-                    after.contains("TIER 1  INSTALLED") && after.contains("BUY TIER 2  $500"),
-                    "a fitted scanner shows tier 1 installed and tier 2 for sale, got " + after);
+                    after.contains("BUY TIER 2  $500") && after.stream().noneMatch(label -> label.contains("LOCKED")),
+                    "a fitted scanner unlocks tier 2, got " + after);
+            requireDrawn(context, fitted, "FITTED  TIER 1", "TIER 2  SCAN DEPTH 32 -> 48 BLOCKS");
             context.clickScreenButton("BUY TIER 2  $500");
             ClientWait.until(
                     context,
-                    "the tier 2 install label",
-                    client -> labels(fitted).contains("TIER 2  INSTALLED"));
+                    "the fitted tier 2 scanner",
+                    client -> drawn(fitted).contains("FITTED  TIER 2"),
+                    client -> "drawn " + drawn(fitted));
             require(
                     singleplayer
                             .getServer()
@@ -204,10 +244,10 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                     client -> UpgradeShown.isChosen(fitted, ComponentTrack.HEAT_SHIELD));
             List<String> shield = labels(context, fitted);
             require(
-                    shield.contains("TIER 1  CRAFTED, NOT SOLD")
-                            && shield.contains("BUY TIER 2  $1250")
-                            && shield.contains("BUY TIER 3  $2500  (WORKS AS TIER 2)"),
-                    "the heat shield lists tier 1 as crafted, tier 2 at $1250 and tier 3 at $2500, got " + shield);
+                    shield.contains("BUY TIER 2  $1250")
+                            && shield.contains("BUY TIER 3  $2500  (WORKS AS TIER 2)")
+                            && shield.stream().noneMatch(label -> label.startsWith("TIER 1")),
+                    "the heat shield offers tier 2 at $1250 and tier 3 at $2500, and no crafted row, got " + shield);
             require(
                     context.computeOnClient(client -> DrawnText.of(fitted).stream()
                             .anyMatch(drawn -> drawn.text().contains("BURNS THE PACK'S BRICKS FIRST"))),
@@ -215,8 +255,9 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
             context.clickScreenButton("BUY TIER 2  $1250");
             ClientWait.until(
                     context,
-                    "the heat shield tier 2 install label",
-                    client -> labels(fitted).contains("TIER 2  INSTALLED"));
+                    "the fitted tier 2 heat shield",
+                    client -> drawn(fitted).contains("FITTED  TIER 2"),
+                    client -> "drawn " + drawn(fitted));
             require(
                     singleplayer
                             .getServer()
@@ -270,6 +311,21 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                         button.getMessage().getString().replaceFirst("^> ", "").equals(label))
                 .findFirst()
                 .orElseThrow());
+    }
+
+    /**
+     * The lines the screen draws itself: the chosen track's description, fitted part, next gain and note. Client
+     * thread.
+     */
+    private static List<String> drawn(UpgradeScreen screen) {
+        return DrawnText.of(screen).stream().map(DrawnText.Drawn::text).toList();
+    }
+
+    private static void requireDrawn(ClientGameTestContext context, UpgradeScreen screen, String... lines) {
+        List<String> drawn = context.computeOnClient(client -> drawn(screen));
+        for (String line : lines) {
+            require(drawn.contains(line), "the screen should draw '" + line + "', drew " + drawn);
+        }
     }
 
     private static List<String> labels(ClientGameTestContext context, UpgradeScreen screen) {

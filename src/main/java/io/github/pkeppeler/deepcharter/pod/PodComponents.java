@@ -20,8 +20,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
@@ -130,38 +128,15 @@ public final class PodComponents {
             builder -> builder.persistent(Versioned.codec(PodLore.VERSION, PodLore.BODY))
                     .initializer(() -> Versioned.of(PodLore.NONE)));
 
-    /**
-     * One stat a track moves, and which way is better. A part scales the stat by the tier's ratio against the stock part, so it
-     * composes with other listeners. A drill is better when its ticks for each hardness are fewer, so it divides.
-     */
-    private record Axis(
-            Function<PodStats, Float> read, BiFunction<PodStats, Float, PodStats> write, boolean lowerIsBetter) {
-        PodStats scale(PodStats stats, float ratio) {
-            float value = read.apply(stats);
-            return write.apply(stats, lowerIsBetter ? value / ratio : value * ratio);
-        }
-    }
-
-    /** The stats of each track. The radiator, scanner and lights move none: they are read through {@link #effectiveTier}. */
-    private static final Map<ComponentTrack, List<Axis>> AXES = new EnumMap<>(ComponentTrack.class);
+    /** The stats of each track. The other tracks move none: they are read through {@link #effectiveTier}. */
+    private static final Map<ComponentTrack, List<PartAxis>> AXES = new EnumMap<>(ComponentTrack.class);
 
     static {
-        AXES.put(
-                ComponentTrack.DRILL,
-                List.of(new Axis(PodStats::ticksPerHardness, PodStats::withTicksPerHardness, true)));
-        AXES.put(ComponentTrack.HULL, List.of(new Axis(PodStats::maxHull, PodStats::withMaxHull, false)));
-        AXES.put(
-                ComponentTrack.ENGINE,
-                List.of(
-                        new Axis(PodStats::enginePower, PodStats::withEnginePower, false),
-                        new Axis(PodStats::horizontalSpeed, PodStats::withHorizontalSpeed, false)));
-        AXES.put(ComponentTrack.FUEL_TANK, List.of(new Axis(PodStats::tankLitres, PodStats::withTankLitres, false)));
-        AXES.put(
-                ComponentTrack.CARGO_BAY,
-                List.of(new Axis(
-                        stats -> (float) stats.cargoSlots(),
-                        (stats, slots) -> stats.withCargoSlots(Math.round(slots)),
-                        false)));
+        AXES.put(ComponentTrack.DRILL, List.of(PartAxis.DRILL_TIME));
+        AXES.put(ComponentTrack.HULL, List.of(PartAxis.MAX_HULL));
+        AXES.put(ComponentTrack.ENGINE, List.of(PartAxis.ENGINE_POWER, PartAxis.HORIZONTAL_SPEED));
+        AXES.put(ComponentTrack.FUEL_TANK, List.of(PartAxis.TANK_LITRES));
+        AXES.put(ComponentTrack.CARGO_BAY, List.of(PartAxis.CARGO_SLOTS));
     }
 
     private PodComponents() {}
@@ -325,15 +300,29 @@ public final class PodComponents {
         }
     }
 
+    /** The stats a part of {@code track} moves; none for a track read through {@link #effectiveTier}. */
+    public static List<PartAxis> axes(ComponentTrack track) {
+        return AXES.getOrDefault(track, List.of());
+    }
+
+    /**
+     * What {@code axis} reads on a pod that nothing else modifies, with a part of {@code track} at {@code tier} (0: the
+     * stock part). The upgrade terminal and the spec sheets show a tier's figure from it, so it scales exactly as
+     * {@code applyParts} scales the stat on a pod.
+     */
+    public static float axisAt(ComponentTrack track, PartAxis axis, int tier) {
+        return axis.read(axis.scale(PodStats.base(), UpgradeTuning.DEFAULT.ratio(track, tier)));
+    }
+
     private static PodStats applyParts(PodEntity pod, PodStats stats) {
         PodStats result = stats;
-        for (Map.Entry<ComponentTrack, List<Axis>> track : AXES.entrySet()) {
+        for (Map.Entry<ComponentTrack, List<PartAxis>> track : AXES.entrySet()) {
             int tier = effectiveTier(pod, track.getKey());
             if (tier == 0) {
                 continue;
             }
             float ratio = UpgradeTuning.DEFAULT.ratio(track.getKey(), tier);
-            for (Axis axis : track.getValue()) {
+            for (PartAxis axis : track.getValue()) {
                 result = axis.scale(result, ratio);
             }
         }
