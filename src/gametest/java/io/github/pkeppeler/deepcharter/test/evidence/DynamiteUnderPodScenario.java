@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -14,10 +15,12 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
+import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -25,14 +28,15 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Evidence scenario "m2-dynamite-under-pod" (#1478): a Mole with a tier 1 seep sounder rests on a stone floor in layer 1, with a gas pocket in
- * each cell of the slab under its feet. The HUD reads SEEPAGE 1. The pilot lights a stick of dynamite from the seat: the slab goes with its
- * pockets, the pod drops one row into the hole, and the SEEPAGE line is gone. A trench in front of the pod cuts the rock open, so the camera
- * sees the rows under the floor. Stills before and after the blast.
+ * each cell of the slab under its feet (a pocket looks like stone). The HUD reads SEEPAGE 1. The pilot lights a stick of dynamite from the
+ * seat: the slab goes with its pockets, the pod drops one row into the hole, and the SEEPAGE line is gone. A trench in front of the pod cuts
+ * the rock open, so a spectator at its far end sees the rows under the floor. Stills from the seat and from the trench, before and after.
  */
 public class DynamiteUnderPodScenario extends EvidenceScenario {
     private static final Logger LOGGER = LoggerFactory.getLogger(DynamiteUnderPodScenario.class);
@@ -43,8 +47,9 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
     private static final int BED = 6;
     private static final int TRENCH = 4;
     private static final int TICKS_PER_FRAME = 3;
-    /** The front camera mirrors the pitch: a negative pitch puts it above the pod, looking down at it and into the trench. */
-    private static final float LOOK_DOWN = -30f;
+    private static final float LOOK_DOWN = 45f;
+    /** Set on the server thread when the pod is placed; read back there. */
+    private static UUID podId = new UUID(0, 0);
 
     @Override
     protected String name() {
@@ -58,17 +63,27 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
+            // The spectator goes first, so the chunks are loaded when the pod is placed in them.
+            spectate(singleplayer);
+            ClientWait.until(context, "the spectator in layer 1", client -> TestLayers.clientIsIn(client, 1));
+            ClientWait.chunksAround(context, X, Z, 1);
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 build(one);
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.setGameMode(GameType.SURVIVAL);
-                player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0f, LOOK_DOWN, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 one.addFreshEntity(pod);
-                ScannerPods.fit(server, player, pod, ComponentTrack.SOUNDER, 1);
+                podId = pod.getUUID();
+                ScannerPods.fit(server, server.getPlayerList().getPlayers().getFirst(), pod, ComponentTrack.SOUNDER, 1);
                 pod.setFuel(100f);
+            });
+            cutaway(context, singleplayer, "dynamite-under-pod-cutaway-before");
+
+            singleplayer.getServer().runOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                player.setGameMode(GameType.SURVIVAL);
+                player.teleportTo(TestLayers.level(server, 1), X, FLOOR_Y, Z, Set.of(), 0f, LOOK_DOWN, true);
+                PodEntity pod = podAt(server);
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the player could not mount the pod");
                 }
@@ -85,14 +100,13 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
                     () -> snapshot(singleplayer).seepage() == 1,
                     () -> snapshot(singleplayer).toString());
             context.runOnClient(client -> {
-                client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+                client.options.setCameraType(CameraType.FIRST_PERSON);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
             });
-            context.waitTicks(30);
-            tickFrames(context, 6);
+            settle(context);
             Snapshot before = snapshot(singleplayer);
             LOGGER.info("[dynamite-under-pod] before: {}", before);
-            screenshot(context, "dynamite-under-pod-before");
+            screenshot(context, "dynamite-under-pod-seat-before");
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -114,9 +128,11 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);
             }
+            settle(context);
             Snapshot after = snapshot(singleplayer);
             LOGGER.info("[dynamite-under-pod] after: {}", after);
-            screenshot(context, "dynamite-under-pod-after");
+            screenshot(context, "dynamite-under-pod-seat-after");
+            cutaway(context, singleplayer, "dynamite-under-pod-cutaway-after");
             if (after.pockets() != 0 || after.seepage() != 0 || !(after.feetY() < before.feetY() - 0.5)) {
                 throw new AssertionError(
                         "the dynamite should clear the pockets under the pod and drop it a row, before " + before
@@ -125,10 +141,60 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
         }
     }
 
+    /** A still from the far end of the trench. */
+    private void cutaway(ClientGameTestContext context, TestSingleplayerContext singleplayer, String still) {
+        spectate(singleplayer);
+        context.waitTicks(40);
+        settle(context);
+        screenshot(context, still);
+    }
+
+    /** Floats the player, as a spectator, at the far end of the trench, looking back at the pod and the cut face of the rows under it. */
+    private static void spectate(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.stopRiding();
+            player.setGameMode(GameType.SPECTATOR);
+            Vec3 eye = new Vec3(X + 0.5, FLOOR_Y + 0.8, Z + TRENCH + 0.5);
+            Vec3 target = new Vec3(X, FLOOR_Y - 0.5, Z);
+            Vec3 d = target.subtract(eye);
+            float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+            float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
+            player.teleportTo(
+                    TestLayers.level(server, 1),
+                    eye.x,
+                    eye.y - player.getEyeHeight(),
+                    eye.z,
+                    Set.of(),
+                    yaw,
+                    pitch,
+                    true);
+        });
+    }
+
+    /** Clears the welcome transmission and the toasts, then records a few frames so the picture is steady. */
+    private void settle(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            TransmissionOverlay.reset();
+            client.gui.toastManager().clear();
+        });
+        for (int i = 0; i < 6; i++) {
+            context.waitTicks(TICKS_PER_FRAME);
+            frame(context);
+        }
+    }
+
+    /** The pod by its id, which the server holds whether or not the player rides it. */
+    private static PodEntity podAt(MinecraftServer server) {
+        if (!(TestLayers.level(server, 1).getEntity(podId) instanceof PodEntity pod)) {
+            throw new AssertionError("the pod " + podId + " is gone");
+        }
+        return pod;
+    }
+
     private static Snapshot snapshot(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
-            PodEntity pod =
-                    TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
+            PodEntity pod = podAt(server);
             ServerLevel one = TestLayers.level(server, 1);
             int pockets = 0;
             for (BlockPos cell :

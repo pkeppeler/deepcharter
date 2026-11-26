@@ -9,8 +9,9 @@ package io.github.pkeppeler.deepcharter.repair;
  * @param itemCooldownTicks ticks before the same item can be used again (the original's half second)
  * @param reserveLitres     litres the Reserve Fuel Tank adds (the original's 25)
  * @param nanobotHp         hull points the Hull Repair Nanobots add (the original's 30)
- * @param dynamiteRadius    the dynamite clears blocks within this many of the pod on each axis, so 1 is 3 x 3 x 3
- * @param plasticRadius     the same for the plastic explosives, so 2 is 5 x 5 x 5
+ * @param dynamiteRadius    the dynamite clears blocks within this many of the pod's feet row on each axis, so 1 is 3 x 3 x 3 and 1 slab under
+ *                          the pod
+ * @param plasticRadius     the same for the plastic explosives, so 2 is 5 x 5 x 5 and 2 slabs under the pod
  * @param quantumScatter    blocks, at most, that the Quantum Teleporter lands from the destination ("results may vary")
  * @param chargeFuseTicks   ticks from setting a blasting charge to its blast (3 s: time to climb clear, not time to wait)
  * @param chargeDepth       slab rows below the pod that a blasting charge clears, 2 so that one charge leaves a straight 2-slab step

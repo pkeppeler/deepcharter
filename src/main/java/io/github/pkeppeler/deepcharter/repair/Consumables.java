@@ -89,8 +89,8 @@ final class Consumables {
      * Clears the natural rock within {@code radius} of the pod's feet on each axis, as a gas blast does. Company rock, lava and anything built
      * stay. The cube sits on the row the pod's feet are in, not on the middle of its box (#1478): a pod is 2.9 blocks tall, so a cube round its
      * middle reached no row under it, and the slab under the pod is what a pilot spends a stick on (a gas pocket the sounder marks, a slab the
-     * drill refuses). So it clears {@code radius} rows under the feet, and the rows above the feet only to the same height, which leaves the
-     * roof over the cab standing.
+     * drill refuses). So it clears {@code radius} slabs under the pod and {@code radius} rows up from its feet row, short of the roof over a
+     * 3-row cab, which stands.
      */
     private static Optional<Component> blast(PodEntity pod, int radius, DeepSound sound) {
         ServerLevel level = (ServerLevel) pod.level();
