@@ -15,6 +15,8 @@ PREFIX = "io.github.pkeppeler.deepcharter.test."
 REAL_TREE = REPO / "src/gametest/java"
 # The shard count CI runs (BUILD_SHARDS in .github/workflows/ci.yml; test_build_shards.py ties the two).
 CI_SHARDS = int(re.search(r"^\s+BUILD_SHARDS: (\d+)\s*$", (REPO / ".github/workflows/ci.yml").read_text(), re.M)[1])
+# A class with no weight counts as this (DEFAULT_SERVER_WEIGHT in gradle/gametest.gradle.kts).
+DEFAULT_WEIGHT = int(re.search(r"\bDEFAULT_SERVER_WEIGHT = (\d+)\b", (REPO / "gradle/gametest.gradle.kts").read_text())[1])
 
 
 def server(name: str, environment: str | None = None) -> str:
@@ -130,10 +132,29 @@ class ServerShardTest(unittest.TestCase):
 
     def test_the_ci_shards_are_balanced_by_weight(self):
         weights = real_weights()
-        loads = [sum(weights.get(name.rsplit(".", 1)[1], 6) for name in shard) for shard in self.shards("real shard ", CI_SHARDS)]
-        # Longest-processing-time-first leaves the shards within one unit of each other; the largest unit is the campaign
-        # classes, so the bound is a fifth of the suite rather than one class.
-        self.assertLessEqual(max(loads) - min(loads), sum(loads) / 5, loads)
+
+        def weight(unit: set[str]) -> int:
+            return sum(weights.get(name, weights.get(name.rsplit(".", 1)[1], DEFAULT_WEIGHT)) for name in unit)
+
+        # The units the shards are built from: each class, with the classes that name one campaign environment joined, transitively.
+        whole = outcome("real whole").server
+        units = [{name} for name in whole]
+        for users in real_environments().values():
+            named = {name for name in whole if name.rsplit(".", 1)[1] in users}
+            if not named:
+                continue
+            joined = [unit for unit in units if unit & named]
+            units = [unit for unit in units if not unit & named] + [set().union(*joined)]
+        shards = [set(shard) for shard in self.shards("real shard ", CI_SHARDS)]
+        loads = [weight(shard) for shard in shards]
+        self.assertLessEqual(max(loads) - min(loads), max(map(weight, units)), loads)
+        # Longest-processing-time-first adds each unit, heaviest first, to the then lightest shard, so a shard less its last and
+        # lightest unit is no heavier than the final lightest shard. That bounds each shard by its smallest unit, not the largest.
+        for shard, load in zip(shards, loads):
+            mine = [unit for unit in units if unit <= shard]
+            self.assertEqual(set().union(*mine), shard, "a unit is split across shards")
+            with self.subTest(load=load):
+                self.assertLessEqual(load - min(map(weight, mine)), min(loads), loads)
 
     def test_a_malformed_shard_fails_and_says_so(self):
         for spec in ("0/2", "3/2", "1", "a/b", "1/0", "1/2/3"):

@@ -8,10 +8,11 @@
 #   environment` line to the next) less the holds logged during them, over the environment's test count. Environments are
 #   minecraft:default, each campaign environment, and the rest pooled.
 # Rounded, at least 1 (the least the file accepts). The model sums to within 0.2 minutes of each job's measured suite time.
-# A name is simple, or fully qualified when two classes share a simple name (the full name wins). A class not listed counts as 6 s,
-# so a new class needs no entry; an entry for a class that no longer exists is ignored. Stale numbers only unbalance the shards, never
-# drop a test. Classes that share a campaign environment share a shard, whatever their weights. Refresh from green build-shard job
-# logs when the shard wall times drift apart, averaging several runs: runner speed alone moved the suite from 16 to 31 minutes.
+# A name is simple, or fully qualified when two classes share a simple name (the full name wins). A class not listed counts as
+# DEFAULT_SERVER_WEIGHT (gradle/gametest.gradle.kts), so a new class needs no entry; an entry for a class that no longer exists is
+# ignored. Stale numbers only unbalance the shards, never drop a test. Classes that share a campaign environment share a shard,
+# whatever their weights. Refresh from green build-shard job logs when the shard wall times drift apart, averaging several runs:
+# runner speed alone moved the suite from 16 to 31 minutes.
 ActiveStateTest 1
 AirCanisterTest 5
 AmbiencePlacesTest 1

@@ -23,8 +23,7 @@ jobs:
   # The server GameTest suite runs as BUILD_SHARDS parallel jobs (#1327, ADR 0106). Each takes the shard `i/n` of the server
   # classes that gradle/gametest.gradle.kts picks by weight (-PgametestShard; gradle/server-test-weights.txt), so every class runs
   # in exactly one shard, and classes that share a campaign environment share a shard. The matrix and BUILD_SHARDS must agree:
-  # tools/tests/test_build_shards.py checks it. The job id stays `build`: setup-gradle's cache key includes the job id, and
-  # cache-seed.yml seeds the entry for `build`.
+  # tools/tests/test_build_shards.py checks it. The job id stays `build` for the Gradle cache (cache-seed.yml says why).
   build:
     name: build-shard ${{ matrix.shard }}
     if: ${{ !github.event.pull_request.draft }}
@@ -70,7 +69,8 @@ jobs:
       - run: tools/ci-gradle-resolve.sh runGameTest "-PgametestShard=${{ matrix.shard }}/${{ env.BUILD_SHARDS }}"
 
   # Everything `./gradlew build` does but the server GameTests (compile, jars, check and its gates), the gate checks on fixtures
-  # and the client run tasks' dry run: one job, beside the shards.
+  # and the client run tasks' dry run: one job, beside the shards. Its job id is not the seeded `build`, so setup-gradle restores
+  # cache-seed.yml's entry through its same-OS fallback rather than the same-job-id match.
   checks:
     name: build-checks
     if: ${{ !github.event.pull_request.draft }}
