@@ -31,7 +31,7 @@ record LaughEnvelope(int framesPerSecond, double seconds, float[] values) {
      * The longest laugh a pack may ship: nothing can be skipped until it ends, so a longer one is read as broken. {@link
      * ContinuityScreen} also caps the whole sequence, whatever the data.
      */
-    static final double MAX_SECONDS = 30.0;
+    static final double MAX_SECONDS = 20.0;
     /** The most values a second a pack may give: far more than a frame rate, so a bigger number is a mistake. */
     private static final int MAX_FRAMES_PER_SECOND = 1000;
 

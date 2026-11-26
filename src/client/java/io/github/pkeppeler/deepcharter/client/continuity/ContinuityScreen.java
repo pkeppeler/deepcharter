@@ -42,8 +42,8 @@ public final class ContinuityScreen extends Screen {
     /**
      * The latest RETURN TO WORK can come, in seconds from the screen's opening at the death, whatever the packs say: Esc and DISCONNECT
      * wait only for the button, so no data can hold a dead person on this screen for longer. The theme's bounds ({@code
-     * ContinuityLook.of}) and the laugh's ({@link LaughEnvelope#MAX_SECONDS}) keep any valid pack well inside it; it is here for whatever
-     * slips past them.
+     * ContinuityLook.of}) put the laugh's start at most 8 s in, and the laugh ({@link LaughEnvelope#MAX_SECONDS}) lasts at most 20 s, so
+     * any valid pack's button comes by 28 s, 12 s inside the cap; it is here for whatever slips past them.
      */
     static final double LONGEST_SECONDS = 40.0;
 

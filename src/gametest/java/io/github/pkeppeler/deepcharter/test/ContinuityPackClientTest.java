@@ -154,6 +154,8 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
         buttonShown(context, "RETURN TO WORK shown");
         context.runOnClient(client -> {
             Screen sequence = shown(client);
+            // Pressed directly, not through RealInput: the press and the staged second death must land in one client
+            // batch.
             ClientChecks.button(sequence, RETURN).onPress(new KeyEvent(InputConstants.KEY_RETURN, 0, 0));
             LocalPlayer died = Objects.requireNonNull(client.player, "<in the world>");
             LocalPlayer again = Objects.requireNonNull(client.gameMode, "<in the world>")
