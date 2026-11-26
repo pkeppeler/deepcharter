@@ -1,0 +1,19 @@
+{
+  "type": "deepcharter:strata",
+  "contacts": [
+    {
+      "y": -134,
+      "upper": "deepcharter:hardpan",
+      "bed": "deepcharter:packed_shale"
+    },
+    {
+      "y": -198,
+      "upper": "deepcharter:packed_shale",
+      "bed": "deepcharter:black_shale"
+    }
+  ],
+  "bottom": "deepcharter:black_shale",
+  "noise": "deepcharter:claim_contact",
+  "amplitude": 10,
+  "surface_depth_multiplier": 1
+}

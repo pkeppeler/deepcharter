@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -75,6 +76,10 @@ public class LayerStructuresTest {
     private static final int PROSPECTOR_CELLS = 6;
     /** Far from the layer-2 tests, so nothing makes this chunk full first. */
     private static final int SEAL_CELL = 30;
+    /** The same for layer 1's seal, in a cell of its own. */
+    private static final int LAYER_1_SEAL_CELL = 35;
+    /** Rows either side of a strata contact where the wall may be either rock (the contour noise and the bed). */
+    private static final int CONTACT_REACH = 12;
 
     /** Cells of their own for the punch clock's horn: a roof over it at three distances, and none in reach. */
     private static final int HORN_CEILING_CELL = 31;
@@ -477,16 +482,43 @@ public class LayerStructuresTest {
 
     @GameTest(maxTicks = 600)
     public void aStructureSealsItsShellOfFluidAndGasBeforeTheCarve(GameTestHelper helper) {
-        ServerLevel level = TestLayers.level(helper, 2);
-        LayerChain.Band levelBand = TestLayers.band(level, 2);
+        plantAndSeal(helper, 2, StructureKind.RAILS, SEAL_CELL, (state, pos) -> {});
+    }
+
+    /**
+     * In layer 1 a sealed pocket of the shell is the rock of its stratum (#1277), not the layer's packed shale: the
+     * Deep Claim's shaft is sealed in black shale, so no brown block shows in its wall. Rows near a contact may be
+     * either rock, as the wall round them is.
+     */
+    @GameTest(maxTicks = 600)
+    public void aLayerOneStructureSealsItsShellInItsStratumsRock(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        LayerChain.Band band = TestLayers.band(level, 1);
+        plantAndSeal(helper, 1, StructureKind.DEEP_SHAFT, LAYER_1_SEAL_CELL, (state, pos) -> {
+            Block rock = LayerBlocks.stratum(band, pos.getY());
+            boolean nearContact = LayerBlocks.stratum(band, pos.getY() + CONTACT_REACH) != rock
+                    || LayerBlocks.stratum(band, pos.getY() - CONTACT_REACH) != rock;
+            if (!state.is(LayerBlocks.GROUND) || (!nearContact && !state.is(rock))) {
+                throw failure(helper, "the seal at %s is %s, expected %s", pos.toShortString(), state, rock);
+            }
+        });
+    }
+
+    /** What a test asks of a planted block once the structure has sealed it. */
+    private interface SealCheck {
+        void check(BlockState state, BlockPos pos);
+    }
+
+    /**
+     * Plants lava in the wall beside a {@code kind} structure's hollow (its shell) and gas in its roof, in the chunk of
+     * the site's centre before the structure is drawn, then makes the chunk full: every planted block must be sealed,
+     * and {@code sealed} judges what each in the shell became.
+     */
+    private static void plantAndSeal(GameTestHelper helper, int layer, StructureKind kind, int cell, SealCheck sealed) {
+        ServerLevel level = TestLayers.level(helper, layer);
+        LayerChain.Band levelBand = TestLayers.band(level, layer);
         StructureSite site = StructureSite.in(
-                level.getSeed(),
-                StructureKind.RAILS,
-                levelBand.minY(),
-                levelBand.height(),
-                SEAL_CELL,
-                SEAL_CELL,
-                conduit(helper));
+                level.getSeed(), kind, levelBand.minY(), levelBand.height(), cell, cell, conduit(helper));
         // The chunk of the site's centre, stopped before it is full: the zone fill has run, and the structure is not
         // drawn yet.
         ChunkPos chunkPos = ChunkPos.containing(site.origin());
@@ -533,6 +565,12 @@ public class LayerStructuresTest {
                         level.getBlockState(control));
             }
             requireNoFluidOrGas(helper, level, site, chunkPos);
+            // The shell only: inside the bounds the draw may set a block of its own over a sealed one.
+            for (BlockPos pos : planted) {
+                if (!site.bounds().isInside(pos)) {
+                    sealed.check(level.getBlockState(pos), pos);
+                }
+            }
         });
     }
 
