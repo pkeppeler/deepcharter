@@ -110,6 +110,11 @@ public class TeleportArrivalTest {
             if (sent[0] < 0) {
                 // The pilot's client holds its pod before it teleports, as a pilot's has long done.
                 if (clientHolds(pilot, podId)) {
+                    // The mock reads its packets a tick late, so a packet sent before this mark could be read after it.
+                    // The
+                    // gate above makes a stray remove unlikely (the client already holds the pod), and one would still
+                    // be
+                    // a real flicker on the pilot's screen.
                     packetsBefore[0] = pilot.sequence().size();
                     send(helper, overworld, pilot, x);
                     expect(

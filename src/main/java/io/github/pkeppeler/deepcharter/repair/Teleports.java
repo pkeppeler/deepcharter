@@ -33,10 +33,11 @@ final class Teleports {
     private static final int ARRIVAL_RADIUS = 2;
 
     /**
-     * The most wall-clock time a teleport spends running the landing level's queued chunk tasks before the pod moves
-     * (one tick). Past it the pod moves anyway, and its rider's client loses it for a tick, as before #1364.
+     * The most wall-clock time a teleport spends running the landing level's queued chunk tasks before the pod moves:
+     * 2 ms at most was measured (#1364), so 20 ms leaves room on a loaded server and still under half a tick. Past it
+     * the pod moves anyway, and its rider's client loses it for a tick, as before #1364.
      */
-    private static final long SETTLE_BUDGET_NANOS = 50_000_000L;
+    private static final long SETTLE_BUDGET_NANOS = 20_000_000L;
 
     private Teleports() {}
 
@@ -118,6 +119,11 @@ final class Teleports {
      * section stops being tracked: every client, its own pilot's included, is sent a remove-entity, and the pod comes back
      * with a fresh add on the next tick. Once that task has run, the section is tracked and the pod stays tracked across
      * the move.
+     *
+     * <p>The drain runs whatever the level's chunk executor holds, not only the landing chunk's task: other chunks'
+     * status promotions, with their {@code CHUNK_LOAD}, {@code BLOCK_ENTITY_LOAD} and {@code ENTITY_LOAD} listeners. A
+     * blocking chunk load on the server thread runs the same tasks, so call this only where such a load would be safe
+     * too, never from inside one of those listeners.
      */
     private static void settle(ServerLevel level) {
         long deadline = System.nanoTime() + SETTLE_BUDGET_NANOS;
