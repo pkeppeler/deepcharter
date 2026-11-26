@@ -95,9 +95,10 @@ public class HandbookChaptersOneToFiveTest {
     private static final BlockPos TERMINAL = new BlockPos(0, 1, 0);
 
     /**
-     * The permanent ids: a world's saved progress names these directives. The one rename since they were pinned is chapter 1's {@code mine_iron_ore},
-     * now {@code gather_scrap} (#245, ADR 0047); {@link HandbookProgressData} reads the old id as the new one. Chapter 1's
-     * {@code smelt_charcoal} was added later (#1423); a charter that had finished the chapter has it as well.
+     * The permanent ids: a world's saved progress names these directives. The one rename since they were pinned is
+     * chapter 1's {@code mine_iron_ore}, now {@code gather_scrap} (#245, ADR 0047); {@link HandbookProgressData} reads
+     * the old id as the new one. Chapter 1's {@code smelt_charcoal} was added later (#1423); a charter that had
+     * finished the chapter has it as well.
      */
     static final Map<String, List<String>> PINNED = Map.of(
             "deepcharter:welcome",
@@ -180,8 +181,8 @@ public class HandbookChaptersOneToFiveTest {
     }
 
     /**
-     * A world saved before #1423 holds a charter that finished chapter 1 without the charcoal step: it has done that step too, so
-     * the new step does not reopen the chapter. A charter still on chapter 1 has not.
+     * A world saved before #1423 holds a charter that finished chapter 1 without the charcoal step: it has done that
+     * step too, so the new step does not reopen the chapter. A charter still on chapter 1 has not.
      */
     @GameTest
     public void aCharterThatFinishedChapterOneBeforeTheCharcoalStepHasDoneIt(GameTestHelper helper) {
@@ -210,8 +211,8 @@ public class HandbookChaptersOneToFiveTest {
     }
 
     /**
-     * A fungal stalk smelted in a real furnace, fuelled by another stalk, completes chapter 1's charcoal step once the player takes
-     * the charcoal out of the furnace (#1423).
+     * A fungal stalk smelted in a real furnace, fuelled by another stalk, completes chapter 1's charcoal step once the
+     * player takes the charcoal out of the furnace (#1423).
      */
     @GameTest(maxTicks = 600)
     public void smeltingAFungalStalkIntoCharcoalCompletesItsDirective(GameTestHelper helper) {
@@ -355,8 +356,8 @@ public class HandbookChaptersOneToFiveTest {
     }
 
     /**
-     * How many directives the shipped chapter {@code chapter} (its id's path) has, read from its data file, for a test that has
-     * no server to ask.
+     * How many directives the shipped chapter {@code chapter} (its id's path) has, read from its data file, for a test
+     * that has no server to ask.
      */
     static int shippedSteps(String chapter) {
         String path =

@@ -43,8 +43,9 @@ public final class HandbookProgressData extends SavedData {
             Map.of(welcome("mine_iron_ore"), welcome("gather_scrap"));
 
     /**
-     * A directive added to a chapter after charters had finished it, with the chapter's directives before it was added: a charter
-     * that completed all of those has completed the new one, so the new step never reopens a finished chapter (#1423).
+     * A directive added to a chapter after charters had finished it, with the chapter's directives before it was added:
+     * a charter that completed all of those has completed the new one, so the new step never reopens a finished chapter
+     * (#1423).
      */
     private static final Map<Identifier, Set<Identifier>> ADDED = Map.of(
             welcome("smelt_charcoal"),
