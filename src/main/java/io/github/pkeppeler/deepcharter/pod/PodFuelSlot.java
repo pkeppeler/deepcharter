@@ -4,12 +4,14 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
-import java.util.Collections;
+import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.Optional;
 import java.util.WeakHashMap;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
@@ -23,7 +25,8 @@ import net.minecraft.world.item.ItemStack;
  * <p>The stack is a versioned attachment, {@code deepcharter:pod_fuel_slot}, saved and not synced (the screen's slot
  * syncs it). The live stack the screen and the tick change sits in one {@link Container} for each pod entity, which
  * writes a copy back to the attachment on every change, so two players with the screen open share one stack and nothing
- * is held twice. Unreadable data reads as an empty slot that takes nothing, and is never written over.
+ * is held twice. The container goes when the pod leaves the level, and it holds its pod weakly, so it never pins a pod
+ * or its level. Unreadable data reads as an empty slot that takes nothing, and is never written over.
  */
 public final class PodFuelSlot {
     public static final int VERSION = 1;
@@ -51,15 +54,22 @@ public final class PodFuelSlot {
             builder -> builder.persistent(Versioned.codec(VERSION, State.BODY))
                     .initializer(() -> Versioned.of(State.EMPTY)));
 
-    /** The live slot of each server-side pod entity. Server thread only. */
-    private static final Map<PodEntity, Slot> SLOTS = Collections.synchronizedMap(new WeakHashMap<>());
+    /** The live slot of each server-side pod entity, dropped when the pod leaves the level. Server thread only. */
+    private static final Map<PodEntity, Slot> SLOTS = new WeakHashMap<>();
 
     private PodFuelSlot() {}
 
     static void init() {
         PodEvents.AFTER_TICK.register(PodFuelSlot::feed);
-        PodEvents.EXTRA_MASS.register(pod ->
-                pod.level().isClientSide() ? 0f : PodCargo.massOf(container(pod).getItem(0)));
+        PodEvents.EXTRA_MASS.register(pod -> pod.level().isClientSide()
+                ? 0f
+                : OreEncumbrance.massOf(container(pod).getItem(0)));
+        // Discard, unload and a change of dimension all end the entity's tracking.
+        ServerEntityEvents.ENTITY_UNLOAD.register((entity, level) -> {
+            if (entity instanceof PodEntity pod) {
+                SLOTS.remove(pod);
+            }
+        });
     }
 
     /** Server only: the pod's fuel slot as a one-slot container, the one every open screen of the pod shares. */
@@ -68,6 +78,12 @@ public final class PodFuelSlot {
             throw new IllegalStateException("the fuel slot is the server's; the client's screen has its own copy");
         }
         return SLOTS.computeIfAbsent(pod, Slot::new);
+    }
+
+    /** Whether a live slot is held for {@code pod}. */
+    // test-seam: a test checks that a pod which left the level no longer has a live slot
+    public static boolean hasLiveSlot(PodEntity pod) {
+        return SLOTS.containsKey(pod);
     }
 
     /** Whether the pod's saved fuel slot can be read; when it cannot, the slot shows nothing and takes nothing. */
@@ -84,24 +100,29 @@ public final class PodFuelSlot {
         }
     }
 
-    /** The live stack of one pod's fuel slot, read from the attachment once and written back after every change. */
+    /**
+     * The live stack of one pod's fuel slot, read from the attachment once and written back after every change. It
+     * holds its pod weakly: the map's value must not keep its own key alive.
+     */
     private static final class Slot implements Container {
-        private final PodEntity pod;
+        private final WeakReference<PodEntity> pod;
         private final boolean readable;
         private ItemStack stack;
 
         Slot(PodEntity pod) {
-            this.pod = pod;
+            this.pod = new WeakReference<>(pod);
             Optional<State> saved = Versioned.readable(pod, STATE);
             this.readable = saved.isPresent();
             this.stack = saved.map(State::stack).orElse(ItemStack.EMPTY);
         }
 
         /**
-         * Nothing is there to take from a pod that is gone (saved and unloaded, or removed): its stack went with it.
+         * The pod, while it is there: nothing is there to take from a pod that is gone (saved and unloaded, removed or
+         * collected), as its stack went with it.
          */
-        private boolean present() {
-            return readable && !pod.isRemoved();
+        private Optional<PodEntity> present() {
+            PodEntity owner = pod.get();
+            return readable && owner != null && !owner.isRemoved() ? Optional.of(owner) : Optional.empty();
         }
 
         @Override
@@ -116,12 +137,12 @@ public final class PodFuelSlot {
 
         @Override
         public ItemStack getItem(int index) {
-            return present() && index == 0 ? stack : ItemStack.EMPTY;
+            return present().isPresent() && index == 0 ? stack : ItemStack.EMPTY;
         }
 
         @Override
         public ItemStack removeItem(int index, int count) {
-            if (!present() || index != 0 || stack.isEmpty() || count <= 0) {
+            if (present().isEmpty() || index != 0 || stack.isEmpty() || count <= 0) {
                 return ItemStack.EMPTY;
             }
             ItemStack split = stack.split(count);
@@ -131,7 +152,7 @@ public final class PodFuelSlot {
 
         @Override
         public ItemStack removeItemNoUpdate(int index) {
-            if (!present() || index != 0) {
+            if (present().isEmpty() || index != 0) {
                 return ItemStack.EMPTY;
             }
             ItemStack taken = stack;
@@ -142,7 +163,7 @@ public final class PodFuelSlot {
 
         @Override
         public void setItem(int index, ItemStack newStack) {
-            if (!present() || index != 0) {
+            if (present().isEmpty() || index != 0) {
                 return;
             }
             stack = newStack;
@@ -152,18 +173,19 @@ public final class PodFuelSlot {
         /** Writes a copy of the stack to the attachment. The menu calls this after it changes the stack in place. */
         @Override
         public void setChanged() {
-            if (!present()) {
+            Optional<PodEntity> owner = present();
+            if (owner.isEmpty()) {
                 return;
             }
             if (stack.isEmpty()) {
                 stack = ItemStack.EMPTY;
             }
-            pod.setAttached(STATE, Versioned.of(new State(stack)));
+            owner.get().setAttached(STATE, Versioned.of(new State(stack)));
         }
 
         @Override
         public boolean stillValid(Player player) {
-            return present();
+            return present().isPresent();
         }
 
         @Override

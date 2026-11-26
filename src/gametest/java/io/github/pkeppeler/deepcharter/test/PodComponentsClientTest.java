@@ -27,7 +27,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Client GameTest for #65: the parts of a pod reach the client, so the HUD shows the hull as points out of the pod's real
- * maximum, and the cargo screen has one slot for each slot of the bay.
+ * maximum, and the pod screen's hold is as big as the bay.
  */
 public class PodComponentsClientTest implements FabricClientGameTest {
     private static final float HULL_NOW = 150f;

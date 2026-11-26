@@ -736,8 +736,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                                     ClientSession.player(Minecraft.getInstance())
                                             .getInventory(),
                                     new PodMenu.Opening(-1, false));
-                            // The first data slot is the hold's size, as the server sends it.
-                            menu.setData(0, bay);
+                            // The hold's size, as the server sends it.
+                            menu.setData(PodMenu.CAPACITY, bay);
                             return menu;
                         },
                         "pod screen, hold of " + bay,

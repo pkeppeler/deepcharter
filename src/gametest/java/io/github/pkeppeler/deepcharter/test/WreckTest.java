@@ -879,6 +879,36 @@ public class WreckTest {
     }
 
     @GameTest
+    public void salvageTakesEverythingInTheHold(GameTestHelper helper) {
+        PodEntity pod = spawnOnFloor(helper);
+        MockPlayer mock = joinLoaded(helper, "wreck-gear", pod.position().add(2, 0, 0));
+        try {
+            pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+            pod.cargo().setAt(pod, 1, new ItemStack(Items.TORCH, 10));
+            wreck(pod);
+            int moved = Wrecks.salvage(mock.player(), pod);
+            int torches = mock.player().getInventory().countItem(Items.TORCH);
+            if (moved != 2
+                    || oreInInventory(mock) != 1
+                    || torches != 10
+                    || pod.cargo().occupied() != 0) {
+                throw failure(
+                        helper,
+                        "salvage takes the ore and the torches: moved %d, %d ore and %d torches held, %d slots left",
+                        moved,
+                        oreInInventory(mock),
+                        torches,
+                        pod.cargo().occupied());
+            }
+            helper.succeed();
+        } finally {
+            mock.leave();
+            pod.discard();
+            clearFloor(helper);
+        }
+    }
+
+    @GameTest
     public void salvageOfAnEmptyBayDoesNothing(GameTestHelper helper) {
         PodEntity pod = spawnOnFloor(helper);
         MockPlayer mock = joinLoaded(helper, "wreck-empty", pod.position().add(2, 0, 0));

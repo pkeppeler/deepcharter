@@ -106,6 +106,15 @@ public class PodEntity extends Entity {
         entityData.set(PodData.BRACE_ORE, braceOre);
     }
 
+    /** Whether the bay holds any ore; kept by the brace on the server beside {@link #braceOre}, synced for the HUD. */
+    public boolean holdsOre() {
+        return entityData.get(PodData.HOLDS_ORE);
+    }
+
+    public void setHoldsOre(boolean holdsOre) {
+        entityData.set(PodData.HOLDS_ORE, holdsOre);
+    }
+
     /** Slag brick the heat shield can still burn; kept by the shield on the server, synced for the HUD. */
     public int glazeBricks() {
         return entityData.get(PodData.GLAZE_BRICKS);

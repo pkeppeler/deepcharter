@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.ore;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
@@ -22,7 +23,7 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
 /**
- * Registers one ore item and one ore block per {@link OreType}, and the cargo menu. The blocks are what the drill
+ * Registers one ore item and one ore block per {@link OreType}, and the ore components. The blocks are what the drill
  * hits until #63 places ores in the world; no vanilla ore is ever cargo.
  */
 public final class OreRegistry {
@@ -42,6 +43,15 @@ public final class OreRegistry {
             DataComponentType.<CargoWeight>builder()
                     .persistent(CargoWeight.CODEC)
                     .networkSynchronized(CargoWeight.STREAM_CODEC)
+                    .build());
+
+    /** The mass an ore item was drilled at, set on the stack when it differs from the ore's own. */
+    public static final DataComponentType<Versioned<DrilledMass>> DRILLED_MASS = Registry.register(
+            BuiltInRegistries.DATA_COMPONENT_TYPE,
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "drilled_mass"),
+            DataComponentType.<Versioned<DrilledMass>>builder()
+                    .persistent(Versioned.codec(DrilledMass.VERSION, DrilledMass.BODY))
+                    .networkSynchronized(Versioned.streamCodec(DrilledMass.VERSION, DrilledMass.STREAM_CODEC))
                     .build());
 
     private static final Map<OreType, Item> ITEMS = new EnumMap<>(OreType.class);

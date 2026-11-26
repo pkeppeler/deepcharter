@@ -209,7 +209,7 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
     }
 
     private boolean isPart(Slot slot) {
-        return slot instanceof SlottedMenu.RuleSlot typed && typed.rule().locks() && slot != menu.fuelSlot();
+        return slot instanceof SlottedMenu.RuleSlot typed && typed.rule().locks();
     }
 
     /** A fitted part's tooltip says how it works on this pod. */

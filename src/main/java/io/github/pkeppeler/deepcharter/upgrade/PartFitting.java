@@ -83,7 +83,7 @@ public final class PartFitting {
     }
 
     /** What the fitter is told once a unit of {@code track} is in. */
-    public static Component fittedMessage(ComponentTrack track) {
+    private static Component fittedMessage(ComponentTrack track) {
         return Component.translatable(
                 "message.deepcharter.upgrade.fitting.fitted",
                 Component.translatable("item.deepcharter.part_" + track.id()));

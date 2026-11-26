@@ -41,7 +41,6 @@ import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The pod screen (ADR 0102): one slot for each part track, the fuel slot, and a page of the hold, over the player's
@@ -84,7 +83,9 @@ public final class PodMenu extends SlottedMenu {
 
     public static final int NEXT_PAGE = 1;
 
-    private static final int CAPACITY = 0;
+    /** The data slot of the hold's size, as the server sends it. */
+    public static final int CAPACITY = 0;
+
     private static final int REACH_SLOTS = 1;
     private static final int OCCUPIED = 2;
     private static final int FUEL_TENTHS = 3;
@@ -111,11 +112,14 @@ public final class PodMenu extends SlottedMenu {
                 ByteBufCodecs.VAR_INT, Opening::pod, ByteBufCodecs.BOOL, Opening::seated, Opening::new);
     }
 
+    /** The server's menu's pod and the player it acts for. */
+    private record Server(PodEntity pod, ServerPlayer player) {}
+
     private final Opening opening;
     /** The pod: the server's always, the client's when it tracks the entity. */
-    private final @Nullable PodEntity pod;
-    /** The player the server's menu acts for; null on the client, which only predicts. */
-    private final @Nullable ServerPlayer player;
+    private final Optional<PodEntity> pod;
+    /** What the server's menu acts on; empty on the client, which only predicts. */
+    private final Optional<Server> server;
 
     private final MirrorContainer parts;
     private final Container fuel;
@@ -134,26 +138,25 @@ public final class PodMenu extends SlottedMenu {
                 opening,
                 // entity-query: the server just opened this pod for this player, so the client tracks it; a miss only
                 // leaves the parts' condition unshown, and the server decides every click.
-                inventory.player.level().getEntity(opening.pod()) instanceof PodEntity seen ? seen : null,
-                null);
+                inventory.player.level().getEntity(opening.pod()) instanceof PodEntity seen
+                        ? Optional.of(seen)
+                        : Optional.empty(),
+                Optional.empty());
     }
 
     private PodMenu(
-            int containerId,
-            Inventory inventory,
-            Opening opening,
-            @Nullable PodEntity pod,
-            @Nullable ServerPlayer player) {
+            int containerId, Inventory inventory, Opening opening, Optional<PodEntity> pod, Optional<Server> server) {
         super(TYPE, containerId);
         this.opening = opening;
         this.pod = pod;
-        this.player = player;
+        this.server = server;
         ComponentTrack[] tracks = ComponentTrack.values();
         this.parts = new MirrorContainer(tracks.length);
-        if (player != null && pod != null) {
-            this.fuel = PodFuelSlot.container(pod);
-            this.hold = new HoldView(pod);
-            this.data = new ServerData(pod);
+        if (server.isPresent()) {
+            PodEntity own = server.get().pod();
+            this.fuel = PodFuelSlot.container(own);
+            this.hold = new HoldView(own);
+            this.data = new ServerData(own);
         } else {
             this.fuel = new SimpleContainer(1);
             this.hold = new SimpleContainer(HOLD_WINDOW);
@@ -220,7 +223,8 @@ public final class PodMenu extends SlottedMenu {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inventory, Player opener) {
-                return new PodMenu(id, inventory, opening, pod, (ServerPlayer) opener);
+                return new PodMenu(
+                        id, inventory, opening, Optional.of(pod), Optional.of(new Server(pod, (ServerPlayer) opener)));
             }
         });
         return Optional.empty();
@@ -239,7 +243,7 @@ public final class PodMenu extends SlottedMenu {
 
     /** The pod, on the client only while it tracks the entity. */
     public Optional<PodEntity> pod() {
-        return Optional.ofNullable(pod);
+        return pod;
     }
 
     /** The slot of {@code track}'s part. */
@@ -247,6 +251,8 @@ public final class PodMenu extends SlottedMenu {
         return Objects.requireNonNull(partSlots.get(track), "every track has a slot");
     }
 
+    /** The fuel slot. */
+    // test-seam: a test clicks the fuel slot as the player sees it; the screen draws it with the other slots
     public RuleSlot fuelSlot() {
         return fuelSlot;
     }
@@ -318,14 +324,14 @@ public final class PodMenu extends SlottedMenu {
      * How the part on {@code track} works, read from the pod; empty for no part, or a pod the client does not track.
      */
     public Optional<Condition> condition(ComponentTrack track) {
-        if (pod == null) {
+        if (pod.isEmpty()) {
             return Optional.empty();
         }
-        Optional<PartLabel> label = PodComponents.partOf(pod, track);
+        Optional<PartLabel> label = PodComponents.partOf(pod.get(), track);
         if (label.isEmpty()) {
             return Optional.empty();
         }
-        int working = PodComponents.effectiveTier(pod, track);
+        int working = PodComponents.effectiveTier(pod.get(), track);
         if (working == 0) {
             return Optional.of(Condition.VOID);
         }
@@ -357,18 +363,18 @@ public final class PodMenu extends SlottedMenu {
 
     /** Why a unit of {@code track} cannot go in now: the server's fitting rules, or on the client what it can see. */
     private Optional<Component> partRefusal(ComponentTrack track) {
-        if (player != null && pod != null) {
-            if (pod.isRemoved()) {
+        if (server.isPresent()) {
+            Server own = server.get();
+            if (own.pod().isRemoved()) {
                 return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.gone"));
             }
-            return PartFitting.check(player, pod, track).map(refusal -> refusal.message(track));
+            return PartFitting.check(own.player(), own.pod(), track).map(refusal -> refusal.message(track));
         }
         // The client sees the pod's parts and owner: a working part of the track refuses a unit, the rest the server
         // decides and says.
-        if (pod != null
-                && PodComponents.registration(pod)
-                        .flatMap(registration -> PodComponents.partOf(pod, track, registration.owner()))
-                        .isPresent()) {
+        if (pod.flatMap(seen -> PodComponents.registration(seen)
+                        .flatMap(registration -> PodComponents.partOf(seen, track, registration.owner())))
+                .isPresent()) {
             return Optional.of(PartFitting.Refusal.ALREADY_FITTED.message(track));
         }
         return Optional.empty();
@@ -383,13 +389,14 @@ public final class PodMenu extends SlottedMenu {
     }
 
     private Optional<Component> fuelRefusal(ItemStack stack) {
-        if (player == null || pod == null) {
+        if (server.isEmpty()) {
             return Optional.empty();
         }
-        if (pod.isRemoved()) {
+        PodEntity own = server.get().pod();
+        if (own.isRemoved()) {
             return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.gone"));
         }
-        if (!PodFuelSlot.isReadable(pod)) {
+        if (!PodFuelSlot.isReadable(own)) {
             return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.fuel_unreadable"));
         }
         // The client goes by the synced tag; only the server has the litres table.
@@ -407,11 +414,12 @@ public final class PodMenu extends SlottedMenu {
      * in.
      */
     private Optional<Component> holdRefusal(int window) {
-        if (player != null && pod != null) {
-            if (pod.isRemoved()) {
+        if (server.isPresent()) {
+            PodEntity own = server.get().pod();
+            if (own.isRemoved()) {
                 return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.gone"));
             }
-            if (!pod.cargo().isReadable()) {
+            if (!own.cargo().isReadable()) {
                 return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.hold_unreadable"));
             }
         }
@@ -463,12 +471,12 @@ public final class PodMenu extends SlottedMenu {
 
     @Override
     protected void placed(RuleSlot slot, ItemStack stack) {
-        if (player == null || pod == null || slot.container != parts) {
+        if (server.isEmpty() || slot.container != parts) {
             return;
         }
         ComponentTrack track = ComponentTrack.values()[slot.getContainerSlot()];
         // The unit is spent in the fit: the refresh below shows the part in its place.
-        PartFitting.fit(player, pod, track);
+        PartFitting.fit(server.get().player(), server.get().pod(), track);
         refresh();
     }
 
@@ -494,11 +502,12 @@ public final class PodMenu extends SlottedMenu {
 
     /** Fills the part slots from the pod's parts, and keeps the page within the hold. Server only. */
     private void refresh() {
-        if (player == null || pod == null) {
+        if (server.isEmpty()) {
             return;
         }
+        PodEntity own = server.get().pod();
         for (ComponentTrack track : ComponentTrack.values()) {
-            ItemStack shown = PodComponents.partOf(pod, track)
+            ItemStack shown = PodComponents.partOf(own, track)
                     .map(label -> ComponentItems.stackOf(track, label))
                     .orElse(ItemStack.EMPTY);
             int index = track.ordinal();
@@ -513,14 +522,15 @@ public final class PodMenu extends SlottedMenu {
 
     @Override
     public boolean stillValid(Player viewer) {
-        if (player == null || pod == null) {
+        if (server.isEmpty()) {
             return true;
         }
-        if (!pod.isAlive() || pod.isRemoved()) {
+        PodEntity own = server.get().pod();
+        if (!own.isAlive() || own.isRemoved()) {
             return false;
         }
-        boolean near = opening.seated() ? viewer.getVehicle() == pod : viewer.distanceToSqr(pod) <= REACH * REACH;
-        return near && mayOpen(player, pod);
+        boolean near = opening.seated() ? viewer.getVehicle() == own : viewer.distanceToSqr(own) <= REACH * REACH;
+        return near && mayOpen(server.get().player(), own);
     }
 
     /** The server's numbers for the client, read from the pod on each broadcast. */

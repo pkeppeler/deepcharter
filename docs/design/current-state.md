@@ -430,7 +430,7 @@ text four times offset by 1 pixel, scanlines every 2 pixels, bloom at the top an
 **Since #246 the screens are physical machine panels** ([terminal-concepts.md](terminal-concepts.md)): the glass is a porthole in the Hatch bulkhead door
 (a riveted frame with a hinge, a dogging wheel, a gauge, stencils and a chrome Company nameplate), the buttons are sprite plates with a rotary knob, and the text is
 set in Unscii (6 pixels a letter). The stills below were shot before #246 and show the plain CRT: boxed buttons, no frame, the vanilla font. A pack can still switch the
-panel off and the screens are drawn as those stills show. The handbook and the pod cargo screen are not terminals and keep their own look. Vanilla: **no**.
+panel off and the screens are drawn as those stills show. The handbook is not a terminal and keeps its own look. Vanilla: **no**.
 **Swap: (a)** the frame, the glass, the buttons and the decals (`assets/deepcharter/textures/gui/sprites/panel/`) and `theme/panel.json`, **(c)** the rest: the colours are `client/ui/CrtTuning.java:36-38`; the draw code is `client/ui/CrtDraw.java:15-43`,
 `CrtButton.java:23`, and `CrtScreen.java:144` (the typewriter cursor block); the layout of each screen is in its own file.
 
@@ -512,14 +512,12 @@ Source `client/charter/terminal/ContractScreen.java`; the one terminal that is o
 
 Swap **(c)**.
 
-### Pod cargo screen
+### Pod screen
 
-Opened by sneaking and using a pod. Source `client/ore/OreCargoScreen.java`. It is not a CRT screen: it draws a grey panel with a dark edge and grey
-slots by `fill()` calls in the colours of vanilla's container background, with no texture. Vanilla: **partly** (the same grey, not the vanilla texture).
+Opened by sneaking and using a pod, or with the pod screen key from a seat (#1270). Source `client/pod/PodScreen.java`, on the CRT menu screen
+(`client/ui/CrtMenuScreen.java`) the terminals' slot screens use: the part slots, the fuel slot and its gauge, and a page of the hold beside the inventory. Vanilla: **no**.
 
-![screen-pod-cargo](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-pod-cargo.png?raw=true)
-
-Swap **(c)** `OreCargoScreen.java:17-44`.
+Swap **(a)** the CRT theme, as for the terminals, **(c)** the layout, `pod/PodMenu.java` and `client/pod/PodScreen.java`.
 
 ### Inventory (vanilla)
 
@@ -663,7 +661,7 @@ Already marked placeholder in code or issues:
 
 Every look that is fixed in Java and cannot be replaced by swapping a resource-pack file or a data value. These block a drop-in reskin.
 
-**Since #226** the UI rows (CRT look and drawing, handbook paper, pod status HUD, scanner HUD, altimeter, account HUD, transmission overlay, breach fade, pod cargo screen) are resource-pack data, no longer fixed in Java: see [skins.md](skins.md). Their `file:line` entries below are as of #227. What stays in Java from those rows: the position and size of each terminal screen's widgets, and the scanner's reach.
+**Since #226** the UI rows (CRT look and drawing, handbook paper, pod status HUD, scanner HUD, altimeter, account HUD, transmission overlay, breach fade) are resource-pack data, no longer fixed in Java: see [skins.md](skins.md). Their `file:line` entries below are as of #227. What stays in Java from those rows: the position and size of each terminal screen's widgets, and the scanner's reach.
 
 | Visual | What is fixed | Where |
 |---|---|---|
@@ -679,7 +677,6 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Account HUD | CRT-green text at the left, half height | `client/market/AccountHud.java:21`, `:41` |
 | Transmission overlay | Panel fill `#EA050A06`, text `#7CFC9A`, relay `#FFC857`, unknown sender `#FF5A4F`, panel size and position, cursor block | `client/transmission/TransmissionOverlay.java:34-40`, `TransmissionHud.java:30-36`, `:52-88` |
 | Breach fade | Black full-screen fill, fade timings (20 ticks: 8 in, 4 black), jitter 3 pixels over 10 ticks | `client/layer/BreachEffects.java:15-20`, `client/layer/BreachHud.java:46-52` |
-| Pod cargo screen | Grey panel `#C6C6C6`, edge `#373737`, slot `#8B8B8B`, text `#404040`, drawn with `fill()` | `client/ore/OreCargoScreen.java:17-44` |
 | Colony layout and buildings | Every building, its size, position and blocks, the paving, the Host and the pipe | `tools/colony/town.py` (then `tools/colony/build.py`), `data/deepcharter/colony/layout.json`, `data/deepcharter/structure/colony/*.nbt`; the ground noise in `main/colony/ColonyBuilder.java`, the Host's hands in `main/colony/FounderStatue.java`, the Conduit in `main/colony/Conduit.java` |
 | Layer structures | The size, blocks and layout of the 7 structures, and where Notes and candles sit | `main/layer/StructureKind.java:21-150` |
 | Pod lights | A vanilla light block at the pod's position; the level comes from the part's tier value; no lamp is drawn | `main/pod/PodLights.java:25-90`, `main/upgrade/UpgradeTuning.java` |

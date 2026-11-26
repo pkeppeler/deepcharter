@@ -8,9 +8,9 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.menu.MenuRefusalPayload;
 import io.github.pkeppeler.deepcharter.menu.SlottedMenu;
+import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
-import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodMenu;
@@ -38,7 +38,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -522,12 +521,38 @@ public class PodScreenTest {
             PodMenu menu = open(helper, scene.player(), scene.pod());
             menu.setCarried(new ItemStack(Items.CHARCOAL, 16));
             click(menu, scene.player(), menu.holdSlot(0).index, ContainerInput.PICKUP);
-            float expected = PodCargo.massOf(new ItemStack(Items.CHARCOAL, 16));
+            float expected = OreEncumbrance.massOf(new ItemStack(Items.CHARCOAL, 16));
             expect(
                     helper,
                     expected > 0f && Math.abs(scene.pod().cargoMass() - expected) < 1e-4f,
                     "16 charcoal in the hold weigh %s, the pod's cargo mass is %s",
                     expected,
+                    scene.pod().cargoMass());
+            helper.succeed();
+        } finally {
+            scene.clean();
+        }
+    }
+
+    @GameTest
+    public void aBundleInTheHoldThatGainsFuelWeighsMore(GameTestHelper helper) {
+        Scene scene = scene(helper);
+        try {
+            PodMenu menu = open(helper, scene.player(), scene.pod());
+            menu.setCarried(new ItemStack(Items.BUNDLE));
+            click(menu, scene.player(), menu.holdSlot(0).index, ContainerInput.PICKUP);
+            float empty = scene.pod().cargoMass();
+            menu.setCarried(new ItemStack(Items.CHARCOAL, 4));
+            click(menu, scene.player(), menu.holdSlot(0).index, ContainerInput.PICKUP);
+            float expected = OreEncumbrance.massOf(scene.pod().cargo().stackAt(0));
+            expect(
+                    helper,
+                    menu.getCarried().isEmpty()
+                            && expected > empty
+                            && Math.abs(scene.pod().cargoMass() - expected) < 1e-4f,
+                    "4 charcoal put in the bundle in the hold make it weigh %s, up from %s; the pod's cargo mass is %s",
+                    expected,
+                    empty,
                     scene.pod().cargoMass());
             helper.succeed();
         } finally {
@@ -589,16 +614,20 @@ public class PodScreenTest {
     public void aVersionOneOreBayLoadsIntoTheFirstHoldSlots(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
-        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM), 3f);
-        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), 4f);
+        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
+        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         pod.saveWithoutId(output);
         pod.discard();
         CompoundTag tag = output.buildResult();
         tag.putInt("cargo_version", 1);
+        // Version 1 saved each ore with its mass, one after another, and no slot.
         ListTag entries = tag.getListOrEmpty("cargo");
-        for (Tag entry : entries) {
-            ((CompoundTag) entry).remove("slot");
+        float[] masses = {3f, 4f};
+        for (int i = 0; i < entries.size(); i++) {
+            CompoundTag entry = (CompoundTag) entries.get(i);
+            entry.remove("slot");
+            entry.putFloat("mass", masses[i]);
         }
         PodEntity loaded = (PodEntity) EntityType.create(
                         PodRegistry.POD,
@@ -612,9 +641,11 @@ public class PodScreenTest {
                     loaded.cargo().isReadable()
                             && loaded.cargo().stackAt(0).is(OreRegistry.item(OreType.GOLDIUM))
                             && loaded.cargo().stackAt(1).is(OreRegistry.item(OreType.IRONIUM))
+                            && OreEncumbrance.massOf(loaded.cargo().stackAt(0)) == 3f
                             && loaded.cargoMass() == 7f
                             && loaded.cargoUsed() == 2,
-                    "the ore bay should load into hold slots 0 and 1 with its masses, got %s, %s, mass %s",
+                    "the ore bay should load into hold slots 0 and 1 with its masses on the stacks, got %s, %s, mass"
+                            + " %s",
                     loaded.cargo().stackAt(0),
                     loaded.cargo().stackAt(1),
                     loaded.cargoMass());

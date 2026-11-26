@@ -14,7 +14,9 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodFuelSlot;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
@@ -59,6 +61,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -913,6 +916,45 @@ public class RepairStationTest {
     public void theQuantumTeleporterTakesASecondPassengerToo(GameTestHelper helper) {
         teleportFromLayerOne(
                 helper, Consumable.QUANTUM_TELEPORTER, 2700.5, 2700.5, RepairTuning.DEFAULT.quantumScatter(), true);
+    }
+
+    @GameTest
+    public void aTeleportSpillsTheWholeHoldAndKeepsTheFuelSlot(GameTestHelper helper) {
+        withStation(helper, station -> {
+            PodEntity pod = station.pod();
+            pod.setFuel(PodTuning.DEFAULT.shell().fullFuel());
+            pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+            pod.cargo().setAt(pod, 1, new ItemStack(Items.COBBLESTONE, 20));
+            PodFuelSlot.container(pod).setItem(0, new ItemStack(Items.COAL, 3));
+            Vec3 departure = pod.position();
+            board(helper, station);
+            if (!useFromHotbar(station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
+                throw helper.assertionException("the transmitter should work");
+            }
+            int cobblestone = 0;
+            int ironium = 0;
+            for (ItemEntity drop :
+                    helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(departure, departure).inflate(3))) {
+                if (drop.getItem().is(Items.COBBLESTONE)) {
+                    cobblestone += drop.getItem().getCount();
+                    drop.discard();
+                } else if (OreRegistry.typeOf(drop.getItem()).equals(Optional.of(OreType.IRONIUM))) {
+                    ironium += drop.getItem().getCount();
+                    drop.discard();
+                }
+            }
+            if (pod.cargo().occupied() != 0 || cobblestone != 20 || ironium != 1) {
+                throw helper.assertionException(
+                        "nothing in the hold teleports: %s slots still held, %s cobblestone and %s ironium spilled",
+                        pod.cargo().occupied(), cobblestone, ironium);
+            }
+            if (PodFuelSlot.container(pod).getItem(0).getCount() != 3) {
+                throw helper.assertionException(
+                        "the fuel slot is fuel, not cargo, and stays: it holds %s",
+                        PodFuelSlot.container(pod).getItem(0));
+            }
+            helper.succeed();
+        });
     }
 
     @GameTest

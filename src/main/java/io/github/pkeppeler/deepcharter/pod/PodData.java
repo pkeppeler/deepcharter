@@ -18,6 +18,8 @@ public final class PodData {
     public static final EntityDataAccessor<Boolean> HULL_BURNING = define(EntityDataSerializers.BOOLEAN);
     /** The bay holds an ore the breach brace may burn (#378); the server works it out each tick for a braced pod, and it is not saved. */
     public static final EntityDataAccessor<Boolean> BRACE_ORE = define(EntityDataSerializers.BOOLEAN);
+    /** The bay holds any ore (#1270), so the brace's HUD can tell no ore from no cheap ore in a hold that also stows gear; worked out with {@link #BRACE_ORE}, and not saved. */
+    public static final EntityDataAccessor<Boolean> HOLDS_ORE = define(EntityDataSerializers.BOOLEAN);
 
     public static final EntityDataAccessor<Direction> DRILL_DIRECTION = define(EntityDataSerializers.DIRECTION);
     /** Slag brick the heat shield can still burn now (#482); the server works it out each tick for a shielded pod, and it is not saved. */
@@ -39,6 +41,7 @@ public final class PodData {
         builder.define(DRILLING, false);
         builder.define(HULL_BURNING, false);
         builder.define(BRACE_ORE, false);
+        builder.define(HOLDS_ORE, false);
         builder.define(DRILL_DIRECTION, Direction.DOWN);
         builder.define(GLAZE_BRICKS, 0);
     }

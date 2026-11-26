@@ -88,7 +88,10 @@ public final class OreEncumbrance {
         return mass;
     }
 
-    /** The mass of a stack's own ore and weighted items, and of everything inside it. */
+    /**
+     * The mass of a stack's own ore (at its {@link DrilledMass} when it has one) and weighted items, and of everything
+     * inside it.
+     */
     public static float massOf(ItemStack stack) {
         return massOf(stack, true);
     }
@@ -96,7 +99,10 @@ public final class OreEncumbrance {
     private static float massOf(ItemStack stack, boolean withOre) {
         float mass = CargoWeight.of(stack);
         if (withOre) {
-            mass += OreRegistry.typeOf(stack).map(OreType::mass).orElse(0f) * stack.getCount();
+            mass += OreRegistry.typeOf(stack)
+                            .map(type -> DrilledMass.each(stack, type))
+                            .orElse(0f)
+                    * stack.getCount();
         }
         ItemContainerContents container = stack.get(DataComponents.CONTAINER);
         if (container != null) {
