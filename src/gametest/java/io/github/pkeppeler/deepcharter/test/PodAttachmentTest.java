@@ -183,7 +183,7 @@ public class PodAttachmentTest {
             if (saved.contains(retiredKey)) {
                 throw failure(helper, "the retired clock was written back: %s", saved.get(retiredKey));
             }
-            if (!other.equals(saved.get(otherKey))) {
+            if (!other.equals(Objects.requireNonNull(saved.get(otherKey), "saved.get(otherKey) is absent"))) {
                 throw failure(helper, "the other attachment was not saved intact: %s", saved.get(otherKey));
             }
             helper.succeed();

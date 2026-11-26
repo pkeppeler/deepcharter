@@ -75,7 +75,8 @@ final class Teleports {
         arrived.getPassengersAndSelf().forEach(Entity::resetFallDistance);
         // The ore is spilled first, so that a failure after it loses nothing: the bay is emptied last.
         for (PodCargo.Entry entry : held) {
-            from.addFreshEntity(new ItemEntity(from, departure.x, departure.y, departure.z, entry.stack().copy()));
+            from.addFreshEntity(new ItemEntity(
+                    from, departure.x, departure.y, departure.z, entry.stack().copy()));
         }
         // The saved cargo travelled with the pod (a crossing is a new entity): empty the arriving bay.
         if (arrived instanceof PodEntity moved) {

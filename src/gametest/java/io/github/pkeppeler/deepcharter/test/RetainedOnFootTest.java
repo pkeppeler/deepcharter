@@ -938,7 +938,8 @@ public class RetainedOnFootTest {
             if (since == 1) {
                 Vec3 landed = player.position();
                 if (player.level() != level || !(player.getVehicle() instanceof PodEntity)) {
-                    throw failure(helper, "the teleport left the level or the seat: the person is in %s", player.level());
+                    throw failure(
+                            helper, "the teleport left the level or the seat: the person is in %s", player.level());
                 }
                 if (room.figure.position().distanceTo(landed) < MINIMUM_HAUL_BLOCKS) {
                     throw failure(
