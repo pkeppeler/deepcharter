@@ -155,8 +155,6 @@ stale_msg() { echo "REFUSED: PR #$1 build run 1 merged main aaaa but origin/main
 
 # A failed client check with build and tool-tests passing, as merge-pr.sh prints it: the queue keys on "[client-only]".
 client_msg() { echo "REFUSED: PR #$1 has a check that is not passing: client-gametest (newest non-skipped run: failure); only client-suite checks failed: re-run the whole Client tests run [client-only] (never --failed)"; }
-# A failed build beside a failed client shard: no marker (the gate names the first failed check).
-build_msg() { echo "REFUSED: PR #$1 has a check that is not passing: build (newest non-skipped run: failure)"; }
 
 # gate N K "<rc> [flag]" [output]
 gate() { { echo "$3"; [[ -z ${4-} ]] || echo "$4"; } >"$ST/gate.$1.$2"; }
@@ -584,8 +582,6 @@ count "stale retries 0: no rerun" "/rerun" 0
 printed "stale retries 0: summary says why" "still stale after 0 reruns"
 
 # --- [client-only] (#1451): re-run the whole Client tests run once, never --failed or a job, wait, merge ---
-# A --failed re-run merges the live main into the re-run shards only, so the aggregate fails on shards that merged
-# different mains once main has moved.
 client_runs() {
   wfruns "320|Client tests|completed|skipped" "301|CI|completed|success" "302|Client tests|completed|failure"
   jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
@@ -643,16 +639,16 @@ exited "client then stale: exit 0" 0
 logged "client then stale: the stale rerun covers CI" "$(run_url 301)"
 count "client then stale: the Client tests run is re-run twice (client, then stale)" "$(run_url 302)" 2
 
-# --- a failed build (alone or beside a failed shard) never re-runs ---
-for msg in "$(build_msg 7)" "REFUSED: PR #7 has a check that is not passing: tool-tests (newest non-skipped run: failure)"; do
+# --- a failed build or tool-tests (no marker, even beside a failed shard) never re-runs ---
+for check in build tool-tests; do
   reset
   client_runs
-  gate 7 1 "1" "$msg"
+  gate 7 1 "1" "REFUSED: PR #7 has a check that is not passing: $check (newest non-skipped run: failure)"
   run_q 7
-  exited "required failure: exit 1 (${msg:40:30})" 1
-  count "required failure: no rerun (${msg:40:30})" "/rerun" 0
-  not_logged "required failure: never lists runs (${msg:40:30})" "actions/runs"
-  count "required failure: gate ran once (${msg:40:30})" "merge-pr 7" 1
+  exited "$check failure: exit 1" 1
+  count "$check failure: no rerun" "/rerun" 0
+  not_logged "$check failure: never lists runs" "actions/runs"
+  count "$check failure: gate ran once" "merge-pr 7" 1
 done
 
 # --- the head has no real client-gametest job: stop, say so ---

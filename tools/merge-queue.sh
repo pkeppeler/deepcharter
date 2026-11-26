@@ -127,11 +127,10 @@ wait_ci() {
 # jobs whose `merged-main` record the gate reads (build, tool-tests and, when it ran, client-gametest; each merges the
 # live main itself). The `client-gametest` aggregate is matched, not a shard: it sits in the same `Client tests` run as
 # every `client-gametest-shard <i>` job (#1079), is skipped exactly when the shards are, and is the legacy single job in
-# CI from before sharding. Never a single job: a job re-run
-# copies the run's other finished jobs without their annotations, so the gate calls the base stale again (#1094).
+# CI from before sharding. Never a single job: a job re-run copies the run's other finished jobs without their
+# annotations, so the gate calls the base stale again (#1094).
 # Per job it takes the newest non-skipped one across the head sha's runs (#1092), then re-runs each distinct run whole.
-# Returns 1 and sets $rerun_err when a job that is not optional has no such job, a listing fails or the API refuses
-# a re-run.
+# Returns 1 and sets $rerun_err when a non-optional job has no such job, a listing fails or the API refuses a re-run.
 # An unfinished run is skipped (the API refuses to re-run into it); if it finishes stale, the next retry re-runs it.
 rerun_ci() {
   local pr=$1 sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit handled=","
@@ -355,7 +354,6 @@ run_pr() {
       fi
       sleep "$stale_sleep"
     elif [[ $out == *"[client-only]"* ]]; then
-      # The whole run, never --failed: why is in merging.md's client-suite note.
       if ((client_n >= client_max)); then
         detail="$reason (client checks still failing after $client_max whole-run reruns)"
         return 0

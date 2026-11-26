@@ -125,9 +125,7 @@ checks=$(cut -f1,2 <<<"$checks_full")
 if [[ $gate_only -eq 1 ]]; then
   while IFS=$'\t' read -r bucket name; do echo "check $name: $bucket"; done <<<"$checks"
 fi
-# The refusal names the first check that is not passing. When every such check is a finished, failed client-suite job
-# (the `client-gametest` aggregate or a `client-gametest-shard <i>`) and every required check passed, it carries the
-# marker [client-only], which tools/merge-queue.sh matches to re-run the whole `Client tests` run (#1451).
+# The refusal names the first check that is not passing; the [client-only] conditions are in the header (#1451).
 first_bad=
 client_only=1
 while IFS=$'\t' read -r bucket name; do

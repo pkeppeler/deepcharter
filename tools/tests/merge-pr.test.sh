@@ -471,8 +471,7 @@ client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:succe
 refusal "game path, one shard cancelled, no aggregate" "client-gametest-shard 2 (newest non-skipped run: cancelled)" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:in_progress")" "$game"
 refusal "game path, one shard still running" "client-gametest-shard 2 (newest non-skipped run: in_progress)" "${client_vars[@]}"
-# [client-only] (#1451): only when every check that is not passing is a finished, failed client-suite job and every
-# required check passed. tools/merge-queue.sh matches it to re-run the whole Client tests run.
+# [client-only] (#1451; conditions in merge-pr.sh's header).
 # client_only <name> <expect: yes|no> <runs>: refuses either way; the marker is there exactly when expected.
 client_only() {
   client_args "$3" "$game"
