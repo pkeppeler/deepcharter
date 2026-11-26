@@ -463,6 +463,28 @@ public class FuelPumpTest {
         });
     }
 
+    @GameTest
+    public void aPumpSaysNothingToAPlayerWithNoCharter(GameTestHelper helper) {
+        Scene scene = scene(helper, 100);
+        PodEntity unowned = helper.spawn(PodRegistry.POD, new Vec3(4.5, 2, 3.5));
+        run(helper, scene, s -> {
+            unowned.setFuel(0f);
+            s.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.CHARCOAL, 3));
+            for (int item = 0; item < 3; item++) {
+                UseEntity.on(s.player(), unowned.level(), InteractionHand.MAIN_HAND, unowned);
+            }
+            List<String> keys =
+                    TerminalNotices.collect(helper.getLevel().getServer(), s.player(), Optional.empty(), s.pump())
+                            .stream()
+                            .map(line -> line.getContents() instanceof TranslatableContents contents
+                                    ? contents.getKey()
+                                    : "")
+                            .toList();
+            expectNotices(helper, List.of(), keys, "an unowned pod of charcoal and no charter");
+            unowned.discard();
+        });
+    }
+
     private static void expectNotices(GameTestHelper helper, List<String> expected, List<String> actual, String what) {
         if (!expected.equals(actual)) {
             throw helper.assertionException("the pump's notices for %s should be %s, got %s", what, expected, actual);

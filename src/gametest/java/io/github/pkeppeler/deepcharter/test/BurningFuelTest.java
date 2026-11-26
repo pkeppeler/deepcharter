@@ -127,6 +127,26 @@ public class BurningFuelTest {
     }
 
     @GameTest
+    public void coalFedAfterCharcoalBurnedDownToACrumbIsCoalNotAMix(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+        MockPlayer player = MockPlayers.join(helper, "crumb-feeder");
+        try {
+            player.player().setGameMode(GameType.SURVIVAL);
+            pod.setFuel(0f);
+            feed(pod, player, Items.CHARCOAL, 1);
+            // The burn writes every quantum: the last 0.05 L has left the tank but is still in the account.
+            EngineSoot.burned(pod, 1f - 0.05f);
+            pod.setFuel(0f);
+            feed(pod, player, Items.COAL, 1);
+            expectSolid(helper, pod, Optional.of(id(Items.COAL)), 2f, "after coal on a stale crumb of charcoal");
+            helper.succeed();
+        } finally {
+            player.leave();
+            pod.discard();
+        }
+    }
+
+    @GameTest
     public void theSolidLeftIsNeverMoreThanTheTankHoldsAndAnEmptyTankBurnsNothingSolid(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "drained");

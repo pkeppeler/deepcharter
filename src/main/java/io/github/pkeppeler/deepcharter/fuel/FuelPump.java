@@ -64,7 +64,8 @@ public final class FuelPump {
 
     /**
      * At a fuel pump, about the pod it fills: the solid fuel still in its tank, which burns before the pump's, and soot
-     * past the grace, which a fill does not clear. Read only through the safe accessors: unreadable soot says nothing.
+     * past the grace, which a fill does not clear. Nothing for a player with no charter, which {@link #sell} refuses. Read only through the safe
+     * accessors: unreadable soot says nothing.
      */
     private static List<Component> notices(
             MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
@@ -72,7 +73,7 @@ public final class FuelPump {
         if (!level.getBlockState(pos).is(TerminalTypes.FUEL_PUMP.block())) {
             return List.of();
         }
-        Optional<PodEntity> pod = parked(level, pos, charter);
+        Optional<PodEntity> pod = charter.isEmpty() ? Optional.empty() : parked(level, pos, charter);
         if (pod.isEmpty()) {
             return List.of();
         }

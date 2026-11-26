@@ -203,7 +203,10 @@ public final class EngineSoot {
             return;
         }
         State state = read.get();
-        Optional<Identifier> solid = state.tankLitres() > 0f ? state.solid().filter(fuel::equals) : Optional.of(fuel);
+        // The tank before this fill (the pod's fuel is already set): the account can be stale, a crumb the burn has not
+        // written yet, or above the tank after a recovery or a reserve tank set it.
+        float before = Math.min(state.tankLitres(), FuelPump.litres(pod) - litres);
+        Optional<Identifier> solid = before > SPENT_LITRES ? state.solid().filter(fuel::equals) : Optional.of(fuel);
         pod.setAttached(
                 STATE,
                 Versioned.of(new State(
