@@ -148,7 +148,7 @@ One flat JSON object. A colour is a string, `"#RRGGBB"` (opaque) or `"#AARRGGBB"
 }
 ```
 
-The key names are the component names of the matching record: `CrtTuning` for `crt.json`, `HandbookScreenTuning`, and `ScannerLook`, `HudLook`, `TransmissionLook`, `BreachLook`, `CargoLook`, `PodPaintLook`, `PanelLook`, `CockpitLook`, `SonarLook`, `SuitLook` and `ContinuityLook` in `client/theme/`. Each record's Javadoc says what a key does. The mod's own file at the bottom lists every key and is the reference.
+The key names are the component names of the matching record: `CrtTuning` for `crt.json`, `HandbookScreenTuning`, and `ScannerLook`, `HudLook`, `TransmissionLook`, `BreachLook`, `PodPaintLook`, `PanelLook`, `CockpitLook`, `SonarLook`, `SuitLook` and `ContinuityLook` in `client/theme/`. Each record's Javadoc says what a key does. The mod's own file at the bottom lists every key and is the reference.
 
 An open screen follows the reload at once. A typewriter's speed is read when it starts, so it applies to the next text.
 

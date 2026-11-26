@@ -300,6 +300,18 @@ public class ThemeLooksTest {
         helper.succeed();
     }
 
+    @GameTest
+    public void everyAreaOfTheDefaultThemeIsReadAndNothingIsLeftOver(GameTestHelper helper) {
+        Map<String, ThemeData> areas = defaultAreas();
+        UiTheme.of(areas);
+        areas.forEach((name, data) -> {
+            if (!data.unread().isEmpty()) {
+                throw failure(helper, "default area '%s' has keys nothing reads: %s", name, data.unread());
+            }
+        });
+        helper.succeed();
+    }
+
     /** The pods' paint palette (#383): six colours, written out; a pack adds one by raising the count; a charter's slot is a function of its id alone. */
     @GameTest
     public void thePodPaintPaletteIsPinnedAndACharterKeepsItsSlot(GameTestHelper helper) {
