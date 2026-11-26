@@ -64,6 +64,9 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param toastStaleMillis how long after its last frame a step-done popup still counts as on screen, to the popups placed under it
  * @param toastWaitMillis how long a step-done popup waits for room before it gives up: on a GUI with no clear place for it, it
  *     waits, and its {@code toastMillis} do not run while it does
+ * @param slipWidth width of the new-spec-sheet slip
+ * @param slipHeight least height of the new-spec-sheet slip; it grows to fit a name that wraps to more lines
+ * @param slipMillis how long the new-spec-sheet slip shows
  * @param barsNoteGap space between the redaction bars and the margin note under them
  * @param dropLinkPercent where the black link from the row above drops to the bars, in percent of a step box's width
  * @param stampXPercent where the CLASSIFIED stamp's centre sits along the first bar, in percent of a step box's width
@@ -152,6 +155,9 @@ public record QuestMapTuning(
         int toastGap,
         int toastStaleMillis,
         int toastWaitMillis,
+        int slipWidth,
+        int slipHeight,
+        int slipMillis,
         int barsNoteGap,
         int dropLinkPercent,
         int stampXPercent,
@@ -244,6 +250,9 @@ public record QuestMapTuning(
                 d.integer("toastGap", 0),
                 d.integer("toastStaleMillis", 1),
                 d.integer("toastWaitMillis", 1),
+                d.integer("slipWidth", 1),
+                d.integer("slipHeight", 1),
+                d.integer("slipMillis", 1),
                 d.integer("barsNoteGap", 0),
                 d.integer("dropLinkPercent", 0),
                 d.integer("stampXPercent", 0),

@@ -960,6 +960,11 @@ public class M2SliceScenario extends EvidenceScenario {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setYRot(yawToward(moleAt, bay));
             });
+            // A pod drives along its own facing, not where its pilot looks.
+            onServer(server -> {
+                pod(server, mole.get()).setYRot(yawToward(moleAt, bay));
+                return null;
+            });
             ctx.waitTicks(10);
             ClientWait.until(
                     ctx,
