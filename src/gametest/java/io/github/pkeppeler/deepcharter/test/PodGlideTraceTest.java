@@ -168,8 +168,7 @@ public class PodGlideTraceTest {
     public void aPodPastTheReachStandsAtIt(GameTestHelper helper) {
         String what = "a server late past the reach";
         double[] drawn = replay(helper, what, PAST_THE_REACH);
-        int tick = REACH_TICK;
-        double lead = drawn[tick] - move(lastHandedBy(PAST_THE_REACH, tick));
+        double lead = drawn[REACH_TICK] - move(lastHandedBy(PAST_THE_REACH, REACH_TICK));
         double reach = reach();
         if (lead < reach - 2 * DriveJudge.POSITION_QUANTUM) {
             throw failure(
@@ -177,7 +176,7 @@ public class PodGlideTraceTest {
                     "%s: the pod stood %s blocks past the last move in tick %s, short of the reach of %s",
                     what,
                     lead,
-                    tick,
+                    REACH_TICK,
                     reach);
         }
         helper.succeed();
@@ -295,7 +294,6 @@ public class PodGlideTraceTest {
     private static double[] replay(GameTestHelper helper, String what, int[] handedAt) {
         PodEntity pod = TestEntities.create(PodRegistry.POD, helper.getLevel());
         Vec3 origin = Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(0, HELD_ABOVE, 0)));
-        int moves = handedAt.length;
         pod.setPos(origin);
         pod.setDeltaMovement(0, 0, REPORTED_SPEED);
         InterpolationHandler glide = PodGlideProbe.glide(pod);
@@ -303,7 +301,7 @@ public class PodGlideTraceTest {
         double furthest = reach() + DriveJudge.POSITION_QUANTUM;
         int next = 0;
         for (int tick = 0; tick < TICKS; tick++) {
-            for (; next < moves && handedAt[next] == tick; next++) {
+            for (; next < handedAt.length && handedAt[next] == tick; next++) {
                 glide.interpolateTo(PositionPath.of(origin.add(0, 0, move(next))), pod.getYRot(), pod.getXRot(), true);
             }
             glide.interpolate();
