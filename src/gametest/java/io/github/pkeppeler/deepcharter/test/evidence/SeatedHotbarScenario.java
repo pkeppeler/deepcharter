@@ -1,10 +1,15 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
@@ -13,9 +18,11 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -33,7 +40,8 @@ import net.minecraft.world.phys.Vec3;
  * Evidence scenario "seated-hotbar" for #1457: a pilot in a Mole with a scanner, in a lit stone chamber in layer 1, with the repair station's consumables in the hotbar.
  * The still {@code seated-hotbar-calm} is the cockpit with the hotbar; the GIF is the 4 key picking the dynamite (its name shows over the hotbar, the still
  * {@code seated-hotbar-picked}), rock packed round the pod as a blocked shaft ({@code seated-hotbar-blocked}), and the use key blasting it from the seat
- * ({@code seated-hotbar-blasted}, one stick of two spent).
+ * ({@code seated-hotbar-blasted}, one stick of two spent). Last, the still {@code seated-hotbar-long-plate-narrow} (not a GIF frame: a 640 x 480 window at GUI scale 2, a
+ * 320 x 240 GUI, where the hotbar reaches under the plate's columns) shows a pod with many lines on its plate, which stops a row above the hotbar.
  */
 public class SeatedHotbarScenario extends EvidenceScenario {
     private static final int X = 6200;
@@ -50,6 +58,12 @@ public class SeatedHotbarScenario extends EvidenceScenario {
     private static final int IDLE_FRAMES = 12;
     private static final int PICK_FRAMES = 24;
     private static final int BLAST_FRAMES = 30;
+    /** The narrowest window the Ribbon fits at GUI scale 2: a 320 x 240 GUI. */
+    private static final int NARROW_WINDOW_WIDTH = 640;
+
+    private static final int NARROW_WINDOW_HEIGHT = 480;
+    private static final int WINDOW_SETTLE_TICKS = 20;
+    private static final int LAVA_RADIUS = 2;
 
     @Override
     protected String name() {
@@ -84,6 +98,7 @@ public class SeatedHotbarScenario extends EvidenceScenario {
                 context.getInput().pressKey(options -> options.keyUse);
                 tickFrames(context, BLAST_FRAMES);
                 screenshot(context, "seated-hotbar-blasted");
+                longPlateOnANarrowGui(context, singleplayer);
             } finally {
                 EvidencePins.reset();
             }
@@ -160,6 +175,62 @@ public class SeatedHotbarScenario extends EvidenceScenario {
                 }
             }
         });
+    }
+
+    /**
+     * A pod in a bad way, so its plate has more lines than a 320 x 240 GUI has room for above the hotbar: limp with soot, stranded with the Company's winch on its way,
+     * burning in lava, out of lining brick, with a spoil hopper and a liner. The still is taken on a 640 x 480 window at GUI scale 2, and the window is put back.
+     */
+    private static void longPlateOnANarrowGui(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            if (!(player.getVehicle() instanceof PodEntity pod)) {
+                throw new AssertionError("the pilot left the pod");
+            }
+            ScannerPods.fit(server, player, pod, ComponentTrack.SPOIL_HOPPER, 1);
+            ScannerPods.fit(server, player, pod, ComponentTrack.LINER, 1);
+            pod.setAttached(
+                    EngineSoot.STATE,
+                    Versioned.of(new EngineSoot.State(FuelTuning.DEFAULT.soot().limpLitres(), 0f, 0f)));
+            pod.setAttached(PodLining.STATE, Versioned.of(new PodLining.State(3, 6, 0, false, true)));
+            pod.setStranded(true);
+            pod.setAttached(
+                    CompanyRecovery.STATE,
+                    Versioned.of(new CompanyRecovery.State(pod.level().getGameTime())));
+            BlockPos feet = pod.blockPosition();
+            RoomCarver.carve(
+                    (ServerLevel) pod.level(),
+                    feet.offset(-LAVA_RADIUS, 0, -LAVA_RADIUS),
+                    feet.offset(LAVA_RADIUS, 0, LAVA_RADIUS),
+                    Blocks.LAVA.defaultBlockState());
+        });
+        ClientWait.until(
+                context,
+                "the pod burning and stranded on the client",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && shown.hullBurning()
+                        && shown.stranded());
+        context.runOnClient(client -> client.getWindow().setWindowed(NARROW_WINDOW_WIDTH, NARROW_WINDOW_HEIGHT));
+        context.waitTicks(WINDOW_SETTLE_TICKS); // tick-wait: the window resizes over a few frames
+        try {
+            context.runOnClient(client -> {
+                client.getWindow().setGuiScale(GUI_SCALE);
+                ClientSession.player(client).setXRot(EYE_PITCH);
+                ClientSession.player(client).xRotO = EYE_PITCH;
+                client.gui.toastManager().clear();
+                TransmissionOverlay.reset();
+            });
+            ClientWait.until(
+                    context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
+            context.waitTicks(SETTLE_TICKS); // tick-wait: the gauges ease and the pod settles
+            // A still of another window size: the scenario's own screenshot refuses it, so it goes to the client's
+            // screenshot folder, build/run/clientGameTest/screenshots.
+            context.takeScreenshot("seated-hotbar-long-plate-narrow");
+        } finally {
+            context.runOnClient(client -> client.getWindow().setWindowed(854, 480));
+            context.waitTicks(WINDOW_SETTLE_TICKS); // tick-wait: the window resizes back
+            context.runOnClient(client -> client.getWindow().setGuiScale(GUI_SCALE));
+        }
     }
 
     /** A still and a frame of the GIF, the view level and the popups cleared, once the view has rendered and the gauges have eased. */

@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
+import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitDecay;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
@@ -167,6 +168,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
                 expectTheCockpitHidesExactlyTheVanillaBars();
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
+                expectTheAccountLineIsANote();
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
                 expectEveryPlateMessageIsAPlateCase();
                 expectThePlateHoldsEveryLineClearOfItsBorder(context);
@@ -270,6 +272,21 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         if (!lit[0] || lit[1] || !lit[2] || lit[3]) {
             throw new AssertionError(
                     "The lamps are low fuel, low hull, burning and any other warning, got " + Arrays.toString(lit));
+        }
+    }
+
+    /**
+     * The account line under the tally is a note: a plate with more rows than room drops it before a warning, and asking its kind does not throw (#1457: it had none, so
+     * a long plate of warnings crashed the game).
+     */
+    private static void expectTheAccountLineIsANote() {
+        CockpitHud.Row tally = CockpitHud.Row.of(line("tally_hull", 100, 100));
+        CockpitHud.Row account = CockpitHud.Row.of(
+                new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0));
+        CockpitHud.Row burning = CockpitHud.Row.of(line("burning"));
+        List<CockpitHud.Row> kept = CockpitHud.fitting(List.of(tally, account, burning), 2);
+        if (!kept.equals(List.of(tally, burning))) {
+            throw new AssertionError("A plate with room for two rows keeps the tally and the warning, got " + kept);
         }
     }
 
@@ -808,6 +825,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 "hud.deepcharter.pod.fuel",
                 "hud.deepcharter.pod.cargo",
                 "hud.deepcharter.pod.depth"));
+        // The account line under the tally, a note though not a pod line.
+        expected.add(AccountHud.KEY);
         expected.add("hud.deepcharter.pod.signal_failing");
         expected.add("hud.deepcharter.pod.signal_lost");
         if (!covered.equals(expected)) {
@@ -1073,7 +1092,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         List<CockpitHud.Row> head = List.of(
                 new CockpitHud.Row(
                         List.of(tally, line("tally_fuel", 78), line("tally_cargo", 24), line("tally_depth", -420))),
-                CockpitHud.Row.of(new PodStatusHud.Line(Component.literal("Scanner Player0  $12,345"), 0)));
+                CockpitHud.Row.of(
+                        new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0)));
         List<List<CockpitHud.Row>> cases = new ArrayList<>();
         for (PodStatusHud.Line alert : alerts) {
             cases.add(rowsOf(head, List.of(alert)));
