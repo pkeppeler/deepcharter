@@ -1,0 +1,384 @@
+package io.github.pkeppeler.deepcharter.test;
+
+import com.mojang.blaze3d.platform.InputConstants;
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
+import io.github.pkeppeler.deepcharter.client.pod.SeatedHotbar;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import javax.imageio.ImageIO;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * Client GameTest for the hotbar under the cockpit (#1457): a seated pilot sees vanilla's hotbar and its selection frame (read from pixels: the frame moves to the slot a
+ * key picks, and a slot nothing touched stays as it was), picks a slot with a number key and with the mouse wheel through the window's own input handlers, and uses dynamite
+ * from the picked slot with the use key, which blasts the rock round the pod and spends the stick. The hotbar and the held item's name are listed for popups to keep clear
+ * of while seated and not on foot, and at every GUI scale the Ribbon fits on this window the hotbar covers no part of the cockpit.
+ */
+public class SeatedHotbarClientTest implements FabricClientGameTest {
+    private static final int FEET_Y = TestLayers.worldY(1, 150);
+    private static final int ROOM_RADIUS = 8;
+    private static final int ROOM_HEIGHT = 12;
+    private static final int GUI_SCALE = 2;
+    /** Where the test puts the dynamite: the fourth slot, which the 4 key picks. */
+    private static final int DYNAMITE_SLOT = 3;
+    /** A slot nothing in the test picks or fills: its pixels are the control. */
+    private static final int UNTOUCHED_SLOT = 7;
+    /** A slot's selection frame, 24 x 23 GUI pixels, one pixel left of and over the slot's 20 pixel cell. */
+    private static final int FRAME_WIDTH = 24;
+
+    private static final int FRAME_HEIGHT = 23;
+    private static final int CELL = 20;
+    /** How much of a frame's box must differ when the frame moves onto it, and how much may differ in a slot it never touched (the world behind the slots' glass). */
+    private static final double MOVED = 0.10;
+
+    private static final double STILL = 0.03;
+
+    @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            context.waitTicks(40); // tick-wait: the new world's first ticks, as the cockpit test waits
+            context.runOnClient(client -> client.options.guiScale().set(GUI_SCALE));
+            EvidencePins.lightFlickerOff = true;
+            EvidencePins.handsHidden = true;
+            try {
+                singleplayer.getServer().runOnServer(server -> {
+                    ServerLevel one = TestLayers.level(server, 1);
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                    player.setGameMode(GameType.SURVIVAL);
+                    player.getInventory().setItem(0, new ItemStack(Items.COBBLESTONE, 8));
+                    player.getInventory()
+                            .setItem(DYNAMITE_SLOT, new ItemStack(RepairRegistry.item(Consumable.DYNAMITE)));
+                    player.getInventory().setSelectedSlot(0);
+                    RoomCarver.carve(
+                            one,
+                            -ROOM_RADIUS,
+                            ROOM_RADIUS,
+                            FEET_Y - 1,
+                            FEET_Y + ROOM_HEIGHT,
+                            -ROOM_RADIUS,
+                            ROOM_RADIUS,
+                            Blocks.AIR);
+                });
+                ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+                singleplayer.getServer().runOnServer(server -> {
+                    ServerLevel one = TestLayers.level(server, 1);
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                    player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
+                    PodEntity pod = TestEntities.create(PodRegistry.POD, one);
+                    pod.setPos(0.5, FEET_Y, 0.5);
+                    one.addFreshEntity(pod);
+                    ScannerPods.fit(server, player, pod, 1);
+                    if (!player.startRiding(pod)) {
+                        throw new AssertionError("the player could not mount the pod");
+                    }
+                });
+                ClientWait.until(
+                        context,
+                        "the pilot seated under the cockpit",
+                        client -> client.player != null
+                                && client.player.getVehicle() instanceof PodEntity
+                                && CockpitHud.seated(client).isPresent());
+                expectTheHotbarIsListedOnlyWhileSeated(context, singleplayer);
+                expectTheHotbarDrawsAndANumberKeyPicksASlot(context, singleplayer);
+                expectTheMouseWheelPicksASlot(context);
+                expectTheHotbarCoversNoPartOfTheCockpit(context);
+                expectDynamiteFromThePickedSlotBlasts(context, singleplayer);
+            } finally {
+                EvidencePins.reset();
+            }
+        }
+    }
+
+    /** The keep-clear list has the hotbar and the held item's name while seated, where vanilla draws them, and neither on foot. */
+    private static void expectTheHotbarIsListedOnlyWhileSeated(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        List<String> seated = context.computeOnClient(client -> names(client));
+        if (!seated.contains("hotbar") || !seated.contains("held item name")) {
+            throw new AssertionError("Seated, the hotbar and the held item's name are kept clear of, got " + seated);
+        }
+        HudKeepClear.Rect bar = context.computeOnClient(client -> SeatedHotbar.bar(
+                client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight()));
+        if (!bar.equals(new HudKeepClear.Rect("hotbar", 427 / 2 - 92, 240 - 23, 184, 23))) {
+            throw new AssertionError(
+                    "The hotbar is vanilla's 182 x 22 at the bottom centre, with the frame's pixel round it: " + bar);
+        }
+        singleplayer
+                .getServer()
+                .runOnServer(
+                        server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
+        ClientWait.until(
+                context,
+                "the pilot on foot",
+                client -> ClientSession.player(client).getVehicle() == null);
+        List<String> onFoot = context.computeOnClient(client -> names(client));
+        if (onFoot.contains("hotbar") || onFoot.contains("held item name")) {
+            throw new AssertionError("On foot the vanilla HUD is not on the keep-clear list, got " + onFoot);
+        }
+        board(context, singleplayer);
+    }
+
+    private static List<String> names(Minecraft client) {
+        return HudKeepClear.rects(
+                        client,
+                        client.getWindow().getGuiScaledWidth(),
+                        client.getWindow().getGuiScaledHeight())
+                .stream()
+                .map(HudKeepClear.Rect::what)
+                .toList();
+    }
+
+    /**
+     * The 4 key, pressed through the keyboard handler, picks the fourth slot on the client and the server, and the frame moves there on the screen: the fourth slot's box
+     * changes and a slot nothing touched does not.
+     */
+    private void expectTheHotbarDrawsAndANumberKeyPicksASlot(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        BufferedImage before = shot(context, "seated-hotbar-slot-1");
+        RealInput.key(context, InputConstants.KEY_4, 0);
+        awaitSlot(context, singleplayer, DYNAMITE_SLOT);
+        BufferedImage after = shot(context, "seated-hotbar-slot-4");
+        double moved = differing(before, after, DYNAMITE_SLOT);
+        double still = differing(before, after, UNTOUCHED_SLOT);
+        if (moved < MOVED || still > STILL) {
+            throw new AssertionError("Seated, the hotbar is drawn and its frame follows the pick: " + moved
+                    + " of the picked slot's box changed (at least " + MOVED + "), " + still
+                    + " of an untouched slot's (at most " + STILL + ")");
+        }
+    }
+
+    /** A notch of the wheel down picks the next slot, a notch up the one before, as on foot. */
+    private static void expectTheMouseWheelPicksASlot(ClientGameTestContext context) {
+        RealInput.scroll(context, -1);
+        ClientWait.until(
+                context,
+                "the wheel to pick the slot after the dynamite",
+                client -> ClientSession.player(client).getInventory().getSelectedSlot() == DYNAMITE_SLOT + 1,
+                client -> "slot " + ClientSession.player(client).getInventory().getSelectedSlot());
+        RealInput.scroll(context, 1);
+        ClientWait.until(
+                context,
+                "the wheel to pick the dynamite's slot again",
+                client -> ClientSession.player(client).getInventory().getSelectedSlot() == DYNAMITE_SLOT,
+                client -> "slot " + ClientSession.player(client).getInventory().getSelectedSlot());
+    }
+
+    /** At every GUI scale at which the Ribbon fits this window, the hotbar shares no pixel with the ribbon, the scanner or the plate as they are drawn now. */
+    private static void expectTheHotbarCoversNoPartOfTheCockpit(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            List<String> found = new ArrayList<>();
+            int fitted = 0;
+            for (int scale = 1; scale <= 4; scale++) {
+                client.getWindow().setGuiScale(scale);
+                try {
+                    int width = client.getWindow().getGuiScaledWidth();
+                    int height = client.getWindow().getGuiScaledHeight();
+                    if (CockpitHud.seated(client, width, height).isEmpty()) {
+                        continue;
+                    }
+                    fitted++;
+                    List<HudKeepClear.Rect> rects = HudKeepClear.rects(client, width, height);
+                    HudKeepClear.Rect bar = SeatedHotbar.bar(width, height);
+                    for (HudKeepClear.Rect rect : rects) {
+                        if (rect.what().startsWith("cockpit") && rect.overlaps(bar)) {
+                            found.add("GUI scale " + scale + ": the hotbar covers the " + rect);
+                        }
+                    }
+                } finally {
+                    client.getWindow().setGuiScale(GUI_SCALE);
+                }
+            }
+            if (fitted == 0) {
+                found.add("the Ribbon fits no GUI scale of this window");
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The hotbar must not cover the cockpit: " + problems);
+        }
+    }
+
+    /**
+     * With the dynamite picked, the use key blasts the natural rock round the pod (packed round it for the test, as a blocked shaft would be) and spends the stick, and a
+     * rock just past the blast's reach stays.
+     */
+    private static void expectDynamiteFromThePickedSlotBlasts(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        int radius = RepairTuning.DEFAULT.dynamiteRadius();
+        List<BlockPos> packed = singleplayer.getServer().computeOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            PodEntity pod = (PodEntity) player.getVehicle();
+            if (pod == null) {
+                throw new AssertionError("the pilot left the pod before the dynamite");
+            }
+            ServerLevel level = (ServerLevel) pod.level();
+            BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
+            Vec3 eye = player.getEyePosition();
+            List<BlockPos> cells = new ArrayList<>();
+            for (BlockPos cell : BlockPos.betweenClosed(
+                    middle.offset(-radius, -radius, -radius), middle.offset(radius, radius, radius))) {
+                // Not where the pilot's eyes are, which would choke it.
+                if (level.getBlockState(cell).isAir() && !new AABB(cell).contains(eye)) {
+                    level.setBlock(cell, Blocks.STONE.defaultBlockState(), 3);
+                    cells.add(cell.immutable());
+                }
+            }
+            level.setBlock(middle.offset(radius + 1, 0, 0), Blocks.STONE.defaultBlockState(), 3);
+            return cells;
+        });
+        if (packed.isEmpty()) {
+            throw new AssertionError("no air round the pod to pack with rock");
+        }
+        context.getInput().pressKey(options -> options.keyUse);
+        ClientWait.until(
+                context,
+                "the dynamite to blast the rock round the pod and be spent",
+                () -> singleplayer.getServer().computeOnServer(server -> {
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                    ServerLevel level = player.level();
+                    return player.getInventory().getItem(DYNAMITE_SLOT).isEmpty()
+                            && packed.stream()
+                                    .allMatch(cell -> level.getBlockState(cell).isAir());
+                }),
+                () -> singleplayer.getServer().computeOnServer(server -> {
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                    ServerLevel level = player.level();
+                    return player.getInventory().getItem(DYNAMITE_SLOT) + " in the slot, "
+                            + packed.stream()
+                                    .filter(cell -> !level.getBlockState(cell).isAir())
+                                    .count()
+                            + " of " + packed.size() + " packed cells still rock";
+                }));
+        boolean kept = singleplayer.getServer().computeOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            PodEntity pod = (PodEntity) player.getVehicle();
+            if (pod == null) {
+                return false;
+            }
+            BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
+            return player.level().getBlockState(middle.offset(radius + 1, 0, 0)).is(Blocks.STONE);
+        });
+        if (!kept) {
+            throw new AssertionError("The rock one past the dynamite's reach stays, with the pilot still seated");
+        }
+    }
+
+    private static void board(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            // The test's pod, by where the pilot stepped off it.
+            PodEntity pod = TestLayers.level(server, 1)
+                    .getEntitiesOfClass(PodEntity.class, new AABB(BlockPos.containing(player.position())).inflate(4))
+                    .stream()
+                    .findFirst()
+                    .orElse(null);
+            if (pod == null || !player.startRiding(pod)) {
+                throw new AssertionError("the pilot could not board the pod again");
+            }
+        });
+        ClientWait.until(
+                context,
+                "the pilot seated again",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity
+                        && CockpitHud.seated(client).isPresent());
+    }
+
+    private static void awaitSlot(ClientGameTestContext context, TestSingleplayerContext singleplayer, int slot) {
+        ClientWait.until(
+                context,
+                "slot " + (slot + 1) + " picked on the client and the server",
+                () -> context.computeOnClient(client -> ClientSession.player(client)
+                                        .getInventory()
+                                        .getSelectedSlot())
+                                == slot
+                        && singleplayer
+                                        .getServer()
+                                        .computeOnServer(server -> server.getPlayerList()
+                                                .getPlayers()
+                                                .getFirst()
+                                                .getInventory()
+                                                .getSelectedSlot())
+                                == slot,
+                () -> "client slot "
+                        + context.computeOnClient(client ->
+                                ClientSession.player(client).getInventory().getSelectedSlot())
+                        + ", server slot "
+                        + singleplayer
+                                .getServer()
+                                .computeOnServer(server -> server.getPlayerList()
+                                        .getPlayers()
+                                        .getFirst()
+                                        .getInventory()
+                                        .getSelectedSlot()));
+    }
+
+    private static BufferedImage shot(ClientGameTestContext context, String name) {
+        context.runOnClient(client -> {
+            ClientSession.player(client).setYRot(0f);
+            ClientSession.player(client).setXRot(0f);
+            client.gui.toastManager().clear();
+        });
+        ClientWait.until(
+                context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
+        context.waitTicks(5); // tick-wait: the pod and the view settle for a few frames
+        Path file = context.takeScreenshot(name);
+        try {
+            return ImageIO.read(file.toFile());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /** The share of the pixels of slot {@code slot}'s frame box, at GUI scale 2 on the 427 x 240 GUI, that differ by more than a few levels between two shots. */
+    private static double differing(BufferedImage a, BufferedImage b, int slot) {
+        HudKeepClear.Rect bar = SeatedHotbar.bar(427, 240);
+        int left = bar.x() + slot * CELL;
+        int differing = 0;
+        int total = 0;
+        for (int y = bar.y() * GUI_SCALE; y < (bar.y() + FRAME_HEIGHT) * GUI_SCALE; y++) {
+            for (int x = left * GUI_SCALE; x < (left + FRAME_WIDTH) * GUI_SCALE; x++) {
+                total++;
+                int pa = a.getRGB(x, y);
+                int pb = b.getRGB(x, y);
+                int delta = Math.abs((pa >> 16 & 0xFF) - (pb >> 16 & 0xFF))
+                        + Math.abs((pa >> 8 & 0xFF) - (pb >> 8 & 0xFF))
+                        + Math.abs((pa & 0xFF) - (pb & 0xFF));
+                if (delta > 12) {
+                    differing++;
+                }
+            }
+        }
+        return (double) differing / total;
+    }
+}

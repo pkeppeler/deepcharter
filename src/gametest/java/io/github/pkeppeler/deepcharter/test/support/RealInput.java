@@ -36,6 +36,13 @@ public final class RealInput {
         context.waitTicks(1);
     }
 
+    /** {@code notches} of the mouse wheel through {@code MouseHandler.onScroll} (positive is up, which in the game picks the slot to the left), then one tick. */
+    public static void scroll(ClientGameTestContext context, double notches) {
+        context.runOnClient(
+                client -> client.mouseHandler.onScroll(client.getWindow().handle(), 0, notches));
+        context.waitTicks(1);
+    }
+
     /**
      * Types {@code text} one letter, digit or space at a time, the way SDL sends it: each key goes down, then {@code
      * KeyboardHandler.textInput} delivers its text (it calls {@code textEditing}, then {@code charTyped} per code point), then the key

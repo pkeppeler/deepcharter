@@ -409,13 +409,17 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             if (CockpitHud.showsReadout(client, width, height)) {
                 PodEntity pod = (PodEntity) Objects.requireNonNull(player.getVehicle(), "the pilot is in a pod");
                 var look = CockpitLook.current();
-                var rows = CockpitHud.fitting(
+                var rows = CockpitHud.plateRows(
+                        font,
+                        ribbon,
+                        look,
                         CockpitHud.rows(
                                 pod,
                                 CockpitReading.of(pod, CockpitHud.heat()),
                                 look,
                                 PodStatusHud.readout(player, pod)),
-                        CockpitHud.roomForRows(font, ribbon, look, height));
+                        width,
+                        height);
                 var plate = CockpitHud.plateBox(font, ribbon, look, rows, width, height);
                 hud.put("readout plate", new Box(plate.left(), plate.top(), plate.width(), plate.height()));
             }
