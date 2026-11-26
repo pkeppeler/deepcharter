@@ -78,8 +78,8 @@ public class CampaignContentTest {
     /** The cave stalks are counted within this many chunks of the origin, a square of twice this and one on a side. */
     private static final int STALK_CHUNKS = 5;
     /**
-     * The fewest ordinary stalk columns those chunks of layer 1 hold: 265 grow, and 12 did while the stalks' rows missed most of Topsoil
-     * Claims (#1401).
+     * The fewest ordinary stalk columns those chunks of layer 1 hold: 265 grow, and 12 did while the stalks' rows
+     * missed most of Topsoil Claims (#1401).
      */
     private static final int MIN_CAVE_STALK_COLUMNS = 100;
 
