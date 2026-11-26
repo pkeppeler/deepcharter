@@ -18,7 +18,10 @@ public final class PodData {
     public static final EntityDataAccessor<Boolean> HULL_BURNING = define(EntityDataSerializers.BOOLEAN);
     /** The bay holds an ore the breach brace may burn (#378); the server works it out each tick for a braced pod, and it is not saved. */
     public static final EntityDataAccessor<Boolean> BRACE_ORE = define(EntityDataSerializers.BOOLEAN);
-    /** The bay holds any ore (#1270), so the brace's HUD can tell no ore from no cheap ore in a hold that also stows gear; worked out with {@link #BRACE_ORE}, and not saved. */
+    /**
+     * The bay holds any ore (#1270), so the brace's HUD can tell no ore from no cheap ore in a hold that also stows
+     * gear; worked out with {@link #BRACE_ORE}, and not saved.
+     */
     public static final EntityDataAccessor<Boolean> HOLDS_ORE = define(EntityDataSerializers.BOOLEAN);
 
     public static final EntityDataAccessor<Direction> DRILL_DIRECTION = define(EntityDataSerializers.DIRECTION);

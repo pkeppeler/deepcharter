@@ -28,14 +28,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * A pod's hold (ADR 0102): a row of slots, as many as the pod's {@link PodStats#cargoSlots}, each holding one stack of
  * anything. Drilled ore goes in one ore to a free slot ({@link #tryAdd}); the pod screen ({@link PodMenu}) moves stacks
- * in and out of any slot, as a chest does. What the terminals and the brace read and take is the ore ({@link #entries},
- * {@link #count}, {@link #take}, {@link #dump}); a teleport or a salvage takes everything ({@link #takeAll}). The synced
- * {@link PodData#CARGO_USED} (slots holding something) and {@link PodData#CARGO_MASS} mirror the slots; only this class
- * writes them.
+ * in and out of any slot, as a chest does. What the terminals and the brace read and take is the ore ({@link
+ * #entries}, {@link #count}, {@link #take}, {@link #dump}); a teleport or a salvage takes everything ({@link
+ * #takeAll}). The synced {@link PodData#CARGO_USED} (slots holding something) and {@link PodData#CARGO_MASS} mirror
+ * the slots; only this class writes them.
  *
- * <p>A stack weighs what {@link OreEncumbrance#massOf} says, worked out from the stack itself each time the hold changes,
- * so a stack changed in place (a bundle filled in its slot) weighs what it holds now. An ore drilled at a mass other
- * than its own carries that mass on the stack ({@link DrilledMass}).
+ * <p>A stack weighs what {@link OreEncumbrance#massOf} says, worked out from the stack itself each time the hold
+ * changes, so a stack changed in place (a bundle filled in its slot) weighs what it holds now. An ore drilled at a
+ * mass other than its own carries that mass on the stack ({@link DrilledMass}).
  *
  * <p>The saved hold has a version ({@value #VERSION}). Version 1 was the ore bay: ore only, one entry after another
  * with its mass, read into the first slots. A save with no version is from before ore items: its entries were vanilla

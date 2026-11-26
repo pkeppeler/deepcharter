@@ -22,8 +22,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the whole hold is left behind
- * as item entities where the pod was. Nothing mined teleports.
+ * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the whole hold is left
+ * behind as item entities where the pod was. Nothing mined teleports.
  */
 final class Teleports {
     /** How many random spots a scattering teleporter tries before it falls back to the exact column. */
