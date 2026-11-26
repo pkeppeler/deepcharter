@@ -12,8 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.TreeMap;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -81,16 +81,13 @@ public class TheClaimTest {
     /** The rock of each zone, top first. */
     private static final List<String> STRATA = List.of("hardpan", "packed_shale", "black_shale");
 
-    private static final List<String> FEATURES =
-            List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches", "fungal_stalks_cave");
-
     /**
-     * The fewest positions each feature's last placement step keeps in the sample, so its in-chunk check has positions
-     * to judge (#1401, where the cave stalks kept one while their rows missed most of Topsoil Claims): about half of
-     * what each keeps, measured at #1453.
+     * The Claim's features, and the fewest positions each one's last placement step keeps in the sample, so its
+     * in-chunk check has positions to judge (#1401, where the cave stalks kept one while their rows missed most of
+     * Topsoil Claims): about half of what each keeps, measured at #1453.
      */
-    private static final Map<String, Integer> MIN_KEPT =
-            Map.of("claim_shafts", 4, "claim_cave_ores", 200, "claim_salvage_caches", 8, "fungal_stalks_cave", 40);
+    private static final Map<String, Integer> MIN_KEPT = new TreeMap<>(
+            Map.of("claim_shafts", 4, "claim_cave_ores", 200, "claim_salvage_caches", 8, "fungal_stalks_cave", 40));
 
     /**
      * Caves open up with depth. The share of open blocks under each column's rock top grows from the surface band's
@@ -320,8 +317,8 @@ public class TheClaimTest {
     public void theClaimsFeaturesStayInTheirChunks(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         var registry = level.registryAccess().lookupOrThrow(Registries.PLACED_FEATURE);
-        int positions = 0;
-        for (String name : FEATURES) {
+        for (Map.Entry<String, Integer> entry : MIN_KEPT.entrySet()) {
+            String name = entry.getKey();
             int kept = 0;
             PlacedFeature feature = registry.getValueOrThrow(ResourceKey.create(
                     Registries.PLACED_FEATURE, Identifier.fromNamespaceAndPath("deepcharter", name)));
@@ -348,13 +345,12 @@ public class TheClaimTest {
                                     pos.toShortString(),
                                     ChunkPos.containing(pos));
                         }
-                        positions += next.size();
                         picked = next;
                     }
                     kept += picked.size();
                 }
             }
-            int fewest = Objects.requireNonNull(MIN_KEPT.get(name), () -> name + " has no floor in MIN_KEPT");
+            int fewest = entry.getValue();
             LOGGER.info("[the-claim] {} keeps {} positions in {} chunks", name, kept, SAMPLE_CHUNKS * SAMPLE_CHUNKS);
             expect(
                     helper,
@@ -365,7 +361,6 @@ public class TheClaimTest {
                     SAMPLE_CHUNKS * SAMPLE_CHUNKS,
                     fewest);
         }
-        expect(helper, positions > 0, "no feature of the Claim picked a position");
         ClaimShaftFeature shaft = (ClaimShaftFeature) registry.getValueOrThrow(ResourceKey.create(
                         Registries.PLACED_FEATURE, Identifier.fromNamespaceAndPath("deepcharter", "claim_shafts")))
                 .feature()

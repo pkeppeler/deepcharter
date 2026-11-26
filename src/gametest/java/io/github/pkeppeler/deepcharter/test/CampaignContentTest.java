@@ -426,8 +426,7 @@ public class CampaignContentTest {
                     if (feature.get("type").getAsString().equals("deepcharter:zone_fill")) {
                         expect(helper, feature.has("layer"), "%s names no layer", id);
                         int[] zone = Objects.requireNonNull(
-                                zoneOfBiome.get(biome.getKey()),
-                                () -> id + " fills " + biome.getKey() + ", which is no zone biome");
+                                home, () -> id + " fills " + biome.getKey() + ", which is no zone biome");
                         expect(
                                 helper,
                                 feature.get("layer").getAsInt() == zone[0]
