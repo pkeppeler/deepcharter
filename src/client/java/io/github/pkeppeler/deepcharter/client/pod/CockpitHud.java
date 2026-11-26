@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
+import java.util.stream.Stream;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
@@ -166,6 +167,17 @@ public final class CockpitHud {
     }
 
     private static final String PUMP_TITLE = "deepcharter.fuel.short.pump";
+
+    /**
+     * The lang key of every short name the FUEL tab can show besides FUEL, in the order the handbook's fuel tab sheet
+     * lists them; the sheet and the tab's size both read it.
+     */
+    public static final List<String> SHORT_KEYS = List.of(
+            PUMP_TITLE,
+            "deepcharter.fuel.short.minecraft.coal",
+            "deepcharter.fuel.short.minecraft.charcoal",
+            "deepcharter.fuel.short.deepcharter.biofuel",
+            "deepcharter.fuel.short.mix");
 
     private static double heat;
 
@@ -521,13 +533,8 @@ public final class CockpitHud {
 
     /** Every title the FUEL tab can show. */
     public static List<Component> fuelTitles() {
-        return List.of(
-                Meter.FUEL.title(),
-                Component.translatable(PUMP_TITLE),
-                Component.translatable("deepcharter.fuel.short.mix"),
-                Component.translatable("deepcharter.fuel.short.minecraft.coal"),
-                Component.translatable("deepcharter.fuel.short.minecraft.charcoal"),
-                Component.translatable("deepcharter.fuel.short.deepcharter.biofuel"));
+        return Stream.concat(Stream.of(Meter.FUEL.title()), SHORT_KEYS.stream().map(Component::translatable))
+                .toList();
     }
 
     /** Each gauge's title: the cab's labels, not the signal's, so they stay when a gauge goes dark. */

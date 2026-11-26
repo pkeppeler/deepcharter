@@ -200,9 +200,9 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         require(
                 page.contains("FUEL tab names the burning fuel"),
                 "the fuel tab's sheet says the FUEL tab names the burning fuel: " + page);
-        for (String entry : List.of(
-                "PUMP: pump fuel", "COAL: coal", "CHAR: charcoal", "BIO: biofuel", "MIX: a mix of solid fuels")) {
-            require(page.contains(entry), "the fuel tab's sheet lists '" + entry + "': " + page);
+        for (String key : CockpitHud.SHORT_KEYS) {
+            String name = Component.translatable(key).getString();
+            require(page.contains(name + ":"), "the fuel tab's sheet lists '" + name + ":' (" + key + "): " + page);
         }
     }
 

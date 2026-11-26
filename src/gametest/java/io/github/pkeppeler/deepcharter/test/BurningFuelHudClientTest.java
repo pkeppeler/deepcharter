@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -27,6 +28,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
@@ -88,6 +90,7 @@ public class BurningFuelHudClientTest implements FabricClientGameTest {
                 expectBurning(context, singleplayer, 60f, EngineSoot.State.CLEAN, "BURNING PUMP FUEL");
                 problems.addAll(context.computeOnClient(client -> plateProblems(client, false)));
                 problems.addAll(tabProblems(context, "PUMP", "burning-pump-tab"));
+                problems.addAll(context.computeOnClient(BurningFuelHudClientTest::tabSizedForEveryFuel));
 
                 expectBurning(
                         context,
@@ -263,11 +266,31 @@ public class BurningFuelHudClientTest implements FabricClientGameTest {
         return problems;
     }
 
+    /** Every pod fuel's short name is one the FUEL tab is sized for, so a new fuel cannot outgrow it unseen. */
+    private static List<String> tabSizedForEveryFuel(Minecraft client) {
+        List<String> sized =
+                CockpitHud.fuelTitles().stream().map(Component::getString).toList();
+        List<String> problems = new ArrayList<>();
+        BuiltInRegistries.ITEM.stream()
+                .filter(item -> item.getDefaultInstance().is(PodFuelItems.TAG))
+                .forEach(item -> {
+                    Identifier id = BuiltInRegistries.ITEM.getKey(item);
+                    String name = new EngineSoot.Solid(Optional.of(id), 1f)
+                            .shortName()
+                            .getString();
+                    if (!sized.contains(name)) {
+                        problems.add(id + " is a solid fuel whose short name '" + name
+                                + "' is not among the FUEL tab's titles " + sized);
+                    }
+                });
+        return problems;
+    }
+
     /** Waits until the FUEL tab reads {@code want}, then checks its ink. */
     private static List<String> tabProblems(ClientGameTestContext context, String want, String shotName) {
         ClientWait.until(
                 context,
-                "the FUEL tab reads " + want,
+                "the FUEL tab reads " + want + " (" + shotName + ")",
                 client -> CockpitHud.title(CockpitHud.Meter.FUEL, pod(client))
                         .getString()
                         .equals(want));

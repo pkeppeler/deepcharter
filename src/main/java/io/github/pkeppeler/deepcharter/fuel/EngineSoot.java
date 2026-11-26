@@ -213,6 +213,12 @@ public final class EngineSoot {
                         state.soot(), state.tankLitres() + litres, state.tankSoot() + litres * sootPerLitre, solid)));
     }
 
+    /** What {@link Solid#shortName} falls back to for a solid fuel with no short name: the mix's, in English. */
+    private static final String MIX = "MIX";
+
+    /** What {@link Solid#name} falls back to for a solid fuel with no lang key: the mix's own name, in English. */
+    private static final String SOLID_FUEL = "SOLID FUEL";
+
     /**
      * The solid fuel still in the tank, which burns before anything else: its item id while it is one fuel (empty for
      * a mix, or a version 1 account), and its litres.
@@ -238,12 +244,6 @@ public final class EngineSoot {
                     .orElseGet(() -> Component.translatable("deepcharter.fuel.short.mix"));
         }
     }
-
-    /** What {@link Solid#shortName} falls back to for a solid fuel with no short name: the mix's, in English. */
-    private static final String MIX = "MIX";
-
-    /** What {@link Solid#name} falls back to for a solid fuel with no lang key: the mix's own name, in English. */
-    private static final String SOLID_FUEL = "SOLID FUEL";
 
     /**
      * What the engine burns now (#1438): the solid fuel still in the tank, never more than the tank holds; empty when

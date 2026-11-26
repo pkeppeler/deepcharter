@@ -128,7 +128,7 @@
   "deepcharter.handbook.controls.cockpit.readouts": "The bars up top are FUEL, HULL, LOAD (weight against lift), DEPTH and HEAT. On the plate the cart is the ore in the bay; the rest carry their bar's icon.",
   "deepcharter.handbook.controls.fuel_tab.title": "The Mole: fuel tab",
   "deepcharter.handbook.controls.fuel_tab.burning": "The FUEL tab names the burning fuel.",
-  "deepcharter.handbook.controls.fuel_tab.names": "PUMP: pump fuel. COAL: coal. CHAR: charcoal. BIO: biofuel. MIX: a mix of solid fuels.",
+  "deepcharter.handbook.controls.fuel_tab.names": "%1$s: pump fuel. %2$s: coal. %3$s: charcoal. %4$s: biofuel. %5$s: a mix of solid fuels.",
   "deepcharter.handbook.controls.drive.title": "The Mole: driving",
   "deepcharter.handbook.controls.drive.drive": "Pilot: %s forward, %s back, %s and %s turn the pod.",
   "deepcharter.handbook.controls.drive.camera": "Pilot: the chase camera is on; %s changes the view.",

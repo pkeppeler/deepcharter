@@ -1,12 +1,14 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.LiningKeys;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
 import net.minecraft.network.chat.Component;
@@ -21,10 +23,15 @@ public final class HandbookControls {
     /**
      * One line of a sheet: its language key under the sheet's, and the bindings its {@code %s} slots show, in order.
      */
-    record Row(String name, List<Function<Options, KeyMapping>> keys) {
+    record Row(String name, List<Function<Options, KeyMapping>> keys, List<String> words) {
+        /** A line that names keys and no words. */
+        Row(String name, List<Function<Options, KeyMapping>> keys) {
+            this(name, keys, List.of());
+        }
+
         /** A line that names no key. */
         Row(String name) {
-            this(name, List.of());
+            this(name, List.of(), List.of());
         }
     }
 
@@ -58,7 +65,7 @@ public final class HandbookControls {
                             new Row("board", List.of(options -> options.keyUse)),
                             new Row("leave", List.of(options -> options.keyShift)))),
             new Sheet("cockpit", List.of(new Row("readouts"))),
-            new Sheet("fuel_tab", List.of(new Row("burning"), new Row("names"))),
+            new Sheet("fuel_tab", List.of(new Row("burning"), new Row("names", List.of(), CockpitHud.SHORT_KEYS))),
             new Sheet(
                     "drive",
                     List.of(
@@ -114,12 +121,13 @@ public final class HandbookControls {
     }
 
     private static Component line(Sheet sheet, Row row, Options options) {
-        Object[] keys = row.keys().stream()
-                .map(key -> (Object) Component.literal("[")
+        Stream<Object> keys = row.keys().stream()
+                .map(key -> Component.literal("[")
                         .append(key.apply(options).getTranslatedKeyMessage())
-                        .append("]"))
-                .toArray();
-        return Component.translatable(keyOf(sheet.name(), row.name()), keys);
+                        .append("]"));
+        Stream<Object> words = row.words().stream().map(Component::translatable);
+        return Component.translatable(
+                keyOf(sheet.name(), row.name()), Stream.concat(keys, words).toArray());
     }
 
     private static Sheet sheet(int part) {
