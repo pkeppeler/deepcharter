@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookMemory;
@@ -20,6 +21,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText.Fill;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText.Frame;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -78,6 +81,9 @@ public class QuestMapClientTest implements FabricClientGameTest {
             aStepIsToastedOnlyWhenItIsNews();
             aDoneStepNeedsNothingMore();
             theBookReopensOnTheSamePageWhenProgressAddsPages();
+            hoveringAStepLightsItAndAsksForTheHand();
+            everyStepAClickOpensCarriesTheCueAndNoOtherDoes();
+            aClickOnTheCueStillPicksTheStep();
         });
         clickingAnItemOpensItsRecipeInTheCatalogue(context);
     }
@@ -860,5 +866,104 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 after.get(second.page()) instanceof HandbookPage.Chapter map && map.number() == 2,
                 "the book reopens on chapter 2's map, page " + second.page() + " of " + after.size()
                         + ", not on the page" + " number it was at before");
+    }
+
+    /** The fills of {@code on} that {@code off} does not draw: what the mouse alone adds to a frame. */
+    private static List<Fill> added(Frame on, Frame off) {
+        return on.fills().stream().filter(fill -> !off.fills().contains(fill)).toList();
+    }
+
+    /**
+     * #1413: the mouse over a step a click picks fills the step's box behind its name and asks for the pointing hand; the
+     * mouse over a step of a chapter only previewed, which a click does nothing to, adds nothing.
+     */
+    private static void hoveringAStepLightsItAndAsksForTheHand() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        Box name = drawn(screen, done("Do thing 1.2")).box();
+        Frame off = DrawnText.frame(screen, -1, -1);
+        Frame on = DrawnText.frame(screen, name.x() + 1, name.y() + 1);
+        require(
+                added(on, off).stream().anyMatch(fill -> contains(fill.box(), name)),
+                "the hovered step is filled behind its name " + name + ", added fills: " + added(on, off));
+        require(on.cursor() == CursorTypes.POINTING_HAND, "the hovered step asks for the hand, got " + on.cursor());
+        require(off.cursor() != CursorTypes.POINTING_HAND, "with the mouse away nothing asks for the hand");
+        HandbookScreen preview = mapScreen(new HandbookMemory(), 2);
+        Box previewName = drawn(preview, "Do thing 2.1").box();
+        Frame previewOff = DrawnText.frame(preview, -1, -1);
+        Frame previewOn = DrawnText.frame(preview, previewName.x() + 1, previewName.y() + 1);
+        require(
+                added(previewOn, previewOff).isEmpty(),
+                "a previewed step is not lit under the mouse: " + added(previewOn, previewOff));
+        require(
+                previewOn.cursor() != CursorTypes.POINTING_HAND,
+                "a previewed step does not ask for the hand, got " + previewOn.cursor());
+    }
+
+    private static boolean contains(Box outer, Box inner) {
+        return outer.x() <= inner.x()
+                && outer.y() <= inner.y()
+                && outer.right() >= inner.right()
+                && outer.bottom() >= inner.bottom();
+    }
+
+    /**
+     * The ink a frame draws inside the box of the step named {@code name}, between the name and the box's right side: the
+     * step's click cue. The right side is the nearest fill right of the name that is one pixel wide and as tall as a step box.
+     */
+    private static List<Fill> cueInk(Frame frame, Drawn name) {
+        Box text = name.box();
+        int stepHeight = QuestMapTuning.current().stepHeight();
+        Box side = frame.fills().stream()
+                .map(Fill::box)
+                .filter(box -> box.width() == 1
+                        && box.height() == stepHeight
+                        && box.x() >= text.right()
+                        && box.y() <= text.y()
+                        && box.bottom() >= text.bottom())
+                .min(java.util.Comparator.comparingInt(Box::x))
+                .orElseThrow(() -> new AssertionError("no box side right of the step '" + name.text() + "'"));
+        return frame.fills().stream()
+                .filter(fill -> fill.box().x() >= text.right()
+                        && fill.box().right() <= side.x()
+                        && fill.box().y() >= side.y()
+                        && fill.box().bottom() <= side.bottom())
+                .toList();
+    }
+
+    /**
+     * #1413: every step of a chapter in full carries ink between its name and its box's right side, the chevron that says a
+     * click opens it; no step of a previewed chapter does. The name is cut to make room, never drawn over.
+     */
+    private static void everyStepAClickOpensCarriesTheCueAndNoOtherDoes() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        Frame frame = DrawnText.frame(screen, -1, -1);
+        for (int n = 1; n <= FIRST_CHAPTER_STEPS; n++) {
+            String step = n < FIRST_CHAPTER_STEPS ? done("Do thing 1." + n) : open("Do thing 1." + n);
+            Drawn name = drawn(screen, step);
+            require(!cueInk(frame, name).isEmpty(), "step 1." + n + " carries the click cue right of its name");
+        }
+        HandbookScreen preview = mapScreen(new HandbookMemory(), 2);
+        Frame previewFrame = DrawnText.frame(preview, -1, -1);
+        for (int n = 1; n <= 3; n++) {
+            Drawn name = drawn(preview, "Do thing 2." + n);
+            require(
+                    cueInk(previewFrame, name).isEmpty(),
+                    "previewed step 2." + n + " carries no click cue: " + cueInk(previewFrame, name));
+        }
+    }
+
+    /** #1413: a click on the cue itself, not only on the name, picks the step and puts its card up. */
+    private static void aClickOnTheCueStillPicksTheStep() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        List<Fill> cue = cueInk(DrawnText.frame(screen, -1, -1), drawn(screen, done("Do thing 1.2")));
+        require(!cue.isEmpty(), "step 1.2 carries the click cue");
+        Box mark = cue.getFirst().box();
+        screen.mouseClicked(mouse(mark.x(), mark.y()), false);
+        screen.mouseReleased(mouse(mark.x(), mark.y()));
+        require(
+                texts(screen)
+                        .contains(Component.translatable("deepcharter.handbook.quest.step", 2)
+                                .getString()),
+                "a click on step 2's cue puts its card up: " + texts(screen));
     }
 }

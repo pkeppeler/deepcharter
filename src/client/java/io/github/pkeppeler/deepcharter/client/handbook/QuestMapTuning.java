@@ -98,6 +98,9 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param pencilTipGap space between the tip of the dashed pencil line and the arms of the x it points at
  * @param pencilStartGap space between a Note's box and the start of the dashed pencil line
  * @param pencilMarkGap space between the x and the payoff box
+ * @param clickCueSize how far each arm of the chevron on a thing a click opens reaches back from its tip, across and up or down
+ *     ({@link ClickCue})
+ * @param clickCueInset space between the tip of that chevron and the right edge of the thing it marks
  */
 public record QuestMapTuning(
         int chapterTabWidth,
@@ -188,7 +191,9 @@ public record QuestMapTuning(
         int pencilLineGap,
         int pencilTipGap,
         int pencilStartGap,
-        int pencilMarkGap) {
+        int pencilMarkGap,
+        int clickCueSize,
+        int clickCueInset) {
     public static QuestMapTuning current() {
         return UiTheme.current().questMap();
     }
@@ -283,6 +288,8 @@ public record QuestMapTuning(
                 d.integer("pencilLineGap", 0),
                 d.integer("pencilTipGap", 0),
                 d.integer("pencilStartGap", 0),
-                d.integer("pencilMarkGap", 0));
+                d.integer("pencilMarkGap", 0),
+                d.integer("clickCueSize", 1),
+                d.integer("clickCueInset", 0));
     }
 }
