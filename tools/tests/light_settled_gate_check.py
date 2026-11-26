@@ -133,6 +133,15 @@ public class SeatSupport {
         server.runOnServer(s -> player.startRiding(pod));
     }
 
+    static void mountVia(TestServerContext server) {
+        mountPlayer(server);
+    }
+
+    // seats-pod: wraps mountPlayer
+    static void mountWrapped(TestServerContext server) {
+        mountPlayer(server);
+    }
+
     static void lookAround(TestServerContext server) {
         server.runOnServer(s -> player.setPos(0, 0, 0));
     }
@@ -144,6 +153,7 @@ public class CrossSettledClientTest implements FabricClientGameTest {
         singleplayer.getServer().runOnServer(server -> RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR));
         ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, 3);
         SeatSupport.mountPlayer(singleplayer.getServer());
+        SeatSupport.mountWrapped(singleplayer.getServer());
     }
 
     void noCarve(TestSingleplayerContext singleplayer) {
@@ -297,6 +307,60 @@ public class SeatsClientTest implements FabricClientGameTest {
 """, "SeatsClientTest:4 calls SeatSupport.mountUnmarked, which seats a pod and carries no '// seats-pod: <reason>'"),
 }
 
+# label: (extra files, a whole client test, the text the gate reports)
+SUPPORT_VIOLATIONS = {
+    "an unmarked helper that reaches a marked seat": ({}, """
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(TestSingleplayerContext singleplayer) {
+        SeatSupport.mountVia(singleplayer.getServer());
+    }
+}
+""", "SeatsClientTest:4 calls SeatSupport.mountVia, which seats a pod and carries no '// seats-pod: <reason>'"),
+    "two seating overloads with one marked": ({"OverloadSupport.java": """
+public class OverloadSupport {
+    // seats-pod: seats the first player
+    static void seat(TestServerContext server) {
+        server.runOnServer(s -> player.startRiding(pod));
+    }
+
+    static void seat(TestServerContext server, int index) {
+        server.runOnServer(s -> player.startRiding(pods[index]));
+    }
+}
+"""}, """
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(TestSingleplayerContext singleplayer) {
+        OverloadSupport.seat(singleplayer.getServer());
+    }
+}
+""", "SeatsClientTest:4 calls OverloadSupport.seat, which seats a pod and carries no '// seats-pod: <reason>'"),
+    "a static import of a seating helper": ({}, """
+import static io.github.pkeppeler.deepcharter.test.SeatSupport.mountPlayer;
+
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(TestSingleplayerContext singleplayer) {
+        mountPlayer(singleplayer.getServer());
+    }
+}
+""", "SeatsClientTest:2 imports static SeatSupport.mountPlayer, which seats a pod, so a bare call of it escapes the light-settled gate; import SeatSupport and call it qualified"),
+    "a static import of every member of a seating class": ({}, """
+import static io.github.pkeppeler.deepcharter.test.SeatSupport.*;
+
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(TestSingleplayerContext singleplayer) {
+        mountPlayer(singleplayer.getServer());
+    }
+}
+""", "SeatsClientTest:2 imports static SeatSupport.*, which seats a pod, so a bare call of it escapes the light-settled gate; import SeatSupport and call it qualified"),
+    "two files with one simple name": ({"other/SeatSupport.java": """
+public class SeatSupport {
+}
+"""}, """
+public class SeatsClientTest implements FabricClientGameTest {
+}
+""", "share the simple name SeatSupport"),
+}
+
 
 def violating(body: str, call: str) -> str:
     return f"""
@@ -319,6 +383,7 @@ CASES = {
     **{label: Case(fixture({"SeatsClientTest.java": violating(body, "runOnServer")}), None) for label, (body, _) in VIOLATIONS.items()},
     **{label: Case(fixture({"SeatsClientTest.java": source}), None) for label, (source, _) in METHOD_VIOLATIONS.items()},
     **{label: Case(fixture({"SeatsClientTest.java": source}), None) for label, (source, _) in CROSS_VIOLATIONS.items()},
+    **{label: Case(fixture({**extra, "SeatsClientTest.java": source}), None) for label, (extra, source, _) in SUPPORT_VIOLATIONS.items()},
     "computeOnServer": Case(fixture({"SeatsClientTest.java": violating(VIOLATIONS["startRiding"][0], "computeOnServer")}), None),
 }
 
@@ -355,5 +420,14 @@ class LightSettledGateTest(unittest.TestCase):
                 self.assertFalse(result.ok, f"the gate should fail the build for {label}")
                 self.assertIn(expected, result.message)
                 self.assertIn("#1455" if "unmarked" in label else "#1303", result.message)
+                for path in CLEAN:
+                    self.assertNotRegex(result.message, rf"(?<!\w){re.escape(PurePosixPath(path).stem)}:\d")
+
+    def test_a_helper_that_reaches_a_seat_through_a_scanned_method_needs_the_marker_too(self):
+        for label, (_, _, expected) in SUPPORT_VIOLATIONS.items():
+            with self.subTest(label):
+                result = outcome(label)
+                self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+                self.assertIn(expected, result.message)
                 for path in CLEAN:
                     self.assertNotRegex(result.message, rf"(?<!\w){re.escape(PurePosixPath(path).stem)}:\d")

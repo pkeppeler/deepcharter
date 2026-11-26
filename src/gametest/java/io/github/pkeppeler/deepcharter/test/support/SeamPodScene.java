@@ -105,7 +105,7 @@ public final class SeamPodScene {
      * A fresh pod over {@code site} with the mock in its first seat and the real client in its second, pinned at the
      * hold height.
      */
-    // seats-pod: adds the pod and seats the pilot in it; call it only after ClientWait.lightSettled once a carve ran
+    // seats-pod: adds the pod and seats the pilot in it
     public static PodEntity seat(
             ClientGameTestContext context, TwoPlayerServer two, UUID clientId, Site site, boolean mockAccepts) {
         MockPlayer mock = two.mock();
@@ -251,7 +251,7 @@ public final class SeamPodScene {
     }
 
     /** Lets the pod go and puts it under the floor, as one tick of a fall at speed would. */
-    // seats-pod: moves the seated pod; call it only after ClientWait.lightSettled once a carve ran
+    // seats-pod: moves the seated pod
     public static void drop(TwoPlayerServer two, Site site, PodEntity pod) {
         two.server().runOnServer(server -> {
             PINS.remove(pod.getUUID());

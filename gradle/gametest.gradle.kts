@@ -107,15 +107,18 @@ object GametestScan {
 	// same-file method stands for that method's steps; a seat after a carve with no wait between fails. The marker goes on the seat's
 	// statement, or on the call that reaches it.
 	// A call to a helper in another class cannot be followed, so a helper that seats a pod (its body matches podSeat) carries SEATS_POD_MARKER, with a
-	// reason, on its declaration or the comment line above it, and a call `Class.helper(...)` from a client test or scenario stands for a seat. The
-	// gate fails an unmarked helper that a client test or scenario calls that way, so the marker cannot be forgotten (#1455); the arrived gate
-	// (#1402) reads the same marker through seatHelpers.
+	// reason, on its declaration or the comment line above it, and a call `Class.helper(...)` from a client test or scenario stands for a seat.
+	// The gate fails an unmarked helper that a client test or scenario calls that way, so the marker cannot be forgotten (#1455).
+	// A static import of a seating helper, or of every member of its class, fails too: the bare call that follows would not be seen.
 	// Heuristic: a call through an object (`scene.seat(...)`) or a base class is not followed, a method is matched by name across its overloads,
-	// a marked helper is trusted (its marker is not checked against its body), a helper that reaches a seat through another method needs the marker too (matched by name, so a same-named method of another class can make one a seater),
-	// and the order is the text's, so a loop that seats before it carves again is not seen.
+	// and a marked helper is trusted (its marker is not checked against its body).
+	// A helper that reaches a seat through another scanned method needs the marker too. That call is matched by name, so a same-named method
+	// of another class can make a helper a seater; two files with one simple name fail the scan, because helpers are keyed by it.
+	// The order is the text's, so a loop that seats before it carves again is not seen.
 	private const val LIGHT_SETTLED_MARKER = "// light-settled-ok:"
 	private const val SEATS_POD_MARKER = "// seats-pod:"
 	private val qualifiedCall = Regex("""\b([A-Z]\w*)\s*\.\s*(\w+)\s*\(""")
+	private val staticImport = Regex("""\bimport\s+static\s+(?:\w+\s*\.\s*)*([A-Z]\w*)\s*\.\s*(\w+|\*)\s*;""")
 	private val roomCarve = Regex("""\bRoomCarver\s*\.\s*carve\w*\s*\(""")
 	private val podSeat = Regex("""\bstartRiding\s*\(|\baddFreshEntity\s*\(\s*(?:\w+\s*\.\s*)*\w*[pP]od\w*\b|\b\w*[pP]od\w*\s*(?:\((?:[^()]|\([^()]*\))*\)\s*|\[[^\]]*]\s*)?\.\s*(?:setPos|teleportTo|teleport)\s*\(""")
 	private val lightSettledWait = Regex("""\bClientWait\s*\.\s*lightSettled\s*\(""")
@@ -250,10 +253,9 @@ object GametestScan {
 	}.toList()
 
 	// Every method in [files] that seats a pod, itself or through a method it calls (an unqualified call or `Class.method(` that names a method of
-	// the scanned files), as class simple name to method name to whether it carries SEATS_POD_MARKER; [seat] says what a seat is.
+	// the scanned files), as class simple name to method name to whether it carries SEATS_POD_MARKER.
 	private fun seatHelpers(
 		files: List<File>,
-		seat: Regex,
 		blankLiterals: (String) -> String,
 		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
 	): Map<String, Map<String, Boolean>> {
@@ -278,7 +280,7 @@ object GametestScan {
 						owner,
 						namedCall.find(text, nameAt)!!.groupValues[1],
 						marked(markedNear, rawLines, lineOf(text, nameAt), SEATS_POD_MARKER),
-						inBody(seat).any(),
+						inBody(podSeat).any(),
 						callees,
 					),
 				)
@@ -333,6 +335,12 @@ object GametestScan {
 		}
 		val memo = mutableMapOf<String, List<SettleStep>>()
 		val unmarkedHelpers = sortedSetOf<String>()
+		for (import in staticImport.findAll(text)) {
+			val (owner, member) = import.destructured
+			if (owner != simpleName && (member == "*" && helpers[owner]?.isNotEmpty() == true || helpers[owner]?.containsKey(member) == true)) {
+				unmarkedHelpers.add("$className:${lineOf(text, import.range.first) + 1} imports static $owner.$member, which seats a pod, so a bare call of it escapes the light-settled gate; import $owner and call it qualified ($owner.helper(...)) (#1455)")
+			}
+		}
 		fun steps(body: Pair<Int, IntRange>, stack: Set<String>): List<SettleStep> {
 			val range = body.second
 			fun inBody(regex: Regex) = regex.findAll(text, range.first).takeWhile { it.range.first < range.last }
@@ -505,7 +513,10 @@ object GametestScan {
 		val server = mutableListOf<String>()
 		var client = mutableListOf<String>()
 		val problems = mutableListOf<String>()
-		val helpers = seatHelpers(javaFiles, podSeat, blankLiterals, markedNear)
+		for ((name, same) in javaFiles.filter { it.name != "package-info.java" }.groupBy { it.nameWithoutExtension }.filter { it.value.size > 1 }) {
+			problems.add("${same.joinToString(" and ") { javaRoot.toPath().relativize(it.toPath()).toString() }} share the simple name $name, which the light-settled gate keys its cross-class seat helpers by; rename one (#1455)")
+		}
+		val helpers = seatHelpers(javaFiles, blankLiterals, markedNear)
 		val campaignEnvironments = javaFiles.filter { it.name == "CampaignEnvironments.java" }
 			.flatMap { file -> campaignEnvironmentName.findAll(file.readText()).map { it.groupValues[1] }.toList() }
 		for (source in javaFiles) {

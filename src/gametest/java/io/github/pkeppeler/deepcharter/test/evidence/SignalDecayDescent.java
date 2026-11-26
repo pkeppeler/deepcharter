@@ -56,7 +56,7 @@ final class SignalDecayDescent {
     private SignalDecayDescent() {}
 
     /** Records the descent of a pod of {@code chassis} with a console of {@code consoleTier} (0 for the stock one) and takes a still at {@code stillY} slabs. */
-    // seats-pod: seats the pilot in the descent pod; call it only after ClientWait.lightSettled once a carve ran
+    // seats-pod: seats the pilot in the descent pod
     static void run(
             EvidenceScenario scenario,
             ClientGameTestContext context,
