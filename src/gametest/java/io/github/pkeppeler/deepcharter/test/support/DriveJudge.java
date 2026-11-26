@@ -3,8 +3,8 @@ package io.github.pkeppeler.deepcharter.test.support;
 import io.github.pkeppeler.deepcharter.pod.PodGlideTuning;
 
 /**
- * The floor comparison and the coast's reach of {@link PodDrives}, kept apart from the game so that {@code DriveJudgeTest} runs the same
- * code as the client drive tests. The reach is spelled out here, not read from {@code PodGlideTuning.coastReach()}, so the tests check the
+ * The floor comparison and the coast's reach of {@link PodDrives}, kept out of {@code src/client} so that {@code DriveJudgeTest} runs the
+ * same code as the client drive tests. The reach is spelled out here, not read from {@code PodGlideTuning.coastReach()}, so the tests check the
  * game's copy against an independent one.
  */
 public final class DriveJudge {

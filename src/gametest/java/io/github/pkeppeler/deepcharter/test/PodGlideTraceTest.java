@@ -46,7 +46,10 @@ public class PodGlideTraceTest {
 
     private static final double FLOOR_SHARE = 0.5;
 
-    /** A tick of {@link #PAST_THE_REACH} by which the pod has used up its coast and stands at the reach. */
+    /**
+     * A tick of {@link #PAST_THE_REACH} by which the pod has used up its coast and stands at the reach. Tick 52 is the last tick before the
+     * next move, which is handed at tick 53 in {@code PAST_THE_REACH}.
+     */
     private static final int REACH_TICK = 52;
 
     /** Blocks above the test's floor the pod is held at: nothing for its coast to run into. */

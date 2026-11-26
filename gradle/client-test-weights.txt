@@ -4,6 +4,7 @@
 # class; an entry for a class that no longer exists is ignored. Stale numbers only unbalance the shards, never
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
 # BoreTripsClientTest: one CI run (45741859329, #1418), which added a settle to two of its trips; refresh from CI.
+# PodDriveLateClientTest and PodDriveSmoothClientTest: the mean over CI runs 45808423857 and 45806374168, not the two runs above.
 # ContinuityPackClientTest: one CI run (#1377, shard 2), from its START line to the next; refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
@@ -57,7 +58,7 @@ PodAttachmentClientTest 11
 PodBraceClientTest 17
 PodComponentsClientTest 13
 PodDrillClientTest 18
-PodDriveLateClientTest 74
+PodDriveLateClientTest 73
 PodDriveSmoothClientTest 121
 PodEngineSoundClientTest 31
 PodGeckoLibClientTest 15
