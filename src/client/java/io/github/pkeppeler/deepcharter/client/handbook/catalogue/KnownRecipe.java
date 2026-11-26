@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
+import io.github.pkeppeler.deepcharter.handbook.ObtainableItems;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -24,18 +25,19 @@ import net.minecraft.world.item.crafting.display.StonecutterRecipeDisplay;
 import org.jspecify.annotations.Nullable;
 
 /**
- * One recipe of the client's recipe book, resolved for the catalogue: what it makes, the grid its ingredients sit in and the station it is
- * made at. The book is the known set (ADR 0070), so a {@code KnownRecipe} is a recipe the charter knows.
+ * One recipe of the client's recipe book, resolved for the catalogue: what it makes, the grid its ingredients sit in
+ * and the station it is made at. The book is the known set (ADR 0070), so a {@code KnownRecipe} is a recipe the charter
+ * knows.
  *
  * @param entry the recipe book entry, whose crafting requirements decide "craftable now"
  * @param results what it makes, never empty stacks
  * @param columns the width of the ingredient grid
  * @param rows the height of the ingredient grid
- * @param cells {@code columns * rows} cells, row by row; a cell holds the items that may sit in it (a tag has several) and is empty for
- *     a blank
+ * @param cells {@code columns * rows} cells, row by row; a cell holds the obtainable items that may sit in it (a tag
+ *     has several, and only the members the campaign world yields are kept, ADR 0093) and is empty for a blank
  * @param station the name of the station it is made at in capitals, or an empty string
- * @param book the kind of recipe book whose screen can make it (crafting, or the furnace it smelts in), or null for a recipe no such
- *     screen makes (stonecutting, smithing, a campfire)
+ * @param book the kind of recipe book whose screen can make it (crafting, or the furnace it smelts in), or null for a
+ *     recipe no such screen makes (stonecutting, smithing, a campfire)
  */
 public record KnownRecipe(
         RecipeDisplayEntry entry,
@@ -98,7 +100,7 @@ public record KnownRecipe(
         List<List<ItemStack>> cells = new ArrayList<>();
         for (SlotDisplay slot : slots) {
             cells.add(slot.resolveForStacks(context).stream()
-                    .filter(stack -> !stack.isEmpty())
+                    .filter(stack -> !stack.isEmpty() && ObtainableItems.isObtainable(stack))
                     .toList());
         }
         while (cells.size() < columns * rows) {
@@ -150,7 +152,9 @@ public record KnownRecipe(
         return items;
     }
 
-    /** Every item that may sit in any cell, a tag's items all included (the rule of ADR 0070). */
+    /**
+     * Every item that may sit in any cell, a tag's obtainable items all included (the rules of ADR 0070 and ADR 0093).
+     */
     public Set<Item> ingredientItems() {
         Set<Item> items = new LinkedHashSet<>();
         for (List<ItemStack> cell : cells) {

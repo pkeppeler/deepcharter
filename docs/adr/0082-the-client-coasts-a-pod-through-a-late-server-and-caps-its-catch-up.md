@@ -54,9 +54,56 @@ At the stock speed 0.2, in `PodDriveSmoothClientTest`:
 
 ## Amendment: the coast has a tail, and a coasted pod does not crawl (#1112)
 
-Two causes, both in the tick after a stall. (1) A moveless stretch of 4 ticks was the coast's whole window (2 ticks of the glide, then 2 of coast); the tall world's server ticks (#841) run long, so a 3-tick stall plus the server's own lateness reached 5 and the pod stood for a tick. (2) A pod that had coasted sat almost on the next move's target, and the glide covered half of that small gap (0.135 blocks, so 0.0675) in the tick, while the server reported 0.2: a crawl. The 0.0675 is that value, and it is what the three CI failures (#897, #1000, #1095) showed against the 0.1 floor in `PodDriveSmoothClientTest`.
+Two causes, both in the tick after a stall. (1) A moveless stretch of 4 ticks was the coast's whole window (2 ticks of the glide, then 2 of coast); the tall world's server ticks (#841) run long, so a 3-tick stall plus the server's own lateness reached 5 and the pod stood for a tick. (2) A pod that had coasted sat almost on the next move's target, and the glide covered half of that small gap (0.135 blocks, so 0.0675) in the tick, while the server reported 0.2: a crawl. The 0.0675 is that value, and it is what CI runs on PRs #897 and #1000 showed against the 0.1 floor in `PodDriveSmoothClientTest` ([CI runs](#ci-runs) below).
 
 - `coastTicks` is 4 and the last coast tick draws only `coastTailShare` (0.6) of the speed, so a later server slows the pod instead of stopping it dead. The window is 6 moveless ticks (2 of glide, 3 at full speed, the tail); the lagging-server drive of 5 leaves a tick of headroom.
 - A glide that arrives early (the speed floor ran the pod onto its target) ends there and the pod coasts, so it does not stand for the rest of the glide.
 - While the server reports a pod that has coasted moving, a glide tick covers at least that speed, or the whole gap when it is smaller; the catch-up cap still applies, so there is no lunge. A pod that has not coasted keeps the share: it trails its target by design, and the jitter's skipped ticks need that gap.
 - `settleShare` is 0.12, so the way back from a hidden stop (up to 0.72 blocks past it) stays under half the frame's speed.
+
+## Amendment 2026-11-25: a late move is not a stop (#1112)
+
+The invariant is unchanged: a pod is never drawn more than `coastTicks - 1 + coastTailShare` ticks of speed past where the server put it. A move that arrives one tick late carries a stale position, so a pod that has coasted is already ahead of it. The old rule read that as an overshoot and gave it back at `settleShare` (a 0.024 step backward, then a stand: the 0.025 of the CI run on PR #871 and the near freeze of the one on PR #1095).
+
+- A move that advances the target along the coast (by at least half the server's reported speed along the coast) is a late move, not a stop: the pod goes on a whole tick, or by what is left of the reach above (counted in blocks past the target) when that is less, and stands at its end. It no longer gives the excess back while moves keep advancing.
+- While no move has arrived and the server reports the pod moving, the pod goes on within the same reach (it stood for the whole wait before), for `settleDelayTicks`.
+- A move that does not advance, or a pod the server reports still, settles back as before.
+
+### The 0.0674533 of CI
+
+CI runs ([below](#ci-runs)) reported 0.06745330749075862, the pilot's view in the short-stall drive, on `main`'s `PodGlide`. Two roundings put a late move a hair behind a coasted pod:
+
+- the reported speed travels as an `LpVec3`, so 0.2 arrives as 2 × 19660 / 32766 − 1 = 0.2000244, or 819.3000 position quanta (1/4096);
+- a position travels rounded to a quantum, and three moves in five step 819 quanta, not 819.2.
+
+A pod that arrived on its target and coasted one tick on is 819.3000 quanta past it. A move one tick late moves the target 819 quanta, which lands 0.30000610 quanta (7.3244e-5 blocks) behind the pod. `main` read that as an overshoot and settled: the pod snapped back 7.3244e-5 and stood for the tick. The next tick the rest came in a burst, and the pod caught up at the capped 1.35 × 0.2000244 = 0.270033. The test measures a tick from the frame a quarter into it, so three quarters of the tick before counts: 0.75 × −7.3244e-5 + 0.25 × 0.270033 = 0.0674533, with the same 0.0675082 longest frame step and −1.8311e-5 backward step that CI logged. (The first amendment's reading of 0.0675 as half of 0.135 was wrong.) A server that runs two ticks late for four ticks and then catches up reproduces it in the client test.
+
+### Three hitches of the same kind
+
+A 1-D model of `PodGlide` under `PacketJitter`, matched to a per-tick client trace to the last digit, judged every pattern of one to three ticks of extra lateness on five moves around each late drive. Three hitches were left after the late-move rule above, each fixed:
+
+- The go-on step was a whole tick, the tail share, or nothing, so a pod a rounding step short of the tail's reach stood. It now draws what is left of the reach and stands at its end.
+- A capped catch-up drew the cap and then a sliver of the gap, and a coast after that sliver made a short tick. Capped steps of a moving pod now split the gap evenly, each still under the cap, counting the target's own advance ([below](#the-even-split-chases-a-moving-target)).
+- A coasted pod within a tick of its target, while the moves advance, draws the whole tick past it, and that part counts against the reach. A move that does not advance (a pushed pod the server slows faster than the speed it reported) arrives on its target as before, so a knockback or a tow release is not dead-reckoned past it.
+
+A client test meets them only when CI's server happens to run late in that pattern, so `PodGlideTraceTest` replays one trace of the model for each through the real `PodGlide`; each fails without its fix.
+
+### The even split chases a moving target
+
+The first even split, `gap / ceil(gap / cap)`, treated the target as standing still. A driven pod's target moves on by the reported speed each tick, so a gap between two and three caps (0.54 to 0.81 blocks at the stock speed) split in three steps of a third: at a gap of 0.6 that is exactly the speed, and the gap never closed. After a slip of a few late moves closed by a burst, the pod trailed the server by 0.8 for the rest of the drive instead of 0.6, and `PodMovementClientTest` failed CI at 0.80001.
+
+- The step is the even split against the moving target: the fewest steps under the cap that reach it, `(gap + (n - 1) × speed) / n`. Every such step is more than the speed while the gap is, so the gap closes.
+- It is held to leave the pod at least a tick of speed short of its target, since a late move would otherwise leave the rest as a sliver, and never below the still split's step, which ends on the target in whole steps. A step is therefore more than the speed while the gap is over the glide's steady gap of two ticks of speed.
+- The model's sweep of 122,778 lateness patterns finds no floor failure at 1.0× and 1.4× speed, and after every late spell it tried (stalls, late moves, slips of one to three ticks for up to 15 ticks, under the jitter or not) the trail is back within `PodMovementClientTest`'s margin of its steady value six ticks after the spell ends, sooner than on `main`. Split against the moving target alone fails the floor in 533 patterns at 1.0×; the still split alone fails the recovery after 474 of the 1,344 spells. `PodGlideTraceTest` replays one trace of each.
+
+### A pod at the reach is not held to the floor
+
+A stale move resets the client's moveless count but not the pod's lead over the last position the server sent, so a server late before an injected stall can run the pod to the reach with fewer moveless ticks than the coast covers. The invariant then makes the pod stand. The drive tests (`test/support/PodDrives`) leave out of the floor check only the two ticks that take in a tick where the pod stood at the reach past the last position the server sent and no move came. They hold every other tick to half the speed, and the drive that runs late and catches up never reaches the reach.
+
+### CI runs
+
+The `PodDriveSmoothClientTest` failures the amendments cite, all in the short-stall drive's pilot's view (run id, linked to the failed attempt):
+
+- 0.06745330749075862: PR #897 ([45211574468](https://github.com/pkeppeler/deepcharter/actions/runs/45211574468/attempts/1), [45507363457](https://github.com/pkeppeler/deepcharter/actions/runs/45507363457/attempts/1)), PR #976 ([45553780243](https://github.com/pkeppeler/deepcharter/actions/runs/45553780243/attempts/1)), PR #1000 ([45214204513](https://github.com/pkeppeler/deepcharter/actions/runs/45214204513/attempts/2)), PR #1257 ([45541245411](https://github.com/pkeppeler/deepcharter/actions/runs/45541245411/attempts/1)), PR #1307 ([45579228980](https://github.com/pkeppeler/deepcharter/actions/runs/45579228980/attempts/2)) and PR #1318 ([45584720576](https://github.com/pkeppeler/deepcharter/actions/runs/45584720576/attempts/1)).
+- 0.024938963726093277: PR #871 ([45460213824](https://github.com/pkeppeler/deepcharter/actions/runs/45460213824/attempts/1)).
+- 5.493275828172273e-5: PR #1095 ([45204498467](https://github.com/pkeppeler/deepcharter/actions/runs/45204498467/attempts/2)).

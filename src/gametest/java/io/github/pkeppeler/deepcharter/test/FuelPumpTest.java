@@ -62,8 +62,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses, biofuel is
- * crafted from four crops and refuels, and a reserve tank adds 25 litres of capacity and clears Stranded.
+ * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses,
+ * biofuel crafts from three stalk mash and refuels, and a reserve tank adds 25 litres of capacity and clears Stranded.
  */
 public class FuelPumpTest {
     private static final float EPSILON = 0.001f;
