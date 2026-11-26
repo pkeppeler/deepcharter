@@ -141,6 +141,8 @@ public record MaterialsTree(Node root, List<Material> materials) {
         private final Map<Item, List<KnownRecipe>> followed = new HashMap<>();
         /** For each X asked about, whether an item is made solely from X. */
         private final Map<Item, Map<Item, Boolean>> solelyFrom = new HashMap<>();
+        /** Whether the innermost {@link #solely} call under way has met an item again on its path. */
+        private boolean revisited;
 
         Walk(Function<Item, List<KnownRecipe>> known, Map<Item, Integer> stock) {
             this.known = known;
@@ -218,9 +220,12 @@ public record MaterialsTree(Node root, List<Material> materials) {
 
         /**
          * Whether {@code item} is {@code from}, or has a known recipe and every one has a cell taking only {@code from} or items made
-         * solely from it. {@code settled} keeps each answer, so an item is worked out once per {@code from}: the walk is bounded by the
-         * known recipes reachable from it. An item met again on {@code path} counts as not made solely from {@code from}, which errs
-         * towards following a recipe; the branch guard still stops that recipe going round.
+         * solely from it. An item met again on {@code path} counts as not made solely from {@code from}, which errs towards following a
+         * recipe; the branch guard still stops that recipe going round. {@code settled} keeps only answers that met no item again below
+         * them: an answer that did depends on where the walk came in, and keeping it would make the tree depend on the order the recipes
+         * are listed. So an item off every recipe loop is worked out once per {@code from}, and one on a loop again each time it is
+         * reached. The walk still ends, since {@code path} never repeats an item, but through a tangle of loops it can take a step for
+         * each path without a repeat.
          */
         private boolean solely(Item item, Item from, Map<Item, Boolean> settled, Set<Item> path) {
             if (item == from) {
@@ -231,15 +236,21 @@ public record MaterialsTree(Node root, List<Material> materials) {
                 return answer;
             }
             if (!path.add(item)) {
+                revisited = true;
                 return false;
             }
+            boolean above = revisited;
+            revisited = false;
             List<KnownRecipe> recipes = recipes(item);
             boolean solely = !recipes.isEmpty()
                     && recipes.stream()
                             .allMatch(recipe ->
                                     recipe.needs().stream().anyMatch(need -> takesOnly(need, from, settled, path)));
             path.remove(item);
-            settled.put(item, solely);
+            if (!revisited) {
+                settled.put(item, solely);
+            }
+            revisited |= above;
             return solely;
         }
 

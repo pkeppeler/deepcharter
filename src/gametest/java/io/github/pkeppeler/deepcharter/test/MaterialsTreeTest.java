@@ -247,8 +247,7 @@ public class MaterialsTreeTest {
     @GameTest
     public void aRecipeLoopIsNotFollowed(GameTestHelper helper) {
         // A torch from coal, coal from a stick, a stick from a torch: no pair undoes the other, but the stick comes
-        // only
-        // from a torch, which comes only from coal, so coal from a stick undoes the torch.
+        // only from a torch, which comes only from coal, so coal from a stick undoes the torch.
         KnownRecipe torch = recipe(helper, Items.TORCH, 1, item(Items.COAL));
         KnownRecipe coal = recipe(helper, Items.COAL, 1, STICK);
         KnownRecipe stickFromTorch = recipe(helper, Items.STICK, 1, item(Items.TORCH));
@@ -265,6 +264,30 @@ public class MaterialsTreeTest {
                 helper,
                 node(helper, out, Items.STICK).recipe() == stickFromPlanks,
                 "the stick is made from planks, not from the torch being made");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theTreeDoesNotDependOnTheOrderRecipesAreListed(GameTestHelper helper) {
+        // Coal from a torch or a stick, a torch from a stick and coal, a stick from a torch. The torch has a cell of
+        // only coal, so it is made solely from coal, and so is the stick, made only from the torch: both coal
+        // recipes undo another, whichever is listed first.
+        KnownRecipe campfire = recipe(helper, Items.CAMPFIRE, 1, item(Items.COAL));
+        KnownRecipe coalFromTorch = recipe(helper, Items.COAL, 1, item(Items.TORCH));
+        KnownRecipe coalFromStick = recipe(helper, Items.COAL, 1, STICK);
+        KnownRecipe torch = recipe(helper, Items.TORCH, 1, STICK, item(Items.COAL));
+        KnownRecipe stickFromTorch = recipe(helper, Items.STICK, 1, item(Items.TORCH));
+        MaterialsTree torchFirst = MaterialsTree.of(
+                campfire, known(campfire, coalFromTorch, coalFromStick, torch, stickFromTorch), stock());
+        MaterialsTree stickFirst = MaterialsTree.of(
+                campfire, known(campfire, coalFromStick, coalFromTorch, torch, stickFromTorch), stock());
+        expect(
+                helper,
+                torchFirst.root().equals(stickFirst.root()),
+                "the same recipes in two orders give one tree, got %s and %s",
+                describe(torchFirst.materials()),
+                describe(stickFirst.materials()));
+        expectMaterials(helper, torchFirst, "the coal is a base material", Items.COAL, 1, 0);
         helper.succeed();
     }
 
@@ -411,8 +434,7 @@ public class MaterialsTreeTest {
     @GameTest
     public void ironGearSmeltedToNuggetsIsNotFollowed(GameTestHelper helper) {
         // Ingots from nuggets, nuggets smelted from iron tools and armour, a pickaxe from ingots: a loop of three
-        // steps.
-        // Smelting gear down is salvage, so the nuggets are made only from ingots and unpacking them undoes that.
+        // steps. Smelting gear down is salvage, so the nuggets come only from ingots and unpacking them undoes that.
         KnownRecipe anvil = shipped(helper, "minecraft:anvil");
         KnownRecipe block = shipped(helper, "minecraft:iron_block");
         KnownRecipe nuggets = shipped(helper, "minecraft:iron_nugget");
