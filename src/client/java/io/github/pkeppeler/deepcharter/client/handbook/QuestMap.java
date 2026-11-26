@@ -424,7 +424,7 @@ final class QuestMap {
             items.add(new CardItem(
                     slotItems,
                     icon,
-                    new Rect(icon.x(), icon.y(), icon.w() + line + ClickCue.width(), icon.h()),
+                    new Rect(icon.x(), icon.y(), icon.w() + line + q.itemCountGap() + ClickCue.width(), icon.h()),
                     held,
                     target.count()));
         }

@@ -6,8 +6,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * The handbook's mark of a thing a click opens (#1413), carried by the quest map's steps and the index card's items
- * (#1425): a chevron in faint ink inside the thing's right edge, and under the mouse a highlight behind it, the chevron in full ink and the pointing hand. Its
- * sizes are {@link QuestMapTuning#clickCueSize()} and {@link QuestMapTuning#clickCueInset()}; its colours are the
+ * (#1425): a chevron in faint ink inside the thing's right edge, and under the mouse a highlight behind it, the chevron
+ * in full ink and the pointing hand. Its sizes are {@link QuestMapTuning#clickCueSize()} and {@link QuestMapTuning#clickCueInset()}; its colours are the
  * paper's hover fill, faint ink and ink in {@link HandbookScreenTuning}.
  */
 final class ClickCue {

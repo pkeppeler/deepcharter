@@ -49,7 +49,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param cardItemInset space between the card's left edge and the first needed item
  * @param cardBottomPad space below the last row of needed items
  * @param itemIconSize size of an item icon on the card
- * @param itemCountGap space between an item icon and its count
+ * @param itemCountGap space between an item icon and its count, and between the count and its click cue
  * @param anyCueGap space between an any-of slot's count and its "any" cue
  * @param cycleTicks how long an any-of slot's icon shows each alternative
  * @param itemCountTop distance from the top of an item icon to its count's text

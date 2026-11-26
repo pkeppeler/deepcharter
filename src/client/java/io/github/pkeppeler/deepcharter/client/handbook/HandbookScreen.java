@@ -1178,8 +1178,8 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * Whether a click on an item of {@code chapter}'s index card opens its recipe: the card is up, on a chapter in full,
-     * and the window has room for the catalogue.
+     * Whether a click on an item of {@code chapter}'s index card opens its recipe: the card is up, on a chapter in
+     * full, and the window has room for the catalogue.
      */
     private static boolean itemsOpen(HandbookPage.Chapter chapter) {
         return chapter.visibility() == HandbookVisibility.FULL && CatalogueScreens.canOpen();

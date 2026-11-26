@@ -1048,7 +1048,11 @@ public class QuestMapClientTest implements FabricClientGameTest {
     private static List<Fill> cardItemCueInk(Frame frame, Drawn count) {
         QuestMapTuning q = QuestMapTuning.current();
         Box icon = cardIcon(count);
-        Box after = new Box(count.box().right(), icon.y(), q.clickCueInset() + q.clickCueSize() + 1, icon.height());
+        Box after = new Box(
+                count.box().right(),
+                icon.y(),
+                q.itemCountGap() + q.clickCueInset() + q.clickCueSize() + 1,
+                icon.height());
         return frame.fills().stream()
                 .filter(fill -> fill.box().width() == 1 && fill.box().height() == 1 && contains(after, fill.box()))
                 .toList();
