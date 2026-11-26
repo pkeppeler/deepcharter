@@ -1,5 +1,6 @@
 {
   "attributes": {
+    "minecraft:audio/background_music": {},
     "minecraft:gameplay/can_pillager_patrol_spawn": false,
     "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
     "minecraft:visual/ambient_light_color": "#0c0a09",

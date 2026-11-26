@@ -492,6 +492,7 @@ public class KellsShaftBoreTest {
     private static void startSidestep(Run run, PodEntity pod, Side side) {
         run.sideways = true;
         run.side = side;
+        side.face(pod);
         run.sideStart = side.along(pod);
         run.lastAlong = run.sideStart;
         run.idleTicks = 0;
