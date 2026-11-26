@@ -460,7 +460,7 @@ public class CompanyRecoveryTest {
     public void aPodWithNoPilotWaitsForNoCrew(GameTestHelper helper) {
         Plan plan = new Plan();
         plan.mounted = false;
-        // A pod with nobody aboard burns nothing (#1434), so it cannot run itself dry: it is left dry.
+        // The pilot ran it dry and got out: an empty pod burns nothing (#1434).
         plan.strand = false;
         plan.mutate = pod -> {
             pod.setFuel(0f);

@@ -88,7 +88,11 @@ public class PodStatsTest {
     }
 
     private static MockPlayer seatPilot(GameTestHelper helper, PodEntity pod) {
-        MockPlayer pilot = MockPlayers.join(helper, "stats-pilot");
+        return seatPilot(helper, pod, "stats-pilot");
+    }
+
+    private static MockPlayer seatPilot(GameTestHelper helper, PodEntity pod, String name) {
+        MockPlayer pilot = MockPlayers.join(helper, name);
         pilot.teleportTo(helper.getLevel(), pod.position(), SOUTH, 0f);
         if (!pilot.player().startRiding(pod)) {
             throw helper.assertionException("the pilot could not mount the pod");
@@ -193,11 +197,7 @@ public class PodStatsTest {
         PodEntity control = helper.spawn(PodRegistry.POD, new Vec3(1.5, FLOOR_Y + 1, 1.5));
         // Only a pod with someone aboard burns (#1434).
         MockPlayer pilot = seatPilot(helper, drained);
-        MockPlayer controlPilot = MockPlayers.join(helper, "stats-control-pilot");
-        controlPilot.teleportTo(helper.getLevel(), control.position(), SOUTH, 0f);
-        if (!controlPilot.player().startRiding(control)) {
-            throw helper.assertionException("the control pilot could not mount the pod");
-        }
+        MockPlayer controlPilot = seatPilot(helper, control, "stats-control-pilot");
         int ticks = 20;
         helper.runAfterDelay(ticks, () -> {
             try {
