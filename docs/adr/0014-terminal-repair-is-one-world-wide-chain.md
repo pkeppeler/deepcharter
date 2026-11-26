@@ -17,7 +17,7 @@ The colony's terminals are repaired once per world: when any charter fixes one, 
 
 - A request is checked in this order: the player is within 6 blocks of the block (eye to block centre), the block is a terminal, the player is on a charter (for `CHARTER_ONLY` types), the repair data is readable (for types with repair), then what it needs of the repair state. A refusal changes nothing and tells the player why.
 - Unreadable repair data is refused as `STATE_UNREADABLE` and logged once. Gameplay code never throws on it, and the data is written back unchanged. Only explicit calls such as `Terminals.isRepaired` throw.
-- An unrepaired terminal opens, offline: it is where parts go in. Every other action needs a repaired terminal and a handler registered with `TerminalActions.register`.
+- An unrepaired terminal opens its repair menu, a slot per part, where the parts go in ([ADR 0099](0099-a-slotted-menu-is-a-server-authoritative-container-of-typed-slots-and-an-offline-terminal-is-one.md)). Every action needs a repaired terminal and a handler registered with `TerminalActions.register`.
 - Terminals cannot be broken in survival (hardness -1, as bedrock), and the Wither and the Ender Dragon cannot break them: the blocks are in the tag `deepcharter:terminals`, which `wither_immune` and `dragon_immune` include. A new terminal block goes into that tag.
 
 ## Consequences

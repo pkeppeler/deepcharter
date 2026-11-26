@@ -71,8 +71,8 @@ public class ThemeLooksTest {
         }
     }
 
-    // The expected values below are the literals the Java held before #226, written out. Do not read them from the
-    // files.
+    // The expected values below are the literals the Java held before #226, written out, and the values added since
+    // (#1265 added the ghost veil, 0xA8050A06). Do not read them from the files.
 
     @GameTest
     public void theDefaultCrtLookIsTheOldOne(GameTestHelper helper) {
@@ -92,6 +92,7 @@ public class ThemeLooksTest {
                         0xFF2E7A45,
                         0xFF123D20,
                         0xFFFFB000,
+                        0xA8050A06,
                         6,
                         2,
                         1,
