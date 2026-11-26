@@ -25,12 +25,12 @@ public enum Consumable {
     // Layer 2 tool: under one layer-2 run, and above the dynamite it outdoes.
     PLASTIC_EXPLOSIVES("plastic_explosives", 400, Kind.CONSUMED, Use.PILOT_SEAT),
     // Layer 1 tool (#509): the only thing that clears Company rock. A straight layer 1 bore needs several, so one costs
-    // a fraction of a stock layer 1 run. $20 a row, as before #1458 made it twice as deep: the drill that bites (#526)
-    // is held against that.
-    BLASTING_CHARGE("blasting_charge", 80, Kind.CONSUMED, Use.PILOT_SEAT),
+    // a fraction of a stock layer 1 run, and the shaft at most three runs. Twice as deep since #1458, so a row costs
+    // less than a slab the drill bites through (#526).
+    BLASTING_CHARGE("blasting_charge", 70, Kind.CONSUMED, Use.PILOT_SEAT),
     // Layer 2 and 3 tool (#526): the same set-up as the blasting charge, but it clears a whole Company rock column.
-    // $200 is under three blasting charges ($240), the three it replaces in a thick stretch.
-    SHAPED_CHARGE("shaped_charge", 200, Kind.CONSUMED, Use.PILOT_SEAT),
+    // $180 is under three blasting charges ($210), the three it replaces in a thick stretch.
+    SHAPED_CHARGE("shaped_charge", 180, Kind.CONSUMED, Use.PILOT_SEAT),
     // SPEC section 11: an expensive escape, about 2 layer-2 runs; the cargo drop is the rest of the cost.
     QUANTUM_TELEPORTER("quantum_teleporter", 690, Kind.CONSUMED, Use.PILOT_SEAT),
     // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs (3.6 from the outpost, #320; $1,650 since #963,
@@ -42,7 +42,7 @@ public enum Consumable {
     // their bands.
     THROWN_FLARE("thrown_flare", 12, Kind.CONSUMED, Use.THROWN),
     THROWN_DECOY("thrown_decoy", 25, Kind.CONSUMED, Use.THROWN),
-    THROWN_CHARGE("thrown_charge", 65, Kind.CONSUMED, Use.THROWN),
+    THROWN_CHARGE("thrown_charge", 60, Kind.CONSUMED, Use.THROWN),
     // On foot (#986): not used up. A person on foot clips it to a pod's winch, and it is theirs to keep. Priced at
     // about three quarters of a stock layer 1 run, so the first descent pays for it once and no pod is ever without
     // one.

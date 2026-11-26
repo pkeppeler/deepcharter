@@ -8,6 +8,8 @@ Amends [ADR 0050](0050-company-rock-can-be-blasted-and-the-drill-still-refuses-i
 
 Amended by [ADR 0069](0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md): a hand tool can brute-force Company rock at a ruinous cost. The bite and the shaped charge stand.
 
+Retuned 2026-11-26 (#1458, [mechanics.md](../design/mechanics.md#explosive-tiers-1458-a)): the blasting charge clears 4 rows for $70 and the shaped charge 12 rows for $180. The decision stands; only the numbers moved.
+
 ## Decision
 
 - **The drill bites Company rock from tier 3, as the chassis' cap leaves it** (`PodRockBite`, `PodRockBiteTuning.minTier`). A pod whose `effectiveTier(DRILL)` is 3 or more bores a slab with Company rock in it. Below that the drill still refuses, as ADR 0050 says. The tier is a number in one record, so the design log's earlier "tier 5 or 6" is a tuning change, not a rewrite.

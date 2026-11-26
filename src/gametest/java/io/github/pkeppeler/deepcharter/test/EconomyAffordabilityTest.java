@@ -72,8 +72,11 @@ public class EconomyAffordabilityTest {
      * about a fifth today). Half is room for a retune of the ore and still a stop for one that makes selling it the main income.
      */
     private static final double CATALYST_SALE_SHARE = 0.5;
-    /** A straight layer 1 shaft, paid in blasting charges, costs this many stock layer 1 runs at most (#509). */
-    private static final int STRAIGHT_SHAFT_RUNS = 2;
+    /**
+     * A straight layer 1 shaft, paid in blasting charges, costs this many stock layer 1 runs at most: two at #509, three since the explosives became a
+     * deliberate spend (#1458).
+     */
+    private static final int STRAIGHT_SHAFT_RUNS = 3;
     /** A later charter's first refurbished Mole, with no pod yet, and its second one. */
     private static final int REFURBISHED_FIRST_RUNS = 2;
 
@@ -91,6 +94,7 @@ public class EconomyAffordabilityTest {
             Map.entry(Consumable.QUANTUM_TELEPORTER, new Target(true, 1.5, 2)),
             Map.entry(Consumable.PLASTIC_EXPLOSIVES, new Target(true, 0.25, 1)),
             Map.entry(Consumable.BLASTING_CHARGE, new Target(false, 0.25, 1)),
+            // A layer 2 and 3 tool (#526), so a layer 2 run's band since #1458 raised it past a layer 1 run.
             Map.entry(Consumable.SHAPED_CHARGE, new Target(true, 0.25, 1)),
             Map.entry(Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1)),
             Map.entry(Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4)),
@@ -882,12 +886,13 @@ public class EconomyAffordabilityTest {
     }
 
     /**
-     * The blasting charge (#509) is the price of a straight shaft. A straight layer 1 bore needs one charge for each slab the drill refuses (one charge clears 2
-     * slab rows, so a refusal under a hole already blasted costs nothing more; the bore bot measured 5.3 a bore against the 5.4 counted here). The whole shaft must cost a
-     * few stock layer 1 runs at most: a shaft is a one-off the charter keeps, but a price that no run could pay for would make the answer a joke.
+     * The blasting charge (#509) is the price of a straight shaft. A straight layer 1 bore needs one charge for each refused stretch of 2 rows the drill meets, less
+     * those that a charge already blasted: a charge clears {@code chargeDepth} rows, so after one the next {@code chargeDepth / 2 - 1} stretches cost nothing. The
+     * bore bot measured 5.0 a bore at 2 rows and 4.5 at 4 (#1458), against the 5.4 and 5.0 counted here, which reach the crust as no measured bore did. The whole
+     * shaft must cost a few stock layer 1 runs at most: a shaft is a one-off the charter keeps, but a price that no run could pay for would make the answer a joke.
      */
     @GameTest
-    public void aStraightLayerOneShaftCostsAtMostTwoStockRunsInCharges(GameTestHelper helper) {
+    public void aStraightLayerOneShaftCostsAtMostThreeStockRunsInCharges(GameTestHelper helper) {
         int height = EarlyRunModel.layerOneBlocks();
         double slabCells = Chassis.MOLE.slabCells();
         double refusedSlabs = 0;
@@ -897,7 +902,9 @@ public class EconomyAffordabilityTest {
             // Layer 1's crust (3 blocks) is bored by hand through the breach, not blasted.
             int blocks = span.size() - (zone == Zones.COUNT - 1 ? 3 : 0);
             double slabs = blocks / 2.0;
-            refusedSlabs += slabs * (1 - Math.pow(1 - EarlyRunModel.companyRockChance(name), slabCells));
+            double refused = 1 - Math.pow(1 - EarlyRunModel.companyRockChance(name), slabCells);
+            // A renewal count: each charge also clears the stretches under the refused one.
+            refusedSlabs += slabs * refused / (1 + (RepairTuning.DEFAULT.chargeDepth() / 2.0 - 1) * refused);
         }
         double cost = refusedSlabs * Consumable.BLASTING_CHARGE.price();
         Run run = stockRunInLayerOne();
