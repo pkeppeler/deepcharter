@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.layer.gen;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import java.util.Arrays;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -18,12 +19,26 @@ import org.jspecify.annotations.Nullable;
  * column with unmoved contacts. The material rule writes a block over every solid block of layer 1 (the strata, and the
  * breach crust under them), so the fill's choice never reaches the world; a good guess only makes most of those writes
  * a block over the same block, which {@code SurfaceWrites} skips. A row the guess gets wrong (near a moved contact) is
- * written as before. Why and the target: ADR 0090's amendment.
+ * written as before. Why and the target: ADR 0108.
  */
 public final class StrataPrefill {
     private static final ResourceKey<NoiseGeneratorSettings> CAMPAIGN = ResourceKey.create(
             Registries.NOISE_SETTINGS, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "campaign"));
     private static final CampaignBands.Band BAND = CampaignBands.LAYER_1;
+
+    /** A generator's settings and their prefill, null when they have none. */
+    private record Known(
+            Holder<NoiseGeneratorSettings> settings,
+            @Nullable StrataPrefill prefill) {}
+
+    /** The most settings kept: a server has a few generators, so more means old registries; the table starts again. */
+    private static final int MOST_SETTINGS = 16;
+
+    /**
+     * Every settings holder asked about, shared by the worker threads and replaced whole when one is added (as
+     * {@code SurfaceWrites} keeps its pairs): each chunk's fill asks, and finding the strata walks the material rule.
+     */
+    private static volatile Known[] known = new Known[0];
 
     /** The guess for each row of the band, bottom first. */
     private final BlockState[] rows;
@@ -37,6 +52,24 @@ public final class StrataPrefill {
 
     /** The prefill of a generator's settings: the campaign's, when its material rule holds strata; null otherwise. */
     public static @Nullable StrataPrefill of(Holder<NoiseGeneratorSettings> settings) {
+        for (Known entry : known) {
+            if (entry.settings == settings) {
+                return entry.prefill;
+            }
+        }
+        StrataPrefill prefill = build(settings);
+        remember(new Known(settings, prefill));
+        return prefill;
+    }
+
+    private static synchronized void remember(Known entry) {
+        Known[] was = known;
+        Known[] now = was.length < MOST_SETTINGS ? Arrays.copyOf(was, was.length + 1) : new Known[1];
+        now[now.length - 1] = entry;
+        known = now;
+    }
+
+    private static @Nullable StrataPrefill build(Holder<NoiseGeneratorSettings> settings) {
         if (!settings.is(CAMPAIGN)) {
             return null;
         }

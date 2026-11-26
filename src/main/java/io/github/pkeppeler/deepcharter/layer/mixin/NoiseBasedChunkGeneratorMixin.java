@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.layer.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import io.github.pkeppeler.deepcharter.layer.gen.StrataPrefill;
@@ -12,14 +14,13 @@ import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Lets the campaign's noise fill write layer 1's strata rock in place of its default block ({@link StrataPrefill},
  * #1472). Target: {@code NoiseBasedChunkGenerator.doFill(NoiseChunk, ChunkAccess)}, its head (the generator's prefill,
  * once a chunk) and its one call to {@code Aquifer.computeSubstance(IIID)}, whose null is a solid block. Why the world
- * stays the same: ADR 0090's amendment.
+ * stays the same: ADR 0108.
  */
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class NoiseBasedChunkGeneratorMixin {
@@ -32,7 +33,7 @@ public abstract class NoiseBasedChunkGeneratorMixin {
         prefill.set(StrataPrefill.of(((NoiseBasedChunkGenerator) (Object) this).generatorSettings()));
     }
 
-    @Redirect(
+    @WrapOperation(
             method = "doFill",
             at =
                     @At(
@@ -45,8 +46,9 @@ public abstract class NoiseBasedChunkGeneratorMixin {
             int y,
             int z,
             double density,
+            Operation<@Nullable BlockState> original,
             @Share("prefill") LocalRef<@Nullable StrataPrefill> prefill) {
-        BlockState substance = aquifer.computeSubstance(x, y, z, density);
+        BlockState substance = original.call(aquifer, x, y, z, density);
         StrataPrefill plan = prefill.get();
         return substance == null && plan != null ? plan.at(y) : substance;
     }

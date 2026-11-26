@@ -9,7 +9,6 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -126,16 +125,10 @@ public final class SurfaceWrites {
     }
 
     /**
-     * The section to write {@code state} into at {@code pos}, when the fast path may, else null. It does not read the toggle, so a
-     * test of the guard does not depend on it.
+     * The block at {@code pos} when the fast path may write {@code state} over it, else null: the whole guard. It does
+     * not read the toggle, so a test of the guard does not depend on it.
      */
-    // test-seam: SurfaceWritesTest asserts the whole guard here (ADR 0090); set() runs the same guard, neutralWas.
-    public static @Nullable LevelChunkSection fastSection(ChunkAccess chunk, BlockPos pos, BlockState state) {
-        return neutralWas(chunk, pos, state) == null ? null : chunk.getSection(chunk.getSectionIndex(pos.getY()));
-    }
-
-    /** The block at {@code pos} when the fast path may write {@code state} over it, else null. */
-    private static @Nullable BlockState neutralWas(ChunkAccess chunk, BlockPos pos, BlockState state) {
+    public static @Nullable BlockState neutralWas(ChunkAccess chunk, BlockPos pos, BlockState state) {
         if (chunk.getClass() != ProtoChunk.class
                 || chunk.getPersistedStatus().isOrAfter(ChunkStatus.INITIALIZE_LIGHT)) {
             return null;

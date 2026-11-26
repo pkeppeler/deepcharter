@@ -36,15 +36,17 @@ public class NarrowCaveFunctionTest {
     private static final String CAMPAIGN = "campaign_full";
     private static final ResourceKey<DensityFunction> SHIPPED = key("claim_caves");
     private static final ResourceKey<DensityFunction> VANILLA = key("test/claim_caves_vanilla");
+    /** A narrow term whose inputs are noise times 10,000, where a float's rounding is about 1e-3. */
+    private static final ResourceKey<DensityFunction> LARGE = key("test/narrow_cave_large");
+
+    private static final ResourceKey<DensityFunction> LARGE_VANILLA = key("test/narrow_cave_large_vanilla");
     /** Chunks across the claim, far apart, so the cells hold shut and open terms alike. */
     private static final List<int[]> CHUNKS = List.of(
             new int[] {0, 0}, new int[] {37, -12}, new int[] {-81, 54}, new int[] {610, 605}, new int[] {-300, -1200});
 
     @GameTest
     public void theNarrowCavesAreTheirVanillaExpressionFloatForFloat(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(
-                helper.getLevel().getServer(),
-                ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", CAMPAIGN)));
+        ServerLevel level = campaign(helper);
         DensityFunction shipped = function(level, SHIPPED);
         DensityFunction vanilla = function(level, VANILLA);
         expect(
@@ -52,10 +54,7 @@ public class NarrowCaveFunctionTest {
                 shipped.toString().contains(NarrowCaveFunction.class.getSimpleName()),
                 "the shipped claim_caves has no narrow_cave term, so this compares vanilla with itself: %s",
                 shipped);
-        RandomState random = level.getChunkSource().randomState();
-        DensitySamplerSet samplers = random.samplersWithContext(SamplerContext.builder()
-                .useBufferArena(DensityBufferArena.GLOBAL)
-                .build());
+        DensitySamplerSet samplers = samplers(level);
         int[] tally = new int[2];
         for (int[] chunk : CHUNKS) {
             for (CampaignBands.Band band :
@@ -109,6 +108,55 @@ public class NarrowCaveFunctionTest {
         helper.succeed();
     }
 
+    /**
+     * The skip's slack scales with the inputs: a {@code narrow_cave} whose width and ridges are noise times 10,000 is
+     * its vanilla expression float for float too, with open and shut blocks both in the sample.
+     */
+    @GameTest
+    public void aNarrowCaveOfLargeInputsIsItsVanillaExpressionFloatForFloat(GameTestHelper helper) {
+        ServerLevel level = campaign(helper);
+        DensitySamplerSet samplers = samplers(level);
+        DensityFunction large = function(level, LARGE);
+        DensityFunction vanilla = function(level, LARGE_VANILLA);
+        int[] tally = new int[2];
+        for (int[] chunk : CHUNKS) {
+            compare(
+                    helper,
+                    samplers,
+                    large,
+                    vanilla,
+                    tally,
+                    new DensityVolume(
+                            16,
+                            CampaignBands.LAYER_1.height(),
+                            16,
+                            chunk[0] * 16,
+                            CampaignBands.LAYER_1.minY(),
+                            chunk[1] * 16));
+        }
+        LOGGER.info("[narrow-cave] large inputs: {} blocks compared, {} of them open", tally[0], tally[1]);
+        expect(
+                helper,
+                tally[1] > 1000 && tally[0] - tally[1] > 1000,
+                "%s of %s blocks open: the sample needs open and shut blocks",
+                tally[1],
+                tally[0]);
+        helper.succeed();
+    }
+
+    private static ServerLevel campaign(GameTestHelper helper) {
+        return ClientLight.serverLevel(
+                helper.getLevel().getServer(),
+                ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", CAMPAIGN)));
+    }
+
+    private static DensitySamplerSet samplers(ServerLevel level) {
+        RandomState random = level.getChunkSource().randomState();
+        return random.samplersWithContext(SamplerContext.builder()
+                .useBufferArena(DensityBufferArena.GLOBAL)
+                .build());
+    }
+
     private static void compare(
             GameTestHelper helper,
             DensitySamplerSet samplers,
@@ -127,7 +175,8 @@ public class NarrowCaveFunctionTest {
                         volume,
                         got.get(i),
                         want.get(i));
-                tally[1] += want.get(i) < 0.0f ? 1 : 0;
+                // claim_caves is negative in a cave, a narrow term positive where open.
+                tally[1] += want.get(i) != 0.0f ? 1 : 0;
             }
             tally[0] += volume.size();
         }

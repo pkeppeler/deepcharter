@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.layer.gen;
 
-import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -27,7 +26,7 @@ import net.minecraft.world.level.levelgen.densityfunction.op.UnaryFunction;
 /**
  * A narrow cave term (#1472):
  * {@code clamp((interpolated(width) - max(|interpolated(ridge)|, ...)) * sharpness, 0, 1)}, the same value, float for
- * float, as that expression written in vanilla density functions ({@link #expanded}), at less cost. A narrow term is
+ * float, as that expression written in vanilla density functions, at less cost. A narrow term is
  * open only where every ridge is near zero, so most interpolation cells are shut whole: where the corners prove
  * {@code width} under every ridge's magnitude throughout a cell, the cell is 0 without interpolating a block. The other
  * cells repeat vanilla's {@code InterpolatedFunction$Sampler.fillCell} arithmetic in the same order.
@@ -47,14 +46,15 @@ public record NarrowCaveFunction(
                             .listOf(1, Integer.MAX_VALUE)
                             .fieldOf("ridges")
                             .forGetter(NarrowCaveFunction::ridges),
-                    Codec.floatRange(0, Float.MAX_VALUE).fieldOf("sharpness").forGetter(NarrowCaveFunction::sharpness),
+                    ExtraCodecs.POSITIVE_FLOAT.fieldOf("sharpness").forGetter(NarrowCaveFunction::sharpness),
                     ExtraCodecs.POSITIVE_INT.fieldOf("cell_size_xz").forGetter(NarrowCaveFunction::cellSizeXz),
                     ExtraCodecs.POSITIVE_INT.fieldOf("cell_size_y").forGetter(NarrowCaveFunction::cellSizeY))
             .apply(instance, NarrowCaveFunction::new));
 
     /**
-     * Far more than the rounding of a few lerps and a cell's row steps on values near 1, so a cell skipped by the
-     * corners is shut at every block.
+     * The slack, relative to the cell's largest corner magnitude (or to 1, if larger), by which an interpolated value
+     * may leave its corners' range. A few lerps and a cell's row steps round by a few ulps of that magnitude, about
+     * 1e-6 of it, so a cell skipped by the corners is shut at every block at any scale the data gives its inputs.
      */
     private static final float SLACK = 1.0e-3f;
 
@@ -73,7 +73,7 @@ public record NarrowCaveFunction(
      * The vanilla expression this function equals, which it samples for a volume that is not a block grid and for a
      * point.
      */
-    public DensityFunction expanded() {
+    private DensityFunction expanded() {
         DensityFunction widest = magnitude(ridges.getFirst());
         for (DensityFunction ridge : ridges.subList(1, ridges.size())) {
             widest = new BinaryFunction(BinaryFunction.Type.MAX, widest, magnitude(ridge));
@@ -340,20 +340,23 @@ public record NarrowCaveFunction(
 
         /**
          * Whether the term is 0 at every block of the cell: an interpolated value lies between its corners (to within
-         * {@link #SLACK}), so the width stays under its highest corner and a ridge whose corners share a sign stays
-         * above its smallest magnitude; when the width's top is under some ridge's floor, the margin is negative
-         * everywhere and the clamp gives 0.
+         * {@link #SLACK} of the largest corner magnitude), so the width stays under its highest corner and a ridge
+         * whose corners share a sign stays above its smallest magnitude; when the width's top is under some ridge's
+         * floor, the margin is negative everywhere and the clamp gives 0.
          */
         boolean shut() {
             float widthTop = max(0);
+            float scale = Math.max(1.0f, Math.max(Math.abs(widthTop), Math.abs(min(0))));
             float ridgeFloor = 0.0f;
             for (int i = 1; i < count; i++) {
                 float low = min(i);
                 float high = max(i);
                 float floor = low > 0.0f ? low : high < 0.0f ? -high : 0.0f;
                 ridgeFloor = Math.max(ridgeFloor, floor);
+                scale = Math.max(scale, Math.max(Math.abs(low), Math.abs(high)));
             }
-            return widthTop + SLACK < ridgeFloor - SLACK;
+            float slack = SLACK * scale;
+            return widthTop + slack < ridgeFloor - slack;
         }
 
         private float max(int i) {
