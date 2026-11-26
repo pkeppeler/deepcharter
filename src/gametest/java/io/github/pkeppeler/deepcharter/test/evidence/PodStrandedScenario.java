@@ -1,10 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
-import io.github.pkeppeler.deepcharter.repair.RecoveryTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PodReadout;
@@ -22,21 +19,23 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "pod-stranded-recovery" (#963): a pilot with no fuel item and no money runs dry at the bottom of a shaft in layer 1.
- * The pod goes dark and the readout names the Company winch crew, its countdown and its fee; the minute runs out, and the crew hauls pod and
- * pilot to the colony, where the pod stands with a splash of fuel and 25 points less hull.
+ * Evidence scenario "pod-stranded" (#1430): a pilot with no fuel item and no money runs dry at the bottom of a shaft in layer 1. The
+ * pod goes dark and the readout says STRANDED, with no countdown and no fee under it: the Company sends no crew (ADR 0104). Longer
+ * than the old crew's minute later, the pod is still dark at the bottom of the shaft.
  */
-public class PodStrandedRecoveryScenario extends EvidenceScenario {
+public class PodStrandedScenario extends EvidenceScenario {
     private static final int X = 5800;
     private static final int Z = 5800;
     private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int SHAFT_BLOCKS = 30;
     private static final int FRAME_TICKS = 5;
-    private static final int COUNTDOWN_FRAMES = 6;
+    private static final int STRANDED_FRAMES = 12;
+    /** Past the old crew's minute (1,200 ticks), with a margin. */
+    private static final int PAST_THE_OLD_WAIT_TICKS = 1_400;
 
     @Override
     protected String name() {
-        return "pod-stranded-recovery";
+        return "pod-stranded";
     }
 
     @Override
@@ -78,40 +77,33 @@ public class PodStrandedRecoveryScenario extends EvidenceScenario {
             });
             ClientWait.until(
                     context,
-                    "the stranded pod's readout names the winch crew",
+                    "the stranded pod's readout says STRANDED",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && pod.stranded()
                             && PodReadout.texts(client, pod).stream()
                                     .anyMatch(text -> text.getContents() instanceof TranslatableContents contents
-                                            && contents.getKey().equals("hud.deepcharter.pod.recovery")));
+                                            && contents.getKey().equals("hud.deepcharter.pod.stranded")));
             screenshot(context, "stranded-start");
-            for (int i = 0; i < COUNTDOWN_FRAMES; i++) {
+            for (int i = 0; i < STRANDED_FRAMES; i++) {
                 context.waitTicks(FRAME_TICKS);
                 frame(context);
             }
-            screenshot(context, "stranded-counting-down");
+            screenshot(context, "stranded-no-countdown");
 
-            // Let the minute run out: the clock moves back by the delay, as the test of the recovery does.
-            singleplayer.getServer().runOnServer(server -> {
-                PodEntity pod =
-                        TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
-                Versioned.modifyOrThrow(
-                        pod,
-                        CompanyRecovery.STATE,
-                        old -> new CompanyRecovery.State(old.since() - RecoveryTuning.DEFAULT.delayTicks()));
-            });
+            // Longer than the old crew waited: nobody comes, and the pod stays dark where it stopped.
+            context.waitTicks(PAST_THE_OLD_WAIT_TICKS);
             ClientWait.until(
                     context,
-                    "the pod hauled out of layer 1",
+                    "the pod still stranded in layer 1 after the old crew's minute",
                     client -> client.player != null
-                            && !TestLayers.clientIsIn(client, 1)
+                            && TestLayers.clientIsIn(client, 1)
                             && client.player.getVehicle() instanceof PodEntity pod
-                            && !pod.stranded());
-            for (int i = 0; i < COUNTDOWN_FRAMES; i++) {
+                            && pod.stranded());
+            for (int i = 0; i < STRANDED_FRAMES; i++) {
                 context.waitTicks(FRAME_TICKS);
                 frame(context);
             }
-            screenshot(context, "recovered-at-the-colony");
+            screenshot(context, "still-stranded-after-a-minute");
         }
     }
 }

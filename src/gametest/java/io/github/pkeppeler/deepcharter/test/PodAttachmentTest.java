@@ -145,6 +145,53 @@ public class PodAttachmentTest {
         }
     }
 
+    /**
+     * A removed attachment type (ADR 0104): a pod saved with the Company recovery's clock, {@code
+     * deepcharter:company_recovery}, loads, keeps its other attachments, and is saved without the clock. Fabric skips an
+     * entry whose type is not registered and keeps the rest of the map, so the retired id needs no reader.
+     */
+    @GameTest
+    public void aRetiredCompanyRecoveryClockLoadsAndIsDroppedOnSave(GameTestHelper helper) {
+        String retiredKey = "deepcharter:company_recovery";
+        String otherKey = TestAttachments.OTHER.identifier().toString();
+        // The clock exactly as version 1 saved it: the game time the wait began.
+        CompoundTag clock = new CompoundTag();
+        clock.putInt("version", 1);
+        clock.putLong("since", 123_456L);
+        CompoundTag other = new CompoundTag();
+        other.putInt("version", TestAttachments.VERSION);
+        other.putString("text", "kept");
+        CompoundTag attachments = new CompoundTag();
+        attachments.put(retiredKey, clock);
+        attachments.put(otherKey, other);
+
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+        Entity loaded = reload(helper, pod, attachments);
+        try {
+            if (!new Other("kept").equals(Versioned.orThrow(loaded, TestAttachments.OTHER))) {
+                throw failure(
+                        helper,
+                        "the retired clock cost the pod its other attachment: %s",
+                        loaded.getAttached(TestAttachments.OTHER));
+            }
+            TagValueOutput output = TagValueOutput.createWithContext(
+                    ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
+            loaded.saveWithoutId(output);
+            CompoundTag saved = output.buildResult()
+                    .getCompound(ATTACHMENTS_KEY)
+                    .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
+            if (saved.contains(retiredKey)) {
+                throw failure(helper, "the retired clock was written back: %s", saved.get(retiredKey));
+            }
+            if (!other.equals(saved.get(otherKey))) {
+                throw failure(helper, "the other attachment was not saved intact: %s", saved.get(otherKey));
+            }
+            helper.succeed();
+        } finally {
+            loaded.discard();
+        }
+    }
+
     @GameTest
     public void theDiskCodecNeverFails(GameTestHelper helper) {
         CompoundTag noVersion = new CompoundTag();

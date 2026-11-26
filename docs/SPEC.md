@@ -253,7 +253,8 @@ The original's rules, in 3D.
 
 - Fuel is the clock. It drains even idle, faster while moving and drilling. A beep warns when low.
 - Early fuel is crafted (coal, charcoal, biofuel). Later it is bought at the pump.
-- Running dry leaves the pod stranded: powered off and dark until rescue or a reserve tank.
+- Running dry leaves the pod stranded: powered off and dark until it is refuelled (a fuel item or a reserve tank) or a crewmate tows it home.
+- No one else rescues a stranded pod, for free or for a fee. Not getting stranded is the player's job, and the game guarantees no way out ([ADR 0104](adr/0104-a-stranded-pod-is-the-players-to-get-home-and-the-company-sends-no-crew.md), user decisions of 2026-11-25 and 2026-11-26).
 
 ### Scanner
 

@@ -282,8 +282,7 @@ public class FuelWeightSootTest {
         try {
             player.player().setGameMode(GameType.SURVIVAL);
             fill(pod, player, Items.CHARCOAL, 10);
-            // A reserve tank rescue or a recovery sets the tank to a litre of other fuel: the account says 10 L of
-            // charcoal.
+            // The tank drops to a litre behind the account's back: the account says 10 L of charcoal.
             pod.setFuel(10f);
             burn(pod, 0.5f);
             // Then the pump fills it, and the pod burns a whole tank of pump fuel: none of that is solid.

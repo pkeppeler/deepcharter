@@ -53,8 +53,7 @@ public record FuelTuning(
      * @param limpOutput       the share of top speed and climb speed left in limp mode
      * @param limpBurn         how many times the clean burn the engine burns in limp mode
      * @param servicePerLitre  dollars the repair station charges to clear a litre of soot
-     * @param scrapeTicks      ticks the free flue scrape at the colony's repair station takes (a minute, as long as
-     *                         the Company's recovery makes a stranded pilot wait)
+     * @param scrapeTicks      ticks the free flue scrape at the colony's repair station takes (a minute)
      * @param scrapeLeavesLitres the soot a flue scrape leaves: under the limp limit, so the pod launches, and over the
      *                         grace, so it is still slow until it is serviced
      */

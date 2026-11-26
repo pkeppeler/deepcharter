@@ -158,7 +158,7 @@ The Behemoth parked and unfolded into a small walkable temporary outpost.
 _Avoid_: deploy, camp
 
 **Stranded**:
-A pod that has run out of fuel: powered off and dark until rescued or given a reserve tank.
+A pod that has run out of fuel: powered off and dark until refuelled (a fuel item or a reserve tank) or towed home by a crewmate. Nobody else comes for it.
 _Avoid_: dead, out of fuel
 
 **Wreck**:
