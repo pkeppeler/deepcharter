@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.ForceSends;
 import io.github.pkeppeler.deepcharter.test.support.HeapHistogram;
 import io.github.pkeppeler.deepcharter.test.support.SeamPodScene;
@@ -47,10 +48,11 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger("BoreTripsClientTest");
     private static final int TRIPS = 10;
     /**
-     * The longest a settle waits. One takes about 4 s, about 15 s the first time while the area generates; the last
-     * trip's starts some 120 s into the class's 180 s, so the default wait would end in the watchdog, unnamed.
+     * The longest the last trip's settle waits. A settle takes about 4 s (the first, while the area generates, up to
+     * 20 s, and keeps the default wait); the last starts some 120 s into the class's 180 s ({@code ClientTestWatchdog}),
+     * so the default wait would end in the watchdog's dump instead of naming the chunk.
      */
-    private static final int SETTLE_SECONDS = 30;
+    private static final int LAST_SETTLE_SECONDS = 30;
 
     private static final double X = 15000.5;
     private static final double Z = 3000.5;
@@ -116,12 +118,13 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             try {
                 for (int trip = 1; trip <= TRIPS; trip++) {
                     trip(context, two, clientId, site);
-                    // Only the two trips the light-watch check compares are settled: a settle takes about 4 s and
-                    // the class has 180 s (ClientTestWatchdog). A watch that never ends is still there, and named,
-                    // at the last trip's, whose wait is short enough to fail before the class's limit.
-                    Tripped held = trip == 2 || trip == TRIPS
-                            ? settledSample(context, two, trip, site, forceSendsBefore)
-                            : sample(context, two, trip, site, forceSendsBefore);
+                    // Only the two trips the light-watch check compares are settled, for time; a watch that never
+                    // ends is still there, and named, at the last trip's.
+                    Tripped held = trip == 2
+                            ? settledSample(context, two, trip, site, forceSendsBefore, FarChunks.WAIT_SECONDS)
+                            : trip == TRIPS
+                                    ? settledSample(context, two, trip, site, forceSendsBefore, LAST_SETTLE_SECONDS)
+                                    : sample(context, two, trip, site, forceSendsBefore);
                     trips.add(held);
                     LOGGER.info("BORE-TRIP {}", held);
                 }
@@ -254,13 +257,18 @@ public class BoreTripsClientTest implements FabricClientGameTest {
      * steady check on a high last sample (#1405).
      */
     private static Tripped settledSample(
-            ClientGameTestContext context, TwoPlayerServer two, int trip, Site site, int forceSendsBefore) {
+            ClientGameTestContext context,
+            TwoPlayerServer two,
+            int trip,
+            Site site,
+            int forceSendsBefore,
+            int seconds) {
         for (int attempt = 1; ; attempt++) {
             long start = System.nanoTime();
             ClientWait.until(
                     context,
                     "LightSync to be done with the chunks round the site in both layers",
-                    SETTLE_SECONDS,
+                    seconds,
                     () -> two.server()
                             .computeOnServer(server -> unsettled(server, site).isEmpty()),
                     () -> "unsettled: " + two.server().computeOnServer(server -> unsettled(server, site)));
@@ -278,7 +286,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
      * The chunks of both layers round the site, out to the last ring that ticks, that LightSync holds, watches or waits
      * on queued light tasks for, or whose send to a player is queued, each tagged with why. Not the outermost loaded
      * ring past it: a chunk there never ticks, so a watch on it lasts until the chunk unloads, and a settle that took
-     * in the ring waited out the 120 s on a handful of them (#1394 drops such watches; once it lands, the ring can join the
+     * in the ring waited out its whole wait on a handful of them (#1394 drops such watches; once it lands, the ring can join the
      * settle). The last ticking ring is one past the simulation distance, which TwoPlayerServer leaves at the view
      * distance's default.
      */
