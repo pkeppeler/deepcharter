@@ -58,8 +58,8 @@ public class PodHardLandingTest {
     private static final int SHAFT_TICKS = 700;
 
     /**
-     * Pods whose hull reads their touchdown speed: no buffer and 10 hull per block per tick, so the hull lost times 2 is
-     * the sink in blocks a second. The cushion reads its own tuning, not these stats, so it brakes a speedometer as it
+     * Pods whose hull reads their touchdown speed: no buffer and 10 hull per block per tick, so the hull lost times 2
+     * is the sink in blocks a second. The cushion reads its own tuning, not these stats, so it brakes a speedometer as it
      * brakes any pod.
      */
     private static final Set<UUID> SPEEDOMETERS = ConcurrentHashMap.newKeySet();
@@ -382,8 +382,8 @@ public class PodHardLandingTest {
 
     /**
      * Flies a crewed pod from rest {@code blocks} over a shaft's floor with {@code keys}, and checks its hull lost is
-     * between {@code min} and {@code max}. A speedometer pod flies the same keys in the next shaft and logs the touchdown
-     * speed in blocks a second.
+     * between {@code min} and {@code max}. A speedometer pod flies the same keys in the next shaft and logs the
+     * touchdown speed in blocks a second.
      */
     private static void pilotedLanding(
             GameTestHelper helper, int x, int blocks, IntFunction<Input> keys, String how, float min, float max) {
