@@ -649,8 +649,9 @@ public class SeatedTerminalsTest {
     }
 
     /**
-     * From the seat, with the main hand empty and fuel in the off hand, the use refuels the pod as before: the client
-     * does not ask for a terminal, so the off hand's use reaches the pod. Caught: a predicate that ignores the off hand.
+     * From the seat, with the main hand empty and fuel in the off hand, the use refuels the pod as before: the
+     * client does not ask for a terminal, so the off hand's use reaches the pod. Caught: a predicate that ignores
+     * the off hand.
      */
     @GameTest
     public void offHandFuelStillRefuelsFromTheSeat(GameTestHelper helper) {

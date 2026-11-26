@@ -190,7 +190,7 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
         return new Scene(pump, processor, charter);
     }
 
-    /** Seats the player in the scene's pod, holding the handbook they were given, and waits until the client has them seated. */
+    /** Seats the player in the scene's pod, holding the handbook they were given, until the client has them seated. */
     public static void board(ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
         BlockPos middle = scene.pump().relative(Direction.WEST, TERMINAL_OFFSET);
         ClientWait.chunksAround(context, middle.getX(), middle.getZ(), PAD + 1);
