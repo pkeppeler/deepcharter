@@ -34,9 +34,10 @@ import net.minecraft.server.level.ServerPlayer;
  * Evidence scenario "m2-quest-map" for #847: the handbook's quest map, in the real game with the shipped chapters. A
  * player on a charter has done five of chapter 1's steps, the last of them, the charcoal (#1423), just now (the step
  * popup); the card of the sixth shows the iron it asks for. Then the first two chapters are done, and chapter 3's map,
- * with the chapters after it redacted, is shown whole. Every page carries the tabs: the stills show them on the Founder's letter
- * (the intro), on a chapter text page and on the maps, and a step with a very long line shows its popup grown to fit it
- * (#962). Last, the controls pages, and the first of them again with the handbook key rebound (#1260).
+ * with the chapters after it redacted, is shown whole. Every page carries the tabs: the stills show them on the
+ * Founder's letter (the intro), on a chapter text page and on the maps, and a step with a very long line shows its
+ * popup grown to fit it (#962). Last, the controls pages, and the first of them again with the handbook key rebound
+ * (#1260).
  */
 public class QuestMapScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
