@@ -36,16 +36,23 @@ public final class RealInput {
         context.waitTicks(1);
     }
 
-    /**
-     * Holds {@code key} down for {@code ticks} client ticks, then lets it go and waits one tick: a key that acts while
-     * held ({@code KeyMapping.isDown}) sees it down that long.
-     */
-    public static void hold(ClientGameTestContext context, int key, int ticks) {
+    /** Puts {@code key} down and leaves it there, as a held key: {@code KeyMapping.isDown} reads it until {@link #up}. */
+    public static void down(ClientGameTestContext context, int key) {
         context.runOnClient(client -> client.keyboardHandler.keyPress(
                 client.getWindow().handle(), InputConstants.PRESS, new KeyEvent(key, 0, 0)));
-        context.waitTicks(ticks);
+    }
+
+    /** Lets {@code key} go after {@link #down}. */
+    public static void up(ClientGameTestContext context, int key) {
         context.runOnClient(client -> client.keyboardHandler.keyPress(
                 client.getWindow().handle(), InputConstants.RELEASE, new KeyEvent(key, 0, 0)));
+    }
+
+    /** Holds {@code key} down for {@code ticks} client ticks, then lets it go and waits one tick. */
+    public static void hold(ClientGameTestContext context, int key, int ticks) {
+        down(context, key);
+        context.waitTicks(ticks);
+        up(context, key);
         context.waitTicks(1);
     }
 
