@@ -101,9 +101,10 @@ public final class LightSync {
         /** Set once the light engine has been waited for {@value #TIMEOUT_TICKS} ticks. */
         boolean slowReported;
 
-        NetWatch(int nextCheck, int until) {
-            this.nextCheck = nextCheck;
-            this.until = until;
+        /** A watch opened at {@code now}: its first check and the end of its window are counted from then. */
+        NetWatch(int now) {
+            this.nextCheck = now + NET_INTERVAL_TICKS;
+            this.until = now + NET_WINDOW_TICKS;
         }
 
         void keepOpen(int now) {
@@ -121,8 +122,8 @@ public final class LightSync {
 
     /**
      * The chunks whose watch was dropped because they did not tick and no player held them: they cannot be sent until
-     * they tick, and a watch kept open for that would never end (#1297). Each is watched again when it is sent. Server
-     * thread only.
+     * they tick, and a watch kept open for that would never end (#1297). Each is watched again when it is sent, a send
+     * that a crossing does not skip ({@link #dormant}). No key is in both this and {@link #NET}. Server thread only.
      */
     private static final Set<Key> DORMANT = new HashSet<>();
 
@@ -155,6 +156,11 @@ public final class LightSync {
     public static boolean hasPending(ServerLevel level, ChunkPos chunk) {
         Key key = new Key(level, chunk);
         return QUEUED.containsKey(key) || OFFERS.containsKey(key);
+    }
+
+    /** Whether the chunk's watch was dropped until it is sent ({@link #DORMANT}). Server thread only. */
+    public static boolean dormant(ServerLevel level, ChunkPos chunk) {
+        return DORMANT.contains(new Key(level, chunk));
     }
 
     /**
@@ -403,7 +409,8 @@ public final class LightSync {
     /** Starts or extends the watch of a chunk and records the light of the players already sent it; the others are recorded at their send. */
     private static void watchNet(ServerLevel level, ChunkPos chunk, int now) {
         Key key = new Key(level, chunk);
-        NetWatch watch = NET.computeIfAbsent(key, k -> new NetWatch(now + NET_INTERVAL_TICKS, 0));
+        DORMANT.remove(key);
+        NetWatch watch = NET.computeIfAbsent(key, k -> new NetWatch(now));
         watch.keepOpen(now);
         if (level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) == null) {
             return;
@@ -442,8 +449,8 @@ public final class LightSync {
     /** The watch of a chunk being sent, armed again if it was dropped as {@link #DORMANT}; null if it has none. */
     private static @Nullable NetWatch sentWatch(Key key) {
         if (DORMANT.remove(key)) {
-            int now = key.level.getServer().getTickCount();
-            NET.put(key, new NetWatch(now + NET_INTERVAL_TICKS, now + NET_WINDOW_TICKS));
+            return NET.computeIfAbsent(
+                    key, k -> new NetWatch(key.level.getServer().getTickCount()));
         }
         return NET.get(key);
     }

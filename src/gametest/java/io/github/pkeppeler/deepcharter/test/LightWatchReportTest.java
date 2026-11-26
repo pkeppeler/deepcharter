@@ -93,67 +93,55 @@ public class LightWatchReportTest {
         MockPlayer[] mock = {null};
         int[] phase = {0};
         int[] heldFor = {0};
-        Runnable finish = () -> {
-            if (mock[0] != null) {
-                mock[0].leave();
-            }
-        };
         TestTicks.each(helper, () -> {
-            try {
-                switch (phase[0]) {
-                    case 0 -> {
-                        FarChunks.force(helper, level, DORMANT_SITE.x(), DORMANT_SITE.z());
-                        boolean ready = level.getChunkSource().chunkMap.getChunkToSend(drawn.pack()) != null
-                                && level.getChunkSource().getChunkNow(rim.x(), rim.z()) != null;
-                        deadline.await(
-                                helper, level, ready, () -> drawn + " was not sendable or " + rim + " not loaded");
-                        if (!ready) {
-                            return;
-                        }
-                        if (ticking(level, rim)) {
-                            throw failure(helper, "%s ticks, so the case proves nothing", rim);
-                        }
-                        LightSync.holdSendUntilLit(level, drawn);
-                        phase[0] = 1;
+            switch (phase[0]) {
+                case 0 -> {
+                    FarChunks.force(helper, level, DORMANT_SITE.x(), DORMANT_SITE.z());
+                    boolean ready = level.getChunkSource().chunkMap.getChunkToSend(drawn.pack()) != null
+                            && level.getChunkSource().getChunkNow(rim.x(), rim.z()) != null;
+                    deadline.await(helper, level, ready, () -> drawn + " was not sendable or " + rim + " not loaded");
+                    if (!ready) {
+                        return;
                     }
-                    case 1 -> {
-                        List<ChunkPos> watched = ChunkPos.rangeClosed(drawn, 1)
-                                .filter(near -> LightSync.watching(level, near))
-                                .toList();
-                        if (watched.isEmpty()) {
-                            mock[0] = MockPlayers.join(helper, "dormant-watch-viewer");
-                            mock[0].player().setGameMode(GameType.SPECTATOR);
-                            mock[0].teleportTo(
-                                    level,
-                                    TestLayers.vec(
-                                            TestLayers.SURFACE,
-                                            DORMANT_SITE.getMiddleBlockX() + 0.5,
-                                            100,
-                                            DORMANT_SITE.getMiddleBlockZ()),
-                                    0f,
-                                    0f);
-                            FarChunks.force(helper, level, rim.x(), rim.z());
-                            phase[0] = 2;
-                        } else if (LightSync.timedOut(heldFor[0]++ - GRACE_TICKS)) {
-                            throw failure(helper, "%s are still watched long after the hold of %s", watched, drawn);
-                        }
+                    if (ticking(level, rim)) {
+                        throw failure(helper, "%s ticks, so the case proves nothing", rim);
                     }
-                    default -> {
-                        boolean sent = mock[0] != null && mock[0].chunksSent().contains(rim);
-                        deadline.await(helper, level, sent, () -> rim + " was not sent to the player once it ticked");
-                        if (!sent) {
-                            return;
-                        }
-                        if (!LightSync.watching(level, rim)) {
-                            throw failure(helper, "%s was sent and is not watched again", rim);
-                        }
-                        finish.run();
-                        helper.succeed();
+                    LightSync.holdSendUntilLit(level, drawn);
+                    phase[0] = 1;
+                }
+                case 1 -> {
+                    List<ChunkPos> watched = ChunkPos.rangeClosed(drawn, 1)
+                            .filter(near -> LightSync.watching(level, near))
+                            .toList();
+                    if (watched.isEmpty()) {
+                        mock[0] = MockPlayers.join(helper, "dormant-watch-viewer");
+                        mock[0].player().setGameMode(GameType.SPECTATOR);
+                        mock[0].teleportTo(
+                                level,
+                                TestLayers.vec(
+                                        TestLayers.SURFACE,
+                                        DORMANT_SITE.getMiddleBlockX() + 0.5,
+                                        100,
+                                        DORMANT_SITE.getMiddleBlockZ()),
+                                0f,
+                                0f);
+                        FarChunks.force(helper, level, rim.x(), rim.z());
+                        phase[0] = 2;
+                    } else if (LightSync.timedOut(heldFor[0]++ - GRACE_TICKS)) {
+                        throw failure(helper, "%s are still watched long after the hold of %s", watched, drawn);
                     }
                 }
-            } catch (RuntimeException e) {
-                finish.run();
-                throw e;
+                default -> {
+                    boolean sent = mock[0] != null && mock[0].chunksSent().contains(rim);
+                    deadline.await(helper, level, sent, () -> rim + " was not sent to the player once it ticked");
+                    if (!sent) {
+                        return;
+                    }
+                    if (!LightSync.watching(level, rim)) {
+                        throw failure(helper, "%s was sent and is not watched again", rim);
+                    }
+                    helper.succeed();
+                }
             }
         });
     }
