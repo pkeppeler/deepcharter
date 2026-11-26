@@ -768,19 +768,19 @@ public class SalvageBootstrapTest {
     }
 
     /**
-     * The crates lie in the yard, past the colony's footprint, so the handbook sends a new player there (#1415): the welcome page
-     * that names them says beyond the colony, and no language line that names a crate puts it in town.
+     * The crates lie in the yard, past the colony (#1415), so the welcome page that names them says beyond the colony,
+     * and no language line that names a crate puts it in town.
      */
     @GameTest
     public void theHandbookSendsPlayersBeyondTheColonyForCrates(GameTestHelper helper) {
         JsonObject lang = HandbookChaptersOneToFiveTest.lang();
-        String welcome = HandbookChaptersOneToFiveTest.pagesFrom(
-                        lang, "deepcharter.handbook.chapter.deepcharter.welcome.text.")
-                .stream()
-                .map(key -> lang.get(key).getAsString())
-                .filter(text -> text.contains("salvage crates"))
-                .findFirst()
-                .orElseThrow(() -> helper.assertionException("a welcome page should name the salvage crates"));
+        String welcome =
+                HandbookChaptersOneToFiveTest.pagesFrom(lang, "deepcharter.handbook.chapter.deepcharter.welcome.text.")
+                        .stream()
+                        .map(key -> lang.get(key).getAsString())
+                        .filter(text -> text.contains("salvage crates"))
+                        .findFirst()
+                        .orElseThrow(() -> helper.assertionException("a welcome page should name the salvage crates"));
         if (!welcome.contains("beyond the colony")) {
             throw helper.assertionException(
                     "the welcome page should send players beyond the colony for the crates: %s", welcome);
