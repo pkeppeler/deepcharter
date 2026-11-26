@@ -235,12 +235,6 @@ public class CraftedScannerScenario extends EvidenceScenario {
     /** What {@link #furnish} stood in the room: the crafting table, and the network id of the pod. */
     private record Room(BlockPos table, int podId) {}
 
-    /** The room's pod on the server, by its network id. */
-    private static PodEntity podOnServer(MinecraftServer server, int podId) {
-        return TestEntities.require(
-                server.getPlayerList().getPlayers().getFirst().level(), podId, PodEntity.class);
-    }
-
     /** Seats the player on the pod of the room. */
     private void ride(ClientGameTestContext context, TestServerContext server, int podId) {
         server.runOnServer(minecraft -> {

@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
@@ -200,6 +201,12 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
                 type.getSimpleName() + " " + id + " in the client's world",
                 client -> type.isInstance(ClientLight.clientLevel(client).getEntity(id)));
         return context.computeOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), id, type));
+    }
+
+    /** The first player's level's copy of the pod with network id {@code podId}. */
+    protected static PodEntity podOnServer(MinecraftServer server, int podId) {
+        return TestEntities.require(
+                server.getPlayerList().getPlayers().getFirst().level(), podId, PodEntity.class);
     }
 
     /**

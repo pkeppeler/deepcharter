@@ -194,7 +194,7 @@ public class CraftedPartsScenario extends EvidenceScenario {
         hold(context);
         screenshot(context, "bronzium-withdrawn");
         context.setScreen(() -> null);
-        server.runOnServer(minecraft -> goBack(minecraft, trip));
+        server.runOnServer(minecraft -> goBack(minecraft, podId, trip));
         ClientWait.until(
                 context,
                 "the player and the pod back in the room",
@@ -228,12 +228,7 @@ public class CraftedPartsScenario extends EvidenceScenario {
 
     /** Where the processor beat takes the player and the pod, and where each stood in the room. */
     private record Trip(
-            int podId,
-            BlockPos processor,
-            Vec3 playerAtProcessor,
-            Vec3 podAtProcessor,
-            Vec3 playerHome,
-            Vec3 podHome) {}
+            BlockPos processor, Vec3 playerAtProcessor, Vec3 podAtProcessor, Vec3 playerHome, Vec3 podHome) {}
 
     /** What {@link #furnish} stood in the room: the crafting table, and the network id of the pod. */
     private record Room(BlockPos table, int podId) {}
@@ -270,7 +265,6 @@ public class CraftedPartsScenario extends EvidenceScenario {
                 Colony.placed(server).orElseThrow(() -> new AssertionError("the colony was not built"));
         BlockPos processor = TestColony.anchor(colony, ColonyAnchor.ORE_PROCESSOR);
         Trip trip = new Trip(
-                podId,
                 processor,
                 Vec3.atBottomCenterOf(processor.offset(PLAYER_FROM_PROCESSOR)),
                 Vec3.atBottomCenterOf(processor.offset(POD_FROM_PROCESSOR)),
@@ -291,9 +285,9 @@ public class CraftedPartsScenario extends EvidenceScenario {
     }
 
     /** Takes the player and the pod back to where they stood in the room. */
-    private static void goBack(MinecraftServer server, Trip trip) {
+    private static void goBack(MinecraftServer server, int podId, Trip trip) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-        podOnServer(server, trip.podId()).setPos(trip.podHome());
+        podOnServer(server, podId).setPos(trip.podHome());
         player.teleportTo(
                 server.overworld(),
                 trip.playerHome().x,
@@ -431,12 +425,6 @@ public class CraftedPartsScenario extends EvidenceScenario {
             }
         }
         return -1;
-    }
-
-    /** The room's pod on the server, by its network id. */
-    private static PodEntity podOnServer(MinecraftServer server, int podId) {
-        return TestEntities.require(
-                server.getPlayerList().getPlayers().getFirst().level(), podId, PodEntity.class);
     }
 
     /** The charter's founding transmission types over the screen; the first still waits until it has come and gone. */
