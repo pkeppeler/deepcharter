@@ -189,7 +189,7 @@ public class NarrowCaveFunctionTest {
                 .value();
     }
 
-    private static ResourceKey<DensityFunction> key(String path) {
+    static ResourceKey<DensityFunction> key(String path) {
         return ResourceKey.create(Registries.DENSITY_FUNCTION, Identifier.fromNamespaceAndPath("deepcharter", path));
     }
 }

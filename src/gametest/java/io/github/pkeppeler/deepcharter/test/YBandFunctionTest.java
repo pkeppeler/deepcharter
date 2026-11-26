@@ -10,14 +10,19 @@ import static io.github.pkeppeler.deepcharter.test.NarrowCaveFunctionTest.sample
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import io.github.pkeppeler.deepcharter.layer.gen.NarrowCaveFunction;
 import io.github.pkeppeler.deepcharter.layer.gen.YBandFunction;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.densityfunction.DensityFunction;
 import net.minecraft.world.level.levelgen.densityfunction.DensitySamplerSet;
 import net.minecraft.world.level.levelgen.densityfunction.DensityVolume;
+import net.minecraft.world.level.levelgen.densityfunction.op.InterpolatedFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,13 +32,21 @@ import org.slf4j.LoggerFactory;
  * the band edges, where a volume is cut in two. Volumes cross every edge {@code claim_caves} uses: block grids that
  * start in the cell under the edge and on it, stepped volumes whose rows land on the edge and step over it (the two
  * paths of the stepped case), the interpolation corners' grid, single points either side, and a whole column of the
- * campaign world. Run red: a band that takes one row too many, a sub-volume one row off, and an outside value of
- * {@code 0.0} for the {@code -0.0} the caves give over the surface each make values differ.
+ * campaign world. A band over an interpolation must start on its cell grid, or the cell the edge cuts is interpolated
+ * from another start; the shipped bands are checked for it. The caves are 0 near most edges, so a band's own rows are
+ * checked on a band with odd edges over an input that is never constant, against its {@code range_choice}. Run red: a
+ * band one row too tall, a sub-volume one row off, and an outside value of {@code 0.0} for the caves' {@code -0.0}.
  */
 public class YBandFunctionTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(YBandFunctionTest.class);
     /** Every {@code min_inclusive} and {@code max_exclusive} of a {@code y_band} in {@code claim_caves.json}. */
     private static final List<Integer> EDGES = List.of(-248, -240, -96, 24);
+
+    private static final ResourceKey<DensityFunction> ODD = NarrowCaveFunctionTest.key("test/y_band_odd");
+    private static final ResourceKey<DensityFunction> ODD_VANILLA =
+            NarrowCaveFunctionTest.key("test/y_band_odd_vanilla");
+    /** {@code test/y_band_odd}'s edges. */
+    private static final List<Integer> ODD_EDGES = List.of(-37, 29);
 
     @GameTest
     public void theBandedCavesAreTheirVanillaExpressionAcrossEveryBandEdge(GameTestHelper helper) {
@@ -108,5 +121,90 @@ public class YBandFunctionTest {
         // A control: equal everywhere means nothing if the caves never open near an edge.
         expect(helper, tally[1] > 1000, "only %s of %s values compared are in a cave", tally[1], tally[0]);
         helper.succeed();
+    }
+
+    /** A band is its input in its rows and its constant elsewhere, whatever the volume's start and step. */
+    @GameTest
+    public void aBandIsItsInputInsideAndItsConstantOutsideOnEveryPath(GameTestHelper helper) {
+        ServerLevel level = campaign(helper);
+        DensityFunction band = function(level, ODD);
+        DensityFunction vanilla = function(level, ODD_VANILLA);
+        DensitySamplerSet samplers = samplers(level);
+        int[] tally = new int[2];
+        for (int edge : ODD_EDGES) {
+            for (int step = 1; step <= 4; step++) {
+                for (int start = edge - 3 * step; start <= edge + 1; start++) {
+                    compare(
+                            helper,
+                            samplers,
+                            band,
+                            vanilla,
+                            tally,
+                            new DensityVolume(3, 6, 2, 5, start, -7, 1 + step % 2, step, 2));
+                }
+            }
+            for (int y = edge - 1; y <= edge; y++) {
+                float got = samplers.sampleValue(band, 5, y, -7);
+                float want = samplers.sampleValue(vanilla, 5, y, -7);
+                expect(
+                        helper,
+                        Float.floatToRawIntBits(got) == Float.floatToRawIntBits(want),
+                        "y_band at y %s is %s, range_choice %s",
+                        y,
+                        got,
+                        want);
+            }
+        }
+        // Wholly inside, wholly outside, and both edges in one volume.
+        compare(helper, samplers, band, vanilla, tally, new DensityVolume(3, 20, 2, 5, -20, -7));
+        compare(helper, samplers, band, vanilla, tally, new DensityVolume(3, 20, 2, 5, 40, -7));
+        compare(helper, samplers, band, vanilla, tally, new DensityVolume(3, 90, 2, 5, -50, -7));
+        LOGGER.info("[y-band] odd band: {} values compared", tally[0]);
+        helper.succeed();
+    }
+
+    /**
+     * Every shipped band over an interpolation starts on that interpolation's cell grid, so the cell its bottom edge
+     * cuts is interpolated from the cell's own bottom, as it is in a volume the band does not cut.
+     */
+    @GameTest
+    public void everyShippedBandOverAnInterpolationStartsOnItsCellGrid(GameTestHelper helper) {
+        List<YBandFunction> bands = new ArrayList<>();
+        visit(function(campaign(helper), SHIPPED), node -> {
+            if (node instanceof YBandFunction band) {
+                bands.add(band);
+            }
+        });
+        int checked = 0;
+        for (YBandFunction band : bands) {
+            List<Integer> cells = new ArrayList<>();
+            visit(band.input(), node -> {
+                if (node instanceof InterpolatedFunction interpolated) {
+                    cells.add(interpolated.cellSizeY());
+                } else if (node instanceof NarrowCaveFunction narrow) {
+                    cells.add(narrow.cellSizeY());
+                }
+            });
+            for (int cell : cells) {
+                expect(
+                        helper,
+                        Math.floorMod(band.minInclusive(), cell) == 0,
+                        "a y_band from %s cuts a cell %s rows tall",
+                        band.minInclusive(),
+                        cell);
+            }
+            checked += cells.isEmpty() ? 0 : 1;
+        }
+        expect(helper, checked >= 3, "only %s of %s bands are over an interpolation", checked, bands.size());
+        helper.succeed();
+    }
+
+    /** Calls {@code visitor} on {@code root} and every function under it. */
+    private static void visit(DensityFunction root, Consumer<DensityFunction> visitor) {
+        visitor.accept(root);
+        root.rewriteChildren(child -> {
+            visit(child, visitor);
+            return child;
+        });
     }
 }
