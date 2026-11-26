@@ -59,9 +59,9 @@ public final class VoidBelow {
     }
 
     /**
-     * Whether the drill sounds hollow: within {@link VoidBelowTuning#hollowRows} rows of the pod's feet, the drill would
-     * break through into a fall that lands hard. A fall that lands soft, or a gap under a nearer row, leaves it as it
-     * is.
+     * Whether the drill sounds hollow: within {@link VoidBelowTuning#hollowRows} rows of the pod's feet, the drill
+     * would break through into a fall that lands hard. A fall that lands soft, or a gap under a nearer row, leaves the
+     * drill as it is.
      */
     public static boolean hollow(PodEntity pod) {
         int feetY = PodFootprint.of(pod).feetY();
