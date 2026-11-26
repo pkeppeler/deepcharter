@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=north,loaded=false": {
+      "model": "deepcharter:block/colony_phonograph"
+    },
+    "facing=north,loaded=true": {
+      "model": "deepcharter:block/colony_phonograph_loaded"
+    },
+    "facing=east,loaded=false": {
+      "model": "deepcharter:block/colony_phonograph",
+      "y": 90
+    },
+    "facing=east,loaded=true": {
+      "model": "deepcharter:block/colony_phonograph_loaded",
+      "y": 90
+    },
+    "facing=south,loaded=false": {
+      "model": "deepcharter:block/colony_phonograph",
+      "y": 180
+    },
+    "facing=south,loaded=true": {
+      "model": "deepcharter:block/colony_phonograph_loaded",
+      "y": 180
+    },
+    "facing=west,loaded=false": {
+      "model": "deepcharter:block/colony_phonograph",
+      "y": 270
+    },
+    "facing=west,loaded=true": {
+      "model": "deepcharter:block/colony_phonograph_loaded",
+      "y": 270
+    }
+  }
+}

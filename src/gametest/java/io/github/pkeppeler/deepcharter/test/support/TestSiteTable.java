@@ -338,7 +338,7 @@ final class TestSiteTable {
 
         claim("RoomCarverSendTest", 1, 26403, 26411, 26403, 26411);
         claim("RoomCarverSendTest", 1, 26803, 26811, 26803, 26811);
-        claim("RoomCarverSendTest", 2, 26593, 26607, 26593, 26607);
+        claim("RoomCarverSendTest", 2, 26601, 26615, 26601, 26615);
 
         claim("SealedRoomArrivalLightTest", 1, -60016, -59985, 59984, 60015);
 

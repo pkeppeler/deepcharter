@@ -6,14 +6,19 @@ import static io.github.pkeppeler.deepcharter.test.support.GlassCorners.requireC
 import com.google.common.base.Splitter;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetOpener;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetScreen;
+import io.github.pkeppeler.deepcharter.client.handbook.mixin.ToastInstanceAccess;
+import io.github.pkeppeler.deepcharter.client.handbook.mixin.ToastManagerAccess;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheet;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheetPopups;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheets;
@@ -22,26 +27,34 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
+import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
@@ -55,7 +68,6 @@ import net.minecraft.world.item.Items;
  * after another screen has closed.
  */
 public class SpecSheetClientTest implements FabricClientGameTest {
-    private static final int LEFT_MOUSE = 0;
     /** The default window, 854 by 480 at GUI scale 2. */
     private static final int WIDTH = 427;
 
@@ -64,9 +76,14 @@ public class SpecSheetClientTest implements FabricClientGameTest {
     private static final int SMALLEST_WIDTH = 320;
     /** The narrowest GUI the catalogue's panels draw at, so the narrowest the sheet opens over them. */
     private static final int NARROWEST = 425;
+    /** A GUI scale that leaves the 854 by 480 window a GUI of 213 by 120, too small for the catalogue's consoles. */
+    private static final int SMALL_GUI_SCALE = 4;
 
     /** The first slot of the main inventory, below the hotbar. */
     private static final int INVENTORY_SLOT = 9;
+
+    /** A GUI pixel off the sheet's console, in the window's top left corner. */
+    private static final int SCREEN_EDGE = 2;
 
     private static final int[][] SIZES = {{WIDTH, HEIGHT}, {NARROWEST, HEIGHT}, {SMALLEST_WIDTH, HEIGHT}};
 
@@ -197,9 +214,9 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 text.box().x(), text.box().y(), text.box().width(), text.box().height());
     }
 
-    /** The close switch's legend is drawn on its plate, under the glass. */
+    /** The legends of the Recipes link and the close switch are drawn on their plates, under the glass. */
     private static boolean isOnThePlate(Drawn text) {
-        return text.text().equals("CLOSE");
+        return text.text().equals("CLOSE") || text.text().equals("RECIPES");
     }
 
     private static void theRatingsAreTheGamesOwnNumbers() {
@@ -242,9 +259,10 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         require(
                 textsOf(item("goldium")).contains("$250"),
                 "goldium reads the $250 a terminal pays, it draws " + textsOf(item("goldium")));
+        String coalStack = Integer.toString(Items.COAL.getDefaultMaxStackSize());
         require(
-                textsOf(Items.COAL).containsAll(List.of("STOCK ITEM", "POD FUEL", "YES", "64")),
-                "coal is stock, pod fuel, and stacks to 64, it draws " + textsOf(Items.COAL));
+                textsOf(Items.COAL).containsAll(List.of("STOCK ITEM", "POD FUEL", "YES", coalStack)),
+                "coal is stock, pod fuel, and stacks to " + coalStack + ", it draws " + textsOf(Items.COAL));
         require(
                 textsOf(Items.IRON_PICKAXE).contains("250"),
                 "an iron pickaxe reads its 250 durability, it draws " + textsOf(Items.IRON_PICKAXE));
@@ -304,10 +322,17 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
             CatalogueScene.openInventory(context);
             theSpecSheetButtonOpensTheSheet(context);
+            theRecipesLinkOpensTheRecipes(context);
+            theRecipesLinkIsDeadInAWindowTooSmallForTheCatalogue(context);
             theSheetTakesEveryKeyAndHidesTheTooltipUnderIt(context, singleplayer);
             context.setScreen(() -> null);
-            aSheetPopsUpWhenTheServerSays(context, singleplayer);
-            twoPopUpsInARowShowOneAfterTheOther(context, singleplayer);
+            theKeyDoesNothingBeforeAnySheetIsOffered(context);
+            aFirstCraftOpensNoSheetAndShowsASlip(context, singleplayer);
+            theSlipIsClearOfEveryToastAndTheDirectiveSlip(context, singleplayer);
+            theKeyOpensTheMostRecentSheet(context, singleplayer);
+            aKeyPressedSeveralTimesOpensOneSheet(context);
+            aSheetWaitsForAScreenItCannotHold(context, singleplayer);
+            sheetsAskedForInARowShowOneAfterTheOther(context);
             context.setScreen(() -> null);
         }
     }
@@ -323,7 +348,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         require(context.computeOnClient(client -> panel.sheetItem()) == null, "no sheet is open before the button");
         CatalogueScene.hover(context, layout.card().spec());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(2);
         require(
                 context.computeOnClient(client -> panel.sheetItem()) == drill,
@@ -351,16 +376,118 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 "the recipe panel the sheet was opened from is as it was");
 
         CatalogueScene.hover(context, layout.card().spec());
-        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(2);
         require(context.computeOnClient(client -> panel.sheetItem()) == drill, "the button opens it again");
-        CatalogueScene.hover(context, layout.inventory());
-        context.getInput().pressMouse(LEFT_MOUSE);
-        context.waitTicks(2);
-        require(context.computeOnClient(client -> panel.sheetItem()) == null, "a click anywhere puts the sheet away");
+        // A click on the sheet's text does not lose it; the close switch puts it away.
+        CatalogueScene.hover(context, Objects.requireNonNull(context.computeOnClient(client -> panel.sheetGlass())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(
+                context.computeOnClient(client -> panel.sheetItem()) == drill,
+                "a click on the sheet's glass leaves the sheet open");
+        CatalogueScene.hover(
+                context, Objects.requireNonNull(context.computeOnClient(client -> panel.sheetCloseSwitch())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(context.computeOnClient(client -> panel.sheetItem()) == null, "the close switch puts the sheet away");
         require(
                 context.computeOnClient(client -> client.gui.screen()) == screen,
                 "the click is the sheet's own, and the inventory stays open");
+
+        // A click off the console, on the screen's edge, puts it away too.
+        context.runOnClient(client -> SpecSheetOpener.show(drill));
+        ClientWait.until(context, "the sheet again", client -> panel.sheetItem() == drill);
+        ClientCursor.moveTo(context, SCREEN_EDGE, SCREEN_EDGE);
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(
+                context.computeOnClient(client -> panel.sheetItem()) == null,
+                "a click off the sheet's console puts it away");
+    }
+
+    /** The Recipes link of a sheet shows the item's recipes in the catalogue: over the inventory, over hidden panels, and from a sheet of its own. */
+    private static void theRecipesLinkOpensTheRecipes(ClientGameTestContext context) {
+        Item drill = HangarParts.DRILL_HEAD;
+        CatalogueScene.openInventory(context);
+        CataloguePanel panel = CatalogueScene.panel(context);
+        context.runOnClient(client -> panel.state().clear());
+        context.runOnClient(client -> SpecSheetOpener.show(drill));
+        ClientWait.until(context, "the sheet over the inventory", client -> panel.sheetItem() == drill);
+        require(
+                context.computeOnClient(client -> panel.state().lookup()) == null,
+                "setup: nothing is looked up before the link");
+        CatalogueScene.hover(
+                context, Objects.requireNonNull(context.computeOnClient(client -> panel.sheetRecipesLink())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(context.computeOnClient(client -> panel.sheetItem()) == null, "the Recipes link puts the sheet away");
+        CatalogueState.Lookup lookup =
+                context.computeOnClient(client -> panel.state().lookup());
+        require(
+                lookup != null && lookup.item() == drill && lookup.mode() == CatalogueState.Mode.RECIPES,
+                "and shows the item's recipes, got " + lookup);
+        require(context.computeOnClient(client -> panel.showsRecipePanel()), "in the recipe console");
+
+        // Over panels that were put away, the link brings them back.
+        context.runOnClient(client -> {
+            panel.state().clear();
+            panel.state().toggleHidden();
+        });
+        context.runOnClient(client -> SpecSheetOpener.show(drill));
+        ClientWait.until(context, "the sheet over the hidden panels", client -> panel.sheetItem() == drill);
+        require(context.computeOnClient(client -> !panel.panelsShown()), "setup: the panels are put away");
+        CatalogueScene.hover(
+                context, Objects.requireNonNull(context.computeOnClient(client -> panel.sheetRecipesLink())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        require(
+                context.computeOnClient(client -> panel.panelsShown() && panel.showsRecipePanel()),
+                "the link unhides the panels and shows the recipes");
+        context.runOnClient(client -> panel.state().clear());
+
+        // A sheet of its own, with no inventory open: the link opens the inventory at the recipes.
+        context.setScreen(() -> null);
+        context.runOnClient(client -> SpecSheetOpener.show(drill));
+        ClientWait.screen(context, SpecSheetScreen.class);
+        context.waitTicks(2);
+        CatalogueScene.hover(
+                context,
+                Objects.requireNonNull(context.computeOnClient(
+                        client -> ((SpecSheetScreen) Objects.requireNonNull(client.gui.screen())).recipesLink())));
+        RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+        ClientWait.screen(context, InventoryScreen.class);
+        context.waitTicks(3);
+        CataloguePanel opened = CatalogueScene.panel(context);
+        CatalogueState.Lookup there =
+                context.computeOnClient(client -> opened.state().lookup());
+        require(
+                there != null && there.item() == drill && there.mode() == CatalogueState.Mode.RECIPES,
+                "from a sheet of its own the link opens the inventory at the recipes, got " + there);
+        context.runOnClient(client -> opened.state().clear());
+    }
+
+    /** A window too small for the catalogue has nothing for the link to open: it is drawn dim, and a click does nothing and keeps the sheet. */
+    private static void theRecipesLinkIsDeadInAWindowTooSmallForTheCatalogue(ClientGameTestContext context) {
+        context.setScreen(() -> null);
+        context.runOnClient(client -> client.getWindow().setGuiScale(SMALL_GUI_SCALE));
+        try {
+            context.runOnClient(client -> SpecSheetOpener.show(HangarParts.DRILL_HEAD));
+            ClientWait.screen(context, SpecSheetScreen.class);
+            context.waitTicks(2);
+            require(
+                    context.computeOnClient(client ->
+                            !((SpecSheetScreen) Objects.requireNonNull(client.gui.screen())).recipesLinkActive()),
+                    "setup: the window is too small for the catalogue, so the link is dim");
+            CatalogueScene.hover(
+                    context,
+                    Objects.requireNonNull(context.computeOnClient(
+                            client -> ((SpecSheetScreen) Objects.requireNonNull(client.gui.screen())).recipesLink())));
+            RealInput.click(context, InputConstants.MOUSE_BUTTON_LEFT);
+            context.waitTicks(3);
+            require(
+                    context.computeOnClient(client -> client.gui.screen() instanceof SpecSheetScreen),
+                    "a click on the dead link does nothing: the sheet is still open");
+        } finally {
+            context.runOnClient(
+                    client -> client.getWindow().setGuiScale(client.getWindow().calculateScale(0, false)));
+            context.setScreen(() -> null);
+        }
     }
 
     /** Draws {@code screen} and holds the strings of {@code item}'s sheet to the sheet's glass. */
@@ -473,22 +600,23 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         singleplayer.getServer().runCommand("clear @p");
     }
 
-    private static void twoPopUpsInARowShowOneAfterTheOther(
-            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+    private static void sheetsAskedForInARowShowOneAfterTheOther(ClientGameTestContext context) {
         Item first = RepairRegistry.item(Consumable.PLASTIC_EXPLOSIVES);
         Item second = RepairRegistry.item(Consumable.MATTER_TRANSMITTER);
         CatalogueScene.openInventory(context);
         CataloguePanel panel = CatalogueScene.panel(context);
-        offer(singleplayer, first, true);
-        offer(singleplayer, second, true);
-        ClientWait.until(context, "the first pop-up", client -> panel.sheetItem() == first);
+        context.runOnClient(client -> {
+            SpecSheetOpener.show(first);
+            SpecSheetOpener.show(second);
+        });
+        ClientWait.until(context, "the first sheet", client -> panel.sheetItem() == first);
         context.waitTicks(10);
         require(
                 context.computeOnClient(client -> panel.sheetItem() == first),
-                "the second pop-up waits and does not take the first one's place");
+                "the second sheet waits and does not take the first one's place");
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         ClientWait.until(
-                context, "the second pop-up after the first is put away", client -> panel.sheetItem() == second);
+                context, "the second sheet after the first is put away", client -> panel.sheetItem() == second);
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         ClientWait.until(context, "the sheets put away", client -> panel.sheetItem() == null);
         require(
@@ -499,8 +627,10 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         context.setScreen(() -> null);
         Item engine = ComponentItems.item(ComponentTrack.ENGINE);
         Item cargo = ComponentItems.item(ComponentTrack.CARGO_BAY);
-        offer(singleplayer, engine, true);
-        offer(singleplayer, cargo, true);
+        context.runOnClient(client -> {
+            SpecSheetOpener.show(engine);
+            SpecSheetOpener.show(cargo);
+        });
         ClientWait.until(
                 context,
                 "the engine part's sheet first",
@@ -514,33 +644,176 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         ClientWait.until(context, "both sheets put away", client -> client.gui.screen() == null);
     }
 
-    private static void aSheetPopsUpWhenTheServerSays(
+    /** With no sheet offered yet, the key has nothing to open and opens nothing. */
+    private static void theKeyDoesNothingBeforeAnySheetIsOffered(ClientGameTestContext context) {
+        context.getInput().pressKey(CatalogueKeys.SPEC_SHEET);
+        // tick-wait: an absence has nothing to await, so the key is given a few ticks to open something
+        context.waitTicks(5);
+        require(
+                context.computeOnClient(client -> client.gui.screen() == null),
+                "with no sheet offered the key opens no screen");
+    }
+
+    /** A first craft or buy sends the sheet: a corner slip names the item and the key, and no screen opens. */
+    private static void aFirstCraftOpensNoSheetAndShowsASlip(
             ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         // Over the catalogue: where a player is when they craft.
         CatalogueScene.openInventory(context);
         CataloguePanel panel = CatalogueScene.panel(context);
         Item dynamite = RepairRegistry.item(Consumable.DYNAMITE);
         offer(singleplayer, dynamite, true);
-        ClientWait.until(context, "the pop-up over the catalogue", client -> panel.sheetItem() == dynamite);
+        ClientWait.until(
+                context,
+                "the slip over the catalogue",
+                client -> slipShowing(client, dynamite).isPresent());
+        // tick-wait: an absence has nothing to await, so the sheet is given the ticks the old popup took to open
+        context.waitTicks(10);
+        require(
+                context.computeOnClient(client -> panel.sheetItem() == null),
+                "a first craft opens no sheet over the catalogue");
         require(
                 context.computeOnClient(client -> client.gui.screen() instanceof InventoryScreen),
-                "the pop-up opens over the inventory, which stays open");
+                "the inventory is as it was");
+        require(
+                context.computeOnClient(client -> drawnByToasts(client).stream()
+                        .anyMatch(text -> text.text()
+                                .contains("["
+                                        + CatalogueKeys.SPEC_SHEET
+                                                .getTranslatedKeyMessage()
+                                                .getString() + "]"))),
+                "the slip names the key");
         offer(singleplayer, dynamite, false);
-        context.waitTicks(3);
 
-        // With no screen open: a screen of its own.
+        // With no screen open: no screen of its own either.
         context.setScreen(() -> null);
         Item charge = RepairRegistry.item(Consumable.SHAPED_CHARGE);
         offer(singleplayer, charge, true);
-        ClientWait.screen(context, SpecSheetScreen.class);
-        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
-        ClientWait.until(context, "the sheet's own screen closed", client -> client.gui.screen() == null);
+        ClientWait.until(
+                context,
+                "the slip with no screen open",
+                client -> slipShowing(client, charge).isPresent());
+        // tick-wait: an absence has nothing to await, so the sheet is given the ticks the old popup took to open
+        context.waitTicks(10);
+        require(
+                context.computeOnClient(client -> client.gui.screen() == null),
+                "a first craft opens no screen of its own");
+        context.runOnClient(client -> client.gui.toastManager().clear());
+    }
 
-        // Over a screen that cannot hold it: it waits for the screen to close, and never closes it.
+    /** The slip is clear of the HUD, of a vanilla toast and of a directive slip shown at the same time. */
+    private static void theSlipIsClearOfEveryToastAndTheDirectiveSlip(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         Item part = ComponentItems.item(ComponentTrack.HULL);
+        StepToast[] directive = {null};
+        context.runOnClient(client -> {
+            client.gui.toastManager().addToast(new StepToastClearOfSonarClientTest.SlotToast());
+            directive[0] = StepToast.of(Component.literal("Find the Prospector."));
+            client.gui.toastManager().addToast(directive[0]);
+        });
+        offer(singleplayer, part, true);
+        ClientWait.until(
+                context,
+                "the slip, the directive slip and the vanilla toast all placed",
+                client -> slipShowing(client, part).isPresent()
+                        && directive[0].placement().isPresent()
+                        && HudKeepClear.rects(
+                                        client,
+                                        client.getWindow().getGuiScaledWidth(),
+                                        client.getWindow().getGuiScaledHeight())
+                                .stream()
+                                .anyMatch(rect -> rect.what().equals("vanilla toast")));
+        context.runOnClient(client -> {
+            int width = client.getWindow().getGuiScaledWidth();
+            int height = client.getWindow().getGuiScaledHeight();
+            StepToast slip = slipShowing(client, part).orElseThrow();
+            Box box = StepToastClearOfHudClientTest.box(slip.placement().orElseThrow());
+            Box directiveBox =
+                    StepToastClearOfHudClientTest.box(directive[0].placement().orElseThrow());
+            require(
+                    !ClientChecks.overlaps(box, directiveBox),
+                    "the slip at " + box + " covers the directive slip at " + directiveBox);
+            for (HudKeepClear.Rect kept : HudKeepClear.rects(client, width, height)) {
+                require(
+                        !ClientChecks.overlaps(box, StepToastClearOfHudClientTest.box(kept)),
+                        "the slip at " + box + " covers the '" + kept.what() + "' at "
+                                + StepToastClearOfHudClientTest.box(kept));
+            }
+            for (Map.Entry<String, Box> hud : StepToastClearOfHudClientTest.critical(client, width, height)
+                    .entrySet()) {
+                require(
+                        !ClientChecks.overlaps(box, hud.getValue()),
+                        "the slip at " + box + " covers the " + hud.getKey() + " at " + hud.getValue());
+            }
+            require(
+                    drawnByToasts(client).stream().anyMatch(text -> ClientChecks.overlaps(box, text.box())),
+                    "the toast manager draws the slip's text inside its box");
+            client.gui.toastManager().clear();
+        });
+    }
+
+    /** The key opens the sheet of the item most recently offered, not the first. */
+    private static void theKeyOpensTheMostRecentSheet(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        Item older = ComponentItems.item(ComponentTrack.DRILL);
+        Item latest = ComponentItems.item(ComponentTrack.FUEL_TANK);
+        offer(singleplayer, older, true);
+        offer(singleplayer, latest, true);
+        ClientWait.until(
+                context,
+                "the slip of the latest sheet",
+                client -> slipShowing(client, latest).isPresent());
+        context.getInput().pressKey(CatalogueKeys.SPEC_SHEET);
+        ClientWait.until(
+                context,
+                "the key's sheet on a screen of its own",
+                client -> client.gui.screen() instanceof SpecSheetScreen screen && sheetScreenShows(screen, latest));
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(context, "the sheet put away", client -> client.gui.screen() == null);
+        context.runOnClient(client -> client.gui.toastManager().clear());
+    }
+
+    /** Presses the key {@code times} times within one client tick, as a player tapping it fast does. */
+    private static void tapTheKey(ClientGameTestContext context, int times) {
+        context.runOnClient(client -> {
+            for (int i = 0; i < times; i++) {
+                KeyMapping.click(CatalogueKeys.SPEC_SHEET.getDefaultKey());
+            }
+        });
+    }
+
+    /** Tapping the key again, while its sheet is open or queued, queues nothing: Escape leaves no sheet open. */
+    private static void aKeyPressedSeveralTimesOpensOneSheet(ClientGameTestContext context) {
+        context.setScreen(() -> null);
+        tapTheKey(context, 1);
+        ClientWait.screen(context, SpecSheetScreen.class);
+        // The taps land while the sheet is on its screen, and again a tick later.
+        tapTheKey(context, 2);
+        context.waitTicks(1);
+        tapTheKey(context, 1);
+        // tick-wait: an absence has nothing to await, so a queued second sheet is given the ticks to come up
+        context.waitTicks(10);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(context, "the sheet put away", client -> client.gui.screen() == null);
+        // tick-wait: an absence has nothing to await, so a queued second sheet is given the ticks to open
+        context.waitTicks(10);
+        require(
+                context.computeOnClient(client -> client.gui.screen() == null),
+                "one Escape leaves no sheet open and none re-opens after the taps");
+    }
+
+    /** A sheet the key queues never takes the place of a screen that cannot hold it, and shows once that closes. */
+    private static void aSheetWaitsForAScreenItCannotHold(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        Item part = ComponentItems.item(ComponentTrack.RADIATOR);
         context.setScreen(() -> new PauseScreen(true));
         ClientWait.screen(context, PauseScreen.class);
         offer(singleplayer, part, true);
+        ClientWait.until(
+                context,
+                "the slip of the sheet",
+                client -> slipShowing(client, part).isPresent());
+        tapTheKey(context, 2);
+        // tick-wait: an absence has nothing to await, so the sheet is given the ticks to take the screen's place
         context.waitTicks(10);
         require(
                 context.computeOnClient(client -> client.gui.screen() instanceof PauseScreen),
@@ -552,6 +825,33 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 "and shows once that screen has closed");
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         ClientWait.until(context, "the waiting sheet closed", client -> client.gui.screen() == null);
+        // tick-wait: an absence has nothing to await, so a second tap's sheet is given the ticks to open
+        context.waitTicks(10);
+        require(
+                context.computeOnClient(client -> client.gui.screen() == null),
+                "the second tap queued no second copy of the sheet");
+        context.runOnClient(client -> client.gui.toastManager().clear());
+    }
+
+    /** The slip of a sheet of {@code item}: a toast that has a place and draws the item's name inside it. */
+    private static Optional<StepToast> slipShowing(Minecraft client, Item item) {
+        String name = new ItemStack(item).getHoverName().getString();
+        List<Drawn> drawn = drawnByToasts(client);
+        for (Object instance : ((ToastManagerAccess) client.gui.toastManager()).deepcharter$visibleToasts()) {
+            if (((ToastInstanceAccess) instance).deepcharter$toast() instanceof StepToast toast
+                    && toast.placement().isPresent()) {
+                Box slip = StepToastClearOfHudClientTest.box(toast.placement().get());
+                if (drawn.stream()
+                        .anyMatch(text -> text.text().contains(name) && ClientChecks.overlaps(slip, text.box()))) {
+                    return Optional.of(toast);
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static List<Drawn> drawnByToasts(Minecraft client) {
+        return DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics));
     }
 
     private static boolean sheetScreenShows(Screen screen, Item item) {

@@ -466,7 +466,7 @@ What else the part did to the bores:
 **Verdict: reachable once, not repeatedly. The 4-run pace needs a way back down.** The layer 2 runs in `EarlyRunModel` start at the bottom of layer 1's shaft with a full tank. Two facts decide whether a pod can be there.
 
 1. **A pod could not drive back down its own shaft.** The hull paid by distance fallen, so a braked fall cost the hull of a free one and a stock hull survived 23 blocks of 192. [Hard landings (#319)](#hard-landings-319-a) changed the rule to impact speed: a braked descent is safe and costs fuel (`EarlyRunModel.driveDownLitres`), which the layer 2 runs now include.
-2. **A bore down has to carry its fuel.** There is no pump underground. The only field refuel is a fuel item fed to the parked pod (coal, charcoal, biofuel: 2 L each, `pod_fuel/*.json`), by reading the code, not tried in play.
+2. **A bore down has to carry its fuel.** There is no pump underground. The only field refuel is a fuel item fed to the parked pod (coal 2 L, charcoal 1 L, biofuel 3 L; see [Solid fuel](#solid-fuel-1280-a)), by reading the code, not tried in play.
 
 Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`EarlyRunModel.boreLitres`): **139 L**. The tank tier sets how many tank-fulls that is:
 
@@ -499,6 +499,78 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 **Open questions.**
 - Is the first descent meant to be the one-way bore with a stack of coal? The handbook's chapter 8 ("Your first breach") should say so if it is.
 - Should the descent's own ore count towards the first layer 2 run's income? It is not counted.
+
+## Solid fuel (#1280, A)
+
+**Problem.** Coal, charcoal and biofuel each gave 2 L, stacked to 64 and weighed nothing, so one slot was 128 L. A player could fell stalks, smelt a pile of charcoal and carry a free tank of fuel: no tension, and the pump was pointless ([user playtest, 2026-11-25](https://github.com/pkeppeler/deepcharter/issues/1280)). The campaign world also grows no crops, so biofuel could not be crafted at all ([#1288](https://github.com/pkeppeler/deepcharter/issues/1288)).
+
+**Intent.** Solid fuel exists for **the field, where there is no pump**: a stranded pod, a deep bore, an outpost with no pump built yet. It is bulky, heavy and sooty, and it costs more per litre than pump fuel once the soot is paid for. It is never the better way to fill a tank at the colony. The cost is not a dollar a trip (a trip burns a litre or two, a few dollars on a $120 haul). It is the slot, the weight, a service that cannot be skipped, and the hours of fetching.
+
+**What it does.** Each change copies something in the game:
+1. **Solid fuel is bulky and heavy.** Coal, charcoal and biofuel stack to 16 (a default `max_stack_size`, through Fabric's `DefaultItemComponentEvents` for the vanilla items). They carry a `CargoWeight` (ADR 0097), counted by the same `OreEncumbrance` as ore: a pack slows a person on foot (the Ore/Fuel status, once Ore-laden, names both), and what the pilot carries cuts the pod's lift through `PodEvents.EXTRA_MASS`, as cargo does. A one-time line says why the first time a person carries a load of fuel with no ore in it.
+2. **Fuel grades.** Charcoal gives 1 L, coal 2 L, biofuel 3 L (`pod_fuel/*.json`). Biofuel is the best solid per slot (48 L, against coal's 32 and charcoal's 16) and per mass, as the user asked ("more than coal"). It costs three stalk mash and three cooks for 3 L.
+3. **Soot.** Burning solid fuel leaves soot in the engine (`soot` in `pod_fuel/*.json`: charcoal 1 L of soot a litre burned, coal 0.75, biofuel 0.1, pump fuel none). The soot is a pod attachment (`EngineSoot`, ADR 0097), and the engine pays for it in steps:
+   - **Up to 3 L** (the grace): nothing.
+   - **3 to 12 L**: the engine loses top speed and climb speed, in a straight line to 50% at 12 L, and burns more fuel, to +50%. At 4 L that is 5.6% slower and 5.6% more fuel; at 7.5 L, 25% and 25%. The pod's readout says so from the first percent: "ENGINE SOOTED 8 L: 25% SLOWER, 25% MORE FUEL". Engine power is untouched, so the lift is.
+   - **12 L and over: limp mode.** 30% of the speed and climb, twice the burn, and the readout says "ENGINE CLOGGED: LIMP MODE". The pod never stops, so one deep down can always climb home: the user's rule was a loss of efficiency until a service at the colony, not a stranding.
+   - **At the colony the gate is hard, once the repair station works.** A pod in limp mode on the surface will not drill (launch): the pilot reads "Clogged. Repair station: service it, or scrape the flue (free)." and sprint does nothing. Driving, flying and the station are free, so it can reach the station. Both ways out are the repair station's, the last terminal of the repair chain, so until it is repaired (or its saved state cannot be read) the gate is off: a limp pod launches, slow and thirsty, and no line sends the pilot to a station that does not work. The HUD's limp line names no station for the same reason.
+4. **Service.** The repair station's SERVICE ENGINE row clears the soot for **$10 a litre**, dearer than hull repair (the parked pod, the charter's account, a refusal for a clean engine, a wreck or unreadable soot). The row shows only once the pod has a litre or more of soot. A service of a full limp engine is $120, a trip's haul. **An account short of the whole bill buys a part service**: as many whole litres as it pays for ("SERVICE 3/13 L ($30)" from $35), so the service never refuses only because the bill is bigger than the account. Short of $10 the row says "SERVICE: $10 A LITRE" and cannot be pressed.
+5. **The free flue scrape (no softlock).** Limp mode holds a pod at the colony, and a charter with $0 cannot pay for a litre, so a first-tank pilot on coal would be stuck. A pod in limp mode at the colony's repair station gets a second row, "SCRAPE FLUE (FREE, SLOW)" (`FlueScrape`). The pilot waits at the station for **60 s** (the row counts down) with the pod parked there, and the scrape leaves **11 L**, a litre under the limit: the pod launches, 44% slower and burning 44% more, and the paid service is still the way to a clean engine. It costs time, not money. It stops and clears nothing if the pilot walks out of the station's reach or leaves the game, or the pod is driven off, flies or drills; the pilot hears why. The server decides on the pod's tick, as the Company recovery's wait does. The row is not offered, and the action is refused, below the limit, away from the colony, or while a scrape runs.
+6. **Biofuel (#1288).** Three stalk mash (the colony's campfire meal, `deepcharter:stalk_meal`, cooked from a fungal stalk) are fermented into one biofuel, shapeless, at the crafting grid. Stalks grow on crater floors and in layer 1's caves ([SPEC](../SPEC.md)). The old recipe (four crops) and the `biofuel_crops` tag are gone. It is the cleanest solid, not clean: its soot is 0.1 L a litre, a seventh of coal's.
+
+**What the player pays.** Per litre, over the services the engine forces (`FuelTripEconomyTest` burns a fuel until the engine has been forced into limp mode and serviced three times, paying the real bill):
+
+| Fuel | L an item | L a slot | Mass an item | Mass a slot | Soot a litre | Cash a litre (with services) | Trips between services (stock Mole) |
+|---|---|---|---|---|---|---|---|
+| Pump | | any | 0 | 0 | 0 | $1.00 | never |
+| Biofuel | 3 | 48 | 0.5 | 8.0 | 0.1 | $1.00 | 75 |
+| Coal | 2 | 32 | 0.6 | 9.6 | 0.75 | $7.53 | 10 |
+| Charcoal | 1 | 16 | 0.4 | 6.4 | 1 | $10.07 | 8 |
+
+Before: coal, charcoal and biofuel 2 L, stack 64, no mass: 128 L a slot. Coal and charcoal cost more cash a litre than the pump, which is the only thing a pump-less trip trades away. Biofuel costs the same cash a litre as the pump ($1.00, its litres free at the pump and its soot light) and is paid for in effort instead, below.
+
+**What the effort is.** Nothing is invented. The test derives it from the game's data: a fungal stalk takes 7.5 s to fell bare-handed (the block's destroy time), a coal block 9.4 s with a stone pickaxe for 9 coal, and the recipes cook for 200 ticks (furnace, charcoal), 100 (smoker) and 600 (campfire) for the mash. Cooking runs by itself, so there are two bounds: hands-on only (the felling and mining), and waiting for each cook in turn. A charcoal item is one stalk, 7.5 s hands-on, 17.5 s waiting. A biofuel item is three stalks, 22.5 s hands-on, 37.5 s waiting with a smoker. The trip adds the 45 s a colony trip spends off the pod ([Crafted first-tier parts](#crafted-first-tier-parts-536-a)).
+
+**Measured.** Layer 1, topsoil claims, the same trip burned many times (`FuelTripEconomyTest`, 1.39 L for a stock Mole, 5.65 L with a tier 3 tank):
+
+| Trip | Pump | Biofuel | Coal | Charcoal |
+|---|---|---|---|---|
+| Stock Mole: net a trip | $123.61 | $123.37 | $112.79 | $107.99 |
+| Stock Mole: a minute, hands-on / waiting | $104.46 | $88.98 / $81.06 | $94.20 | $77.46 / $64.45 |
+| Tier 3 tank: net a trip | $384.95 | $383.81 | $334.60 | $320.60 |
+| Tier 3 tank: a minute, hands-on / waiting | $153.19 | $114.23 / $97.79 | $129.81 | $94.71 / $70.49 |
+
+- Pump fuel earns more a minute than every solid fuel, biofuel included, at both bounds and on both trips. Pump is the cheapest of the soot fuels in cash a litre ($1.00 against coal's $7.53 and charcoal's $10.07), and **on the stock trip it earns 10.9% a minute more than coal** (18% on the tier 3 trip). The test asserts at least 10% on the stock trip: a pump that felt pointless against coal at a 2% gap now has a margin a player feels.
+- **Biofuel nets about what pump fuel does a trip** ($0.24 less on the stock trip, $1.14 less on the tier 3 trip), because its soot is light and its litres cost nothing at the pump, and the $10 service has made that soot cost what the pump's litres do. The effort is the cost: the 22.5 s of felling an item takes. It cannot match the pump a minute even if an item took no time to prepare (the break-even is -0.25 s on the stock trip and -0.20 s on the tier 3 trip, against the 22.5 s derived). The test asserts it stays below the pump even if felling were twice as fast, and prints the break-even.
+- **Scraping is not a strategy.** A coal pilot who never pays and only scrapes, a minute at the station each time, earns less a minute than one who services and than the pump: $86.31 against $94.20 and $104.46 on the stock trip, $122.48 against $129.81 and $153.19 on the tier 3 trip. The test asserts both, so a change to the scrape's time or what it leaves cannot quietly make it the better way.
+- The loss of speed and climb is not counted in the trips' time, which favours the solid fuels.
+
+**Early game.** No first-run number changes: the first tank, the first trips (`PodFuelTripTest`) and the upgrade economy (`EconomyAffordabilityTest`) use the pump or a clean engine. What gets harder is the field refuel: a stack of coal is 32 L, was 128 L. The worst case, a pilot who runs on coal from the start (`FlueScrapeTest` pins its way out):
+
+| | |
+|---|---|
+| Starting cash | $0 (a charter is founded with an empty account) |
+| First trip's haul | about $124 net on pump fuel, $113 on coal over its services (stock Mole, layer 1, `FuelTripEconomyTest`) |
+| Coal soot a trip | about 1.04 L clean (1.39 L burned at 0.75 L a litre), more as the engine fouls and burns more |
+| Trips to limp | 10 on coal (charcoal 8, biofuel 75) |
+| A full service at limp | $120 to $130, about a trip's haul |
+| A flue scrape | free, 60 s at the station; leaves 11 L, 44% slower and 44% more fuel |
+| After a scrape | the next coal trip goes limp again about two thirds of the way through (1 L of headroom at 1.44 times the burn); below the surface limp mode slows the pod and never stops it, so the trip comes home |
+| A part service | whole litres at $10: $35 clears 3 L, a $113 haul clears 11 L, which takes a scraped engine from about 12.5 L to 1.5 L, under the grace |
+
+So a broke pilot scrapes once, makes one slow trip, and pays for a near-full service out of its haul. The scrape is not a way to skip the service: it leaves the engine a litre from the limit, so a pilot who only scrapes runs about the last third of every trip limp, at 30% speed and twice the burn.
+
+**For #1276 (pod sprint).** Sprint should multiply the burn per second on top of the engine's soot factor: `PodFuel.tick` takes `drainPercentPerTick x EngineSoot.burnMultiplier`, so a sprint multiplier is one more factor beside it. The soot a litre leaves is per litre, so a sprinting pod on charcoal soots faster per block: +40% speed at 1.8 times the burn is 29% more litres a block, and so 29% more soot. A limp engine's top speed is 30% of the clean one, so a sprint on top of it still loses to a clean engine's cruise. Headroom: the output and burn curves, the grace and the limit are `FuelTuning.Soot`, and the per-litre soot is data.
+
+**Trade-offs.** A stack of 16 and a weight make a bore with carried fuel a real load, and the soot makes charcoal the poorest fuel. Coal is the best of the solids at cash a litre among the sooty ones, with one source (the colony's coal blocks). Biofuel is the best per slot and the cleanest, and the dearest in effort. Limp mode is a pace penalty and a trip to the station, never a stranding, and the flue scrape means it is never a softlock: money buys a clean engine, time buys a slow one. The service is paid at the colony, so a pilot who burns solid fuel at depth pays when they come home.
+
+**Not built.** A flue brush (a field consumable that clears part of the soot): it needs a recipe, a texture and a use action for something the repair station already does at the colony, so it is left out. The speed loss is not in the drill: the drill is its own track.
+
+**Knobs.** `FuelTuning` (`solidStack` 16, `weight`, `soot`: grace 3, limit 12, 50% loss and +50% burn at the limit, limp 30% and x2, $10 a litre, a scrape of 1,200 ticks that leaves 11 L), `pod_fuel/*.json` (litres and soot an item), `recipe/biofuel.json`, `EngineSoot.QUANTUM` (0.1 L), `PodTuning.Fuel`.
+
+**Open questions.**
+- Should a hangar part (a filter) cut the soot? A candidate for a later track.
+- Should the speed loss reach the drill?
 
 ## Outposts at the layer 1 floor (#320, A)
 
@@ -1171,7 +1243,7 @@ A full rack of 24 buys about 10 s of lava at tier 1, 14 s at tier 2 and 19 s at 
 - **People on foot.** A person near a figure does not make it fade. It does not flee and it does not attack. A person on foot in the dark draws a figure too, since #916 ([below](#the-retained-on-foot-916-a)).
 
 **Counterplay, on the ladder.**
-1. **By hand: drill it off.** Sprint down or push into a wall for 2.5 seconds. The warning gives the time to start, and the drain runs while the pilot reads. This is the main verb of the game, so a pilot who is digging anyway kills it without changing what they do. A pod that cannot drill (the surface, Company rock) cannot use the cutter: the pilot gets out and swings, or lights the pod before the next one comes.
+1. **By hand: drill it off.** Sprint down or drive into a wall (W) for 2.5 seconds. The warning gives the time to start, and the drain runs while the pilot reads. This is the main verb of the game, so a pilot who is digging anyway kills it without changing what they do. A pod that cannot drill (the surface, Company rock) cannot use the cutter: the pilot gets out and swings, or lights the pod before the next one comes.
 2. **A part: lights.** A lights part (tier 1, $125) makes the pod lit and draws none. It is prevention only now: it does nothing to a figure that already holds the pod. A pilot with lights is safe from this mechanic, whatever the tier.
 3. **Mastery: a bigger tank.** The drain is litres a second, so a bigger tank shrugs the time it takes to kill: the same 0.45 litres is 4.5 per cent of a stock tank and 1.8 per cent of a tier 2 tank. The old tool keeps its niche: a spare stock pod without lights is a pod the pilot must watch.
 
@@ -1292,7 +1364,7 @@ The modelled rows rest on three guesses, none measured: a 4-minute run, half of 
 - **Cling.** A figure whose box is within 1.5 blocks of the person takes hold: it stands at their side, faces them, and follows them as they move. The person reads "Something has hold of you. It slows you and eats at your hunger. Strike it off."
 - **Weight.** The grip weighs on the person as 20 units of ore: the same modifier, cap and Overburdened status that carried ore gives ([OreEncumbrance](../../src/main/java/io/github/pkeppeler/deepcharter/ore/OreEncumbrance.java)), so they walk at 60 per cent of their speed, 4.3 blocks a second down to 2.6, and the status shows level 4. It adds to any ore they carry, up to the cap of 80 per cent.
 - **Drain.** The grip takes a point of hunger every 6 seconds, as the game's own exhaustion (so the saturation goes first), and takes nothing once the food bar is at 6, a bar of 3 drumsticks. It never starves anyone. At 6 a person cannot sprint, as in the vanilla game; they can still walk and eat. Natural regeneration stops below 18, so a held person stops healing after the first points.
-- **Ending.** Only the figure's death ends the grip. A light in hand, a lit cell and boarding a pod do not. A held person who climbs into a pod keeps draining in the seat while the figure trails (no physics, 8 blocks a second); only its death frees them. The figure has 12 health and takes any blow from a player, so the held person's own blow ends it as a crewmate's does. A person who dies, leaves, changes level or turns creative is let go of, and so is one on Peaceful: a figure neither draws nor holds a person there, and a grip ends when the difficulty turns Peaceful. A relog, or the figure's chunk unloading, frees the person, the same weakness as the pod grip; the weight is read from the live figure every tick, so a rejoin carries none. Nothing here is saved, as a figure is not.
+- **Ending.** Only the figure's death ends the grip. A light in hand, a lit cell and boarding a pod do not. A held person who climbs into a pod keeps draining in the seat while the figure trails (no physics, 8 blocks a second); only its death frees them. The figure has 12 health and takes any blow from a player, so the held person's own blow ends it as a crewmate's does. A person who dies, leaves, changes level or turns creative is let go of, and so is one on Peaceful: a figure neither draws nor holds a person there, and a grip ends when the difficulty turns Peaceful. A teleport within one level (the Company winch of #965) keeps the grip, as only the figure's death frees: the figure trails at its latch speed with no physics, never jumping to the person, and the weight stays on them. The drain runs in the figure's own tick, and a figure ticks only where a player is near, so a short teleport should keep it trailing and draining until it catches up, while a long one (the winch from the bottom) leaves it behind in a chunk that does not tick: the drain stops, the weight stays, and the figure stands there until its chunk unloads (see below). The paid winch is a way out of a grip: it carries the person out of the figure's reach, and the figure cannot follow. A teleport to another level frees at once. A relog, or the figure's chunk unloading, frees the person, the same weakness as the pod grip; the weight is read from the live figure every tick, so a rejoin carries none. Nothing here is saved, as a figure is not.
 - **Seated.** A person in a pod's seat is the pod's business: the dark pod draws the figure, not them.
 
 **Counterplay, on the ladder.**
@@ -1804,6 +1876,95 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open questions.** Whether a decoy should squeeze less than a seam (it must not: a seam cannot be told from a decoy); whether the pulse should be heard from a distance (the warning creak is positional, so a player near a squeezed pod hears it too).
 
+## The phonograph and the wax cylinders (#864, A)
+
+**Problem.** The colony is quiet in the way an abandoned place is, and the user wants more of the unsettling. The oldest recordings there are, First Sounds' playbacks of Scott de Martinville's phonautograms (1857 to 1860, CC BY), are exactly that: warbling, ghostly voices from before recording was meant to be heard. They are a find and a place, never a rule.
+
+**The pieces.**
+- **A phonograph** a player crafts from planks, an iron ingot and a copper ingot (what the salvage crates give). A wax cylinder in it plays; an empty hand stops and starts it; a sneaking empty hand takes the cylinder out; breaking it drops the cylinder and stops the sound. It plays at the block, audible about 24 blocks out, with no "Now playing" text. A player who walks into earshot while it plays hears it start again from the top; its stop reaches only the players it was sent to.
+- **Wax cylinders**, one recording each (Gamme de la Voix 1860, Jeune Jouvencelle 1857, Othello 1860), found in the lockers of wreck bays (about three in ten) and rarely in salvage crates (about one in twenty-five). Never crafted. "Au clair de la lune" is never one: it is the wreck's song (#861).
+- **The colony's phonograph** on the Lamp and Pick's counter: Company property that holds a rack of the three (and, since #946, the doll and the nursery rhyme below), which cannot be ejected or taken. Each play starts the next. The whole charter shares it. Rarely, at night, with nobody in the room, it starts by itself: a check every 12,000 ticks (ten minutes) in the third of the sky's cycle round its darkest point, a 4% chance each, at most once a night, so about one night in four. Atmosphere only.
+
+**Trade-offs.** None to pay: nothing here is power. The cost is the find (a wreck bay's corner, a lucky crate), and a phonograph is a luxury in a bootstrap that wants every ingot for a pump motor.
+
+**Knobs.** `SoundTuning.phonographRange`, the `ColonyTuning.phonograph*` fields, the crate pool's `random_chance` in `loot_table/blocks/salvage_crate.json`, the locker's in `loot_table/chests/wreck_locker.json`.
+
+**Open.** The pencil path (#849) should pay out cylinders too. A fourth recording is one more entry in `RECORDINGS` in `tools/sounds/first_sounds.py`. "Au clair de la lune" (#861) is made there too but is never one of them.
+
+## First Sounds in the dark (#866, A)
+
+**Problem.** The wax cylinders (#864) are a find. The user also wants the oldest recordings there are to be a faint, building unease in the layers themselves, never noise. So they are heard rarely and far off, and the deeper the player is the more often and the more worn they come.
+
+**The pieces.**
+- **Fragments, not songs.** `tools/sounds/ambience.py` cuts short fragments (about 1 to 3 seconds; #946 added more: a syllable of Othello, a breath of the vocal scale, half a word of Tasso's Aminta, probably in Scott's own voice (First Sounds notes that he apologized in writing for reversing the word order, which indirectly names him as the speaker), the tuning fork surfacing from noise) and one warm-up crackle, from the same First Sounds recordings as the cylinders, each in the tiers it is made for. Its `ambience.json` holds every cut. The wreck's song (#861) is never one.
+- **Three wears.** `faint` (layer 1): low-passed, distant, quiet. `worn` (the Old Workings): band-limited with crackle and a dropout or two. `broken` (everything deeper): slowed and pitched down, heavily filtered, gated dropouts and a stutter. The deepest words (Aminta) are only in the worn and broken tiers, and since #946 a human ear's phonautogram is broken only.
+- **One client ticker** (`client/sound/AmbienceTicker`, per player, no server state: it is atmosphere and carries no rule) asks a pure `AmbienceScheduler` each tick. The gap per layer is drawn at random between two ends (`AmbienceTuning.layers`): layer 1 every 15 to 30 minutes, layer 2 every 5 to 12, deeper every 3 to 8. The surface and colony get none. A layer past the table takes its last entry, so a new layer is never silent and needs no code. A fragment never follows itself. If one falls due while the Lamp Hymn, a phonograph, a transmission or another fragment sounds (or ended within 10 seconds), it waits a drawn 20 to 90 seconds and tries again.
+- **From the dark:** a place 12 to 28 blocks away, picked for rock between it and the player, then air, then no lamp, so it seems to come from behind a wall.
+- **The Company horn** hangs from the roof over the middle of the punch clock's hall in Shift Change (layer 2), chosen because that hall holds the lore's still-ticking clock; the gallery is a dead end that few cross. A player within 24 blocks of it hears the fragments from the horn instead of from the dark (the layer's own or, since #946, one of the horn's own pool: see below), at the layer's own rate (the horn's timer replaces the layer's and never runs beside it; both are drawn again after every fragment, and the horn's gap is never shorter than the layer's). The one extra is the first fragment after arriving, not sooner than a minute: 1.3 seconds of crackle (the tuning fork's noise before it finds its note), then the fragment. It is scenery: no collision, instant to break, no drop, no rule.
+- **Beside the biome's own sounds.** A fragment may land on a vanilla-style creak or knock of the layer's biome (`ambient.layer_*_creak`, `_knock`). That is by intent: the dark is allowed to be busy for a moment, and the quiet rule keeps only the hymn, the phonograph, the transmissions and other fragments apart.
+- **Subtitles** explain nothing: "A voice, far off" and "Static".
+
+**Trade-offs.** Nothing to pay and nothing to learn: it is never a signal, so a player who mutes the ambient slider loses nothing. The risk is annoyance, which the rates answer: the first layer is a thing a player hears twice in a long session and wonders about.
+
+**Knobs.** `AmbienceTuning` (rates, retry, quiet, horn range and timer, distances); the volume and `attenuation_distance` of each event in `sounds.json`; each wear's numbers in `tools/sounds/ambience.py`.
+
+**Open.** None left from #861: it took the ticker's quiet rule and playing code and kept its own pure decision (`RetainedWarning`), since the warning has no timer.
+
+## Au clair de la lune (#861, A)
+
+**Problem.** The oldest recordings are heard rarely and far off (#866), and the Retained (#449) are the one thing in the dark that comes with no sound at all. The user's call (2026-11-21): the 1860 phonautogram of "Au clair de la lune", "wreck first, then the dark". The song is learnt where it is safe, and then it is a warning where it is not.
+
+**The pieces.**
+- **Two variants**, both made by `tools/sounds/first_sounds.py` from one source (`SONGS`, never the cylinder set `RECORDINGS`): `song/wreck.ogg`, the phonograph's treatment on the whole 21.7 seconds, and `song/dark.ogg`, the opening line (0.1 to 4.1 s, up to the singer's first breath) low-passed and distant with a three-second tail and a long reverb, at about -30 LUFS (the ambience's faint and broken voices are -26 to -32; the wreck's is -19), with no wow, so that it is the same steady tune. Mono, credited in `CREDITS.md`, listed in `first_sounds.json` with its cut. They are the sound events `song.wreck` and `song.dark`: in no cylinder, no loot table and no random ambience pool.
+- **The wreck's phonograph** (`wreck_phonograph`) stands in a corner of PROSPECTOR-0002's bay alone (Prospector's Run, layer 2: the wreck with one lamp still lit, beside Ines's log; no ordinary bay has one, so the song stays rare and meaningful and the warning is not diluted), a block of the same Company grade as the colony's phonograph: unbreakable, no item, no loot, and no cylinder, so its song cannot be taken. A player within 14 blocks starts it (it is heard to 16); a player who walks in while it sings hears it from the top. A right click switches it off, or on again.
+- **Off lasts until nobody has been within 14 blocks for five minutes** (6,000 ticks, counted from the later of when it was spent and when anyone was last near, so a visitor who lingers and steps out and back is not sung to again). A song that ends by itself is the same: it does not start again while a visitor stays. The next visitor, or the same one much later, hears it start. *Why:* a player who switches it off is not sung to again on the way out, so the off switch is believed; and the tune stays learnable for everyone. The two saved values are the game times it was last spent and last had someone near, so leaving the chunk's simulation or restarting does not make a switched-off phonograph sing at once (a playback is not saved).
+- **The warning.** A Retained 16 to 32 blocks away that the player does not see (its head and its body centre are each outside a 70 degree view cone or behind rock) for two seconds, at most once per figure and once in 7.5 minutes (9,000 ticks), makes the dark's variant come from the figure, positional, as ambient sound. Per player, on the client, no server state, and the Retained are not touched: it reads them only. It is never random: with no figure near it cannot play. `RetainedWarning` (pure) decides; `AmbienceTicker` feeds it the figures and plays the sound, with the ambience's quiet rule (no overlap with the hymn, a phonograph, a transmission, a fragment or the song itself) and a longer one of its own: not for a minute after a wreck's phonograph sounds, which also restarts the two-second count. The song is learnt in the safe place first.
+- **The margin note**, "If you hear the song and there's no radio, leave. —R.", is beside the paragraph of "Recovering Company Property" (chapter 9), which opens when the breach into the Old Workings is made, where the wrecks are. It is Roz's: it says what to do and not why.
+- **Subtitles** explain nothing: "A voice, crackling" and "A song, far off".
+
+**Trade-offs.** Nothing to pay, and nothing the player needs: a player who never hears it loses nothing, and one who learns it can leave a Retained's neighbourhood or light their pod. It is a cue, not a rule. The risk is a false teaching, which the rules answer: it plays only for a real figure, and never beside a wreck's song.
+
+**Knobs.** `SoundTuning.wreckSong*` (range, trigger range, length, re-arm time); `WarningTuning` (ranges, cooldown, count, view cone, quiet after a wreck's song); the volume and `attenuation_distance` of each song in `sounds.json`; the dark's cut, tail and reverb in `tools/sounds/first_sounds.py`.
+
+**Open.** The creatures session (#13) may later change how the Retained use the song (a figure that hums it, a sighting that ends it). The cue is a client reading of the figures and needs nothing from them. The story bay is drawn from the choice of the colony's pad, as its lamp is, so it has the phonograph whenever it has the lamp; no fallback bay is needed. The warning's suppression after a wreck's song is global (any `song.wreck` heard, one minute of grace), not by distance, which is enough while one phonograph sings; more would need a distance rule. Seen is a 70 degree view cone, not the render frustum.
+
+## The punch clock that calls the hours (#938, A)
+
+**Problem.** The lore's "punch clock still ticking" (Shift Change, layer 2) has only ever been a lit block. The user's call (2026-11-22) was to use the old recordings more widely, and Frank Lambert's 1878 talking clock, a lead cylinder of him calling out the hours (and skipping ten), is the obvious one for a clock. It must stay rare and a little wrong.
+
+**The pieces.**
+- **The clock** is a Company punch clock block (`company_clock`, scenery like the horn: no collision, instant to break, no drop, no rule) that the PUNCH_CLOCK hall places before its lit one, a few blocks from the PA horn.
+- **Rare:** a player within 24 blocks of it may hear it call an hour. `ClockCaller` (pure, in `src/main`; `AmbienceTicker` feeds it and plays the sound) draws the gap between 30 and 90 minutes of play, so about one call an hour, the first not before five minutes. Its timer runs only while a player is near and is kept when they leave, so a visitor passing through hears nothing and one who lingers hears it. It has no period to learn. It waits (a drawn 20 to 90 seconds, then tries again) while the hymn, a phonograph, a transmission, a fragment or a song sounds, and the ambience's own fragments wait for it.
+- **Right, wrong or skipped:** about 40% of the calls are the world's hour on a twelve-hour dial (0 is six in the morning; midday and midnight are twelve), 40% another hour, and 20% the hour before and then the hour after, the true one missing, as Lambert skips ten. A call is never the same hours as the one before, whatever the hour is.
+- **The sound is Lambert's own voice.** One event per hour, `ambience.clock.hour_N`, each the word of Frank Lambert's 1878 talking clock (a lead cylinder; the recording skips ten, so there is no hour 10). `tools/sounds/lambert_clock.py` cuts the eleven words of the recording's clear section (0:22 to 0:33) into `clock/hour_N.ogg`, mono, levelled to -30 LUFS under -1 dBTP, and `tools/sounds/lambert_clock.json` records the source URL, its sha256, its tags verbatim and every cut. The mp3 is never committed. The recording carries a do-not-distribute notice; it is published here at the user's direction (see `CREDITS.md`).
+- **Ten.** The clock never calls it: at ten a call is never the right one and is the hour before and then the hour after (nine, then eleven), or a wrong hour; a skip or a wrong call never strikes ten either.
+- **Deep fragments:** `ambience.clock.fragment` is one more voice in the `broken` tier's pool (four cuts of the recording's indistinct sections, slowed, pitched down and broken up by a gate), so in the layers below the Old Workings the ambience's draw sometimes gives it from the dark, rarely and never twice in a row, like any fragment.
+
+**Trade-offs.** Nothing to pay and nothing to learn: it is never a signal. The wrong hours are the point, and they teach nothing false because nothing depends on the hour. The risk is annoyance, which the rate answers.
+
+**Decisions.** The per-hour cuts (`HOURS_CUTS`) were mapped from the loudness envelope, not by ear: 12 bursts were found in the clear section for 11 hours, and the first 11 are used. They want a listen. The clock lives in the layer-2 hall only: the colony is the safe hub, and a second clock would dilute a place. The deep layers get the clock as fragments from the dark instead of a clock to find.
+
+**Knobs.** `ClockTuning` (range, gaps, shares of right, wrong and skipped calls, the word length); the volume and `attenuation_distance` of each event in `sounds.json`; `HOURS_CUTS`, `FRAGMENT_CUTS` and the target level in `tools/sounds/lambert_clock.py`.
+
+**Open.** The Lambert cuts want a listen (a bad cut is one edit to `HOURS_CUTS` and a re-run). A clock in a wreck or the colony is one more `company_clock` in a structure.
+
+## More early recordings (#946, A)
+
+**Problem.** The first three cylinders and the ambience (#864, #866) draw on a handful of Scott's phonautograms. The oldest recordings there are are more than that, and more of them would make the dark stranger without making it louder.
+
+**The pieces.**
+- **Deep fragments.** Six more fragments, in the `broken` tier only (a count that will drift: read `FRAGMENTS`): Lucae's 1862 phonautogram made with a human ear (the oldest and the deepest, so the first layers never hear it), the "Ki!" and tuning fork of Donders' 1865 noematachogram, Morey's 1874 "oo", and the 1860 vocal scale with its crosstalk, and two cuts of a far-off choir (the chorus conducted by August Manns, recorded on an Edison cylinder in 1888, sung from "Israel in Egypt"), heard as a choir far below. A hymn or a choir is found material, which LORE guardrail 4 now allows. Cut to 1 to 2 seconds and worn as the others are.
+- **The horn's pool.** The Company horn (#866) plays, after its static warm-up, either a fragment of the layer's tier or one from a pool of its own that the dark never plays (`AmbienceFragments.hornPool()`, events `ambience.horn.*`): Pouillet's 1850 diapason scale, a train on the elevated railroad (1878) and its test voices, and the Volta Laboratory's barometer (1884). They are worn as the Old Workings' are and sit near -29 LUFS. The scheduler holds the pool apart from the tiers (it is not a depth), so the dark cannot name it; near a horn each fragment of the layer's tier and of the pool is as likely as the next. The rates do not change.
+- **Five more cylinders.** Counting (about 1881), the Hamlet soliloquy (about 1884), Sullivan's toast at Little Menlo (1888), Edison's "Around the World on the Phonograph" (1888) and "The Lost Chord" (1888), each a whole recording in `tools/sounds/first_sounds.py` with the cylinder treatment, trimmed to its strongest 15 to 30 seconds, both ends in a pause so no word is clipped (counting and Hamlet are shorter and whole), and levelled with the first three (no louder than about -13.5 LUFS, true peak under -1 dBTP). They are found in wreck lockers and salvage crates like the first three, one more entry in each table's cylinder pool: the chance of a cylinder is the same, and only the choice among them widens. The colony's rack gets only the two below. The tooltip is the title and the year.
+- **Two for the colony only (at the user's direction).** The Edison talking-doll prototype's "Twinkle, twinkle, little star" (1888, 13 seconds, whole) and the Volta Laboratory's nursery rhyme as the machine winds down (1885, the first 24 seconds, ending in a pause) are appended to the colony phonograph's rack (`Recording.COLONY_RACK`), so they play in the Lamp and Pick. LORE guardrail 6 keeps a child's rhyme out of the deep: neither is in a wreck locker, a salvage crate or any ambience pool, and tests hold that.
+- **Credits.** One `CREDITS.md` entry per source, in the form its holder gives. The Volta and Edison files state no licence, so they are credited and linked with none claimed.
+
+**Trade-offs.** A player now finds a cylinder they cannot hear in the colony, and a given cylinder in a locker is rarer (one in eight, not one in three). Florence Nightingale's 1890 recording was not obtained (Wikimedia refused the download), the doll and the nursery rhyme are the colony's alone under LORE guardrail 6, and the Edison doll's "Now I lay me down to sleep" was not obtained: its NPS page says "The requested video is no longer available", and no audio link is in the page or its index.
+
+**Knobs.** The `FRAGMENTS` and `SOURCES` in `tools/sounds/ambience.py`; the cylinder entries in `RECORDINGS` in `tools/sounds/first_sounds.py`; the two loot tables' cylinder pools; each event's volume in `sounds.json`.
+
+**Open.** A sixth cylinder (Nightingale) is one more `Recording` entry once its file can be fetched and its licence read.
+
 ## Grained crust decoys (#216, A)
 
 **Problem.** If only seams were grained, the first grained crust a player met would show them where a seam is. A seam then needs decoys among the other crusts that follow the same four rules.
@@ -1860,6 +2021,25 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
+
+## Hand tools against pod-only blocks (#858, A)
+
+**Problem.** Crust, Company rock and rock below layer 1 were refused to hands by a cancelled break the client was not told about, so a strong pick ghost-broke a block that then came back, and nothing said why. The rule is one intended way to play with no hard block: brute force is possible, futile, and the game says so ([ADR 0069](../adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
+
+**Ladder.**
+1. **By hand: ruinous.** Any tool (a pickaxe, axe, shovel, hoe, sword or spear) breaks one block in 60 s, in any layer, whatever its enchantments. 60 s is a floor: a stop more than 20 ticks short of it is refused and charges nothing. An Unbreakable tool breaks it for free. A diamond or netherite tool spends half its durability, flat. A lesser tool (wood, stone, iron, gold, copper) is destroyed as the block goes: its durability is spent over the 60 s so it reaches its last point on the last tick, never before. Sparks, a grinding sound and a "burning out" or "this will destroy your pick" line show the cost; the first swing says a pod drill is the way. Nothing drops, and an item that is no tool, a bare hand or a fishing rod, still cannot break the block.
+2. **A pod drill** (and the charges) clears the same blocks with no cost to a pick: the intended way.
+3. **Mastery** is the pod's own ladder, unchanged: Company rock still wants a charge or a tier 3 drill, and the hand route only ever clears one block at a time.
+
+**Trade-offs.**
+- A diamond or netherite pick pays for two blocks. A wooden or iron pick pays for one, and is gone.
+- Stopping early wastes what was spent; Mending cannot refund it and Unbreaking cannot lower it.
+- It makes the default build marginally easier: any pick can now pass Company rock, which no tool could before. That is fine: a block costs half a diamond pick or a whole lesser one, so a straight shaft by hand is far dearer than the charges of [Company Rock and the straight shaft](#company-rock-and-the-straight-shaft-509-a).
+- Drops are never given, so brute force is not an ore exploit. The break still fires the hand-break events, so (A) brute-forcing a gas pocket vents it and the hazard still bites; a protection mod's veto refuses the break and charges nothing.
+
+**Knobs (`HandBreakTuning` in `LayerTuning`).** `breakTicks` (1200), `stopSlackTicks` (20), `tools` (the tag `deepcharter:hand_break/tools`), `durableShare` (0.5), `durableTools` (the tag `deepcharter:hand_break/durable`: diamond and netherite tools; a pack adds to it), `sparkTicks` (4), `soundTicks` (10), `messageTicks` (40).
+
+**Open questions.** Whether a block should drop its stone after the first deep layer; whether a pod crewmate's pick should count when the pod is the pilot's.
 
 ## The navigator's sonar (#988, A)
 
@@ -2367,3 +2547,28 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Open questions.** Whether the refill should grow with capacity once the canister exists; whether a toxin axis should join the air track or stand alone.
 
+## Pod controls and the chase camera (#1281, #1268, A)
+
+**Problem.** The pod read WASD relative to the pilot's view, snapped to four directions, and turned to face where it drove. With a camera behind the pod, pressing back made it turn round and drive at the camera. That is a top-down scheme, and Minecraft players already know the vehicle one ([ADR 0095](../adr/0095-pods-steer-like-a-boat-and-the-pilots-camera-chases-them.md)).
+
+**Rule.** Copy the vanilla boat (`AbstractBoat`) and deviate only where a drilling pod needs it.
+
+| Key | Pod | Copied from the boat | Deviation and why |
+|---|---|---|---|
+| W | drives forward along the pod's facing | `controlBoat` throttle along the yaw | **Instant speed.** The drive speed is the stock `horizontalSpeed` stat, reached at once, not the boat's ramp: the measured fuel, trip and bore tables and the client smoothing price that speed. The ramp can be added in one function if wanted |
+| S | backs up without turning | reverse is slower, and does not turn; A or D with S turns while reversing, as in the boat | **0.4 reverse.** The issue says reverse slower, and the boat's 1/8 cannot back out of a bore. It never drills. **W with S cancels** (the boat nets forward 0.035) |
+| A, D | turn the yaw (A left, D right) | `deltaRotation`: 1 degree a tick added per tick held, 0.9 of it kept, so it settles at 10 degrees a tick and coasts on after the key is let go | none out of a bore. In a bore as wide as the pod, one press turns a quarter to the next compass direction (below) |
+| bare A or D | creeps forward at 1/8 of the drive speed | the boat's paddle creep | none |
+| Space | rotor up | unchanged | |
+| sneak | dismount | vanilla | |
+| sprint | drills down when no direction key is held | unchanged for now; #1276 makes sprint with a direction key a boost | |
+
+**Camera.** Taking the pilot seat switches to third person (`THIRD_PERSON_BACK`) and leaving restores the view the player had. There is no option to turn it off. The view yaw takes the pod's turn every tick, as `AbstractBoat.positionRider` adds `deltaRotation` to its rider, so the angle to the pod stays in first and third person. **Unclamped view (a deviation):** the boat clamps the rider's view to 105 degrees from the nose; the pod does not, because #1268 and #1281 ask for free mouse look. In third person the view also eases back behind a driving pod (4 degrees a tick) once the mouse has been still for a second, so the camera chases; first person never settles.
+
+**The one deviation: the grid.** When the drill engages, the pod turns square to the compass at 15 degrees a tick, and the slab's first tick waits until it is square and centred. A sideways bore takes the compass direction nearest the nose, and only while W presses the pod against rock ahead of it. A bore down takes the nearest one too. In a bore as wide as the pod (rock beside it on both sides, on the ground) the pod squares itself and A and D do not steer it, so tunnels stay straight. One press of A or D there, while the pod is roughly square (within 15 degrees), turns it a quarter to the next compass direction (D clockwise), eased at the align rate; a held key is one press. W then drills the branch. A towed pod turns toward the way the line drags it, at 10 degrees a tick. Everything is the server's: the client sends only its keys, as before.
+
+**Knobs.** `PodSteeringTuning`: `turnAcceleration` (1), `turnDamping` (0.9), `reverseShare` (0.4), `creepShare` (0.125), `alignDegrees` (15), `alignTolerance` (0.5). `PodChase`: `LOOK_HOLD_TICKS` (20), `SETTLE_DEGREES` (4).
+
+**Open questions.**
+- Whether the pod should accelerate to its speed as a boat does. It does not yet: the speed is a stat the client smoothing and the fuel numbers assume.
+- The turn rate is a boat's, 200 degrees a second; a heavy pod might want less. It is one number.

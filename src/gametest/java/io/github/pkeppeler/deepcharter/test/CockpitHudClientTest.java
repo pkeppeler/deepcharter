@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitDecay;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
+import io.github.pkeppeler.deepcharter.client.pod.PodChase;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
@@ -51,6 +52,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
@@ -131,6 +133,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                             -ROOM_RADIUS,
                             ROOM_RADIUS,
                             Blocks.AIR);
+                });
+                ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+                singleplayer.getServer().runOnServer(server -> {
+                    ServerLevel one = TestLayers.level(server, 1);
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
                     PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                     pod.setPos(0.5, FEET_Y, 0.5);
@@ -160,6 +167,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectThePlateHoldsEveryLineClearOfItsBorder(context);
                 expectTheRibbonIsTheDefaultSeatedHud(context);
                 expectCockpitHidesTheVanillaHud(context, singleplayer, pod);
+                expectCockpitHidesTheVanillaHudInTheChaseViewToo(context, singleplayer, pod);
                 expectTheActionBarStaysForTheMessagesOfTheGame(context);
                 expectGaugesReadThePod(context, singleplayer, pod);
                 expectEveryReadoutLineIsOnThePlate(context);
@@ -239,7 +247,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "lava_above",
                         "glaze_holding",
                         "glaze_spent",
-                        "drifter_alarm")
+                        "drifter_alarm",
+                        "soot_limp")
                 .map(name -> "hud.deepcharter.pod." + name)
                 .collect(Collectors.toSet());
         if (!alerts.equals(expected)) {
@@ -317,6 +326,50 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 context,
                 "the pilot seated again",
                 client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
+    }
+
+    /**
+     * The shipped default (#1281): taking the pilot seat switches to the third-person chase view, so the Ribbon must
+     * stand and the vanilla hotbar stay hidden there too. The test turns the chase on, boards again, and puts the
+     * first-person view back.
+     */
+    private void expectCockpitHidesTheVanillaHudInTheChaseViewToo(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
+        PodChase.setAutomatic(true);
+        try {
+            singleplayer
+                    .getServer()
+                    .runOnServer(server ->
+                            server.getPlayerList().getPlayers().getFirst().stopRiding());
+            ClientWait.until(
+                    context,
+                    "the pilot on foot",
+                    client -> ClientSession.player(client).getVehicle() == null);
+            singleplayer.getServer().runOnServer(server -> {
+                if (!server.getPlayerList().getPlayers().getFirst().startRiding(pod)) {
+                    throw new AssertionError("the pilot could not board the pod for the chase view");
+                }
+            });
+            ClientWait.until(
+                    context,
+                    "the pilot seated in the chase view",
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity
+                            && client.options.getCameraType() == CameraType.THIRD_PERSON_BACK);
+            context.waitTicks(10); // tick-wait: the mount's first frames settle
+            if (!context.computeOnClient(client -> CockpitHud.seated(client).isPresent())) {
+                throw new AssertionError("A pilot in the chase view still gets the Ribbon");
+            }
+            BufferedImage bare = shotOfBareGame(context);
+            BufferedImage chase = shot(context, "cockpit-chase-view", false);
+            double seated = differing(bare, chase, VANILLA_BOX);
+            if (seated > SAME) {
+                throw new AssertionError("In the chase view the vanilla hotbar and hearts must not be drawn either: "
+                        + seated + " of the middle of the bottom of the screen differs from the game with no HUD");
+            }
+        } finally {
+            PodChase.setAutomatic(false);
+            context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+        }
     }
 
     /** A shot with the whole HUD switched off, which is what the vanilla box shows when nothing is drawn in it. */
@@ -496,8 +549,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     Blocks.AIR);
             pod.setHull(pod.maxHull() / 10f);
             pod.setStranded(true);
-            pod.setPos(0.5, floorFeetY, 0.5);
         });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+        singleplayer.getServer().runOnServer(server -> pod.setPos(0.5, floorFeetY, 0.5));
         ClientWait.until(
                 context,
                 "the pod in the blackout band on the client",
@@ -905,9 +959,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("lava_above", 6),
                 line("glaze_holding", 12),
                 line("glaze_spent"),
-                line("drifter_alarm", 30));
+                line("drifter_alarm", 30),
+                line("soot_limp"));
         List<PodStatusHud.Line> notes = List.of(
-                line("slag", 12, 8), line("slag_only", 12), line("liner", 3), line("lining", 5), line("brace_working"));
+                line("slag", 12, 8),
+                line("slag_only", 12),
+                line("liner", 3),
+                line("lining", 5),
+                line("brace_working"),
+                line("soot", 11, 44, 44));
         PodStatusHud.Line tally = line("tally_hull", 100, 100);
         List<CockpitHud.Row> head = List.of(
                 new CockpitHud.Row(

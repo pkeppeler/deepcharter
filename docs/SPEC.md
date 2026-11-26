@@ -52,8 +52,8 @@ Pillars, ranked. The higher one wins a conflict.
 ### Seams and grained crust
 
 - Below the campaign world, the worlds are up to 4,064 tall, the limit of one dimension ([ADR 0085](adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
-- The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
-- Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam cannot be told from a decoy.
+- A seam at a layer boundary sits in a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed. A seam mid-layer sits in a plain slab of ordinary rock, with none of these rules.
+- Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam at a layer boundary cannot be told from a decoy.
 
 ### Story layers
 
@@ -141,7 +141,7 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - **Voice:** the employer's cheerful corporate voice. Previous miners' handwritten margin notes tell a different story. The handbook is "revised" five times as the story turns. Revisions change its tone, never its rules. Text, margin notes and revisions: [lore/handbook.md](lore/handbook.md).
 - **Visibility:** show only the road just ahead, and never spoil.
   - The current Directives are explicit.
-  - The next chapter shows its title and Directive list.
+  - The next chapter shows its title and Directive list on its own tab. The current chapter's map does not preview it.
   - Anything further ahead is a redacted shape with a CLASSIFIED stamp.
 
 ### After layer 2
@@ -158,7 +158,8 @@ The **Employee Handbook** is a company-issued onboarding manual.
 ### Directives and progress
 
 - **Directives** are the handbook's objectives, shown as a **quest map**: a tab down the side for the intro and one for each chapter on every page, and each chapter a fixed flowchart sheet: nothing on it drags, pans or zooms (playtest 3, #962). They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
-- A step shows its instruction, the items it needs with counts and progress, a link to its chapter page and each item's recipe one click away. The chapter text pages stay as the manual.
+- A step's card shows its instruction, a link to its chapter page and, when the step asks for an item (obtained or crafted), that item with its count and progress. It never lists the item's ingredients. A click on the item opens its recipe, as in the GregTech: New Horizons questbook (BetterQuesting). The chapter text pages stay as the manual.
+- The handbook has a controls page after the contents: how to use the handbook, the parts catalogue, the pod and the scanner, with each key read live from the player's bindings, so a rebind shows.
 - A completed step shows a themed popup. Nothing is pinned on screen. The book opens where the player left it, and L opens it as well as H.
 - Directives give no rewards. The employer's transmission bonuses still exist separately.
 - Progress is shared by the charter, with personal read marks for each player.
@@ -179,7 +180,7 @@ One job each. They can point at each other; a transmission can unlock a handbook
 
 There are no Directives after layer 2, only pencil paths. Each new mechanic is explained the first time you meet it:
 
-- A **Spec sheet** when you craft or buy something, for example a pad's power cost or a material's heat rating. It is the item's page in the **parts catalogue**, and can be looked up any time after.
+- A **Spec sheet** when you craft or buy something, for example a pad's power cost or a material's heat rating: a small corner slip names it and the key that opens it, so a first craft never stops play. It is the item's page in the **parts catalogue**, and can be looked up any time after.
 - A one-time HUD or scanner warning on first exposure, such as "PRESSURE EXCEEDS HULL RATING".
 
 The story stays in Transmissions and Notes.
@@ -191,6 +192,7 @@ Implementation: [ADR 0005](adr/0005-build-our-own-handbook.md); research in [res
 Our own EMI-style viewer, styled as a Company parts catalogue ([ADR 0066](adr/0066-we-build-our-own-parts-catalogue-and-the-server-sends-each-player-only-their-charters-known-recipes.md)). It sits beside inventory screens. R on a hovered item shows its recipes, U its uses. It has search, favourites and a "craftable now" filter. Vanilla's recipe book is hidden.
 
 - A recipe is **known** per charter. It becomes known when a quest step that asks for its item becomes current, or when anyone in the charter obtains the item or one of its ingredients. Vanilla items follow the same rule.
+- Only what the campaign world yields exists. A recipe that needs or makes an item the world has none of is disabled, vanilla's included, and such items are left out of the catalogue and the creative tabs. A tag ingredient such as "any planks" shows only the members the world yields ([ADR 0093](adr/0093-recipes-and-items-the-campaign-world-does-not-yield-are-removed-by-a-derived-allowlist.md)).
 - Unknown recipes still craft. The server sends each player only their charter's known recipes.
 
 ## 6. Charters
@@ -293,7 +295,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 ## 9. On foot
 
 - Hybrid play: leave the pod to explore caverns, fight and build.
-- **Hardness:** below layer 1, rock cannot be broken by hand tools, only by pod drills.
+- **Hardness:** the way through pod-only blocks (the breach crust, Company rock, and rock below layer 1) is a pod drill. Any hand tool (pickaxe, axe, shovel, hoe, sword or spear) can brute-force one, in any layer, at 60 seconds a block and a ruinous cost that Unbreaking and Mending cannot lower: a diamond or better tool pays half its durability, and a lesser tool (wood, stone, iron, gold, copper) is destroyed as the block goes. It drops nothing, and the game says what the player is doing wrong ([ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
 - **Environment:** heat, pressure and toxic air outside the pod, worse with depth.
 - **Suit timer:** how long you can stay on foot outside a pod or habitable outpost.
 - **Suit:** upgraded separately: oxygen and toxins, heat, pressure, lamp battery.
@@ -301,7 +303,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 
 ## 10. Hazards
 
-- Baseline from the original: Company Rock (a plain drill refuses it; a bought blasting charge clears it, [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md); a shaped charge clears a column of it and a tier 3 drill bites it slowly, [ADR 0052](adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)), visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
+- Baseline from the original: Company Rock (a plain drill refuses it, and a hand tool breaks it only at the ruinous cost of [ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md); a bought blasting charge clears it, [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md); a shaped charge clears a column of it and a tier 3 drill bites it slowly, [ADR 0052](adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)), visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
 - Earthquakes (in certain layers) and local cave-ins block a stretch of shaft, small or large, rather than erasing it.
 - Ways to clear a blockage:
   1. Climb out and plant explosives, with the suit timer running.

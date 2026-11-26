@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
  * Builds the colony once, at world spawn, the first time a server starts with this mod: a flattened pad of
  * {@link ColonyTuning#padSize()} blocks a side with the company town on it, placed from the structure pieces of the
  * {@link ColonyLayout} (ADR 0030, tools/colony/town.py): the square with the Host, the Works and its headframe, the hangar, the
- * Continuity Office, the chapel, the bunkhouse, the offices and the Lamp and Pick. North is -Z.
+ * Continuity Office, the chapel, the bunkhouse, the offices and the Lamp and Pick, with its phonograph ({@link ColonyPhonograph}). North is -Z.
  *
  * <p>The pad is centred on the world spawn, or on the nearest dry ground if the spawn is in water ({@link #findDryGround}).
  * The pad's ground is the plain's: the surface's regolith, with the packed regolith and rock of its layers scattered on the pad's
@@ -48,6 +48,12 @@ import org.jspecify.annotations.Nullable;
 public final class ColonyBuilder {
     /** A block set without neighbour updates. */
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+
+    /**
+     * What fills the gap under the pad down to the ground: a block a player can dig out, so its drop is obtainable (ADR
+     * 0093).
+     */
+    public static final Block FILL = Blocks.DIRT;
 
     /** How many blocks under the surface the packed regolith goes before the rock. */
     private static final int LAYER_PACKED = 2;
@@ -205,6 +211,7 @@ public final class ColonyBuilder {
                 centre.getY());
         layout.pieces().forEach(piece -> piece.place(level, centre));
         terminals(anchors);
+        set(ColonyPhonograph.position(anchors), ColonyPhonograph.state());
         // The pad's chunks are loaded already, so the Conduit's overworld part is set now and not when they load.
         forEachPadChunk(level, centre, chunk -> Conduit.place(level, chunk, started, LayerChain.SURFACE));
     }
@@ -449,7 +456,7 @@ public final class ColonyBuilder {
                                 ? scatter(x, z, 0, SurfaceBlocks.REGOLITH.defaultBlockState())
                                 : SurfaceBlocks.REGOLITH.defaultBlockState());
                 for (int y = ground - 1; y >= bottom && !isGround(level.getBlockState(pos.set(x, y, z))); y--) {
-                    set(pos, Blocks.DIRT.defaultBlockState());
+                    set(pos, FILL.defaultBlockState());
                 }
             }
         }

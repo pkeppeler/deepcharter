@@ -163,6 +163,7 @@ public class RetainedTest {
                 PodComponents.register(pod, charter);
                 PodComponents.install(pod, ComponentItems.mint(level.getServer(), ComponentTrack.LIGHTS, 1, charter));
             }
+            pod.setYRot(WEST);
             pilot.teleportTo(level, pod.position(), WEST, 0f);
             if (!pilot.player().startRiding(pod)) {
                 throw failure(helper, "the pilot could not mount the pod");
@@ -432,6 +433,7 @@ public class RetainedTest {
         MockPlayer pilot = MockPlayers.join(helper, "retained-draw");
         try {
             expect(helper, !LamplessFigure.draws(pod), "an empty pod draws a figure");
+            pod.setYRot(WEST);
             pilot.teleportTo(level, pod.position(), WEST, 0f);
             expect(helper, pilot.player().startRiding(pod), "the pilot could not mount the pod");
             expect(helper, LamplessFigure.draws(pod), "a dark pod with a pilot does not draw a figure");
@@ -868,6 +870,7 @@ public class RetainedTest {
         FarChunks.awaitEntityTicking(helper, nether, spot, () -> {
             List<LamplessFigure> naturals = new ArrayList<>();
             for (int i = 0; i < TUNING.maxPerBand(); i++) {
+                // Counted and discarded in this callback, before the figure's first tick (#1237).
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, nether);
                 figure.markNatural();
                 figure.setNoAi(true);

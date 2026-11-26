@@ -143,10 +143,10 @@ val fabricApiModules = mapOf(
 		"fabric-registry-sync-v0", "fabric-resource-loader-v1",
 	),
 	"clientImplementation" to listOf(
-		"fabric-api-base", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0", "fabric-item-api-v1",
-		"fabric-key-mapping-api-v1", "fabric-lifecycle-events-v1", "fabric-menu-api-v1", "fabric-model-loading-api-v1",
-		"fabric-networking-api-v1", "fabric-particles-v1", "fabric-renderer-api-v1", "fabric-rendering-v1",
-		"fabric-resource-loader-v1", "fabric-screen-api-v1",
+		"fabric-api-base", "fabric-creative-tab-api-v1", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0",
+		"fabric-item-api-v1", "fabric-key-mapping-api-v1", "fabric-lifecycle-events-v1", "fabric-menu-api-v1",
+		"fabric-model-loading-api-v1", "fabric-networking-api-v1", "fabric-particles-v1", "fabric-renderer-api-v1",
+		"fabric-rendering-v1", "fabric-resource-loader-v1", "fabric-screen-api-v1",
 	),
 	"gametestImplementation" to listOf(
 		"fabric-api-base", "fabric-client-gametest-api-v1", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0",
@@ -234,6 +234,12 @@ val checkGeckoLib = tasks.register<CheckGeckoLib>("checkGeckoLib") {
 }
 tasks.named("jar") { dependsOn(checkGeckoLib) }
 
+// CREDITS.md ships in the jar as CREDITS_<archive name>, the way Loom names a LICENSE: the recordings' licence asks for their credit to travel with them.
+tasks.jar {
+	val credits = "CREDITS_${project.base.archivesName.get()}"
+	from("CREDITS.md") { rename { credits } }
+}
+
 // The same check on the copy that ships: the jar nested in our mod jar must be the one jar there, with the pinned sha512 (audit
 // condition 4: Loom's include must not add a second jar or a different one).
 abstract class CheckNestedGeckoLib : DefaultTask() {
@@ -277,6 +283,7 @@ apply(from = "gradle/null-marked-gate.gradle.kts")
 apply(from = "gradle/gametest.gradle.kts")
 apply(from = "gradle/gametest-preset.gradle.kts")
 apply(from = "gradle/colour-gate.gradle.kts")
+apply(from = "gradle/input-literal-gate.gradle.kts")
 apply(from = "gradle/test-only-gate.gradle.kts")
 apply(from = "gradle/clientlock.gradle.kts")
 apply(from = "gradle/lambdynamiclights.gradle.kts")

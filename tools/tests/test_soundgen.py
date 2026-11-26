@@ -15,6 +15,7 @@ from pathlib import Path
 SOUNDS = Path(__file__).resolve().parent.parent / "sounds"
 sys.path.insert(0, str(SOUNDS))
 
+import first_sounds  # noqa: E402
 import recipes  # noqa: E402
 import soundgen  # noqa: E402
 
@@ -77,6 +78,12 @@ class GateTest(unittest.TestCase):
         code, _, err = run("--out", str(self.out), "--manifest", str(self.manifest), *names)
         self.assertEqual(0, code, err)
 
+    def test_building_one_name_keeps_the_other_manifest_entries(self):
+        self.build("hymn/colony", "ui/hover")
+        both = json.loads(self.manifest.read_text())
+        self.build("ui/hover")
+        self.assertEqual(both, json.loads(self.manifest.read_text()))
+
     def test_an_ogg_with_no_recipe_fails_the_check(self):
         self.build("hymn/colony")
         stray = self.out / "hymn" / "stray.ogg"
@@ -111,8 +118,28 @@ class GateTest(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertIn("missing", err)
 
+    @unittest.skipUnless(first_sounds.has_libvorbis(), "only libvorbis writes mono Vorbis")
+    def test_a_world_sound_written_as_stereo_fails_the_check(self):
+        self.build("continuity/lamp_out")
+        ogg = self.out / "continuity" / "lamp_out.ogg"
+        self.assertEqual(1, first_sounds.ogg_channels(ogg))
+        soundgen._encode(recipes.render("continuity/lamp_out"), ogg, False)
+        manifest = json.loads(self.manifest.read_text())
+        manifest["continuity/lamp_out"]["ogg_sha256"] = soundgen._sha256(ogg)
+        self.manifest.write_text(json.dumps(manifest))
+        code, _, err = run("--check", "--out", str(self.out), "--manifest", str(self.manifest), "continuity/lamp_out")
+        self.assertEqual(1, code)
+        self.assertIn("not mono", err)
+
 
 class RecipeTest(unittest.TestCase):
+    def test_a_world_sound_is_mono(self):
+        # The engine pans and attenuates mono sounds only; a stereo sound at a place is heard at full volume everywhere.
+        for name in recipes.MONO:
+            clip = recipes.render(name)
+            self.assertEqual(clip.left, clip.right, f"{name}: a mono recipe's channels differ")
+            self.assertEqual(1, first_sounds.ogg_channels(soundgen.OUT / f"{name}.ogg"), f"{name}: the committed OGG is not mono")
+
     def test_a_recipe_makes_the_same_sound_twice(self):
         self.assertEqual(recipes.render("ambient/layer_1_knock").sha256(), recipes.RECIPES["ambient/layer_1_knock"]().sha256())
 

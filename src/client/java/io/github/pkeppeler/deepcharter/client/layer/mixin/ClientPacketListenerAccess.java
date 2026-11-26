@@ -21,6 +21,9 @@ public interface ClientPacketListenerAccess {
     @Accessor("level")
     void deepcharter$setLevel(ClientLevel level);
 
+    @Accessor("levelData")
+    void deepcharter$setLevelData(ClientLevel.ClientLevelData levelData);
+
     @Accessor("serverChunkRadius")
     int deepcharter$serverChunkRadius();
 
