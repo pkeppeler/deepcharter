@@ -238,7 +238,10 @@ public class CraftedPartsScenario extends EvidenceScenario {
     /** What {@link #furnish} stood in the room: the crafting table, and the network id of the pod. */
     private record Room(BlockPos table, int podId) {}
 
-    /** Whether the client's copy of the pod is within a block of {@code at}; looked up again on each call, as a teleport may replace it. */
+    /**
+     * Whether the client's copy of the pod is within a block of {@code at}; looked up again on each call, as a
+     * teleport may replace it.
+     */
     private static boolean podAt(Minecraft client, int podId, Vec3 at) {
         return ClientLight.clientLevel(client).getEntity(podId) instanceof PodEntity pod
                 && pod.position().distanceToSqr(at) < 1;
