@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -81,6 +82,13 @@ public class TheClaimTest {
 
     private static final List<String> FEATURES =
             List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches", "fungal_stalks_cave");
+
+    /**
+     * The fewest positions a feature's last placement step keeps in the sample, so its in-chunk check has positions to
+     * judge (#1401): the cave stalks keep 109, and kept 1 while their rows missed most of Topsoil Claims. A feature not
+     * named here only adds to the sum.
+     */
+    private static final Map<String, Integer> MIN_KEPT = Map.of("fungal_stalks_cave", 40);
 
     /**
      * Caves open up with depth. The share of open blocks under each column's rock top grows from the surface band's
@@ -312,6 +320,7 @@ public class TheClaimTest {
         var registry = level.registryAccess().lookupOrThrow(Registries.PLACED_FEATURE);
         int positions = 0;
         for (String name : FEATURES) {
+            int kept = 0;
             PlacedFeature feature = registry.getValueOrThrow(ResourceKey.create(
                     Registries.PLACED_FEATURE, Identifier.fromNamespaceAndPath("deepcharter", name)));
             for (int dx = 0; dx < SAMPLE_CHUNKS; dx++) {
@@ -340,8 +349,19 @@ public class TheClaimTest {
                         positions += next.size();
                         picked = next;
                     }
+                    kept += picked.size();
                 }
             }
+            int fewest = MIN_KEPT.getOrDefault(name, 0);
+            LOGGER.info("[the-claim] {} keeps {} positions in {} chunks", name, kept, SAMPLE_CHUNKS * SAMPLE_CHUNKS);
+            expect(
+                    helper,
+                    kept >= fewest,
+                    "%s keeps %s positions in %s chunks, expected at least %s, so its in-chunk check is all but vacuous",
+                    name,
+                    kept,
+                    SAMPLE_CHUNKS * SAMPLE_CHUNKS,
+                    fewest);
         }
         expect(helper, positions > 0, "no feature of the Claim picked a position");
         ClaimShaftFeature shaft = (ClaimShaftFeature) registry.getValueOrThrow(ResourceKey.create(

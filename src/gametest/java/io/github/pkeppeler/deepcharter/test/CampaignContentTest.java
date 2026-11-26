@@ -34,6 +34,7 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -53,6 +54,8 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Server GameTests for what the campaign world holds besides terrain (#743, ADR 0059): the structure sites of each layer (ADR 0025), the
@@ -60,6 +63,7 @@ import net.minecraft.world.phys.Vec3;
  * {@code OrePlacementTest}. The world is {@code deepcharter:campaign_sample}; the band table is {@link CampaignBands}.
  */
 public class CampaignContentTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CampaignContentTest.class);
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1000;
     /** A spacing cell of the sample level that no other test draws, away from the Conduit's column. */
@@ -73,6 +77,11 @@ public class CampaignContentTest {
     private static final int CELLS = 5;
     /** The cave stalks are counted within this many chunks of the origin, a square of twice this and one on a side. */
     private static final int STALK_CHUNKS = 5;
+    /**
+     * The fewest ordinary stalk columns those chunks of layer 1 hold: 265 grow, and 12 did while the stalks' rows missed most of Topsoil
+     * Claims (#1401).
+     */
+    private static final int MIN_CAVE_STALK_COLUMNS = 100;
 
     /**
      * What the shipped biomes hold to check: the surface stalks' height range, the cave stalks' layer rows, and a zone fill for each zone of
@@ -436,6 +445,72 @@ public class CampaignContentTest {
         helper.succeed();
     }
 
+    /**
+     * A zone biome's feature that picks layer rows and then checks the biome picks only rows of the zones whose biomes
+     * list it: the biome check drops every try at another zone's row, so those rows only thin the feature out (#1401,
+     * where layer 1's cave stalks picked rows 10 to 150 and Topsoil Claims is rows 128 to 191).
+     */
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void layerRowsLieInTheZonesThatListTheFeature(GameTestHelper helper) throws IOException {
+        Map<String, List<Zones.Span>> zonesOfFeature = new TreeMap<>();
+        for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
+            Band band = CampaignBands.layer(number);
+            for (int zone = 0; zone < Zones.COUNT; zone++) {
+                Zones.Span span = Zones.span(band.minY(), band.height(), zone);
+                JsonObject biome = read(helper, resource("biome", zoneBiomeId(number, zone)))
+                        .getAsJsonObject();
+                for (JsonElement step : biome.getAsJsonArray("features")) {
+                    for (JsonElement id : step.getAsJsonArray()) {
+                        zonesOfFeature
+                                .computeIfAbsent(id.getAsString(), key -> new ArrayList<>())
+                                .add(span);
+                    }
+                }
+            }
+        }
+        int checked = 0;
+        for (Map.Entry<String, List<Zones.Span>> feature : zonesOfFeature.entrySet()) {
+            List<JsonObject> placement = read(helper, resource("placed_feature", feature.getKey()))
+                    .getAsJsonObject()
+                    .getAsJsonArray("placement")
+                    .asList()
+                    .stream()
+                    .map(JsonElement::getAsJsonObject)
+                    .toList();
+            if (placement.stream().noneMatch(modifier -> type(modifier).equals("minecraft:biome"))) {
+                continue;
+            }
+            for (JsonObject modifier : placement) {
+                if (!type(modifier).equals("deepcharter:layer_rows")) {
+                    continue;
+                }
+                int floor =
+                        CampaignBands.layer(modifier.get("layer").getAsInt()).minY();
+                int low = floor + modifier.get("min").getAsInt();
+                int high = floor + modifier.get("max").getAsInt();
+                for (int y = low; y <= high; y++) {
+                    int row = y;
+                    expect(
+                            helper,
+                            feature.getValue().stream().anyMatch(span -> row >= span.low() && row <= span.high()),
+                            "%s picks y %d..%d, but y %d is in no zone that lists it (%s)",
+                            feature.getKey(),
+                            low,
+                            high,
+                            row,
+                            feature.getValue());
+                }
+                checked++;
+            }
+        }
+        expect(helper, checked > 0, "no zone biome's feature picks layer rows and checks the biome");
+        helper.succeed();
+    }
+
+    private static String type(JsonObject modifier) {
+        return modifier.get("type").getAsString();
+    }
+
     /** The number of ranges in the band that {@code modifier} gave, checked. */
     private static int checkModifier(GameTestHelper helper, String feature, Band band, JsonObject modifier) {
         String type = modifier.get("type").getAsString();
@@ -503,7 +578,7 @@ public class CampaignContentTest {
     /**
      * The cave stalks of Topsoil Claims, layer 1's first zone, grow there, and under the surface only there and in the Garden, layer 3's
      * first zone (#972): the range of each biome's feature is its layer's own rows, so the zone's own rows are where they stand (to a
-     * block, for the offset a stalk takes).
+     * block, for the offset a stalk takes). Enough of them grow to be a feature of the zone, not a stray (#1401).
      */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void caveStalksGrowInTheFirstZoneOfLayers1And3Only(GameTestHelper helper) {
@@ -513,6 +588,7 @@ public class CampaignContentTest {
             Zones.Span zone = Zones.span(layer.minY(), layer.height(), 0);
             Zones.Span garden = Zones.span(CampaignBands.LAYER_3.minY(), CampaignBands.LAYER_3.height(), 0);
             TreeSet<Integer> rows = new TreeSet<>();
+            Set<BlockPos> blocks = new HashSet<>();
             for (BlockPos stalk : BlockSurvey.find(level, STALK_CHUNKS, ours("fungal_stalk"))) {
                 int y = stalk.getY();
                 // The surface has stalks of its own (the surface band's features), and so has the Garden.
@@ -521,13 +597,31 @@ public class CampaignContentTest {
                 }
                 if (y < CampaignBands.SURFACE.minY()) {
                     rows.add(y);
+                    blocks.add(stalk);
                 }
             }
+            long columns = blocks.stream()
+                    .filter(stalk -> !blocks.contains(stalk.below()))
+                    .count();
+            long great = BlockSurvey.find(level, STALK_CHUNKS, ours("great_stalk")).stream()
+                    .filter(block -> block.getY() >= layer.minY() && block.getY() <= layer.maxY())
+                    .count();
+            int chunks = (2 * STALK_CHUNKS + 1) * (2 * STALK_CHUNKS + 1);
+            LOGGER.info(
+                    "[cave-stalks] {} stalk columns, {} blocks and {} great stalk blocks in {} chunks of layer 1, at y {}..{}",
+                    columns,
+                    blocks.size(),
+                    great,
+                    chunks,
+                    rows.isEmpty() ? "-" : rows.first(),
+                    rows.isEmpty() ? "-" : rows.last());
             expect(
                     helper,
-                    !rows.isEmpty(),
-                    "no cave stalk grew in %d chunks of layer 1",
-                    (2 * STALK_CHUNKS + 1) * (2 * STALK_CHUNKS + 1));
+                    columns >= MIN_CAVE_STALK_COLUMNS,
+                    "%d cave stalk columns grew in %d chunks of layer 1, expected at least %d",
+                    columns,
+                    chunks,
+                    MIN_CAVE_STALK_COLUMNS);
             expect(
                     helper,
                     rows.first() >= zone.low() - 1 && rows.last() <= zone.high() + 1,
