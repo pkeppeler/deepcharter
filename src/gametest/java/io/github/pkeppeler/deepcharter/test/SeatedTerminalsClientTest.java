@@ -46,7 +46,7 @@ import net.minecraft.world.phys.Vec3;
  * screen and the pilot stays seated.
  */
 public class SeatedTerminalsClientTest implements FabricClientGameTest {
-    /** Blocks from the pod's middle to each terminal's middle, east and west: within reach of its box, not of the eyes. */
+    /** Blocks from the pod's middle to each terminal's middle, east and west: in reach of its box, not the eyes. */
     private static final int TERMINAL_OFFSET = 6;
     /** Blocks of open stone pad round the pod. */
     private static final int PAD = 8;

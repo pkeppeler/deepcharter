@@ -19,16 +19,17 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Terminals from the seat (#1447). An empty-hand use of the pod a player sits in asks the server
- * ({@link SeatedTerminalPayload}) for the terminal in reach that the player faces, and the server opens it as a click on
- * it would: reach is {@link Terminals#inReach}, which measures from the pod's box for anyone seated in one.
+ * ({@link SeatedTerminalPayload}) for the terminal in reach that the player faces, and the server opens it
+ * as a click on it would: reach is {@link Terminals#inReach}, which measures from the pod's box for anyone
+ * seated in one.
  */
 public final class SeatedTerminals {
     private SeatedTerminals() {}
 
     /**
-     * Whether {@code player}'s use of {@code used} with {@code hand} asks for a terminal: a main-hand use, with nothing in
-     * it and not crouched, of the pod they sit in. Any other use keeps its meaning (a held fuel, tether or part acts on the
-     * pod; a crouched use opens its cargo hold). Safe on both sides.
+     * Whether {@code player}'s use of {@code used} with {@code hand} asks for a terminal: a main-hand use,
+     * with nothing in it and not crouched, of the pod they sit in. Any other use keeps its meaning (a held
+     * fuel, tether or part acts on the pod; a crouched use opens its cargo hold). Safe on both sides.
      */
     public static boolean wantsTerminal(Player player, InteractionHand hand, Entity used) {
         return hand == InteractionHand.MAIN_HAND
@@ -39,9 +40,9 @@ public final class SeatedTerminals {
     }
 
     /**
-     * Opens, for {@code player} seated in a pod, the terminal in reach nearest the direction they look, the nearer one on
-     * a tie, or tells them none is in reach. A request from anyone not seated in a pod is ignored: only a forged packet
-     * sends one.
+     * Opens, for {@code player} seated in a pod, the terminal in reach nearest the direction they look, the
+     * nearer one on a tie, or tells them none is in reach. A request from anyone not seated in a pod is
+     * ignored: only a forged packet sends one.
      */
     static void open(ServerPlayer player) {
         if (!(player.getRootVehicle() instanceof PodEntity pod)) {

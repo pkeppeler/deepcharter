@@ -53,9 +53,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for #1447: a seated pilot opens the terminal in reach that they face, through the seat payload, and
- * the terminal's reach is measured from the pod's box for anyone seated in a pod. Every case runs inside its first tick,
- * because the repair state it swaps in lives only for that tick.
+ * Server GameTests for #1447: a seated pilot opens the terminal in reach that they face, through the seat
+ * payload, and the terminal's reach is measured from the pod's box for anyone seated in a pod. Every case
+ * acts inside its first tick, because the repair state it swaps in lives only for that tick.
  *
  * <p>A case that asks the server to pick a terminal has a batch of its own: the pick reads every terminal round the
  * pod, and a neighbour's in the same batch stands within reach of it.
@@ -88,7 +88,7 @@ public class SeatedTerminalsTest {
         TerminalEvents.REFUSED.register((player, refusal) -> REFUSED.add(new Refused(player.getUUID(), refusal)));
     }
 
-    /** Runs {@code body} with the first {@code repaired} colony terminals repaired, and puts the world's own state back after. */
+    /** Runs {@code body} with the first {@code repaired} colony terminals repaired, then puts the world's state back. */
     private static void withRepaired(GameTestHelper helper, int repaired, Runnable body) {
         RepairState fresh = new RepairState();
         for (TerminalType type : COLONY.subList(0, repaired)) {
