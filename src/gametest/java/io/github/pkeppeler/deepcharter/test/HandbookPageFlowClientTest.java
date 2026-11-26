@@ -47,9 +47,9 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
     private static final Size DEFAULT = Size.of(854, 480, 2);
 
     /**
-     * The GUI sizes besides the default window that no text may run off the sheet at: the smallest window GUI scale 4
-     * allows, whose 320 x 240 GUI is the narrowest sheet any GUI scale reaches, and a 1920 x 1080 window at GUI scales 3
-     * and 4. A wider or taller window draws the default sheet.
+     * The GUI sizes besides the default window that no text may run off the sheet at: the smallest window GUI scale
+     * 4 allows, whose 320 x 240 GUI is the narrowest sheet any GUI scale reaches, and a 1920 x 1080 window at GUI
+     * scales 3 and 4. A wider or taller window draws the default sheet.
      */
     private static final List<Size> OTHER_SIZES =
             List.of(Size.of(1280, 960, 4), Size.of(1920, 1080, 3), Size.of(1920, 1080, 4));
