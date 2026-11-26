@@ -24,10 +24,11 @@ import net.minecraft.world.level.block.LightBlock;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Evidence scenario "pod-controls" (#1281, #1268): the pod steers like a boat under the chase camera that the pilot
- * seat switches to, and the drill turns it square to the grid. W drives forward, D and A turn it, S backs up without
- * turning; then a first-person turn, where the view turns with the pod; then W into a wall from an angle, where the pod
- * turns to the grid and bores straight.
+ * Evidence scenario "pod-controls" (#1281, #1268, #1442): the pod steers with tank controls under the chase camera that
+ * the pilot seat switches to, and the drill turns it square to the grid. W drives forward, a bare D turns it a quarter
+ * in place and it stops dead when D is let go, S backs up without turning, W with A turns while driving; then a
+ * first-person turn, where the view turns with the pod; then W into a wall from an angle, where the pod turns to the
+ * grid and bores straight.
  */
 public class PodControlsScenario extends EvidenceScenario {
     private static final int X = 5800;
@@ -38,11 +39,14 @@ public class PodControlsScenario extends EvidenceScenario {
     private static final int WALL_DEPTH = 5;
     private static final int LAMP_GAP = 5;
     private static final int TICKS_PER_FRAME = 3;
+    /** A drive leg: 6 blocks at the stock 0.2 a tick, so the legs below stay inside the room. */
     private static final int LEG_TICKS = 30;
-    /** A turn leg: the turn rate builds up for these ticks and coasts on a few more, about a quarter turn in all. */
-    private static final int TURN_TICKS = 10;
-    /** Ticks for a turn rate to fall to a hundredth of itself: nine tenths of it is kept each tick. */
-    private static final int TURN_DIES_TICKS = 45;
+    /** A first-person drive leg, shorter: the room's west wall is near by then. */
+    private static final int SHORT_LEG_TICKS = 9;
+    /** A turn leg: a quarter turn at the steady 6 degrees a tick, and not a degree more once the key is let go. */
+    private static final int TURN_TICKS = 15;
+    /** Ticks the pod stands after a turn in place, to show the turn stopped with the key. */
+    private static final int STAND_TICKS = 15;
     /** Backing up is slower than driving, and the camera sits behind the nose: a short leg keeps the pod in frame. */
     private static final int REVERSE_TICKS = 18;
 
@@ -126,11 +130,13 @@ public class PodControlsScenario extends EvidenceScenario {
             context.runOnClient(client -> client.gui.toastManager().clear());
             screenshot(context, "pod-controls-chase-view");
 
-            // Third person: W, then W with D (a short turn: the turn rate builds up and coasts on), then S (backs up
-            // without
-            // turning), then W with A.
+            // Third person: W, then a bare D (a quarter turn in place that stops dead when D is let go, so the pod
+            // stands facing west), then W, then S (backs up without turning), then W with A (a turn while driving).
             leg(context, options -> options.keyUp, null, LEG_TICKS);
-            leg(context, options -> options.keyUp, options -> options.keyRight, TURN_TICKS);
+            leg(context, options -> options.keyRight, null, TURN_TICKS);
+            leg(context, null, null, STAND_TICKS);
+            context.runOnClient(client -> client.gui.toastManager().clear());
+            screenshot(context, "pod-controls-turned-in-place");
             leg(context, options -> options.keyUp, null, LEG_TICKS);
             context.runOnClient(client -> client.gui.toastManager().clear());
             screenshot(context, "pod-controls-steering-right");
@@ -146,10 +152,8 @@ public class PodControlsScenario extends EvidenceScenario {
             leg(context, options -> options.keyUp, options -> options.keyRight, TURN_TICKS);
             context.runOnClient(client -> client.gui.toastManager().clear());
             screenshot(context, "pod-controls-first-person-turn");
-            leg(context, options -> options.keyUp, null, LEG_TICKS);
+            leg(context, options -> options.keyUp, null, SHORT_LEG_TICKS);
             leg(context, options -> options.keyUp, options -> options.keyLeft, TURN_TICKS);
-            // Let the last turn die away, so that the pod meets the wall as it is placed.
-            context.waitTicks(TURN_DIES_TICKS);
             context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 
             // The drill: a pod facing 35 degrees off the wall drives into it and turns square before it bores.
@@ -204,13 +208,15 @@ public class PodControlsScenario extends EvidenceScenario {
         frame(context);
     }
 
-    /** Holds the two keys for {@code ticks} ticks, a frame every few. */
+    /** Holds the keys given for {@code ticks} ticks, a frame every few; with none, the pod stands. */
     private void leg(
             ClientGameTestContext context,
-            Function<Options, KeyMapping> key,
+            @Nullable Function<Options, KeyMapping> key,
             @Nullable Function<Options, KeyMapping> turn,
             int ticks) {
-        context.getInput().holdKey(key);
+        if (key != null) {
+            context.getInput().holdKey(key);
+        }
         if (turn != null) {
             context.getInput().holdKey(turn);
         }
@@ -218,7 +224,9 @@ public class PodControlsScenario extends EvidenceScenario {
             context.waitTicks(TICKS_PER_FRAME);
             clearToastsThenFrame(context);
         }
-        context.getInput().releaseKey(key);
+        if (key != null) {
+            context.getInput().releaseKey(key);
+        }
         if (turn != null) {
             context.getInput().releaseKey(turn);
         }

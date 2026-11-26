@@ -33,7 +33,7 @@ You need a Minecraft Java Edition account.
 
 - **Mount a pod:** right-click it.
 - **Dismount:** sneak (default Left Shift).
-- **Drive:** the pod steers like a vanilla boat. W drives forward along the pod's nose. S backs up, slower, without turning. A and D turn the pod. Where you look does not steer it; the mouse only looks around.
+- **Drive:** the pod steers like a tank. W drives forward along the pod's nose. S backs up, slower, without turning. A and D turn the pod at a steady rate while held and stop the moment you let go; on their own they turn it on the spot. Where you look does not steer it; the mouse only looks around.
 - **Camera:** taking the pilot seat switches to the third-person chase view, and leaving the seat brings back the view you had. F5 still cycles it. The view turns with the pod, so the angle between you and the pod stays; driving settles a looked-away chase camera back behind the pod.
 - **Rotor:** hold jump (Space) to lift.
 - **Drill:** sprint (default Left Ctrl). Sprint on the ground with no direction key drills down; drive forward (W) into a wall to drill sideways along the compass direction the pod faces nearest. The pod turns square to the grid before it bores, so the tunnel stays straight, and in a bore as wide as itself A and D do not steer it, except that one press turns it a quarter to the next compass direction so you can branch (then W drills the branch). S never drills.
