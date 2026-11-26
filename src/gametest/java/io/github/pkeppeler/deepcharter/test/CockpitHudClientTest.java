@@ -980,7 +980,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     /**
      * The SINK plate (#1432) on the screen, under the band and touching it, out of every gauge's column (where a
-     * gauge's title hangs), clear of the bezel and of vanilla's rows.
+     * gauge's title hangs), clear of the bezel, of #1449's LOAD title box and of vanilla's rows.
      */
     private static List<String> sinkProblems(
             Font font,
@@ -999,7 +999,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             problems.add(where + ": the SINK plate " + Arrays.toString(sink) + " is not hung on screen from the band "
                     + Arrays.toString(band));
         }
-        for (String piece : List.of("bezel", "scanner")) {
+        for (String piece : List.of("bezel", "scanner", "load title")) {
             if (overlap(sink, Objects.requireNonNull(pieces.get(piece), "the piece is placed"))) {
                 problems.add(where + ": the SINK plate covers the " + piece);
             }
