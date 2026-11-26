@@ -34,14 +34,14 @@ import org.slf4j.LoggerFactory;
 public class NarrowCaveFunctionTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(NarrowCaveFunctionTest.class);
     private static final String CAMPAIGN = "campaign_full";
-    private static final ResourceKey<DensityFunction> SHIPPED = key("claim_caves");
-    private static final ResourceKey<DensityFunction> VANILLA = key("test/claim_caves_vanilla");
+    static final ResourceKey<DensityFunction> SHIPPED = key("claim_caves");
+    static final ResourceKey<DensityFunction> VANILLA = key("test/claim_caves_vanilla");
     /** A narrow term whose inputs are noise times 10,000, where a float's rounding is about 1e-3. */
     private static final ResourceKey<DensityFunction> LARGE = key("test/narrow_cave_large");
 
     private static final ResourceKey<DensityFunction> LARGE_VANILLA = key("test/narrow_cave_large_vanilla");
     /** Chunks across the claim, far apart, so the cells hold shut and open terms alike. */
-    private static final List<int[]> CHUNKS = List.of(
+    static final List<int[]> CHUNKS = List.of(
             new int[] {0, 0}, new int[] {37, -12}, new int[] {-81, 54}, new int[] {610, 605}, new int[] {-300, -1200});
 
     @GameTest
@@ -144,20 +144,20 @@ public class NarrowCaveFunctionTest {
         helper.succeed();
     }
 
-    private static ServerLevel campaign(GameTestHelper helper) {
+    static ServerLevel campaign(GameTestHelper helper) {
         return ClientLight.serverLevel(
                 helper.getLevel().getServer(),
                 ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", CAMPAIGN)));
     }
 
-    private static DensitySamplerSet samplers(ServerLevel level) {
+    static DensitySamplerSet samplers(ServerLevel level) {
         RandomState random = level.getChunkSource().randomState();
         return random.samplersWithContext(SamplerContext.builder()
                 .useBufferArena(DensityBufferArena.GLOBAL)
                 .build());
     }
 
-    private static void compare(
+    static void compare(
             GameTestHelper helper,
             DensitySamplerSet samplers,
             DensityFunction shipped,
@@ -182,7 +182,7 @@ public class NarrowCaveFunctionTest {
         }
     }
 
-    private static DensityFunction function(ServerLevel level, ResourceKey<DensityFunction> key) {
+    static DensityFunction function(ServerLevel level, ResourceKey<DensityFunction> key) {
         return level.registryAccess()
                 .lookupOrThrow(Registries.DENSITY_FUNCTION)
                 .getOrThrow(key)

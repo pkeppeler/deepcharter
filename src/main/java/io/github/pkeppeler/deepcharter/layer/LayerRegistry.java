@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.layer.gen.InChunkOffsetPlacement;
 import io.github.pkeppeler.deepcharter.layer.gen.LayerRowsPlacement;
 import io.github.pkeppeler.deepcharter.layer.gen.NarrowCaveFunction;
 import io.github.pkeppeler.deepcharter.layer.gen.StrataRule;
+import io.github.pkeppeler.deepcharter.layer.gen.YBandFunction;
 import io.github.pkeppeler.deepcharter.layer.gen.ZoneBiomeSource;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -46,5 +47,6 @@ public final class LayerRegistry {
         CaveOreFeature.register();
         StrataRule.register();
         NarrowCaveFunction.register();
+        YBandFunction.register();
     }
 }
