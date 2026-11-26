@@ -431,8 +431,8 @@ public class SpecSheetsTest {
         SpecSheet radiator = SpecSheets.of(ComponentItems.item(ComponentTrack.RADIATOR));
         expect(
                 helper,
-                argsOf(radiator.ratings().get(2).value()).equals(List.of("0.75")),
-                "tier 2 of the radiator takes the heat down to 0.75, got %s",
+                argsOf(radiator.ratings().get(2).value()).equals(List.of("75")),
+                "tier 2 of the radiator takes the heat down to 75%%, got %s",
                 radiator.ratings().get(2));
         SpecSheet scanner = SpecSheets.of(ComponentItems.item(ComponentTrack.SCANNER));
         expect(
@@ -620,7 +620,7 @@ public class SpecSheetsTest {
                     case ENGINE -> List.of(figure(now.enginePower()));
                     case FUEL_TANK -> List.of(figure(now.tankLitres()));
                     case CARGO_BAY -> List.of(Integer.toString(now.cargoSlots()));
-                    case RADIATOR -> List.of(figure(PodComponents.radiatorRatio(pod)));
+                    case RADIATOR -> List.of(figure(PodComponents.radiatorRatio(pod) * 100f));
                     case SCANNER ->
                         List.of(Integer.toString(
                                 ScannerTuning.DEFAULT.area(fitted).down()));

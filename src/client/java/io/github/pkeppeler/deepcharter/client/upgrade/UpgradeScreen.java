@@ -129,12 +129,14 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
         int trackWidth = Math.max(TRACK_WIDTH, widestTrackLabel() + LABEL_ROOM);
         int tierX = left + trackWidth + COLUMN_GAP;
         int tierWidth = Math.min(contentRight(MARGIN) - tierX, TIER_MAX_WIDTH);
-        // Close sits under the tallest column a track can have, so it stays put whichever track is chosen and however
-        // many
-        // tracks the left column holds.
-        int closeY = Arrays.stream(ComponentTrack.values())
-                        .mapToInt(track -> rowsTop(track, tierWidth) + Math.max(track.maxTier() - 1, 2) * PITCH)
-                        .max()
+        Optional<UpgradeView.Pod> shownPod = upgrade().flatMap(UpgradeView::pod);
+        // Close sits under the tallest column any track of this pod has, so it stays put whichever track is chosen and
+        // however many tracks the left column holds.
+        int closeY = shownPod.map(shown -> Arrays.stream(ComponentTrack.values())
+                                .mapToInt(track -> column(TrackOffer.of(shown, track), tierWidth)
+                                        .bottom())
+                                .max()
+                                .orElse(listTop()))
                         .orElse(listTop())
                 + rowGap;
         hintX = tierX + CLOSE_WIDTH + COLUMN_GAP;
@@ -146,7 +148,6 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
                 rowHeight,
                 Component.translatable("screen.deepcharter.terminal.close"),
                 button -> onClose()));
-        Optional<UpgradeView.Pod> shownPod = upgrade().flatMap(UpgradeView::pod);
         if (shownPod.isEmpty()) {
             return;
         }
@@ -168,18 +169,13 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
                     .marked(track == selected)));
         }
         TrackOffer offer = TrackOffer.of(pod, selected);
+        Column column = column(offer, tierWidth);
         int y = listTop();
-        for (String line : about(selected, tierWidth)) {
+        for (String line : column.lines()) {
             texts.add(new Text(line, tierX, y));
             y += lineStep();
         }
-        texts.add(new Text(offer.fittedLine().getString(), tierX, y));
-        y += lineStep();
-        Optional<Component> next = offer.nextLine();
-        if (next.isPresent()) {
-            texts.add(new Text(next.get().getString(), tierX, y));
-        }
-        int row = rowsTop(selected, tierWidth);
+        int row = column.rowsTop();
         long balance = ClientCharter.view().map(charter -> charter.balance()).orElse(0L);
         for (int tier : offer.forSale()) {
             long price = UpgradeTuning.DEFAULT.price(selected, tier);
@@ -213,27 +209,37 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
             recipe.active = RecipeConsoleScreen.fits(width, height);
             row += PITCH;
         }
-        int noteY = row + rowGap;
-        for (String line : note()) {
+        int noteY = row;
+        for (String line : note(selected)) {
             texts.add(new Text(line, tierX, noteY));
             noteY += font.lineHeight;
         }
     }
 
     /**
-     * The y of the first row of the track's tiers: under its description, the fitted part and the next purchase's gain.
+     * The right column of a track: the lines over its tiers (what it does, what is fitted, the next tier's gain),
+     * wrapped to the column, then a row for each tier for sale, the locked tier and the unit's line, then its note.
      */
-    private int rowsTop(ComponentTrack track, int tierWidth) {
-        return listTop() + (about(track, tierWidth).size() + 2) * lineStep() + TEXT_GAP;
+    private record Column(List<String> lines, int rowsTop, int bottom) {}
+
+    private Column column(TrackOffer offer, int tierWidth) {
+        List<String> lines = new ArrayList<>();
+        lines.addAll(wrap(
+                Component.translatable(
+                        "screen.deepcharter.upgrade.about." + offer.track().id()),
+                tierWidth));
+        lines.addAll(wrap(offer.fittedLine(), tierWidth));
+        offer.nextLine().ifPresent(next -> lines.addAll(wrap(next, tierWidth)));
+        int rows = offer.forSale().size()
+                + (offer.lock() == TrackOffer.Lock.FIT_FIRST ? 1 : 0)
+                + (offer.lockLine().isPresent() ? 1 : 0);
+        int rowsTop = listTop() + lines.size() * lineStep() + TEXT_GAP;
+        return new Column(
+                lines, rowsTop, rowsTop + rows * PITCH + note(offer.track()).size() * font.lineHeight);
     }
 
-    /** The track's description, wrapped to the tier column. */
-    private List<String> about(ComponentTrack track, int tierWidth) {
-        return CrtText.wrap(
-                font,
-                Component.translatable("screen.deepcharter.upgrade.about." + track.id())
-                        .getString(),
-                tierWidth);
+    private List<String> wrap(Component text, int tierWidth) {
+        return CrtText.wrap(font, text.getString(), tierWidth);
     }
 
     private int lineStep() {
@@ -321,8 +327,8 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
     }
 
     /** What the chosen track's top tier does that its price does not say, one string for each line; none for a track with no note (#712: the heat shield's pack-first order). */
-    private List<String> note() {
-        String key = "screen.deepcharter.upgrade.note." + selected.id();
+    private static List<String> note(ComponentTrack track) {
+        String key = "screen.deepcharter.upgrade.note." + track.id();
         if (!Language.getInstance().has(key)) {
             return List.of();
         }

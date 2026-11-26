@@ -1,10 +1,13 @@
 package io.github.pkeppeler.deepcharter.upgrade;
 
 import io.github.pkeppeler.deepcharter.pod.PartAxis;
+import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodHeatShieldTuning;
 import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodSounderTuning;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -12,63 +15,111 @@ import java.util.Optional;
 import java.util.function.IntFunction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import org.jspecify.annotations.Nullable;
 
 /**
- * A number a track's tier sets, as the upgrade terminal shows a tier's gain (#1440). The stats of a track that moves a
- * pod stat are its {@link PodComponents#axes}, read through {@link PodComponents#axisAt}; a track read through its tier
- * has one stat from its own tuning. Each stat has a phrase ({@code screen.deepcharter.upgrade.stat.<id>}) and a unit
- * ({@code screen.deepcharter.upgrade.unit.<unit>}), so a retune changes the numbers shown and never leaves them stale.
+ * A figure a track's tier sets, worked out the way gameplay works it out: the one model of per-tier figures that the
+ * upgrade terminal's gains (#1440) and the handbook's spec sheets both read, so the two cannot drift. A track that
+ * moves a pod stat has one figure for each of its {@link PodComponents#axes} ({@link #of(PartAxis)}), read through
+ * {@link PodComponents#axisAt}; any other track has one figure from its own tuning. The first figure of a track is
+ * the one its spec sheet rates it by.
  *
- * <p>The spoil hopper and the brace have no stat: their one tier is crafted, so the terminal sells nothing of them.
+ * <p>Each figure has a phrase ({@code screen.deepcharter.upgrade.stat.<id>}) and a unit
+ * ({@code screen.deepcharter.upgrade.unit.<unit>}), so a retune changes the numbers shown and never leaves them stale.
+ * The spoil hopper has no figure: it keeps spoil, and has one tier.
  */
 public enum UpgradeStat {
-    DRILL_SPEED(ComponentTrack.DRILL, PartAxis.DRILL_TIME, Shown.RISE, Unit.PERCENT),
-    HULL(ComponentTrack.HULL, PartAxis.MAX_HULL, Shown.CHANGE, Unit.PLAIN),
-    LIFT(ComponentTrack.ENGINE, PartAxis.ENGINE_POWER, Shown.RISE, Unit.PERCENT),
-    SPEED(ComponentTrack.ENGINE, PartAxis.HORIZONTAL_SPEED, Shown.RISE, Unit.PERCENT),
-    TANK(ComponentTrack.FUEL_TANK, PartAxis.TANK_LITRES, Shown.CHANGE, Unit.LITRES),
-    CARGO(ComponentTrack.CARGO_BAY, PartAxis.CARGO_SLOTS, Shown.CHANGE, Unit.SLOTS),
+    DRILL_SPEED(
+            ComponentTrack.DRILL,
+            Better.HIGHER,
+            Shown.RISE,
+            Unit.TIMES,
+            tier -> PodStats.base().ticksPerHardness()
+                    / PodComponents.axisAt(ComponentTrack.DRILL, PartAxis.DRILL_TIME, tier)),
+    HULL(ComponentTrack.HULL, Better.HIGHER, Shown.CHANGE, Unit.PLAIN, axis(ComponentTrack.HULL, PartAxis.MAX_HULL)),
+    LIFT(
+            ComponentTrack.ENGINE,
+            Better.HIGHER,
+            Shown.RISE,
+            Unit.PLAIN,
+            axis(ComponentTrack.ENGINE, PartAxis.ENGINE_POWER)),
+    SPEED(
+            ComponentTrack.ENGINE,
+            Better.HIGHER,
+            Shown.RISE,
+            Unit.PLAIN,
+            axis(ComponentTrack.ENGINE, PartAxis.HORIZONTAL_SPEED)),
+    TANK(
+            ComponentTrack.FUEL_TANK,
+            Better.HIGHER,
+            Shown.CHANGE,
+            Unit.LITRES,
+            axis(ComponentTrack.FUEL_TANK, PartAxis.TANK_LITRES)),
+    CARGO(
+            ComponentTrack.CARGO_BAY,
+            Better.HIGHER,
+            Shown.CHANGE,
+            Unit.SLOTS,
+            axis(ComponentTrack.CARGO_BAY, PartAxis.CARGO_SLOTS)),
     HEAT_DAMAGE(
             ComponentTrack.RADIATOR,
-            tier -> UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, tier),
+            Better.LOWER,
             Shown.CHANGE,
-            Unit.SHARE),
-    SCAN_AREA(ComponentTrack.SCANNER, tier -> tuned(ComponentTrack.SCANNER, tier), Shown.CHANGE, Unit.SHARE),
-    LIGHT(ComponentTrack.LIGHTS, tier -> tuned(ComponentTrack.LIGHTS, tier), Shown.CHANGE, Unit.PLAIN),
-    SIGNAL_DECAY(ComponentTrack.CONSOLE, tier -> tuned(ComponentTrack.CONSOLE, tier), Shown.CHANGE, Unit.SHARE),
-    LINER_RING(
-            ComponentTrack.LINER,
-            tier -> tier == 0 ? null : (float) PodLinerTuning.DEFAULT.tier(tier).ringEverySlabs(),
+            Unit.SHARE,
+            tier -> UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, tier)),
+    SCAN_DEPTH(ComponentTrack.SCANNER, Better.HIGHER, Shown.CHANGE, Unit.BLOCKS, tier ->
+            (float) ScannerTuning.DEFAULT.area(tier).down()),
+    LIGHT(ComponentTrack.LIGHTS, Better.HIGHER, Shown.CHANGE, Unit.PLAIN, tier ->
+            (float) Math.round(UpgradeTuning.DEFAULT.value(ComponentTrack.LIGHTS, tier))),
+    SIGNAL_REACH(
+            ComponentTrack.CONSOLE,
+            Better.LOWER,
             Shown.CHANGE,
-            Unit.SLABS),
-    SOUNDER_DEPTH(
-            ComponentTrack.SOUNDER,
-            tier -> tier == 0
-                    ? null
-                    : (float) PodSounderTuning.DEFAULT.tier(tier).slabsBelow(),
-            Shown.CHANGE,
-            Unit.SLABS),
+            Unit.SHARE,
+            tier -> UpgradeTuning.DEFAULT.ratio(ComponentTrack.CONSOLE, tier)),
+    LINER_RING(ComponentTrack.LINER, Better.LOWER, Shown.CHANGE, Unit.SLABS, tier ->
+            (float) PodLinerTuning.DEFAULT.tier(tier).ringEverySlabs()),
+    SOUNDER_DEPTH(ComponentTrack.SOUNDER, Better.HIGHER, Shown.CHANGE, Unit.SLABS, tier ->
+            (float) PodSounderTuning.DEFAULT.tier(tier).slabsBelow()),
+    BRACE_PATCH(
+            ComponentTrack.BRACE, Better.HIGHER, Shown.CHANGE, Unit.PLAIN, tier -> PodBraceTuning.DEFAULT.hullPerOre()),
     BRICK_HULL(
             ComponentTrack.HEAT_SHIELD,
-            tier -> tier == 0 ? null : PodHeatShieldTuning.DEFAULT.tier(tier).hullPerBrick(),
+            Better.HIGHER,
             Shown.CHANGE,
-            Unit.PLAIN);
+            Unit.PLAIN,
+            tier -> PodHeatShieldTuning.DEFAULT.tier(tier).hullPerBrick());
 
-    /** How a gain reads: as a rise in percent ("LIFT +7%") or as the number before and after ("TANK 15 L -> 25 L"). */
+    /** Which way a figure gets better as the tiers go up. */
+    private enum Better {
+        HIGHER,
+        LOWER
+    }
+
+    /** How a gain reads: as a rise in percent ("LIFT +7%") or as the figure before and after ("TANK 15 -> 25 L"). */
     private enum Shown {
         RISE,
         CHANGE
     }
 
-    /** How a number is written. A share is a fraction, written as a percent. */
+    /**
+     * How a figure is written. A share is a fraction, written as a percent. A unit that is a word after the number
+     * ({@code word}) is written once, after the figure a gain goes to: "TANK 15 -> 25 L".
+     */
     private enum Unit {
-        PLAIN,
-        PERCENT,
-        SHARE,
-        LITRES,
-        SLOTS,
-        SLABS;
+        PLAIN(false),
+        TIMES(false),
+        PERCENT(false),
+        SHARE(false),
+        LITRES(true),
+        SLOTS(true),
+        SLABS(true),
+        BLOCKS(true);
+
+        private final boolean word;
+
+        Unit(boolean word) {
+            this.word = word;
+        }
 
         String key() {
             return "screen.deepcharter.upgrade.unit." + name().toLowerCase(Locale.ROOT);
@@ -76,97 +127,94 @@ public enum UpgradeStat {
     }
 
     private final ComponentTrack track;
-    private final @Nullable PartAxis axis;
-    /** The stat at a tier, or null for a tier with no part (no stock part, tier 0). */
-    private final IntFunction<@Nullable Float> value;
-
+    private final Better better;
     private final Shown shown;
     private final Unit unit;
+    /** The figure at a tier with a part: never asked for tier 0 of a track with no stock part. */
+    private final IntFunction<Float> value;
 
-    UpgradeStat(ComponentTrack track, PartAxis axis, Shown shown, Unit unit) {
+    UpgradeStat(ComponentTrack track, Better better, Shown shown, Unit unit, IntFunction<Float> value) {
         this.track = track;
-        this.axis = axis;
-        this.value = tier -> PodComponents.axisAt(track, axis, tier);
+        this.better = better;
         this.shown = shown;
         this.unit = unit;
-    }
-
-    UpgradeStat(ComponentTrack track, IntFunction<@Nullable Float> value, Shown shown, Unit unit) {
-        this.track = track;
-        this.axis = null;
         this.value = value;
-        this.shown = shown;
-        this.unit = unit;
     }
 
-    // A track that moves a pod stat shows each of them once, so a new axis cannot reach the terminal without a phrase.
-    static {
-        for (ComponentTrack track : ComponentTrack.values()) {
-            for (PartAxis axis : PodComponents.axes(track)) {
-                long shown = of(track).stream()
-                        .filter(stat -> stat.axis().equals(Optional.of(axis)))
-                        .count();
-                if (shown != 1) {
-                    throw new IllegalStateException(
-                            track.id() + " moves " + axis + ", which " + shown + " upgrade stats show, not one");
-                }
-            }
-        }
+    private static IntFunction<Float> axis(ComponentTrack track, PartAxis axis) {
+        return tier -> PodComponents.axisAt(track, axis, tier);
     }
 
-    private static float tuned(ComponentTrack track, int tier) {
-        return UpgradeTuning.DEFAULT.value(track, tier);
+    /** The figure of a pod stat a part moves. A new axis fails to compile until it has one. */
+    public static UpgradeStat of(PartAxis axis) {
+        return switch (axis) {
+            case DRILL_TIME -> DRILL_SPEED;
+            case MAX_HULL -> HULL;
+            case ENGINE_POWER -> LIFT;
+            case HORIZONTAL_SPEED -> SPEED;
+            case TANK_LITRES -> TANK;
+            case CARGO_SLOTS -> CARGO;
+        };
     }
 
-    /** The stats of {@code track}, in this enum's order. */
+    /** The figures of {@code track}, one for each axis it moves or else its own: the first is its spec sheet's. */
     public static List<UpgradeStat> of(ComponentTrack track) {
+        List<PartAxis> axes = PodComponents.axes(track);
+        if (!axes.isEmpty()) {
+            return axes.stream().map(UpgradeStat::of).toList();
+        }
         return Arrays.stream(values()).filter(stat -> stat.track == track).toList();
     }
 
-    /** The {@link PodComponents#axes axis} this stat shows, if the track moves a pod stat. */
-    public Optional<PartAxis> axis() {
-        return Optional.ofNullable(axis);
-    }
-
-    /** The lang key of the stat's phrase, such as "LIFT". */
+    /** The lang key of the figure's phrase, such as "LIFT". */
     public String phraseKey() {
         return "screen.deepcharter.upgrade.stat." + name().toLowerCase(Locale.ROOT);
     }
 
-    /** The lang key of the stat's unit, a template with the number in it, such as "%s L". */
+    /** The lang key of the figure's unit, a template with the number in it, such as "%s L". */
     public String unitKey() {
         return unit.key();
     }
 
-    /**
-     * The stat with a part of {@code tier} fitted (0: the stock part), or empty where the track has no part at that
-     * tier.
-     */
+    /** The figure with a part of {@code tier} fitted (0: the stock part), or empty where the track has no part. */
     public Optional<Float> value(int tier) {
-        return Optional.ofNullable(value.apply(tier));
+        if (tier == 0 && !UpgradeTuning.DEFAULT.hasStock(track)) {
+            return Optional.empty();
+        }
+        return Optional.of(value.apply(tier));
     }
 
-    /** What going from a part of {@code from} to one of {@code to} does to this stat, such as "TANK 15 L -> 25 L". */
+    /**
+     * The figure at {@code tier} as both the terminal and the spec sheet write it, without its unit: a share as a
+     * percent, to two places at most and with no trailing ".0".
+     */
+    public String figure(int tier) {
+        float number = value(tier).orElseThrow(() -> new IllegalArgumentException(name() + " has no part at tier 0"));
+        float scaled = unit == Unit.SHARE ? number * 100f : number;
+        float rounded = Math.round(scaled * 100f) / 100f;
+        return rounded == Math.rint(rounded) ? Long.toString((long) rounded) : Float.toString(rounded);
+    }
+
+    /** What going from a part of {@code from} to one of {@code to} does to this figure, such as "TANK 15 -> 25 L". */
     public Component gain(int from, int to) {
-        float after = value(to).orElseThrow(() -> new IllegalArgumentException(name() + " has no value at tier " + to));
         Component phrase = Component.translatable(phraseKey());
         Optional<Float> before = value(from);
         if (before.isEmpty()) {
-            return Component.translatable("screen.deepcharter.upgrade.gain.new", phrase, written(after));
+            return Component.translatable("screen.deepcharter.upgrade.gain.new", phrase, written(to));
         }
         if (shown == Shown.RISE) {
-            boolean lower = axis().map(PartAxis::lowerIsBetter).orElse(false);
-            float rise = lower ? before.get() / after - 1f : after / before.get() - 1f;
+            float after = value(to).orElseThrow();
+            float rise = better == Better.HIGHER ? after / before.get() - 1f : before.get() / after - 1f;
             return Component.translatable(
                     "screen.deepcharter.upgrade.gain.rise",
                     phrase,
-                    Component.translatable(unitKey(), "+" + Math.round(rise * 100f)));
+                    Component.translatable(Unit.PERCENT.key(), "+" + Math.round(rise * 100f)));
         }
-        return Component.translatable(
-                "screen.deepcharter.upgrade.gain.change", phrase, written(before.get()), written(after));
+        Object start = unit.word ? figure(from) : written(from);
+        return Component.translatable("screen.deepcharter.upgrade.gain.change", phrase, start, written(to));
     }
 
-    /** The gains of every stat of {@code track} from a part of {@code from} to one of {@code to}, in one line. */
+    /** The gains of every figure of {@code track} from a part of {@code from} to one of {@code to}, in one line. */
     public static Component gains(ComponentTrack track, int from, int to) {
         MutableComponent line = Component.empty();
         List<UpgradeStat> stats = of(track);
@@ -176,14 +224,7 @@ public enum UpgradeStat {
         return line;
     }
 
-    private Component written(float number) {
-        float scaled = unit == Unit.SHARE ? number * 100f : number;
-        return Component.translatable(unitKey(), plain(scaled));
-    }
-
-    /** A whole number without its ".0", and anything else to one decimal. */
-    private static String plain(float number) {
-        long whole = Math.round(number);
-        return Math.abs(number - whole) < 0.05f ? Long.toString(whole) : String.format(Locale.ROOT, "%.1f", number);
+    private Component written(int tier) {
+        return Component.translatable(unitKey(), figure(tier));
     }
 }

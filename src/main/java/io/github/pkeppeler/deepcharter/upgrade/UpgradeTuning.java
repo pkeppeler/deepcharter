@@ -56,6 +56,11 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
         return tiers(track).prices().get(requireTier(track, tier));
     }
 
+    /** True when every pod has a stock part of {@code track} (tier 0); the scanner, lights and the hazard parts have none. */
+    public boolean hasStock(ComponentTrack track) {
+        return value(track, 0) > 0f;
+    }
+
     /** How much the track's number at {@code tier} is worth against the stock part's: 1 for tier 0, 1.4 for a part 40% better. */
     public float ratio(ComponentTrack track, int tier) {
         float stock = value(track, 0);

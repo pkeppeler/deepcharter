@@ -76,7 +76,7 @@ public record TrackOffer(ComponentTrack track, UpgradeView.Slot slot, int cap) {
     public Component fittedLine() {
         if (slot.installed() == 0) {
             return Component.translatable(
-                    UpgradeTuning.DEFAULT.value(track, 0) > 0f
+                    UpgradeTuning.DEFAULT.hasStock(track)
                             ? "screen.deepcharter.upgrade.fitted.stock"
                             : "screen.deepcharter.upgrade.fitted.none");
         }
@@ -110,18 +110,19 @@ public record TrackOffer(ComponentTrack track, UpgradeView.Slot slot, int cap) {
 
     /** What unlocks the track, naming its crafted unit; empty when it is not locked. */
     public Optional<Component> lockLine() {
-        String key = switch (lock()) {
-            case NONE -> null;
-            case FIT_FIRST -> "screen.deepcharter.upgrade.locked.fit_first";
-            case CRAFT_ONLY -> "screen.deepcharter.upgrade.locked.craft_only";
+        return switch (lock()) {
+            case NONE -> Optional.empty();
+            case FIT_FIRST ->
+                Optional.of(Component.translatable("screen.deepcharter.upgrade.locked.fit_first", unitName()));
+            case CRAFT_ONLY ->
+                Optional.of(Component.translatable("screen.deepcharter.upgrade.locked.craft_only", unitName()));
         };
-        if (key == null) {
-            return Optional.empty();
-        }
-        String unit = Component.translatable(PartUnits.unit(track).getDescriptionId())
+    }
+
+    private String unitName() {
+        return Component.translatable(PartUnits.unit(track).getDescriptionId())
                 .getString()
                 .toUpperCase(Locale.ROOT);
-        return Optional.of(Component.translatable(key, unit));
     }
 
     /** The "works as tier N" note for a part of {@code tier}, or nothing when the chassis works it in full. */

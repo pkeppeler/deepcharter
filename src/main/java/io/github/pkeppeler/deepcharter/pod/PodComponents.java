@@ -307,8 +307,8 @@ public final class PodComponents {
 
     /**
      * What {@code axis} reads on a pod that nothing else modifies, with a part of {@code track} at {@code tier} (0: the
-     * stock part). The upgrade terminal shows a tier's gain from it, so it scales exactly as {@link PodStats#MODIFY}
-     * does.
+     * stock part). The upgrade terminal and the spec sheets show a tier's figure from it, so it scales exactly as
+     * {@code applyParts} scales the stat on a pod.
      */
     public static float axisAt(ComponentTrack track, PartAxis axis, int tier) {
         return axis.read(axis.scale(PodStats.base(), UpgradeTuning.DEFAULT.ratio(track, tier)));

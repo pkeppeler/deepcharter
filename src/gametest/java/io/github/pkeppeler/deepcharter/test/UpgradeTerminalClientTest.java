@@ -25,7 +25,6 @@ import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import io.github.pkeppeler.deepcharter.upgrade.TrackOffer;
 import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -101,7 +100,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                     screen,
                     "SURVIVES HARDER HITS AND LANDINGS",
                     "FITTED  STOCK PART",
-                    nextLine(context, screen, ComponentTrack.HULL));
+                    "TIER 2  HULL 100 -> 300");
 
             // A Mole has a stock hull, so tier 2 is bought over it with no tier 1 fitted (ADR 0053).
             context.clickScreenButton("BUY TIER 2  $500");
@@ -159,8 +158,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
             require(!unaffordable.active, "a part the account cannot pay for is dead");
 
             // #483, #1440: the scanner's tier 1 is crafted, so its next purchase is locked until the unit is fitted,
-            // and the line
-            // naming the unit opens its recipe.
+            // and the line naming the unit opens its recipe.
             context.clickScreenButton("SCANNER  T0");
             ClientWait.until(
                     context,
@@ -223,7 +221,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
             require(
                     after.contains("BUY TIER 2  $500") && after.stream().noneMatch(label -> label.contains("LOCKED")),
                     "a fitted scanner unlocks tier 2, got " + after);
-            requireDrawn(context, fitted, "FITTED  TIER 1", nextLine(context, fitted, ComponentTrack.SCANNER));
+            requireDrawn(context, fitted, "FITTED  TIER 1", "TIER 2  SCAN DEPTH 32 -> 48 BLOCKS");
             context.clickScreenButton("BUY TIER 2  $500");
             ClientWait.until(
                     context,
@@ -328,15 +326,6 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
         for (String line : lines) {
             require(drawn.contains(line), "the screen should draw '" + line + "', drew " + drawn);
         }
-    }
-
-    /** The next tier's gain for the pod the screen shows, as {@link TrackOffer} words it from the pod's stats. */
-    private static String nextLine(ClientGameTestContext context, UpgradeScreen screen, ComponentTrack track) {
-        return context.computeOnClient(
-                client -> TrackOffer.of(screen.upgrade().orElseThrow().pod().orElseThrow(), track)
-                        .nextLine()
-                        .orElseThrow()
-                        .getString());
     }
 
     private static List<String> labels(ClientGameTestContext context, UpgradeScreen screen) {

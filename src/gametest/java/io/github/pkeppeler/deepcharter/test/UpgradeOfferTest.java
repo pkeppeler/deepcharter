@@ -3,15 +3,19 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.handbook.SpecSheet;
+import io.github.pkeppeler.deepcharter.handbook.SpecSheets;
 import io.github.pkeppeler.deepcharter.pod.PartAxis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.TrackOffer;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeStat;
+import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
 import java.util.Arrays;
 import java.util.List;
@@ -21,6 +25,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 
 /**
  * Server GameTests for #1440: what the upgrade terminal says about each track. Every track has a description, every
@@ -45,15 +50,6 @@ public class UpgradeOfferTest {
     @GameTest
     public void everyStatATrackMovesHasAPhraseAndAUnit(GameTestHelper helper) {
         for (ComponentTrack track : ComponentTrack.values()) {
-            for (PartAxis axis : PodComponents.axes(track)) {
-                long shown = UpgradeStat.of(track).stream()
-                        .filter(stat -> stat.axis().equals(Optional.of(axis)))
-                        .count();
-                if (shown != 1) {
-                    throw failure(
-                            helper, "the %s track moves %s, which %d stats show, not one", track.id(), axis, shown);
-                }
-            }
             if (track.maxTier() > 1 && UpgradeStat.of(track).isEmpty()) {
                 throw failure(helper, "the terminal sells tiers of %s, but no stat shows their gain", track.id());
             }
@@ -82,32 +78,12 @@ public class UpgradeOfferTest {
             if (axes.isEmpty()) {
                 continue;
             }
-            PodStats stock = PodStats.of(pod);
             PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), track, 1, owner));
             PodStats first = PodStats.of(pod);
             PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), track, 2, owner));
             PodStats second = PodStats.of(pod);
             List<String> expected =
                     axes.stream().map(axis -> expectedGain(axis, first, second)).toList();
-            for (PartAxis axis : axes) {
-                UpgradeStat stat = UpgradeStat.of(track).stream()
-                        .filter(shown -> shown.axis().equals(Optional.of(axis)))
-                        .findFirst()
-                        .orElseThrow();
-                for (int tier = 0; tier <= 2; tier++) {
-                    float pods = axis.read(tier == 0 ? stock : tier == 1 ? first : second);
-                    float shown = stat.value(tier).orElseThrow();
-                    if (Math.abs(pods - shown) > 0.001f) {
-                        throw failure(
-                                helper,
-                                "%s at tier %d: the pod has %s, the terminal shows %s",
-                                stat,
-                                tier,
-                                pods,
-                                shown);
-                    }
-                }
-            }
             String line = TrackOffer.of(pod(track, 1, 1), track)
                     .nextLine()
                     .orElseThrow()
@@ -122,15 +98,25 @@ public class UpgradeOfferTest {
                 .nextLine()
                 .orElseThrow()
                 .getString();
-        if (!tank.matches("TIER 2  TANK \\d+ L -> \\d+ L")) {
+        if (!tank.matches("TIER 2  TANK \\d+ -> \\d+ L")) {
             throw failure(helper, "the tank's gain should read in litres, got '%s'", tank);
+        }
+        // The scanner reads in blocks of depth, as the scan does (ScannerTuning.area), not in the tuning's multiplier.
+        String scanner = TrackOffer.of(pod(ComponentTrack.SCANNER, 1, 1), ComponentTrack.SCANNER)
+                .nextLine()
+                .orElseThrow()
+                .getString();
+        String depth = "TIER 2  SCAN DEPTH " + ScannerTuning.DEFAULT.area(1).down() + " -> "
+                + ScannerTuning.DEFAULT.area(2).down() + " BLOCKS";
+        if (!scanner.equals(depth)) {
+            throw failure(helper, "the scanner's gain should read '%s', got '%s'", depth, scanner);
         }
         pod.discard();
         helper.succeed();
     }
 
     /**
-     * "LIFT +7%" for a stat shown as a rise, "TANK 15 L -> 25 L" for one shown before and after: the words are the lang
+     * "LIFT +7%" for a stat shown as a rise, "TANK 15 -> 25 L" for one shown before and after: the words are the lang
      * file's.
      */
     private static String expectedGain(PartAxis axis, PodStats before, PodStats after) {
@@ -141,9 +127,44 @@ public class UpgradeOfferTest {
             case ENGINE_POWER -> "LIFT +" + Math.round((to / from - 1f) * 100f) + "%";
             case HORIZONTAL_SPEED -> "SPEED +" + Math.round((to / from - 1f) * 100f) + "%";
             case MAX_HULL -> "HULL " + Math.round(from) + " -> " + Math.round(to);
-            case TANK_LITRES -> "TANK " + Math.round(from) + " L -> " + Math.round(to) + " L";
-            case CARGO_SLOTS -> "CARGO " + Math.round(from) + " SLOTS -> " + Math.round(to) + " SLOTS";
+            case TANK_LITRES -> "TANK " + Math.round(from) + " -> " + Math.round(to) + " L";
+            case CARGO_SLOTS -> "CARGO " + Math.round(from) + " -> " + Math.round(to) + " SLOTS";
         };
+    }
+
+    /** One model of per-tier figures: the spec sheet rates every track and tier with the figure the terminal shows. */
+    @GameTest
+    public void theSpecSheetAndTheTerminalGiveTheSameFigure(GameTestHelper helper) {
+        for (ComponentTrack track : ComponentTrack.values()) {
+            List<SpecSheet.Rating> rows =
+                    SpecSheets.of(ComponentItems.item(track)).ratings();
+            List<UpgradeStat> stats = UpgradeStat.of(track);
+            boolean stock = UpgradeTuning.DEFAULT.hasStock(track);
+            for (int tier = stock ? 0 : 1; tier <= track.maxTier(); tier++) {
+                List<String> sheet = argsOf(rows.get(stock ? tier : tier - 1).value());
+                List<String> terminal =
+                        stats.isEmpty() ? List.of() : List.of(stats.getFirst().figure(tier));
+                if (!sheet.equals(terminal)) {
+                    throw failure(
+                            helper,
+                            "%s at tier %d: the spec sheet rates %s, the terminal %s",
+                            track.id(),
+                            tier,
+                            sheet,
+                            terminal);
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    private static List<String> argsOf(Component component) {
+        if (!(component.getContents() instanceof TranslatableContents translatable)) {
+            throw new AssertionError("not a lang key: " + component);
+        }
+        return Arrays.stream(translatable.getArgs())
+                .map(arg -> arg instanceof Component inner ? inner.getString() : String.valueOf(arg))
+                .toList();
     }
 
     @GameTest

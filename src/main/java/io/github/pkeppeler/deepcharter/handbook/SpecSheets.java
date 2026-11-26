@@ -3,19 +3,14 @@ package io.github.pkeppeler.deepcharter.handbook;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
-import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
 import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
-import io.github.pkeppeler.deepcharter.pod.PodHeatShieldTuning;
-import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
-import io.github.pkeppeler.deepcharter.pod.PodSounderTuning;
-import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
-import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.suit.SuitTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItem;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartUnits;
+import io.github.pkeppeler.deepcharter.upgrade.UpgradeStat;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.ArrayList;
 import java.util.List;
@@ -106,7 +101,7 @@ public final class SpecSheets {
         UpgradeTuning tuning = UpgradeTuning.DEFAULT;
         int top = first == 1 ? 1 : track.maxTier();
         for (int tier = first; tier <= top; tier++) {
-            if (tier == 0 && !(tuning.value(track, 0) > 0f)) {
+            if (tier == 0 && !tuning.hasStock(track)) {
                 continue;
             }
             Component label = tier == 0
@@ -119,35 +114,15 @@ public final class SpecSheets {
     }
 
     /**
-     * The figure a track is rated for at {@code tier}, worked out the way gameplay works it out: the stock pod's own stat scaled by the
-     * tier's ratio ({@code PodComponents}), the scanner's area from {@link ScannerTuning#area}, the lights' level as {@code PodLights}
-     * rounds it. The upgrade tuning's values are ratios against the stock part (a stock hull is 100, not the tuning's 10), so the table
-     * alone gives a wrong figure.
+     * The figure a track is rated for at {@code tier}: its first {@link UpgradeStat}, the one model of per-tier figures
+     * the upgrade terminal reads too, so the sheet and the terminal cannot disagree. The spoil hopper has no figure.
      */
     private static Component tierFigure(ComponentTrack track, int tier) {
-        UpgradeTuning tuning = UpgradeTuning.DEFAULT;
-        PodStats stock = PodStats.base();
         String key = KEY + "value." + track.id();
-        return switch (track) {
-            case DRILL, RADIATOR -> Component.translatable(key, number(tuning.ratio(track, tier)));
-            case HULL -> Component.translatable(key, number(stock.maxHull() * tuning.ratio(track, tier)));
-            case ENGINE -> Component.translatable(key, number(stock.enginePower() * tuning.ratio(track, tier)));
-            case FUEL_TANK -> Component.translatable(key, number(stock.tankLitres() * tuning.ratio(track, tier)));
-            case CARGO_BAY -> Component.translatable(key, Math.round(stock.cargoSlots() * tuning.ratio(track, tier)));
-            case SCANNER ->
-                Component.translatable(key, ScannerTuning.DEFAULT.area(tier).down());
-            case LIGHTS -> Component.translatable(key, Math.round(tuning.value(track, tier)));
-            case CONSOLE -> Component.translatable(key, number(tuning.ratio(track, tier) * 100f));
-            case SPOIL_HOPPER -> Component.translatable(key);
-            case LINER ->
-                Component.translatable(key, PodLinerTuning.DEFAULT.tier(tier).ringEverySlabs());
-            case SOUNDER ->
-                Component.translatable(key, PodSounderTuning.DEFAULT.tier(tier).slabsBelow());
-            case BRACE -> Component.translatable(key, number(PodBraceTuning.DEFAULT.hullPerOre()));
-            case HEAT_SHIELD ->
-                Component.translatable(
-                        key, number(PodHeatShieldTuning.DEFAULT.tier(tier).hullPerBrick()));
-        };
+        List<UpgradeStat> stats = UpgradeStat.of(track);
+        return stats.isEmpty()
+                ? Component.translatable(key)
+                : Component.translatable(key, stats.getFirst().figure(tier));
     }
 
     private static void consumable(Consumable consumable, List<SpecSheet.Rating> ratings) {
