@@ -36,9 +36,9 @@ import org.jspecify.annotations.Nullable;
  * Server GameTests for #1378: the total-materials breakdown of a known recipe. The recipes are built by hand as the client's recipe book
  * would hold them and resolved through {@link KnownRecipe#of}, so a tag cell holds exactly the members the world yields. The tree follows
  * only the recipes it is given (the charter's known ones), crafts an intermediate as often as the need takes, rounding up, feeds a later
- * need from what an earlier craft made too many of, does not follow a recipe that undoes another (ingots from an iron block), stops at an
- * item already being made further up (a recipe loop), takes the tag member
- * the player holds most of, and takes what the player holds before it breaks anything down.
+ * need from what an earlier craft made too many of, does not follow a recipe that undoes another (ingots from an iron block, or round a longer loop) or salvages worn gear,
+ * stops at an item already being made further up, takes the tag member the player holds most of, and takes what the player
+ * holds before it breaks anything down.
  */
 public class MaterialsTreeTest {
     private static final SlotDisplay PLANKS = item(Items.OAK_PLANKS);
@@ -245,15 +245,26 @@ public class MaterialsTreeTest {
     }
 
     @GameTest
-    public void aRecipeLoopStopsAtTheItemBeingMade(GameTestHelper helper) {
-        // A torch from coal, coal from a stick, a stick from a torch: no pair undoes the other, but the three go round.
+    public void aRecipeLoopIsNotFollowed(GameTestHelper helper) {
+        // A torch from coal, coal from a stick, a stick from a torch: no pair undoes the other, but the stick comes
+        // only
+        // from a torch, which comes only from coal, so coal from a stick undoes the torch.
         KnownRecipe torch = recipe(helper, Items.TORCH, 1, item(Items.COAL));
         KnownRecipe coal = recipe(helper, Items.COAL, 1, STICK);
-        KnownRecipe stick = recipe(helper, Items.STICK, 1, item(Items.TORCH));
-        MaterialsTree tree = MaterialsTree.of(torch, known(torch, coal, stick), stock());
-        expectMaterials(
-                helper, tree, "the stick would take the torch being made, so it is a base material", Items.STICK, 1, 0);
-        expect(helper, node(helper, tree, Items.COAL).crafts() == 1, "the coal is made from the stick");
+        KnownRecipe stickFromTorch = recipe(helper, Items.STICK, 1, item(Items.TORCH));
+        MaterialsTree loop = MaterialsTree.of(torch, known(torch, coal, stickFromTorch), stock());
+        expectMaterials(helper, loop, "the coal would go round the loop, so it is a base material", Items.COAL, 1, 0);
+        expect(helper, node(helper, loop, Items.COAL).recipe() == null, "the coal is not made from the stick");
+
+        // With sticks from planks too, the stick is not made only from coal: the coal is made from a stick, and the
+        // stick from planks, since a stick from the torch being made would go round.
+        KnownRecipe stickFromPlanks = recipe(helper, Items.STICK, 1, PLANKS);
+        MaterialsTree out = MaterialsTree.of(torch, known(torch, coal, stickFromTorch, stickFromPlanks), stock());
+        expectMaterials(helper, out, "the loop is left through the planks", Items.OAK_PLANKS, 1, 0);
+        expect(
+                helper,
+                node(helper, out, Items.STICK).recipe() == stickFromPlanks,
+                "the stick is made from planks, not from the torch being made");
         helper.succeed();
     }
 
@@ -382,6 +393,68 @@ public class MaterialsTreeTest {
         MaterialsTree tree =
                 MaterialsTree.of(lantern, known(lantern, block, nuggets, ingotFromBlock, ingotFromNuggets), stock());
         expectMaterials(helper, tree, "eight nuggets are one ingot cut", Items.IRON_INGOT, 1, 0, Items.TORCH, 1, 0);
+        helper.succeed();
+    }
+
+    /** That no material is worn gear (a tool or armour piece), which only salvage smelting would break down to. */
+    private static void expectNoGear(GameTestHelper helper, MaterialsTree tree, String what) {
+        expect(
+                helper,
+                tree.materials().stream()
+                        .noneMatch(
+                                material -> material.item().getDefaultInstance().isDamageableItem()),
+                "%s: no tool or armour, got %s",
+                what,
+                describe(tree.materials()));
+    }
+
+    @GameTest
+    public void ironGearSmeltedToNuggetsIsNotFollowed(GameTestHelper helper) {
+        // Ingots from nuggets, nuggets smelted from iron tools and armour, a pickaxe from ingots: a loop of three
+        // steps.
+        // Smelting gear down is salvage, so the nuggets are made only from ingots and unpacking them undoes that.
+        KnownRecipe anvil = shipped(helper, "minecraft:anvil");
+        KnownRecipe block = shipped(helper, "minecraft:iron_block");
+        KnownRecipe nuggets = shipped(helper, "minecraft:iron_nugget");
+        KnownRecipe ingotFromBlock = shipped(helper, "minecraft:iron_ingot_from_iron_block");
+        KnownRecipe ingotFromNuggets = shipped(helper, "minecraft:iron_ingot_from_nuggets");
+        KnownRecipe salvage = shipped(helper, "minecraft:iron_nugget_from_smelting");
+        KnownRecipe pickaxe = shipped(helper, "minecraft:iron_pickaxe");
+        KnownRecipe smelted = shipped(helper, "minecraft:iron_ingot_from_smelting_raw_iron");
+
+        MaterialsTree gearUnknown = MaterialsTree.of(
+                anvil, known(anvil, block, nuggets, ingotFromBlock, ingotFromNuggets, salvage), stock());
+        expectMaterials(helper, gearUnknown, "no pickaxe recipe known: ingots", Items.IRON_INGOT, 31, 0);
+        expectNoGear(helper, gearUnknown, "no pickaxe recipe known");
+
+        MaterialsTree gearKnown = MaterialsTree.of(
+                anvil, known(anvil, block, nuggets, ingotFromBlock, ingotFromNuggets, salvage, pickaxe), stock());
+        expectMaterials(helper, gearKnown, "the pickaxe recipe known: ingots", Items.IRON_INGOT, 31, 0);
+        expectNoGear(helper, gearKnown, "the pickaxe recipe known");
+
+        MaterialsTree smelting = MaterialsTree.of(
+                anvil,
+                known(anvil, block, nuggets, ingotFromBlock, ingotFromNuggets, salvage, pickaxe, smelted),
+                stock());
+        expectMaterials(helper, smelting, "with smelting known, raw iron", Items.RAW_IRON, 31, 0);
+        expectNoGear(helper, smelting, "with smelting known");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void copperGearSmeltedToNuggetsIsNotFollowed(GameTestHelper helper) {
+        KnownRecipe radiator = shipped(helper, "deepcharter:radiator_unit");
+        KnownRecipe block = shipped(helper, "minecraft:copper_block");
+        KnownRecipe nuggets = shipped(helper, "minecraft:copper_nugget");
+        KnownRecipe ingotFromBlock = shipped(helper, "minecraft:copper_ingot");
+        KnownRecipe ingotFromNuggets = shipped(helper, "minecraft:copper_ingot_from_nuggets");
+        KnownRecipe salvage = shipped(helper, "minecraft:copper_nugget_from_smelting");
+        KnownRecipe pickaxe = shipped(helper, "minecraft:copper_pickaxe");
+        MaterialsTree tree = MaterialsTree.of(
+                radiator, known(radiator, block, nuggets, ingotFromBlock, ingotFromNuggets, salvage, pickaxe), stock());
+        expectMaterials(
+                helper, tree, "a block of nine and seven ingots", Items.COPPER_INGOT, 16, 0, Items.REDSTONE, 1, 0);
+        expectNoGear(helper, tree, "the radiator unit");
         helper.succeed();
     }
 

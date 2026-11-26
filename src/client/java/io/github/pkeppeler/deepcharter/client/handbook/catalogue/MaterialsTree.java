@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.function.Function;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -25,9 +26,13 @@ import org.jspecify.annotations.Nullable;
  * the craft, but a cell of it that takes that result (a smithing template copying itself) is met from stock and never crafted.
  * <li>An intermediate is made by its first known recipe that neither undoes another nor takes an item already being made further up
  * this branch, so a recipe loop ends; with no such recipe it is a base material. A recipe for X undoes another when some cell takes
- * only items made solely from X: each has a known recipe, and every one of them takes X. So ingots are not unpacked from an iron
- * block made only from ingots, but an iron block is packed from ingots, since ingots also come from nuggets or smelting. The limit:
- * when X and Y are each made only from the other, each recipe undoes the other and neither is followed, so both stay base materials.
+ * only items made solely from X. Y is made solely from X when it has a known recipe and every one has a cell taking only X or items
+ * themselves made solely from X, at any depth; an item with no known recipe is not. So ingots are not unpacked from an iron block or
+ * nuggets made only from ingots, but an iron block is packed from ingots, since ingots also come from smelting. The limit: when X
+ * and Y are each made only from the other, each recipe undoes the other and neither is followed, so both stay base materials.
+ * <li>Salvage is never followed below the shown recipe, nor counted as a way to make anything: a furnace recipe that takes worn gear
+ * (a damageable item), like iron nuggets smelted from iron tools and armour. Otherwise nuggets would not count as made solely from
+ * ingots, and an anvil would come to hundreds of pickaxes.
  * <li>It is made as many times as the need takes, rounding up; what that makes beyond the need feeds later needs.
  * <li>A cell that takes several items (a tag) takes the one the player has most of, or with none held, the first that a known recipe
  * can make, or else the first.
@@ -121,12 +126,21 @@ public record MaterialsTree(Node root, List<Material> materials) {
         return 1;
     }
 
+    /** Whether {@code recipe} smelts worn gear down (salvage): a furnace recipe with a damageable item in a cell. */
+    private static boolean salvage(KnownRecipe recipe) {
+        return recipe.entry().display() instanceof FurnaceRecipeDisplay
+                && recipe.cells().stream().flatMap(List::stream).anyMatch(ItemStack::isDamageableItem);
+    }
+
     /** One walk of the tree: the stock and the leftovers it uses up, and the items being made on the branch walked. */
     private static final class Walk {
         private final Function<Item, List<KnownRecipe>> known;
         private final Map<Item, Integer> stock;
         private final Map<Item, Integer> spare = new HashMap<>();
         private final Set<Item> branch = new HashSet<>();
+        private final Map<Item, List<KnownRecipe>> followed = new HashMap<>();
+        /** For each X asked about, whether an item is made solely from X. */
+        private final Map<Item, Map<Item, Boolean>> solelyFrom = new HashMap<>();
 
         Walk(Function<Item, List<KnownRecipe>> known, Map<Item, Integer> stock) {
             this.known = known;
@@ -168,7 +182,7 @@ public record MaterialsTree(Node root, List<Material> materials) {
          * this branch, or null.
          */
         private @Nullable KnownRecipe recipeFor(Item item) {
-            for (KnownRecipe recipe : known.apply(item)) {
+            for (KnownRecipe recipe : recipes(item)) {
                 if (!undoes(recipe, item)
                         && recipe.needs().stream()
                                 .allMatch(need -> need.choices().stream()
@@ -179,19 +193,54 @@ public record MaterialsTree(Node root, List<Material> materials) {
             return null;
         }
 
+        /** The known recipes of {@code item} the tree may follow: salvage left out. */
+        private List<KnownRecipe> recipes(Item item) {
+            return followed.computeIfAbsent(
+                    item,
+                    key -> known.apply(key).stream()
+                            .filter(recipe -> !salvage(recipe))
+                            .toList());
+        }
+
         /**
          * Whether {@code recipe}, which makes {@code item}, undoes a known recipe: some cell of it takes only items made solely from
-         * {@code item}, each with a known recipe and every one taking {@code item} (ingots from an iron block, or from nuggets, when
-         * the block and the nuggets are made only from ingots).
+         * {@code item} (ingots from an iron block, or from nuggets, when the block and the nuggets are made only from ingots).
          */
         private boolean undoes(KnownRecipe recipe, Item item) {
-            return recipe.needs().stream()
-                    .anyMatch(need -> need.choices().stream().allMatch(choice -> {
-                        List<KnownRecipe> backs = known.apply(choice.getItem());
-                        return !backs.isEmpty()
-                                && backs.stream()
-                                        .allMatch(back -> back.ingredientItems().contains(item));
-                    }));
+            Map<Item, Boolean> settled = solelyFrom.computeIfAbsent(item, key -> new HashMap<>());
+            return recipe.needs().stream().anyMatch(need -> takesOnly(need, item, settled, new HashSet<>()));
+        }
+
+        /** Whether every choice of {@code need} is {@code from} or made solely from it. */
+        private boolean takesOnly(KnownRecipe.Need need, Item from, Map<Item, Boolean> settled, Set<Item> path) {
+            return need.choices().stream().allMatch(choice -> solely(choice.getItem(), from, settled, path));
+        }
+
+        /**
+         * Whether {@code item} is {@code from}, or has a known recipe and every one has a cell taking only {@code from} or items made
+         * solely from it. {@code settled} keeps each answer, so an item is worked out once per {@code from}: the walk is bounded by the
+         * known recipes reachable from it. An item met again on {@code path} counts as not made solely from {@code from}, which errs
+         * towards following a recipe; the branch guard still stops that recipe going round.
+         */
+        private boolean solely(Item item, Item from, Map<Item, Boolean> settled, Set<Item> path) {
+            if (item == from) {
+                return true;
+            }
+            Boolean answer = settled.get(item);
+            if (answer != null) {
+                return answer;
+            }
+            if (!path.add(item)) {
+                return false;
+            }
+            List<KnownRecipe> recipes = recipes(item);
+            boolean solely = !recipes.isEmpty()
+                    && recipes.stream()
+                            .allMatch(recipe ->
+                                    recipe.needs().stream().anyMatch(need -> takesOnly(need, from, settled, path)));
+            path.remove(item);
+            settled.put(item, solely);
+            return solely;
         }
 
         /**

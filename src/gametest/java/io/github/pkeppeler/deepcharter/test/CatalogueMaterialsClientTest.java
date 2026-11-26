@@ -40,7 +40,7 @@ import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
  * lookup (another item, back, put away) shows the recipe again. Then the real game, holding two iron and two copper and knowing only the
  * {@link CatalogueFixtures}: M on the drill head's recipe lists raw iron and redstone short (the iron it lacks smelted from raw iron, the
  * two it holds taken), then the iron and the copper it holds; a row is an item R looks up; M again shows the recipe. The hub, all held,
- * says so; an item with no known recipe has nothing to break down; seven materials scroll under the wheel; and a chest's console has M
+ * says so, and follows the inventory as the server changes it; an item with no known recipe has nothing to break down; seven materials scroll under the wheel; and a chest's console has M
  * too.
  */
 public class CatalogueMaterialsClientTest implements FabricClientGameTest {
@@ -55,6 +55,7 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
             CataloguePanel panel = CatalogueScene.knowFixturesHoldingIronAndCopper(context, singleplayer);
             mShowsTheTotalMaterials(context, panel);
             everythingHeldIsSaid(context, panel);
+            theMaterialsFollowTheInventory(context, singleplayer, panel);
             nothingKnownHasNothingToBreakDown(context, panel);
             aLongListScrolls(context, panel);
             context.setScreen(() -> null);
@@ -202,6 +203,40 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
         requireDrawn(drawn, "2/1", "the iron");
         requireDrawn(drawn, "2/2", "the copper");
         require(drawn.stream().noneMatch(line -> line.text().startsWith("-")), "nothing is short");
+    }
+
+    /**
+     * With the hub's materials showing, what the server takes and gives back redraws them without M: the tree is built again when the
+     * stock changes. Copper teaches nothing new here (the server taught it already), so the catalogue stays the one the tree was built
+     * from and only the stock can say the tree is stale.
+     */
+    private static void theMaterialsFollowTheInventory(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, CataloguePanel panel) {
+        Screen screen = screen(context);
+        PartsCatalogue catalogue = context.computeOnClient(client -> panel.catalogue());
+        singleplayer.getServer().runCommand("clear @p minecraft:copper_ingot 1");
+        ClientWait.until(
+                context,
+                "the hub's copper drawn one short",
+                client -> find(DrawnText.atCursor(screen), "-1").isPresent(),
+                client -> DrawnText.atCursor(screen).stream()
+                        .map(Drawn::text)
+                        .toList()
+                        .toString());
+        requireDrawn(drawn(context, screen), "1/2", "one copper held of the two");
+        singleplayer.getServer().runCommand("give @p minecraft:copper_ingot 1");
+        ClientWait.until(
+                context,
+                "the hub all held again",
+                client -> find(DrawnText.atCursor(screen), "YOU HAVE IT ALL").isPresent(),
+                client -> DrawnText.atCursor(screen).stream()
+                        .map(Drawn::text)
+                        .toList()
+                        .toString());
+        require(
+                context.computeOnClient(client ->
+                        panel.catalogue() == catalogue && panel.state().materials()),
+                "the same catalogue throughout, and the materials shown without M");
     }
 
     private static void nothingKnownHasNothingToBreakDown(ClientGameTestContext context, CataloguePanel panel) {

@@ -74,8 +74,7 @@ final class RecipeConsole {
     private @Nullable MaterialsTree tree;
     private @Nullable KnownRecipe treeRecipe;
     private @Nullable PartsCatalogue treeCatalogue;
-    private @Nullable Inventory treeInventory;
-    private int treeInventoryChanged;
+    private Map<Item, Integer> treeStock = Map.of();
 
     RecipeConsole(CatalogueState state, Font font) {
         this.state = state;
@@ -384,24 +383,18 @@ final class RecipeConsole {
 
     /**
      * The total materials of one craft of {@code recipe}, less what the player holds: built again only when the recipe, what the charter
-     * knows or the inventory changed.
+     * knows or the stock changed. The stock itself is the key, not {@link Inventory#getTimesChanged}: a slot set by {@code
+     * ClientboundSetPlayerInventoryPacket} or a count changed in place does not bump that.
      */
     private MaterialsTree materials(KnownRecipe recipe) {
-        LocalPlayer player = Minecraft.getInstance().player;
-        Inventory inventory = player == null ? null : player.getInventory();
-        int changed = inventory == null ? 0 : inventory.getTimesChanged();
+        Map<Item, Integer> stock = stock();
         MaterialsTree built = tree;
-        if (built == null
-                || recipe != treeRecipe
-                || catalogue != treeCatalogue
-                || inventory != treeInventory
-                || changed != treeInventoryChanged) {
-            built = MaterialsTree.of(recipe, catalogue::recipesFor, stock());
+        if (built == null || recipe != treeRecipe || catalogue != treeCatalogue || !stock.equals(treeStock)) {
+            built = MaterialsTree.of(recipe, catalogue::recipesFor, stock);
             tree = built;
             treeRecipe = recipe;
             treeCatalogue = catalogue;
-            treeInventory = inventory;
-            treeInventoryChanged = changed;
+            treeStock = stock;
         }
         return built;
     }
