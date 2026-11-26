@@ -28,3 +28,4 @@
 - **A new attachment that gates gameplay on a tick path ships an `UnreadableChecks` test and states what the player gets when it is `Unreadable`; a safety net never silently switches off.**
 - **A feature that places a mob itself, outside the vanilla spawner, honours the `spawn_mobs` game rule and Peaceful, and places only inside its own zone and the world bounds.** The rule gates the placing tick, not the helper a test calls (`Drifters.tick`; test worlds pin `spawn_mobs` false, so a test that drives the tick sets it and restores it).
 - A client role derived from a synced list falls back to the visible passengers for a rider the list hasn't reached yet.
+- **Screens:** a screen that hands control back to a container screen on a mouse press does it on the release instead, or the release reaches the container with the carried stack (`RecipeConsoleScreen`).
