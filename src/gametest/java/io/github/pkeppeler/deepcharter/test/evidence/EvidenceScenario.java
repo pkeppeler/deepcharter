@@ -4,9 +4,11 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
@@ -174,16 +176,30 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     }
 
     /**
-     * Right-clicks {@code target} as a player does: waits for the crosshair to rest on it, then presses the use
-     * key, so the game's own path ({@code Minecraft.startUseItem}) picks the entity and sends the interaction. The
-     * caller looks at it first.
+     * Right-clicks {@code target} as a player does: looks at its middle, waits for the crosshair to rest on it, then
+     * presses the use key, so the game's own path ({@code Minecraft.startUseItem}) picks the entity and sends the
+     * interaction.
      */
     protected static void rightClick(ClientGameTestContext context, Entity target) {
+        context.getInput().lookAt(BlockPos.containing(target.getBoundingBox().getCenter()));
         ClientWait.until(
                 context,
                 "the crosshair on " + target,
                 client -> client.hitResult instanceof EntityHitResult hit && hit.getEntity() == target);
         context.getInput().pressKey(options -> options.keyUse);
+    }
+
+    /**
+     * The client's copy of the server entity with network id {@code id}, waited for until the client holds it. The
+     * integrated server and its client share ids, so this finds a scenario's own entity where another of its type
+     * shares the level (the colony's pod does).
+     */
+    protected static <T extends Entity> T clientEntity(ClientGameTestContext context, int id, Class<T> type) {
+        ClientWait.until(
+                context,
+                type.getSimpleName() + " " + id + " in the client's world",
+                client -> type.isInstance(ClientLight.clientLevel(client).getEntity(id)));
+        return context.computeOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), id, type));
     }
 
     /**

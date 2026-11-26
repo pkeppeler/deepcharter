@@ -75,8 +75,9 @@ public class CraftedScannerScenario extends EvidenceScenario {
             ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
             context.waitTicks(40); // tick-wait: the chunks round the arrival come in before the room is cut
             RoomCarver.carveAroundFirstPlayer(server);
-            BlockPos[] spots = server.computeOnServer(CraftedScannerScenario::furnish);
-            BlockPos table = spots[0];
+            Room room = server.computeOnServer(CraftedScannerScenario::furnish);
+            BlockPos table = room.table();
+            int podId = room.podId();
             ClientWait.until(
                     context,
                     "the crafting table in the client's world",
@@ -89,31 +90,24 @@ public class CraftedScannerScenario extends EvidenceScenario {
             layOutTheRecipe(context, server, table);
             takeTheUnit(context, server);
 
-            // By its id, which the client shares: the level also holds the colony's pod.
-            int podId =
-                    server.computeOnServer(minecraft -> podOnServer(minecraft).getId());
-            ClientWait.until(
-                    context,
-                    "the pod in the client's world",
-                    client -> ClientLight.clientLevel(client).getEntity(podId) instanceof PodEntity);
-            PodEntity pod = context.computeOnClient(
-                    client -> TestEntities.require(ClientLight.clientLevel(client), podId, PodEntity.class));
-            ride(context, server);
+            clientEntity(context, podId, PodEntity.class);
+            ride(context, server, podId);
             screenshot(context, "bare-mole-no-scanner");
             hold(context);
             leave(context, server);
 
-            useTheUnit(context, pod);
+            hold(context);
+            rightClick(context, clientEntity(context, podId, PodEntity.class));
             ClientWait.until(
                     context,
                     "the scanner fitted to the pod",
                     () -> server.computeOnServer(minecraft ->
-                            PodComponents.effectiveTier(podOnServer(minecraft), ComponentTrack.SCANNER) == 1),
+                            PodComponents.effectiveTier(podOnServer(minecraft, podId), ComponentTrack.SCANNER) == 1),
                     () -> "no scanner on the pod");
             hold(context);
             screenshot(context, "unit-used-on-the-mole");
 
-            ride(context, server);
+            ride(context, server, podId);
             ScannerHudTest.placeBesidePod(server, ORE_AHEAD, ORE_UP, Blocks.GOLD_ORE);
             ScannerHudTest.placeBesidePod(server, ORE_AHEAD - 1, ORE_UP - 1, Blocks.IRON_ORE);
             context.waitTicks(40); // tick-wait: the HUD rescans a few times a second and the ore reaches the client
@@ -123,7 +117,7 @@ public class CraftedScannerScenario extends EvidenceScenario {
     }
 
     /** Cuts nothing: lights the sealed room, stands a crafting table and a registered pod in it, and puts the ingredients in the pack. */
-    private static BlockPos[] furnish(MinecraftServer server) {
+    private static Room furnish(MinecraftServer server) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
         ServerLevel level = player.level();
         player.setGameMode(GameType.SURVIVAL);
@@ -150,7 +144,7 @@ public class CraftedScannerScenario extends EvidenceScenario {
         for (Item item : new Item[] {Items.IRON_INGOT, Items.COPPER_INGOT, Items.REDSTONE}) {
             inventory.add(new ItemStack(item, 4));
         }
-        return new BlockPos[] {table};
+        return new Room(table, pod.getId());
     }
 
     /** Opens the table's own menu and sets each ingredient in its place, as a player would; the screen shows the grid and the unit it makes. */
@@ -238,28 +232,20 @@ public class CraftedScannerScenario extends EvidenceScenario {
         return -1;
     }
 
-    /** A right click on the pod with the unit in hand. */
-    private void useTheUnit(ClientGameTestContext context, PodEntity pod) {
-        context.getInput().lookAt(pod.blockPosition().above());
-        hold(context);
-        rightClick(context, pod);
-    }
+    /** What {@link #furnish} stood in the room: the crafting table, and the network id of the pod. */
+    private record Room(BlockPos table, int podId) {}
 
-    /** The room's pod on the server. */
-    private static PodEntity podOnServer(MinecraftServer server) {
-        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-        // entity-query: the room is sealed and 9 blocks across, so its one pod is within 10 blocks of the player, who
-        // is inside it
-        return player.level()
-                .getEntitiesOfClass(PodEntity.class, player.getBoundingBox().inflate(10))
-                .getFirst();
+    /** The room's pod on the server, by its network id. */
+    private static PodEntity podOnServer(MinecraftServer server, int podId) {
+        return TestEntities.require(
+                server.getPlayerList().getPlayers().getFirst().level(), podId, PodEntity.class);
     }
 
     /** Seats the player on the pod of the room. */
-    private void ride(ClientGameTestContext context, TestServerContext server) {
+    private void ride(ClientGameTestContext context, TestServerContext server, int podId) {
         server.runOnServer(minecraft -> {
             ServerPlayer player = minecraft.getPlayerList().getPlayers().getFirst();
-            if (!player.startRiding(podOnServer(minecraft))) {
+            if (!player.startRiding(podOnServer(minecraft, podId))) {
                 throw new AssertionError("the player could not mount the pod");
             }
         });
