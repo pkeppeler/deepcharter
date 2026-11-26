@@ -97,8 +97,7 @@ public class LightWatchReportTest {
                     held[0] = true;
                     return;
                 }
-                boolean reported = capture.warnings().stream()
-                        .anyMatch(message -> message.contains("to be sendable"));
+                boolean reported = capture.warnings().stream().anyMatch(message -> message.contains("to be sendable"));
                 if (reported) {
                     LightEngineGate.release(drawn);
                     helper.succeed();
