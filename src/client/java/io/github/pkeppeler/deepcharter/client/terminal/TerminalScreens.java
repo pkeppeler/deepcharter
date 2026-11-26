@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.function.Function;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Which screen a working terminal opens: the screen its feature registered with {@link #register}, or the generic
@@ -24,6 +25,11 @@ public final class TerminalScreens {
         if (ONLINE.putIfAbsent(type, online) != null) {
             throw new IllegalArgumentException("terminal " + type.id() + " already has an online screen");
         }
+    }
+
+    /** True for a terminal's screen, a working one ({@link TerminalViewScreen}) or an unrepaired one ({@link RepairScreen}). */
+    public static boolean isTerminalScreen(@Nullable Screen screen) {
+        return screen instanceof TerminalViewScreen || screen instanceof RepairScreen;
     }
 
     /** Shows {@code view}: updates the open screen if it accepts the view, or opens a new one. Call on the client thread. */
