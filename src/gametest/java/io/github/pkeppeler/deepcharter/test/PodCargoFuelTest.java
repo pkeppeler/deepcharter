@@ -553,11 +553,52 @@ public class PodCargoFuelTest {
         helper.succeed();
     }
 
+    /** A parked pod with nobody aboard burns nothing (#1434); the same pod burns the idle rate once a pilot boards. */
+    @GameTest(maxTicks = 120)
+    public void aParkedPodBurnsNoFuelUntilSomeoneBoards(GameTestHelper helper) {
+        PodEntity pod = spawnPod(helper, 0);
+        int parked = 60;
+        int aboard = 10;
+        helper.runAfterDelay(parked, () -> {
+            if (pod.fuel() != FULL_FUEL) {
+                cleanUp(helper, pod, null);
+                throw failure(
+                        helper,
+                        "a pod parked for %s ticks with nobody aboard should keep a full tank, it has %s",
+                        parked,
+                        pod.fuel());
+            }
+            MockPlayer pilot = seatPilot(helper, pod);
+            helper.runAfterDelay(aboard, () -> {
+                try {
+                    float burned = FULL_FUEL - pod.fuel();
+                    float expected = aboard * expectedPercentPerTick(FUEL.idleLitresPerSecond());
+                    if (Math.abs(burned - expected) > expected * 0.25f) {
+                        throw failure(
+                                helper,
+                                "the pod with a pilot aboard should burn the idle rate, about %s over %s ticks, burned %s",
+                                expected,
+                                aboard,
+                                burned);
+                    }
+                    helper.succeed();
+                } finally {
+                    cleanUp(helper, pod, pilot);
+                }
+            });
+        });
+    }
+
     @GameTest(maxTicks = 60)
-    public void podsBurnFuelIdleAndFasterWhenMoving(GameTestHelper helper) {
+    public void aPilotedPodBurnsFuelIdleAndFasterWhenMoving(GameTestHelper helper) {
         PodEntity idlePod = spawnPod(helper, 0);
         PodEntity movingPod = helper.spawn(PodRegistry.POD, new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, 0.5));
-        MockPlayer pilot = seatPilot(helper, movingPod);
+        MockPlayer idlePilot = seatPilot(helper, idlePod);
+        MockPlayer pilot = MockPlayers.join(helper, "cargo-mover");
+        pilot.teleportTo(helper.getLevel(), movingPod.position(), SOUTH, 0f);
+        if (!pilot.player().startRiding(movingPod)) {
+            throw failure(helper, "the moving pilot could not mount the pod");
+        }
         pilot.setInput(FORWARD);
         int ticks = 10;
         helper.runAfterDelay(ticks, () -> {
@@ -568,7 +609,7 @@ public class PodCargoFuelTest {
                 if (Math.abs(idleBurn - expectedIdle) > expectedIdle * 0.25f) {
                     throw failure(
                             helper,
-                            "an idle pod should burn about %s over %s ticks, burned %s",
+                            "an idle pod with a pilot aboard should burn about %s over %s ticks, burned %s",
                             expectedIdle,
                             ticks,
                             idleBurn);
@@ -584,7 +625,7 @@ public class PodCargoFuelTest {
             } finally {
                 pilot.leave();
                 movingPod.discard();
-                cleanUp(helper, idlePod, null);
+                cleanUp(helper, idlePod, idlePilot);
             }
         });
     }
@@ -645,6 +686,7 @@ public class PodCargoFuelTest {
     @GameTest(maxTicks = 40)
     public void emptyTankStrandsThePod(GameTestHelper helper) {
         PodEntity pod = spawnPod(helper, 0);
+        MockPlayer pilot = seatPilot(helper, pod);
         pod.setFuel(0.01f);
         helper.runAfterDelay(10, () -> {
             try {
@@ -657,7 +699,7 @@ public class PodCargoFuelTest {
                 }
                 helper.succeed();
             } finally {
-                cleanUp(helper, pod, null);
+                cleanUp(helper, pod, pilot);
             }
         });
     }

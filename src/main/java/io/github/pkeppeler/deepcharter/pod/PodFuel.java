@@ -48,9 +48,12 @@ public final class PodFuel {
         return fuelPercent <= PodTuning.DEFAULT.fuel().lowFuelPercent();
     }
 
-    /** Called every pod tick, on the server only; a pod without power burns no fuel. */
+    /**
+     * Called every pod tick, on the server only. A pod without power burns no fuel, and nor does a parked one with no player aboard
+     * (#1434), towed or not: its lights and sounder stay powered for free.
+     */
     static void tick(PodEntity pod, PodStats stats) {
-        if (!PodEvents.isPowered(pod)) {
+        if (!PodEvents.isPowered(pod) || !pod.hasPassenger(Player.class::isInstance)) {
             return;
         }
         // A fouled engine burns more; what the engine burns is what leaves soot (#1280).
