@@ -93,7 +93,7 @@ public class PodDumpTest {
         menu.clicked(menu.holdSlot(window).index, 0, ContainerInput.THROW, player);
     }
 
-    /** The items lying in the box from a block under the pod's floor to its top, as wide as the pod and a block more. */
+    /** The items lying from a block and a half under the pod's floor to its top, a block wider than the pod. */
     private static List<ItemEntity> itemsUnder(PodEntity pod) {
         AABB box = pod.getBoundingBox().inflate(1.0, 0, 1.0).expandTowards(0, -1.5, 0);
         return pod.level().getEntitiesOfClass(ItemEntity.class, box);

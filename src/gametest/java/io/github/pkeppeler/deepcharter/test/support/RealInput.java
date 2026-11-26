@@ -36,7 +36,7 @@ public final class RealInput {
         context.waitTicks(1);
     }
 
-    /** Puts {@code key} down and leaves it there, as a held key: {@code KeyMapping.isDown} reads it until {@link #up}. */
+    /** Puts {@code key} down and leaves it there: {@code KeyMapping.isDown} reads it held until {@link #up}. */
     public static void down(ClientGameTestContext context, int key) {
         context.runOnClient(client -> client.keyboardHandler.keyPress(
                 client.getWindow().handle(), InputConstants.PRESS, new KeyEvent(key, 0, 0)));

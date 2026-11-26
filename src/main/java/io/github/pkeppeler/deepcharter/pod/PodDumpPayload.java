@@ -10,7 +10,8 @@ import net.minecraft.resources.Identifier;
 
 /**
  * Serverbound: a player held the dump key long enough. It carries nothing: the server dumps the whole hold of the pod
- * the sender sits in, by {@link PodDump#dumpBay}'s rules, and tells them when it refuses. A sender in no pod is ignored.
+ * the sender sits in, by {@link PodDump#dumpBay}'s rules, and tells them what it did or why not. A sender in no pod is
+ * ignored.
  */
 public record PodDumpPayload() implements CustomPacketPayload {
     public static final Type<PodDumpPayload> TYPE =
