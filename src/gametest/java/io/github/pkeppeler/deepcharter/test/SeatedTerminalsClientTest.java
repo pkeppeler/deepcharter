@@ -50,6 +50,7 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
     private static final int TERMINAL_OFFSET = 6;
     /** Blocks of open stone pad round the pod. */
     private static final int PAD = 8;
+
     private static final int HEADROOM = 4;
     /** The hotbar slot the pilot holds: the handbook every player is given is in the first. */
     private static final int EMPTY_SLOT = 8;
@@ -87,10 +88,13 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
             ClientWait.until(context, "the pump screen closed", client -> client.gui.screen() == null);
             context.waitTicks(2);
             require(
-                    context.computeOnClient(client -> ClientSession.player(client).getVehicle() instanceof PodEntity),
+                    context.computeOnClient(
+                            client -> ClientSession.player(client).getVehicle() instanceof PodEntity),
                     "closing the screen should leave the pilot seated on the client");
             require(
-                    singleplayer.getServer().computeOnServer(server -> realPlayer(server).getVehicle() instanceof PodEntity),
+                    singleplayer
+                            .getServer()
+                            .computeOnServer(server -> realPlayer(server).getVehicle() instanceof PodEntity),
                     "closing the screen should leave the pilot seated on the server");
 
             useFacing(context, scene.processor(), OreProcessorScreen.class);
@@ -129,7 +133,8 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
         BlockPos pump = base.relative(Direction.EAST, TERMINAL_OFFSET);
         BlockPos processor = base.relative(Direction.WEST, TERMINAL_OFFSET);
         TerminalBlock.place(level, pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
-        TerminalBlock.place(level, processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                level, processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
         PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(Vec3.atBottomCenterOf(base));
         pod.addTag(SEATED);
@@ -157,7 +162,8 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
                 context,
                 "the client seated in the pod",
                 client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
-        context.runOnClient(client -> ClientSession.player(client).getInventory().setSelectedSlot(EMPTY_SLOT));
+        context.runOnClient(
+                client -> ClientSession.player(client).getInventory().setSelectedSlot(EMPTY_SLOT));
         context.waitTicks(5);
     }
 
@@ -166,8 +172,8 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
      * and waits for {@code screen}. Public for the evidence scenario.
      */
     public static void useFacing(ClientGameTestContext context, BlockPos pos, Class<? extends Screen> screen) {
-        context.runOnClient(client ->
-                ClientSession.player(client).lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(pos)));
+        context.runOnClient(
+                client -> ClientSession.player(client).lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(pos)));
         // The client sends its look with its next movement packet.
         context.waitTicks(2);
         RealInput.click(context, InputConstants.MOUSE_BUTTON_RIGHT);

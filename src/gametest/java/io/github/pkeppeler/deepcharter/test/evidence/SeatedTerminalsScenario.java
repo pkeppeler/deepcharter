@@ -96,7 +96,10 @@ public class SeatedTerminalsScenario extends EvidenceScenario {
                 client -> ClientCharter.view()
                         .map(view -> wanted.test(view.balance()))
                         .orElse(false),
-                client -> "balance " + ClientCharter.view().map(view -> String.valueOf(view.balance())).orElse("(none)"));
+                client -> "balance "
+                        + ClientCharter.view()
+                                .map(view -> String.valueOf(view.balance()))
+                                .orElse("(none)"));
     }
 
     /** Drops the founding transmission and the "Directive complete" toasts, which cover the seat and the screens. */

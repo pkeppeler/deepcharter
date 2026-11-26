@@ -57,9 +57,7 @@ public final class HandbookControls {
                     List.of(
                             new Row("board", List.of(options -> options.keyUse)),
                             new Row("leave", List.of(options -> options.keyShift)))),
-            new Sheet(
-                    "seat",
-                    List.of(new Row("terminal", List.of(options -> options.keyUse)))),
+            new Sheet("seat", List.of(new Row("terminal", List.of(options -> options.keyUse)))),
             new Sheet(
                     "drive",
                     List.of(
