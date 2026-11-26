@@ -1,6 +1,7 @@
 // Input literal gate (#1304): Minecraft 26.3 runs on SDL, which numbers mouse buttons from 1, so `event.button() == 0` is not the left
-// button, and a raw key code is a key no rebinding or layout reaches. This fails the build on one in code under src/client/java and
-// src/gametest/java, where an ASCII code sent as a key (82 for R; SDL's KEY_R is 21) fires no key mapping (#1385).
+// button, and a raw key code is a key no rebinding or layout reaches. This fails the build on a hand-built literal of either in code
+// under src/client/java and src/gametest/java. It did not catch #1385 (an ASCII code sent as a key, 82 for R where SDL's KEY_R is 21):
+// that code reached the event through a variable. RealInputTypingClientTest's key-mapping case is the guard for #1385.
 //
 // It is a scan of whole statements (a formatter wraps before `==` and `&&`), with no type information, so it keys on the accessors of
 // the input events (`.button()` and `.key()`):

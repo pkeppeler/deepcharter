@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.systems.RenderSystem;
 import java.nio.ShortBuffer;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.input.KeyEvent;
@@ -44,7 +45,8 @@ public final class RealInput {
      * Types {@code text} one character at a time, the way SDL sends it: the key that types the character goes down ({@link #keyEvent}),
      * then {@code KeyboardHandler.textInput} delivers its text (it calls {@code textEditing}, then {@code charTyped} per code point), then
      * the key goes up. So a letter bound to a key mapping fires it, as a typist's would (#1385), and a text box that has the keyboard
-     * must keep the key from its screen.
+     * must keep the key from its screen. Shift for an upper-case letter is carried in the event's modifiers but is not held, so
+     * {@code InputConstants.isKeyDown} on {@code KEY_LSHIFT} does not see it during {@code type}.
      */
     public static void type(ClientGameTestContext context, String text) {
         text.codePoints()
@@ -64,6 +66,7 @@ public final class RealInput {
      * SDL's modifier bits are {@code InputConstants.MOD_*}). Call it on the client thread. Throws for a character no key types.
      */
     public static KeyEvent keyEvent(int codePoint) {
+        RenderSystem.assertOnRenderThread();
         try (MemoryStack stack = MemoryStack.stackPush()) {
             ShortBuffer modifiers = stack.mallocShort(1);
             int scancode = SDLKeyboard.SDL_GetScancodeFromKey(codePoint, modifiers);

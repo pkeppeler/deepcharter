@@ -89,16 +89,28 @@ public final class CatalogueScene {
     /** Opens the inventory with the recipe console showing: R on the scanner unit's cell once its recipe is taught. Returns the catalogue. */
     public static CataloguePanel openRecipeConsole(
             ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        CataloguePanel panel = hoverScannerUnit(context, singleplayer);
+        context.getInput().pressKey(InputConstants.KEY_R);
+        ClientWait.until(context, "the recipe console", client -> panel.showsRecipePanel());
+        return panel;
+    }
+
+    /**
+     * Opens the inventory once the scanner unit's recipe is taught, with an empty search, and hovers the scanner unit's cell on its page.
+     * Returns the catalogue.
+     */
+    public static CataloguePanel hoverScannerUnit(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         CataloguePanel panel = teachScannerRecipe(context, singleplayer);
         clearSearch(context, panel);
-        context.waitTicks(2); // tick-wait: the catalogue lists what it now knows before the cell is looked up
+        ClientWait.until(
+                context,
+                "the scanner unit listed",
+                client -> panel.shownItems().contains(ScannerRegistry.SCANNER_UNIT));
         CatalogueLayout layout = layout(context, panel);
         int perPage = layout.shelf().perPage();
         int index = indexOf(context, panel, ScannerRegistry.SCANNER_UNIT);
         showPage(context, panel, perPage, index / perPage);
         hover(context, gridCell(layout, index % perPage));
-        context.getInput().pressKey(InputConstants.KEY_R);
-        ClientWait.until(context, "the recipe console", client -> panel.showsRecipePanel());
         return panel;
     }
 
