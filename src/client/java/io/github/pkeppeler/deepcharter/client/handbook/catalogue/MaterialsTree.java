@@ -38,10 +38,13 @@ import org.jspecify.annotations.Nullable;
  * <li>It is made as many times as the need takes, rounding up; what that makes beyond the need feeds later needs.
  * <li>A cell that takes several items (a tag) takes the one the player has most of, or with none held, the first that a known recipe
  * can make, or else the first.
- * <li>Once the tree has {@link #NODE_BUDGET} nodes, nothing more is broken down: an item a known recipe would make is cut, listed as
- * it is and marked. A dense tangle of recipes would otherwise unfold into a node for every path down, exponential in the items, and
- * the tree is built on the render thread. Sharing repeated subtrees would not keep the totals: each need takes the leftovers and the
+ * <li>Once the tree has {@link #NODE_BUDGET} nodes, nothing more is broken down: an item a known recipe would make still takes from
+ * the leftovers and the stock, and the rest is cut, listed as it is and marked. A dense tangle of recipes would otherwise unfold into
+ * a node for every path down, exponential in the items, and the tree is built on the render thread. The budget is far above the
+ * largest tree of the shipped recipes. Sharing repeated subtrees would not keep the totals: each need takes the leftovers and the
  * stock as the walk reaches it, and which recipe and tag member it takes depends on what is being made above it.
+ * <li>A cut tree's totals are partial: the materials under a cut item are not counted, so a row may be short even when the player
+ * holds its count, and no row is shown as held ({@link #held}).
  * </ul>
  *
  * @param root the shown recipe, made once
@@ -88,12 +91,17 @@ public record MaterialsTree(Node root, List<Material> materials) {
         public int shortBy() {
             return Math.max(0, need - have);
         }
+
+        /** Its row's have/need, {@code 3/5}, after {@link #MARK} when it is cut, so a narrow row trimmed from the end keeps it. */
+        public String figures() {
+            return (cut ? MARK : "") + have + "/" + need;
+        }
     }
 
-    /**
-     * How many nodes the tree breaks down to at most, before the crafts under way finish their cells. Far above the largest tree of
-     * the shipped recipes, and small enough to build on the render thread.
-     */
+    /** What marks a material the tree stopped short of breaking down; the cut heading explains it. */
+    public static final String MARK = "*";
+
+    /** How many nodes the tree breaks down to at most, before the crafts under way finish their cells. */
     private static final int NODE_BUDGET = 500;
 
     /** Whether the tree stopped short of breaking some material down ({@link #NODE_BUDGET}). */
@@ -104,6 +112,19 @@ public record MaterialsTree(Node root, List<Material> materials) {
     /** Whether the player holds everything the craft takes. */
     public boolean allHeld() {
         return materials.stream().allMatch(material -> material.shortBy() == 0);
+    }
+
+    /** Whether {@code material}'s row may show it as held: the player holds its count and the tree was not cut short. */
+    public boolean held(Material material) {
+        return material.shortBy() == 0 && !cut();
+    }
+
+    /** The lang key of the heading over the rows: that the player holds it all, that the totals are partial, or plain. */
+    public String headingKey() {
+        if (allHeld()) {
+            return "deepcharter.catalogue.materials.all";
+        }
+        return cut() ? "deepcharter.catalogue.materials.cut" : "deepcharter.catalogue.materials";
     }
 
     /**

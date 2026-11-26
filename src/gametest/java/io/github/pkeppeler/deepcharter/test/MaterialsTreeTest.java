@@ -625,7 +625,7 @@ public class MaterialsTreeTest {
     private static final int TANGLE_ITEMS = 20;
 
     /** Well above the tree's node budget, which lets the crafts under way finish their cells; far below the unfolded tree. */
-    private static final int TANGLE_MAX_NODES = 2_000;
+    private static final int TANGLE_MAX_NODES = 1_000;
 
     @GameTest
     public void aDenseRecipeTangleKeepsTheTreeSmall(GameTestHelper helper) {
@@ -642,6 +642,11 @@ public class MaterialsTreeTest {
                 TANGLE_ITEMS,
                 size(tree.root()));
         expect(helper, tree.cut(), "the tree says it was cut short");
+        expect(
+                helper,
+                tree.headingKey().equals("deepcharter.catalogue.materials.cut"),
+                "the heading says the totals are partial, got %s",
+                tree.headingKey());
         // With nothing held, a material a known recipe makes is listed only because the tree stopped short of it.
         expect(
                 helper,
@@ -650,16 +655,101 @@ public class MaterialsTreeTest {
                                 material.cut() == !known.apply(material.item()).isEmpty()),
                 "exactly the rows not broken down are marked, got %s",
                 tree.materials());
+        expect(
+                helper,
+                tree.materials().stream()
+                        .allMatch(material -> material.figures()
+                                .equals((material.cut() ? MaterialsTree.MARK : "") + material.have() + "/"
+                                        + material.need())),
+                "a marked row leads with the mark, got %s",
+                tree.materials().stream().map(Material::figures).toList());
 
-        // A small tangle is broken down in full: item 7 is made from items 6 and 5, and so on down to items 2 and 1,
-        // the
-        // Fibonacci numbers 8 and 5 of times.
+        // A small tangle breaks down in full, to items 2 and 1 the Fibonacci numbers 8 and 5 of times.
         List<Item> few = items.subList(0, 8);
         Function<Item, List<KnownRecipe>> knownFew = tangle(helper, few);
         MaterialsTree whole = MaterialsTree.of(knownFew.apply(few.getLast()).getFirst(), knownFew, stock());
         expect(helper, !whole.cut(), "a small tangle is not cut short, got %s", whole.materials());
+        expect(
+                helper,
+                whole.headingKey().equals("deepcharter.catalogue.materials"),
+                "a whole tree has the plain heading, got %s",
+                whole.headingKey());
+        expect(
+                helper,
+                whole.materials().stream()
+                        .noneMatch(material -> material.figures().startsWith(MaterialsTree.MARK)),
+                "a whole tree marks no row, got %s",
+                whole.materials().stream().map(Material::figures).toList());
         expectMaterials(helper, whole, "a small tangle down to its base materials", few.get(2), 8, 0, few.get(1), 5, 0);
+        MaterialsTree held = MaterialsTree.of(
+                knownFew.apply(few.getLast()).getFirst(),
+                knownFew,
+                stock(few.get(0), 64, few.get(1), 64, few.get(2), 64));
+        expect(
+                helper,
+                held.headingKey().equals("deepcharter.catalogue.materials.all")
+                        && held.materials().stream().allMatch(held::held),
+                "a whole tree held in full says so and shows every row held, got %s: %s",
+                held.headingKey(),
+                held.materials());
         helper.succeed();
+    }
+
+    @GameTest
+    public void aCutTreeTakesFromStockAndShowsNoRowHeld(GameTestHelper helper) {
+        List<Item> obtainable = BuiltInRegistries.ITEM.stream()
+                .filter(item -> ObtainableItems.isObtainable(item.getDefaultInstance()))
+                .limit(TANGLE_ITEMS + 3)
+                .toList();
+        List<Item> items = obtainable.subList(0, TANGLE_ITEMS);
+        Item cutItem = obtainable.get(TANGLE_ITEMS);
+        Item base = obtainable.get(TANGLE_ITEMS + 1);
+        Item shown = obtainable.get(TANGLE_ITEMS + 2);
+        // Three of the tangle's last item come first (the most needed), so the budget is spent before the two of an
+        // item a known
+        // recipe makes, of which one is held, and the one of a base material, held.
+        KnownRecipe top = recipe(
+                helper,
+                shown,
+                1,
+                item(items.getLast()),
+                item(items.getLast()),
+                item(items.getLast()),
+                item(cutItem),
+                item(cutItem),
+                item(base));
+        KnownRecipe makeCut = recipe(helper, cutItem, 1, item(items.getFirst()));
+        Function<Item, List<KnownRecipe>> tangled = tangle(helper, items);
+        Function<Item, List<KnownRecipe>> known =
+                item -> item == shown ? List.of(top) : item == cutItem ? List.of(makeCut) : tangled.apply(item);
+        MaterialsTree tree = MaterialsTree.of(top, known, stock(cutItem, 1, base, 1));
+        expect(helper, tree.cut(), "the tree says it was cut short");
+        Node cutNode = node(helper, tree, cutItem);
+        expect(
+                helper,
+                cutNode.cut() && cutNode.fromStock() == 1 && cutNode.missing() == 1,
+                "a cut node still takes the one held, got %s",
+                cutNode);
+        Material cutRow = material(helper, tree, cutItem);
+        expect(
+                helper,
+                cutRow.cut() && cutRow.have() == 1 && cutRow.need() == 2 && cutRow.shortBy() == 1,
+                "the cut row counts the held one in its need, got %s",
+                cutRow);
+        Material baseRow = material(helper, tree, base);
+        expect(
+                helper,
+                baseRow.shortBy() == 0 && !tree.held(baseRow),
+                "a row the player holds is not shown held in a cut tree, got %s",
+                baseRow);
+        helper.succeed();
+    }
+
+    private static Material material(GameTestHelper helper, MaterialsTree tree, Item item) {
+        return tree.materials().stream()
+                .filter(material -> material.item() == item)
+                .findFirst()
+                .orElseThrow(() -> failure(helper, "no row for %s: %s", item, tree.materials()));
     }
 
     @GameTest

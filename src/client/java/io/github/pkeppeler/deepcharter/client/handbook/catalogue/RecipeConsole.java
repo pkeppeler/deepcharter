@@ -439,16 +439,16 @@ final class RecipeConsole {
     /**
      * The total materials in place of the recipe: a heading where the station stands (or that the player holds everything), then a row
      * for each item, its icon and have/need, and how many are short at the right, glowing; the last row says how many more the wheel
-     * shows. When the tree was cut short ({@link MaterialsTree#cut}), the heading says so and each row it did not break down is marked.
+     * shows. When the tree was cut short ({@link MaterialsTree#cut}), the heading says the totals are partial, each row it did not
+     * break down is marked, and no row is dimmed as held.
      */
     private void drawMaterials(GuiGraphicsExtractor graphics, Card card, CatalogueLook look, MaterialsTree tree) {
         int width = card.right() - card.left();
-        if (tree.allHeld()) {
-            glow(graphics, font, fit(font, text("materials.all"), width), card.left(), card.stationY());
-        } else if (tree.cut()) {
-            glow(graphics, font, fit(font, text("materials.cut"), width), card.left(), card.stationY());
+        String heading = fit(font, Component.translatable(tree.headingKey()).getString(), width);
+        if (tree.allHeld() || tree.cut()) {
+            glow(graphics, font, heading, card.left(), card.stationY());
         } else {
-            dim(graphics, font, fit(font, text("materials"), width), card.left(), card.stationY());
+            dim(graphics, font, heading, card.left(), card.stationY());
         }
         MaterialsPage page = materialsPage(card, tree);
         int textX = card.left() + look.needTextX();
@@ -457,10 +457,14 @@ final class RecipeConsole {
             Rect cell = materialCell(card, look, i);
             graphics.item(new ItemStack(material.item()), cell.x(), cell.y());
             int y = cell.y() + look.needTextY();
-            String figures =
-                    material.have() + "/" + material.need() + (material.cut() ? text("materials.cut.mark") : "");
+            String figures = material.figures();
             if (material.shortBy() == 0) {
-                dim(graphics, font, fit(font, figures, card.right() - textX), textX, y);
+                String fitted = fit(font, figures, card.right() - textX);
+                if (tree.held(material)) {
+                    dim(graphics, font, fitted, textX, y);
+                } else {
+                    glow(graphics, font, fitted, textX, y);
+                }
                 continue;
             }
             String shortBy = "-" + material.shortBy();
