@@ -153,6 +153,9 @@ chmod +x "$work/bin/"* "$work/gate"
 # The refusal as merge-pr.sh prints it: the queue keys on the "[stale-base]" marker, not on a command hint.
 stale_msg() { echo "REFUSED: PR #$1 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run CI on the current main by re-running CI [stale-base] (the head sha is unchanged)"; }
 
+# A failed client check with build and tool-tests passing, as merge-pr.sh prints it: the queue keys on "[client-only]".
+client_msg() { echo "REFUSED: PR #$1 has a check that is not passing: client-gametest (newest non-skipped run: failure); only client-suite checks failed: re-run the whole Client tests run [client-only] (never --failed)"; }
+
 # gate N K "<rc> [flag]" [output]
 gate() { { echo "$3"; [[ -z ${4-} ]] || echo "$4"; } >"$ST/gate.$1.$2"; }
 
@@ -578,6 +581,104 @@ exited "stale retries 0: exit 1" 1
 count "stale retries 0: no rerun" "/rerun" 0
 printed "stale retries 0: summary says why" "still stale after 0 reruns"
 
+# --- [client-only] (#1451): re-run the whole Client tests run once, never --failed or a job, wait, merge ---
+client_runs() {
+  wfruns "320|Client tests|completed|skipped" "301|CI|completed|success" "302|Client tests|completed|failure"
+  jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+  jobs 320 "511|client-changes|completed|success" "512|client-gametest|completed|skipped"
+  jobs 302 "501|client-changes|completed|success" "502|client-gametest-shard 1|completed|failure" "503|client-gametest|completed|failure"
+}
+reset
+client_runs
+gate 7 1 "1" "$(client_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "client-only: exit 0" 0
+logged "client-only: re-runs the Client tests run holding the newest real client-gametest job" "$(run_url 302)"
+count "client-only: exactly one rerun (never the CI run, never the skipped run)" "/rerun" 1
+no_job_rerun "client-only"
+not_logged "client-only: never a --failed rerun" "rerun-failed-jobs"
+not_logged "client-only: never lists the CI run's jobs" "runs/301/jobs"
+logged "client-only: sleeps for the rerun" "sleep 9"
+count "client-only: gate ran twice" "merge-pr 7" 2
+printed "client-only: says what it does" "failed only client checks; re-running the whole Client tests run (1 of 1)"
+printed "client-only: merged" "merged:  #7"
+
+# --- a second client-only failure stops the PR with the reason ---
+reset
+client_runs
+gate 7 1 "1" "$(client_msg 7)"
+gate 7 2 "1" "$(client_msg 7)"
+gate 8 1 "0 merged"
+run_q 7 8
+exited "client-only twice: exit 1" 1
+count "client-only twice: one rerun only" "/rerun" 1
+count "client-only twice: gate ran twice" "merge-pr 7" 2
+printed "client-only twice: summary says why" "client checks still failing after 1 whole-run reruns"
+printed "client-only twice: the gate's reason is kept" "stopped: #7: REFUSED: PR #7 has a check that is not passing: client-gametest"
+printed "client-only twice: later PRs not attempted" "not attempted: #8"
+
+# --- MERGE_QUEUE_CLIENT_RETRIES=2: two whole-run reruns, then a merge ---
+reset
+client_runs
+gate 7 1 "1" "$(client_msg 7)"
+gate 7 2 "1" "$(client_msg 7)"
+gate 7 3 "0 merged"
+QENV="MERGE_QUEUE_CLIENT_RETRIES=2" run_q 7
+exited "client retries 2: exit 0" 0
+count "client retries 2: two reruns" "$(run_url 302)" 2
+
+# --- a client-only failure, then a stale base: each has its own budget ---
+reset
+client_runs
+gate 7 1 "1" "$(client_msg 7)"
+gate 7 2 "1" "$(stale_msg 7)"
+gate 7 3 "0 merged"
+run_q 7
+exited "client then stale: exit 0" 0
+logged "client then stale: the stale rerun covers CI" "$(run_url 301)"
+count "client then stale: the Client tests run is re-run twice (client, then stale)" "$(run_url 302)" 2
+
+# --- a failed build or tool-tests (no marker, even beside a failed shard) never re-runs ---
+for check in build tool-tests; do
+  reset
+  client_runs
+  gate 7 1 "1" "REFUSED: PR #7 has a check that is not passing: $check (newest non-skipped run: failure)"
+  run_q 7
+  exited "$check failure: exit 1" 1
+  count "$check failure: no rerun" "/rerun" 0
+  not_logged "$check failure: never lists runs" "actions/runs"
+  count "$check failure: gate ran once" "merge-pr 7" 1
+done
+
+# --- the head has no real client-gametest job: stop, say so ---
+reset
+wfruns "301|CI|completed|success" "320|Client tests|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+jobs 320 "511|client-changes|completed|success" "512|client-gametest|completed|skipped"
+gate 7 1 "1" "$(client_msg 7)"
+run_q 7
+exited "client-only no job: exit 1" 1
+count "client-only no job: no rerun" "/rerun" 0
+printed "client-only no job: summary says why" "no non-skipped client-gametest job of Client tests exists for sha7"
+
+# --- the API refuses the Client tests rerun: stop ---
+reset
+client_runs
+: >"$ST/rerun_fail.302"
+gate 7 1 "1" "$(client_msg 7)"
+run_q 7
+exited "client-only refused: exit 1" 1
+printed "client-only refused: summary names the run" "GitHub refused to re-run Client tests run 302"
+
+# --- MERGE_QUEUE_CLIENT_RETRIES=0: never re-runs ---
+reset
+client_runs
+gate 7 1 "1" "$(client_msg 7)"
+QENV="MERGE_QUEUE_CLIENT_RETRIES=0" run_q 7
+exited "client retries 0: exit 1" 1
+count "client retries 0: no rerun" "/rerun" 0
+
 # --- mergeable UNKNOWN: wait, retry, merge ---
 reset
 gate 7 1 "1" "REFUSED: PR #7 is not mergeable (mergeable: UNKNOWN)"
@@ -656,14 +757,15 @@ exited "rest unreadable: exit 1" 1
 printed "rest unreadable: says why" "is not open (state: unknown)"
 not_logged "rest unreadable: never ran the gate" "merge-pr"
 
-# --- the stale-base marker is one string in both scripts: the gate prints it, the queue matches it ---
-# shellcheck disable=SC2016 # the sed program is a literal pattern
-marker=$(sed -n 's/.*\$out == \*"\(\[stale-base\]\)"\*.*/\1/p' "$script")
-if [[ $marker == "[stale-base]" ]] && grep -qF -- "$marker" "$tools/merge-pr.sh"; then
-  pass "stale marker: the queue matches what merge-pr.sh prints"
-else
-  fail "stale marker: queue matches [$marker], merge-pr.sh must print it"
-fi
+# --- each marker is one string in both scripts: the gate prints it, the queue matches it ---
+for want in "[stale-base]" "[client-only]"; do
+  marker=$(grep -oF -- "\$out == *\"$want\"*" "$script" | sed 's/.*"\(.*\)".*/\1/' || true)
+  if [[ $marker == "$want" ]] && grep -qF -- "$marker" "$tools/merge-pr.sh"; then
+    pass "marker $want: the queue matches what merge-pr.sh prints"
+  else
+    fail "marker $want: queue matches [$marker], merge-pr.sh must print it"
+  fi
+done
 
 # --- single instance ---
 reset

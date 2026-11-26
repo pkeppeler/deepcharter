@@ -5,7 +5,10 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.packs.repository.PackRepository;
 
-/** Turns a {@link TestPacks} pack on or off and reloads the client's resources, which is what F3+T does. */
+/**
+ * Turns a {@link TestPacks} pack, or one in the resource pack folder, on or off and reloads the client's resources, which is what F3+T
+ * does.
+ */
 public final class ClientPacks {
     private ClientPacks() {}
 

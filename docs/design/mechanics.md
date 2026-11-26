@@ -1243,7 +1243,7 @@ A full rack of 24 buys about 10 s of lava at tier 1, 14 s at tier 2 and 19 s at 
 - **People on foot.** A person near a figure does not make it fade. It does not flee and it does not attack. A person on foot in the dark draws a figure too, since #916 ([below](#the-retained-on-foot-916-a)).
 
 **Counterplay, on the ladder.**
-1. **By hand: drill it off.** Sprint down or push into a wall for 2.5 seconds. The warning gives the time to start, and the drain runs while the pilot reads. This is the main verb of the game, so a pilot who is digging anyway kills it without changing what they do. A pod that cannot drill (the surface, Company rock) cannot use the cutter: the pilot gets out and swings, or lights the pod before the next one comes.
+1. **By hand: drill it off.** Sprint down or drive into a wall (W) for 2.5 seconds. The warning gives the time to start, and the drain runs while the pilot reads. This is the main verb of the game, so a pilot who is digging anyway kills it without changing what they do. A pod that cannot drill (the surface, Company rock) cannot use the cutter: the pilot gets out and swings, or lights the pod before the next one comes.
 2. **A part: lights.** A lights part (tier 1, $125) makes the pod lit and draws none. It is prevention only now: it does nothing to a figure that already holds the pod. A pilot with lights is safe from this mechanic, whatever the tier.
 3. **Mastery: a bigger tank.** The drain is litres a second, so a bigger tank shrugs the time it takes to kill: the same 0.45 litres is 4.5 per cent of a stock tank and 1.8 per cent of a tier 2 tank. The old tool keeps its niche: a spare stock pod without lights is a pod the pilot must watch.
 
@@ -2547,3 +2547,48 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Open questions.** Whether the refill should grow with capacity once the canister exists; whether a toxin axis should join the air track or stand alone.
 
+## The Claim: caves, strata and abandoned shafts (#1277, A)
+
+**Problem.** The playtest: "in the initial part of digging down, it seems there are no caves. When it's all solid block on the scanner, it looks like the pod isn't moving." The dig from the colony crossed about 120 rows of solid regolith rock under the surface, and layer 1 was one rock from top to floor, so neither the wall nor the scanner showed progress.
+
+**Caves.** One density term, `density_function/claim_caves.json`, added to the campaign's final density outside its interpolation, so a narrow cave stays narrow: pockets (the cave cheese noise over a threshold), tall fissures (a vertically stretched noise near zero) and narrow passages (two ridge noises near zero, as vanilla's noodles). A mask noise sets each narrow term's width, so a fissure or a passage pinches out rather than ending square. Each threshold is a gradient over depth, so the caves open up on the way down. The surface band's underground gets sparse pockets alone, from y -60 (4 rows over the band's floor) to y 20, well under the deepest ground (the pit's floor, about y 42), so nothing opens to the sky and the colony's pad is never undercut. 26.3 samples both branches of a `range_choice` over the whole volume, so the term costs the same at every row of every band, whether it carves there or not; it keeps the per-block part to the narrow terms, and the pockets are one interpolator for both bands. That costs the surface about 1.25x main's cost a row; a density function that skips the rows outside its band is [#1367](https://github.com/pkeppeler/deepcharter/issues/1367). Layer 3's halls stay the showpiece.
+
+**Strata.** Each zone of layer 1 has its own rock, laid by the campaign's material rule: Topsoil Claims' hardpan (olive: green enough to stand apart from the packed shale on the scanner, dark enough that Ironium's and Goldium's flecks stand out of it), Stone Benches' packed shale (as before) and Deep Claim's black shale (cold blue-grey, the step to layer 2's grey-green). The contact lies 6 rows under the zone's edge, moved up to 6 rows either way by a contour noise (`noise/claim_contact.json`, read once a column, in steps of one row) and raised by the column's surface depth (0 to about 5 rows, a slow wave across the claim), and a thin bed of the lower rock lies 2 to 4 rows above it and follows it, so the transition reads as bedding, not a ruled line. One material rule of our own, `deepcharter:strata` (`StrataRule`, `material_rule/claim_strata.json`), lays all of it: it works out a column's contacts once and then compares rows, because each vanilla condition a rule tests costs about the same at every block, and a contour made of noise bins doubled layer 1's cost per row. The textures are layer 1's Grain in each rock's own ramp. On the scanner the three are at least 20 apart in RGB at the cells' size, and each is at least 25 from open space, so a cave in the black shale still reads (`ClaimStrataScannerClientTest`). An ore and Company rock take the stratum as their host (ADR 0055's `Host`, two values added).
+
+**Abandoned shafts.** About one chunk in ten of layer 1 holds a first-generation shaft (`ClaimShaftFeature`): a hand-dug 3 x 3 hollow 12 to 30 rows deep, stalk-plank timbering every five rows with a fifth rotted out, a ladder with rungs gone, candle niches with burnt-out stubs, a prayer card in a fifth of the niches in Topsoil Claims and over half in the Deep Claim, a lunch pail at the end of a short drift at the foot, and now and then a salvage crate. Its top is a rubble plug where the collar fell in, or an open mouth where the rock's top or a cave is over it. It cuts through whatever caves it meets. The lunch pail and the prayer card are blocks of their own, which drop themselves.
+
+**Hooks (A).** Abandoned, not deadly: no new hazard. Seams of ore (3 to 8 blocks) on the faces of caves and shafts (`CaveOreFeature`), six tries a chunk, by the zone fill's tables with Silverium twice, Goldium four times and Platinium three times as likely: a cave is worth a look on the scanner. A few salvage crates on a cave floor: two tries a chunk, each finding a floor only where a cave is under it, so a cache is an odd find, wood and scrap a long way from the yard.
+
+**In-chunk.** Every new feature writes only its own chunk ([ADR 0088](../adr/0088-layer-features-never-write-outside-their-own-chunk.md)); `TheClaimTest` checks every placement step and every shaft's bounds. The shafts seal their shell before they carve (the M2 rules). They stand in decoration step 10, which no other band uses, so no feature reseeds.
+
+**The cost references.** `tall_baseline`, `tall_surface`, `tall_layer` and `tall_layer_floor` read layer 1's biomes for their zones. They now read frozen copies (`reference_<zone>`, test pack only) with main's features, so the per-band reference stays what it was and a layer's new content is charged to its band, not to the bar.
+
+**Tuning knobs.** The thresholds in `claim_caves.json` (pockets, fissures, passages; each a gradient over depth); the contacts, amplitude and surface multiplier in `claim_strata.json`, the contour noise's octave; `claim_shafts.json` (rarity), `claim_shaft.json` (depths); `claim_cave_ores.json` (tries), `claim_cave_ore.json` (weights, sizes); `claim_salvage_caches.json` (tries, crates).
+
+**Open questions.** The layer 1 dimension (outside the campaign world) keeps one rock and the old caves. The strata's grain (#1272) and a depth ruler on the scanner come next.
+
+## Pod controls and the chase camera (#1281, #1268, A)
+
+**Problem.** The pod read WASD relative to the pilot's view, snapped to four directions, and turned to face where it drove. With a camera behind the pod, pressing back made it turn round and drive at the camera. That is a top-down scheme, and Minecraft players already know the vehicle one ([ADR 0095](../adr/0095-pods-steer-like-a-boat-and-the-pilots-camera-chases-them.md)).
+
+**Rule.** Copy the vanilla boat (`AbstractBoat`) and deviate only where a drilling pod needs it.
+
+| Key | Pod | Copied from the boat | Deviation and why |
+|---|---|---|---|
+| W | drives forward along the pod's facing | `controlBoat` throttle along the yaw | **Instant speed.** The drive speed is the stock `horizontalSpeed` stat, reached at once, not the boat's ramp: the measured fuel, trip and bore tables and the client smoothing price that speed. The ramp can be added in one function if wanted |
+| S | backs up without turning | reverse is slower, and does not turn; A or D with S turns while reversing, as in the boat | **0.4 reverse.** The issue says reverse slower, and the boat's 1/8 cannot back out of a bore. It never drills. **W with S cancels** (the boat nets forward 0.035) |
+| A, D | turn the yaw (A left, D right) | `deltaRotation`: 1 degree a tick added per tick held, 0.9 of it kept, so it settles at 10 degrees a tick and coasts on after the key is let go | none out of a bore. In a bore as wide as the pod, one press turns a quarter to the next compass direction (below) |
+| bare A or D | creeps forward at 1/8 of the drive speed | the boat's paddle creep | none |
+| Space | rotor up | unchanged | |
+| sneak | dismount | vanilla | |
+| sprint | drills down when no direction key is held | unchanged for now; #1276 makes sprint with a direction key a boost | |
+
+**Camera.** Taking the pilot seat switches to third person (`THIRD_PERSON_BACK`) and leaving restores the view the player had. There is no option to turn it off. The view yaw takes the pod's turn every tick, as `AbstractBoat.positionRider` adds `deltaRotation` to its rider, so the angle to the pod stays in first and third person. **Unclamped view (a deviation):** the boat clamps the rider's view to 105 degrees from the nose; the pod does not, because #1268 and #1281 ask for free mouse look. In third person the view also eases back behind a driving pod (4 degrees a tick) once the mouse has been still for a second, so the camera chases; first person never settles.
+
+**The one deviation: the grid.** When the drill engages, the pod turns square to the compass at 15 degrees a tick, and the slab's first tick waits until it is square and centred. A sideways bore takes the compass direction nearest the nose, and only while W presses the pod against rock ahead of it. A bore down takes the nearest one too. In a bore as wide as the pod (rock beside it on both sides, on the ground) the pod squares itself and A and D do not steer it, so tunnels stay straight. One press of A or D there, while the pod is roughly square (within 15 degrees), turns it a quarter to the next compass direction (D clockwise), eased at the align rate; a held key is one press. W then drills the branch. A towed pod turns toward the way the line drags it, at 10 degrees a tick. Everything is the server's: the client sends only its keys, as before.
+
+**Knobs.** `PodSteeringTuning`: `turnAcceleration` (1), `turnDamping` (0.9), `reverseShare` (0.4), `creepShare` (0.125), `alignDegrees` (15), `alignTolerance` (0.5). `PodChase`: `LOOK_HOLD_TICKS` (20), `SETTLE_DEGREES` (4).
+
+**Open questions.**
+- Whether the pod should accelerate to its speed as a boat does. It does not yet: the speed is a stat the client smoothing and the fuel numbers assume.
+- The turn rate is a boat's, 200 degrees a second; a heavy pod might want less. It is one number.
