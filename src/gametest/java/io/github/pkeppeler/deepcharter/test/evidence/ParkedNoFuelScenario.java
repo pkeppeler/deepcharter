@@ -102,8 +102,8 @@ public class ParkedNoFuelScenario extends EvidenceScenario {
     /** A minute of game time, a frame every few seconds of it. */
     private void minute(ClientGameTestContext context) {
         for (int i = 0; i < FRAMES_A_MINUTE; i++) {
-            context.waitTicks(
-                    MINUTE_TICKS / FRAMES_A_MINUTE); // tick-wait: the minute is game time, which is what fuel burns by
+            // tick-wait: the minute is game time, which is what fuel burns by
+            context.waitTicks(MINUTE_TICKS / FRAMES_A_MINUTE);
             frame(context);
         }
     }
