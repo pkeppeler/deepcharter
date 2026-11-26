@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -84,11 +85,12 @@ public class TheClaimTest {
             List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches", "fungal_stalks_cave");
 
     /**
-     * The fewest positions a feature's last placement step keeps in the sample, so its in-chunk check has positions to
-     * judge (#1401): the cave stalks keep 109, and kept 1 while their rows missed most of Topsoil Claims. A feature not
-     * named here only adds to the sum.
+     * The fewest positions each feature's last placement step keeps in the sample, so its in-chunk check has positions
+     * to judge (#1401, where the cave stalks kept one while their rows missed most of Topsoil Claims): about half of what
+     * each keeps, measured at #1453.
      */
-    private static final Map<String, Integer> MIN_KEPT = Map.of("fungal_stalks_cave", 40);
+    private static final Map<String, Integer> MIN_KEPT =
+            Map.of("claim_shafts", 4, "claim_cave_ores", 200, "claim_salvage_caches", 8, "fungal_stalks_cave", 40);
 
     /**
      * Caves open up with depth. The share of open blocks under each column's rock top grows from the surface band's
@@ -352,7 +354,7 @@ public class TheClaimTest {
                     kept += picked.size();
                 }
             }
-            int fewest = MIN_KEPT.getOrDefault(name, 0);
+            int fewest = Objects.requireNonNull(MIN_KEPT.get(name), () -> name + " has no floor in MIN_KEPT");
             LOGGER.info("[the-claim] {} keeps {} positions in {} chunks", name, kept, SAMPLE_CHUNKS * SAMPLE_CHUNKS);
             expect(
                     helper,

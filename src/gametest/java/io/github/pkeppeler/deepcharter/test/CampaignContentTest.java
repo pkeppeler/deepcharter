@@ -41,6 +41,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -78,8 +79,8 @@ public class CampaignContentTest {
     /** The cave stalks are counted within this many chunks of the origin, a square of twice this and one on a side. */
     private static final int STALK_CHUNKS = 5;
     /**
-     * The fewest ordinary stalk columns those chunks of layer 1 hold: 265 grow, and 12 did while the stalks' rows
-     * missed most of Topsoil Claims (#1401).
+     * The fewest ordinary stalk columns those chunks of layer 1 hold, with a wide margin under what grows (measured at
+     * #1453), and far over what grew while the stalks' rows missed most of Topsoil Claims (#1401).
      */
     private static final int MIN_CAVE_STALK_COLUMNS = 100;
 
@@ -88,6 +89,11 @@ public class CampaignContentTest {
      * each layer. A feature a PR removes lowers it on purpose.
      */
     private static final int MIN_RANGES_CHECKED = 2 + CampaignBands.LAYERS.size() * Zones.COUNT;
+    /**
+     * The zone biomes' features that pick layer rows and then check the biome, whose rows are checked against the zones
+     * that list them (measured at #1453). A feature a PR removes lowers it on purpose.
+     */
+    private static final int MIN_ZONE_ROWS_CHECKED = 8;
     /** Placement modifiers that say nothing about the height, so a range check passes them. Any other type fails the check. */
     private static final Set<String> NEUTRAL_MODIFIERS = Set.of(
             "minecraft:count",
@@ -367,7 +373,9 @@ public class CampaignContentTest {
     /**
      * The height range of every placed feature of every biome of the campaign world lies inside the band the biome is in, and a fill
      * names the layer and zone of its own biome. A range anchored to the dimension's bottom or top (rather than absolute) resolves against
-     * the whole world, so it is read that way.
+     * the whole world, so it is read that way. A zone biome's feature that picks layer rows and checks the biome picks only rows of the
+     * zones that list it (#1401, where layer 1's cave stalks picked rows 10 to 150 and Topsoil Claims is 128 to 191): the biome check comes
+     * after the floor scan and the offset, so it drops every try at another zone's row, and those rows only thin the feature out.
      */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void everyPlacedFeaturesHeightRangeIsInsideItsBand(GameTestHelper helper) throws IOException {
@@ -391,6 +399,7 @@ public class CampaignContentTest {
             }
         }
         int checked = 0;
+        Map<String, ZoneFeature> zoneFeatures = new TreeMap<>();
         for (Map.Entry<String, Band> biome : bandOfBiome.entrySet()) {
             JsonObject json = read(helper, resource("biome", biome.getKey())).getAsJsonObject();
             for (JsonElement step : json.getAsJsonArray("features")) {
@@ -400,6 +409,14 @@ public class CampaignContentTest {
                             read(helper, resource("placed_feature", id)).getAsJsonObject();
                     for (JsonElement modifier : placed.getAsJsonArray("placement")) {
                         checked += checkModifier(helper, id, biome.getValue(), modifier.getAsJsonObject());
+                    }
+                    int[] home = zoneOfBiome.get(biome.getKey());
+                    if (home != null) {
+                        Band band = biome.getValue();
+                        zoneFeatures
+                                .computeIfAbsent(id, key -> new ZoneFeature(placed, new ArrayList<>()))
+                                .zones()
+                                .add(Zones.span(band.minY(), band.height(), home[1]));
                     }
                     JsonObject feature = read(
                                     helper,
@@ -426,6 +443,16 @@ public class CampaignContentTest {
                 }
             }
         }
+        int zoneRowsChecked = 0;
+        for (Map.Entry<String, ZoneFeature> feature : zoneFeatures.entrySet()) {
+            zoneRowsChecked += checkZoneRows(helper, feature.getKey(), feature.getValue());
+        }
+        expect(
+                helper,
+                zoneRowsChecked >= MIN_ZONE_ROWS_CHECKED,
+                "%d zone features had layer rows to check against their zones, expected at least %d",
+                zoneRowsChecked,
+                MIN_ZONE_ROWS_CHECKED);
         expect(
                 helper,
                 checked >= MIN_RANGES_CHECKED,
@@ -446,65 +473,48 @@ public class CampaignContentTest {
     }
 
     /**
-     * A zone biome's feature that picks layer rows and then checks the biome picks only rows of the zones whose biomes
-     * list it: the biome check drops every try at another zone's row, so those rows only thin the feature out (#1401,
-     * where layer 1's cave stalks picked rows 10 to 150 and Topsoil Claims is rows 128 to 191).
+     * A placed feature that zone biomes list, and the zones of those biomes.
+     *
+     * @param placed the placed feature's data
+     * @param zones the rows of each zone whose biome lists it
      */
-    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void layerRowsLieInTheZonesThatListTheFeature(GameTestHelper helper) throws IOException {
-        Map<String, List<Zones.Span>> zonesOfFeature = new TreeMap<>();
-        for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
-            Band band = CampaignBands.layer(number);
-            for (int zone = 0; zone < Zones.COUNT; zone++) {
-                Zones.Span span = Zones.span(band.minY(), band.height(), zone);
-                JsonObject biome = read(helper, resource("biome", zoneBiomeId(number, zone)))
-                        .getAsJsonObject();
-                for (JsonElement step : biome.getAsJsonArray("features")) {
-                    for (JsonElement id : step.getAsJsonArray()) {
-                        zonesOfFeature
-                                .computeIfAbsent(id.getAsString(), key -> new ArrayList<>())
-                                .add(span);
-                    }
-                }
-            }
+    private record ZoneFeature(JsonObject placed, List<Zones.Span> zones) {}
+
+    /**
+     * Checks that each layer rows step of a feature that checks the biome picks only rows of the zones whose biomes list
+     * it; the number of steps checked.
+     */
+    private static int checkZoneRows(GameTestHelper helper, String id, ZoneFeature feature) {
+        List<Zones.Span> zones = feature.zones();
+        List<JsonObject> placement = feature.placed().getAsJsonArray("placement").asList().stream()
+                .map(JsonElement::getAsJsonObject)
+                .toList();
+        if (placement.stream().noneMatch(modifier -> type(modifier).equals("minecraft:biome"))) {
+            return 0;
         }
         int checked = 0;
-        for (Map.Entry<String, List<Zones.Span>> feature : zonesOfFeature.entrySet()) {
-            List<JsonObject> placement = read(helper, resource("placed_feature", feature.getKey()))
-                    .getAsJsonObject()
-                    .getAsJsonArray("placement")
-                    .asList()
-                    .stream()
-                    .map(JsonElement::getAsJsonObject)
-                    .toList();
-            if (placement.stream().noneMatch(modifier -> type(modifier).equals("minecraft:biome"))) {
+        for (JsonObject modifier : placement) {
+            if (!type(modifier).equals("deepcharter:layer_rows")) {
                 continue;
             }
-            for (JsonObject modifier : placement) {
-                if (!type(modifier).equals("deepcharter:layer_rows")) {
-                    continue;
-                }
-                int floor =
-                        CampaignBands.layer(modifier.get("layer").getAsInt()).minY();
-                int low = floor + modifier.get("min").getAsInt();
-                int high = floor + modifier.get("max").getAsInt();
-                for (int y = low; y <= high; y++) {
-                    int row = y;
-                    expect(
-                            helper,
-                            feature.getValue().stream().anyMatch(span -> row >= span.low() && row <= span.high()),
-                            "%s picks y %d..%d, but y %d is in no zone that lists it (%s)",
-                            feature.getKey(),
-                            low,
-                            high,
-                            row,
-                            feature.getValue());
-                }
-                checked++;
+            int floor = CampaignBands.layer(modifier.get("layer").getAsInt()).minY();
+            int low = floor + modifier.get("min").getAsInt();
+            int high = floor + modifier.get("max").getAsInt();
+            for (int y = low; y <= high; y++) {
+                int row = y;
+                expect(
+                        helper,
+                        zones.stream().anyMatch(span -> row >= span.low() && row <= span.high()),
+                        "%s picks y %d..%d, but y %d is in no zone that lists it (%s)",
+                        id,
+                        low,
+                        high,
+                        row,
+                        zones);
             }
+            checked++;
         }
-        expect(helper, checked > 0, "no zone biome's feature picks layer rows and checks the biome");
-        helper.succeed();
+        return checked;
     }
 
     private static String type(JsonObject modifier) {
@@ -578,7 +588,8 @@ public class CampaignContentTest {
     /**
      * The cave stalks of Topsoil Claims, layer 1's first zone, grow there, and under the surface only there and in the Garden, layer 3's
      * first zone (#972): the range of each biome's feature is its layer's own rows, so the zone's own rows are where they stand (to a
-     * block, for the offset a stalk takes). Enough of them grow to be a feature of the zone, not a stray (#1401).
+     * block, for the offset a stalk takes; a great stalk by the foot of each trunk). Enough of them grow to be a feature of the zone, not
+     * a stray (#1401).
      */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void caveStalksGrowInTheFirstZoneOfLayers1And3Only(GameTestHelper helper) {
@@ -603,15 +614,20 @@ public class CampaignContentTest {
             long columns = blocks.stream()
                     .filter(stalk -> !blocks.contains(stalk.below()))
                     .count();
-            long great = BlockSurvey.find(level, STALK_CHUNKS, ours("great_stalk")).stream()
+            Set<BlockPos> great = BlockSurvey.find(level, STALK_CHUNKS, ours("great_stalk")).stream()
                     .filter(block -> block.getY() >= layer.minY() && block.getY() <= layer.maxY())
-                    .count();
+                    .collect(Collectors.toSet());
+            // A great stalk stands where a cave stalk's try found a floor: each trunk block with no trunk under it.
+            TreeSet<Integer> greatRows = great.stream()
+                    .filter(block -> !great.contains(block.below()))
+                    .map(BlockPos::getY)
+                    .collect(Collectors.toCollection(TreeSet::new));
             int chunks = (2 * STALK_CHUNKS + 1) * (2 * STALK_CHUNKS + 1);
             LOGGER.info(
                     "[cave-stalks] {} stalk columns, {} blocks and {} great stalk blocks in {} chunks of layer 1, at y {}..{}",
                     columns,
                     blocks.size(),
-                    great,
+                    great.size(),
                     chunks,
                     rows.isEmpty() ? "-" : rows.first(),
                     rows.isEmpty() ? "-" : rows.last());
@@ -622,6 +638,14 @@ public class CampaignContentTest {
                     columns,
                     chunks,
                     MIN_CAVE_STALK_COLUMNS);
+            expect(
+                    helper,
+                    greatRows.isEmpty() || (greatRows.first() >= zone.low() - 1 && greatRows.last() <= zone.high() + 1),
+                    "great stalks in layer 1 stand at %s..%s, outside Topsoil Claims %d..%d",
+                    greatRows.isEmpty() ? "-" : greatRows.first(),
+                    greatRows.isEmpty() ? "-" : greatRows.last(),
+                    zone.low(),
+                    zone.high());
             expect(
                     helper,
                     rows.first() >= zone.low() - 1 && rows.last() <= zone.high() + 1,

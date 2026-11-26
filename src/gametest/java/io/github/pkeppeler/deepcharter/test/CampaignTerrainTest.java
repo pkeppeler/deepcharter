@@ -75,8 +75,8 @@ public class CampaignTerrainTest {
             "deepcharter:salvage_crate",
             "deepcharter:fungal_stalk");
     /**
-     * The cave stalks of layer 1's first zone, ordinary or great where the open room over the rock gives one room
-     * (#1401), are the one thing besides rock that its biomes place.
+     * The stalk blocks, ordinary and great, that layer 1's first zone grows (#1401) besides its rock and what
+     * {@link #CLAIM_SHAFT_BLOCKS} lists, and that layer 3's Garden grows too.
      */
     private static final String STALK = "deepcharter:fungal_stalk";
 

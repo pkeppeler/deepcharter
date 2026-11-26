@@ -78,6 +78,9 @@ public class ClaimTourScenario extends EvidenceScenario {
     private static final int ROOM_EYE = 5;
 
     private static final int ROOM_LOOK = 18;
+    /** The room's floor is searched for down from this many rows under layer 1's top, under its rock roof. */
+    private static final int ROOM_SEARCH_BELOW_TOP = 8;
+
     private static final List<Block> STALKS =
             List.of(block("fungal_stalk"), block("great_stalk"), block("great_stalk_cap"));
 
@@ -196,8 +199,9 @@ public class ClaimTourScenario extends EvidenceScenario {
         return placed;
     }
 
+    /** A lamp in an open cell; a stalk counts as open, so the lamps hang in the same cells with stalks or without. */
     private static void lamp(ServerLevel level, BlockPos at, List<BlockPos> placed) {
-        if (level.getBlockState(at).isAir()) {
+        if (open(level, at)) {
             level.setBlock(at, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, LAMP), Block.UPDATE_ALL);
             placed.add(at.immutable());
         }
@@ -233,14 +237,17 @@ public class ClaimTourScenario extends EvidenceScenario {
                 client -> ready(client, eye, subject, nightVision));
     }
 
-    /** The first block the line of sight meets: the client holds the view once it holds this block. */
+    /**
+     * The first block the line of sight meets past open cells and lamps: the client holds the view once it holds this
+     * block. A stalk counts as open, so it is the same block with stalks or without.
+     */
     private static BlockPos subject(ServerLevel level, View view) {
         Vec3 step = view.target().subtract(view.eye()).normalize().scale(0.5);
         Vec3 at = view.eye();
         for (int i = 0; i < 128; i++) {
             at = at.add(step);
             BlockPos pos = BlockPos.containing(at);
-            if (!level.getBlockState(pos).isAir() && !level.getBlockState(pos).is(Blocks.LIGHT)) {
+            if (!open(level, pos) && !level.getBlockState(pos).is(Blocks.LIGHT)) {
                 return pos;
             }
         }
@@ -307,11 +314,20 @@ public class ClaimTourScenario extends EvidenceScenario {
     private static View roomView(ServerLevel level) {
         CampaignBands.Band band = CampaignBands.LAYER_1;
         BlockPos column = new BlockPos(X, 0, Z);
-        int floor = band.topExclusive() - 8;
+        int floor = band.topExclusive() - ROOM_SEARCH_BELOW_TOP;
         while (floor > band.minY() && open(level, column.atY(floor))) {
             floor--;
         }
+        Zones.Span topsoil = Zones.span(band.minY(), band.height(), 0);
+        if (floor < topsoil.low() || floor > topsoil.high()) {
+            throw new AssertionError("the room's floor over " + X + ", " + Z + " is at y=" + floor
+                    + ", outside Topsoil Claims " + topsoil.low() + ".." + topsoil.high());
+        }
         BlockPos eye = column.atY(floor + ROOM_EYE);
+        if (!level.getBlockState(eye).isAir()) {
+            throw new AssertionError("the room view's eye over " + X + ", " + Z + " at y=" + eye.getY() + " is in "
+                    + level.getBlockState(eye));
+        }
         Direction bestDirection = Direction.SOUTH;
         int bestRun = -1;
         for (Direction direction : Direction.Plane.HORIZONTAL) {
