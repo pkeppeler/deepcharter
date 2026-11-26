@@ -25,10 +25,11 @@ public final class HandbookPages {
     private HandbookPages() {}
 
     /**
-     * The cover, the issue slip, the Founder's letter, the contents (one page for each {@link #CONTENTS_PER_PAGE} chapters), the
-     * pages of each chapter, the end page, then the pages of Appendix A. A chapter the player may read in full has a page for each
-     * text key the language file holds for it ({@link HandbookScreen#textKey}), then its page of directives; any other chapter has
-     * its page of directives only. Appendix A has a page for each key of {@link HandbookScreen#contractKey}.
+     * The cover, the issue slip, the Founder's letter, the contents (one page for each {@link #CONTENTS_PER_PAGE}
+     * chapters), the controls pages ({@link HandbookControls}), the pages of each chapter, the end page, then the pages
+     * of Appendix A. A chapter the player may read in full has a page for each text key the language file holds for it
+     * ({@link HandbookScreen#textKey}), then its page of directives; any other chapter has its page of directives only.
+     * Appendix A has a page for each key of {@link HandbookScreen#contractKey}.
      *
      * @param chapters  the chapters by id, in handbook order
      * @param completed the directives the player's charter has completed
@@ -50,6 +51,10 @@ public final class HandbookPages {
             int first = (part - 1) * CONTENTS_PER_PAGE + 1;
             pages.add(new HandbookPage.Contents(
                     part, parts, first, Math.max(0, Math.min(CONTENTS_PER_PAGE, chapters.size() - first + 1))));
+        }
+        int sheets = HandbookControls.sheets();
+        for (int part = 1; part <= sheets; part++) {
+            pages.add(new HandbookPage.Controls(part, sheets));
         }
         int index = 0;
         for (Map.Entry<Identifier, HandbookChapter> chapter : chapters.entrySet()) {
