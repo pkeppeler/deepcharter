@@ -29,7 +29,6 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -44,25 +43,20 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "crafted-parts" (#536): in a sealed room of layer 1 rock, a player lays the fuel tank unit's recipe and then the drill unit's
  * out in a crafting table (iron, copper and redstone, from the shipped recipe files) and takes each unit. Each is used on the Mole from outside,
- * the client's own interaction, and the pod holds a tier 1 fuel tank and a tier 1 drill, which the terminal no longer sells. Then a hazard unit: the pod, parked at the ore processor
+ * the client's own right click, and the pod holds a tier 1 fuel tank and a tier 1 drill, which the terminal no longer sells. Then a hazard unit: the pod, parked at the ore processor
  * with Bronzium in its cargo, gives one to the pack through WITHDRAW ORE (the account is not paid), and the lights unit made of it is fitted too.
  */
 public class CraftedPartsScenario extends EvidenceScenario {
@@ -110,9 +104,15 @@ public class CraftedPartsScenario extends EvidenceScenario {
             context.waitTicks(20); // tick-wait: the lamps' light reaches the client's chunk
             waitOutTheTransmission(context);
             hold(context);
-            ClientWait.until(context, "the pod in the client's world", client -> podOf(client) != null);
-            PodEntity pod = Objects.requireNonNull(
-                    context.computeOnClient(CraftedPartsScenario::podOf), "the pod is in the client's world");
+            // By its id, which the client shares: the level also holds the colony's pod.
+            int podId =
+                    server.computeOnServer(minecraft -> podOnServer(minecraft).getId());
+            ClientWait.until(
+                    context,
+                    "the pod in the client's world",
+                    client -> ClientLight.clientLevel(client).getEntity(podId) instanceof PodEntity);
+            PodEntity pod = context.computeOnClient(
+                    client -> TestEntities.require(ClientLight.clientLevel(client), podId, PodEntity.class));
             screenshot(context, "bare-mole");
 
             for (ComponentTrack track : new ComponentTrack[] {ComponentTrack.FUEL_TANK, ComponentTrack.DRILL}) {
@@ -122,7 +122,7 @@ public class CraftedPartsScenario extends EvidenceScenario {
                 takeTheUnit(context, server, track, unit);
                 context.getInput().lookAt(pod.blockPosition().above());
                 hold(context);
-                useTheUnit(context, pod);
+                rightClick(context, pod);
                 ClientWait.until(
                         context,
                         "the " + track.id() + " fitted to the pod",
@@ -199,7 +199,7 @@ public class CraftedPartsScenario extends EvidenceScenario {
         });
         context.getInput().lookAt(pod.blockPosition().above());
         hold(context);
-        useTheUnit(context, pod);
+        rightClick(context, pod);
         ClientWait.until(
                 context,
                 "the lights fitted to the pod",
@@ -353,25 +353,6 @@ public class CraftedPartsScenario extends EvidenceScenario {
             }
         }
         return -1;
-    }
-
-    /** The client's own use of the held item on the pod: what a right click on it does. */
-    private void useTheUnit(ClientGameTestContext context, PodEntity pod) {
-        context.runOnClient(client -> {
-            EntityHitResult hit = new EntityHitResult(pod, pod.position().add(0, 1, 0));
-            ClientSession.gameMode(client).interact(ClientSession.player(client), pod, hit, InteractionHand.MAIN_HAND);
-            ClientSession.player(client).swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
-        });
-        context.waitTicks(TICKS_PER_FRAME); // tick-wait: the use packet reaches the server
-    }
-
-    private static @Nullable PodEntity podOf(Minecraft client) {
-        for (Entity entity : ClientLight.clientLevel(client).entitiesForRendering()) {
-            if (entity instanceof PodEntity found) {
-                return found;
-            }
-        }
-        return null;
     }
 
     /** The room's pod on the server. */

@@ -27,8 +27,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -169,6 +171,18 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     protected static void awaitWorld(ClientGameTestContext context) {
         ClientWait.until(
                 context, "the player and level of the world", client -> client.player != null && client.level != null);
+    }
+
+    /**
+     * Right-clicks {@code target} as a player does: waits for the crosshair to rest on it, then presses the use key, so the game's own path
+     * ({@code Minecraft.startUseItem}) picks the entity and sends the interaction. The caller looks at it first.
+     */
+    protected static void rightClick(ClientGameTestContext context, Entity target) {
+        ClientWait.until(
+                context,
+                "the crosshair on " + target,
+                client -> client.hitResult instanceof EntityHitResult hit && hit.getEntity() == target);
+        context.getInput().pressKey(options -> options.keyUse);
     }
 
     /**

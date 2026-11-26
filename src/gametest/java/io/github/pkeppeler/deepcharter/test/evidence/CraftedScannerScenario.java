@@ -15,7 +15,6 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -27,25 +26,20 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "crafted-scanner" (#483): in a sealed room of layer 1 rock, a player lays the scanner unit's recipe out in a crafting
  * table (iron, copper and redstone) and takes the unit. A Mole with no scanner shows no map. The player uses the unit on it from outside, the
- * client's own interaction, and the next ride shows the scanner's map with ore in it.
+ * client's own right click, and the next ride shows the scanner's map with ore in it.
  */
 public class CraftedScannerScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
@@ -95,9 +89,15 @@ public class CraftedScannerScenario extends EvidenceScenario {
             layOutTheRecipe(context, server, table);
             takeTheUnit(context, server);
 
-            ClientWait.until(context, "the pod in the client's world", client -> podOf(client) != null);
-            PodEntity pod = Objects.requireNonNull(
-                    context.computeOnClient(CraftedScannerScenario::podOf), "the pod is in the client's world");
+            // By its id, which the client shares: the level also holds the colony's pod.
+            int podId =
+                    server.computeOnServer(minecraft -> podOnServer(minecraft).getId());
+            ClientWait.until(
+                    context,
+                    "the pod in the client's world",
+                    client -> ClientLight.clientLevel(client).getEntity(podId) instanceof PodEntity);
+            PodEntity pod = context.computeOnClient(
+                    client -> TestEntities.require(ClientLight.clientLevel(client), podId, PodEntity.class));
             ride(context, server);
             screenshot(context, "bare-mole-no-scanner");
             hold(context);
@@ -238,25 +238,11 @@ public class CraftedScannerScenario extends EvidenceScenario {
         return -1;
     }
 
-    /** The client's own use of the held item on the pod: what a right click on it does. */
+    /** A right click on the pod with the unit in hand. */
     private void useTheUnit(ClientGameTestContext context, PodEntity pod) {
         context.getInput().lookAt(pod.blockPosition().above());
         hold(context);
-        context.runOnClient(client -> {
-            EntityHitResult hit = new EntityHitResult(pod, pod.position().add(0, 1, 0));
-            ClientSession.gameMode(client).interact(ClientSession.player(client), pod, hit, InteractionHand.MAIN_HAND);
-            ClientSession.player(client).swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
-        });
-        context.waitTicks(TICKS_PER_FRAME); // tick-wait: the use packet reaches the server
-    }
-
-    private static @Nullable PodEntity podOf(Minecraft client) {
-        for (Entity entity : ClientLight.clientLevel(client).entitiesForRendering()) {
-            if (entity instanceof PodEntity found) {
-                return found;
-            }
-        }
-        return null;
+        rightClick(context, pod);
     }
 
     /** The room's pod on the server. */
