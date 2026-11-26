@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.colony;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import java.util.Optional;
-import java.util.function.UnaryOperator;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
@@ -59,7 +58,7 @@ public final class ColonyRations {
         if (ledger.isEmpty() || ledger.get().starterGiven()) {
             return;
         }
-        change(player, held -> new RationLedger(true));
+        player.setAttached(LEDGER, Versioned.of(new RationLedger(true)));
         give(player, STARTING_RATIONS);
     }
 
@@ -70,11 +69,6 @@ public final class ColonyRations {
         if (!stack.isEmpty()) {
             player.spawnAtLocation(player.level(), stack);
         }
-    }
-
-    /** Rewrites the player's ledger. Call only after {@link Versioned#readable} showed it readable. */
-    static void change(ServerPlayer player, UnaryOperator<RationLedger> change) {
-        Versioned.modifyOrThrow(player, LEDGER, change);
     }
 
     private static Item item(String path, FoodProperties food) {
