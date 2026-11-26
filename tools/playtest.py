@@ -124,23 +124,29 @@ def _safe_rel(name: str) -> PurePosixPath:
 # ---------------------------------------------------------------- build
 
 
+def _git(env: Env, args: list[str]) -> str:
+    # A hook exports GIT_DIR and its siblings; they would make `-C` act on the wrong repository (as tests/git_env.py guards).
+    clean = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+    return _run(env, ["git", *args], extra_env=clean)
+
+
 def build(env: Env, repo: Path) -> tuple[Path, Path]:
     """Build origin/main in the tool-owned worktree and package it. Returns (mrpack, server zip)."""
     tree = env.home / "build"
-    _run(env, ["git", "-C", str(repo), "fetch", "origin", "main"])
+    _git(env, ["-C", str(repo), "fetch", "origin", "main"])
     if (tree / ".git").exists():
         # Tool-owned: local changes in it are discarded.
-        _run(env, ["git", "-C", str(tree), "checkout", "--force", "--detach", "origin/main"])
+        _git(env, ["-C", str(tree), "checkout", "--force", "--detach", "origin/main"])
     else:
         env.home.mkdir(parents=True, exist_ok=True)
-        _run(env, ["git", "-C", str(repo), "worktree", "add", "--detach", str(tree), "origin/main"])
+        _git(env, ["-C", str(repo), "worktree", "add", "--detach", str(tree), "origin/main"])
     mod_version = next(
         (line.split("=", 1)[1].strip() for line in (tree / "gradle.properties").read_text().splitlines() if line.startswith("version=")),
         "",
     )
     if not mod_version:
         raise Fail(f"no version= line in {tree / 'gradle.properties'}")
-    label = f"{mod_version}-{_run(env, ['git', '-C', str(tree), 'rev-parse', '--short=7', 'HEAD']).strip()}"
+    label = f"{mod_version}-{_git(env, ['-C', str(tree), 'rev-parse', '--short=7', 'HEAD']).strip()}"
     _run(env, ["./gradlew", "jar", "-q"], cwd=tree)
     jar = tree / "build" / "libs" / f"deepcharter-{mod_version}.jar"
     if not jar.is_file():

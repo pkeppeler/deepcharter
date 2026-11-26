@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -546,8 +547,12 @@ class Build(PlaytestTestCase):
         repo.mkdir()
         tree = self.env.home / "build"
 
-        def runner(argv, **_kwargs):
+        git_envs = []
+
+        def runner(argv, **kwargs):
             self.sys.calls.append(list(argv))
+            if argv[0] == "git":
+                git_envs.append(kwargs["env"])
             if argv[:3] == ["git", "-C", str(tree)] and argv[3:5] == ["rev-parse", "--short=7"]:
                 return subprocess.CompletedProcess(argv, 0, "abc1234\n", "")
             if argv[0] == "./gradlew":
@@ -562,7 +567,9 @@ class Build(PlaytestTestCase):
 
         env = self.sys.env(self.root)
         env = p.Env(**{**env.__dict__, "runner": runner})
-        mrpack, zip_path = p.build(env, repo)
+        with mock.patch.dict(os.environ, {"GIT_DIR": "/nonexistent"}):
+            mrpack, zip_path = p.build(env, repo)
+        self.assertTrue(git_envs and all("GIT_DIR" not in e for e in git_envs), "git_env: a hook's GIT_DIR must not reach git")
         self.assertEqual(mrpack.name, "deepcharter-friends-0.2.0-abc1234.mrpack")
         self.assertEqual(zip_path.name, "deepcharter-server-0.2.0-abc1234.zip")
         calls = self.sys.calls
