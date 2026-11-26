@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "deepcharter:blocks/lunch_pail",
+  "pools": [
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:lunch_pail"
+        }
+      ]
+    }
+  ]
+}

@@ -58,11 +58,24 @@ public final class ClientWait {
      */
     public static void until(
             ClientGameTestContext context, String what, BooleanSupplier condition, Supplier<String> actual) {
-        FarChunks.Deadline deadline = FarChunks.deadline();
+        until(context, what, FarChunks.WAIT_SECONDS, condition, actual);
+    }
+
+    /**
+     * As {@link #until(ClientGameTestContext, String, BooleanSupplier, Supplier)}, for up to {@code seconds}: for a wait late in a class
+     * that must fail, named, before the class's own limit ({@link ClientTestWatchdog}) halts the run.
+     */
+    public static void until(
+            ClientGameTestContext context,
+            String what,
+            int seconds,
+            BooleanSupplier condition,
+            Supplier<String> actual) {
+        FarChunks.Deadline deadline = FarChunks.deadline(seconds);
         while (!condition.getAsBoolean()) {
             if (deadline.expired()) {
-                throw new AssertionError("Timed out after " + FarChunks.WAIT_SECONDS + " s waiting for " + what
-                        + "; it had " + actual.get() + "; LightSync holds: " + LightSync.heldChunks());
+                throw new AssertionError("Timed out after " + seconds + " s waiting for " + what + "; it had "
+                        + actual.get() + "; LightSync holds: " + LightSync.heldChunks());
             }
             try {
                 Thread.sleep(FarChunks.POLL_MILLIS);
