@@ -187,9 +187,9 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
     /** A page of controls: one of the controls pages, or a chapter's page that is neither its text nor its map. */
     private static boolean isControls(HandbookPage page) {
         return page instanceof HandbookPage.Controls
-                || HandbookPage.chapterNumber(page) > 0
+                || (HandbookPage.chapterNumber(page) > 0
                         && !(page instanceof HandbookPage.ChapterText)
-                        && !(page instanceof HandbookPage.Chapter);
+                        && !(page instanceof HandbookPage.Chapter));
     }
 
     /**
