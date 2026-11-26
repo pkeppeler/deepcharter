@@ -8,6 +8,9 @@
 #     newest non-skipped build, tool-tests and client-gametest jobs (see rerun_ci; the PR's state and head are
 #     never touched), sleep, wait for CI again, retry
 #     (up to MERGE_QUEUE_STALE_RETRIES, default 3). No such job for the sha, or a refused re-run, stops the queue
+#   - refusal carrying the "[client-only]" marker (only client-suite checks failed; build and tool-tests passed):
+#     re-run the whole Client tests run holding the head's newest non-skipped client-gametest job (rerun_ci again;
+#     never --failed or one job), sleep, wait for CI, retry (up to MERGE_QUEUE_CLIENT_RETRIES, default 1)
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
 # After a merge, cleanup never loses work. It removes the PR's worktree only when that
@@ -26,7 +29,7 @@
 # aside (only one process wins the rename) and replaced. An unreadable lock counts as held.
 #
 # Test seams: MERGE_PR (gate script), MERGE_QUEUE_LOCK, MERGE_QUEUE_{CI_POLL,CI_MAX,
-# STALE_SLEEP,UNKNOWN_SLEEP} (seconds), MERGE_QUEUE_{STALE,UNKNOWN}_RETRIES.
+# STALE_SLEEP,UNKNOWN_SLEEP} (seconds; STALE_SLEEP follows every re-run), MERGE_QUEUE_{STALE,CLIENT,UNKNOWN}_RETRIES.
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
@@ -39,6 +42,7 @@ ci_max=${MERGE_QUEUE_CI_MAX:-4200}
 stale_sleep=${MERGE_QUEUE_STALE_SLEEP:-90}
 unknown_sleep=${MERGE_QUEUE_UNKNOWN_SLEEP:-30}
 stale_max=${MERGE_QUEUE_STALE_RETRIES:-3}
+client_max=${MERGE_QUEUE_CLIENT_RETRIES:-1}
 unknown_max=${MERGE_QUEUE_UNKNOWN_RETRIES:-4}
 
 if [[ $# -lt 1 ]]; then
@@ -119,21 +123,25 @@ wait_ci() {
   done
 }
 
-# rerun_ci <pr> <sha>: re-run the workflow runs holding the jobs whose `merged-main` record the gate reads (build,
-# tool-tests and, when it ran, client-gametest; each merges the live main itself). The `client-gametest` aggregate is
+# rerun_ci <pr> <sha> [<workflow|job|optional>...]: re-run the workflow runs holding the given jobs; by default the
+# jobs whose `merged-main` record the gate reads (build, tool-tests and, when it ran, client-gametest; each merges the
+# live main itself). The `client-gametest` aggregate is
 # matched, not a shard: it sits in the same `Client tests` run as every `client-gametest-shard <i>` job (#1079), is
 # skipped exactly when the shards are, and is the legacy single job in CI from before sharding. Never a single job: a job re-run
 # copies the run's other finished jobs without their annotations, so the gate calls the base stale again (#1094).
 # Per job it takes the newest non-skipped one across the head sha's runs (#1092), then re-runs each distinct run whole.
-# Returns 1 and sets $rerun_err when build or tool-tests has no such job, a listing fails or the API refuses a re-run.
+# Returns 1 and sets $rerun_err when a job that is not optional has no such job, a listing fails or the API refuses
+# a re-run.
 # An unfinished run is skipped (the API refuses to re-run into it); if it finishes stale, the next retry re-runs it.
 rerun_ci() {
-  local sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit handled=","
+  local pr=$1 sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit handled=","
+  shift 2
+  (($#)) || set -- "CI|build|0" "CI|tool-tests|0" "Client tests|client-gametest|1"
   rerun_err=
   rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" --paginate \
     --jq '.workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
-    || { rerun_err="PR #$1: could not list the workflow runs of ${sha:0:9}"; return 1; }
-  for target in "CI|build|0" "CI|tool-tests|0" "Client tests|client-gametest|1"; do
+    || { rerun_err="PR #$pr: could not list the workflow runs of ${sha:0:9}"; return 1; }
+  for target in "$@"; do
     IFS='|' read -r workflow job optional <<<"$target"
     hit=
     # The API lists newest first. A skipped run (a label event adds one) has only skipped jobs; an unfinished
@@ -141,7 +149,7 @@ rerun_ci() {
     while IFS=$'\t' read -r run_id run_status; do
       jobs_rows=$(gh api "repos/$repo/actions/runs/$run_id/jobs?per_page=100" --paginate \
         --jq '.jobs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
-        || { rerun_err="PR #$1: could not list the jobs of $workflow run $run_id"; return 1; }
+        || { rerun_err="PR #$pr: could not list the jobs of $workflow run $run_id"; return 1; }
       if [[ -n $(awk -F'\t' -v j="$job" '$2 == j && $4 != "skipped" { print $1; exit }' <<<"$jobs_rows") ]]; then
         hit="$run_id"$'\t'"$workflow"$'\t'"$run_status"
         break
@@ -150,7 +158,7 @@ rerun_ci() {
     if [[ -n $hit ]]; then
       picks+="$hit"$'\n'
     elif [[ $optional == 0 ]]; then
-      rerun_err="PR #$1: no non-skipped $job job of $workflow exists for $sha to re-run"
+      rerun_err="PR #$pr: no non-skipped $job job of $workflow exists for $sha to re-run"
       rerun_err+=" (push, or start the workflows by hand)"
       return 1
     fi
@@ -165,7 +173,7 @@ rerun_ci() {
     say "re-running $workflow run $run_id"
     gh api -X POST "repos/$repo/actions/runs/$run_id/rerun" >/dev/null 2>&1 \
       || {
-        rerun_err="PR #$1: GitHub refused to re-run $workflow run $run_id (older than 30 days? push a commit instead)"
+        rerun_err="PR #$pr: GitHub refused to re-run $workflow run $run_id (older than 30 days? push a commit instead)"
         return 1
       }
   done <<<"$picks"
@@ -281,7 +289,7 @@ cleanup_pr() {
 
 # run_pr <pr>: sets $result (merged|skipped|stopped) and $detail.
 run_pr() {
-  local pr=$1 state branch sha out rc reason stale_n=0 unknown_n=0
+  local pr=$1 state branch sha out rc reason stale_n=0 client_n=0 unknown_n=0
   result=stopped
   detail=
   state=$(pr_state "$pr")
@@ -342,6 +350,19 @@ run_pr() {
       stale_n=$((stale_n + 1))
       say "PR #$pr has a stale base; re-running CI ($stale_n of $stale_max)"
       if ! rerun_ci "$pr" "$sha"; then
+        detail=$rerun_err
+        return 0
+      fi
+      sleep "$stale_sleep"
+    elif [[ $out == *"[client-only]"* ]]; then
+      # The whole run, never --failed: why is in the gate's [client-only] refusal (tools/merge-pr.sh).
+      if ((client_n >= client_max)); then
+        detail="$reason (client checks still failing after $client_max whole-run reruns)"
+        return 0
+      fi
+      client_n=$((client_n + 1))
+      say "PR #$pr failed only client checks; re-running the whole Client tests run ($client_n of $client_max)"
+      if ! rerun_ci "$pr" "$sha" "Client tests|client-gametest|0"; then
         detail=$rerun_err
         return 0
       fi
