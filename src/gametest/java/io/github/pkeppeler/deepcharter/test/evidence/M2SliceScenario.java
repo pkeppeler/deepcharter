@@ -311,13 +311,14 @@ public class M2SliceScenario extends EvidenceScenario {
 
         private void starterItems() {
             say(
-                    "2. Handbook chapter 1. SHORTCUT: a stalk, a crafting table, stone tools, scrap, iron, a torch and a scanner unit are handed over, not gathered.");
+                    "2. Handbook chapter 1. SHORTCUT: a stalk, a crafting table, stone tools, scrap, charcoal, iron, a torch and a scanner unit are handed over, not gathered.");
             onServer(server -> {
                 ServerPlayer real = real(server);
                 stash(real, new ItemStack(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), 4));
                 stash(real, new ItemStack(Items.CRAFTING_TABLE));
                 stash(real, new ItemStack(Items.STONE_PICKAXE));
                 stash(real, new ItemStack(HandbookChaptersOneToFiveTest.ours("scrap_iron"), 3));
+                stash(real, new ItemStack(Items.CHARCOAL));
                 stash(real, new ItemStack(Items.IRON_INGOT, 3));
                 stash(real, new ItemStack(Items.TORCH));
                 stash(real, new ItemStack(ScannerRegistry.SCANNER_UNIT));

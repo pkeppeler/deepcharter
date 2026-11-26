@@ -229,6 +229,7 @@ public class M2SliceTest {
                                 Items.CRAFTING_TABLE,
                                 Items.STONE_PICKAXE,
                                 HandbookChaptersOneToFiveTest.ours("scrap_iron"),
+                                Items.CHARCOAL,
                                 Items.IRON_INGOT,
                                 HandbookChaptersOneToFiveTest.ours("scanner_unit"),
                                 Items.TORCH)) {

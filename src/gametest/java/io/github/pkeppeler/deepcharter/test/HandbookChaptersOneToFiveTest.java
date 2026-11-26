@@ -78,6 +78,9 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -92,8 +95,9 @@ public class HandbookChaptersOneToFiveTest {
     private static final BlockPos TERMINAL = new BlockPos(0, 1, 0);
 
     /**
-     * The permanent ids: a world's saved progress names these directives. The one change since they were pinned is chapter 1's {@code mine_iron_ore},
-     * now {@code gather_scrap} (#245, ADR 0047); {@link HandbookProgressData} reads the old id as the new one.
+     * The permanent ids: a world's saved progress names these directives. The one rename since they were pinned is chapter 1's {@code mine_iron_ore},
+     * now {@code gather_scrap} (#245, ADR 0047); {@link HandbookProgressData} reads the old id as the new one. Chapter 1's
+     * {@code smelt_charcoal} was added later (#1423); a charter that had finished the chapter has it as well.
      */
     static final Map<String, List<String>> PINNED = Map.of(
             "deepcharter:welcome",
@@ -102,6 +106,7 @@ public class HandbookChaptersOneToFiveTest {
                             "deepcharter:handbook/welcome/craft_crafting_table",
                             "deepcharter:handbook/welcome/craft_stone_tools",
                             "deepcharter:handbook/welcome/gather_scrap",
+                            "deepcharter:handbook/welcome/smelt_charcoal",
                             "deepcharter:handbook/welcome/smelt_iron",
                             "deepcharter:handbook/welcome/craft_scanner",
                             "deepcharter:handbook/welcome/make_light"),
@@ -126,6 +131,11 @@ public class HandbookChaptersOneToFiveTest {
                             "deepcharter:handbook/every_sale_counts/sell_ore",
                             "deepcharter:handbook/every_sale_counts/buy_component",
                             "deepcharter:handbook/every_sale_counts/install_component"));
+
+    /** Chapter 1's pinned directives, in order. */
+    static List<String> chapterOne() {
+        return Objects.requireNonNull(PINNED.get("deepcharter:welcome"), "chapter 1 is pinned");
+    }
 
     static final List<String> ORDER = List.of(
             "deepcharter:welcome",
@@ -167,6 +177,91 @@ public class HandbookChaptersOneToFiveTest {
                     "the old save should read as %s, got %s", expected, loaded.completed(charter));
         }
         helper.succeed();
+    }
+
+    /**
+     * A world saved before #1423 holds a charter that finished chapter 1 without the charcoal step: it has done that step too, so
+     * the new step does not reopen the chapter. A charter still on chapter 1 has not.
+     */
+    @GameTest
+    public void aCharterThatFinishedChapterOneBeforeTheCharcoalStepHasDoneIt(GameTestHelper helper) {
+        Identifier charcoal = id(directive("welcome", "smelt_charcoal"));
+        List<Identifier> before = chapterOne().stream()
+                .map(HandbookChaptersOneToFiveTest::id)
+                .filter(directive -> !directive.equals(charcoal))
+                .toList();
+        CharterId finished = new CharterId(UUID.randomUUID());
+        CharterId midway = new CharterId(UUID.randomUUID());
+        HandbookProgressData saved = new HandbookProgressData();
+        before.forEach(directive -> saved.complete(finished, directive));
+        before.subList(0, before.size() - 1).forEach(directive -> saved.complete(midway, directive));
+        Tag tag = HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, saved).getOrThrow();
+        HandbookProgressData loaded =
+                HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow();
+        if (!loaded.completed(finished).contains(charcoal)) {
+            throw helper.assertionException(
+                    "a charter that finished chapter 1 should have done %s, got %s",
+                    charcoal, loaded.completed(finished));
+        }
+        if (loaded.completed(midway).contains(charcoal)) {
+            throw helper.assertionException("a charter still on chapter 1 should not have done %s", charcoal);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A fungal stalk smelted in a real furnace, fuelled by another stalk, completes chapter 1's charcoal step once the player takes
+     * the charcoal out of the furnace (#1423).
+     */
+    @GameTest(maxTicks = 600)
+    public void smeltingAFungalStalkIntoCharcoalCompletesItsDirective(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        String charcoal = directive("welcome", "smelt_charcoal");
+        MockPlayer burner = MockPlayers.join(helper, "Burner");
+        foundCharter(helper, server, burner);
+        ServerPlayer player = burner.player();
+        BlockPos at = helper.absolutePos(TERMINAL);
+        helper.getLevel().setBlock(at, Blocks.FURNACE.defaultBlockState(), 3);
+        if (!(helper.getLevel().getBlockEntity(at) instanceof FurnaceBlockEntity furnace)) {
+            throw helper.assertionException("no furnace at %s", at);
+        }
+        furnace.setItem(FURNACE_INPUT, new ItemStack(ours("fungal_stalk")));
+        furnace.setItem(FURNACE_FUEL, new ItemStack(ours("fungal_stalk")));
+        boolean[] taken = {false};
+        helper.succeedWhen(() -> {
+            if (!taken[0]) {
+                if (!furnace.getItem(FURNACE_RESULT).is(Items.CHARCOAL)) {
+                    throw helper.assertionException("waiting for the stalk to smelt");
+                }
+                if (completedNames(server, player).contains(charcoal)) {
+                    throw helper.assertionException("the step completed before the charcoal was taken");
+                }
+                player.openMenu(furnace);
+                player.containerMenu.clicked(FURNACE_RESULT, 0, ContainerInput.QUICK_MOVE, player);
+                taken[0] = true;
+            }
+            if (!player.getInventory().contains(new ItemStack(Items.CHARCOAL))) {
+                throw helper.assertionException(
+                        "the charcoal should be in the player's pack; the furnace's output holds %s, the open menu is %s",
+                        furnace.getItem(FURNACE_RESULT), player.containerMenu);
+            }
+            if (!completedNames(server, player).contains(charcoal)) {
+                throw helper.assertionException(
+                        "taking the charcoal should complete %s, got %s", charcoal, completedNames(server, player));
+            }
+        });
+    }
+
+    /** The slots of a furnace, which are also its menu's first three slots. */
+    private static final int FURNACE_INPUT = 0;
+
+    private static final int FURNACE_FUEL = 1;
+    private static final int FURNACE_RESULT = 2;
+
+    private static Set<String> completedNames(MinecraftServer server, ServerPlayer player) {
+        Set<String> names = new HashSet<>();
+        HandbookProgress.completedFor(server, player.getUUID()).forEach(id -> names.add(id.toString()));
+        return names;
     }
 
     @GameTest
@@ -251,12 +346,29 @@ public class HandbookChaptersOneToFiveTest {
                 }
             }
         }
-        if (itemDirectives < 7) {
+        if (itemDirectives < chapterOne().size()) {
             throw helper.assertionException(
-                    "the shipped chapters should hold at least the seven item directives of chapter 1, found %s",
-                    itemDirectives);
+                    "the shipped chapters should hold at least the %s item directives of chapter 1, found %s",
+                    chapterOne().size(), itemDirectives);
         }
         helper.succeed();
+    }
+
+    /**
+     * How many directives the shipped chapter {@code chapter} (its id's path) has, read from its data file, for a test that has
+     * no server to ask.
+     */
+    static int shippedSteps(String chapter) {
+        String path = "/data/" + DeepCharter.MOD_ID + "/" + DeepCharter.MOD_ID + "/handbook_chapter/" + chapter + ".json";
+        try (InputStream stream = HandbookChaptersOneToFiveTest.class.getResourceAsStream(path)) {
+            return JsonParser.parseReader(new InputStreamReader(
+                            Objects.requireNonNull(stream, () -> "no chapter " + path), StandardCharsets.UTF_8))
+                    .getAsJsonObject()
+                    .getAsJsonArray("directives")
+                    .size();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /** Whether an advancement's item predicate, an item id or a {@code #tag}, takes {@code item}. */
@@ -608,6 +720,18 @@ public class HandbookChaptersOneToFiveTest {
                                         directive("welcome", "craft_stone_tools"),
                                         directive("welcome", "gather_scrap")));
                         expectRoadAt(helper, server, second, 0);
+                        give(first, Items.CHARCOAL);
+                        expectCompleted(
+                                helper,
+                                server,
+                                "smelting a stalk",
+                                both,
+                                Set.of(
+                                        directive("welcome", "gather_wood"),
+                                        directive("welcome", "craft_crafting_table"),
+                                        directive("welcome", "craft_stone_tools"),
+                                        directive("welcome", "gather_scrap"),
+                                        directive("welcome", "smelt_charcoal")));
                         give(second, Items.IRON_INGOT);
                         expectCompleted(
                                 helper,
@@ -619,6 +743,7 @@ public class HandbookChaptersOneToFiveTest {
                                         directive("welcome", "craft_crafting_table"),
                                         directive("welcome", "craft_stone_tools"),
                                         directive("welcome", "gather_scrap"),
+                                        directive("welcome", "smelt_charcoal"),
                                         directive("welcome", "smelt_iron")));
                         give(first, ours("scanner_unit"));
                         expectCompleted(
@@ -631,6 +756,7 @@ public class HandbookChaptersOneToFiveTest {
                                         directive("welcome", "craft_crafting_table"),
                                         directive("welcome", "craft_stone_tools"),
                                         directive("welcome", "gather_scrap"),
+                                        directive("welcome", "smelt_charcoal"),
                                         directive("welcome", "smelt_iron"),
                                         directive("welcome", "craft_scanner")));
                         expectRoadAt(helper, server, first, 0);
