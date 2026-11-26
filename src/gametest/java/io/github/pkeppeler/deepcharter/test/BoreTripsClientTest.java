@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ForceSends;
@@ -23,6 +24,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ChunkLevel;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
@@ -72,6 +74,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     private record Tripped(
             int trip,
             long clientLevels,
+            long lightNetWatchesInFlight,
             long lightNetWatches,
             int clientEntities,
             String particles,
@@ -106,7 +109,9 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             try {
                 for (int trip = 1; trip <= TRIPS; trip++) {
                     trip(context, two, clientId, site);
-                    Tripped held = sample(context, two, trip, site, forceSendsBefore);
+                    long inFlight = liveWatches();
+                    settle(context, two, site);
+                    Tripped held = sample(context, two, trip, site, forceSendsBefore, inFlight);
                     trips.add(held);
                     LOGGER.info("BORE-TRIP {}", held);
                 }
@@ -125,8 +130,11 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     /**
      * Fails on a count that grows with the trips. The counts are read after a full collection, so they are what is held
      * and not what is waiting to be freed. The last trip is compared with the first, which misses an object kept once
-     * and never again; light watches come and go within seconds of a trip, so they are compared with the most of the
-     * first three.
+     * and never again. Light watches are counted after LightSync is done with the site ({@link #settle}), and the last
+     * trip is compared with the second: the first leaves watches on the outermost loaded ring, which the settle leaves out
+     * and which last until their chunks unload (eight of them, gone by the second trip), so a comparison with it would
+     * let as many leak unseen. The count taken before the settle, of the crossing's watches in flight, shows the census
+     * sees them at all.
      */
     private static void expectSteady(List<Tripped> trips) {
         Tripped first = trips.getFirst();
@@ -141,16 +149,14 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                 last.clientEntities() <= first.clientEntities(),
                 "the client holds " + last.clientEntities() + " entities after " + TRIPS + " trips, "
                         + first.clientEntities() + " after the first");
-        long watches = trips.stream()
-                .limit(3)
-                .mapToLong(Tripped::lightNetWatches)
-                .max()
-                .orElse(0);
-        require(watches > 0, "no LightSync watch was counted in the first three trips: the count is blind");
         require(
-                last.lightNetWatches() <= watches,
-                "LightSync holds " + last.lightNetWatches() + " watches after " + TRIPS + " trips, at most " + watches
-                        + " in the first three");
+                trips.stream().limit(3).anyMatch(trip -> trip.lightNetWatchesInFlight() > 0),
+                "no LightSync watch was counted in flight in the first three trips: the count is blind");
+        Tripped second = trips.get(1);
+        require(
+                last.lightNetWatches() <= second.lightNetWatches(),
+                "LightSync holds " + last.lightNetWatches() + " watches once settled after " + TRIPS + " trips, "
+                        + second.lightNetWatches() + " after the second");
         // A guard and not evidence: vanilla reaches this only for a player who is not a passenger, and the test's rider
         // stays seated, so it passes however the pod is dropped. It would catch a rider who ended up on foot.
         require(
@@ -229,8 +235,55 @@ public class BoreTripsClientTest implements FabricClientGameTest {
         SeamPodScene.finish(two, pod);
     }
 
+    /**
+     * Waits until LightSync is done with every chunk round the site in both layers: none is held, watched or waiting on
+     * queued light tasks, and no player has a send of one queued. A light watch lives for a window after its chunk can be
+     * sent, so a census straight after a crossing counted the crossing's watches still in flight, a number that rose and
+     * fell with timing and failed the steady check on a high last sample (#1405). A watch that never ends fails here, named.
+     * Settled, every trip after the first counted none.
+     */
+    private static void settle(ClientGameTestContext context, TwoPlayerServer two, Site site) {
+        long start = System.nanoTime();
+        ClientWait.until(
+                context,
+                "LightSync to be done with the chunks round the site in both layers",
+                () -> two.server()
+                        .computeOnServer(server -> unsettled(server, site).isEmpty()),
+                () -> "unsettled: " + two.server().computeOnServer(server -> unsettled(server, site)));
+        LOGGER.info("BORE-SETTLE {} ms", (System.nanoTime() - start) / 1_000_000);
+    }
+
+    /**
+     * The chunks of both layers round the site, out to one past the view distance, that LightSync is not done with or
+     * whose send is queued. Not the outermost loaded ring, two past: a chunk there never ticks, so a watch on it lasts
+     * until the chunk unloads, and after trip 1 the settle waited out the 120 s on eight of them.
+     */
+    private static List<String> unsettled(MinecraftServer server, Site site) {
+        int radius = server.getPlayerList().getViewDistance() + 1;
+        List<String> unsettled = new ArrayList<>();
+        for (ServerLevel level : List.of(site.one(), site.two())) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    ChunkPos pos =
+                            new ChunkPos(site.centre().x() + dx, site.centre().z() + dz);
+                    boolean queued = level.players().stream()
+                            .anyMatch(player -> player.connection.chunkSender.isPending(pos.pack()));
+                    if (queued || LightSync.watching(level, pos)) {
+                        unsettled.add(level.dimension().identifier().getPath() + " " + pos);
+                    }
+                }
+            }
+        }
+        return unsettled;
+    }
+
     private static Tripped sample(
-            ClientGameTestContext context, TwoPlayerServer two, int trip, Site site, int forceSendsBefore) {
+            ClientGameTestContext context,
+            TwoPlayerServer two,
+            int trip,
+            Site site,
+            int forceSendsBefore,
+            long lightNetWatchesInFlight) {
         int chunks = two.server()
                 .computeOnServer(server -> site.one().getChunkSource().getLoadedChunksCount()
                         + site.two().getChunkSource().getLoadedChunksCount());
@@ -241,6 +294,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
         return context.computeOnClient(client -> new Tripped(
                 trip,
                 live.getOrDefault(CLIENT_LEVEL, 0L),
+                lightNetWatchesInFlight,
                 live.getOrDefault(NET_WATCH, 0L),
                 client.level == null ? -1 : client.level.getEntityCount(),
                 client.particleEngine.countParticles(),
@@ -250,6 +304,11 @@ public class BoreTripsClientTest implements FabricClientGameTest {
                 chunks,
                 tickets,
                 heapMb));
+    }
+
+    /** The light watches held now, after a full collection. */
+    private static long liveWatches() {
+        return HeapHistogram.liveCounts(Set.of(NET_WATCH)).getOrDefault(NET_WATCH, 0L);
     }
 
     /** The tickets both layers hold, by level and type, without the {@link #UNCOUNTED} types. */
