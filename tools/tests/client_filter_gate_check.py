@@ -55,10 +55,7 @@ CASES = {
 
 
 def real_weights() -> dict[str, int]:
-    """The checked-in weights, so the real-tree shards are the ones CI runs."""
-    lines = (REPO / "gradle/client-test-weights.txt").read_text().splitlines()
-    pairs = [line.split("#")[0].split() for line in lines if line.split("#")[0].strip()]
-    return {name: int(seconds) for name, seconds in pairs}
+    return gate_batch.checked_in_weights("client-test-weights.txt")
 
 
 WEIGHTS = {"AlphaClientTest": 100}

@@ -47,10 +47,7 @@ JOINED = {PREFIX + name for name in ("AlphaTest", "BridgeTest", "DeltaTest")}
 
 
 def real_weights() -> dict[str, int]:
-    """The checked-in weights, so the real-tree shards are the ones CI runs."""
-    lines = (REPO / "gradle/server-test-weights.txt").read_text().splitlines()
-    pairs = [line.split("#")[0].split() for line in lines if line.split("#")[0].strip()]
-    return {name: int(seconds) for name, seconds in pairs}
+    return gate_batch.checked_in_weights("server-test-weights.txt")
 
 
 def real_environments() -> dict[str, set[str]]:
@@ -66,13 +63,14 @@ def real_environments() -> dict[str, set[str]]:
 
 
 COUNTS = (1, 2, 3, 4)
+BAD_SPECS = ("0/2", "3/2", "1", "a/b", "1/0", "1/2/3")
 CASES = {
     **{f"shard {i}/{n}": Case(FILES, None, server_shard=f"{i}/{n}") for n in COUNTS for i in range(1, n + 1)},
     **{f"weighted shard {i}/2": Case(FILES, None, server_shard=f"{i}/2", server_weights={"GolfTest": 100}) for i in (1, 2)},
     **{f"real shard {i}/{CI_SHARDS}": Case(REAL_TREE, None, server_shard=f"{i}/{CI_SHARDS}", server_weights=real_weights())
        for i in range(1, CI_SHARDS + 1)},
     "real whole": Case(REAL_TREE, None),
-    **{f"bad shard {spec}": Case(FILES, None, server_shard=spec) for spec in ("0/2", "3/2", "1", "a/b", "1/0", "1/2/3")},
+    **{f"bad shard {spec}": Case(FILES, None, server_shard=spec) for spec in BAD_SPECS},
     "more shards than units": Case(FILES, None, server_shard="6/6"),
 }
 
@@ -157,7 +155,7 @@ class ServerShardTest(unittest.TestCase):
                 self.assertLessEqual(load - min(map(weight, mine)), min(loads), loads)
 
     def test_a_malformed_shard_fails_and_says_so(self):
-        for spec in ("0/2", "3/2", "1", "a/b", "1/0", "1/2/3"):
+        for spec in BAD_SPECS:
             with self.subTest(spec):
                 result = outcome(f"bad shard {spec}")
                 self.assertFalse(result.ok)

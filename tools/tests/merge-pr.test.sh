@@ -683,8 +683,7 @@ refusal "build shards: one shard failed" "build-shard 2 (newest non-skipped run:
   "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 2:14:failure")"
 # A newer skipped run (a re-run whose matrix never started) does not hide the older failed one.
 refusal "build shards: a skipped run over a failed shard" "build-shard 2 (newest non-skipped run: failure)" \
-  "STUB_RUNS=$(runs build:2:success tool-tests:3:success "build-shard 1:11:success" "build-shard 2:12:failure" \
-    build-checks:13:success "build-shard 2:14:skipped")"
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 2:14:failure" "build-shard 2:15:skipped")"
 refusal "build shards: one shard cancelled" "build-shard 1 (newest non-skipped run: cancelled)" \
   "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 1:14:cancelled")"
 refusal "build shards: one shard still running" "build-shard 1 (newest non-skipped run: in_progress)" \

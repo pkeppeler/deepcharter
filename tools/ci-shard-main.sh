@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Usage: tools/ci-shard-main.sh <dir> <shard-count>   (run by the client-gametest and build aggregate jobs, from main)
 #
-# <dir> holds the `main-sha-<i>` files the shards uploaded. SHARD_KIND (default client) names them in messages: client or build. Succeeds only when all <shard-count> hold a sha and
-# they agree: then it prints a `merged-main` notice for it (and writes `main-sha=<sha>` to $GITHUB_OUTPUT when set).
+# <dir> holds the `main-sha-<i>` files the shards uploaded (.github/actions/upload-merged-main). SHARD_KIND (client, the default,
+# or build) names them in messages. Succeeds only when all <shard-count> hold a sha and they agree: then it prints a
+# `merged-main` notice for it (and writes `main-sha=<sha>` to $GITHUB_OUTPUT when set).
 set -euo pipefail
 
 if [[ $# -ne 2 || ! $2 =~ ^[1-9][0-9]*$ ]]; then

@@ -19,10 +19,9 @@
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
-# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each build-shard, build-checks and client-gametest-shard,
-# when they ran) runs
-# each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
-# from it only by docs/ROADMAP.md or .papercuts.jsonl.
+# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each build-shard, build-checks and
+# client-gametest-shard, when they ran) runs each recorded exactly the current origin/main as the main they merged (see the
+# check below; #979), or main differs from it only by docs/ROADMAP.md or .papercuts.jsonl.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
 # and regenerates docs/ROADMAP.md. The commit title and message go through tools/merge_message.py first: the merge proxy
 # refuses a long URL there, so it is shortened in the commit only, never in the PR body (#1007); --check warns when it will.

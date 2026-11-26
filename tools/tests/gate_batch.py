@@ -29,6 +29,13 @@ class Case:
     server_weights: Mapping[str, int] | None = None
 
 
+def checked_in_weights(file_name: str) -> dict[str, int]:
+    """gradle/<file_name>, a shard weight file, so a real-tree shard case is the one CI runs."""
+    lines = (REPO / "gradle" / file_name).read_text().splitlines()
+    pairs = [line.split("#")[0].split() for line in lines if line.split("#")[0].strip()]
+    return {name: int(seconds) for name, seconds in pairs}
+
+
 @dataclass(frozen=True)
 class Result:
     ok: bool

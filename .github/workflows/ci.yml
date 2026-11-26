@@ -42,19 +42,10 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
-      # The shard's merged main sha, for the aggregate (a matrix job's output holds one shard's value, so a file per shard).
-      # Uploaded before the tests so a failed shard still hands it over.
-      - env:
-          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
-        run: echo "$MAIN_SHA" > "$RUNNER_TEMP/main-sha-${{ matrix.shard }}"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - uses: ./.github/actions/upload-merged-main
         with:
-          name: merged-main-${{ matrix.shard }}
-          # A re-run uploads the same name again, which v4+ rejects without this. After `--failed` the aggregate reads the
-          # earlier sha of each job that did not re-run; if main moved, the shas differ and it fails.
-          overwrite: true
-          path: ${{ runner.temp }}/main-sha-${{ matrix.shard }}
-          retention-days: 1
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: ${{ matrix.shard }}
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
@@ -84,15 +75,10 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
-      - env:
-          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
-        run: echo "$MAIN_SHA" > "$RUNNER_TEMP/main-sha-checks"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - uses: ./.github/actions/upload-merged-main
         with:
-          name: merged-main-checks
-          overwrite: true
-          path: ${{ runner.temp }}/main-sha-checks
-          retention-days: 1
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: checks
       - uses: ./.github/actions/setup-python-uv
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0

@@ -7,6 +7,12 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 WORKFLOW = (REPO / ".github/workflows/ci.yml").read_text()
+# The step that hands a job's merged main sha to the aggregate, with the job's suffix.
+UPLOAD = """      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{{{ steps.merge.outputs.main-sha }}}}
+          name: {}
+"""
 
 
 def job(key: str) -> str:
@@ -40,12 +46,15 @@ class BuildShardWorkflowTest(unittest.TestCase):
     def test_every_job_that_tests_uploads_the_main_sha_it_merged(self):
         for key, suffix in (("build", "${{ matrix.shard }}"), ("checks", "checks")):
             with self.subTest(key):
-                block = job(key)
-                self.assertIn(f"main-sha-{suffix}", block)
-                self.assertIn(f"name: merged-main-{suffix}", block)
-                self.assertIn("MAIN_SHA: ${{ steps.merge.outputs.main-sha }}", block)
-                # upload-artifact v4+ rejects a name already used in the run, so a re-run job would fail before its tests.
-                self.assertIn("overwrite: true", block)
+                self.assertIn(UPLOAD.format(suffix), job(key))
+
+    def test_the_upload_action_names_the_file_and_artifact_and_survives_a_rerun(self):
+        action = (REPO / ".github/actions/upload-merged-main/action.yml").read_text()
+        self.assertIn('"$RUNNER_TEMP/main-sha-$NAME"', action)
+        self.assertIn("name: merged-main-${{ inputs.name }}", action)
+        self.assertIn("path: ${{ runner.temp }}/main-sha-${{ inputs.name }}", action)
+        # upload-artifact v4+ rejects a name already used in the run, so a re-run job would fail before its tests.
+        self.assertIn("overwrite: true", action)
 
     def test_the_aggregate_is_build_needs_every_job_and_runs_after_a_failure(self):
         aggregate = job("build-result")
