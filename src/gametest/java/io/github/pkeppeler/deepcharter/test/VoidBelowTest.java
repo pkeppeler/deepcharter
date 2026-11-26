@@ -45,8 +45,8 @@ public class VoidBelowTest {
     private static final int POCKET_FALL = 9;
     /** The drill's hollow pitch must start at least a second before the pod breaks through. */
     private static final int MIN_LEAD_TICKS = 20;
-    /** Rows of stone the pod bores in the drilling tests, above the void or the solid bed. */
-    private static final int ROWS = 6;
+    /** Rows of stone the pod bores in the drilling tests: the hollow rows and as many again before them, and more. */
+    private static final int ROWS = 2 * VoidBelowTuning.DEFAULT.hollowRows() + 2;
     /** The drilling tests' local Y of the lowest bored row: mid-layer, clear of the crust and the layer's roof. */
     private static final int BORE_BOTTOM_LOCAL = 100;
 
@@ -67,6 +67,9 @@ public class VoidBelowTest {
                 "a 2-block drop lands soft, it costs %s",
                 VoidBelow.dropCost(stock, 2));
         expect(helper, VoidBelow.dropCost(stock, 1) == 0f, "the 1-block fall into a bored slab is free");
+        float three = VoidBelow.dropCost(stock, 3);
+        float four = VoidBelow.dropCost(stock, 4);
+        expect(helper, three == 0f && four > 0f, "3 blocks land soft and 4 hard, they cost %s and %s", three, four);
         expect(helper, VoidBelow.dropCost(stock, 0) == 0f, "no fall is free");
         // Independent of the helper's loop: a fall long enough for terminal speed costs (gravity / (1 / drag - 1) -
         // 0.7) x 70.
@@ -141,6 +144,39 @@ public class VoidBelowTest {
                 "for 28 hull over solid rock: the crust takes 24 and the pod lands on rock");
         expectWarning(helper, pod(one, x, 5, 20f), 2, 3, FULL_CRUST, 0f, "for 20 hull, with no drop part");
         helper.succeed();
+    }
+
+    /** A 2-row gap under the crust is a 3-block fall, which lands soft: no price on the warning and no hollow pitch. */
+    @GameTest
+    public void aGapThatLandsSoftIsNeitherPricedNorHeard(GameTestHelper helper) {
+        int x = 9600;
+        ServerLevel one = TestLayers.level(helper, 1);
+        crust(one, x);
+        int floor = TestLayers.band(one, 1).minY();
+        RoomCarver.carve(one, x - 3, x + 3, floor - 12, floor - 3, Z - 3, Z + 3, Blocks.STONE);
+        RoomCarver.carve(one, x - 3, x + 3, floor - 2, floor - 1, Z - 3, Z + 3, Blocks.AIR);
+        softFloor(helper, one, x, "a 2-row gap");
+        helper.succeed();
+    }
+
+    /** Fluid under the crust is a floor: a pod falls 3 blocks to the water of a flooded pocket, not 9 to its bed. */
+    @GameTest
+    public void aFluidUnderTheCrustIsAFloor(GameTestHelper helper) {
+        int x = 9700;
+        ServerLevel one = TestLayers.level(helper, 1);
+        crust(one, x);
+        RoomCarver.carvePocketBelow(one, 1, x - 3, x + 3, Z - 3, Z + 3);
+        int floor = TestLayers.band(one, 1).minY();
+        RoomCarver.carve(one, x - 3, x + 3, floor - 8, floor - 3, Z - 3, Z + 3, Blocks.WATER);
+        softFloor(helper, one, x, "water 2 rows under the crust");
+        helper.succeed();
+    }
+
+    /** The pod on the last crust row at {@code x}: the fall after it lands soft, so the drop is 0 and the drill is not hollow. */
+    private static void softFloor(GameTestHelper helper, ServerLevel level, int x, String what) {
+        expectWarning(helper, pod(level, x, 1, ROW), 0, 1, ROW, 0f, "over " + what + ", with no drop part");
+        PodEntity last = pod(level, x, 1, 100f);
+        expect(helper, !VoidBelow.hollow(last), "the drill over %s does not sound hollow", what);
     }
 
     // ---- the drill sounds hollow before it breaks through ----

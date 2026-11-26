@@ -191,8 +191,9 @@ public class VoidBelowScenario extends EvidenceScenario {
     }
 
     /**
-     * A stone bed over three rows of breach crust over a cave, under an open room; lamps down the shaft and in the
-     * cave.
+     * A stone bed over three rows of breach crust over a cave, under an open room. Lamps sit in the bore's walls, flush
+     * with the 3 x 3 bore of the Prospector, so none is drilled away; one in the cave's bed under the bore lights the
+     * landing, and more stand round the cave's edge.
      */
     private static void build(ServerLevel level) {
         RoomCarver.carve(
@@ -218,8 +219,9 @@ public class VoidBelowScenario extends EvidenceScenario {
             new BlockPos(X, FLOOR_Y + 3, Z + RADIUS),
             new BlockPos(X, FLOOR_Y + 3, Z - RADIUS),
             new BlockPos(X - 2, FLOOR_Y - 2, Z),
-            new BlockPos(X + 1, FLOOR_Y - 4, Z - 1),
+            new BlockPos(X + 2, FLOOR_Y - 4, Z),
             new BlockPos(X - 2, FLOOR_Y - 6, Z),
+            new BlockPos(X, FLOOR - 9, Z),
             new BlockPos(X + RADIUS, FLOOR - 3, Z),
             new BlockPos(X - RADIUS, FLOOR - 3, Z),
             new BlockPos(X, FLOOR - 3, Z + RADIUS),

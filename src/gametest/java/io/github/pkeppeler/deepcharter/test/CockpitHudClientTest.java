@@ -13,11 +13,14 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
+import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
+import io.github.pkeppeler.deepcharter.pod.VoidBelow;
+import io.github.pkeppeler.deepcharter.pod.VoidBelowTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
@@ -944,6 +947,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     /** The plates to fit: each warning alone, and every warning a pilot can have at once with every note too. */
     private static List<List<CockpitHud.Row>> plateCases() {
+        // The longest drop line: the farthest slabs, a three-figure hull and the deepest drop the probe prices.
+        int reach = PodBraceTuning.DEFAULT.warnSlabs();
+        int deepest = Math.round(VoidBelow.dropCost(PodStats.base(), VoidBelowTuning.DEFAULT.scanBlocks()));
         List<PodStatusHud.Line> alerts = List.of(
                 line("burning"),
                 line("stranded"),
@@ -963,8 +969,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("glaze_spent"),
                 line("drifter_alarm", 30),
                 line("soot_limp"),
-                line("crust_ahead_drop", 16, 136, 24, 117),
-                line("crust_in_drop", 136, 24, 117));
+                line("crust_ahead_drop", reach, 136, 24, deepest),
+                line("crust_in_drop", 136, 24, deepest));
         List<PodStatusHud.Line> notes = List.of(
                 line("slag", 12, 8),
                 line("slag_only", 12),
