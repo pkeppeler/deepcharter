@@ -669,6 +669,57 @@ refusal "another docs file moving is not neutral" "$stale_hint" "STUB_MERGED_MAI
 refusal "code beside the roadmap is not neutral" "tools/merge-pr.sh" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=docs/ROADMAP.md${nl}tools/merge-pr.sh"
 refusal "nested papercuts lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/.papercuts.jsonl"
 refusal "nested roadmap lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/docs/ROADMAP.md"
+# The build runs as `build-shard <i>` jobs and `build-checks` beside the `build` aggregate (#1327). The gate reads the merged-main
+# notice of each passing shard, of build-checks and of the aggregate, which records the main all of them agreed on.
+bs_specs=("build:2:success" "tool-tests:3:success" "build-shard 1:11:success" "build-shard 2:12:success" "build-checks:13:success")
+annotations_of() { echo "gh api repos/pkeppeler/deepcharter/check-runs/$1/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"; }
+run_script "STUB_RUNS=$(runs "${bs_specs[@]}")"
+exited "build shards: all passed and merged the current main merges" 0
+logged "build shards: the aggregate's annotations read" "$(annotations_of 2)"
+logged "build shards: shard 1's annotations read" "$(annotations_of 11)"
+logged "build shards: shard 2's annotations read" "$(annotations_of 12)"
+logged "build shards: build-checks's annotations read" "$(annotations_of 13)"
+refusal "build shards: one shard failed" "build-shard 2 (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 2:14:failure")"
+refusal "build shards: one shard cancelled" "build-shard 1 (newest non-skipped run: cancelled)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 1:14:cancelled")"
+refusal "build shards: one shard still running" "build-shard 1 (newest non-skipped run: in_progress)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 1:14:in_progress")"
+refusal "build shards: build-checks failed" "build-checks (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-checks:14:failure")"
+refusal "build shards: one shard merged an older main" "build-shard 2 run 12 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_12=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: a shard merging an older main is stale-base" "$stale_hint" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_12=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: build-checks merged an older main" "build-checks run 13 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_13=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: a shard with no record" "build-shard 1 run 11 recorded no merged main sha" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_11="
+refusal "build shards: the aggregate's stale notice still refuses" "build run 2 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_2=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: a shard only skipped" "has a build shard that was only skipped: build-shard 3" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 3:14:skipped")"
+refusal "build shards: shards passed but build-checks never ran" "build-checks did not pass" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success "build-shard 1:11:success")"
+refusal "build shards: build-checks only skipped" "build-checks did not pass" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-checks:14:skipped" | grep -v $'^build-checks\t[^\t]*\t13\t')"
+refusal "build shards: build-checks passed but no shard did" "no build-shard run passed" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success)"
+# shellcheck disable=SC2016 # a literal template, not an expansion
+refusal "build shards: only a never-started template shard beside the aggregate" "no build-shard run passed" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success 'build-shard ${{ matrix.shard }}:14:cancelled')"
+# shellcheck disable=SC2016 # a literal template, not an expansion
+run_script "STUB_RUNS=$(runs "${bs_specs[@]}" 'build-shard ${{ matrix.shard }}:14:cancelled')"
+exited "build shards: passing shards beside a never-started template shard merge" 0
+refusal "build shards: shards passed but the aggregate never ran" "lacks required check: build" \
+  "STUB_RUNS=$(runs tool-tests:3:success "build-shard 1:11:success" build-checks:13:success)"
+refusal "build shards: shards passed but the aggregate failed" "build (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" build:14:failure)"
+# CI from before #1327: one `build` job, no shard run, its own notice decides (the default runs are this shape).
+run_script "STUB_RUNS=$(runs build:2:success tool-tests:3:success)"
+exited "legacy single build job merges" 0
+refusal "legacy single build job merged an older main" "build run 2 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success)" "STUB_MERGED_MAIN_2=$OLD_MAIN" "STUB_DIFF=src/A.java"
 if command -v jq >/dev/null; then
   # The recorded annotations of a real run (fixtures/gh-rest/README.md): the script's own filter reads its sha.
   run_script STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.json" "STUB_MAIN_SHA=$(gh_fixture_jq "$FIXTURES/check-run-annotations.json" '.[] | select(.title == "merged-main") | .message')"

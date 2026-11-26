@@ -7,7 +7,6 @@ Usage: tools/py tools/tests/gate_checks.py server_shard
 """
 import re
 import unittest
-from pathlib import Path
 
 import gate_batch
 from gate_batch import REPO, Case

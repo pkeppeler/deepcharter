@@ -38,7 +38,6 @@ CampaignContentTest 12
 CampaignCostTest 15
 CampaignCrossingTest 11
 CampaignDecorationStepsTest 1
-CampaignEnvironments 1
 CampaignSurfaceParityTest 3
 CampaignTerrainTest 16
 CampaignWorldHashTest 1

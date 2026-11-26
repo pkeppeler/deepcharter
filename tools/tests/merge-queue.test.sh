@@ -404,6 +404,34 @@ not_logged "stale sharded: never re-runs the skipped run" "$(run_url 320)"
 no_job_rerun "stale sharded"
 count "stale sharded: two reruns only (the shards share the aggregate's run)" "/rerun" 2
 
+# --- #1327: a sharded CI run (build shards, build-checks and the `build` aggregate beside tool-tests): re-run it whole, once ---
+# The aggregate is matched by its exact name, so a newer run whose aggregate was skipped is passed over even though its
+# name prefix matches, and no shard or build-checks job is ever re-run alone.
+reset
+wfruns "331|CI|completed|skipped" "330|CI|completed|success"
+jobs 331 "611|build-shard \${{ matrix.shard }}|completed|skipped" "612|build-checks|completed|skipped" "613|build|completed|skipped" "614|tool-tests|completed|skipped"
+jobs 330 "601|build-shard 1|completed|success" "602|build-shard 2|completed|success" "603|build-checks|completed|success" "604|build|completed|success" "605|tool-tests|completed|success"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale build shards: exit 0" 0
+logged "stale build shards: re-runs the run holding the shards and the aggregate" "$(run_url 330)"
+not_logged "stale build shards: never re-runs the skipped run" "$(run_url 331)"
+count "stale build shards: one rerun only (shards, aggregate and tool-tests share the run)" "/rerun" 1
+no_job_rerun "stale build shards"
+
+# --- #1327: shards passed but the aggregate was cancelled before it ran: still the run is re-run whole ---
+reset
+wfruns "330|CI|completed|cancelled"
+jobs 330 "601|build-shard 1|completed|success" "603|build-checks|completed|success" "604|build|completed|cancelled" "605|tool-tests|completed|success"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale cancelled aggregate: exit 0" 0
+logged "stale cancelled aggregate: re-runs the run" "$(run_url 330)"
+count "stale cancelled aggregate: one rerun only" "/rerun" 1
+no_job_rerun "stale cancelled aggregate"
+
 # --- build and tool-tests in different runs (a skipped job on top): each run is re-run whole ---
 reset
 wfruns "310|CI|completed|success" "301|CI|completed|success"
