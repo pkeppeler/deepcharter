@@ -28,7 +28,8 @@ public final class HandbookPages {
      * The cover, the issue slip, the Founder's letter, the contents (one page for each {@link #CONTENTS_PER_PAGE}
      * chapters), the controls pages ({@link HandbookControls}), the pages of each chapter, the end page, then the pages
      * of Appendix A. A chapter the player may read in full has a page for each text key the language file holds for it
-     * ({@link HandbookScreen#textKey}), then its page of directives; any other chapter has its page of directives only.
+     * ({@link HandbookScreen#textKey}), then its controls page if {@link HandbookControls} binds one into it, then its
+     * page of directives; any other chapter has its page of directives only.
      * Appendix A has a page for each key of {@link HandbookScreen#contractKey}.
      *
      * @param chapters  the chapters by id, in handbook order
@@ -67,6 +68,9 @@ public final class HandbookPages {
                 for (int part = 1; part <= textParts; part++) {
                     pages.add(new HandbookPage.ChapterText(
                             index + 1, chapter.getKey(), chapter.getValue(), part, textParts));
+                }
+                if (HandbookControls.inChapter(chapter.getKey())) {
+                    pages.add(new HandbookPage.ChapterControls(index + 1, chapter.getKey(), chapter.getValue()));
                 }
             }
             pages.add(new HandbookPage.Chapter(

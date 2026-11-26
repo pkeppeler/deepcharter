@@ -9,10 +9,11 @@ import net.minecraft.resources.Identifier;
 
 /** One page of the handbook, in the order it is bound. The Notes tab is not a page: the screen draws it apart. */
 public sealed interface HandbookPage {
-    /** The number of the chapter {@code page} belongs to, its text or its map, or 0 for any other page. */
+    /** The number of the chapter {@code page} belongs to, its text, its controls or its map, or 0 for any other page. */
     static int chapterNumber(HandbookPage page) {
         return switch (page) {
             case ChapterText text -> text.number();
+            case ChapterControls controls -> controls.number();
             case Chapter chapter -> chapter.number();
             default -> 0;
         };
@@ -67,6 +68,12 @@ public sealed interface HandbookPage {
      */
     record ChapterText(int number, Identifier id, HandbookChapter chapter, int part, int parts)
             implements HandbookPage {}
+
+    /**
+     * The controls a full chapter brings ({@link HandbookControls}), after its text and before its page of directives.
+     * Lines that do not fit one sheet run on to more ({@link SheetFlow}).
+     */
+    record ChapterControls(int number, Identifier id, HandbookChapter chapter) implements HandbookPage {}
 
     /** One pencil path on the pencil sheet: the path, and whether the charter has reached the place it points to. */
     record PencilEntry(PencilPath path, boolean done) {}

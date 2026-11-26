@@ -53,6 +53,7 @@ public final class HandbookMemory {
             case HandbookPage.Contents contents -> "contents:" + contents.part();
             case HandbookPage.Controls controls -> "controls:" + controls.part();
             case HandbookPage.ChapterText text -> "text:" + text.number() + ":" + text.part();
+            case HandbookPage.ChapterControls controls -> "controls-of:" + controls.number();
             case HandbookPage.Chapter map -> "map:" + map.number();
             case HandbookPage.Pencil pencil -> "pencil:" + pencil.part();
             case HandbookPage.Appendix appendix -> "appendix";

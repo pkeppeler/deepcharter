@@ -173,6 +173,7 @@ public final class HandbookScreen extends Screen {
             switch (this.pages.get(index)) {
                 case HandbookPage.Pencil pencil -> firstPencil = firstPencil < 0 ? index : firstPencil;
                 case HandbookPage.ChapterText text -> firstPages.putIfAbsent(text.number(), index);
+                case HandbookPage.ChapterControls controls -> firstPages.putIfAbsent(controls.number(), index);
                 case HandbookPage.Chapter chapter -> {
                     firstPages.putIfAbsent(chapter.number(), index);
                     byNumber.put(chapter.number(), chapter);
@@ -338,6 +339,7 @@ public final class HandbookScreen extends Screen {
         Identifier viewed = switch (pages.get(page)) {
             case HandbookPage.Chapter chapter when chapter.visibility() == HandbookVisibility.FULL -> chapter.id();
             case HandbookPage.ChapterText text -> text.id();
+            case HandbookPage.ChapterControls controls -> controls.id();
             default -> null;
         };
         if (viewed != null && !isRead.test(viewed) && reported.add(viewed)) {
@@ -752,6 +754,8 @@ public final class HandbookScreen extends Screen {
             case HandbookPage.Contents contents -> drawContents(graphics, contents);
             case HandbookPage.Controls controls -> drawControls(graphics, controls);
             case HandbookPage.ChapterText text -> drawFlowing(graphics, chapterTextFlow(text), index, onSheet);
+            case HandbookPage.ChapterControls controls ->
+                drawFlowing(graphics, chapterControlsFlow(controls), index, onSheet);
             case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
             case HandbookPage.Pencil pencil -> drawPencil(graphics, pencil);
             case HandbookPage.Appendix appendix -> drawAppendix(graphics);
@@ -919,6 +923,7 @@ public final class HandbookScreen extends Screen {
     private int chapterNumberAt(int pageIndex) {
         return switch (pages.get(pageIndex)) {
             case HandbookPage.ChapterText text -> text.number();
+            case HandbookPage.ChapterControls controls -> controls.number();
             case HandbookPage.Chapter chapter -> chapter.number();
             default -> throw new IllegalArgumentException("page " + pageIndex + " is not a chapter page");
         };
@@ -950,6 +955,27 @@ public final class HandbookScreen extends Screen {
                 heading(tr("chapter.label", text.number()), text.chapter().title()),
                 inked(Component.translatable(textKey(text.id(), text.part())), tuning().inkColor()),
                 textMarginKey(text.id(), text.part()));
+    }
+
+    /**
+     * A chapter's controls page: the chapter's label and the sheet's title, then each line, with the keys the player
+     * has bound now, a paragraph gap after each. Its margin note, if the language file has one, is keyed as the title
+     * with {@code .margin} after it.
+     */
+    private Flow chapterControlsFlow(HandbookPage.ChapterControls controls) {
+        List<SheetFlow.Line> body = new ArrayList<>();
+        for (Component line : HandbookControls.lines(controls.id(), Minecraft.getInstance().options)) {
+            List<SheetFlow.Line> inked = inked(line, tuning().inkColor());
+            body.addAll(inked.subList(0, inked.size() - 1));
+            SheetFlow.Line last = inked.getLast();
+            body.add(new SheetFlow.Line(last.pitch() + tuning().paragraphGap(), last.draw()));
+        }
+        return new Flow(
+                heading(
+                        tr("chapter.label", controls.number()),
+                        Component.translatable(HandbookControls.titleKey(controls.id()))),
+                body,
+                HandbookControls.titleKey(controls.id()) + ".margin");
     }
 
     /**
@@ -1291,6 +1317,7 @@ public final class HandbookScreen extends Screen {
         sheetStarts = pages.stream()
                 .map(content -> switch (content) {
                     case HandbookPage.ChapterText text -> flowStarts(chapterTextFlow(text));
+                    case HandbookPage.ChapterControls controls -> flowStarts(chapterControlsFlow(controls));
                     case HandbookPage.Contract contract -> flowStarts(contractFlow(contract));
                     default -> List.of(0);
                 })
