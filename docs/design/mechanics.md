@@ -1344,10 +1344,10 @@ The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no
 **What it does.**
 
 1. **Where.** In layers 1 and 2, within 48 blocks (square) of the Conduit's axis. The casing is solid rock, so a Tally appears in dark open air near a pod or a person that holds ore, 10 to 20 blocks off, and flies down the bore. It never breaks a block and never touches the casing.
-2. **What draws it.** A pod with a pilot, power, no lights and ore in the bay; or a person on foot in the dark (block light under 3) who carries ore. A pod or person with no ore draws nothing: there is nothing to sample.
+2. **What draws it.** A pod with a pilot, power, no lights and ore in the bay; or a person on foot in the dark (block light under 3) who carries ore and holds no light in either hand (the `deepcharter:hand_lights` rule the Retained keep to). A pod or person with no ore draws nothing: there is nothing to sample.
 3. **Sensed.** A click every couple of seconds, an amber eye the size of a pin, and a scanner that reads it as ore: a block of ore that moves. The pilot gets one line when one finds the pod.
 4. **The skim.** A Tally that trails its mark for 30 seconds clamps to the cargo hatch (a person's pack on foot), holds it for 3 seconds (2 on foot), takes the **cheapest** ore held as a "quality sample" and flies off. One sample per Tally.
-5. **Counters.** The cutter bites it on the hatch while the pod drills and breaks it in 1 second, so a pilot who reads the clamp line and drills into rock loses nothing. On foot one blow breaks it, however light. A lit pod draws none. It drops nothing.
+5. **Counters.** The cutter bites it on the hatch while the pod drills and breaks it in 1 second, so a pilot who reads the clamp line and drills into rock loses nothing. On foot one blow breaks it, however light. A lit pod draws none, and neither does a person with a light in hand. It drops nothing.
 
 **The ladder.** By hand: the cutter and a blow teach it. Automated: a lights part keeps it off a pod. Mastery: none needed; it stays a tax. Outrunning it works too: a pod that leaves its sense for 5 seconds drops it.
 
@@ -1375,7 +1375,7 @@ The modelled rows rest on three guesses, none measured: a 4-minute run, half of 
 **Rules worth stating.**
 
 - A Tally latches only from beside its mark (within `trailGapBlocks + 1`). One that cannot get there, walled off in a pocket, keeps trailing and never clamps, and it never passes through rock.
-- Once clamped it takes its sample even if the pilot leaves, a parked pod included; it lets go only when its pod or person is removed (a log-off) or it is broken. A light does not free it.
+- Once clamped it takes its sample even if the pilot leaves, a parked pod included; it lets go only when its pod or person is removed (a log-off) or it is broken. A light does not free it, and that holds on foot too: a torch taken up after the clamp keeps further Tallies off but does not free the person.
 - Layers 1 and 2 only. The Conduit beyond the Ramp is act 3.
 - Not in Peaceful: a Tally neither comes nor skims there.
 - A pod flown by a creative player draws none.
