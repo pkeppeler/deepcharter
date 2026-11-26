@@ -30,8 +30,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Evidence scenario "explosive-tiers" (#1458): the hole each explosive leaves, side by side, cut open. Five sites stand in a row on the floor of
- * a lit stone room in layer 1. At each the real item is used as a player uses it: dynamite and plastic explosives from the seat of a pod on
- * plain stone, a blasting charge and a shaped charge from the seat of a pod over a column of Company rock (the pod is moved clear before the
+ * a lit stone room in layer 1. At each the real item is used as a player uses it: dynamite and plastic explosives from the seat of a pod in a pocket of a stone pile (their blast is round the pod's
+ * middle, so most of it is above the floor) on plain stone, a blasting charge and a shaped charge from the seat of a pod over a column of Company rock (the pod is moved clear before the
  * fuse ends), and a thrown charge thrown on foot straight down onto Company rock. Then the rock in front of each site's middle is cut away, so
  * each hole shows as a section, and the camera stands in the cut, one still per site and one of the row. The scenario uses only what main
  * has too, so the same file records the before stills there.
@@ -49,9 +49,9 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
     /** Rows of Company rock under a blasting charge and a thrown one, deeper than either blast. */
     private static final int SLAB_ROWS = 6;
     /** How far in front of the sections the camera stands, and the row's still. */
-    private static final int VIEW_BACK = 11;
+    private static final int VIEW_BACK = 13;
 
-    private static final int ROW_VIEW_BACK = 30;
+    private static final int ROW_VIEW_BACK = 26;
     private static final int FUSE_WAIT_TICKS = 100;
 
     /** What each site holds, in the row's order. */
@@ -97,19 +97,25 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
                         lastX + 10,
                         FLOOR_Y - BED_ROWS,
                         FLOOR_Y + 10,
-                        Z - ROW_VIEW_BACK - 4,
-                        Z + 14,
+                        Z - 15,
+                        Z + ROW_VIEW_BACK + 4,
                         Blocks.STONE);
                 RoomCarver.carve(
                         one,
-                        new BlockPos(X - 9, FLOOR_Y, Z - ROW_VIEW_BACK - 3),
-                        new BlockPos(lastX + 9, FLOOR_Y + 9, Z + 13),
+                        new BlockPos(X - 9, FLOOR_Y, Z - 14),
+                        new BlockPos(lastX + 9, FLOOR_Y + 9, Z + ROW_VIEW_BACK + 3),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
                 for (int x = X - 6; x <= lastX + 6; x += 8) {
-                    for (int z = Z - 24; z <= Z + 12; z += 8) {
+                    for (int z = Z - 12; z <= Z + ROW_VIEW_BACK; z += 8) {
                         one.setBlock(new BlockPos(x, FLOOR_Y + 9, z), Blocks.GLOWSTONE.defaultBlockState(), 3);
                     }
+                }
+                for (Site site : new Site[] {Site.DYNAMITE, Site.PLASTIC}) {
+                    // A pile of stone round the pod, so the blast round its middle has rock to clear above the floor
+                    // too.
+                    RoomCarver.carve(one, site.x() - 4, site.x() + 4, FLOOR_Y, FLOOR_Y + 5, Z - 4, Z + 4, Blocks.STONE);
+                    RoomCarver.carve(one, site.x() - 1, site.x(), FLOOR_Y, FLOOR_Y + 2, Z - 1, Z, Blocks.AIR);
                 }
                 for (Site site : Site.values()) {
                     // A charge's bore square (x - 1 to x, z - 1 to z), and a thrown charge's 3 x 3 round x, z.
@@ -127,7 +133,7 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
                 }
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                player.teleportTo(one, X, FLOOR_Y, Z - 6, Set.of(), 0, 0, true);
+                player.teleportTo(one, X, FLOOR_Y, Z - 9, Set.of(), 0, 0, true);
             });
             awaitWorld(context);
             context.waitTicks(20);
@@ -143,7 +149,9 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
                 context.waitTicks(4);
                 frame(context);
             }
-            // Cut the rock in front of each site's middle away: the holes show as sections, from the room's floor down.
+            // Cut the rock in front of each site's middle away (the +z side, so the row reads west to east from the
+            // camera): the holes
+            // show as sections.
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 for (PodEntity pod : pods) {
@@ -151,8 +159,8 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
                 }
                 RoomCarver.carve(
                         one,
-                        new BlockPos(X - 9, FLOOR_Y - BED_ROWS + 1, Z - ROW_VIEW_BACK - 3),
-                        new BlockPos(lastX + 9, FLOOR_Y - 1, Z - 1),
+                        new BlockPos(X - 9, FLOOR_Y - BED_ROWS + 1, Z + 1),
+                        new BlockPos(lastX + 9, FLOOR_Y + 6, Z + ROW_VIEW_BACK + 3),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -196,8 +204,8 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
             player.stopRiding();
             // Clear of the charge's reach (3 blocks), on the room's floor: the fuse lives on the pod, so it must stay
             // loaded.
-            pod.setPos(site.x(), FLOOR_Y, Z + 9);
-            player.teleportTo(player.level(), site.x() + 4, FLOOR_Y, Z + 9, Set.of(), 0, 0, true);
+            pod.setPos(site.x(), FLOOR_Y, Z - 9);
+            player.teleportTo(player.level(), site.x() + 4, FLOOR_Y, Z - 9, Set.of(), 0, 0, true);
         });
         for (int i = 0; i < 4; i++) {
             context.waitTicks(3);
@@ -223,7 +231,7 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
         context.waitTicks(10);
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.teleportTo(player.level(), site.x() + 0.5, FLOOR_Y, Z + 10, Set.of(), 0, 0, true);
+            player.teleportTo(player.level(), site.x() + 0.5, FLOOR_Y, Z - 10, Set.of(), 0, 0, true);
         });
     }
 
@@ -241,10 +249,10 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
         }
     }
 
-    /** Stands the camera {@code back} blocks in front of the sections at {@code x}, level with the middle of the deepest hole. */
+    /** Stands the camera {@code back} blocks in front of the sections at {@code x}, a little above the middle of the deepest hole, looking north. */
     private void look(ClientGameTestContext context, TestSingleplayerContext singleplayer, double x, int back) {
-        Vec3 eye = new Vec3(x, FLOOR_Y - 5.5, Z - back);
-        Vec3 target = new Vec3(x, FLOOR_Y - 5.5, Z);
+        Vec3 eye = new Vec3(x, FLOOR_Y - 4.0, Z + back);
+        Vec3 target = new Vec3(x, FLOOR_Y - 4.0, Z);
         float[] angles = ShaftViews.anglesTo(eye, target);
         singleplayer.getServer().runOnServer(server -> lookFrom(server, eye, angles));
         for (int i = 0; i < 10; i++) {
