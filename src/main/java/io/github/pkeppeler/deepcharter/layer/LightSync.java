@@ -122,8 +122,9 @@ public final class LightSync {
 
     /**
      * The chunks whose watch was dropped because they did not tick and no player held them: they cannot be sent until
-     * they tick, and a watch kept open for that would never end (#1297). Each is watched again when it is sent, a send
-     * that a crossing does not skip ({@link #dormant}). No key is in both this and {@link #NET}. Server thread only.
+     * they tick, and a watch kept open for that would never end (#1297). Each is watched again once it ticks, so its
+     * window runs from when it can be sent, as a kept watch's did (#954), or at its send if that comes first. No key is
+     * in both this and {@link #NET}. Server thread only.
      */
     private static final Set<Key> DORMANT = new HashSet<>();
 
@@ -156,11 +157,6 @@ public final class LightSync {
     public static boolean hasPending(ServerLevel level, ChunkPos chunk) {
         Key key = new Key(level, chunk);
         return QUEUED.containsKey(key) || OFFERS.containsKey(key);
-    }
-
-    /** Whether the chunk's watch was dropped until it is sent ({@link #DORMANT}). Server thread only. */
-    public static boolean dormant(ServerLevel level, ChunkPos chunk) {
-        return DORMANT.contains(new Key(level, chunk));
     }
 
     /**
@@ -446,6 +442,12 @@ public final class LightSync {
         }
     }
 
+    /** Whether the chunk's holder has its ticking chunk: until it has, the chunk cannot be sent, whatever its light. */
+    private static boolean ticking(Key key) {
+        ChunkHolder holder = key.level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(key.chunk.pack());
+        return holder != null && holder.getTickingChunk() != null;
+    }
+
     /** The watch of a chunk being sent, armed again if it was dropped as {@link #DORMANT}; null if it has none. */
     private static @Nullable NetWatch sentWatch(Key key) {
         if (DORMANT.remove(key)) {
@@ -461,6 +463,13 @@ public final class LightSync {
      */
     private static void compareLight(MinecraftServer server) {
         int now = server.getTickCount();
+        DORMANT.removeIf(key -> {
+            boolean woke = key.level.getServer() == server && ticking(key);
+            if (woke) {
+                NET.putIfAbsent(key, new NetWatch(now));
+            }
+            return woke;
+        });
         Iterator<Map.Entry<Key, NetWatch>> watches = NET.entrySet().iterator();
         while (watches.hasNext()) {
             Map.Entry<Key, NetWatch> entry = watches.next();
@@ -477,8 +486,7 @@ public final class LightSync {
             if (held || key.level.getChunkSource().chunkMap.getChunkToSend(key.chunk.pack()) == null) {
                 // Not sent yet, so nothing it was sent can be stale: the window starts when it can be sent (#954).
                 watch.keepOpen(now);
-                ChunkHolder holder = key.level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(key.chunk.pack());
-                if (holder == null || holder.getTickingChunk() == null) {
+                if (!ticking(key)) {
                     // It waits to tick, not for light: a chunk on the rim of the loaded area may never tick (#1297).
                     if (!held && watch.held.isEmpty()) {
                         watches.remove();

@@ -238,8 +238,7 @@ public final class SeamSender {
 
     /**
      * Whether vanilla's mark of {@code pos} of {@code level} as pending to send to {@code player} is skipped: during a crossing, when the
-     * rider was sent the chunk ahead, it has not changed since, and its light is neither being settled nor
-     * waiting for a send to be watched again ({@link LightSync#dormant}).
+     * rider was sent the chunk ahead, it has not changed since, and its light is not being settled.
      */
     public static boolean takePreSent(ServerPlayer player, ServerLevel level, ChunkPos pos) {
         if (!crossing) {
@@ -251,8 +250,7 @@ public final class SeamSender {
                 || !seam.lower.equals(level.dimension())
                 || !seam.sent.contains(packed)
                 || seam.stale.contains(packed)
-                || (!seam.fresh.contains(packed)
-                        && (LightSync.watching(level, pos) || LightSync.dormant(level, pos)))) {
+                || (!seam.fresh.contains(packed) && LightSync.watching(level, pos))) {
             return false;
         }
         seam.skipped.add(packed);
