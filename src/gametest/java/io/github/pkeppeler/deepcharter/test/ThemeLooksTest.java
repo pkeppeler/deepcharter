@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.ContinuityLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
@@ -70,8 +71,8 @@ public class ThemeLooksTest {
         }
     }
 
-    // The expected values below are the literals the Java held before #226, written out. Do not read them from the
-    // files.
+    // The expected values below are the literals the Java held before #226, written out, and the values added since
+    // (#1265 added the ghost veil, 0xA8050A06). Do not read them from the files.
 
     @GameTest
     public void theDefaultCrtLookIsTheOldOne(GameTestHelper helper) {
@@ -91,6 +92,7 @@ public class ThemeLooksTest {
                         0xFF2E7A45,
                         0xFF123D20,
                         0xFFFFB000,
+                        0xA8050A06,
                         6,
                         2,
                         1,
@@ -264,6 +266,50 @@ public class ThemeLooksTest {
                 "suit",
                 new SuitLook(6, 20, 96, 5, 16, 1, 2, 0xFF7CFC9A, 0xFFFFB000, 0xFFFF4A3A, 0xFF2E7A45, 5),
                 SuitLook.of(area("suit", null)));
+        expect(
+                helper,
+                "continuity",
+                new ContinuityLook(
+                        0.35,
+                        0.45,
+                        0.3,
+                        0.88,
+                        3,
+                        0.94,
+                        0.08,
+                        0.8,
+                        0.12,
+                        3.0,
+                        0.5,
+                        0.4,
+                        47,
+                        0.92,
+                        0.57,
+                        1.75,
+                        0.35,
+                        16,
+                        0.06,
+                        4,
+                        1,
+                        0x0C7CFC9A,
+                        0.5,
+                        9,
+                        14,
+                        0.5,
+                        0.03,
+                        90,
+                        40,
+                        0x1C7CFC9A,
+                        0xFF53A967,
+                        0x592E7A45,
+                        0xFF2E7A45,
+                        120,
+                        20,
+                        72,
+                        14,
+                        8,
+                        10.0),
+                ContinuityLook.of(area("continuity", null)));
         helper.succeed();
     }
 
@@ -679,7 +725,8 @@ public class ThemeLooksTest {
                 "catalogue",
                 "readout",
                 "sonar",
-                "suit")) {
+                "suit",
+                "continuity")) {
             areas.put(name, area(name, null));
         }
         return areas;
@@ -692,6 +739,40 @@ public class ThemeLooksTest {
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": 0 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": -5 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"scanlineSpacing\": 0 }")), "scanlineSpacing");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theContinuityEventKeepsItsBounds(GameTestHelper helper) {
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"rows\": 4 }")), "rows");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"skipPasses\": 9 }")), "skipPasses");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"boneColor\": 5 }")), "boneColor");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cellAspect\": 3 }")), "cellAspect");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"jawSteps\": 0 }")), "jawSteps");
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"bodySolidTicks\": 21 }")), "bodySolidTicks");
+        // Gson reads a bare NaN or Infinity leniently as a string, which the number check refuses: a timing that is not
+        // a number would hold the button.
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cutSeconds\": NaN }")), "cutSeconds");
+        rejected(
+                helper,
+                () -> ContinuityLook.of(area("continuity", "{ \"skipPeriodSeconds\": Infinity }")),
+                "skipPeriodSeconds");
+        rejected(
+                helper,
+                () -> ContinuityLook.of(
+                        area("continuity", "{ \"skipPeriodSeconds\": 0.1, \"skipOverlapSeconds\": 0.2 }")),
+                "skipOverlapSeconds");
+        // The last pass is the shortest: 0.3 s shrunk by half four times is under 0.02 s, shorter than the overlap.
+        rejected(
+                helper,
+                () -> ContinuityLook.of(area(
+                        "continuity",
+                        "{ \"skipPeriodSeconds\": 0.3, \"skipShrink\": 0.5, \"skipPasses\": 5,"
+                                + " \"skipOverlapSeconds\": 0.08 }")),
+                "skipShrink");
+        // With no pass to overlap, the overlap is never used.
+        Object _ = ContinuityLook.of(
+                area("continuity", "{ \"skipPeriodSeconds\": 0.1, \"skipPasses\": 0, \"skipOverlapSeconds\": 0.2 }"));
         helper.succeed();
     }
 
