@@ -123,12 +123,27 @@ checks=$(cut -f1,2 <<<"$checks_full")
 if [[ $gate_only -eq 1 ]]; then
   while IFS=$'\t' read -r bucket name; do echo "check $name: $bucket"; done <<<"$checks"
 fi
+# The refusal names the first check that is not passing. When every such check is a finished, failed client-suite job
+# (the `client-gametest` aggregate or a `client-gametest-shard <i>`) and every required check passed, it carries the
+# marker [client-only], which tools/merge-queue.sh matches to re-run the whole `Client tests` run (#1451).
+first_bad=
+client_only=1
 while IFS=$'\t' read -r bucket name; do
   case $bucket in
-    pass | skipping) ;;
-    *) refuse "has a check that is not passing: $name (newest non-skipped run: $bucket)" ;;
+    pass | skipping) continue ;;
   esac
+  [[ -n $first_bad ]] || first_bad="$name (newest non-skipped run: $bucket)"
+  [[ $name =~ ^client-gametest(-shard .+)?$ && $bucket =~ ^(failure|timed_out|cancelled)$ ]] || client_only=0
 done <<<"$checks"
+if [[ -n $first_bad ]]; then
+  for required in "${REQUIRED_CHECKS[@]}"; do
+    grep -qxF "pass"$'\t'"$required" <<<"$checks" || client_only=0
+  done
+  if [[ $client_only -eq 1 ]]; then
+    first_bad+="; only client-suite checks failed: re-run the whole Client tests run holding the head's newest non-skipped client-gametest job [client-only] (never --failed or one job: a re-run shard merges the live main, and the aggregate fails when shards merged different mains)"
+  fi
+  refuse "has a check that is not passing: $first_bad"
+fi
 for required in "${REQUIRED_CHECKS[@]}"; do
   grep -qxF "pass"$'\t'"$required" <<<"$checks" && continue
   if grep -qxF "skipping"$'\t'"$required" <<<"$checks"; then
