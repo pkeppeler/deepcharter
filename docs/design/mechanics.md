@@ -1243,7 +1243,7 @@ A full rack of 24 buys about 10 s of lava at tier 1, 14 s at tier 2 and 19 s at 
 - **People on foot.** A person near a figure does not make it fade. It does not flee and it does not attack. A person on foot in the dark draws a figure too, since #916 ([below](#the-retained-on-foot-916-a)).
 
 **Counterplay, on the ladder.**
-1. **By hand: drill it off.** Sprint down or push into a wall for 2.5 seconds. The warning gives the time to start, and the drain runs while the pilot reads. This is the main verb of the game, so a pilot who is digging anyway kills it without changing what they do. A pod that cannot drill (the surface, Company rock) cannot use the cutter: the pilot gets out and swings, or lights the pod before the next one comes.
+1. **By hand: drill it off.** Sprint down or drive into a wall (W) for 2.5 seconds. The warning gives the time to start, and the drain runs while the pilot reads. This is the main verb of the game, so a pilot who is digging anyway kills it without changing what they do. A pod that cannot drill (the surface, Company rock) cannot use the cutter: the pilot gets out and swings, or lights the pod before the next one comes.
 2. **A part: lights.** A lights part (tier 1, $125) makes the pod lit and draws none. It is prevention only now: it does nothing to a figure that already holds the pod. A pilot with lights is safe from this mechanic, whatever the tier.
 3. **Mastery: a bigger tank.** The drain is litres a second, so a bigger tank shrugs the time it takes to kill: the same 0.45 litres is 4.5 per cent of a stock tank and 1.8 per cent of a tier 2 tank. The old tool keeps its niche: a spare stock pod without lights is a pod the pilot must watch.
 
@@ -2547,7 +2547,6 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Open questions.** Whether the refill should grow with capacity once the canister exists; whether a toxin axis should join the air track or stand alone.
 
-
 ## The Claim: caves, strata and abandoned shafts (#1277, A)
 
 **Problem.** The playtest: "in the initial part of digging down, it seems there are no caves. When it's all solid block on the scanner, it looks like the pod isn't moving." The dig from the colony crossed about 120 rows of solid regolith rock under the surface, and layer 1 was one rock from top to floor, so neither the wall nor the scanner showed progress.
@@ -2567,3 +2566,29 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 **Tuning knobs.** The thresholds in `claim_caves.json` (pockets, fissures, passages; each a gradient over depth); the contacts, amplitude and surface multiplier in `claim_strata.json`, the contour noise's octave; `claim_shafts.json` (rarity), `claim_shaft.json` (depths); `claim_cave_ores.json` (tries), `claim_cave_ore.json` (weights, sizes); `claim_salvage_caches.json` (tries, crates).
 
 **Open questions.** The layer 1 dimension (outside the campaign world) keeps one rock and the old caves. The strata's grain (#1272) and a depth ruler on the scanner come next.
+
+## Pod controls and the chase camera (#1281, #1268, A)
+
+**Problem.** The pod read WASD relative to the pilot's view, snapped to four directions, and turned to face where it drove. With a camera behind the pod, pressing back made it turn round and drive at the camera. That is a top-down scheme, and Minecraft players already know the vehicle one ([ADR 0095](../adr/0095-pods-steer-like-a-boat-and-the-pilots-camera-chases-them.md)).
+
+**Rule.** Copy the vanilla boat (`AbstractBoat`) and deviate only where a drilling pod needs it.
+
+| Key | Pod | Copied from the boat | Deviation and why |
+|---|---|---|---|
+| W | drives forward along the pod's facing | `controlBoat` throttle along the yaw | **Instant speed.** The drive speed is the stock `horizontalSpeed` stat, reached at once, not the boat's ramp: the measured fuel, trip and bore tables and the client smoothing price that speed. The ramp can be added in one function if wanted |
+| S | backs up without turning | reverse is slower, and does not turn; A or D with S turns while reversing, as in the boat | **0.4 reverse.** The issue says reverse slower, and the boat's 1/8 cannot back out of a bore. It never drills. **W with S cancels** (the boat nets forward 0.035) |
+| A, D | turn the yaw (A left, D right) | `deltaRotation`: 1 degree a tick added per tick held, 0.9 of it kept, so it settles at 10 degrees a tick and coasts on after the key is let go | none out of a bore. In a bore as wide as the pod, one press turns a quarter to the next compass direction (below) |
+| bare A or D | creeps forward at 1/8 of the drive speed | the boat's paddle creep | none |
+| Space | rotor up | unchanged | |
+| sneak | dismount | vanilla | |
+| sprint | drills down when no direction key is held | unchanged for now; #1276 makes sprint with a direction key a boost | |
+
+**Camera.** Taking the pilot seat switches to third person (`THIRD_PERSON_BACK`) and leaving restores the view the player had. There is no option to turn it off. The view yaw takes the pod's turn every tick, as `AbstractBoat.positionRider` adds `deltaRotation` to its rider, so the angle to the pod stays in first and third person. **Unclamped view (a deviation):** the boat clamps the rider's view to 105 degrees from the nose; the pod does not, because #1268 and #1281 ask for free mouse look. In third person the view also eases back behind a driving pod (4 degrees a tick) once the mouse has been still for a second, so the camera chases; first person never settles.
+
+**The one deviation: the grid.** When the drill engages, the pod turns square to the compass at 15 degrees a tick, and the slab's first tick waits until it is square and centred. A sideways bore takes the compass direction nearest the nose, and only while W presses the pod against rock ahead of it. A bore down takes the nearest one too. In a bore as wide as the pod (rock beside it on both sides, on the ground) the pod squares itself and A and D do not steer it, so tunnels stay straight. One press of A or D there, while the pod is roughly square (within 15 degrees), turns it a quarter to the next compass direction (D clockwise), eased at the align rate; a held key is one press. W then drills the branch. A towed pod turns toward the way the line drags it, at 10 degrees a tick. Everything is the server's: the client sends only its keys, as before.
+
+**Knobs.** `PodSteeringTuning`: `turnAcceleration` (1), `turnDamping` (0.9), `reverseShare` (0.4), `creepShare` (0.125), `alignDegrees` (15), `alignTolerance` (0.5). `PodChase`: `LOOK_HOLD_TICKS` (20), `SETTLE_DEGREES` (4).
+
+**Open questions.**
+- Whether the pod should accelerate to its speed as a boat does. It does not yet: the speed is a stat the client smoothing and the fuel numbers assume.
+- The turn rate is a boat's, 200 degrees a second; a heavy pod might want less. It is one number.

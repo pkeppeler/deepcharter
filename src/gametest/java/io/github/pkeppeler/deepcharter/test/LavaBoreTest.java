@@ -1461,6 +1461,7 @@ public class LavaBoreTest {
         bore.sideStart = side.along(pod);
         bore.lastAlong = bore.sideStart;
         bore.idleTicks = 0;
+        side.face(pod);
         bore.pilot.setInput(side.input);
     }
 

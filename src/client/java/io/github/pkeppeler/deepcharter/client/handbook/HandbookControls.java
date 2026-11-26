@@ -48,7 +48,8 @@ public final class HandbookControls {
                     "lookup",
                     List.of(
                             new Row("look", List.of(options -> CatalogueKeys.RECIPES, options -> CatalogueKeys.USES)),
-                            new Row("star", List.of(options -> CatalogueKeys.FAVOURITE)))),
+                            new Row("star", List.of(options -> CatalogueKeys.FAVOURITE)),
+                            new Row("sheet", List.of(options -> CatalogueKeys.SPEC_SHEET)))),
             new Sheet("shelf", List.of(new Row("craftable"))),
             new Sheet(
                     "board",
@@ -62,11 +63,16 @@ public final class HandbookControls {
                                     "drive",
                                     List.of(
                                             options -> options.keyUp,
-                                            options -> options.keyLeft,
                                             options -> options.keyDown,
+                                            options -> options.keyLeft,
                                             options -> options.keyRight)),
+                            new Row("camera", List.of(options -> options.keyTogglePerspective)),
                             new Row("climb", List.of(options -> options.keyJump)))),
-            new Sheet("dig", List.of(new Row("down", List.of(options -> options.keySprint)), new Row("side"))),
+            new Sheet(
+                    "dig",
+                    List.of(
+                            new Row("down", List.of(options -> options.keySprint)),
+                            new Row("side", List.of(options -> options.keyUp)))),
             new Sheet(
                     "crew",
                     List.of(

@@ -1,11 +1,10 @@
-package io.github.pkeppeler.deepcharter.client.layer;
+package io.github.pkeppeler.deepcharter.layer;
 
-import io.github.pkeppeler.deepcharter.layer.Depth;
 import java.util.Locale;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 
-/** The depth readout, for example "-1,234 ft.". Below sea level is negative. */
+/** The depth readout, for example "-1,234 ft.": the HUD's altimeter and the Continuity Event's chat line (#1337). Below sea level is negative. */
 public final class Altimeter {
     private Altimeter() {}
 
