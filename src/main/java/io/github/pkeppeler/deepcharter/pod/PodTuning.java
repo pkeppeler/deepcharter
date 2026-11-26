@@ -36,7 +36,7 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
             float verticalDrag,
             float hardLandingSpeed,
             float hullDamagePerSpeed) {
-        public static final Movement DEFAULT = new Movement(0.2f, 100f, 0.16f, 0.35f, 0.08f, 0.98f, 0.7f, 70f);
+        public static final Movement DEFAULT = new Movement(0.2f, 100f, 0.16f, 0.35f, 0.08f, 0.98f, 0.7f, 50f);
     }
 
     /**
