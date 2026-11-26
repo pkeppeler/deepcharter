@@ -54,7 +54,7 @@ for a in "$@"; do
   [[ $a == commit_title=* ]] && printf '%s' "${a#commit_title=}" >"$LOG.title"
   prev=$a
 done
-# fails_first <name>: true for the first STUB_<NAME>_FAILS calls of a listing (counted in $LOG.<name>). Such a call
+# fails_first <log> <NAME>: true for the first STUB_<NAME>_FAILS calls of a listing (counted in $LOG.<log>). Such a call
 # prints the first page (STUB_<NAME>_PAGE1) and then STUB_<NAME>_ERR on stderr, exiting 1, as `gh api --paginate` does
 # when a later page fails.
 fails_first() {
@@ -637,6 +637,10 @@ count "the check-run listing was read twice" "/check-runs?filter=all" 2
 run_script STUB_RUNS_FAILS=2 "STUB_RUNS_ERR=Get \"https://api.github.com/x\": net/http: TLS handshake timeout"
 exited "check runs read after two timeouts merge" 0
 printed "a retry says why" "failed (attempt 1 of 3, retrying)"
+refusal "a bad GH_LIST_ATTEMPTS refuses with the reason" "could not read every check run of abc123: GH_LIST_ATTEMPTS and GH_LIST_SLEEP must be whole numbers" \
+  GH_LIST_ATTEMPTS=x
+refusal "a bad GH_LIST_SLEEP refuses with the reason" "GH_LIST_ATTEMPTS and GH_LIST_SLEEP must be whole numbers" \
+  GH_LIST_SLEEP=1.5
 refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/else.git
 
 # A relative $0 (./merge-pr.sh from tools/) must still find tools/lib/adr.sh after the script's cd.
