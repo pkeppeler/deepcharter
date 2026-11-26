@@ -33,6 +33,8 @@ public class PodMovementTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final double EPSILON = 1e-6;
+    /** A rig pod thrown down this fast lands hard through the ground cushion (#1432), which brakes a crewed sink. */
+    private static final double HARD_SINK = 1.5;
     private static final float SOUTH = 0f;
     private static final float WEST = 90f;
 
@@ -354,6 +356,7 @@ public class PodMovementTest {
     @GameTest(maxTicks = 100)
     public void hardLandingDamagesHullAndNotThePilot(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 12, SOUTH);
+        rig.pod.setDeltaMovement(0, -HARD_SINK, 0);
         float hullBefore = rig.pod.hull();
         float healthBefore = rig.pilot.player().getHealth();
         helper.runAfterDelay(50, () -> {
