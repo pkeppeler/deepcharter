@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -90,6 +91,8 @@ public class VoidBelowScenario extends EvidenceScenario {
                 ClientSession.player(client).setXRot(LOOK_DOWN);
             });
             context.waitTicks(60);
+            // Founding the charter queued the employer's transmission; it would cover the HUD this scenario shows.
+            context.runOnClient(client -> TransmissionOverlay.reset());
             for (int i = 0; i < 4; i++) {
                 frame(context);
                 context.waitTicks(TICKS_PER_FRAME);
@@ -142,6 +145,8 @@ public class VoidBelowScenario extends EvidenceScenario {
             }
             context.getInput().releaseKey(options -> options.keyJump);
             context.waitTicks(20);
+            // The first breach's transmission would cover the plate with the hull the pod kept.
+            context.runOnClient(client -> TransmissionOverlay.reset());
             for (int i = 0; i < 6; i++) {
                 frame(context);
                 context.waitTicks(TICKS_PER_FRAME);
