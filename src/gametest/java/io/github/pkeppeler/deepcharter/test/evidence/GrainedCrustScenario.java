@@ -403,7 +403,9 @@ public class GrainedCrustScenario extends EvidenceScenario {
     private static PodEntity podOnTheFloor(MinecraftServer server) {
         AABB room = new AABB(
                 ROOM_WEST, FLOOR_Y - 1, Z - HALF_WIDTH, ROOM_EAST + 1, FLOOR_Y + HEIGHT + 1, Z + HALF_WIDTH + 1);
-        return level(server).getEntitiesOfClass(PodEntity.class, room).getFirst();
+        return level(server).getEntitiesOfClass(PodEntity.class, room).stream()
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no pod in the grained-crust room"));
     }
 
     /** True while the cell against the wall, at the end of the water's channel, holds a fluid. */
