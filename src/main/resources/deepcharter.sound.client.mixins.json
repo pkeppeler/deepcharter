@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "io.github.pkeppeler.deepcharter.client.sound.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "BiomeLoopDuckMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

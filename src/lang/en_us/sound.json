@@ -29,5 +29,10 @@
   "deepcharter.recording.edison_around_the_world": "Around the World on the Phonograph",
   "deepcharter.recording.lost_chord": "The Lost Chord",
   "deepcharter.recording.edison_doll": "Twinkle, Twinkle, Little Star",
-  "deepcharter.recording.volta_nursery_rhyme": "Nursery Rhyme"
+  "deepcharter.recording.volta_nursery_rhyme": "Nursery Rhyme",
+  "subtitles.deepcharter.creature.tally_click": "Tally clicks",
+  "subtitles.deepcharter.creature.tally_clamp": "Tally clamps on",
+  "subtitles.deepcharter.creature.tally_break": "Tally breaks",
+  "subtitles.deepcharter.creature.tally_take": "Tally stamps a sample",
+  "subtitles.deepcharter.creature.retained_dread": "Something holds on"
 }

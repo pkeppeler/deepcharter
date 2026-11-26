@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.scanner.EchoedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -45,6 +46,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
@@ -62,7 +64,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Server GameTests for #917, the Tallies. A pod or a person who holds ore draws one; one that trails for about 30 s clamps to the cargo hatch
- * or the pack and takes one ore; the cutter breaks it on the hatch and one blow breaks it on foot; it drops nothing and breaks no block; a
+ * or the pack and takes one ore, with a cue of its own that the person robbed hears beside them (#1450, on both paths, and never from a Tally
+ * that took nothing); the cutter breaks it on the hatch and one blow breaks it on foot; it drops nothing and breaks no block; a
  * scanner reads it as ore. The numbers the tuning rests on are logged as {@code [tally]} lines and go in {@code docs/design/mechanics.md}; the
  * pacing that follows from them is {@code TallyEconomyTest}. Each test builds a closed arena in a far chunk of the test world.
  */
@@ -104,6 +107,10 @@ public class TallyTest {
     private static final String BITTEN_KEY = "creature.deepcharter.tally_bitten";
     private static final String BROKEN_KEY = "creature.deepcharter.tally_broken";
     private static final String SAMPLE_KEY = "creature.deepcharter.tally_sample";
+    private static final Identifier TAKE_CUE =
+            DeepSound.CREATURE_TALLY_TAKE.event().location();
+    /** (#1450) How far from the person robbed the take is heard to play: the hatch is beside the pod, the pack at their back. */
+    private static final double TAKE_REACH = 3;
 
     /** A closed arena with a Tally at its west end, and either a pod with a pilot at its east end or a person on foot there. */
     private record Arena(
@@ -202,6 +209,28 @@ public class TallyTest {
                     : holder.player().getInventory().countItem(OreRegistry.item(OreType.GOLDIUM));
         }
 
+        /** (#1450) Where the take's cue played, each time the holder heard it in this arena (a sound packet at a place). */
+        List<Vec3> takeCues() {
+            AABB box = new AABB(origin).inflate(HALF + 2);
+            return holder.soundsHeardAtPlaces().stream()
+                    .filter(sound -> sound.id().equals(TAKE_CUE) && box.contains(sound.at()))
+                    .map(MockPlayer.PlacedSound::at)
+                    .toList();
+        }
+
+        /** (#1450) The person robbed heard the take's cue once, played beside them, at the hatch or the pack. */
+        void expectOneTakeCue(GameTestHelper helper) {
+            List<Vec3> cues = takeCues();
+            if (cues.size() != 1 || cues.getFirst().distanceTo(holder.player().position()) > TAKE_REACH) {
+                throw failure(
+                        helper,
+                        "the person robbed should hear the take's cue once, within %s blocks of them at %s; heard it at %s",
+                        TAKE_REACH,
+                        holder.player().position(),
+                        cues);
+            }
+        }
+
         int droppedItems() {
             // entity-query: the arena's own chunk, forced and ticking for the test
             return level.getEntitiesOfClass(ItemEntity.class, new AABB(origin).inflate(HALF + 2))
@@ -287,6 +316,7 @@ public class TallyTest {
                             "the pilot was not told once each of the approach, the clamp and the sample: %s",
                             arena.holder.actionBarMessages());
                 }
+                arena.expectOneTakeCue(helper);
                 arena.clear();
                 helper.succeed();
             } else if (arena.age(helper) - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
@@ -351,6 +381,9 @@ public class TallyTest {
                 }
                 if (arena.droppedItems() != 0) {
                     throw failure(helper, "the broken Tally dropped %s items", arena.droppedItems());
+                }
+                if (!arena.takeCues().isEmpty()) {
+                    throw failure(helper, "a Tally that took nothing played the take's cue: %s", arena.takeCues());
                 }
                 if (arena.told(BITTEN_KEY) != 1 || arena.told(BROKEN_KEY) != 1) {
                     // The mock pilot's lines reach it a tick after the server sends them: look again next tick.
@@ -431,6 +464,7 @@ public class TallyTest {
                             "the person was not told once each of the clamp and the sample: %s",
                             arena.holder.actionBarMessages());
                 }
+                arena.expectOneTakeCue(helper);
                 arena.clear();
                 helper.succeed();
             } else if (arena.age(helper) - clampedAt[0] > SAMPLE_BUDGET_TICKS) {

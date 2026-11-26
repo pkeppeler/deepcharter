@@ -24,6 +24,10 @@ import java.util.List;
  * @param wreckSongTicks            how long the song lasts, in ticks (the length of its file, rounded up)
  * @param wreckSongRearmTicks       a wreck's phonograph that has played or been switched off plays for the next visitor once no
  *                                  player has been within the trigger range for this long
+ * @param dreadFadeInTicks          ticks the Retained's dread bed takes to rise to full once a figure holds the player or their pod (#1450)
+ * @param dreadFadeOutTicks         ticks the bed takes to fall to silence once no figure holds them (struck off, or the pod gone)
+ * @param droneDuck                 the share of its volume the layer's drone keeps while the bed plays at full; it follows the bed's
+ *                                  fade, so the drone dips as the bed rises and comes back as it falls
  */
 public record SoundTuning(
         int typewriterLettersPerClick,
@@ -36,7 +40,19 @@ public record SoundTuning(
         int wreckSongRange,
         int wreckSongTriggerRange,
         int wreckSongTicks,
-        int wreckSongRearmTicks) {
+        int wreckSongRearmTicks,
+        int dreadFadeInTicks,
+        int dreadFadeOutTicks,
+        float droneDuck) {
     public static final SoundTuning DEFAULT =
-            new SoundTuning(2, 0.02, 10, 10, List.of(218, 322, 468), 24, 20, 16, 14, 435, 6_000);
+            new SoundTuning(2, 0.02, 10, 10, List.of(218, 322, 468), 24, 20, 16, 14, 435, 6_000, 40, 60, 0.35f);
+
+    public SoundTuning {
+        if (dreadFadeInTicks < 1 || dreadFadeOutTicks < 1) {
+            throw new IllegalArgumentException("the dread bed's fades take at least a tick each");
+        }
+        if (!(droneDuck >= 0f && droneDuck <= 1f)) {
+            throw new IllegalArgumentException("the drone's duck is a share of its volume, 0 to 1, not " + droneDuck);
+        }
+    }
 }
