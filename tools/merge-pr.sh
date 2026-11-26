@@ -98,11 +98,14 @@ mergeable=$(pr_mergeable_of "$pr") || refuse "could not read mergeable"
 # label events add a skipped run under the same name as an earlier real one, and
 # the default (latest per name) view would let that skipped run hide a failure.
 # One line per run: name, start time, id, status, conclusion. A run that has not
-# started sorts newest. Runs are ordered by start time, then id (monotonic).
-run_lines=$(gh api "repos/$repo/commits/$sha/check-runs?filter=all&per_page=100" --paginate \
-  --jq '.check_runs[] | [.name, (.started_at // "9999-12-31T23:59:59Z"), (.id | tostring), .status, (.conclusion // "")] | @tsv' 2>&1 || true)
+# started sorts newest. Runs are ordered by start time, then id (monotonic). A head can hold over 100 runs, and a
+# failing run on a page that could not be read would be unseen, so a listing not read in full refuses (#1484).
+gh_list run_lines "repos/$repo/commits/$sha/check-runs?filter=all&per_page=100" \
+  '.check_runs[] | [.name, (.started_at // "9999-12-31T23:59:59Z"), (.id | tostring), .status, (.conclusion // "")] | @tsv' \
+  || refuse "could not read every check run of $sha: $gh_list_err (a lost page could hide a failure)"
+# shellcheck disable=SC2154 # gh_list assigns run_lines by name
 if ! grep -q $'\t' <<<"$run_lines"; then
-  refuse "has no checks reported for $sha (zero checks is not a pass): $(tr '\n' ' ' <<<"$run_lines")"
+  refuse "has no checks reported for $sha (zero checks is not a pass)"
 fi
 # Per name, the deciding run is the newest one that is not skipped: only a
 # `success` passes, anything else (running, failed, cancelled, ...) refuses. A name
@@ -172,9 +175,9 @@ done <<<"$shard_names"
 for based in "${based_names[@]}"; do
   run_id=$(awk -F'\t' -v n="$based" '$2 == n { print $3 }' <<<"$checks_full")
   [[ $run_id =~ ^[0-9]+$ ]] || refuse "has no deciding run id for $based"
-  recorded=$(gh api "repos/$repo/check-runs/$run_id/annotations?per_page=100" --paginate \
-    --jq '.[] | select(.title == "merged-main") | .message' 2>/dev/null) \
-    || refuse "could not read the annotations of $based run $run_id"
+  gh_list recorded "repos/$repo/check-runs/$run_id/annotations?per_page=100" \
+    '.[] | select(.title == "merged-main") | .message' \
+    || refuse "could not read the annotations of $based run $run_id: $gh_list_err"
   recorded=${recorded%%$'\n'*}
   [[ $gate_only -eq 0 ]] || echo "merged main $based (run $run_id): ${recorded:-none}"
   [[ $recorded =~ ^[0-9a-f]{40}$ ]] \
