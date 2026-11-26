@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
@@ -168,6 +169,7 @@ public final class CockpitHud {
                     layout,
                     look,
                     rows(pod, CockpitReading.of(pod, heat), look, PodStatusHud.readout(client.player, pod)),
+                    SeatedHotbar.slots(client, guiWidth, guiHeight),
                     guiWidth,
                     guiHeight);
             Box plate = plateBox(client.font, layout, look, rows, guiWidth, guiHeight);
@@ -490,18 +492,25 @@ public final class CockpitHud {
 
     /**
      * The rows of {@code all} the plate shows on a GUI {@code guiWidth} x {@code guiHeight}: as many as fit under its anchor ({@link #fitting}), and fewer when the plate
-     * would then reach down into vanilla's hotbar, which a narrow GUI puts under the plate's columns (#1457). A warning is never dropped, so a pile of warnings can still
-     * reach it.
+     * would then reach down into one of {@code hotbar}, what vanilla draws along the bottom edge ({@link SeatedHotbar#slots}), which a narrow GUI puts under the plate's
+     * columns (#1457). A warning is never dropped, so a pile of warnings can still reach it.
      */
     public static List<Row> plateRows(
-            Font font, Layout layout, CockpitLook look, List<Row> all, int guiWidth, int guiHeight) {
+            Font font,
+            Layout layout,
+            CockpitLook look,
+            List<Row> all,
+            List<HudKeepClear.Rect> hotbar,
+            int guiWidth,
+            int guiHeight) {
         List<Row> rows = fitting(all, roomForRows(font, layout, look, guiHeight, guiHeight));
         Box box = plateBox(font, layout, look, rows, guiWidth, guiHeight);
-        HudKeepClear.Rect hotbar = SeatedHotbar.bar(guiWidth, guiHeight);
-        if (!hotbar.overlaps(new HudKeepClear.Rect("plate", box.left(), box.top(), box.width(), box.height()))) {
-            return rows;
-        }
-        return fitting(all, roomForRows(font, layout, look, guiHeight, hotbar.y()));
+        HudKeepClear.Rect plate = new HudKeepClear.Rect("plate", box.left(), box.top(), box.width(), box.height());
+        OptionalInt floor = hotbar.stream()
+                .filter(plate::overlaps)
+                .mapToInt(HudKeepClear.Rect::y)
+                .min();
+        return floor.isEmpty() ? rows : fitting(all, roomForRows(font, layout, look, guiHeight, floor.getAsInt()));
     }
 
     /** How many rows the plate has room for between its anchor on a GUI {@code guiHeight} high and {@code bottom}. */
@@ -533,7 +542,16 @@ public final class CockpitHud {
         Font font = client.font;
         List<Row> rows = decay.fault(Part.PLATE) == Fault.DROP
                 ? List.of(tag(decay, look))
-                : jumped(decay, plateRows(font, layout, look, all, graphics.guiWidth(), graphics.guiHeight()));
+                : jumped(
+                        decay,
+                        plateRows(
+                                font,
+                                layout,
+                                look,
+                                all,
+                                SeatedHotbar.slots(client, graphics.guiWidth(), graphics.guiHeight()),
+                                graphics.guiWidth(),
+                                graphics.guiHeight()));
         Box box = plateBox(font, layout, look, rows, graphics.guiWidth(), graphics.guiHeight());
         CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
         GuiSpriteScaling.NineSlice.Border inset = plateInset(layout, look);

@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.pod.SeatedHotbar;
 import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
@@ -421,6 +422,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                                 CockpitReading.of(pod, CockpitHud.heat()),
                                 look,
                                 PodStatusHud.readout(player, pod)),
+                        SeatedHotbar.slots(client, width, height),
                         width,
                         height);
                 var plate = CockpitHud.plateBox(font, ribbon, look, rows, width, height);

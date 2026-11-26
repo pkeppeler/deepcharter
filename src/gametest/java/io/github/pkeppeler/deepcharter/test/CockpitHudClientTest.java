@@ -41,6 +41,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,7 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -168,6 +170,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
                 expectEveryPlateMessageIsAPlateCase();
                 expectThePlateHoldsEveryLineClearOfItsBorder(context);
+                expectThePlateStopsAboveTheOffHandSlot(context);
                 expectTheRibbonIsTheDefaultSeatedHud(context);
                 expectCockpitHidesTheVanillaHud(context, singleplayer, pod);
                 expectCockpitHidesTheVanillaHudInTheChaseViewToo(context, singleplayer, pod);
@@ -930,29 +933,112 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             problems.add(where + ": the altimeter reading does not fit its recess in the band");
         }
         for (List<CockpitHud.Row> rows : plateCases()) {
-            List<CockpitHud.Row> kept = CockpitHud.plateRows(font, layout, look, rows, guiWidth, guiHeight);
-            CockpitHud.Box plate = CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight);
-            int[] plateBox = {plate.left(), plate.top(), plate.left() + plate.width(), plate.top() + plate.height()};
-            if (!inside(plateBox, screen)) {
-                problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
-                        + Arrays.toString(plateBox));
-            }
-            for (String piece : List.of("band", "bezel", "hotbar")) {
-                if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
-                    problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
-                }
-            }
             long alerts = rows.stream()
                     .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
                     .count();
-            long keptAlerts = kept.stream()
-                    .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
-                    .count();
-            if (alerts != keptAlerts) {
-                problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
+            // Every set of what vanilla draws along the bottom edge: either main arm, with and without an off-hand
+            // item and the hotbar's attack indicator.
+            for (List<HudKeepClear.Rect> slots : slotSets(guiWidth, guiHeight)) {
+                List<CockpitHud.Row> kept = CockpitHud.plateRows(font, layout, look, rows, slots, guiWidth, guiHeight);
+                CockpitHud.Box plate = CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight);
+                int[] plateBox = {plate.left(), plate.top(), plate.left() + plate.width(), plate.top() + plate.height()
+                };
+                if (!inside(plateBox, screen)) {
+                    problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
+                            + Arrays.toString(plateBox));
+                }
+                for (String piece : List.of("band", "bezel")) {
+                    if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
+                        problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
+                    }
+                }
+                for (HudKeepClear.Rect slot : slots) {
+                    if (overlap(plateBox, new int[] {slot.x(), slot.y(), slot.right(), slot.bottom()})) {
+                        problems.add(where + ": the plate with " + kept.size() + " rows covers the " + slot.what()
+                                + " of "
+                                + slots.stream().map(HudKeepClear.Rect::what).toList());
+                    }
+                }
+                long keptAlerts = kept.stream()
+                        .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
+                        .count();
+                if (alerts != keptAlerts) {
+                    problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
+                }
             }
         }
         return problems;
+    }
+
+    /** What vanilla can draw along the bottom edge of the GUI: for either main arm, with and without an off-hand item and the hotbar's attack indicator. */
+    private static List<List<HudKeepClear.Rect>> slotSets(int guiWidth, int guiHeight) {
+        List<List<HudKeepClear.Rect>> sets = new ArrayList<>();
+        for (HumanoidArm arm : HumanoidArm.values()) {
+            for (boolean offhand : new boolean[] {false, true}) {
+                for (boolean indicator : new boolean[] {false, true}) {
+                    sets.add(SeatedHotbar.slots(arm, offhand, indicator, guiWidth, guiHeight));
+                }
+            }
+        }
+        return sets;
+    }
+
+    /**
+     * A left-handed pilot with an off-hand item has the off-hand slot right of the bar, under the plate's columns: a plate narrow enough to miss the bar but wide enough to
+     * reach over the off-hand slot stops above it. Each GUI has such a plate (a column of notes of one width, found by trying widths), so the check is not vacuous: the
+     * same plate fitted against the bar alone covers the off-hand slot.
+     */
+    private void expectThePlateStopsAboveTheOffHandSlot(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            Font font = client.font;
+            CockpitLook look = CockpitLook.current();
+            CockpitLook.Layout layout = look.ribbon();
+            List<String> found = new ArrayList<>();
+            for (int[] gui : new int[][] {{320, 240}, {427, 240}}) {
+                int width = gui[0];
+                int height = gui[1];
+                List<HudKeepClear.Rect> slots = SeatedHotbar.slots(HumanoidArm.LEFT, true, false, width, height);
+                HudKeepClear.Rect bar = slots.getFirst();
+                HudKeepClear.Rect offhand = slots.getLast();
+                int cases = 0;
+                for (int letters = 1; letters <= 40; letters++) {
+                    Component text = Component.literal("M".repeat(letters));
+                    List<CockpitHud.Row> rows =
+                            Collections.nCopies(20, CockpitHud.Row.of(new PodStatusHud.Line(text, 0)));
+                    HudKeepClear.Rect barOnly = plateRect(font, layout, look, rows, List.of(bar), width, height);
+                    if (barOnly.overlaps(bar) || !barOnly.overlaps(offhand)) {
+                        continue;
+                    }
+                    cases++;
+                    HudKeepClear.Rect plate = plateRect(font, layout, look, rows, slots, width, height);
+                    if (plate.overlaps(offhand) || plate.overlaps(bar)) {
+                        found.add(width + " x " + height + ": the plate " + plate + " covers the off-hand slot "
+                                + offhand + " or the bar " + bar);
+                    }
+                }
+                if (cases == 0) {
+                    found.add(width + " x " + height + ": no plate width misses the bar and meets the off-hand slot "
+                            + offhand);
+                }
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The plate must stop above a left-handed pilot's off-hand slot: " + problems);
+        }
+    }
+
+    private static HudKeepClear.Rect plateRect(
+            Font font,
+            CockpitLook.Layout layout,
+            CockpitLook look,
+            List<CockpitHud.Row> rows,
+            List<HudKeepClear.Rect> slots,
+            int guiWidth,
+            int guiHeight) {
+        List<CockpitHud.Row> kept = CockpitHud.plateRows(font, layout, look, rows, slots, guiWidth, guiHeight);
+        CockpitHud.Box box = CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight);
+        return new HudKeepClear.Rect("plate", box.left(), box.top(), box.width(), box.height());
     }
 
     /** The plates to fit: each warning alone, and every warning a pilot can have at once with every note too. */

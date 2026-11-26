@@ -30,6 +30,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -43,7 +44,8 @@ import net.minecraft.world.phys.Vec3;
  * Client GameTest for the hotbar under the cockpit (#1457): a seated pilot sees vanilla's hotbar and its selection frame (read from pixels: the frame moves to the slot a
  * key picks, and a slot nothing touched stays as it was), picks a slot with a number key and with the mouse wheel through the window's own input handlers, and uses dynamite
  * from the picked slot with the use key, which blasts the rock round the pod and spends the stick. The hotbar and the held item's name are listed for popups to keep clear
- * of while seated and not on foot, and at every GUI scale the Ribbon fits on this window the hotbar covers no part of the cockpit.
+ * of while seated and not on foot, and the name is drawn inside the box listed for it. That the hotbar covers no part of the cockpit is {@code CockpitHudClientTest}'s
+ * Ribbon-fit sweep, over every window, GUI scale and plate case.
  */
 public class SeatedHotbarClientTest implements FabricClientGameTest {
     private static final int FEET_Y = TestLayers.worldY(1, 150);
@@ -63,6 +65,15 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
     private static final double MOVED = 0.10;
 
     private static final double STILL = 0.03;
+    /** How much of the held item name's listed box its text and shadow must change when vanilla draws it there. */
+    private static final double NAME_DRAWN = 0.10;
+    /**
+     * The strip over the name's box, in GUI pixels, and how much of it may change: a name drawn higher than its box shows there (a box listed 3 pixels too low, past
+     * its 2 pixel backdrop, changes 3 % of it; 0 measured with the box where it is), and nothing else in it moves between the two shots of one moment.
+     */
+    private static final int ABOVE_NAME = 4;
+
+    private static final double ABOVE_STILL = 0.01;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -113,7 +124,6 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
                 expectTheHotbarIsListedOnlyWhileSeated(context, singleplayer);
                 expectTheHotbarDrawsAndANumberKeyPicksASlot(context, singleplayer);
                 expectTheMouseWheelPicksASlot(context);
-                expectTheHotbarCoversNoPartOfTheCockpit(context);
                 expectDynamiteFromThePickedSlotBlasts(context, singleplayer);
             } finally {
                 EvidencePins.reset();
@@ -169,12 +179,46 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
         RealInput.key(context, InputConstants.KEY_4, 0);
         awaitSlot(context, singleplayer, DYNAMITE_SLOT);
         BufferedImage after = shot(context, "seated-hotbar-slot-4");
-        double moved = differing(before, after, DYNAMITE_SLOT);
-        double still = differing(before, after, UNTOUCHED_SLOT);
+        double moved = differing(before, after, slotBox(DYNAMITE_SLOT));
+        double still = differing(before, after, slotBox(UNTOUCHED_SLOT));
         if (moved < MOVED || still > STILL) {
             throw new AssertionError("Seated, the hotbar is drawn and its frame follows the pick: " + moved
                     + " of the picked slot's box changed (at least " + MOVED + "), " + still
                     + " of an untouched slot's (at most " + STILL + ")");
+        }
+        expectTheNameIsDrawnWhereItIsListed(context, after);
+    }
+
+    /**
+     * The name the pick brought up is drawn inside the box the keep-clear list gives for it: against a shot of the same moment with the name held off
+     * ({@link EvidencePins#itemNameHidden}), the box changes and the strip just over it does not.
+     */
+    private static void expectTheNameIsDrawnWhereItIsListed(ClientGameTestContext context, BufferedImage named) {
+        HudKeepClear.Rect name = context.computeOnClient(client ->
+                HudKeepClear.rects(
+                                client,
+                                client.getWindow().getGuiScaledWidth(),
+                                client.getWindow().getGuiScaledHeight())
+                        .stream()
+                        .filter(rect -> rect.what().equals("held item name"))
+                        .findFirst()
+                        .orElseThrow(() -> new AssertionError("the held item's name is not on the keep-clear list")));
+        EvidencePins.itemNameHidden = true;
+        BufferedImage nameless;
+        try {
+            nameless = shot(context, "seated-hotbar-slot-4-nameless");
+        } finally {
+            EvidencePins.itemNameHidden = false;
+        }
+        double inside = differing(named, nameless, name);
+        double above = differing(
+                named,
+                nameless,
+                new HudKeepClear.Rect("over the name", name.x(), name.y() - ABOVE_NAME, name.width(), ABOVE_NAME));
+        if (inside < NAME_DRAWN || above > ABOVE_STILL) {
+            throw new AssertionError("The held item's name is drawn in its listed box " + name + ": " + inside
+                    + " of the box changed with the name (at least " + NAME_DRAWN + "), " + above
+                    + " of the strip over it (at most " + ABOVE_STILL + ")");
         }
     }
 
@@ -192,41 +236,6 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
                 "the wheel to pick the dynamite's slot again",
                 client -> ClientSession.player(client).getInventory().getSelectedSlot() == DYNAMITE_SLOT,
                 client -> "slot " + ClientSession.player(client).getInventory().getSelectedSlot());
-    }
-
-    /** At every GUI scale at which the Ribbon fits this window, the hotbar shares no pixel with the ribbon, the scanner or the plate as they are drawn now. */
-    private static void expectTheHotbarCoversNoPartOfTheCockpit(ClientGameTestContext context) {
-        List<String> problems = context.computeOnClient(client -> {
-            List<String> found = new ArrayList<>();
-            int fitted = 0;
-            for (int scale = 1; scale <= 4; scale++) {
-                client.getWindow().setGuiScale(scale);
-                try {
-                    int width = client.getWindow().getGuiScaledWidth();
-                    int height = client.getWindow().getGuiScaledHeight();
-                    if (CockpitHud.seated(client, width, height).isEmpty()) {
-                        continue;
-                    }
-                    fitted++;
-                    List<HudKeepClear.Rect> rects = HudKeepClear.rects(client, width, height);
-                    HudKeepClear.Rect bar = SeatedHotbar.bar(width, height);
-                    for (HudKeepClear.Rect rect : rects) {
-                        if (rect.what().startsWith("cockpit") && rect.overlaps(bar)) {
-                            found.add("GUI scale " + scale + ": the hotbar covers the " + rect);
-                        }
-                    }
-                } finally {
-                    client.getWindow().setGuiScale(GUI_SCALE);
-                }
-            }
-            if (fitted == 0) {
-                found.add("the Ribbon fits no GUI scale of this window");
-            }
-            return found;
-        });
-        if (!problems.isEmpty()) {
-            throw new AssertionError("The hotbar must not cover the cockpit: " + problems);
-        }
     }
 
     /**
@@ -348,6 +357,8 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
             ClientSession.player(client).setYRot(0f);
             ClientSession.player(client).setXRot(0f);
             client.gui.toastManager().clear();
+            // The dismount hint fades on its own clock, in the rows over the held item's name.
+            client.gui.hud.setOverlayMessage(Component.empty(), false);
         });
         ClientWait.until(
                 context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
@@ -360,14 +371,18 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
         }
     }
 
-    /** The share of the pixels of slot {@code slot}'s frame box, at GUI scale 2 on the 427 x 240 GUI, that differ by more than a few levels between two shots. */
-    private static double differing(BufferedImage a, BufferedImage b, int slot) {
+    /** Slot {@code slot}'s frame box on the 427 x 240 GUI of GUI scale 2. */
+    private static HudKeepClear.Rect slotBox(int slot) {
         HudKeepClear.Rect bar = SeatedHotbar.bar(427, 240);
-        int left = bar.x() + slot * CELL;
+        return new HudKeepClear.Rect("slot " + (slot + 1), bar.x() + slot * CELL, bar.y(), FRAME_WIDTH, FRAME_HEIGHT);
+    }
+
+    /** The share of the pixels of {@code box}, in GUI pixels at GUI scale 2, that differ by more than a few levels between two shots. */
+    private static double differing(BufferedImage a, BufferedImage b, HudKeepClear.Rect box) {
         int differing = 0;
         int total = 0;
-        for (int y = bar.y() * GUI_SCALE; y < (bar.y() + FRAME_HEIGHT) * GUI_SCALE; y++) {
-            for (int x = left * GUI_SCALE; x < (left + FRAME_WIDTH) * GUI_SCALE; x++) {
+        for (int y = box.y() * GUI_SCALE; y < box.bottom() * GUI_SCALE; y++) {
+            for (int x = box.x() * GUI_SCALE; x < box.right() * GUI_SCALE; x++) {
                 total++;
                 int pa = a.getRGB(x, y);
                 int pb = b.getRGB(x, y);
