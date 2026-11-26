@@ -76,7 +76,7 @@ public final class DrawnText {
 
     /** Like {@link #of(Screen)} with the mouse at ({@code mouseX}, {@code mouseY}), for what only a hovered thing draws. */
     public static List<Drawn> of(Screen screen, int mouseX, int mouseY) {
-        return of(recorder -> screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f));
+        return frame(screen, mouseX, mouseY).text();
     }
 
     /** Like {@link #of(Screen)} with the mouse where the cursor is now. Client thread. */

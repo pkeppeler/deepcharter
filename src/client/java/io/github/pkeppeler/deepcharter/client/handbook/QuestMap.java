@@ -178,8 +178,8 @@ final class QuestMap {
 
     /**
      * Draws the flowchart with its origin at ({@code originX}, {@code originY}), clipped to {@code clip}, in screen
-     * pixels. The steps of a chapter in full are a click's to pick, so each carries the {@link ClickCue}; step {@code
-     * hovered} (-1 for none) is the one under the mouse.
+     * pixels. When {@code clickable}, a click picks a step, so each carries the {@link ClickCue}; step {@code hovered}
+     * (-1 for none) is the one under the mouse.
      */
     static void drawChart(
             GuiGraphicsExtractor graphics,
@@ -191,6 +191,7 @@ final class QuestMap {
             Rect clip,
             @Nullable Component note,
             Component classified,
+            boolean clickable,
             int hovered) {
         HandbookScreenTuning t = HandbookScreenTuning.current();
         QuestMapTuning q = QuestMapTuning.current();
@@ -210,7 +211,7 @@ final class QuestMap {
                                     step.text())
                             .getString()
                     : step.text().getString();
-            stepBox(graphics, font, layout.main().get(i), text, ink, full, i == hovered);
+            stepBox(graphics, font, layout.main().get(i), text, ink, clickable, i == hovered);
         }
         connect(graphics, layout.main(), layout.columns(), ink);
         HandbookChapter.Entry current = full ? current(model.main()) : null;

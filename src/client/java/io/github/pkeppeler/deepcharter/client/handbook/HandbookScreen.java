@@ -1150,13 +1150,17 @@ public final class HandbookScreen extends Screen {
                 () -> "chapter " + chapter.number() + " has no page in the handbook");
     }
 
+    /** Whether a click on a step of {@code chapter}'s map picks it: only a chapter in full has steps to pick. */
+    private static boolean pickable(HandbookPage.Chapter chapter) {
+        return chapter.visibility() == HandbookVisibility.FULL;
+    }
+
     /**
      * The step of {@code chapter}'s map under screen point ({@code x}, {@code y}), the one a click there picks; -1 off
-     * the steps, under the index card, or on a map whose steps cannot be picked because the chapter is not in full.
+     * the steps, under the index card, or on a map that is not {@link #pickable}.
      */
     private int stepUnder(HandbookPage.Chapter chapter, double x, double y) {
-        if (chapter.visibility() != HandbookVisibility.FULL
-                || indexCard(chapter).box().contains(x, y)) {
+        if (!pickable(chapter) || indexCard(chapter).box().contains(x, y)) {
             return -1;
         }
         MapFrame frame = mapFrame(chapter);
@@ -1204,6 +1208,7 @@ public final class HandbookScreen extends Screen {
                 frame.clip(),
                 mapNote(chapter),
                 tr("chapter.stamp.classified"),
+                pickable(chapter),
                 hoveredStep);
         int stampX = textLeft + QuestMapTuning.current().stampLeft();
         int stampY = paperTop + tuning().topMargin() + QuestMapTuning.current().stampTop();

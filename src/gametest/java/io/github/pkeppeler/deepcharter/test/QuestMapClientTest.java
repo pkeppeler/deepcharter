@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Fill;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Frame;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -84,6 +85,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
             hoveringAStepLightsItAndAsksForTheHand();
             everyStepAClickOpensCarriesTheCueAndNoOtherDoes();
             aClickOnTheCueStillPicksTheStep();
+            aCutNameStopsShortOfTheCue();
         });
         clickingAnItemOpensItsRecipeInTheCatalogue(context);
     }
@@ -907,33 +909,44 @@ public class QuestMapClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The ink a frame draws inside the box of the step named {@code name}, between the name and the box's right side:
-     * the step's click cue. The right side is the nearest fill right of the name that is one pixel wide and as tall as
-     * a step box.
+     * The inside of the box of the step whose first line is {@code name}: between its two sides, the nearest fills left
+     * and right of the name that are one pixel wide and as tall as a step box.
      */
-    private static List<Fill> cueInk(Frame frame, Drawn name) {
+    private static Box stepInside(Frame frame, Drawn name) {
         Box text = name.box();
         int stepHeight = QuestMapTuning.current().stepHeight();
-        Box side = frame.fills().stream()
+        List<Box> sides = frame.fills().stream()
                 .map(Fill::box)
                 .filter(box -> box.width() == 1
                         && box.height() == stepHeight
-                        && box.x() >= text.right()
                         && box.y() <= text.y()
                         && box.bottom() >= text.bottom())
-                .min(java.util.Comparator.comparingInt(Box::x))
+                .toList();
+        Box left = sides.stream()
+                .filter(box -> box.right() <= text.x())
+                .max(Comparator.comparingInt(Box::x))
+                .orElseThrow(() -> new AssertionError("no box side left of the step '" + name.text() + "'"));
+        Box right = sides.stream()
+                .filter(box -> box.x() >= text.right())
+                .min(Comparator.comparingInt(Box::x))
                 .orElseThrow(() -> new AssertionError("no box side right of the step '" + name.text() + "'"));
+        return new Box(left.right(), left.y(), right.x() - left.right(), left.height());
+    }
+
+    /**
+     * The step's click cue: the single pixels of ink a frame draws inside the box of the step whose first line is
+     * {@code name}. Text is not a fill, and the box's sides and the loop round the current step are not inside it.
+     */
+    private static List<Fill> cueInk(Frame frame, Drawn name) {
+        Box inside = stepInside(frame, name);
         return frame.fills().stream()
-                .filter(fill -> fill.box().x() >= text.right()
-                        && fill.box().right() <= side.x()
-                        && fill.box().y() >= side.y()
-                        && fill.box().bottom() <= side.bottom())
+                .filter(fill -> fill.box().width() == 1 && fill.box().height() == 1 && contains(inside, fill.box()))
                 .toList();
     }
 
     /**
      * #1413: every step of a chapter in full carries ink between its name and its box's right side, the chevron that
-     * says a click opens it; no step of a previewed chapter does. The name is cut to make room, never drawn over.
+     * says a click opens it; no step of a previewed chapter does.
      */
     private static void everyStepAClickOpensCarriesTheCueAndNoOtherDoes() {
         HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
@@ -956,15 +969,58 @@ public class QuestMapClientTest implements FabricClientGameTest {
     /** #1413: a click on the cue itself, not only on the name, picks the step and puts its card up. */
     private static void aClickOnTheCueStillPicksTheStep() {
         HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        String stepTwo =
+                Component.translatable("deepcharter.handbook.quest.step", 2).getString();
+        require(!texts(screen).contains(stepTwo), "setup: step 2's card is not up before the click: " + texts(screen));
         List<Fill> cue = cueInk(DrawnText.frame(screen, -1, -1), drawn(screen, done("Do thing 1.2")));
         require(!cue.isEmpty(), "step 1.2 carries the click cue");
         Box mark = cue.getFirst().box();
         screen.mouseClicked(mouse(mark.x(), mark.y()), false);
         screen.mouseReleased(mouse(mark.x(), mark.y()));
+        require(texts(screen).contains(stepTwo), "a click on step 2's cue puts its card up: " + texts(screen));
+    }
+
+    /**
+     * #1413: a step's name too long for its box is cut with dots short of the cue, never drawn over it. The name is of
+     * the narrowest letter in one word, so its checkbox is a line of its own and the cut line runs within a letter
+     * of the room it is given.
+     */
+    private static void aCutNameStopsShortOfTheCue() {
+        Identifier chapterId = chapterId(1);
+        HandbookChapter chapter = new HandbookChapter(
+                1,
+                Component.literal("Title 1"),
+                List.of(new HandbookChapter.Entry(directive(1, 1), Component.literal("i".repeat(300)), List.of())));
+        List<HandbookPage> pages = HandbookPages.of(Map.of(chapterId, chapter), Set.of());
+        HandbookScreen screen = new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
+        screen.init(WIDTH, HEIGHT);
+        for (int index = 0; index < pages.size(); index++) {
+            if (pages.get(index) instanceof HandbookPage.Chapter) {
+                screen.goTo(index);
+            }
+        }
+        settle(screen);
+        Frame frame = DrawnText.frame(screen, -1, -1);
+        Drawn first = frame.text().stream()
+                .filter(drawn -> drawn.text().equals(open("").strip()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the long step is not drawn: " + texts(screen)));
+        Box inside = stepInside(frame, first);
+        List<Drawn> lines = frame.text().stream()
+                .filter(drawn -> contains(inside, drawn.box()))
+                .toList();
         require(
-                texts(screen)
-                        .contains(Component.translatable("deepcharter.handbook.quest.step", 2)
-                                .getString()),
-                "a click on step 2's cue puts its card up: " + texts(screen));
+                lines.stream().anyMatch(line -> line.text().endsWith("...")),
+                "the long name is cut with dots: " + lines);
+        int cueLeft = cueInk(frame, first).stream()
+                .mapToInt(fill -> fill.box().x())
+                .min()
+                .orElseThrow(() -> new AssertionError("the long step carries no click cue"));
+        for (Drawn line : lines) {
+            require(
+                    line.box().right() <= cueLeft,
+                    "the name's line '" + line.shortText() + "' ends at x "
+                            + line.box().right() + ", over the cue at x " + cueLeft);
+        }
     }
 }

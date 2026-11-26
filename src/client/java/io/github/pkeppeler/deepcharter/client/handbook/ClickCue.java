@@ -5,11 +5,10 @@ import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
- * The handbook's one mark of a thing a click opens (#1413): a chevron in faint ink inside the thing's right edge, and
- * under the mouse a highlight behind it, the chevron in full ink and the pointing hand. The quest map's steps carry
- * it, and anything else on the paper that a click opens, such as an item on a step's card (#1425), draws it the same
- * way. Its sizes are {@link QuestMapTuning#clickCueSize()} and {@link QuestMapTuning#clickCueInset()}; its colours are
- * the paper's hover fill, faint ink and ink in {@link HandbookScreenTuning}.
+ * The handbook's mark of a thing a click opens (#1413), carried by the quest map's steps: a chevron in faint ink inside
+ * the thing's right edge, and under the mouse a highlight behind it, the chevron in full ink and the pointing hand. Its
+ * sizes are {@link QuestMapTuning#clickCueSize()} and {@link QuestMapTuning#clickCueInset()}; its colours are the
+ * paper's hover fill, faint ink and ink in {@link HandbookScreenTuning}.
  */
 final class ClickCue {
     private ClickCue() {}
