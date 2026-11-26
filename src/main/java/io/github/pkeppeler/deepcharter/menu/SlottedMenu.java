@@ -132,13 +132,13 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
             return Optional.empty();
         }
         Slot slot = slots.get(index);
-        if (slot instanceof RuleSlot typed && typed.hasItem() && takes(input)) {
-            Optional<Component> kept = keeps(typed);
-            if (kept.isPresent()) {
-                return kept;
-            }
-        }
         if (slot instanceof RuleSlot typed) {
+            if (typed.hasItem() && takes(input)) {
+                Optional<Component> kept = keeps(typed);
+                if (kept.isPresent()) {
+                    return kept;
+                }
+            }
             ItemStack incoming = switch (input) {
                 case PICKUP -> getCarried();
                 case SWAP -> player.getInventory().getItem(button);

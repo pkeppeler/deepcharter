@@ -109,7 +109,7 @@ public final class PodFuel {
      * wasted.
      */
     static boolean feedOne(PodEntity pod, ItemStack stack) {
-        OptionalDouble litres = stack.isEmpty() ? OptionalDouble.empty() : PodFuelItems.litresOf(stack);
+        OptionalDouble litres = PodFuelItems.litresOf(stack);
         if (litres.isEmpty()) {
             return false;
         }

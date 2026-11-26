@@ -49,10 +49,10 @@ import net.minecraft.world.item.Items;
  *
  * <ul>
  *   <li><b>Parts.</b> Each track's slot shows the part fitted on it, bought or crafted, or a faded stock or empty
- * ghost.       A crafted unit dragged or shift-clicked into its track's slot is fitted by {@link PartFitting}'s rules,
- * and a       fitted part stays: the slots mirror the pod's parts and lock.</li>
+ *       ghost. A crafted unit dragged or shift-clicked into its track's slot is fitted by {@link PartFitting}'s
+ *       rules, and a fitted part stays: the slots mirror the pod's parts and lock.</li>
  *   <li><b>Fuel.</b> The fuel slot holds one stack of pod fuel ({@link PodFuelSlot}), which feeds the tank as it has
- * room.       The gauge reads the tank.</li>
+ *       room. The gauge reads the tank.</li>
  *   <li><b>Hold.</b> {@link PodCargo}'s slots, a page at a time; anything moves in and out as with a chest, as far as
  *       the cargo bay's size. The slots are the hold itself, not a copy, so two open screens share them.</li>
  * </ul>
@@ -423,14 +423,18 @@ public final class PodMenu extends SlottedMenu {
                 return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.hold_unreadable"));
             }
         }
-        int index = page() * HOLD_WINDOW + window;
-        if (index >= capacity()) {
+        if (holdIndex(window) >= capacity()) {
             return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.past_the_bay", capacity()));
         }
         if (hold.getItem(window).isEmpty() && occupied() >= capacity()) {
             return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.hold_full", capacity()));
         }
         return Optional.empty();
+    }
+
+    /** The hold slot that slot {@code window} of the page shows. */
+    private int holdIndex(int window) {
+        return page() * HOLD_WINDOW + window;
     }
 
     private boolean isHold(RuleSlot slot) {
@@ -464,7 +468,7 @@ public final class PodMenu extends SlottedMenu {
     /** A hold slot past what the hold shows is not there. */
     @Override
     protected boolean active(RuleSlot slot) {
-        return !isHold(slot) || page() * HOLD_WINDOW + slot.getContainerSlot() < shown();
+        return !isHold(slot) || holdIndex(slot.getContainerSlot()) < shown();
     }
 
     // ---- changes ----
@@ -580,10 +584,6 @@ public final class PodMenu extends SlottedMenu {
             this.owner = owner;
         }
 
-        private int index(int window) {
-            return page() * HOLD_WINDOW + window;
-        }
-
         private boolean gone() {
             return owner.isRemoved();
         }
@@ -605,19 +605,19 @@ public final class PodMenu extends SlottedMenu {
 
         @Override
         public ItemStack getItem(int window) {
-            return gone() ? ItemStack.EMPTY : owner.cargo().stackAt(index(window));
+            return gone() ? ItemStack.EMPTY : owner.cargo().stackAt(holdIndex(window));
         }
 
         @Override
         public ItemStack removeItem(int window, int count) {
-            return gone() ? ItemStack.EMPTY : owner.cargo().removeAt(owner, index(window), count);
+            return gone() ? ItemStack.EMPTY : owner.cargo().removeAt(owner, holdIndex(window), count);
         }
 
         @Override
         public ItemStack removeItemNoUpdate(int window) {
             ItemStack there = getItem(window);
             if (!there.isEmpty()) {
-                owner.cargo().setAt(owner, index(window), ItemStack.EMPTY);
+                owner.cargo().setAt(owner, holdIndex(window), ItemStack.EMPTY);
             }
             return there;
         }
@@ -625,7 +625,7 @@ public final class PodMenu extends SlottedMenu {
         @Override
         public void setItem(int window, ItemStack stack) {
             if (!gone() && owner.cargo().isReadable()) {
-                owner.cargo().setAt(owner, index(window), stack);
+                owner.cargo().setAt(owner, holdIndex(window), stack);
             }
         }
 

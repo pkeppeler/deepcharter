@@ -427,7 +427,6 @@ public final class PodCargo {
             return false;
         }
         decoded.forEach(entry -> slots.add(DrilledMass.at(entry.stack(), entry.mass())));
-        trim();
         return true;
     }
 
@@ -444,7 +443,6 @@ public final class PodCargo {
             }
             put(entry.slot(), entry.stack());
         }
-        trim();
         return true;
     }
 

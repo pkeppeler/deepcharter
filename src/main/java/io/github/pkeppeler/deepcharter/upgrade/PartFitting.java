@@ -78,15 +78,10 @@ public final class PartFitting {
         // The unit goes first: a listener that throws after the fit must not leave a fitted pod and a kept unit.
         stack.consume(1, player);
         fit(serverPlayer, pod, track);
-        serverPlayer.sendOverlayMessage(fittedMessage(track));
-        return InteractionResult.SUCCESS;
-    }
-
-    /** What the fitter is told once a unit of {@code track} is in. */
-    private static Component fittedMessage(ComponentTrack track) {
-        return Component.translatable(
+        serverPlayer.sendOverlayMessage(Component.translatable(
                 "message.deepcharter.upgrade.fitting.fitted",
-                Component.translatable("item.deepcharter.part_" + track.id()));
+                Component.translatable("item.deepcharter.part_" + track.id())));
+        return InteractionResult.SUCCESS;
     }
 
     /** Why a unit of {@code track} would not fit {@code pod} for {@code player}, if it would not. Server only; changes nothing. */

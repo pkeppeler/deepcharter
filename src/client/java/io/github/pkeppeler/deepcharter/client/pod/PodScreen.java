@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  * or the empty track when the cursor is on it.
  */
 public final class PodScreen extends CrtMenuScreen<PodMenu> {
-    private static final int SLOT = 18;
+    private static final int SLOT = PodMenu.SLOT_SIZE;
     /** Where the gauge sits, from the content's top left: right of the fuel slot, as tall as a slot's inside. */
     private static final int GAUGE_X = PodMenu.FUEL_X + SLOT + 2;
 

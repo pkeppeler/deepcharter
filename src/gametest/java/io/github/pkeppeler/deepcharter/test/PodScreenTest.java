@@ -5,7 +5,6 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
-import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.menu.MenuRefusalPayload;
 import io.github.pkeppeler.deepcharter.menu.SlottedMenu;
 import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
@@ -22,6 +21,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.SettlingRooms;
 import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
+import io.github.pkeppeler.deepcharter.test.support.TestCharters;
 import io.github.pkeppeler.deepcharter.test.support.TestCleanups;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -32,7 +32,6 @@ import io.github.pkeppeler.deepcharter.upgrade.PartUnits;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -83,26 +82,13 @@ public class PodScreenTest {
         return mock;
     }
 
-    private static CharterId found(GameTestHelper helper, ServerPlayer player) {
-        MinecraftServer server = helper.getLevel().getServer();
-        expect(
-                helper,
-                Charters.found(
-                                server,
-                                player.getUUID(),
-                                "Pod " + UUID.randomUUID().toString().substring(0, 8))
-                        .isEmpty(),
-                "founding a charter should succeed");
-        return Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
-    }
-
     private static void standBy(MockPlayer mock, PodEntity pod) {
         mock.teleportTo((ServerLevel) pod.level(), pod.position().add(2, 0, 0), 0f, 0f);
     }
 
     private static Scene scene(GameTestHelper helper) {
         MockPlayer mock = join(helper);
-        CharterId charter = found(helper, mock.player());
+        CharterId charter = TestCharters.found(helper, helper.getLevel().getServer(), mock.player());
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
         TestCleanups.onFinish(helper, pod::discard);
         PodComponents.register(pod, charter);
@@ -174,7 +160,7 @@ public class PodScreenTest {
         MockPlayer stranger = join(helper);
         MockPlayer drifter = join(helper);
         try {
-            found(helper, stranger.player());
+            TestCharters.found(helper, helper.getLevel().getServer(), stranger.player());
             standBy(stranger, scene.pod());
             standBy(drifter, scene.pod());
             stranger.setInput(SNEAK);
@@ -698,17 +684,7 @@ public class PodScreenTest {
         Scene scene = scene(helper);
         MockPlayer second = join(helper);
         try {
-            MinecraftServer server = helper.getLevel().getServer();
-            expect(
-                    helper,
-                    Charters.apply(server, second.player().getUUID(), scene.charter())
-                                    .isEmpty()
-                            && Charters.approve(
-                                            server,
-                                            scene.player().getUUID(),
-                                            second.player().getUUID())
-                                    .isEmpty(),
-                    "the second player should join the pod's charter");
+            TestCharters.join(helper, helper.getLevel().getServer(), scene.charter(), scene.player(), second.player());
             standBy(second, scene.pod());
             ServerPlayer pilot = scene.player();
             ServerPlayer crew = second.player();
