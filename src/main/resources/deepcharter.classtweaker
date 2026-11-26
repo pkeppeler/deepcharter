@@ -1,0 +1,5 @@
+classTweaker v1 official
+
+# The slot of a container screen under the mouse: R and U look its item up (SlotLookup), and a spec sheet forgets it so the
+# screen draws no tooltip over the sheet (CataloguePanel).
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen hoveredSlot Lnet/minecraft/world/inventory/Slot;

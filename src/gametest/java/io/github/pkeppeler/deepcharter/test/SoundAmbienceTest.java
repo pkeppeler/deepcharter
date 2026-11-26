@@ -214,6 +214,32 @@ public class SoundAmbienceTest {
         helper.succeed();
     }
 
+    /** No layer covers the unbuilt depth, so it must set its own music or vanilla's plays (#1296). */
+    @GameTest
+    public void unbuiltDepthPlaysNoVanillaMusicInAnyMode(GameTestHelper helper) {
+        var registry = helper.getLevel().getServer().registryAccess().lookupOrThrow(Registries.BIOME);
+        Biome biome = Objects.requireNonNull(registry.getValue(id("unbuilt_depth")), "the unbuilt depth does not load");
+        expect(
+                helper,
+                biome.getAttributes().contains(EnvironmentAttributes.BACKGROUND_MUSIC),
+                "the unbuilt depth sets no background music of its own");
+        BackgroundMusic music =
+                biome.getAttributes().applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.OVERWORLD);
+        for (boolean creative : List.of(false, true)) {
+            for (boolean underwater : List.of(false, true)) {
+                music.select(creative, underwater)
+                        .ifPresent(track -> expect(
+                                helper,
+                                !name(track.sound()).getNamespace().equals("minecraft"),
+                                "the unbuilt depth plays %s (creative %s, underwater %s)",
+                                name(track.sound()),
+                                creative,
+                                underwater));
+            }
+        }
+        helper.succeed();
+    }
+
     /** The zones of each layer, top to bottom. The deeper the zone, the more often it creaks and knocks. */
     private static final Map<Integer, List<String>> ZONES = Map.of(
             1, List.of("topsoil_claims", "stone_benches", "deep_claim"),
