@@ -86,6 +86,7 @@ ScannerMapReleaseClientTest 13
 ScannerOreHostClientTest 16
 ScannerTexturesClientTest 32
 ScannerTiersClientTest 23
+ScannerWindowFillClientTest 21
 ScreenLayoutClientTest 13
 ScrollListClientTest 1
 SeamAdoptionClientTest 25
