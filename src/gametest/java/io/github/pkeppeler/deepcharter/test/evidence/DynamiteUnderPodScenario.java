@@ -6,7 +6,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
-import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -23,8 +23,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -110,17 +108,7 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.getInventory()
-                        .setItem(
-                                player.getInventory().getSelectedSlot(),
-                                new ItemStack(RepairRegistry.item(Consumable.DYNAMITE)));
-                if (!player.gameMode
-                        .useItem(
-                                player,
-                                player.level(),
-                                player.getItemInHand(InteractionHand.MAIN_HAND),
-                                InteractionHand.MAIN_HAND)
-                        .consumesAction()) {
+                if (!ChargeUse.use(player, Consumable.DYNAMITE).consumesAction()) {
                     throw new AssertionError("the dynamite should go off from the seat");
                 }
             });
@@ -192,13 +180,17 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
         return pod;
     }
 
+    /** The cells of the slab under the Mole's 2 x 2 footprint, where the pockets lie. */
+    private static Iterable<BlockPos> slabUnderPod() {
+        return BlockPos.betweenClosed(new BlockPos(X - 1, FLOOR_Y - 1, Z - 1), new BlockPos(X, FLOOR_Y - 1, Z));
+    }
+
     private static Snapshot snapshot(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
             PodEntity pod = podAt(server);
             ServerLevel one = TestLayers.level(server, 1);
             int pockets = 0;
-            for (BlockPos cell :
-                    BlockPos.betweenClosed(new BlockPos(X - 1, FLOOR_Y - 1, Z - 1), new BlockPos(X, FLOOR_Y - 1, Z))) {
+            for (BlockPos cell : slabUnderPod()) {
                 if (one.getBlockState(cell).is(HazardBlocks.GAS_POCKET)) {
                     pockets++;
                 }
@@ -227,8 +219,7 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
                 new BlockPos(X + TRENCH - 1, FLOOR_Y - 1, Z + RADIUS),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
-        for (BlockPos cell :
-                BlockPos.betweenClosed(new BlockPos(X - 1, FLOOR_Y - 1, Z - 1), new BlockPos(X, FLOOR_Y - 1, Z))) {
+        for (BlockPos cell : slabUnderPod()) {
             level.setBlock(cell, HazardBlocks.GAS_POCKET.defaultBlockState(), 3);
         }
         for (BlockPos lamp : new BlockPos[] {

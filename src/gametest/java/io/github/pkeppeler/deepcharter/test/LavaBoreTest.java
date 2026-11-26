@@ -299,7 +299,7 @@ public class LavaBoreTest {
     private static final int CHUNK_SPACING = 2;
     private static final int PILOT_WAIT_Y = TestLayers.worldY(1, 150);
 
-    /** The chassis the bot drives, the Mole. Its footprint is as {@code PodFootprint} (package private in the main code) reads it: the bore square. */
+    /** The chassis the bot drives, the Mole. Its footprint is as {@code PodFootprint} reads it: the bore square. */
     private static final Chassis CHASSIS = Chassis.MOLE;
 
     private static final int FOOTPRINT_WIDTH = CHASSIS.boreWidth();

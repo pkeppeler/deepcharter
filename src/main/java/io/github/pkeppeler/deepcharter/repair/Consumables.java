@@ -105,8 +105,7 @@ final class Consumables {
             }
         }
         play(pod, sound);
-        // The blast shakes the roof over anyone on foot near it (#987), measured from the middle of the cube it
-        // cleared.
+        // The blast shakes the roof over anyone on foot near it (#987), from the middle of the cube it cleared.
         CaveIns.blasted(level, Vec3.atCenterOf(middle), PodCharge.blasterOf(pod));
         return Optional.empty();
     }

@@ -691,8 +691,7 @@ public class RepairStationTest {
             PodEntity pod = station.pod();
             BlockPos centre = helper.absolutePos(new BlockPos(0, 12, 8));
             // A 2-wide Mole aligned as the drill leaves it sits on a block corner, its footprint the 2 x 2 cells on the
-            // -x/-z
-            // side of centre. The cube is centred on the footprint's +x/+z cell, centre.
+            // -x/-z side of centre. The cube is centred on the footprint's +x/+z cell, centre.
             pod.setPos(centre.getX(), centre.getY(), centre.getZ());
             // The cube sits on the row of the pod's feet (#1478), so it reaches radius rows under the pod. A pod is 2.9
             // tall: a cube round its box's middle sits a row higher, and this test then fails on the stone it leaves
@@ -837,8 +836,8 @@ public class RepairStationTest {
                     pod.discard();
                 }
             }
+            helper.succeed();
         });
-        helper.succeed();
     }
 
     @GameTest
@@ -850,9 +849,12 @@ public class RepairStationTest {
     public void plasticExplosivesReachOneRowDeeperThanDynamite(GameTestHelper helper) {
         int dynamite = RepairTuning.DEFAULT.dynamiteRadius();
         int plastic = RepairTuning.DEFAULT.plasticRadius();
-        if (plastic != dynamite + 1) {
-            throw failure(helper, "plastic reaches %d rows under the pod, dynamite %d: one more", plastic, dynamite);
-        }
+        expect(
+                helper,
+                plastic == dynamite + 1,
+                "plastic reaches %d rows under the pod, dynamite %d: one more",
+                plastic,
+                dynamite);
         underThePod(helper, Consumable.PLASTIC_EXPLOSIVES, plastic);
     }
 
