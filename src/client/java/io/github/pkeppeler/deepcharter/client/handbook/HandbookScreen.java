@@ -1288,23 +1288,21 @@ public final class HandbookScreen extends Screen {
      * Splits each page's body into the sheets this window holds, and keeps the screen on a sheet that is still there.
      */
     private void layOutSheets() {
-        int top = paperTop + tuning().topMargin();
         sheetStarts = pages.stream()
-                .map(content -> {
-                    Flow flow = switch (content) {
-                        case HandbookPage.ChapterText text -> chapterTextFlow(text);
-                        case HandbookPage.Contract contract -> contractFlow(contract);
-                        default -> null;
-                    };
-                    if (flow == null) {
-                        return List.of(0);
-                    }
-                    int bodyTop = top + SheetFlow.height(flow.heading());
-                    return SheetFlow.starts(flow.body(), bodyTop, bodyTop, bottom(), font.lineHeight + 1);
+                .map(content -> switch (content) {
+                    case HandbookPage.ChapterText text -> flowStarts(chapterTextFlow(text));
+                    case HandbookPage.Contract contract -> flowStarts(contractFlow(contract));
+                    default -> List.of(0);
                 })
                 .toList();
         sheet = Mth.clamp(sheet, 0, sheetsOf(page) - 1);
         previousSheet = Mth.clamp(previousSheet, 0, sheetsOf(previousPage) - 1);
+    }
+
+    /** The first line of each sheet of a page that flows, under the heading every sheet repeats. */
+    private List<Integer> flowStarts(Flow flow) {
+        int bodyTop = paperTop + tuning().topMargin() + SheetFlow.height(flow.heading());
+        return SheetFlow.starts(flow.body(), bodyTop, bodyTop, bottom(), font.lineHeight + 1);
     }
 
     private int sheetsOf(int index) {
