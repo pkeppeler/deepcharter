@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -688,7 +691,10 @@ public class RepairStationTest {
             PodEntity pod = station.pod();
             BlockPos centre = helper.absolutePos(new BlockPos(0, 12, 8));
             pod.setPos(Vec3.atBottomCenterOf(centre));
-            BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
+            // The cube sits on the row of the pod's feet (#1478), so it reaches radius rows under the pod. A pod is 2.9
+            // tall: a cube
+            // round its box's middle sits a row higher, and this test then fails on the stone it leaves under the feet.
+            BlockPos middle = centre;
             fillArena(helper, middle);
             // One of each thing that must survive, at the edge of the blast and inside it.
             Block[] survivors = {HazardBlocks.COMPANY_ROCK, Blocks.LAVA, Blocks.OAK_PLANKS};
@@ -741,6 +747,92 @@ public class RepairStationTest {
     @GameTest
     public void plasticExplosivesClearFiveByFiveOfNaturalRock(GameTestHelper helper) {
         blast(helper, Consumable.PLASTIC_EXPLOSIVES, 2);
+    }
+
+    /**
+     * #1478: for every chassis, seated on natural rock in its own bore, a gas pocket in each cell of the slab under its footprint. Dynamite
+     * clears the whole slab with its pockets and nothing vents (the hull is untouched, as the pockets are removed and not mined), and it stops
+     * there: the row under the slab stands. Plastic explosives reach that row too, and stop one row deeper. Fails with the cube round the
+     * box's middle (the code before #1478), which left the slab under a 2.9-tall pod standing.
+     */
+    private static void underThePod(GameTestHelper helper, Consumable explosive, int rowsUnder) {
+        withStation(helper, mole -> {
+            ServerLevel level = helper.getLevel();
+            for (Chassis chassis : Chassis.all()) {
+                int width = chassis.boreWidth();
+                // The low corner of the footprint, and a pod centred on it as the drill leaves one.
+                BlockPos corner = helper.absolutePos(new BlockPos(-1, 12, 7));
+                fillArena(helper, corner);
+                for (int x = 0; x < width; x++) {
+                    for (int z = 0; z < width; z++) {
+                        for (int y = 0; y <= ARENA; y++) {
+                            // room-carver: the pod's bore in stone this test placed in the overworld test structure
+                            level.setBlock(corner.offset(x, y, z), Blocks.AIR.defaultBlockState(), 3);
+                        }
+                        level.setBlock(corner.offset(x, -1, z), HazardBlocks.GAS_POCKET.defaultBlockState(), 3);
+                    }
+                }
+                PodEntity pod = helper.spawn(PodRegistry.typeOf(chassis), new Vec3(3.5, 1, 0.5));
+                pod.setPos(corner.getX() + width / 2.0, corner.getY(), corner.getZ() + width / 2.0);
+                PodComponents.register(pod, mole.charter().id());
+                Station station = new Station(mole.pos(), mole.pilot(), mole.charter(), pod);
+                float hull = pod.hull();
+                board(helper, station);
+                expect(
+                        helper,
+                        useFromHotbar(station, explosive).consumesAction(),
+                        "%s should work in a %s",
+                        explosive,
+                        chassis.id());
+                for (int x = 0; x < width; x++) {
+                    for (int z = 0; z < width; z++) {
+                        for (int below = 1; below <= rowsUnder + 1; below++) {
+                            BlockPos cell = corner.offset(x, -below, z);
+                            boolean air = level.getBlockState(cell).isAir();
+                            if (below <= rowsUnder && !air) {
+                                throw failure(
+                                        helper,
+                                        "%s in a %s left %s %d rows under its feet at %s",
+                                        explosive,
+                                        chassis.id(),
+                                        level.getBlockState(cell),
+                                        below,
+                                        cell);
+                            }
+                            if (below > rowsUnder && air) {
+                                throw failure(
+                                        helper,
+                                        "%s in a %s cleared %d rows under its feet at %s, past its %d",
+                                        explosive,
+                                        chassis.id(),
+                                        below,
+                                        cell,
+                                        rowsUnder);
+                            }
+                        }
+                    }
+                }
+                expectHull(helper, pod, hull, explosive + " clearing gas pockets in a " + chassis.id() + " vents none");
+                mole.pilot().player().stopRiding();
+                pod.discard();
+            }
+        });
+        helper.succeed();
+    }
+
+    @GameTest
+    public void dynamiteClearsTheGasInTheSlabUnderEveryChassis(GameTestHelper helper) {
+        underThePod(helper, Consumable.DYNAMITE, RepairTuning.DEFAULT.dynamiteRadius());
+    }
+
+    @GameTest
+    public void plasticExplosivesReachOneRowDeeperThanDynamite(GameTestHelper helper) {
+        int dynamite = RepairTuning.DEFAULT.dynamiteRadius();
+        int plastic = RepairTuning.DEFAULT.plasticRadius();
+        if (plastic != dynamite + 1) {
+            throw failure(helper, "plastic reaches %d rows under the pod, dynamite %d: one more", plastic, dynamite);
+        }
+        underThePod(helper, Consumable.PLASTIC_EXPLOSIVES, plastic);
     }
 
     @GameTest

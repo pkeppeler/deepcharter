@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.layer.CaveIns;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodCharge;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodFootprint;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
@@ -16,6 +17,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * What each item does (SPEC sections 10 and 11). All of them but the thrown kit work on the pod the player is piloting, and
@@ -83,19 +85,28 @@ final class Consumables {
         return Optional.empty();
     }
 
-    /** Clears the natural rock within {@code radius} of the pod's middle on each axis, as a gas blast does. Company rock, lava and anything built stay. */
+    /**
+     * Clears the natural rock within {@code radius} of the pod's feet on each axis, as a gas blast does. Company rock, lava and anything built
+     * stay. The cube sits on the row the pod's feet are in, not on the middle of its box (#1478): a pod is 2.9 blocks tall, so a cube round its
+     * middle reached no row under it, and the slab under the pod is what a pilot spends a stick on (a gas pocket the sounder marks, a slab the
+     * drill refuses). So it clears {@code radius} rows under the feet, and the rows above the feet only to the same height, which leaves the
+     * roof over the cab standing.
+     */
     private static Optional<Component> blast(PodEntity pod, int radius, DeepSound sound) {
         ServerLevel level = (ServerLevel) pod.level();
-        BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
-        for (BlockPos cell : BlockPos.betweenClosed(
-                middle.offset(-radius, -radius, -radius), middle.offset(radius, radius, radius))) {
+        Vec3 centre = pod.getBoundingBox().getCenter();
+        BlockPos middle = BlockPos.containing(centre.x, PodFootprint.of(pod).feetY(), centre.z);
+        BlockPos low = middle.offset(-radius, -radius, -radius);
+        BlockPos high = middle.offset(radius, radius, radius);
+        for (BlockPos cell : BlockPos.betweenClosed(low, high)) {
             if (level.getBlockState(cell).is(HazardBlocks.NATURAL_ROCK)) {
                 level.destroyBlock(cell.immutable(), false);
             }
         }
         play(pod, sound);
-        // The blast shakes the roof over anyone on foot near it (#987).
-        CaveIns.blasted(level, pod.getBoundingBox().getCenter(), PodCharge.blasterOf(pod));
+        // The blast shakes the roof over anyone on foot near it (#987), measured from the middle of the cube it
+        // cleared.
+        CaveIns.blasted(level, Vec3.atCenterOf(middle), PodCharge.blasterOf(pod));
         return Optional.empty();
     }
 
