@@ -252,6 +252,114 @@ class Titles(unittest.TestCase):
         self.assertEqual(2, len(cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["calm"])))
 
 
+# The game font's digits and capitals, the 5 x 7 of each glyph's cell, transcribed from assets/minecraft/textures/font/ascii.png in the 26.3 client jar (the
+# tool-tests job has no Gradle cache to read it from).
+_FONT_TEXT = """
+0 .###. #...# #..## #.#.# ##..# #...# .###.
+1 ..#.. .##.. ..#.. ..#.. ..#.. ..#.. #####
+2 .###. #...# ....# ..##. .#... #...# #####
+3 .###. #...# ....# ..##. ....# #...# .###.
+4 ...## ..#.# .#..# #...# ##### ....# ....#
+5 ##### #.... ####. ....# ....# #...# .###.
+6 ..##. .#... #.... ####. #...# #...# .###.
+7 ##### #...# ....# ...#. ..#.. ..#.. ..#..
+8 .###. #...# #...# .###. #...# #...# .###.
+9 .###. #...# #...# .#### ....# ...#. .##..
+A .###. #...# ##### #...# #...# #...# #...#
+B ####. #...# ####. #...# #...# #...# ####.
+C .###. #...# #.... #.... #.... #...# .###.
+D ####. #...# #...# #...# #...# #...# ####.
+E ##### #.... ###.. #.... #.... #.... #####
+F ##### #.... ###.. #.... #.... #.... #....
+G .#### #.... #..## #...# #...# #...# .###.
+H #...# #...# ##### #...# #...# #...# #...#
+I ###.. .#... .#... .#... .#... .#... ###..
+J ....# ....# ....# ....# ....# #...# .###.
+K #...# #..#. ###.. #..#. #...# #...# #...#
+L #.... #.... #.... #.... #.... #.... #####
+M #...# ##.## #.#.# #...# #...# #...# #...#
+N #...# ##..# #.#.# #..## #...# #...# #...#
+O .###. #...# #...# #...# #...# #...# .###.
+P ####. #...# ####. #.... #.... #.... #....
+Q .###. #...# #...# #...# #...# #..#. .##.#
+R ####. #...# ####. #...# #...# #...# #...#
+S .#### #.... .###. ....# ....# #...# .###.
+T ##### ..#.. ..#.. ..#.. ..#.. ..#.. ..#..
+U #...# #...# #...# #...# #...# #...# .###.
+V #...# #...# #...# #...# .#.#. .#.#. ..#..
+W #...# #...# #...# #...# #.#.# ##.## #...#
+X #...# .#.#. ..#.. .#.#. #...# #...# #...#
+Y #...# .#.#. ..#.. ..#.. ..#.. ..#.. ..#..
+Z ##### ....# ...#. ..#.. .#... #.... #####
+"""
+FONT = {line[0]: tuple(line[2:].split(" ")) for line in _FONT_TEXT.strip().splitlines()}
+# Two shapes read apart at 5 x 7 when they differ in at least a quarter of the 35 pixels. The hollow shield of #1436, 6 from "Q" and 8 from "D", read as "0".
+MIN_PIXELS_APART = 9
+
+
+def pixels_apart(a, b) -> int:
+    return sum(p != q for row_a, row_b in zip(a, b) for p, q in zip(row_a, row_b))
+
+
+class IconsAreNotGlyphs(unittest.TestCase):
+    """An icon is drawn inline with text in the text's colour (the tally), so it must not read as a glyph of the game's font, nor as another icon."""
+
+    def test_no_icon_reads_as_a_digit_or_a_capital(self):
+        for name, rows in cockpit_ribbon.ICONS.items():
+            for glyph, glyph_rows in FONT.items():
+                with self.subTest(icon=name, glyph=glyph):
+                    self.assertGreaterEqual(pixels_apart(rows, glyph_rows), MIN_PIXELS_APART)
+
+    def test_no_two_icons_read_as_each_other(self):
+        for a, rows_a in cockpit_ribbon.ICONS.items():
+            for b, rows_b in cockpit_ribbon.ICONS.items():
+                if a < b:
+                    with self.subTest(a=a, b=b):
+                        self.assertGreaterEqual(pixels_apart(rows_a, rows_b), MIN_PIXELS_APART)
+
+    def test_no_icon_is_a_comb(self):
+        # Three strokes side by side read as the strokes of a letter however far the pixels are: the fire's three tongues on its bed read as "W" ("WHEAT").
+        for name, rows in cockpit_ribbon.ICONS.items():
+            for line in (*rows, *("".join(column) for column in zip(*rows))):
+                with self.subTest(icon=name, line=line):
+                    self.assertLess(len(re.findall("#+", line)), 3)
+
+    def test_no_icon_has_a_hole_taller_than_a_pixel(self):
+        # A closed outline at the font's height reads as "0", "O" or "D" at any width, and is far from every glyph by pixels: the hollow hull shield read
+        # "087/100" and the thermometer's hollow tube "0HEAT". A one-pixel hole (the hull's boss) reads as a mark on a solid shape.
+        for name, rows in cockpit_ribbon.ICONS.items():
+            with self.subTest(icon=name):
+                self.assertLessEqual(tallest_hole(rows), 1)
+
+    def test_the_hole_check_catches_the_outlines_that_read_as_zero_and_passes_a_boss(self):
+        hollow_shield = ("#####", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#..")
+        hollow_tube = (".#...", "#.#..", "#.#..", "#.#..", "###..", "###..", ".#...")
+        bossed_shield = ("#####", "#####", "##.##", "#####", ".###.", ".###.", "..#..")
+        self.assertEqual((tallest_hole(hollow_shield), tallest_hole(hollow_tube), tallest_hole(bossed_shield)), (5, 3, 1))
+
+
+def tallest_hole(rows) -> int:
+    """The most rows any unlit 4-connected region spans that does not touch the cell's edge."""
+    h, w = len(rows), len(rows[0])
+    seen, tallest = set(), 0
+    for y0 in range(h):
+        for x0 in range(w):
+            if rows[y0][x0] != "." or (x0, y0) in seen:
+                continue
+            region, stack = [], [(x0, y0)]
+            seen.add((x0, y0))
+            while stack:
+                x, y = stack.pop()
+                region.append((x, y))
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and rows[ny][nx] == "." and (nx, ny) not in seen:
+                        seen.add((nx, ny))
+                        stack.append((nx, ny))
+            if all(0 < x < w - 1 and 0 < y < h - 1 for x, y in region):
+                tallest = max(tallest, len({y for _, y in region}))
+    return tallest
+
+
 class Coverage(unittest.TestCase):
     def test_the_status_is_under_the_budget_and_smaller_than_the_scanner(self):
         screen = cockpit_ribbon.SCREEN_W * cockpit_ribbon.SCREEN_H

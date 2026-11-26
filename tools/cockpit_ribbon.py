@@ -60,13 +60,14 @@ TITLES = {gauge: _LANG["hud.deepcharter.cockpit." + key] for gauge, key in TITLE
 RECESS_W = 72
 # The icons, white, tinted by the game in the colour of what they mark, `iconWidth` wide and as tall as the font's capitals. Each gauge's title carries its
 # gauge's icon (GAUGE_ICONS), and so does the plate's tally number of the same thing: hull, fuel and depth. The tally's cargo number is the ore in the bay, not
-# the LOAD gauge's weight, so it carries the cart, which no gauge has. Each reads apart from the others by its shape, not only by its colour.
+# the LOAD gauge's weight, so it carries the cart, which no gauge has. Each reads apart from the others by its shape, not only by its colour, and none reads as
+# a glyph of the game's font beside its text (test_cockpit_ribbon's IconsAreNotGlyphs says how).
 ICONS = {
     "fuel": ("..#..", ".###.", ".###.", "#####", "#####", "#####", ".###."),  # a drop
-    "hull": ("#####", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."),  # a shield's outline
+    "hull": ("#####", "#####", "##.##", "#####", ".###.", ".###.", "..#.."),  # a filled shield with its boss
     "weight": ("..#..", ".#.#.", "..#..", ".###.", ".###.", "#####", "#####"),  # a weight with its ring
     "depth": ("..#..", "..#..", "..#..", "..#..", "#####", ".###.", "..#.."),  # an arrow down
-    "heat": ("..#..", ".##..", ".###.", "####.", "##.##", "#...#", ".###."),  # a flame
+    "heat": ("...#.", ".#.##", ".####", "#####", ".###.", ".....", "#####"),  # a flame of two tongues over its burner
     "cart": (".....", ".....", "#...#", "#####", ".###.", ".....", ".#.#."),  # a mine cart's tub on its wheels
 }
 GAUGE_ICONS = {"fuel": "fuel", "hull": "hull", "cargo": "weight", "depth": "depth", "heat": "heat"}

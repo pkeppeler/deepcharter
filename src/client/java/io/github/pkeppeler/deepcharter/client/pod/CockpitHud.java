@@ -313,16 +313,16 @@ public final class CockpitHud {
         List<Line> lines = PodStatusHud.readout(player, pod);
         boolean fuelLow = PodFuel.isLow(pod.fuel());
         boolean hullLow = reading.hull() <= look.hullLowFraction();
-        bar(graphics, decay, layout, Meter.FUEL, reading.fuel(), fuelLow ? look.lowColor() : look.fuelColor(), look);
-        bar(graphics, decay, layout, Meter.HULL, reading.hull(), hullLow ? look.lowColor() : look.hullColor(), look);
+        bar(graphics, decay, layout, Meter.FUEL, reading.fuel(), fuelLow, look);
+        bar(graphics, decay, layout, Meter.HULL, reading.hull(), hullLow, look);
         draw(
                 graphics,
                 decay,
                 Part.CARGO,
                 layout.cargo().area(),
                 () -> loadGauge(graphics, layout, decay, reading, look));
-        bar(graphics, decay, layout, Meter.DEPTH, reading.depth(), look.depthColor(), look);
-        bar(graphics, decay, layout, Meter.HEAT, reading.heat(), look.heatColor(), look);
+        bar(graphics, decay, layout, Meter.DEPTH, reading.depth(), false, look);
+        bar(graphics, decay, layout, Meter.HEAT, reading.heat(), false, look);
         titles(graphics, client.font, layout, look);
         draw(
                 graphics,
@@ -392,16 +392,17 @@ public final class CockpitHud {
         }
     }
 
-    /** {@code meter}'s bar at {@code value} in {@code color}, through {@link #draw} in the signal decay's frame. */
+    /** {@code meter}'s bar at {@code value} in its colour, or the low colour when {@code low}, through {@link #draw} in the signal decay's frame. */
     private static void bar(
             GuiGraphicsExtractor graphics,
             CockpitDecay decay,
             Layout layout,
             Meter meter,
             double value,
-            int color,
+            boolean low,
             CockpitLook look) {
         Gauge bar = meter.bar(layout);
+        int color = low ? look.lowColor() : meter.color(look);
         draw(
                 graphics,
                 decay,
