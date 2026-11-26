@@ -66,6 +66,7 @@ public class PodLiningScenario extends EvidenceScenario {
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, LOOK_DOWN, true);
             });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, RADIUS);
             ClientWait.arrived(context, singleplayer.getServer());
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);

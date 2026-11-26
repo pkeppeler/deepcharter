@@ -148,6 +148,8 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
                     return "pod " + litUuid[0] + " not in " + level.dimension().identifier() + "; chunk at " + spot
                             + " loaded: " + level.isLoaded(spot);
                 }));
+        ClientWait.lightSettled(
+                context, singleplayer.getServer(), layer, floor.getX() + LENGTH / 2, floor.getZ(), LENGTH / 2 + 1);
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             if (!player.startRiding(Objects.requireNonNull(litPod(server, layer, litUuid[0]), "waited for above"))) {

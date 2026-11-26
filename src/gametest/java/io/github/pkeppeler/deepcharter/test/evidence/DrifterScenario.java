@@ -62,6 +62,7 @@ public class DrifterScenario extends EvidenceScenario {
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, 0f, true);
             });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + HALL_LENGTH / 2, Z, HALL_LENGTH / 2 + 4);
             ClientWait.arrived(context, singleplayer.getServer());
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);

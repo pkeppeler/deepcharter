@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
 import java.util.Set;
@@ -69,6 +70,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             two.server().runOnServer(server -> buildSite(server.overworld(), two));
             ClientWait.chunksAround(context, X, Z, REACH);
+            ClientWait.lightSettled(context, two.server(), TestLayers.SURFACE, X, Z, REACH);
             two.server().runOnServer(server -> board(server.overworld(), two));
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ClientWait.until(

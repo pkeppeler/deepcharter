@@ -94,6 +94,12 @@ public class CompanyRockScenario extends EvidenceScenario {
                         world.serverDo(server -> build(TestLayers.level(server, layer), layer));
                     }
                     for (int layer : List.of(1, 2)) {
+                        // The rock box runs 80 blocks east from x -16 and 32 across z: settle a square round its
+                        // middle.
+                        BlockPos middle = absolute(layer, new BlockPos(24, 0, 0));
+                        ClientWait.lightSettled(context, world.server(), layer, middle.getX(), middle.getZ(), 40);
+                    }
+                    for (int layer : List.of(1, 2)) {
                         world.serverDo(server -> place(TestLayers.level(server, layer), layer));
                         shoot(context, world, layer);
                     }

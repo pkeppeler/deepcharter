@@ -77,6 +77,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X - 4, FLOOR_Y, Z + 0.5, Set.of(), EAST, LOOK_DOWN, true);
             });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + 1, Z, 8);
             ClientWait.arrived(context, singleplayer.getServer());
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);

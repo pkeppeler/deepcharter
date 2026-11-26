@@ -80,7 +80,8 @@ public class CraftedScannerScenario extends EvidenceScenario {
             ScannerHudTest.goToLayer(server, 1);
             ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
             context.waitTicks(40); // tick-wait: the chunks round the arrival come in before the room is cut
-            RoomCarver.carveAroundFirstPlayer(server);
+            BlockPos feet = RoomCarver.carveAroundFirstPlayer(server);
+            ClientWait.lightSettled(context, server, 1, feet.getX(), feet.getZ(), RoomCarver.ARRIVAL_RADIUS);
             BlockPos[] spots = server.computeOnServer(CraftedScannerScenario::furnish);
             BlockPos table = spots[0];
             ClientWait.until(

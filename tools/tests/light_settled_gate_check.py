@@ -1,5 +1,6 @@
-"""Tests the light-settled gate in gradle/gametest.gradle.kts: a client GameTest or evidence scenario that carves a room and then seats a pod
-(startRiding, or setPos or teleportTo on a pod) in the same runOnServer or computeOnServer block fails the build (#1303).
+"""Tests the light-settled gate in gradle/gametest.gradle.kts: a client GameTest or evidence scenario method that carves a room and then seats a pod
+(startRiding, addFreshEntity of a pod, or setPos, teleportTo or teleport on a pod) with no ClientWait.lightSettled between them fails the build (#1303),
+in one server block or split across two, directly or through a same-file helper.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
@@ -82,6 +83,41 @@ public class MentionsClientTest implements FabricClientGameTest {
     }
 }
 """,
+    "SettledHelpersClientTest.java": """
+public class SettledHelpersClientTest implements FabricClientGameTest {
+    void seat(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> buildSite(server));
+        ClientWait.chunksAround(context, 0, 0, 3);
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, 3);
+        singleplayer.getServer().computeOnServer(this::board);
+    }
+
+    static void buildSite(MinecraftServer server) {
+        RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);
+    }
+
+    int board(MinecraftServer server) {
+        level.addFreshEntity(pod);
+        return player.startRiding(pod) ? 1 : 0;
+    }
+}
+""",
+    "OtherMethodClientTest.java": """
+public class OtherMethodClientTest implements FabricClientGameTest {
+    void carve(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR));
+    }
+
+    void seat(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> player.startRiding(pod));
+    }
+
+    void board(TestSingleplayerContext singleplayer) {
+        other.carveRoom();
+        singleplayer.getServer().runOnServer(server -> player.startRiding(pod));
+    }
+}
+""",
     "ServerGameTest.java": """
 public class ServerGameTest {
     @GameTest
@@ -97,6 +133,11 @@ VIOLATIONS = {
     "startRiding": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            player.startRiding(pod);", 6),
     "pod setPos": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            pod.setPos(0, 0, 0);", 6),
     "a pod accessor": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            rig.realPod().setPos(0, 0, 0);", 6),
+    "addFreshEntity of a pod": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            level.addFreshEntity(pod);", 6),
+    "an indexed pod accessor": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            rig.pod(0).setPos(0, 0, 0);", 6),
+    "a pod array element": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            pods[0].teleportTo(0, 0, 0);", 6),
+    "a pod accessor with a nested call": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            pod(server, mole.get())\n                    .teleportTo(one, 0, 0, 0, Set.of(), 0f, 0f, true);", 6),
+    "pod teleport": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            pod.teleport(new TeleportTransition(one, Vec3.ZERO, Vec3.ZERO, 0f, 0f, TeleportTransition.DO_NOTHING));", 6),
     "pod teleportTo": ("RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            realPod.teleportTo(0, 0, 0);", 6),
     "a carve past other statements": (
         "RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);\n            lamps(one);\n            player.teleportTo(one, 0, 0, 0);\n            player.startRiding(pod);",
@@ -121,6 +162,70 @@ VIOLATIONS = {
 }
 
 
+# label: (a whole client test, line the gate reports)
+METHOD_VIOLATIONS = {
+    "a split with no wait": ("""
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR));
+        ClientWait.chunksAround(context, 0, 0, 3);
+        singleplayer.getServer().runOnServer(server -> player.startRiding(pod));
+    }
+}
+""", 6),
+    "a carve helper then a seat helper": ("""
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> buildSite(server));
+        ClientWait.chunksAround(context, 0, 0, 3);
+        int pod = singleplayer.getServer().computeOnServer(server -> board(server));
+    }
+
+    static void buildSite(MinecraftServer server) {
+        RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);
+    }
+
+    static int board(MinecraftServer server) {
+        pod.setPos(0, 0, 0);
+        return 1;
+    }
+}
+""", 6),
+    "method references": ("""
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(SeatsClientTest::buildSite);
+        singleplayer.getServer().runOnServer(this::mount);
+    }
+
+    static void buildSite(MinecraftServer server) {
+        RoomCarver.carveRoom(one, -3, 3, 0, 6, -3, 3);
+    }
+
+    void mount(MinecraftServer server) {
+        player.startRiding(pod);
+    }
+}
+""", 5),
+    "a helper that carves then calls a seating helper": ("""
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().computeOnServer(server -> setUp(server));
+    }
+
+    int setUp(MinecraftServer server) {
+        RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR);
+        return mountBoth(server);
+    }
+
+    private int mountBoth(MinecraftServer server) {
+        return player.startRiding(pod) ? 1 : 0;
+    }
+}
+""", 9),
+}
+
+
 def violating(body: str, call: str) -> str:
     return f"""
 public class SeatsClientTest implements FabricClientGameTest {{
@@ -140,6 +245,7 @@ def fixture(extra: dict[str, str]) -> dict[str, str]:
 CASES = {
     "clean": Case(fixture({}), None),
     **{label: Case(fixture({"SeatsClientTest.java": violating(body, "runOnServer")}), None) for label, (body, _) in VIOLATIONS.items()},
+    **{label: Case(fixture({"SeatsClientTest.java": source}), None) for label, (source, _) in METHOD_VIOLATIONS.items()},
     "computeOnServer": Case(fixture({"SeatsClientTest.java": violating(VIOLATIONS["startRiding"][0], "computeOnServer")}), None),
 }
 
@@ -153,8 +259,12 @@ class LightSettledGateTest(unittest.TestCase):
         result = outcome("clean")
         self.assertTrue(result.ok, result.message)
 
-    def test_a_seat_after_a_carve_in_one_block_fails(self):
-        expected = {**{label: line for label, (_, line) in VIOLATIONS.items()}, "computeOnServer": VIOLATIONS["startRiding"][1]}
+    def test_a_seat_after_a_carve_with_no_wait_between_fails(self):
+        expected = {
+            **{label: line for label, (_, line) in VIOLATIONS.items()},
+            **{label: line for label, (_, line) in METHOD_VIOLATIONS.items()},
+            "computeOnServer": VIOLATIONS["startRiding"][1],
+        }
         for label, line in expected.items():
             with self.subTest(label):
                 result = outcome(label)

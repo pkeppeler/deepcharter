@@ -58,6 +58,7 @@ public class PodDrillLitScenario extends EvidenceScenario {
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
             });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 5);
             ClientWait.arrived(context, singleplayer.getServer());
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
