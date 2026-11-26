@@ -75,11 +75,14 @@ public class ClaimScannerDescentScenario extends EvidenceScenario {
                         new BlockPos(X, bottom - 1, Z),
                         new BlockPos(X + 1, rock + 2, Z + 1),
                         Blocks.AIR.defaultBlockState());
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.teleportTo(level, X + 1.0, rock, Z + 1.0, Set.of(), 0f, 0f, true);
                 return rock;
             });
             ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 1);
+            // The pilot arrives over the open shaft only now, and is mounted in the next task, so it cannot fall.
+            singleplayer.getServer().runOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                player.teleportTo(TestLayers.level(server, 1), X + 1.0, top, Z + 1.0, Set.of(), 0f, 0f, true);
+            });
             ScannerHudTest.mountFirstPlayer(singleplayer.getServer(), TIER);
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
