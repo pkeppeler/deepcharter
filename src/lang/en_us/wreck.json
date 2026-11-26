@@ -5,5 +5,7 @@
   "deepcharter.wreck.salvage.empty": "The wreck has no cargo to salvage.",
   "deepcharter.wreck.salvage.success": "You salvaged %s ore from the wreck.",
   "deepcharter.wreck.salvage.unreadable": "The cargo of this wreck is damaged and cannot be read.",
-  "hint.deepcharter.right_click_salvage": "Right-click to salvage"
+  "hint.deepcharter.right_click_salvage": "Right-click to salvage",
+  "death.attack.deepcharter.hull_loss": "%1$s was lost with the pod",
+  "death.attack.deepcharter.hull_loss.player": "%1$s was lost with the pod, fighting %2$s"
 }

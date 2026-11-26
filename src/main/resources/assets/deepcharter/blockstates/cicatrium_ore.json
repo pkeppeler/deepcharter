@@ -95,6 +95,70 @@
       {
         "model": "deepcharter:block/cicatrium_ore_basalt_core_9"
       }
+    ],
+    "host=hardpan": [
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_0"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_1"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_2"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_3"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_4"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_5"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_6"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_7"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_8"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_hardpan_9"
+      }
+    ],
+    "host=black_shale": [
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_0"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_1"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_2"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_3"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_4"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_5"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_6"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_7"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_8"
+      },
+      {
+        "model": "deepcharter:block/cicatrium_ore_black_shale_9"
+      }
     ]
   }
 }

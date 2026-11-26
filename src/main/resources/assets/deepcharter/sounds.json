@@ -148,5 +148,9 @@
 	"ambience.horn.test_voices": { "sounds": [{ "name": "deepcharter:ambience/worn/test_voices", "volume": 0.8, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
 	"ambience.horn.barometer": { "sounds": [{ "name": "deepcharter:ambience/worn/barometer", "volume": 0.8, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
 	"song.wreck": { "sounds": [{ "name": "deepcharter:song/wreck", "stream": true, "volume": 0.9, "attenuation_distance": 16 }], "subtitle": "subtitles.deepcharter.song.wreck" },
-	"song.dark": { "sounds": [{ "name": "deepcharter:song/dark", "attenuation_distance": 40 }], "subtitle": "subtitles.deepcharter.song.dark" }
+	"song.dark": { "sounds": [{ "name": "deepcharter:song/dark", "attenuation_distance": 40 }], "subtitle": "subtitles.deepcharter.song.dark" },
+
+	"continuity.laugh": { "sounds": [{ "name": "deepcharter:continuity/laugh" }], "subtitle": "subtitles.deepcharter.continuity.laugh" },
+	"continuity.needle": { "sounds": [{ "name": "deepcharter:continuity/needle" }], "subtitle": "subtitles.deepcharter.continuity.needle" },
+	"continuity.lamp_out": { "sounds": [{ "name": "deepcharter:continuity/lamp_out", "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.continuity.lamp_out" }
 }

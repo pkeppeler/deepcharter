@@ -47,6 +47,9 @@ public class SoundEventsTest {
             "phonograph.othello",
             "song.wreck",
             "song.dark",
+            "continuity.laugh",
+            "continuity.needle",
+            "continuity.lamp_out",
             "pod.engine_idle",
             "pod.engine_drive",
             "pod.engine_drill_side",
@@ -180,7 +183,7 @@ public class SoundEventsTest {
 
     /**
      * The drone beds, the Lamp Hymn (#249), the wax cylinders' recordings (#864, made by tools/sounds/first_sounds.py) and the ambience's
-     * fragments (#866, tools/sounds/ambience.py) and the two variants of "Au clair de la lune" (#861, {@code song.*}, made by first_sounds.py) are ours alone: the original game has nothing to map them to.
+     * fragments (#866, tools/sounds/ambience.py) and the two variants of "Au clair de la lune" (#861, {@code song.*}, made by first_sounds.py) and the Continuity Event's laugh, needle and lamp (#1337, {@code continuity.*}) are ours alone: the original game has nothing to map them to.
      * So is the chord of a machine coming online (#1267), the one terminal sound with no original.
      */
     private static boolean hasNoOriginal(DeepSound sound) {
@@ -190,7 +193,8 @@ public class SoundEventsTest {
                 || path.startsWith("phonograph.")
                 || path.startsWith("song.")
                 || path.startsWith("ambience.")
-                || path.equals("terminal.online");
+                || path.equals("terminal.online")
+                || path.startsWith("continuity.");
     }
 
     /**

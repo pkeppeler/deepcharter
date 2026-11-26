@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "io.github.pkeppeler.deepcharter.client.continuity.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "AvatarRendererMixin",
+    "GameRendererMixin",
+    "GuiSetScreenMixin",
+    "SoundEngineMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
