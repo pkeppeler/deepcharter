@@ -108,8 +108,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     private static final String LONGEST_ALTIMETER = "-12,345 ft.";
     /**
-     * How far past its bar a gauge's title may hang under the band, each side: #1449's LOAD title is 4 pixels wider than its bar. The SINK plate stays out of
-     * every gauge's column, so it never meets a title.
+     * How far past its bar a gauge's title may hang under the band, each side: #1449's LOAD title is 4 pixels wider
+     * than its bar. The SINK plate stays out of every gauge's column, so it never meets a title.
      */
     private static final int TITLE_OVERHANG = 4;
     /** The pod rises this far over the floor before it is let sink, for the SINK plate. */
@@ -952,8 +952,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The SINK plate (#1432) on the screen, under the band and touching it, out of every gauge's column (where a gauge's title hangs), clear of the bezel and of
-     * vanilla's rows.
+     * The SINK plate (#1432) on the screen, under the band and touching it, out of every gauge's column (where a
+     * gauge's title hangs), clear of the bezel and of vanilla's rows.
      */
     private static List<String> sinkProblems(
             Font font,
@@ -995,8 +995,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The SINK plate draws while the pod sinks, in the hull gauge's colour, {@code ribbonWarn} near the buffer or the warning colour past it, and is gone once the
-     * pod has landed. The pod rises {@link #SINK_DROP} blocks and is let fall onto the floor.
+     * The SINK plate draws while the pod sinks, in the hull gauge's colour, {@code ribbonWarn} near the buffer or the
+     * warning colour past it, and is gone once the pod has landed. The pod rises {@link #SINK_DROP} blocks and is let
+     * fall onto the floor.
      */
     private void expectTheSinkPlateShowsWhileThePodSinks(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {

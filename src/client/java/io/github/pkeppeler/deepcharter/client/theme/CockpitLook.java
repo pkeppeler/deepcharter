@@ -339,8 +339,9 @@ public record CockpitLook(
     }
 
     /**
-     * The SINK readout (#1432): while the pod sinks, a plate under the band's middle holds a SINK title and a bar of the sink against the hard-landing
-     * buffer, with the buffer marked. Title and bar are in the hull gauge's colour, {@code warnColor} near the buffer and {@code lowColor} past it.
+     * The SINK readout (#1432): while the pod sinks, a plate under the band's middle holds a SINK title and a bar of
+     * the sink against the hard-landing buffer, with the buffer marked. Title and bar are in the hull gauge's colour,
+     * {@code warnColor} near the buffer and {@code lowColor} past it.
      *
      * @param warnColor the readout near the buffer ({@code ribbonWarn})
      * @param warnShare the share of the buffer from which the readout is in {@code warnColor}
@@ -349,7 +350,8 @@ public record CockpitLook(
      * @param segments how many segments the bar is cut in
      * @param limit the segment after which the buffer is marked: the bar runs to {@code segments / limit} of the buffer
      * @param barGap the space between the title and the bar
-     * @param holdTicks the client ticks the plate stays up after the pod stops sinking, so a hover's feathering does not blink it
+     * @param holdTicks the client ticks the plate stays up after the pod stops sinking, so a hover's feathering does
+     *     not blink it
      */
     public record SinkLook(
             int warnColor,

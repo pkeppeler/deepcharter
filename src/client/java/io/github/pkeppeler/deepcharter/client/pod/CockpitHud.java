@@ -46,8 +46,9 @@ import org.jspecify.annotations.Nullable;
  * gauge or the scanner's window, draws static over the scanner, makes a gauge or the plate's numbers jump, and swaps the plate for a tag. It never touches the hull lamp or
  * the burning lamp, which stay true so that a pilot who dies in the dark still sees what killed them, and the scanner's cells are drawn by {@link ScannerHud} unchanged.
  *
- * <p>While the pod sinks, a SINK plate hangs under the band's middle (#1432, {@link CockpitReading#sink}): the sink against the hard-landing buffer, marked, in the
- * hull gauge's colour, {@code ribbonWarn} near the buffer and the warning colour past it. It reads the depth gauge's signal, as the altimeter does.
+ * <p>While the pod sinks, a SINK plate hangs under the band's middle (#1432, {@link CockpitReading#sink}): the sink
+ * against the hard-landing buffer, marked, in the hull gauge's colour, {@code ribbonWarn} near the buffer and the
+ * warning colour past it. It reads the depth gauge's signal, as the altimeter does.
  */
 public final class CockpitHud {
     /** How many warning lamps the Ribbon has: low fuel, low hull, burning, and any other warning of the readout. */
@@ -386,7 +387,7 @@ public final class CockpitHud {
         return new boolean[] {fuelLow, hullLow, burning, readout.stream().anyMatch(line -> line.kind() == Kind.ALERT)};
     }
 
-    /** Whether the SINK plate is up: the pod is airborne and sank within the last {@link CockpitLook.SinkLook#holdTicks}. */
+    /** Whether the SINK plate is up: the pod is airborne and sank within the plate's hold time. */
     public static boolean sinkShown(PodEntity pod) {
         return sinkHold > 0 && !pod.onGround();
     }
@@ -396,8 +397,9 @@ public final class CockpitHud {
     }
 
     /**
-     * Where the SINK plate is: the title and the bar side by side, {@link CockpitLook#titleGap} past the plate sprite's border, as tall as the taller of the
-     * font's capitals and the bar, centred under the band (so under the altimeter's recess) and hung from its lower edge.
+     * Where the SINK plate is: the title and the bar side by side, {@link CockpitLook#titleGap} past the plate sprite's
+     * border, as tall as the taller of the font's capitals and the bar, centred under the band (so under the
+     * altimeter's recess) and hung from its lower edge.
      */
     public static Box sinkBox(Font font, Layout layout, CockpitLook look, int guiWidth, int guiHeight) {
         GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
@@ -417,7 +419,10 @@ public final class CockpitHud {
                 band.left(guiWidth) + (band.width() - width) / 2, band.top(guiHeight) + band.height(), width, height);
     }
 
-    /** The SINK readout's colour at a sink of {@code share} of the buffer: the hull gauge's, {@code ribbonWarn} from the warning share, the warning colour past 1. */
+    /**
+     * The SINK readout's colour at a sink of {@code share} of the buffer: the hull gauge's, {@code ribbonWarn} from the
+     * warning share, the warning colour past 1.
+     */
     public static int sinkColor(double share, CockpitLook look) {
         if (share > 1.0) {
             return look.lowColor();
@@ -426,8 +431,8 @@ public final class CockpitHud {
     }
 
     /**
-     * The SINK plate with its bar at {@code bar} (0 to 1, the full bar {@code segments / limit} of the buffer): its title, and its bar lit to it with the buffer
-     * marked in the warning colour.
+     * The SINK plate with its bar at {@code bar} (0 to 1, the full bar {@code segments / limit} of the buffer): its
+     * title, and its bar lit to it with the buffer marked in the warning colour.
      */
     private static void sinkReadout(
             GuiGraphicsExtractor graphics, Font font, Layout layout, CockpitLook look, double bar) {
@@ -544,7 +549,9 @@ public final class CockpitHud {
                 border.left() + gap, border.top() + gap, border.right() + gap, border.bottom() + gap);
     }
 
-    /** The plate sprite's nine-slice border, from the sprite's own metadata; none for a sprite that is not cut in nine. */
+    /**
+     * The plate sprite's nine-slice border, from the sprite's own metadata; none for a sprite that is not cut in nine.
+     */
     private static GuiSpriteScaling.NineSlice.Border plateBorder(Layout layout) {
         GuiSpriteScaling scaling = Minecraft.getInstance()
                 .getAtlasManager()
