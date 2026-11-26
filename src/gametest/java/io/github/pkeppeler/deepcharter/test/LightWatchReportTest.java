@@ -23,7 +23,7 @@ import net.minecraft.world.level.GameType;
  * The safety net's report that a watched chunk has waited too long to be sendable (#1297). A chunk is sendable
  * only once it ticks, so a loaded chunk on the rim of the ticking area waits for that, not for the light: it is not
  * reported, and its watch ends with the hold instead of waiting as long as it stays loaded; it starts again when the
- * chunk is sent. A ticking chunk whose send the light holds back is reported.
+ * chunk comes to tick. A ticking chunk whose send the light holds back is reported.
  *
  * <p>One forced chunk ticks with its ring; the ring beyond that is loaded and does not tick. The hold is drawn on a
  * chunk of the first ring, so its 3x3 reaches into the second.
@@ -82,10 +82,10 @@ public class LightWatchReportTest {
 
     /**
      * Once the hold is over, nothing in its 3x3 is watched, the loaded chunk that does not tick included. When that
-     * chunk comes to tick and is sent to a player, it is watched again.
+     * chunk comes to tick, with no player there to be sent it, it is watched again; a player then still gets it.
      */
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS * 2)
-    public void aWatchOnALoadedChunkThatDoesNotTickEndsWithTheHoldAndStartsAgainWhenItIsSent(GameTestHelper helper) {
+    public void aWatchOnALoadedChunkThatDoesNotTickEndsWithTheHoldAndStartsAgainWhenItTicks(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkPos drawn = new ChunkPos(DORMANT_SITE.x() + 1, DORMANT_SITE.z());
         ChunkPos rim = new ChunkPos(DORMANT_SITE.x() + 2, DORMANT_SITE.z());
@@ -114,33 +114,42 @@ public class LightWatchReportTest {
                             .filter(near -> LightSync.watching(level, near))
                             .toList();
                     if (watched.isEmpty()) {
-                        mock[0] = MockPlayers.join(helper, "dormant-watch-viewer");
-                        mock[0].player().setGameMode(GameType.SPECTATOR);
-                        mock[0].teleportTo(
-                                level,
-                                TestLayers.vec(
-                                        TestLayers.SURFACE,
-                                        DORMANT_SITE.getMiddleBlockX() + 0.5,
-                                        100,
-                                        DORMANT_SITE.getMiddleBlockZ()),
-                                0f,
-                                0f);
                         FarChunks.force(helper, level, rim.x(), rim.z());
                         phase[0] = 2;
                     } else if (LightSync.timedOut(heldFor[0]++ - GRACE_TICKS)) {
                         throw failure(helper, "%s are still watched long after the hold of %s", watched, drawn);
                     }
                 }
+                case 2 -> {
+                    boolean ticks = ticking(level, rim);
+                    deadline.await(helper, level, ticks, () -> rim + " did not come to tick once forced");
+                    if (ticks) {
+                        phase[0] = 3; // the server's end of tick runs before the next check
+                    }
+                }
+                case 3 -> {
+                    if (!LightSync.watching(level, rim)) {
+                        throw failure(helper, "%s came to tick and is not watched again", rim);
+                    }
+                    mock[0] = MockPlayers.join(helper, "dormant-watch-viewer");
+                    mock[0].player().setGameMode(GameType.SPECTATOR);
+                    mock[0].teleportTo(
+                            level,
+                            TestLayers.vec(
+                                    TestLayers.SURFACE,
+                                    DORMANT_SITE.getMiddleBlockX() + 0.5,
+                                    100,
+                                    DORMANT_SITE.getMiddleBlockZ()),
+                            0f,
+                            0f);
+                    phase[0] = 4;
+                }
                 default -> {
                     boolean sent = mock[0] != null && mock[0].chunksSent().contains(rim);
                     deadline.await(helper, level, sent, () -> rim + " was not sent to the player once it ticked");
-                    if (!sent) {
-                        return;
+                    if (sent) {
+                        helper.succeed();
                     }
-                    if (!LightSync.watching(level, rim)) {
-                        throw failure(helper, "%s was sent and is not watched again", rim);
-                    }
-                    helper.succeed();
                 }
             }
         });

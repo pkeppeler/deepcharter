@@ -450,6 +450,7 @@ public final class LightSync {
 
     /** The watch of a chunk being sent, armed again if it was dropped as {@link #DORMANT}; null if it has none. */
     private static @Nullable NetWatch sentWatch(Key key) {
+        // For a chunk sent in the tick it came to tick, before compareLight re-arms it: no test can stage that order.
         if (DORMANT.remove(key)) {
             return NET.computeIfAbsent(
                     key, k -> new NetWatch(key.level.getServer().getTickCount()));
