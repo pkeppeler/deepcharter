@@ -46,6 +46,12 @@ import org.slf4j.LoggerFactory;
 public class BoreTripsClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger("BoreTripsClientTest");
     private static final int TRIPS = 10;
+    /**
+     * The longest a settle waits. One takes about 4 s, about 15 s the first time while the area generates; the last
+     * trip's starts some 120 s into the class's 180 s, so the default wait would end in the watchdog, unnamed.
+     */
+    private static final int SETTLE_SECONDS = 30;
+
     private static final double X = 15000.5;
     private static final double Z = 3000.5;
     /** Where the test holds a ticket of its own in each layer, far from the site, so the census cannot read empty. */
@@ -110,9 +116,9 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             try {
                 for (int trip = 1; trip <= TRIPS; trip++) {
                     trip(context, two, clientId, site);
-                    // Only the two trips the light-watch check compares are settled: a settle takes about 4 s,
-                    // the class has 180 s (ClientTestWatchdog), and a watch that never ends is still there, and
-                    // named, at the last trip's.
+                    // Only the two trips the light-watch check compares are settled: a settle takes about 4 s and
+                    // the class has 180 s (ClientTestWatchdog). A watch that never ends is still there, and named,
+                    // at the last trip's, whose wait is short enough to fail before the class's limit.
                     Tripped held = trip == 2 || trip == TRIPS
                             ? settledSample(context, two, trip, site, forceSendsBefore)
                             : sample(context, two, trip, site, forceSendsBefore);
@@ -136,8 +142,9 @@ public class BoreTripsClientTest implements FabricClientGameTest {
      * and not what is waiting to be freed. The last trip is compared with the first, which misses an object kept once
      * and never again. Light watches are counted once LightSync is done with the site ({@link #settledSample}), less
      * those on the outermost loaded ring ({@link #unsettled} says why the settle leaves it out), and the last trip is
-     * compared with the second: the first also holds the watches of the area's generation. The first trip is sampled
-     * unsettled, so its count, of the crossing's watches in flight, shows the census sees them at all.
+     * compared with the second. The first trip is sampled unsettled, so its count, of the crossing's watches in flight,
+     * shows the census sees them at all. The count is the whole server's: it also holds watches off the site, such as
+     * those on the rim of the overworld's spawn area, which no trip adds to, so they can only fall.
      */
     private static void expectSteady(List<Tripped> trips) {
         Tripped first = trips.getFirst();
@@ -253,6 +260,7 @@ public class BoreTripsClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "LightSync to be done with the chunks round the site in both layers",
+                    SETTLE_SECONDS,
                     () -> two.server()
                             .computeOnServer(server -> unsettled(server, site).isEmpty()),
                     () -> "unsettled: " + two.server().computeOnServer(server -> unsettled(server, site)));
@@ -269,8 +277,8 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     /**
      * The chunks of both layers round the site, out to the last ring that ticks, that LightSync holds, watches or waits
      * on queued light tasks for, or whose send to a player is queued, each tagged with why. Not the outermost loaded
-     * ring past it: a chunk there never ticks, so a watch on it lasts until the chunk unloads, and the first trip's
-     * settle waited out the 120 s on a handful of them (#1394 drops such watches; once it lands, the ring can join the
+     * ring past it: a chunk there never ticks, so a watch on it lasts until the chunk unloads, and a settle that took
+     * in the ring waited out the 120 s on a handful of them (#1394 drops such watches; once it lands, the ring can join the
      * settle). The last ticking ring is one past the simulation distance, which TwoPlayerServer leaves at the view
      * distance's default.
      */
@@ -288,7 +296,10 @@ public class BoreTripsClientTest implements FabricClientGameTest {
         return unsettled;
     }
 
-    /** The watched chunks of both layers on the outermost loaded ring, the one past {@link #tickingRadius}. */
+    /**
+     * The chunks of both layers on the outermost loaded ring, the one past {@link #tickingRadius}, that LightSync is
+     * settling: mostly watches, which is what the census subtracts them from.
+     */
     private static int ringWatches(MinecraftServer server, Site site) {
         int ring = tickingRadius(server) + 1;
         return (int) around(site, ring).stream()
