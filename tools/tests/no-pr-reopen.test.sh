@@ -4,7 +4,8 @@
 # it, and re-running the head's workflow runs (`POST actions/runs/<id>/rerun`) refreshes CI just as well, because
 # every CI job merges the live main (#982, #1094).
 # Scans every text file under tools/ (shell and Python), .githooks/ and .claude/hooks/; backslash-continued lines
-# are joined first, comment lines are skipped, and tools/tests/fixtures is recorded data. A hit is a line that has
+# are joined first, comment lines are skipped, and tools/tests/fixtures is recorded data. A line that ends in
+# `# close-ok: <reason>` is skipped: tools/merge-batch.sh closes a superseded batch PR and each merged original. A hit is a line that has
 # PATCH, a `pulls/` or `issues/` path and `state` together. Line-based, errs toward over-flagging.
 set -euo pipefail
 # shellcheck source=/dev/null
@@ -21,6 +22,7 @@ scan() {
       { line = $0; start = NR
         while (line ~ /\\$/ && (getline nxt) > 0) { sub(/\\$/, "", line); line = line nxt }
         if (line ~ /^[[:space:]]*#/) next
+        if (line ~ /# close-ok: [^[:space:]]/) next
         if (line ~ /PATCH/ && line ~ /(pulls|issues)\// && line ~ /state/) print f ":" start }
     ' "$f"
   done
@@ -45,6 +47,10 @@ S="state"
   echo "echo gh api -X $P repos/o/r/pulls/7 -f $S=closed # not a comment line"
 } >"$tmp/positive.sh"
 # The continued command is reported at its first line.
+echo "gh api -X $P repos/o/r/pulls/7 -f $S=closed # close-ok: a reason" >"$tmp/marked.sh"
+echo "gh api -X $P repos/o/r/pulls/7 -f $S=closed # close-ok:" >"$tmp/unmarked.sh"
+check "marker: a close-ok line with a reason is skipped" "" "$(scan "$tmp/marked.sh")"
+check "marker: a close-ok line without a reason is caught" "$tmp/unmarked.sh:1" "$(scan "$tmp/unmarked.sh")"
 check "positive: every form is caught" "$(printf '%s\n' "$tmp/positive.sh:"{1,2,3,4,6})" "$(scan "$tmp/positive.sh")"
 
 {
