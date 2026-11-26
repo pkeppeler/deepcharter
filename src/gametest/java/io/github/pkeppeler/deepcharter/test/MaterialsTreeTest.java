@@ -664,7 +664,7 @@ public class MaterialsTreeTest {
                 "a marked row leads with the mark, got %s",
                 tree.materials().stream().map(Material::figures).toList());
 
-        // A small tangle breaks down in full, to items 2 and 1 the Fibonacci numbers 8 and 5 of times.
+        // A small tangle breaks down in full: items 2 and 1 are needed 8 and 5 times (Fibonacci numbers).
         List<Item> few = items.subList(0, 8);
         Function<Item, List<KnownRecipe>> knownFew = tangle(helper, few);
         MaterialsTree whole = MaterialsTree.of(knownFew.apply(few.getLast()).getFirst(), knownFew, stock());
@@ -705,9 +705,8 @@ public class MaterialsTreeTest {
         Item cutItem = obtainable.get(TANGLE_ITEMS);
         Item base = obtainable.get(TANGLE_ITEMS + 1);
         Item shown = obtainable.get(TANGLE_ITEMS + 2);
-        // Three of the tangle's last item come first (the most needed), so the budget is spent before the two of an
-        // item a known
-        // recipe makes, of which one is held, and the one of a base material, held.
+        // The tangle's last item comes first (three are needed), so the budget runs out before two further rows:
+        // an item a known recipe makes, one of them held, and a base material, also held.
         KnownRecipe top = recipe(
                 helper,
                 shown,
