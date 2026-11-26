@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
+import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
@@ -61,6 +62,9 @@ public class QuestMapClientTest implements FabricClientGameTest {
     /** Chapter 1 has six steps; the first five are done, so the sixth is the current step. */
     private static final int FIRST_CHAPTER_STEPS = 6;
 
+    /** A GUI scale that leaves the 854 by 480 window a GUI of 213 by 120, too small for the catalogue's consoles. */
+    private static final int SMALL_GUI_SCALE = 4;
+
     private static final Identifier IRON = Identifier.parse("minecraft:iron_ingot");
 
     @Override
@@ -86,6 +90,8 @@ public class QuestMapClientTest implements FabricClientGameTest {
             everyStepAClickOpensCarriesTheCueAndNoOtherDoes();
             aClickOnTheCueStillPicksTheStep();
             aCutNameStopsShortOfTheCue();
+            hoveringACardItemLightsItAndAsksForTheHand();
+            aCardItemCarriesTheCueOnlyWhenItsRecipeCanOpen();
         });
         clickingAnItemOpensItsRecipeInTheCatalogue(context);
     }
@@ -385,6 +391,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
                     lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.RECIPES,
                     "a click on the iron icon opens the inventory at iron's recipes, got " + lookup);
             context.setScreen(() -> null);
+            aClickOnACardItemsCueOpensItsRecipe(context);
             everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(context);
             anyOfStepIsOneSlotWhoseIconCyclesAndWhoseClickOpensTheShownRecipe(context);
         }
@@ -1022,5 +1029,102 @@ public class QuestMapClientTest implements FabricClientGameTest {
                     "the name's line '" + line.shortText() + "' ends at x "
                             + line.box().right() + ", over the cue at x " + cueLeft);
         }
+    }
+
+    /**
+     * The icon of the card item whose count reads {@code count}: the icon's box left of the count, from the theme's
+     * gaps.
+     */
+    private static Box cardIcon(Drawn count) {
+        QuestMapTuning q = QuestMapTuning.current();
+        int size = q.itemIconSize();
+        return new Box(count.box().x() - q.itemCountGap() - size, count.box().y() - q.itemCountTop(), size, size);
+    }
+
+    /**
+     * A card item's click cue: the single pixels of ink a frame draws in the item's row, from the end of its count
+     * {@code count} to as far right as the cue reaches.
+     */
+    private static List<Fill> cardItemCueInk(Frame frame, Drawn count) {
+        QuestMapTuning q = QuestMapTuning.current();
+        Box icon = cardIcon(count);
+        Box after = new Box(count.box().right(), icon.y(), q.clickCueInset() + q.clickCueSize() + 1, icon.height());
+        return frame.fills().stream()
+                .filter(fill -> fill.box().width() == 1 && fill.box().height() == 1 && contains(after, fill.box()))
+                .toList();
+    }
+
+    /**
+     * #1425: the mouse over an item of the index card fills a box behind both its icon and its count and asks for the
+     * pointing hand; with the mouse away, nothing asks for the hand.
+     */
+    private static void hoveringACardItemLightsItAndAsksForTheHand() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        Drawn count = drawn(screen, "0/4");
+        Box icon = cardIcon(count);
+        Frame off = DrawnText.frame(screen, -1, -1);
+        Frame on = DrawnText.frame(screen, icon.x() + icon.width() / 2, icon.y() + icon.height() / 2);
+        require(
+                added(on, off).stream()
+                        .anyMatch(fill -> contains(fill.box(), icon) && contains(fill.box(), count.box())),
+                "the hovered item is filled behind its icon " + icon + " and its count " + count.box()
+                        + ", added fills: " + added(on, off));
+        require(on.cursor() == CursorTypes.POINTING_HAND, "the hovered item asks for the hand, got " + on.cursor());
+        require(off.cursor() != CursorTypes.POINTING_HAND, "with the mouse away nothing asks for the hand");
+    }
+
+    /**
+     * #1425: each item of the index card carries ink right of its count, the chevron that says a click opens it. In a
+     * window too small for the catalogue, where a click opens no recipe, no item carries that ink, and the mouse over
+     * one adds no fill and asks for no hand.
+     */
+    private static void aCardItemCarriesTheCueOnlyWhenItsRecipeCanOpen() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        Frame frame = DrawnText.frame(screen, -1, -1);
+        for (String count : List.of("0/4", "0/2")) {
+            require(
+                    !cardItemCueInk(frame, drawn(screen, count)).isEmpty(),
+                    "the item counting " + count + " carries the click cue right of its count");
+        }
+        Window window = Minecraft.getInstance().getWindow();
+        window.setGuiScale(SMALL_GUI_SCALE);
+        try {
+            Drawn count = drawn(screen, "0/4");
+            Box icon = cardIcon(count);
+            Frame off = DrawnText.frame(screen, -1, -1);
+            Frame on = DrawnText.frame(screen, icon.x() + icon.width() / 2, icon.y() + icon.height() / 2);
+            require(
+                    cardItemCueInk(off, count).isEmpty(),
+                    "with no room for the catalogue the item carries no cue: " + cardItemCueInk(off, count));
+            require(
+                    added(on, off).isEmpty(),
+                    "with no room for the catalogue the item is not lit under the mouse: " + added(on, off));
+            require(
+                    on.cursor() != CursorTypes.POINTING_HAND,
+                    "with no room for the catalogue the item does not ask for the hand, got " + on.cursor());
+        } finally {
+            window.setGuiScale(window.calculateScale(0, false));
+        }
+    }
+
+    /** #1425: a click on an item's cue, right of its count and clear of its icon, opens the item's recipes. */
+    private static void aClickOnACardItemsCueOpensItsRecipe(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+            Drawn count = drawn(screen, "0/4");
+            List<Fill> cue = cardItemCueInk(DrawnText.frame(screen, -1, -1), count);
+            require(!cue.isEmpty(), "the iron item carries the click cue");
+            Box mark = cue.getFirst().box();
+            screen.mouseClicked(mouse(mark.x(), mark.y()), false);
+        });
+        ClientWait.screen(context, InventoryScreen.class);
+        context.waitTicks(3);
+        CataloguePanel panel = CatalogueScene.panel(context);
+        CatalogueState.Lookup lookup =
+                context.computeOnClient(client -> panel.state().lookup());
+        require(
+                lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.RECIPES,
+                "a click on the iron item's cue opens the inventory at iron's recipes, got " + lookup);
+        context.setScreen(() -> null);
     }
 }

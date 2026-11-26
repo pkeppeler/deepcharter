@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookMemory;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -19,8 +20,9 @@ import net.minecraft.network.chat.Component;
 /**
  * Evidence scenario "handbook-task-cue" for #1413: a new player's handbook, open on chapter 1's map in the default
  * window, with the mouse away and then on the second step. The steps a click opens carry a chevron and light under the
- * mouse; chapter 2's map, only previewed, carries neither. The screenshot does not show the system cursor, so the
- * pointing hand is not in the stills.
+ * mouse; chapter 2's map, only previewed, carries neither. Then, for #1425, the index card at rest and with the mouse
+ * on its first item's icon: the item carries the same chevron and lights the same way. The screenshot does not show the
+ * system cursor, so the pointing hand is not in the stills.
  */
 public class HandbookTaskCueScenario extends EvidenceScenario {
     private static final int GUI_SCALE = 2;
@@ -31,6 +33,10 @@ public class HandbookTaskCueScenario extends EvidenceScenario {
     private static final int ZOOM_WIDTH = 220;
 
     private static final int ZOOM_HEIGHT = 60;
+    /** The close-up of the card's item: a cut this wide and tall, in GUI pixels, centred on the item's count. */
+    private static final int CARD_ZOOM_WIDTH = 100;
+
+    private static final int CARD_ZOOM_HEIGHT = 40;
 
     @Override
     protected String name() {
@@ -68,6 +74,24 @@ public class HandbookTaskCueScenario extends EvidenceScenario {
                     ZOOM_WIDTH,
                     ZOOM_HEIGHT);
 
+            Box count = context.computeOnClient(client -> DrawnText.of(screen).stream()
+                    .filter(drawn -> drawn.text().matches("\\d+/\\d+"))
+                    .map(DrawnText.Drawn::box)
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("chapter 1's index card draws no counted item")));
+            ClientCursor.moveTo(context, AWAY, AWAY);
+            hold(context);
+            screenshot(context, "card-item");
+            zoomCard(context, "card-item", count);
+            QuestMapTuning q = QuestMapTuning.current();
+            ClientCursor.moveTo(
+                    context,
+                    count.x() - q.itemCountGap() - q.itemIconSize() / 2.0,
+                    count.y() - q.itemCountTop() + q.itemIconSize() / 2.0);
+            hold(context);
+            screenshot(context, "card-item-hover");
+            zoomCard(context, "card-item-hover", count);
+
             open(context, 2);
             ClientCursor.moveTo(context, AWAY, AWAY);
             hold(context);
@@ -98,6 +122,22 @@ public class HandbookTaskCueScenario extends EvidenceScenario {
         });
         context.waitTicks(HandbookScreenTuning.current().flipTicks() + 2);
         return screen;
+    }
+
+    /**
+     * The close-up of an index card item whose count is drawn at {@code count}: a cut centred on the count, kept inside
+     * the GUI.
+     */
+    private void zoomCard(ClientGameTestContext context, String still, Box count) {
+        int guiWidth = context.computeOnClient(client -> client.getWindow().getGuiScaledWidth());
+        zoomStill(
+                context,
+                still,
+                still + "-zoom",
+                Math.clamp(count.x() - CARD_ZOOM_WIDTH / 2, 0, guiWidth - CARD_ZOOM_WIDTH),
+                Math.max(0, count.y() - CARD_ZOOM_HEIGHT / 2),
+                CARD_ZOOM_WIDTH,
+                CARD_ZOOM_HEIGHT);
     }
 
     private void hold(ClientGameTestContext context) {
