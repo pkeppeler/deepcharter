@@ -58,23 +58,25 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
     private static final String DISCONNECT = "DISCONNECT";
     /**
      * The latest the button may come for a broken envelope, from the death: the cut, the skip and the steady fallback laugh (3.68 s) take
-     * under 5 s, with room for a slow machine. An envelope read as it is would take the cap, 40 s, or never come.
+     * under 5 s, with room for a slow machine. An envelope read as it is would put the button at 20 s or later, at the cap, or never.
      */
     private static final double FALLBACK_BUTTON_SECONDS = 10.0;
 
     /**
      * The broken envelopes, each a pack's {@code continuity/laugh_envelope.json}: a length that is not a number, endless, negative,
-     * absurdly long or missing, no values a second, a value that is not a number, and not JSON.
+     * absurdly long, just over the bound or missing, no values a second, a value that is not a number, and not JSON.
      */
     private static final List<String> BROKEN = List.of(
             "{\"framesPerSecond\": 25, \"seconds\": NaN, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": Infinity, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": -1, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": 1e9, \"values\": [0.5, 0.5]}",
+            // Just over LaughEnvelope.MAX_SECONDS: pins the bound that keeps a valid pack 12 s inside the cap.
+            "{\"framesPerSecond\": 25, \"seconds\": 21, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"values\": [0.5, 0.5]}",
             // Lengths a valid envelope may have, so the button would come late if these were read as they are.
-            "{\"framesPerSecond\": 0, \"seconds\": 20, \"values\": [0.5, 0.5]}",
-            "{\"framesPerSecond\": 25, \"seconds\": 20, \"values\": [NaN]}",
+            "{\"framesPerSecond\": 0, \"seconds\": 15, \"values\": [0.5, 0.5]}",
+            "{\"framesPerSecond\": 25, \"seconds\": 15, \"values\": [NaN]}",
             "{ this is not json");
 
     @Override

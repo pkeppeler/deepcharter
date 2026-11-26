@@ -60,7 +60,8 @@ record LaughEnvelope(int framesPerSecond, double seconds, float[] values) {
             JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
             JsonArray array = json.getAsJsonArray("values");
             int rate = json.get("framesPerSecond").getAsInt();
-            // Gson reads leniently: NaN and Infinity load as numbers, so every bound is written to fail for them.
+            // Gson reads leniently: a bare NaN or Infinity parses to that double, so every bound is written to fail for
+            // them.
             double seconds = json.get("seconds").getAsDouble();
             if (!(rate > 0 && rate <= MAX_FRAMES_PER_SECOND)) {
                 throw new IllegalStateException("framesPerSecond must be from 1 to " + MAX_FRAMES_PER_SECOND);
