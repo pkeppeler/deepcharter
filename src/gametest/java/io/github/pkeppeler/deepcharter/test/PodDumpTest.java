@@ -28,6 +28,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -119,16 +121,18 @@ public class PodDumpTest {
     }
 
     private static int oreLying(PodEntity pod) {
-        return itemsUnder(pod).stream()
-                .filter(item -> OreRegistry.typeOf(item.getItem()).isPresent())
-                .mapToInt(item -> item.getItem().getCount())
-                .sum();
+        return lying(pod, stack -> OreRegistry.typeOf(stack).isPresent());
     }
 
     private static int lying(PodEntity pod, Item item) {
+        return lying(pod, stack -> stack.is(item));
+    }
+
+    private static int lying(PodEntity pod, Predicate<ItemStack> which) {
         return itemsUnder(pod).stream()
-                .filter(entity -> entity.getItem().is(item))
-                .mapToInt(entity -> entity.getItem().getCount())
+                .map(ItemEntity::getItem)
+                .filter(which)
+                .mapToInt(ItemStack::getCount)
                 .sum();
     }
 
@@ -147,11 +151,14 @@ public class PodDumpTest {
         return count;
     }
 
-    private static long hints(MockPlayer mock) {
+    private static Stream<Component> hintMessages(MockPlayer mock) {
         return mock.chatMessages().stream()
                 .filter(message -> message.getContents() instanceof TranslatableContents contents
-                        && contents.getKey().equals(HINT_KEY))
-                .count();
+                        && contents.getKey().equals(HINT_KEY));
+    }
+
+    private static long hints(MockPlayer mock) {
+        return hintMessages(mock).count();
     }
 
     // ---- dumping and lifting ----
@@ -308,9 +315,7 @@ public class PodDumpTest {
         Scene scene = seated(helper);
         PodEntity pod = scene.pod();
         pod.cargo().setAt(pod, 0, new ItemStack(Items.COAL, 4));
-        helper.runAfterDelay(10, () -> {
-            scene.mock().send(new PodDumpPayload());
-        });
+        helper.runAfterDelay(10, () -> scene.mock().send(new PodDumpPayload()));
         helper.runAfterDelay(
                 12, () -> itemsUnder(pod).forEach(item -> UnreadableChecks.makeUnreadable(item, PodDump.DUMPED)));
         helper.runAfterDelay(10 + PICKUP_WAIT, () -> {
@@ -410,11 +415,7 @@ public class PodDumpTest {
                     hints(scene.mock()) == 1 && ReadMarks.isRead(scene.pilot(), PodDump.HINT_MARK),
                     "the first overload tells the pilot once, told %s times",
                     hints(scene.mock()));
-            Component hint = scene.mock().chatMessages().stream()
-                    .filter(message -> message.getContents() instanceof TranslatableContents contents
-                            && contents.getKey().equals(HINT_KEY))
-                    .findFirst()
-                    .orElseThrow();
+            Component hint = hintMessages(scene.mock()).findFirst().orElseThrow();
             Object[] args = ((TranslatableContents) hint.getContents()).getArgs();
             expect(
                     helper,

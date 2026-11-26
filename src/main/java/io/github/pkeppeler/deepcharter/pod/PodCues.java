@@ -60,9 +60,7 @@ public final class PodCues {
         }
         Input input = pilot.getLastClientInput();
         // The load at which PodMovement.tick's thrust no longer beats gravity, as the dump hint reads it.
-        double limit = PodDump.climbLimit(pod);
-        float extra = PodEvents.extraMass(pod);
-        if (!input.jump() || pod.cargoMass() + extra < limit) {
+        if (!input.jump() || pod.cargoMass() + PodEvents.extraMass(pod) < PodDump.climbLimit(pod)) {
             LAST_CUE.remove(pod);
             return;
         }
@@ -72,10 +70,8 @@ public final class PodCues {
             return;
         }
         LAST_CUE.put(pod, now);
-        // Dumping cargo only helps when the pod could climb without it: towing alone can hold it down.
-        boolean dumpHelps = pod.cargoMass() > 0f && extra < limit;
         pilot.sendOverlayMessage(
-                dumpHelps
+                PodDump.overloadedByCargo(pod)
                         ? Component.translatable("deepcharter.pod.overloaded", Component.keybind(PodDump.KEY))
                         : Component.translatable("deepcharter.pod.overloaded_load"));
         ((ServerLevel) pod.level()).playSound(null, pod, DeepSound.CARGO_FULL.event(), SoundSource.NEUTRAL, 1f, 1f);

@@ -154,9 +154,9 @@ public final class PodDump {
     /**
      * Whether the pod cannot climb and dumping would help: the load ({@link PodEntity#cargoMass} and {@link
      * PodEvents#extraMass}) reaches {@link #climbLimit}, and without the cargo it would not (which also means the hold
-     * holds something).
+     * holds something). {@link PodCues} names the dump key only then.
      */
-    private static boolean overloadedByCargo(PodEntity pod) {
+    static boolean overloadedByCargo(PodEntity pod) {
         double limit = climbLimit(pod);
         float extra = PodEvents.extraMass(pod);
         return pod.cargoMass() + extra >= limit && extra < limit;
