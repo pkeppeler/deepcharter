@@ -47,9 +47,8 @@ public class ClaimCaveStalksTest {
     /** The writes the stand-in level records; it answers each as done. */
     private static final Set<String> WRITES = Set.of("setBlock", "removeBlock", "destroyBlock");
 
-    /** What the stand-in level asks the real one: its shape, registries and seed, never a block. */
-    private static final Set<String> FORWARDED =
-            Set.of("dimensionType", "registryAccess", "enabledFeatures", "getSeed", "getSeaLevel", "getLevel");
+    /** What the stand-in level asks the real one: its dimension type, for its height. Never a block or the level. */
+    private static final Set<String> FORWARDED = Set.of("dimensionType");
 
     private record Write(BlockPos pos, BlockState state) {}
 
