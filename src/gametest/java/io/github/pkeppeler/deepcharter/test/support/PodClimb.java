@@ -4,7 +4,10 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 
-/** The load at which a pod stops climbing, worked out from the tuning {@code PodMovement.tick} reads (#1456). */
+/**
+ * The load at which a pod stops climbing, worked out from the tuning {@code PodMovement.tick} reads (#1456). Goes into
+ * #1449's {@code PodLoad} when that lands, with {@code PodDump.climbLimit}.
+ */
 public final class PodClimb {
     private PodClimb() {}
 

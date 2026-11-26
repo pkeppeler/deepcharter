@@ -2568,13 +2568,13 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Problem.** A pod too heavy to fly had no way out but driving to a terminal, and the pilot could not tell why it would not lift (friends-server playtest, [#1456](https://github.com/pkeppeler/deepcharter/issues/1456)). Ore must still not reach the pack, where it rides weightless.
 
-**What it is** ([ADR 0103](../adr/0103-cargo-dumps-to-the-ground-under-the-pod-and-a-seated-player-picks-up-no-ore.md)). Q on a stack in the pod screen's hold drops that stack under the pod; holding the dump key (B) for a second from a seat drops the whole hold. The ore lies on the ground, where a crewmate or the pilot on foot can pick it up: a player in a seat picks up no ore. The first time the cargo keeps a held jump from climbing (a load of half the engine's power on a stock Mole, where the thrust no longer beats gravity), the pilot is told once which key dumps.
+**What it is** ([ADR 0103](../adr/0103-cargo-dumps-to-the-ground-under-the-pod-and-a-seated-player-picks-up-no-ore.md)). Q on a stack in the pod screen's hold drops one of it under the pod, Ctrl+Q the stack; holding the dump key (B) for a second from a seat drops the whole hold. It lies on the ground, where a crewmate or the pilot on foot can pick it up: a player in a seat picks up no ore and nothing a pod dumped. The first time the cargo keeps a held jump from climbing (a load of half the engine's power on a stock Mole, where the thrust no longer beats gravity), the pilot is told once which key dumps.
 
 - **Ladder.** By hand: dump, land, step out and carry what you can, or come back for it with a lighter pod or a second one. A crew splits it: the pilot dumps, a crewmate on foot gathers and walks it to a terminal. Later: an engine or a lighter hull lifts more, so dumping is for the deep, heavy hauls.
 - **Readable.** The overload cue on jump names the dump key, and the one-time line says it the first time the cargo holds the pod down.
 
-**Trade-offs.** Dumped ore is ore not sold this trip; on the ground it lies five minutes before it despawns, so a dump deep down is usually a loss. The dump key has a one-second hold so a brush of it never costs a haul.
+**Trade-offs.** Dumped ore is ore not sold this trip; on the ground it lies five minutes before it despawns, so a dump deep down is usually a loss. Dump over lava and it burns. The dump key has a one-second hold so a brush of it never costs a haul.
 
-**Tuning knobs.** The hold time (one second, `PodDumpKeys`); where the items land (spread over 80% of the pod's width, just under its floor).
+**Tuning knobs.** The hold time (one second, `PodDumpKeys`); where the items land (spread over 80% of the pod's width, at its floor).
 
 **Open questions.** Whether dumped ore should lie longer (the extended lifetime of a recovery spill) so that a crew can come back for it; whether a dump while airborne should cost the dumped ore's fall.
