@@ -10,16 +10,15 @@ status: accepted
 
 - **Batch.** `tools/merge-batch.sh <n>...` takes review-passed PRs and builds `batch/<utc-stamp>` off `origin/main`. Each PR that passes the gate's non-CI checks (`merge-pr.sh --preflight`) is squashed onto the batch as one commit: the PR's title and `(#n)`, a body with `Closes #<issue>`, and the trailers. A PR that conflicts is dropped and reported. The tool never resolves a conflict.
 - **One CI run.** The batch goes to one PR into `main`, labelled `gameplay` so the full client suite runs. The tool reads the verdict through `merge-pr.sh --ci`, the same CI half of the gate that a normal merge runs. A stale base rebuilds the batch on the new `main`, up to a retry limit, then stops with a report.
-- **Fast-forward push.** The repo allows only squash merges (`allow_rebase_merge` is off), and a squash merge of the batch would fold it into one commit. On green the tool checks that `origin/main` is still the batch's base, then pushes the CI-verified batch head to `main` with a plain push (no force), so `main` keeps one commit per PR. `main` already takes direct pushes (the roadmap commits), and `protect-main` blocks only force-push and deletion. Only a non-fast-forward rejection counts as a stale base and rebuilds the batch. Any other push error stops the tool. The batch PR is then closed with a comment naming the pushed sha, and the original PRs are closed with a comment that names the batch PR, their stacked PRs retargeted to `main` and their branches deleted.
+- **Fast-forward push.** The repo allows only squash merges (`allow_rebase_merge` is off), and a squash merge of the batch would fold it into one commit. On green the tool checks that `origin/main` is still the batch's base, then pushes the CI-verified batch head to `main` with a plain push (no force), so `main` keeps one commit per PR. `main` already takes direct pushes (the roadmap commits), and `protect-main` blocks only force-push and deletion. Only a non-fast-forward rejection counts as a stale base and rebuilds the batch. Any other push error stops the tool. Then the batch PR and the original PRs are closed with comments, stacked PRs retargeted to `main` and branches deleted.
 - **Bisect on red.** The batch PR is closed and the PRs split into two halves, and each half is a new batch. A batch of one falls back to `tools/merge-pr.sh`. A red batch with one bad PR costs about `log2(n)` more runs, and the good PRs still merge.
 - **The queue stays.** `tools/merge-queue.sh` is the one-at-a-time fallback, and the tool to use when a PR must show GitHub's "merged" state. Both tools share the merge lock.
 
 ## Consequences
 
-- A batch's combined code is reviewed only per PR. Nobody reviews the sum. CI is the check for a semantic clash between two PRs that each merge cleanly alone.
-- A clash CI does not catch lands on `main` as two reviewed commits. The next batch or a bug fix has to find it.
-- The original PRs show as closed, not merged, on GitHub, and so does the batch PR (its commits reach `main` by a push, with no GitHub merge). The batch PR and `Merged in batch #<n>` comments are the record, and `Closes #<issue>` in the batch PR closes the issues.
-- Each original PR's CI run is not what merges: the batch's run is. A PR needs no CI of its own to enter a batch, but needs its review pass.
+- A batch's combined code is reviewed only per PR. CI is the only check for a semantic clash between two PRs that each merge cleanly alone; one it misses lands on `main` as two reviewed commits.
+- The original PRs and the batch PR show as closed, not merged (the commits reach `main` by a push). The `Merged in batch #<n>` comments are the record, and `Closes #<issue>` closes the issues.
+- A PR needs no CI of its own to enter a batch, only its review pass.
 - A red batch costs extra CI runs while it bisects. A flaky check can also split a batch for no reason.
 
 ## Considered options

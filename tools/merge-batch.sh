@@ -1,33 +1,10 @@
 #!/usr/bin/env bash
 # Usage: tools/merge-batch.sh <pr-number>...
 #
-# Merges several review-passed PRs with one CI run. For two or more PRs it replaces the serial queue
-# (tools/merge-queue.sh), which pays a CI run per PR and re-conflicts the PRs behind each merge.
-#
-# 1. Preflight: each PR goes through `merge-pr.sh --preflight` (the gate without CI and mergeability: open, not a
-#    draft, review-passed at its head, closes its branch's issue, body and labels, targets main). A failing PR is
-#    reported as refused and left out.
-# 2. Build: `batch/<utc-stamp>` off origin/main in a temporary worktree. Each PR, in the order given, is squashed
-#    (`git merge --squash`: merge-base..head) onto it as one commit "<title> (#n)" whose body is `Closes #<issue>` plus
-#    the trailers. A PR that conflicts, adds nothing, adds an ADR number already taken on the batch, or whose head moved
-#    since the preflight is dropped and reported. Conflicts are never resolved.
-# 3. CI: the batch is pushed and a PR into main is opened, labelled `gameplay` (so the full client suite runs) and
-#    `no-demo`. CI is read by `merge-pr.sh --ci <batch pr>` (the gate's CI half) after tools/lib/ci-wait.sh's wait.
-# 4. Merge: the repo allows only squash merges, so on green the CI-verified batch head is pushed to main by a
-#    fast-forward push (no force): main gets one commit per PR. It is pushed only while origin/main is still the batch's
-#    base. Then the batch PR is closed with a comment naming the sha, and each original PR is closed with a
-#    "Merged in batch #<n>" comment (its stacked PRs retargeted to main first) and its branch deleted, then the batch
-#    branch is deleted. A [stale-base] verdict, or a push rejected as non-fast-forward (main moved), rebuilds the batch
-#    on the new main and runs CI again (MERGE_BATCH_STALE_RETRIES, default 3); after that the tool stops with a
-#    report. Any other push failure stops the tool at once. A [client-only] failure re-runs the whole Client tests
-#    run once (MERGE_BATCH_CLIENT_RETRIES, default 1). A PR that gets no commit because its squash is empty and main
-#    already holds a "(#n)" commit is closed as merged (a rerun after a killed run heals itself). The exit trap closes
-#    an open batch PR and deletes its branch unless it was merged.
-# 5. Red: the batch PR is closed, the PRs are split into two halves, and each half is processed the same way, first
-#    half first. A group of one PR falls back to tools/merge-pr.sh <n>.
-# 6. Exit 0 only when every PR was merged. The summary lists merged, dropped, refused and stopped PRs.
-#
-# Shares the merge lock with merge-queue.sh (exit 3 when one is running).
+# Merges several review-passed PRs with one CI run, as one squashed commit per PR landed by a fast-forward push.
+# Steps, retries and the exit status: .claude/skills/deepcharter-conventions/merging.md ("Batches") and ADR 0106.
+# The exit trap closes an open batch PR and deletes its branch unless it landed. Shares the merge lock with
+# merge-queue.sh (exit 3 when one is running).
 #
 # Test seams: MERGE_PR (the gate script), MERGE_QUEUE_LOCK, MERGE_BATCH_{CI_POLL,CI_MAX,STALE_SLEEP,PENDING_RETRIES,
 # STALE_RETRIES,CLIENT_RETRIES}, MERGE_BATCH_STAMP (the UTC stamp), MERGE_BATCH_TRAILERS (commit trailers, one per
@@ -67,12 +44,7 @@ tmp=$(mktemp -d)
 roadmap_tmp=
 build_wt=
 release() {
-  if [[ -n $open_bpr ]]; then
-    comment "$open_bpr" "Closed: the batch tool stopped before this batch merged."$'\n\n'"$footer" || true
-    close_pr "$open_bpr" || true
-    delete_remote_branch "$open_branch"
-    discard_local_branch "$open_branch"
-  fi
+  if [[ -n $open_bpr ]]; then retire_batch "$open_bpr" "$open_branch" "Closed: the batch tool stopped before this batch merged."; fi
   if [[ -n $build_wt ]]; then git worktree remove --force "$build_wt" >/dev/null 2>&1 || true; fi
   roadmap_cleanup
   rm -rf "$tmp"
@@ -123,6 +95,12 @@ drop() {
   say "dropped PR #$1: $2"
 }
 
+# drop_reset <pr> <reason>: undo the PR's staged squash in the build worktree, then drop it.
+drop_reset() {
+  git -C "$build_wt" reset --hard -q HEAD
+  drop "$@"
+}
+
 # adr_duplicates <worktree>: the ADR numbers that two files in the tree hold, one per line.
 adr_duplicates() {
   local files
@@ -156,8 +134,7 @@ build_batch() {
       continue
     fi
     if ! git -C "$build_wt" merge --squash --no-commit "$head" >/dev/null 2>&1; then
-      git -C "$build_wt" reset --hard -q HEAD
-      drop "$n" "conflicts with main or an earlier PR in the batch"
+      drop_reset "$n" "conflicts with main or an earlier PR in the batch"
       continue
     fi
     if git -C "$build_wt" diff --cached --quiet; then
@@ -173,16 +150,15 @@ build_batch() {
     fi
     dup=$(adr_duplicates "$build_wt")
     if [[ -n $dup ]]; then
-      git -C "$build_wt" reset --hard -q HEAD
-      drop "$n" "its ADR number ($(tr '\n' ' ' <<<"$dup" | sed 's/ $//')) is already taken on the batch"
+      drop_reset "$n" "its ADR number ($(tr '\n' ' ' <<<"$dup" | sed 's/ $//')) is already taken on the batch"
       continue
     fi
-    title=$(pr_get "$n" .title) || { git -C "$build_wt" reset --hard -q HEAD; drop "$n" "could not read its title"; continue; }
+    title=$(pr_get "$n" .title) || { drop_reset "$n" "could not read its title"; continue; }
     branch=$(pr_get "$n" .head.ref) || branch=
-    [[ $branch =~ ^([0-9]+)- ]] || { git -C "$build_wt" reset --hard -q HEAD; drop "$n" "branch '$branch' is not <issue>-<slug>"; continue; }
+    [[ $branch =~ ^([0-9]+)- ]] || { drop_reset "$n" "branch '$branch' is not <issue>-<slug>"; continue; }
     issue=${BASH_REMATCH[1]}
     msg="$title (#$n)"$'\n\n'"Closes #$issue"$'\n\n'"$trailers"
-    git -C "$build_wt" commit -q --no-verify -m "$msg" || { git -C "$build_wt" reset --hard -q HEAD; drop "$n" "could not commit its squash"; continue; }
+    git -C "$build_wt" commit -q --no-verify -m "$msg" || { drop_reset "$n" "could not commit its squash"; continue; }
     included+=("$n")
   done
   b_sha=$(git -C "$build_wt" rev-parse HEAD)
