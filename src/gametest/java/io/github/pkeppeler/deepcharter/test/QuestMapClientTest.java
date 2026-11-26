@@ -874,8 +874,8 @@ public class QuestMapClientTest implements FabricClientGameTest {
     }
 
     /**
-     * #1413: the mouse over a step a click picks fills the step's box behind its name and asks for the pointing hand; the
-     * mouse over a step of a chapter only previewed, which a click does nothing to, adds nothing.
+     * #1413: the mouse over a step a click picks fills the step's box behind its name and asks for the pointing hand;
+     * the mouse over a step of a chapter only previewed, which a click does nothing to, adds nothing.
      */
     private static void hoveringAStepLightsItAndAsksForTheHand() {
         HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
@@ -907,8 +907,9 @@ public class QuestMapClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The ink a frame draws inside the box of the step named {@code name}, between the name and the box's right side: the
-     * step's click cue. The right side is the nearest fill right of the name that is one pixel wide and as tall as a step box.
+     * The ink a frame draws inside the box of the step named {@code name}, between the name and the box's right side:
+     * the step's click cue. The right side is the nearest fill right of the name that is one pixel wide and as tall as
+     * a step box.
      */
     private static List<Fill> cueInk(Frame frame, Drawn name) {
         Box text = name.box();
@@ -931,8 +932,8 @@ public class QuestMapClientTest implements FabricClientGameTest {
     }
 
     /**
-     * #1413: every step of a chapter in full carries ink between its name and its box's right side, the chevron that says a
-     * click opens it; no step of a previewed chapter does. The name is cut to make room, never drawn over.
+     * #1413: every step of a chapter in full carries ink between its name and its box's right side, the chevron that
+     * says a click opens it; no step of a previewed chapter does. The name is cut to make room, never drawn over.
      */
     private static void everyStepAClickOpensCarriesTheCueAndNoOtherDoes() {
         HandbookScreen screen = mapScreen(new HandbookMemory(), 1);

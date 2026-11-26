@@ -177,9 +177,9 @@ final class QuestMap {
     }
 
     /**
-     * Draws the flowchart with its origin at ({@code originX}, {@code originY}), clipped to {@code clip}, in screen pixels. The
-     * steps of a chapter in full are a click's to pick, so each carries the {@link ClickCue}; step {@code hovered} (-1 for none)
-     * is the one under the mouse.
+     * Draws the flowchart with its origin at ({@code originX}, {@code originY}), clipped to {@code clip}, in screen
+     * pixels. The steps of a chapter in full are a click's to pick, so each carries the {@link ClickCue}; step {@code
+     * hovered} (-1 for none) is the one under the mouse.
      */
     static void drawChart(
             GuiGraphicsExtractor graphics,
@@ -267,8 +267,9 @@ final class QuestMap {
     }
 
     /**
-     * A step: a one-pixel box in {@code color} with its text, cut with dots after {@link QuestMapTuning#stepMaxLines()} lines.
-     * A {@code clickable} step carries the {@link ClickCue}, lit when {@code hovered}, and its text leaves the cue room.
+     * A step: a one-pixel box in {@code color} with its text, cut with dots after {@link
+     * QuestMapTuning#stepMaxLines()} lines. A {@code clickable} step carries the {@link ClickCue}, lit when {@code
+     * hovered}, and its text leaves the cue room.
      */
     private static void stepBox(
             GuiGraphicsExtractor graphics,

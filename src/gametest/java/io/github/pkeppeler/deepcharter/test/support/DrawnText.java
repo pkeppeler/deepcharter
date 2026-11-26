@@ -32,8 +32,8 @@ import org.jspecify.annotations.Nullable;
  * scissor is cut to it, and a string wholly outside the scissor is dropped. {@code textWithWordWrap} and {@code textWithBackdrop} are
  * not recorded; the mod draws no text with either.
  *
- * <p>{@link #frame} also keeps the plain {@code fill} rectangles drawn outside a widget and the cursor the frame asked for, for what
- * only shows as ink or a hand: a hovered row's highlight, a click cue.
+ * <p>{@link #frame} also keeps the plain {@code fill} rectangles drawn outside a widget and the cursor the frame asked
+ * for, for what only shows as ink or a hand: a hovered row's highlight, a click cue.
  */
 public final class DrawnText {
     private DrawnText() {}
@@ -46,10 +46,16 @@ public final class DrawnText {
         }
     }
 
-    /** A rectangle the screen filled outside any widget: the box it covers on the screen in GUI pixels, cut to the scissor, and its colour (ARGB). */
+    /**
+     * A rectangle the screen filled outside any widget: the box it covers on the screen in GUI pixels, cut to the
+     * scissor, and its colour (ARGB).
+     */
     public record Fill(Box box, int color) {}
 
-    /** One frame drawn outside any widget: its strings, its fills in the order drawn, and the cursor it asked for, or null. */
+    /**
+     * One frame drawn outside any widget: its strings, its fills in the order drawn, and the cursor it asked for, or
+     * null.
+     */
     public record Frame(
             List<Drawn> text, List<Fill> fills, @Nullable CursorType cursor) {}
 
@@ -81,7 +87,10 @@ public final class DrawnText {
                 client.mouseHandler.getScaledYPos(window));
     }
 
-    /** Renders {@code screen} once with the mouse at ({@code mouseX}, {@code mouseY}) and returns all it recorded. Client thread. */
+    /**
+     * Renders {@code screen} once with the mouse at ({@code mouseX}, {@code mouseY}) and returns all it recorded.
+     * Client thread.
+     */
     public static Frame frame(Screen screen, int mouseX, int mouseY) {
         Recorder recorder = new Recorder(Minecraft.getInstance());
         screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f);

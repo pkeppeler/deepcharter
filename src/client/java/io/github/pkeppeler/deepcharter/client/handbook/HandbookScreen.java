@@ -743,7 +743,10 @@ public final class HandbookScreen extends Screen {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 
-    /** Draws sheet {@code onSheet} (from 0) of page {@code index}; on a chapter's map, step {@code hoveredStep} is under the mouse. */
+    /**
+     * Draws sheet {@code onSheet} (from 0) of page {@code index}; on a chapter's map, step {@code hoveredStep} is under
+     * the mouse.
+     */
     private void drawPage(GuiGraphicsExtractor graphics, int index, int onSheet, int hoveredStep) {
         switch (pages.get(index)) {
             case HandbookPage.Cover cover -> drawCover(graphics);
@@ -1148,8 +1151,8 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * The step of {@code chapter}'s map under screen point ({@code x}, {@code y}), the one a click there picks; -1 off the steps,
-     * under the index card, or on a map whose steps cannot be picked because the chapter is not in full.
+     * The step of {@code chapter}'s map under screen point ({@code x}, {@code y}), the one a click there picks; -1 off
+     * the steps, under the index card, or on a map whose steps cannot be picked because the chapter is not in full.
      */
     private int stepUnder(HandbookPage.Chapter chapter, double x, double y) {
         if (chapter.visibility() != HandbookVisibility.FULL
@@ -1161,8 +1164,8 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * A chapter's heading, then its quest map with step {@code hoveredStep} under the mouse, then the index card of the step the
-     * player has picked.
+     * A chapter's heading, then its quest map with step {@code hoveredStep} under the mouse, then the index card of
+     * the step the player has picked.
      */
     private void drawMap(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter, int hoveredStep) {
         boolean full = chapter.visibility() == HandbookVisibility.FULL;

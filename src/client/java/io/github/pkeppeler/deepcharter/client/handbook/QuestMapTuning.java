@@ -98,8 +98,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param pencilTipGap space between the tip of the dashed pencil line and the arms of the x it points at
  * @param pencilStartGap space between a Note's box and the start of the dashed pencil line
  * @param pencilMarkGap space between the x and the payoff box
- * @param clickCueSize how far each arm of the chevron on a thing a click opens reaches back from its tip, across and up or down
- *     ({@link ClickCue})
+ * @param clickCueSize how far each arm of the chevron on a thing a click opens reaches back from its tip, across and
+ *     up or down ({@link ClickCue})
  * @param clickCueInset space between the tip of that chevron and the right edge of the thing it marks
  */
 public record QuestMapTuning(
