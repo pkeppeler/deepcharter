@@ -319,6 +319,41 @@ class IconsAreNotGlyphs(unittest.TestCase):
                 with self.subTest(icon=name, line=line):
                     self.assertLess(len(re.findall("#+", line)), 3)
 
+    def test_no_icon_has_a_hole_taller_than_a_pixel(self):
+        # A closed outline at the font's height reads as "0", "O" or "D" at any width, and is far from every glyph by pixels: the hollow hull shield read
+        # "087/100" and the thermometer's hollow tube "0HEAT". A one-pixel hole (the hull's boss) reads as a mark on a solid shape.
+        for name, rows in cockpit_ribbon.ICONS.items():
+            with self.subTest(icon=name):
+                self.assertLessEqual(tallest_hole(rows), 1)
+
+    def test_the_hole_check_catches_the_outlines_that_read_as_zero_and_passes_a_boss(self):
+        hollow_shield = ("#####", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#..")
+        hollow_tube = (".#...", "#.#..", "#.#..", "#.#..", "###..", "###..", ".#...")
+        bossed_shield = ("#####", "#####", "##.##", "#####", ".###.", ".###.", "..#..")
+        self.assertEqual((tallest_hole(hollow_shield), tallest_hole(hollow_tube), tallest_hole(bossed_shield)), (5, 3, 1))
+
+
+def tallest_hole(rows) -> int:
+    """The most rows any unlit 4-connected region spans that does not touch the cell's edge."""
+    h, w = len(rows), len(rows[0])
+    seen, tallest = set(), 0
+    for y0 in range(h):
+        for x0 in range(w):
+            if rows[y0][x0] != "." or (x0, y0) in seen:
+                continue
+            region, stack = [], [(x0, y0)]
+            seen.add((x0, y0))
+            while stack:
+                x, y = stack.pop()
+                region.append((x, y))
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and rows[ny][nx] == "." and (nx, ny) not in seen:
+                        seen.add((nx, ny))
+                        stack.append((nx, ny))
+            if all(0 < x < w - 1 and 0 < y < h - 1 for x, y in region):
+                tallest = max(tallest, len({y for _, y in region}))
+    return tallest
+
 
 class Coverage(unittest.TestCase):
     def test_the_status_is_under_the_budget_and_smaller_than_the_scanner(self):
