@@ -32,6 +32,13 @@ public final class RealInput {
         context.waitTicks(1);
     }
 
+    /** One turn of the wheel at the cursor, up for a positive {@code vertical} and down for a negative one, then one tick. */
+    public static void scroll(ClientGameTestContext context, double vertical) {
+        context.runOnClient(
+                client -> client.mouseHandler.onScroll(client.getWindow().handle(), 0, vertical));
+        context.waitTicks(1);
+    }
+
     /** A key press and release with {@code modifiers}, then one tick. */
     public static void key(ClientGameTestContext context, int key, int modifiers) {
         for (int action : new int[] {InputConstants.PRESS, InputConstants.RELEASE}) {
