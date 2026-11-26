@@ -40,6 +40,7 @@ public class PodHazardCuesTest {
     private static final String GAS_KEY = "deepcharter.ore.gas_blast";
     /** A rig pod thrown down this fast lands hard through the ground cushion (#1432), which brakes a crewed sink. */
     private static final double HARD_SINK = 1.5;
+
     private static final String LANDING_KEY = "deepcharter.pod.hard_landing";
     private static final String OVERLOAD_KEY = "deepcharter.pod.overloaded";
     private static final String OVERLOAD_LOAD_KEY = "deepcharter.pod.overloaded_load";

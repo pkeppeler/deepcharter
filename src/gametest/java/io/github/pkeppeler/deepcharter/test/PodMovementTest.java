@@ -35,6 +35,7 @@ public class PodMovementTest {
     private static final double EPSILON = 1e-6;
     /** A rig pod thrown down this fast lands hard through the ground cushion (#1432), which brakes a crewed sink. */
     private static final double HARD_SINK = 1.5;
+
     private static final float SOUTH = 0f;
     private static final float WEST = 90f;
 
