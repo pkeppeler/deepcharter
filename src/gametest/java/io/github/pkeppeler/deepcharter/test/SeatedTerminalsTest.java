@@ -6,6 +6,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
+import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -27,7 +28,9 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalViewPayload;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -72,7 +75,10 @@ public class SeatedTerminalsTest {
 
     private static final AtomicInteger NAMES = new AtomicInteger();
     private static final int EMPTY_SLOT = 8;
+    private static final int HANDBOOK_SLOT = 7;
     private static final int TOO_FAR_BLOCKS = 20;
+    /** Blocks on each axis from a Prospector's position to the pump's middle in the corner case. */
+    private static final double CORNER = 5.67;
 
     /** A terminal opened for a player, as plain values: an event listener stays registered for the whole run. */
     private record Opened(UUID player, Identifier type, BlockPos pos) {}
@@ -101,6 +107,22 @@ public class SeatedTerminalsTest {
         for (int x = 0; x <= 13; x++) {
             for (int z = 0; z <= 13; z++) {
                 helper.setBlock(new BlockPos(x, 0, z), Blocks.STONE);
+            }
+        }
+    }
+
+    /**
+     * The floor, with everything above it cleared to air: the barrier walls the test runner puts round each 8 by 8
+     * test would stand between the pod and a terminal past them, and the seated pick needs a clear line. Only for a
+     * case in a batch of its own, as the cleared ground reaches past the test's own walls.
+     */
+    private static void openGround(GameTestHelper helper) {
+        floor(helper);
+        for (int x = 0; x <= 13; x++) {
+            for (int y = 1; y <= 6; y++) {
+                for (int z = 0; z <= 13; z++) {
+                    helper.setBlock(new BlockPos(x, y, z), Blocks.AIR);
+                }
             }
         }
     }
@@ -204,7 +226,7 @@ public class SeatedTerminalsTest {
      */
     @GameTest(environment = "deepcharter-test:seated_terminals_open")
     public void aSeatedPilotOpensTheTerminalTheyFaceInReach(GameTestHelper helper) {
-        floor(helper);
+        openGround(helper);
         BlockPos pump = terminal(helper, TerminalTypes.FUEL_PUMP, new BlockPos(12, 1, 7));
         BlockPos processor = terminal(helper, TerminalTypes.ORE_PROCESSOR, new BlockPos(1, 1, 6));
         BlockPos station = terminal(helper, TerminalTypes.REPAIR_STATION, new BlockPos(6, 1, 1));
@@ -269,7 +291,7 @@ public class SeatedTerminalsTest {
      */
     @GameTest(environment = "deepcharter-test:seated_terminals_none")
     public void nothingInReachIsRefusedWithALine(GameTestHelper helper) {
-        floor(helper);
+        openGround(helper);
         // The pump's middle is 13.5 east, 0.05 past reach of the Mole's east face at 7.45.
         BlockPos pump = terminal(helper, TerminalTypes.FUEL_PUMP, new BlockPos(13, 1, 6));
         MockPlayer pilot = charterMember(helper, "far");
@@ -319,7 +341,7 @@ public class SeatedTerminalsTest {
      */
     @GameTest(environment = "deepcharter-test:seated_terminals_outsider")
     public void aPilotOnNoCharterIsRefusedAsOnFoot(GameTestHelper helper) {
-        floor(helper);
+        openGround(helper);
         BlockPos pump = terminal(helper, TerminalTypes.FUEL_PUMP, new BlockPos(10, 1, 6));
         MockPlayer pilot = outsider(helper, "outsider");
         PodEntity pod = pod(helper);
@@ -365,7 +387,7 @@ public class SeatedTerminalsTest {
      */
     @GameTest(environment = "deepcharter-test:seated_terminals_apron")
     public void theApronOpensAllThreeServiceTerminalsFromOneSpot(GameTestHelper helper) {
-        floor(helper);
+        openGround(helper);
         BlockPos pump = terminal(helper, TerminalTypes.FUEL_PUMP, new BlockPos(11, 1, 6));
         BlockPos processor = terminal(helper, TerminalTypes.ORE_PROCESSOR, new BlockPos(6, 1, 2));
         BlockPos station = terminal(helper, TerminalTypes.REPAIR_STATION, new BlockPos(2, 1, 6));
@@ -397,7 +419,7 @@ public class SeatedTerminalsTest {
      */
     @GameTest(environment = "deepcharter-test:seated_terminals_actions")
     public void aSeatedPilotRefuelsAndSells(GameTestHelper helper) {
-        floor(helper);
+        openGround(helper);
         BlockPos pump = terminal(helper, TerminalTypes.FUEL_PUMP, new BlockPos(12, 1, 7));
         BlockPos processor = terminal(helper, TerminalTypes.ORE_PROCESSOR, new BlockPos(0, 1, 5));
         MockPlayer pilot = charterMember(helper, "trader");
@@ -486,7 +508,7 @@ public class SeatedTerminalsTest {
      */
     @GameTest(environment = "deepcharter-test:seated_terminals_navigator")
     public void aProspectorNavigatorOpensATerminal(GameTestHelper helper) {
-        floor(helper);
+        openGround(helper);
         BlockPos pump = terminal(helper, TerminalTypes.FUEL_PUMP, new BlockPos(12, 1, 6));
         MockPlayer pilot = charterMember(helper, "prospector-pilot");
         MockPlayer navigator = charterMember(helper, "navigator");
@@ -566,8 +588,9 @@ public class SeatedTerminalsTest {
     }
 
     /**
-     * The client asks for a terminal only on an empty-hand use of the pod it sits in: a held item, the off hand, a
-     * crouch, another pod, or a player on foot keep the use they had. Caught: a check that drops any one of those.
+     * The client asks for a terminal only on a main-hand use of the pod it sits in, with both hands empty or only the
+     * handbook in the main hand: a held item in either hand, the off hand's own use, a crouch, another pod, or a
+     * player on foot keep the use they had. Caught: a check that drops any one of those.
      */
     @GameTest
     public void onlyAnEmptyHandUseOfYourOwnPodAsksForATerminal(GameTestHelper helper) {
@@ -586,6 +609,20 @@ public class SeatedTerminalsTest {
                     helper,
                     SeatedTerminals.wantsTerminal(player, InteractionHand.MAIN_HAND, pod),
                     "seated, an empty-hand use of the pod asks for a terminal");
+            // A mock's charter kit lands before the handbook the join tick gives, so the test hands it over itself.
+            player.getInventory().setItem(HANDBOOK_SLOT, new ItemStack(HandbookRegistry.HANDBOOK));
+            player.getInventory().setSelectedSlot(HANDBOOK_SLOT);
+            expect(
+                    helper,
+                    SeatedTerminals.wantsTerminal(player, InteractionHand.MAIN_HAND, pod),
+                    "the handbook in the main hand counts as empty: it has no use on a pod");
+            player.getInventory().setSelectedSlot(EMPTY_SLOT);
+            player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.COAL));
+            expect(
+                    helper,
+                    !SeatedTerminals.wantsTerminal(player, InteractionHand.MAIN_HAND, pod),
+                    "fuel in the off hand keeps its use on the pod");
+            player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
             expect(
                     helper,
                     !SeatedTerminals.wantsTerminal(player, InteractionHand.OFF_HAND, pod),
@@ -608,6 +645,125 @@ public class SeatedTerminalsTest {
             helper.succeed();
         } finally {
             discard(pod, other);
+        }
+    }
+
+    /**
+     * From the seat, with the main hand empty and fuel in the off hand, the use refuels the pod as before: the client
+     * does not ask for a terminal, so the off hand's use reaches the pod. Caught: a predicate that ignores the off hand.
+     */
+    @GameTest
+    public void offHandFuelStillRefuelsFromTheSeat(GameTestHelper helper) {
+        floor(helper);
+        MockPlayer pilot = charterMember(helper, "stoker");
+        PodEntity pod = pod(helper);
+        try {
+            ServerPlayer player = pilot.player();
+            board(helper, pilot, pod);
+            pod.setFuel(0f);
+            player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.COAL));
+            expect(
+                    helper,
+                    !SeatedTerminals.wantsTerminal(player, InteractionHand.MAIN_HAND, pod),
+                    "with fuel in the off hand the client should not ask for a terminal");
+            UseEntity.on(player, helper.getLevel(), InteractionHand.MAIN_HAND, pod);
+            UseEntity.on(player, helper.getLevel(), InteractionHand.OFF_HAND, pod);
+            expect(helper, pod.fuel() > 0f, "the off hand's fuel should refuel the pod from the seat");
+            expect(
+                    helper,
+                    player.getOffhandItem().isEmpty(),
+                    "the coal should be used up, the off hand holds %s",
+                    player.getOffhandItem());
+            helper.succeed();
+        } finally {
+            discard(pod);
+        }
+    }
+
+    /**
+     * A Prospector whose box corner is within reach of the pump, but whose position is past the parking radius, does
+     * not reach it: the pump would not serve it as parked. A nudge nearer makes it both parked and in reach. Caught:
+     * a seated reach measured from the box alone.
+     */
+    @GameTest(environment = "deepcharter-test:seated_terminals_corner")
+    public void aProspectorCornerPastParkingDoesNotReach(GameTestHelper helper) {
+        openGround(helper);
+        BlockPos pump = terminal(helper, TerminalTypes.FUEL_PUMP, new BlockPos(12, 1, 12));
+        MockPlayer pilot = charterMember(helper, "corner");
+        // 5.67 blocks short of the pump's middle on both axes: the box corner is 5.97 from it, the position 8.03.
+        PodEntity pod = helper.spawn(PodRegistry.PROSPECTOR, new Vec3(12.5 - CORNER, 1, 12.5 - CORNER));
+        try {
+            withRepaired(helper, 1, () -> {
+                board(helper, pilot, pod);
+                ServerPlayer player = pilot.player();
+                double box = Math.sqrt(pod.getBoundingBox().distanceToSqr(Vec3.atCenterOf(pump)));
+                expect(helper, box <= REACH, "the Prospector's corner should be within reach of the pump, is %s", box);
+                expect(
+                        helper,
+                        !Terminals.isParkedAt(pod, pump),
+                        "the Prospector should not count as parked at the pump");
+                expect(helper, !Terminals.inReach(player, pump), "a pod not parked at the pump should not reach it");
+                face(player, pump);
+                pilot.send(SeatedTerminalPayload.INSTANCE);
+                expect(
+                        helper,
+                        openedBy(player).isEmpty()
+                                && refusedFor(player)
+                                        .equals(List.of(new Refused(player.getUUID(), TerminalRefusal.NONE_IN_REACH))),
+                        "the pump should be out of reach, opened %s, refused %s",
+                        openedBy(player),
+                        refusedFor(player));
+
+                pod.setPos(pod.position().add(0.1, 0, 0.1));
+                pod.positionRider(player);
+                expect(helper, Terminals.isParkedAt(pod, pump), "nudged nearer, the Prospector is parked at the pump");
+                opensFacing(helper, pilot, pump, TerminalTypes.FUEL_PUMP);
+            });
+            helper.succeed();
+        } finally {
+            discard(pod);
+        }
+    }
+
+    /**
+     * A terminal in reach behind a wall is not picked from the seat: a pod under the colony cannot trade through the
+     * rock. Take the wall away and it opens. Caught: a pick with no line of sight.
+     */
+    @GameTest(environment = "deepcharter-test:seated_terminals_wall")
+    public void aTerminalBehindAWallIsNotOpened(GameTestHelper helper) {
+        openGround(helper);
+        BlockPos pump = terminal(helper, TerminalTypes.FUEL_PUMP, new BlockPos(11, 1, 6));
+        List<BlockPos> wall = new ArrayList<>();
+        for (int y = 1; y <= 5; y++) {
+            for (int z = 3; z <= 10; z++) {
+                wall.add(new BlockPos(9, y, z));
+            }
+        }
+        wall.forEach(pos -> helper.setBlock(pos, Blocks.STONE));
+        MockPlayer pilot = charterMember(helper, "walled");
+        PodEntity pod = pod(helper);
+        try {
+            withRepaired(helper, 1, () -> {
+                board(helper, pilot, pod);
+                ServerPlayer player = pilot.player();
+                expect(helper, Terminals.inReach(player, pump), "the walled pump should be within reach of the pod");
+                face(player, pump);
+                pilot.send(SeatedTerminalPayload.INSTANCE);
+                expect(
+                        helper,
+                        openedBy(player).isEmpty()
+                                && refusedFor(player)
+                                        .equals(List.of(new Refused(player.getUUID(), TerminalRefusal.NONE_IN_REACH))),
+                        "a pump behind a wall should not open from the seat, opened %s, refused %s",
+                        openedBy(player),
+                        refusedFor(player));
+
+                wall.forEach(pos -> helper.setBlock(pos, Blocks.AIR));
+                opensFacing(helper, pilot, pump, TerminalTypes.FUEL_PUMP);
+            });
+            helper.succeed();
+        } finally {
+            discard(pod);
         }
     }
 }

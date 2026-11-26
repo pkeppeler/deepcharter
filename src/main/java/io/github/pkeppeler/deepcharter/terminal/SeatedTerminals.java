@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.terminal;
 
+import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -12,43 +13,56 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Terminals from the seat (#1447). An empty-hand use of the pod a player sits in asks the server
- * ({@link SeatedTerminalPayload}) for the terminal in reach that the player faces, and the server opens it
- * as a click on it would: reach is {@link Terminals#inReach}, which measures from the pod's box for anyone
- * seated in one.
+ * ({@link SeatedTerminalPayload}) for the terminal in reach that the player is looking toward, and the
+ * server opens it as a click on it would: reach is {@link Terminals#inReach}, which measures from the pod
+ * for anyone seated in one.
  */
 public final class SeatedTerminals {
     private SeatedTerminals() {}
 
+    /** The pod {@code player} is seated in, in any seat, or empty on foot. Safe on both sides. */
+    public static Optional<PodEntity> seat(Player player) {
+        return player.getRootVehicle() instanceof PodEntity pod ? Optional.of(pod) : Optional.empty();
+    }
+
     /**
-     * Whether {@code player}'s use of {@code used} with {@code hand} asks for a terminal: a main-hand use,
-     * with nothing in it and not crouched, of the pod they sit in. Any other use keeps its meaning (a held
-     * fuel, tether or part acts on the pod; a crouched use opens its cargo hold). Safe on both sides.
+     * Whether {@code player}'s use of {@code used} with {@code hand} asks for a terminal: a main-hand use, not
+     * crouched, of the pod they sit in, with the off hand empty and the main hand empty or holding the
+     * handbook, which has no use on a pod. Any other use keeps its meaning (a held fuel, tether or part, in
+     * either hand, acts on the pod; a crouched use opens its cargo hold). Safe on both sides.
      */
     public static boolean wantsTerminal(Player player, InteractionHand hand, Entity used) {
+        ItemStack held = player.getMainHandItem();
         return hand == InteractionHand.MAIN_HAND
-                && used instanceof PodEntity
-                && player.getVehicle() == used
-                && player.getMainHandItem().isEmpty()
+                && seat(player).filter(pod -> pod == used).isPresent()
+                && (held.isEmpty() || HandbookItems.isHandbook(held))
+                && player.getOffhandItem().isEmpty()
                 && !player.isSecondaryUseActive();
     }
 
     /**
-     * Opens, for {@code player} seated in a pod, the terminal in reach nearest the direction they look, the
-     * nearer one on a tie, or tells them none is in reach. A request from anyone not seated in a pod is
-     * ignored: only a forged packet sends one.
+     * Opens, for {@code player} seated in a pod, the terminal in reach and in sight nearest the direction they
+     * look, the nearer one on a tie, or tells them none is in reach. It is forgiving: a terminal behind the
+     * pilot opens when it is the only one. A request from anyone not seated in a pod is ignored: only a
+     * forged packet sends one.
      */
     static void open(ServerPlayer player) {
-        if (!(player.getRootVehicle() instanceof PodEntity pod)) {
+        Optional<PodEntity> seat = seat(player);
+        if (seat.isEmpty()) {
             return;
         }
-        Optional<BlockPos> faced = faced(player, pod);
+        Optional<BlockPos> faced = faced(player, seat.get());
         if (faced.isEmpty()) {
             Terminals.refuse(player, TerminalRefusal.NONE_IN_REACH);
             return;
@@ -61,9 +75,24 @@ public final class SeatedTerminals {
         Vec3 look = player.getLookAngle();
         AABB box = pod.getBoundingBox();
         return inReach(player, box.inflate(TerminalTuning.DEFAULT.maxDistance())).stream()
+                .filter(pos -> inSight(player, eye, pos))
                 .min(Comparator.<BlockPos>comparingDouble(pos ->
                                 -look.dot(Vec3.atCenterOf(pos).subtract(eye).normalize()))
                         .thenComparingDouble(pos -> box.distanceToSqr(Vec3.atCenterOf(pos))));
+    }
+
+    /**
+     * Whether nothing solid stands between the eyes and the middle of the terminal at {@code pos}: the ray
+     * hits nothing, or that terminal's own blocks. Only the seated pick asks, so a pod under the colony cannot
+     * pick a terminal through the rock; reach itself ({@link Terminals#inReach}) stays a distance, as on foot.
+     * Entities do not block, so the pod round the eyes does not.
+     */
+    private static boolean inSight(ServerPlayer player, Vec3 eye, BlockPos pos) {
+        BlockHitResult hit = player.level()
+                .clip(new ClipContext(
+                        eye, Vec3.atCenterOf(pos), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+        return hit.getType() == HitResult.Type.MISS
+                || TerminalBlock.lowerHalf(player.level(), hit.getBlockPos()).equals(pos);
     }
 
     /**

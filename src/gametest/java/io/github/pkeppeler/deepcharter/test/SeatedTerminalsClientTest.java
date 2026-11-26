@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.pod.PodChase;
+import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -35,15 +36,19 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Client GameTest for #1447: seated in a parked Mole with the chase camera on, the pilot's use key (the right mouse
- * button, through the window's own handler) on an empty hand opens the terminal they face, which stands past on-foot
- * reach. The use first lands on the pilot's own pod, as it did before #1447, when it opened nothing. Escape closes the
- * screen and the pilot stays seated.
+ * Client GameTest for #1447: seated in a parked Mole with the chase camera on, a new player's use key (the right
+ * mouse button, through the window's own handler), with the handbook they are given in hand, opens the terminal they
+ * look toward, which stands past on-foot reach. The use first lands on the pilot's own pod, as it did before #1447,
+ * when it opened nothing. Escape closes the screen and the pilot stays seated. With fuel in the off hand the use
+ * refuels the pod instead, as before.
  */
 public class SeatedTerminalsClientTest implements FabricClientGameTest {
     /** Blocks from the pod's middle to each terminal's middle, east and west: in reach of its box, not the eyes. */
@@ -52,7 +57,7 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
     private static final int PAD = 8;
 
     private static final int HEADROOM = 4;
-    /** The hotbar slot the pilot holds: the handbook every player is given is in the first. */
+    /** A hotbar slot a new player has nothing in. */
     private static final int EMPTY_SLOT = 8;
 
     /** Dollars the charter starts with. */
@@ -83,6 +88,14 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
                     context.computeOnClient(SeatedTerminalsClientTest::picksOwnPod),
                     "a seated pilot's use lands on their own pod: that is why a click never reached a terminal");
 
+            String hands = context.computeOnClient(
+                    client -> ClientSession.player(client).getMainHandItem() + " / "
+                            + ClientSession.player(client).getOffhandItem());
+            require(
+                    context.computeOnClient(client -> HandbookItems.isHandbook(
+                                    ClientSession.player(client).getMainHandItem())
+                            && ClientSession.player(client).getOffhandItem().isEmpty()),
+                    "the pilot holds the handbook they were given and nothing in the off hand, holds " + hands);
             useFacing(context, scene.pump(), FuelPumpScreen.class);
             RealInput.key(context, InputConstants.KEY_ESCAPE, 0);
             ClientWait.until(context, "the pump screen closed", client -> client.gui.screen() == null);
@@ -99,6 +112,36 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
 
             useFacing(context, scene.processor(), OreProcessorScreen.class);
             context.setScreen(() -> null);
+            ClientWait.until(context, "the processor screen closed", client -> client.gui.screen() == null);
+
+            // With the main hand empty, fuel in the off hand keeps its use on the pod: the use refuels it and opens
+            // nothing. (With the handbook in the main hand, the handbook's own use comes first, as before #1447.)
+            context.runOnClient(
+                    client -> ClientSession.player(client).getInventory().setSelectedSlot(EMPTY_SLOT));
+            float before = singleplayer
+                    .getServer()
+                    .computeOnServer(server -> pod(server).fuel());
+            singleplayer
+                    .getServer()
+                    .runOnServer(server ->
+                            realPlayer(server).setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.COAL)));
+            ClientWait.until(
+                    context,
+                    "the coal in the client's off hand",
+                    client -> ClientSession.player(client).getOffhandItem().is(Items.COAL));
+            RealInput.click(context, InputConstants.MOUSE_BUTTON_RIGHT);
+            ClientWait.until(
+                    context,
+                    "the pod refuelled from the off hand",
+                    client -> TestEntities.vehicle(ClientSession.player(client), PodEntity.class)
+                                    .fuel()
+                            > before,
+                    client -> "client fuel "
+                            + TestEntities.vehicle(ClientSession.player(client), PodEntity.class)
+                                    .fuel());
+            require(
+                    context.computeOnClient(client -> client.gui.screen() == null),
+                    "a use with fuel in the off hand should open no terminal");
         } finally {
             context.runOnClient(client -> client.options.setCameraType(original));
         }
@@ -147,23 +190,29 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
         return new Scene(pump, processor, charter);
     }
 
-    /** Seats the player in the scene's pod, with an empty hand, and waits until the client has them seated. */
+    /** Seats the player in the scene's pod, holding the handbook they were given, and waits until the client has them seated. */
     public static void board(ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
         BlockPos middle = scene.pump().relative(Direction.WEST, TERMINAL_OFFSET);
         ClientWait.chunksAround(context, middle.getX(), middle.getZ(), PAD + 1);
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = realPlayer(server);
-            PodEntity pod = server.overworld()
-                    .getEntities(PodRegistry.POD, entity -> entity.entityTags().contains(SEATED))
-                    .getFirst();
-            require(player.startRiding(pod, true, false), "the player should board the pod");
+            require(player.startRiding(pod(server), true, false), "the player should board the pod");
         });
         ClientWait.until(
                 context,
                 "the client seated in the pod",
                 client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
-        context.runOnClient(
-                client -> ClientSession.player(client).getInventory().setSelectedSlot(EMPTY_SLOT));
+        // A new player's first slot holds the starting rations, which eat; the handbook is beside them.
+        ClientWait.until(
+                context,
+                "the handbook in the client's hotbar",
+                client -> HandbookScreenClientTest.handbookSlot(
+                                ClientSession.player(client).getInventory())
+                        >= 0);
+        context.runOnClient(client -> ClientSession.player(client)
+                .getInventory()
+                .setSelectedSlot(HandbookScreenClientTest.handbookSlot(
+                        ClientSession.player(client).getInventory())));
         context.waitTicks(5);
     }
 
@@ -183,6 +232,12 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
     private static boolean picksOwnPod(Minecraft client) {
         return client.hitResult instanceof EntityHitResult hit
                 && hit.getEntity() == ClientSession.player(client).getVehicle();
+    }
+
+    private static PodEntity pod(MinecraftServer server) {
+        return server.overworld()
+                .getEntities(PodRegistry.POD, entity -> entity.entityTags().contains(SEATED))
+                .getFirst();
     }
 
     private static ServerPlayer realPlayer(MinecraftServer server) {

@@ -124,15 +124,18 @@ public final class Terminals {
 
     /**
      * Whether {@code player} is within reach of the terminal at {@code pos}: the distance a request is served from. A
-     * player seated in a pod reaches from the pod's box, in any seat (#1447); one on foot reaches from their eyes.
+     * player on foot reaches from their eyes. A player seated in a pod, in any seat (#1447), reaches from the pod's
+     * box, and only while the pod stands within {@link TerminalTuning#parkedRadius()} of the terminal, as a parked pod
+     * does: a wide pod's corner alone does not reach a terminal that would not serve it.
      */
     public static boolean inReach(ServerPlayer player, BlockPos pos) {
         double range = TerminalTuning.DEFAULT.maxDistance();
+        double parked = TerminalTuning.DEFAULT.parkedRadius();
         Vec3 centre = Vec3.atCenterOf(pos);
-        double gap = player.getRootVehicle() instanceof PodEntity pod
-                ? pod.getBoundingBox().distanceToSqr(centre)
-                : player.getEyePosition().distanceToSqr(centre);
-        return gap <= range * range;
+        return SeatedTerminals.seat(player)
+                .map(pod -> pod.getBoundingBox().distanceToSqr(centre) <= range * range
+                        && pod.position().distanceToSqr(centre) <= parked * parked)
+                .orElseGet(() -> player.getEyePosition().distanceToSqr(centre) <= range * range);
     }
 
     /**

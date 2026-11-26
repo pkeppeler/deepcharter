@@ -5,8 +5,8 @@ package io.github.pkeppeler.deepcharter.terminal;
  *
  * @param maxDistance  blocks from the player's eyes, or from the box of the pod they sit in, to the middle
  *                     of a terminal block: past this the server refuses to open a terminal or to run an action
- *                     at it. At most {@code parkedRadius}, so a pod whose pilot reaches a terminal from the
- *                     seat stands about where it is parked at it
+ *                     at it. A seated player also needs the pod within {@code parkedRadius}
+ *                     ({@link Terminals#inReach})
  * @param parkedRadius blocks from the middle of a terminal block to a pod's position within which the pod counts as parked at
  *                     the terminal, for every pod terminal
  */
@@ -17,10 +17,6 @@ public record TerminalTuning(double maxDistance, double parkedRadius) {
         if (!(parkedRadius > 0)) {
             throw new IllegalArgumentException(
                     "the radius a pod is parked within must be above 0, got " + parkedRadius);
-        }
-        if (!(maxDistance <= parkedRadius)) {
-            throw new IllegalArgumentException(
-                    "a terminal's reach must be at most the parked radius, got " + maxDistance + " > " + parkedRadius);
         }
     }
 }

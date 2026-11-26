@@ -125,7 +125,7 @@
   "deepcharter.handbook.controls.board.board": "Point at the Mole and press %s to climb in.",
   "deepcharter.handbook.controls.board.leave": "Press %s to climb out.",
   "deepcharter.handbook.controls.seat.title": "The Mole: terminals from the seat",
-  "deepcharter.handbook.controls.seat.terminal": "Seated, with an empty hand, %s opens the terminal in reach that you face.",
+  "deepcharter.handbook.controls.seat.terminal": "Seated, empty-handed or holding this handbook, %s opens the terminal in reach you look toward.",
   "deepcharter.handbook.controls.drive.title": "The Mole: driving",
   "deepcharter.handbook.controls.drive.drive": "Pilot: %s forward, %s back, %s and %s turn the pod.",
   "deepcharter.handbook.controls.drive.camera": "Pilot: the chase camera is on; %s changes the view.",
