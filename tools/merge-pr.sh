@@ -22,6 +22,8 @@
 # Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each client-gametest-shard, when they ran) runs
 # each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
 # from it only by docs/ROADMAP.md or .papercuts.jsonl.
+# A failing-check refusal carries [client-only] when every check that is not passing is a failed, timed-out or cancelled
+# client-gametest or client-gametest-shard <i>, and build and tool-tests passed: the queue re-runs the whole Client tests run.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
 # and regenerates docs/ROADMAP.md. The commit title and message go through tools/merge_message.py first: the merge proxy
 # refuses a long URL there, so it is shortened in the commit only, never in the PR body (#1007); --check warns when it will.
@@ -99,10 +101,12 @@ mergeable=$(pr_mergeable_of "$pr") || refuse "could not read mergeable"
 # the default (latest per name) view would let that skipped run hide a failure.
 # One line per run: name, start time, id, status, conclusion. A run that has not
 # started sorts newest. Runs are ordered by start time, then id (monotonic).
-run_lines=$(gh api "repos/$repo/commits/$sha/check-runs?filter=all&per_page=100" --paginate \
-  --jq '.check_runs[] | [.name, (.started_at // "9999-12-31T23:59:59Z"), (.id | tostring), .status, (.conclusion // "")] | @tsv' 2>&1 || true)
+gh_list run_lines "repos/$repo/commits/$sha/check-runs?filter=all&per_page=100" \
+  '.check_runs[] | [.name, (.started_at // "9999-12-31T23:59:59Z"), (.id | tostring), .status, (.conclusion // "")] | @tsv' \
+  || refuse "could not read every check run of $sha: $gh_list_err"
+# shellcheck disable=SC2154 # gh_list assigns run_lines by name
 if ! grep -q $'\t' <<<"$run_lines"; then
-  refuse "has no checks reported for $sha (zero checks is not a pass): $(tr '\n' ' ' <<<"$run_lines")"
+  refuse "has no checks reported for $sha (zero checks is not a pass)"
 fi
 # Per name, the deciding run is the newest one that is not skipped: only a
 # `success` passes, anything else (running, failed, cancelled, ...) refuses. A name
@@ -123,12 +127,25 @@ checks=$(cut -f1,2 <<<"$checks_full")
 if [[ $gate_only -eq 1 ]]; then
   while IFS=$'\t' read -r bucket name; do echo "check $name: $bucket"; done <<<"$checks"
 fi
+# The refusal names the first check that is not passing; the [client-only] conditions are in the header (#1451).
+first_bad=
+client_only=1
 while IFS=$'\t' read -r bucket name; do
   case $bucket in
-    pass | skipping) ;;
-    *) refuse "has a check that is not passing: $name (newest non-skipped run: $bucket)" ;;
+    pass | skipping) continue ;;
   esac
+  [[ -n $first_bad ]] || first_bad="$name (newest non-skipped run: $bucket)"
+  [[ $name =~ ^client-gametest(-shard .+)?$ && $bucket =~ ^(failure|timed_out|cancelled)$ ]] || client_only=0
 done <<<"$checks"
+if [[ -n $first_bad ]]; then
+  for required in "${REQUIRED_CHECKS[@]}"; do
+    grep -qxF "pass"$'\t'"$required" <<<"$checks" || client_only=0
+  done
+  if [[ $client_only -eq 1 ]]; then
+    first_bad+="; only client-suite checks failed: re-run the whole Client tests run holding the head's newest non-skipped client-gametest job [client-only] (never --failed or one job; why: merging.md's client-suite note)"
+  fi
+  refuse "has a check that is not passing: $first_bad"
+fi
 for required in "${REQUIRED_CHECKS[@]}"; do
   grep -qxF "pass"$'\t'"$required" <<<"$checks" && continue
   if grep -qxF "skipping"$'\t'"$required" <<<"$checks"; then
@@ -172,9 +189,9 @@ done <<<"$shard_names"
 for based in "${based_names[@]}"; do
   run_id=$(awk -F'\t' -v n="$based" '$2 == n { print $3 }' <<<"$checks_full")
   [[ $run_id =~ ^[0-9]+$ ]] || refuse "has no deciding run id for $based"
-  recorded=$(gh api "repos/$repo/check-runs/$run_id/annotations?per_page=100" --paginate \
-    --jq '.[] | select(.title == "merged-main") | .message' 2>/dev/null) \
-    || refuse "could not read the annotations of $based run $run_id"
+  gh_list recorded "repos/$repo/check-runs/$run_id/annotations?per_page=100" \
+    '.[] | select(.title == "merged-main") | .message' \
+    || refuse "could not read the annotations of $based run $run_id: $gh_list_err"
   recorded=${recorded%%$'\n'*}
   [[ $gate_only -eq 0 ]] || echo "merged main $based (run $run_id): ${recorded:-none}"
   [[ $recorded =~ ^[0-9a-f]{40}$ ]] \
