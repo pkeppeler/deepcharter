@@ -139,7 +139,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
             ClientWait.until(context, "the anvil heard", client -> heard.heard(ANVIL, beforeAnvil));
 
             OPENED.set(0);
-            burn(singleplayer);
+            burn(context, singleplayer);
             ClientWait.screen(context, ContinuityScreen.class);
             long opened = OPENED.get();
             require(opened != 0, "the screen's opening was seen");
@@ -249,7 +249,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
 
             // A second death in the same session, at the terminal, is a sequence of its own, No. 2, laugh and all.
             long second = context.computeOnClient(client -> Util.getMillis());
-            burn(singleplayer);
+            burn(context, singleplayer);
             ClientWait.until(
                     context,
                     "a second sequence",
@@ -286,7 +286,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
             context.runOnClient(client -> client.gui.setScreen(null));
 
             // A third death, left mid-sequence.
-            burn(singleplayer);
+            burn(context, singleplayer);
             ClientWait.until(
                     context,
                     "a third sequence",
@@ -375,12 +375,23 @@ public class ContinuityClientTest implements FabricClientGameTest {
         return SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f);
     }
 
-    /** The player dies in lava, on the server. */
-    private static void burn(TestSingleplayerContext singleplayer) {
-        singleplayer.getServer().runOnServer(server -> {
-            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.hurtServer(player.level(), player.level().damageSources().lava(), 1000f);
-        });
+    /**
+     * The player dies in lava, on the server. The server does not let a player be hurt until their client says it has loaded the world,
+     * after the join and again after each return to work, which a lagging server can stretch, so the blow is struck again until it lands
+     * (#1462).
+     */
+    private static void burn(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        ClientWait.until(
+                context,
+                "the player dead",
+                () -> singleplayer.getServer().computeOnServer(server -> {
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                    if (!player.isDeadOrDying()) {
+                        player.hurtServer(player.level(), player.level().damageSources().lava(), 1000f);
+                    }
+                    return player.isDeadOrDying();
+                }),
+                () -> "a player who could not be hurt");
     }
 
     /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would. */
