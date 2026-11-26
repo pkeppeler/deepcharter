@@ -1142,6 +1142,29 @@ public final class HandbookScreen extends Screen {
         return null;
     }
 
+    // test-seam: the box of the index card of a chapter's picked step, which the layout test holds every item's hit
+    // box inside
+    public Rect indexCardBox(int chapterNumber) {
+        return rect(indexCard(chapterPage(chapterNumber)).box());
+    }
+
+    // test-seam: the hit box of each item of the index card of a chapter's picked step, in order, which no drawn text
+    // shows; the layout test holds them inside the card and clear of each other
+    public List<Rect> indexCardItemHits(int chapterNumber) {
+        return indexCard(chapterPage(chapterNumber)).items().stream()
+                .map(item -> rect(item.hit()))
+                .toList();
+    }
+
+    private HandbookPage.Chapter chapterPage(int chapterNumber) {
+        return Objects.requireNonNull(
+                chapters.get(chapterNumber), () -> "chapter " + chapterNumber + " has no chapter page");
+    }
+
+    private static Rect rect(QuestMap.Rect box) {
+        return new Rect(box.x(), box.y(), box.w(), box.h());
+    }
+
     // test-seam: the number the first impression rests on, which no drawn text shows: how many pixels of the sheet a
     // chapter's map leaves unused (negative when it would overflow). The fits test holds it at 0 or more for every
     // shipped chapter

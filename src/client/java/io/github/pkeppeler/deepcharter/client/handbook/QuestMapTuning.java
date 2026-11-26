@@ -44,7 +44,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param cardTextTop distance from the card's top to the step's instruction
  * @param cardRuleTop distance from the card's top to its first ruled line
  * @param cardRuleBottom space kept clear of ruled lines at the card's bottom
- * @param cardItemPitch distance from one needed item to the next in a row on the card
+ * @param cardItemGap space between one needed item's hit box and the next in a row on the card
  * @param cardItemRow height of a row of needed items on the card
  * @param cardItemInset space between the card's left edge and the first needed item
  * @param cardBottomPad space below the last row of needed items
@@ -139,7 +139,7 @@ public record QuestMapTuning(
         int cardTextTop,
         int cardRuleTop,
         int cardRuleBottom,
-        int cardItemPitch,
+        int cardItemGap,
         int cardItemRow,
         int cardItemInset,
         int cardBottomPad,
@@ -236,7 +236,7 @@ public record QuestMapTuning(
                 d.integer("cardTextTop", 0),
                 d.integer("cardRuleTop", 0),
                 d.integer("cardRuleBottom", 0),
-                d.integer("cardItemPitch", 0),
+                d.integer("cardItemGap", 0),
                 d.integer("cardItemRow", 0),
                 d.integer("cardItemInset", 0),
                 d.integer("cardBottomPad", 0),

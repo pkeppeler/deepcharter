@@ -402,33 +402,36 @@ final class QuestMap {
         int textWidth = w - 2 * q.cardInset() - 2;
         int lines = font.split(PaperDraw.ink(step.text(), 0), textWidth).size();
         List<CardItem> items = new ArrayList<>();
-        // Only whole slots, so the last item's cue stays on the card.
-        int perRow = Math.max(1, (w - q.cardItemInset()) / q.cardItemPitch());
         int itemsTop = y + q.cardTextTop() + lines * (font.lineHeight + 1) + q.cardItemsGap();
+        int rowStart = x + q.cardItemInset();
+        int rowEnd = x + w - q.cardItemInset();
+        int itemX = rowStart;
+        int rows = 0;
         for (HandbookChapter.TargetSlot target : step.targets()) {
             List<Item> slotItems = target.items();
             if (slotItems.isEmpty()) {
                 continue;
             }
-            int index = items.size();
-            Rect icon = new Rect(
-                    x + q.cardItemInset() + index % perRow * q.cardItemPitch(),
-                    itemsTop + index / perRow * q.cardItemRow(),
-                    q.itemIconSize(),
-                    q.itemIconSize());
             int held = done ? target.count() : slotItems.stream().mapToInt(have).sum();
             int line = q.itemCountGap() + font.width(countLabel(held, target.count(), 0));
             if (slotItems.size() > 1) {
                 line += q.anyCueGap() + font.width(anyLabel(0));
             }
+            int hitWidth = q.itemIconSize() + line + q.itemCountGap() + ClickCue.width();
+            // Items run left to right by their hit boxes, and wrap before one would pass the card's edge.
+            if (rows == 0 || (itemX > rowStart && itemX + hitWidth > rowEnd)) {
+                itemX = rowStart;
+                rows++;
+            }
+            int itemY = itemsTop + (rows - 1) * q.cardItemRow();
             items.add(new CardItem(
                     slotItems,
-                    icon,
-                    new Rect(icon.x(), icon.y(), icon.w() + line + q.itemCountGap() + ClickCue.width(), icon.h()),
+                    new Rect(itemX, itemY, q.itemIconSize(), q.itemIconSize()),
+                    new Rect(itemX, itemY, hitWidth, q.itemIconSize()),
                     held,
                     target.count()));
+            itemX += hitWidth + q.cardItemGap();
         }
-        int rows = (items.size() + perRow - 1) / perRow;
         int h = q.cardTextTop() + lines * (font.lineHeight + 1) + rows * q.cardItemRow() + q.cardBottomPad();
         int linkWidth = font.width(PaperDraw.ink(Component.literal(link), 0));
         Rect linkBox =

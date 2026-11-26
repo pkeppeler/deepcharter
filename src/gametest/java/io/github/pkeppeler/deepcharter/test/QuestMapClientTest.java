@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
@@ -92,6 +93,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
             aCutNameStopsShortOfTheCue();
             hoveringACardItemLightsItAndAsksForTheHand();
             aCardItemCarriesTheCueOnlyWhenItsRecipeCanOpen();
+            cardItemsWithLongCountsStayOnTheCardAndApart();
         });
         clickingAnItemOpensItsRecipeInTheCatalogue(context);
     }
@@ -1042,8 +1044,8 @@ public class QuestMapClientTest implements FabricClientGameTest {
     }
 
     /**
-     * A card item's click cue: the single pixels of ink a frame draws in the item's row, from the end of its count
-     * {@code count} to as far right as the cue reaches.
+     * A plain card item's click cue: the single pixels of ink a frame draws in the item's row, from the end of its count
+     * {@code count} to as far right as the cue reaches. Not for an any-of slot, whose cue follows its "any".
      */
     private static List<Fill> cardItemCueInk(Frame frame, Drawn count) {
         QuestMapTuning q = QuestMapTuning.current();
@@ -1078,17 +1080,22 @@ public class QuestMapClientTest implements FabricClientGameTest {
     }
 
     /**
-     * #1425: each item of the index card carries ink right of its count, the chevron that says a click opens it. In a
+     * #1425: each of the index card's three items carries ink right of its count, the chevron that says a click opens it. In a
      * window too small for the catalogue, where a click opens no recipe, no item carries that ink, and the mouse over
      * one adds no fill and asks for no hand.
      */
     private static void aCardItemCarriesTheCueOnlyWhenItsRecipeCanOpen() {
         HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
         Frame frame = DrawnText.frame(screen, -1, -1);
-        for (String count : List.of("0/4", "0/2")) {
+        List<Drawn> counts = frame.text().stream()
+                .filter(drawn -> drawn.text().matches("\\d+/\\d+"))
+                .toList();
+        require(counts.size() == 3, "the card counts its three items, got " + counts);
+        for (Drawn count : counts) {
             require(
-                    !cardItemCueInk(frame, drawn(screen, count)).isEmpty(),
-                    "the item counting " + count + " carries the click cue right of its count");
+                    !cardItemCueInk(frame, count).isEmpty(),
+                    "the item counting " + count.text() + " at " + count.box()
+                            + " carries the click cue right of its count");
         }
         Window window = Minecraft.getInstance().getWindow();
         window.setGuiScale(SMALL_GUI_SCALE);
@@ -1130,5 +1137,61 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.RECIPES,
                 "a click on the iron item's cue opens the inventory at iron's recipes, got " + lookup);
         context.setScreen(() -> null);
+    }
+
+    /**
+     * #1425: a card whose items have long counts, one of them an any-of slot, lays them out so that every item's hit box
+     * is inside the card and no two hit boxes overlap.
+     */
+    private static void cardItemsWithLongCountsStayOnTheCardAndApart() {
+        Identifier chapterId = chapterId(1);
+        HandbookChapter chapter = new HandbookChapter(
+                1,
+                Component.literal("Title 1"),
+                List.of(new HandbookChapter.Entry(
+                        directive(1, 1),
+                        Component.literal("Stock up"),
+                        List.of(
+                                new HandbookChapter.Target(IRON, 128),
+                                new HandbookChapter.Target(Identifier.parse("minecraft:copper_ingot"), 64),
+                                new HandbookChapter.AnyOf(
+                                        List.of(
+                                                new HandbookChapter.Choice(Identifier.parse("minecraft:torch"), false),
+                                                new HandbookChapter.Choice(
+                                                        Identifier.parse("minecraft:lantern"), false)),
+                                        64)))));
+        // Done, so each count reads the need over itself: 128/128, 64/64 and 64/64 any.
+        List<HandbookPage> pages = HandbookPages.of(Map.of(chapterId, chapter), Set.of(directive(1, 1)));
+        HandbookScreen screen = new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
+        screen.init(WIDTH, HEIGHT);
+        for (int index = 0; index < pages.size(); index++) {
+            if (pages.get(index) instanceof HandbookPage.Chapter) {
+                screen.goTo(index);
+            }
+        }
+        settle(screen);
+        require(
+                texts(screen).containsAll(List.of("128/128", "64/64")),
+                "setup: the card shows the long counts: " + texts(screen));
+        Rect card = screen.indexCardBox(1);
+        List<Rect> hits = screen.indexCardItemHits(1);
+        require(hits.size() == 3, "the card has its three items, got " + hits);
+        for (int i = 0; i < hits.size(); i++) {
+            Rect hit = hits.get(i);
+            require(
+                    hit.x() >= card.x()
+                            && hit.y() >= card.y()
+                            && hit.right() <= card.right()
+                            && hit.bottom() <= card.bottom(),
+                    "item " + i + "'s hit box " + hit + " is inside the card " + card);
+            for (int j = i + 1; j < hits.size(); j++) {
+                Rect other = hits.get(j);
+                boolean apart = hit.right() <= other.x()
+                        || other.right() <= hit.x()
+                        || hit.bottom() <= other.y()
+                        || other.bottom() <= hit.y();
+                require(apart, "items " + i + " and " + j + " have overlapping hit boxes " + hit + " and " + other);
+            }
+        }
     }
 }

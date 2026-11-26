@@ -88,6 +88,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - A control assertion must be shown to fail without the feature in every scenario it runs; a case that passes by closeness to a dark control is a log row, not an assertion.
 - A cadence or cap test drives the production tick path (the look, the roll, the count, the cap); a test that samples a helper the tick calls, or asserts arithmetic on tuning constants, is a log of the numbers and not a test of the cadence (`DrifterSpawnTest.theTickPlacesDriftersByPodsUpToTheZoneCap`).
 - Prove a regression test with a mutation check: break the code under test in your worktree, see it go red, revert (#627's first case was vacuous).
+- A test that reads red on base only because an earlier `require` in it fails (a setup precondition) has not shown its main assertion red; prove that assertion with a mutation that keeps the setup passing.
 - A test Javadoc that names the mutations it catches states only mutations that were run red; a reviewer re-runs at least one.
 - A count or window derived with `ceil`/`floor` from tuning floats must not sit on an integer boundary that float widening decides; write the strict-inequality form (`floor(x) + 1`) and say which side the boundary falls (#1356: `0.2f` widened to 0.20000000298 gave `ceil` 4 where a real 0.2 gives 3).
 
