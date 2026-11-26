@@ -121,9 +121,6 @@ class Look:
         prefix = STYLE + name.capitalize()
         self.keys.update({prefix + "Kind": KIND[kind], **place.keys(prefix), prefix + "Segments": segments})
 
-    def limit(self, name, segment):
-        self.keys[STYLE + name.capitalize() + "Limit"] = segment
-
     def lamps(self, place):
         self.keys.update(place.keys(STYLE + "Lamps"))
 
@@ -252,7 +249,7 @@ def ribbon():
         bar_labels(band, ux, 3, text)
         well(band, ux + 7, 4, bar_w, bar_h)
         look.gauge(name, "across", place.inner(ux + 7, 4, bar_w, bar_h), segments)
-    look.limit("cargo", LOAD_LIMIT_SEGMENT)
+    look.keys[STYLE + "CargoLimit"] = LOAD_LIMIT_SEGMENT
     well(band, 124, 2, 72, 10)  # the altimeter's recess
     lamps_w = lamp_well(band, 284, 4)
     look.lamps(place.inner(284, 4, lamps_w, 5))
