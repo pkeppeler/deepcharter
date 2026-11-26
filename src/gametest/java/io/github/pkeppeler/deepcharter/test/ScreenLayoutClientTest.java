@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import static io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields.intField;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterTuning;
@@ -11,6 +12,7 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminalTuning;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
+import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
@@ -50,6 +52,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -798,10 +801,23 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return new IncidentReportPayload(1, 99999, lines, 99, List.of(VisitCause.DARK));
     }
 
-    /** The screens nothing registers: the handbook, opened from a key, and the UI kit's demo. */
+    /** The screens nothing registers: the handbook, opened from a key, the UI kit's demo, and the Continuity Event's, opened at a death. */
     private static List<Case> standalone() {
         List<Case> cases = new ArrayList<>();
         cases.add(new Case("ui demo", CrtDemoScreen::new));
+        // The largest numbers there are; the buttons show only once the laugh ends, so the variants wait for them, then
+        // show DISCONNECT.
+        cases.add(new Case(
+                "continuity event",
+                () -> new ContinuityScreen(ClientSession.player(Minecraft.getInstance()), 99999, 9999),
+                List.of(new Variant("its buttons", (context, screen) -> {
+                    ClientWait.until(
+                            context,
+                            "RETURN TO WORK shown",
+                            client -> !ClientChecks.visibleWidgets(screen).isEmpty());
+                    RealInput.key(context, InputConstants.KEY_ESCAPE, 0);
+                    return List.of();
+                }))));
         cases.add(new Case("incident report", () -> new IncidentReportScreen(longestIncidentReport(), null)));
         // The longest sheet there is: a part with a stock tier and six bought ones.
         cases.add(new Case("spec sheet", () -> new SpecSheetScreen(ComponentItems.item(ComponentTrack.DRILL))));
