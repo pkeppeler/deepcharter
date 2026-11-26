@@ -14,10 +14,10 @@ import io.github.pkeppeler.deepcharter.pod.PodDumpPayload;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.PodClimb;
 import io.github.pkeppeler.deepcharter.test.support.TestCharters;
 import io.github.pkeppeler.deepcharter.test.support.TestCleanups;
 import java.util.List;
@@ -74,13 +74,9 @@ public class PodDumpTest {
         return new Scene(mock, mock.player(), pod, charter);
     }
 
-    /** Puts one ironium in the hold that weighs as much as the engine lifts, so the pod is overloaded. */
+    /** Puts one ironium in the hold that weighs as much as the pod can climb with, so a held jump no longer climbs. */
     private static void overload(PodEntity pod) {
-        pod.cargo()
-                .tryAdd(
-                        pod,
-                        OreRegistry.stack(OreType.IRONIUM),
-                        PodStats.of(pod).enginePower());
+        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), PodClimb.limit(pod));
     }
 
     private static PodMenu open(GameTestHelper helper, ServerPlayer player, PodEntity pod) {
