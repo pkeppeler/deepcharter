@@ -157,9 +157,8 @@ public class ContinuityClientTest implements FabricClientGameTest {
             anvil(singleplayer);
 
             // Once the laugh plays, nothing that clears or covers the screen while the person is dead ends the
-            // sequence:
-            // vanilla would build its death screen again for a container the server closes and for a screen shut over
-            // it.
+            // sequence: vanilla would build its death screen again for a container the server closes and for a screen
+            // shut over it.
             ClientWait.until(context, "the laugh started", client -> heard.heard(LAUGH, opened));
             SoundInstance laugh = heard.since(opened).stream()
                     .filter(p -> p.id().equals(LAUGH))
@@ -230,8 +229,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
             ClientWait.until(context, "the world's sounds back", client -> heard.heard(ANVIL, back));
 
             // A terminal's music: a death with the terminal open cuts it (the silence's SoundManager.stop() drops it
-            // unstopped),
-            // and it plays again on the next terminal after the person is back.
+            // unstopped), and it plays again on the next terminal after the person is back.
             singleplayer
                     .getServer()
                     .runOnServer(server -> require(
@@ -373,7 +371,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
     }
 
     /** A sound of the game's own, not the sequence's: one the silence refuses while it holds. */
-    private static SoundInstance click() {
+    static SoundInstance click() {
         return SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f);
     }
 
@@ -399,7 +397,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
     }
 
     /** The labels of the widgets the open screen shows. */
-    private static List<String> labels(Minecraft client) {
+    static List<String> labels(Minecraft client) {
         return ClientChecks.visibleWidgets(shown(client)).stream()
                 .map(widget -> widget.getMessage().getString())
                 .toList();
@@ -414,7 +412,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
     }
 
     /** The screen open now, which the step before waited for. */
-    private static Screen shown(Minecraft client) {
+    static Screen shown(Minecraft client) {
         return Objects.requireNonNull(client.gui.screen(), "<a screen is open>");
     }
 }

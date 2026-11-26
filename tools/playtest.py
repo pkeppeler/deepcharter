@@ -544,13 +544,28 @@ def server_status(env: Env, server_dir: Path) -> tuple[bool, list[str]]:
     return True, []
 
 
-def ack(env: Env, player: str, issue: str, existing: bool) -> None:
+ACK_TITLE_MAX = 80
+
+
+def _ack_title(title: str) -> str:
+    title = title.strip()
+    if not title:
+        raise Fail("the issue title is empty")
+    if any(ord(c) < 32 or ord(c) == 127 for c in title):
+        raise Fail("refusing an issue title with control characters")
+    if len(title) > ACK_TITLE_MAX:
+        title = title[: ACK_TITLE_MAX - 1].rstrip() + "\u2026"
+    return title if title[-1] in ".?!\u2026" else title + "."
+
+
+def ack(env: Env, player: str, issue: str, title: str, existing: bool) -> None:
     if not PLAYER.fullmatch(player):
         raise Fail(f"not a player name: {player!r}")
     if not ISSUE.fullmatch(issue):
         raise Fail(f"not an issue number: {issue!r}")
+    shown = _ack_title(title)
     verb = "Added to" if existing else "Logged as"
-    text = {"text": f"[Deep Charter] Thanks! {verb} issue #{issue}.", "color": "gold"}
+    text = {"text": f"[Deep Charter] Thanks! {verb} issue #{issue}: {shown}", "color": "gold"}
     _send(env, f"tellraw {player} {json.dumps(text)}")
 
 
@@ -632,6 +647,7 @@ def main(argv: list[str], env: Env) -> int:
     ack_parser = sub.add_parser("ack", parents=[server])
     ack_parser.add_argument("player")
     ack_parser.add_argument("issue")
+    ack_parser.add_argument("title", help="the issue's title, shown in the ack so the player can tell their notes apart")
     ack_parser.add_argument("--existing", action="store_true")
     args = parser.parse_args(argv)
     try:
@@ -667,7 +683,7 @@ def run_command(args: argparse.Namespace, env: Env) -> None:
         case "server-watch":
             watch(env, args.dir, lambda event: print(event, flush=True))
         case "ack":
-            ack(env, args.player, args.issue, args.existing)
+            ack(env, args.player, args.issue, args.title, args.existing)
             print("acknowledged")
 
 
