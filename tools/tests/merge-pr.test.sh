@@ -22,6 +22,8 @@ export FIXTURE_LIB
 # The origin/main sha the stubs report, and the sha every deciding run records unless a case says otherwise.
 MAIN_SHA=$(printf 'a%.0s' {1..40})
 export MAIN_SHA
+# gh_list (tools/lib/gh-rest.sh) retries a transient failure without sleeping here.
+export GH_LIST_SLEEP=0
 OLD_MAIN=$(printf 'b%.0s' {1..40})
 # shellcheck source=lib/gh-fixture.sh
 source "$FIXTURE_LIB"
@@ -52,9 +54,20 @@ for a in "$@"; do
   [[ $a == commit_title=* ]] && printf '%s' "${a#commit_title=}" >"$LOG.title"
   prev=$a
 done
+# fails_first <NAME>: the first STUB_<NAME>_FAILS calls of a listing (counted in $LOG.<NAME>) print the first page
+# (STUB_<NAME>_PAGE1) and then STUB_<NAME>_ERR on stderr and exit 1, as `gh api --paginate` does when a later page fails.
+fails_first() {
+  local n fails=STUB_$1_FAILS page=STUB_$1_PAGE1 err=STUB_$1_ERR
+  n=$(cat "$LOG.$1" 2>/dev/null || echo 0)
+  echo $((n + 1)) >"$LOG.$1"
+  [[ $n -lt ${!fails-0} ]] || return 0
+  [[ -z ${!page-} ]] || printf '%s\n' "${!page}"
+  echo "${!err-gh: Server Error (HTTP 502)}" >&2
+  exit 1
+}
 case "$method $path" in
   "GET "*/pulls/*/files*)
-    [[ ${STUB_FILES_FAIL-0} == 1 ]] && exit 1
+    fails_first FILES
     printf '%s' "${STUB_FILES-}" ;;
   "GET "*/contents/docs/feature-map/map.json*)
     # STUB_MAP_FAIL: 404 (no map at that head) or 500 (unreadable). STUB_MAP_STALE: the lines the gate's --jq prints.
@@ -64,7 +77,7 @@ case "$method $path" in
   "GET "*/check-runs/*/annotations*)
     # The merged-main annotation of run <id>: STUB_FIXTURE_ANNOTATIONS (a recorded response) run through the script's
     # own --jq, else STUB_MERGED_MAIN_<id>, else STUB_MERGED_MAIN, else the default main sha. Empty prints nothing.
-    [[ ${STUB_ANN_FAIL-0} == 1 ]] && exit 1
+    fails_first ANN
     if [[ -n ${STUB_FIXTURE_ANNOTATIONS-} ]]; then gh_fixture_jq "$STUB_FIXTURE_ANNOTATIONS" "$jq"; exit; fi
     id=${path#*check-runs/}
     id=${id%%/*}
@@ -72,8 +85,8 @@ case "$method $path" in
     recorded=${!var-${STUB_MERGED_MAIN-$MAIN_SHA}}
     [[ -z $recorded ]] || printf '%s\n' "$recorded" ;;
   "GET "*/check-runs*)
-    echo "${STUB_RUNS-$DEFAULT_RUNS}"
-    exit "${STUB_RUNS_RC:-0}" ;;
+    fails_first RUNS
+    echo "${STUB_RUNS-$DEFAULT_RUNS}" ;;
   "GET "*/issues/*/comments*)
     if [[ -n ${STUB_FIXTURE_COMMENTS-} ]]; then gh_fixture_jq "$STUB_FIXTURE_COMMENTS" "$jq"; exit; fi
     # What the gate's --jq prints: the first line of each comment by the login the filter selects, as JSON. The
@@ -224,7 +237,7 @@ rc=0
 pass() { cases=$((cases + 1)); echo "ok   $1"; }
 fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
-reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.body" "$LOG.message" "$LOG.title"; : >"$LOG"; }
+reset() { rm -f "$LOG" "$LOG".{merged,push,body,message,title,RUNS,ANN,FILES}; : >"$LOG"; }
 
 # run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
@@ -379,7 +392,13 @@ run_script "STUB_FILES=$(files removed:docs/adr/0018-eighteen.md added:docs/adr/
 exited "removed ADR and added ADR of the same number merges" 0
 refusal "next free number counts the PR's own ADRs" "the next free number is 0021" \
   "STUB_FILES=$(files added:docs/adr/0020-mine.md added:docs/adr/0007-new-slug.md)"
-refusal "ADR file list unreadable" "could not read its changed files" STUB_FILES_FAIL=1
+refusal "ADR file list unreadable" "could not read its changed files: gh exited nonzero with no error text" \
+  STUB_FILES_FAILS=1 STUB_FILES_ERR=
+refusal "changed files failing on a later page refuse" "could not read its changed files: gh: Server Error (HTTP 500)" \
+  STUB_FILES_FAILS=3 "STUB_FILES_PAGE1=$(files modified:docs/a.md)" "STUB_FILES_ERR=gh: Server Error (HTTP 500)"
+run_script STUB_FILES_FAILS=1 "STUB_FILES=$(files modified:docs/a.md modified:src/main/java/A.java)"
+printed "changed files read after a 502 decide on the full list" "changes in-game code (src/main/java/A.java) with no demo"
+count "the failed changed-files listing was read again" "/pulls/7/files" 2
 refusal "origin/main fetch fails" "could not read origin/main (fetch failed)" STUB_FETCH_FAIL=1
 refusal "origin/main ADR list unreadable" "could not read the ADR list on origin/main" STUB_MAIN_ADRS_FAIL=1
 refusal "origin/main ADR list empty" "could not read the ADR list on origin/main" STUB_MAIN_ADRS=
@@ -570,7 +589,7 @@ run_check STUB_COMMENT_USER=someone-else
 printed "check reports the pass as missing for another login" "review-passed: no"
 refusal "stale review marker" "has no 'review-passed abc123' comment" STUB_COMMENT="review-passed 999999"
 refusal "marker with extra text" "has no 'review-passed abc123' comment" "STUB_COMMENT=review-passed abc123 please"
-refusal "zero checks" "REFUSED: PR #7 has no checks reported" STUB_RUNS= STUB_RUNS_RC=1
+refusal "zero checks" "REFUSED: PR #7 has no checks reported" STUB_RUNS=
 refusal "pending check" "REFUSED: PR #7 has a check that is not passing: lint (newest non-skipped run: in_progress)" \
   "STUB_RUNS=$(runs build:1:success lint:2:in_progress)"
 refusal "queued check" "(newest non-skipped run: queued)" "STUB_RUNS=$(runs build:1:success lint:2:queued)"
@@ -596,7 +615,29 @@ refusal "conflicting PR" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=false
 refusal "unknown mergeability" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=null
 refusal "conflicting PR says to merge origin/main" "merge origin/main into the branch" STUB_MERGEABLE=false
 refusal "PR read fails silently" "REFUSED: PR #7 could not be read" STUB_VIEW_FAIL=1
-refusal "zero checks includes gh output" "gh: Not Found" "STUB_RUNS=gh: Not Found" STUB_RUNS_RC=1
+refusal "unreadable check runs include gh's error" "could not read every check run of abc123: gh: Not Found (HTTP 404)" \
+  STUB_RUNS_FAILS=1 "STUB_RUNS_ERR=gh: Not Found (HTTP 404)"
+
+# A listing that fails on a later page has printed the pages before it; a failing check on the lost page must not
+# pass unseen (#1484). The first page here is all green.
+refusal "check runs failing on a later page refuse" "could not read every check run of abc123: gh: Server Error (HTTP 502)" \
+  STUB_RUNS_FAILS=3 "STUB_RUNS_PAGE1=$DEFAULT_RUNS"
+count "a transient check-run failure is retried up to 3 times" "/check-runs?filter=all" 3
+refusal "a non-transient check-run failure on a later page refuses at once" "could not read every check run of abc123: gh: Forbidden (HTTP 403)" \
+  STUB_RUNS_FAILS=1 "STUB_RUNS_PAGE1=$DEFAULT_RUNS" "STUB_RUNS_ERR=gh: Forbidden (HTTP 403)"
+count "a non-transient check-run failure is not retried" "/check-runs?filter=all" 1
+run_script STUB_RUNS_FAILS=1 "STUB_RUNS_PAGE1=$(runs build:2:success)" "STUB_RUNS=$(runs build:2:success tool-tests:2:success lint:3:failure)"
+printed "a check-run listing retried after a 502 decides on the full listing" "lint (newest non-skipped run: failure)"
+count "the check-run listing was read twice" "/check-runs?filter=all" 2
+run_script STUB_RUNS_FAILS=2 "STUB_RUNS_ERR=Get \"https://api.github.com/x\": net/http: TLS handshake timeout"
+exited "check runs read after two timeouts merge" 0
+printed "a retry says why" "failed (attempt 1 of 3, retrying)"
+refusal "a bad GH_LIST_ATTEMPTS refuses with the reason" "could not read every check run of abc123: GH_LIST_ATTEMPTS and GH_LIST_SLEEP must be whole numbers" \
+  GH_LIST_ATTEMPTS=x
+refusal "a bad GH_LIST_SLEEP refuses with the reason" "GH_LIST_ATTEMPTS and GH_LIST_SLEEP must be whole numbers" \
+  GH_LIST_SLEEP=1.5
+refusal "a leading-zero GH_LIST_SLEEP refuses before a retry could abort the files check" "GH_LIST_ATTEMPTS and GH_LIST_SLEEP must be whole numbers" \
+  GH_LIST_SLEEP=08 STUB_FILES_FAILS=1
 refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/else.git
 
 # A relative $0 (./merge-pr.sh from tools/) must still find tools/lib/adr.sh after the script's cd.
@@ -650,7 +691,14 @@ refusal "refusal names the run, both shas and the moved path" "build run 2 merge
 refusal "a run with no record is stale (a run from before CI recorded it)" "recorded no merged main sha" "STUB_MERGED_MAIN="
 refusal "a run with no record carries the marker" "$stale_hint" "STUB_MERGED_MAIN="
 refusal "a record that is not a sha is stale" "recorded no merged main sha" "STUB_MERGED_MAIN=main"
-refusal "annotations unreadable" "could not read the annotations of build run 2" STUB_ANN_FAIL=1
+refusal "annotations unreadable" "could not read the annotations of build run 2: gh exited nonzero with no error text" \
+  STUB_ANN_FAILS=1 STUB_ANN_ERR=
+refusal "annotations failing on a later page refuse" "could not read the annotations of build run 2: gh: Server Error (HTTP 503)" \
+  STUB_ANN_FAILS=3 "STUB_ANN_PAGE1=$MAIN_SHA" "STUB_ANN_ERR=gh: Server Error (HTTP 503)"
+run_script STUB_ANN_FAILS=1
+exited "annotations read after a 502 merge" 0
+# build and tool-tests share run id 2 in the default runs: two reads, plus the retry.
+count "the failed annotations listing was read again" "/check-runs/2/annotations" 3
 refusal "only a client shard merged an older main" "client-gametest-shard 2 run 6 merged main" "STUB_MERGED_MAIN_6=$OLD_MAIN" "STUB_DIFF=src/A.java"
 not_logged "with passing shards the aggregate's annotations are not read" "check-runs/3/annotations"
 refusal "only tool-tests merged an older main" "tool-tests run 4 merged main" "STUB_DIFF=src/A.java" \
