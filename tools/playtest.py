@@ -548,7 +548,6 @@ ACK_TITLE_MAX = 80
 
 
 def _ack_title(title: str) -> str:
-    """The issue title as the ack shows it: stripped, cut to ACK_TITLE_MAX with an ellipsis, ended by one sentence stop."""
     title = title.strip()
     if not title:
         raise Fail("the issue title is empty")
