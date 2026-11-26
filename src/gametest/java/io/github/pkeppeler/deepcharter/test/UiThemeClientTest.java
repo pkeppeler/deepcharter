@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -26,7 +27,6 @@ import java.util.List;
 import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.minecraft.client.input.CharacterEvent;
 
 /**
  * Client GameTest for #226: the UI theme loads with the client's resources, today's look is the default, and a resource pack that names
@@ -124,7 +124,7 @@ public class UiThemeClientTest implements FabricClientGameTest {
                 "the demo screen finished typing",
                 client -> screen.typewriter().done(),
                 client -> "typewriter text '" + screen.typewriter().text() + "'");
-        context.runOnClient(client -> "RIGGS".chars().forEach(c -> screen.charTyped(new CharacterEvent(c))));
+        RealInput.type(context, "RIGGS");
         context.waitTicks(15);
         int greenBefore = pixelsOf(context, "ui-theme-open-before", GREEN);
         int amberBefore = pixelsOf(context, "ui-theme-open-before-2", AMBER);

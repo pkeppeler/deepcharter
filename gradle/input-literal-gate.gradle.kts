@@ -6,6 +6,8 @@
 // the input events (`.button()` and `.key()`):
 //   - `.button()` or `.key()` compared (== or !=) with a number or a char literal, in either order
 //   - `new MouseButtonInfo(` or `new KeyEvent(` with a number or a char literal as its first argument
+//   - in src/gametest only: `.typeChars(` (the Fabric runner's text without its key press) and `.charTyped(` (a screen's handler
+//     called directly). Type through RealInput.type, which sends the key, the text, then the release, in SDL's order.
 // Compare with InputConstants.MOUSE_BUTTON_LEFT / MOUSE_BUTTON_RIGHT / KEY_* instead. A statement that must keep one carries
 // `// input-literal: <reason>` (the reason is required) on a line of the statement or the comment lines above it (`markedNear`).
 // Not seen, the price of no type information: a `switch` on `.button()` or `.key()`, a button or key number handed through a variable
@@ -21,11 +23,14 @@ object InputLiteralGate {
 		Regex("""\bnew\s+MouseButtonInfo\s*\(\s*-?\d"""),
 		Regex("""\bnew\s+KeyEvent\s*\(\s*(-?\d|'')"""),
 	)
+	// Only in src/gametest: the client's own code calls charTyped, and a test must not.
+	private val TEST_PATTERNS = listOf(Regex("""\.\s*(typeChars|charTyped)\s*\("""))
 	private val MARKER = Regex("""//\s*input-literal:\s*\S""")
 
 	/** First lines (1-based) of the statements of {@code text}, already passed through blankLiterals, with an input literal and no marker. */
 	fun violations(
 		text: String,
+		testCode: Boolean,
 		codeLines: (List<String>) -> List<String>,
 		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
 	): List<Int> {
@@ -38,7 +43,7 @@ object InputLiteralGate {
 			if (joined.isBlank()) start = index
 			joined.append(line).append(' ')
 			if (line.endsWith(";") || line.endsWith("{") || line.endsWith("}")) {
-				if (PATTERNS.any { it.containsMatchIn(joined) } && !markedNear(lines, start) { MARKER.containsMatchIn(it) }) {
+				if ((PATTERNS + if (testCode) TEST_PATTERNS else emptyList()).any { it.containsMatchIn(joined) } && !markedNear(lines, start) { MARKER.containsMatchIn(it) }) {
 					found.add(start + 1)
 				}
 				joined.setLength(0)
@@ -73,25 +78,30 @@ tasks.register("checkInputLiteralGate") {
 		val codeLine = Regex("""^\t(?!//)\S""")
 		val expected = flagged.reader().readLines().withIndex().filter { (_, line) -> codeLine.containsMatchIn(line) }.map { it.index + 1 }
 		if (expected.size < 6) throw GradleException("config/input-literal-gate/Flagged.java.txt has ${expected.size} code lines, expected at least 6")
-		val actual = InputLiteralGate.violations(blankLiterals(flagged), codeLines, markedNear)
+		val actual = InputLiteralGate.violations(blankLiterals(flagged), true, codeLines, markedNear)
 		if (actual != expected) {
 			throw GradleException("The input literal gate is broken: Flagged.java.txt should be flagged on lines $expected, was $actual")
 		}
-		val wrongly = InputLiteralGate.violations(blankLiterals(allowed), codeLines, markedNear)
+		val wrongly = InputLiteralGate.violations(blankLiterals(allowed), true, codeLines, markedNear)
 		if (wrongly.isNotEmpty()) {
 			throw GradleException("The input literal gate is broken: Allowed.java.txt should not be flagged, was on lines $wrongly")
+		}
+
+		val clientCode = InputLiteralGate.violations(blankLiterals("class A {\n\tObject a = panel.charTyped(event);\n}\n"), false, codeLines, markedNear)
+		if (clientCode.isNotEmpty()) {
+			throw GradleException("The input literal gate is broken: a charTyped call outside src/gametest should not be flagged, was on lines $clientCode")
 		}
 
 		val problems = mutableListOf<String>()
 		clientSources.files.sorted().forEach { source ->
 			val lines = source.reader().readLines()
-			InputLiteralGate.violations(blankLiterals(source.readText()), codeLines, markedNear).forEach { n ->
+			InputLiteralGate.violations(blankLiterals(source.readText()), "src/gametest/" in source.path, codeLines, markedNear).forEach { n ->
 				problems.add("${source.relativeTo(root)}:$n: ${lines[n - 1].trim()}")
 			}
 		}
 		if (problems.isNotEmpty()) {
 			throw GradleException(
-				"Literal mouse button or key code in client or client test code. SDL numbers mouse buttons from 1: compare with " +
+				"Literal mouse button or key code in client or client test code, or a test typing through typeChars or charTyped. SDL numbers mouse buttons from 1: compare with " +
 					"InputConstants.MOUSE_BUTTON_LEFT / MOUSE_BUTTON_RIGHT / KEY_* (a test types text with RealInput.type); a line that must keep one ends with " +
 					"'// input-literal: <reason>'.\n  " + problems.joinToString("\n  "),
 			)
