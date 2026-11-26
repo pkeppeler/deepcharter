@@ -558,6 +558,40 @@ class Runtime(PlaytestTestCase):
         self.sys.on_new_session = lambda: self.write("[10:00:00] [Server thread/INFO]: Done (3s)!")
         self.assertTrue(p.server_start(self.env, self.srv, wait=60, fresh=True).startswith("ready"))
 
+    def test_fresh_refuses_for_a_server_running_outside_tmux(self):
+        (self.srv / "world").mkdir()
+        self.env = p.Env(**{**self.env.__dict__, "is_open": lambda path: True})
+        with self.assertRaises(p.Fail):
+            p.server_start(self.env, self.srv, wait=60, fresh=True)
+        self.assertTrue((self.srv / "world").is_dir())
+
+    def test_the_retry_waits_for_the_refused_server_to_exit_before_archiving(self):
+        (self.srv / "world").mkdir()
+        busy = [True, True]
+        self.env = p.Env(**{**self.env.__dict__, "is_open": lambda path: busy.pop() if busy else False})
+        starts = []
+
+        def on_new_session():
+            starts.append(1)
+            self.write("[10:00:00] [main/ERROR]: Refusing to start this world: bad" if len(starts) == 1
+                       else "[10:00:09] [Server thread/INFO]: Done (3s)!")
+
+        self.sys.on_new_session = on_new_session
+        before = self.sys.now
+        self.assertIn("ready", p.server_start(self.env, self.srv, wait=60, fresh=False))
+        self.assertEqual(busy, [])
+        self.assertGreaterEqual(self.sys.now - before, 2)
+        self.assertTrue((self.srv / "world-20261126T123005Z").is_dir())
+
+    def test_the_retry_gives_up_when_the_refused_server_never_exits(self):
+        (self.srv / "world").mkdir()
+        self.env = p.Env(**{**self.env.__dict__, "is_open": lambda path: True})
+        self.sys.on_new_session = lambda: self.write("[10:00:00] [main/ERROR]: Refusing to start this world: bad")
+        with self.assertRaises(p.Fail) as ctx:
+            p.server_start(self.env, self.srv, wait=60, fresh=False)
+        self.assertEqual(ctx.exception.code, p.EXIT_TIMEOUT)
+        self.assertTrue((self.srv / "world").is_dir())
+
     def test_fresh_refuses_while_the_server_runs_and_keeps_the_world(self):
         (self.srv / "world").mkdir()
         self.sys.alive = True
@@ -657,6 +691,10 @@ class Runtime(PlaytestTestCase):
         [component] = self.reply("hi\nstop\x1b[31m\u202e")
         self.assertNotIn("\n", self.sys.sent[0])
         self.assertEqual(component[2], {"text": "hi stop [31m"})
+
+    def test_say_claude_strips_legacy_colour_codes(self):
+        [component] = self.reply("\u00a7cred \u00a7kfoo")
+        self.assertEqual(component[2], {"text": "cred kfoo"})
 
     def test_say_claude_splits_long_replies_into_at_most_three_capped_lines(self):
         lines = self.reply(" ".join(["word"] * 200))
@@ -766,6 +804,12 @@ class Classify(unittest.TestCase):
         self.now = p.CHAT_WINDOW
         self.assertEqual(self.events(chat("claude again")), ["CHAT MeatCups - again"])
 
+    def test_idle_players_are_pruned_from_the_window_table(self):
+        self.events(chat("claude hi", player="Old"))
+        self.now = p.CHAT_WINDOW
+        self.events(chat("claude hi", player="New"))
+        self.assertEqual(list(self.gate.recent), ["New"])
+
     def test_dropped_messages_do_not_extend_the_window(self):
         for i in range(p.CHAT_LIMIT):
             self.events(chat(f"claude {i}"))
@@ -872,6 +916,19 @@ class Watch(PlaytestTestCase):
         notes = [s for s in self.sys.sent if s.startswith("tellraw @a")]
         self.assertEqual(len(notes), 1)
         self.assertIn("Abc, slow down", notes[0])
+
+    def test_a_failed_slow_down_note_does_not_end_the_watch(self):
+        self.sys.alive = True
+
+        def broken(_text):
+            raise p.Fail("tmux broke")
+
+        self.sys.on_keys = broken
+        flood = [f"[10:00:00] [Server thread/INFO]: <Abc> claude {i}" for i in range(p.CHAT_LIMIT + 1)]
+        self.sys.script = [lambda: self.append(*flood), lambda: setattr(self.sys, "alive", False)]
+        p.watch(self.env, self.srv, self.out.append)
+        self.assertEqual(self.out[-1], "STOPPED")
+        self.assertTrue(any(e.startswith("WARN playtest: could not send") and "tmux broke" in e for e in self.out))
 
     def test_not_running_is_reported_at_once(self):
         p.watch(self.env, self.srv, self.out.append)

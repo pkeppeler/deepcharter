@@ -43,6 +43,7 @@ REPLY_LINES = 3
 REPLY_PREFIX = "[Claude] "
 CHAT_LIMIT = 5
 CHAT_WINDOW = 60.0
+EXIT_WAIT = 60.0
 OPERATORS_FILE = "claude-operators.txt"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -520,15 +521,24 @@ def _launch(env: Env, server_dir: Path, wait: float) -> str:
         env.sleep(1)
 
 
+def _wait_stopped(env: Env, server_dir: Path) -> None:
+    """Block until nothing holds the server log open: the world must not move under a java process still writing it."""
+    deadline = env.clock() + EXIT_WAIT
+    while server_running(env, server_dir):
+        if env.clock() >= deadline:
+            raise Fail(f"the refused server is still running after {EXIT_WAIT:g}s: stop it, then start again", EXIT_TIMEOUT)
+        env.sleep(1)
+
+
 def server_start(env: Env, server_dir: Path, wait: float, fresh: bool) -> str:
     """Start the server. An old-format world (REFUSED) is archived and the start retried once; `fresh` archives first."""
     if not (server_dir / "start.sh").is_file():
         raise Fail(f"{server_dir} has no start.sh: run server-install first")
     if not _eula_accepted(server_dir):
         raise Fail(f"{server_dir / 'eula.txt'} is not eula=true", EXIT_EULA)
+    if fresh and server_running(env, server_dir):
+        raise Fail("the server is running: stop it first (server-stop), then start with --fresh")
     if _session_alive(env):
-        if fresh:
-            raise Fail("the server is running: stop it first (server-stop), then start with --fresh")
         return "already running\nJoin: " + ", ".join(_addresses(env, server_dir))
     if fresh:
         archived = archive_world(env, server_dir)
@@ -541,6 +551,7 @@ def server_start(env: Env, server_dir: Path, wait: float, fresh: bool) -> str:
             raise
         refusal = failure.message
     _call(env, ["tmux", "kill-session", "-t", SESSION])
+    _wait_stopped(env, server_dir)
     archived = archive_world(env, server_dir)
     if archived is None:
         raise Fail(refusal, EXIT_REFUSED)
@@ -614,8 +625,8 @@ def ack(env: Env, player: str, issue: str, title: str, existing: bool) -> None:
 
 
 def _reply_lines(text: str) -> list[str]:
-    """The reply cleaned of control characters, wrapped at word boundaries, at most REPLY_LINES lines of REPLY_LINE characters."""
-    words = _clean(text, REPLY_LINE * REPLY_LINES).split()
+    """The reply cleaned of control characters and `§` (legacy colour codes), wrapped at word boundaries, at most REPLY_LINES lines of REPLY_LINE characters."""
+    words = _clean(text.replace("§", ""), REPLY_LINE * REPLY_LINES).split()
     if not words:
         raise Fail("the reply is empty")
     lines: list[str] = []
@@ -700,6 +711,9 @@ class ChatGate:
             return "slow"
         self.slowed.discard(player)
         times.append(now)
+        for name in [name for name, stamps in self.recent.items() if now - stamps[-1] >= CHAT_WINDOW]:
+            del self.recent[name]
+            self.slowed.discard(name)
         return "ok"
 
 
@@ -745,7 +759,10 @@ def watch(env: Env, server_dir: Path, emit: Callable[[str], None]) -> None:
             for event in classify(line, seen, gate):
                 if event.startswith("SLOW "):
                     if alive:
-                        say_claude(env, f"{event.removeprefix('SLOW ')}, slow down: too many messages a minute.")
+                        try:
+                            say_claude(env, f"{event.removeprefix('SLOW ')}, slow down: too many messages a minute.")
+                        except Fail as failure:  # the note is a courtesy: a dead session must not end the watch before STOPPED
+                            emit(f"WARN playtest: could not send the slow-down note: {failure.message}")
                 else:
                     emit(event)
         if not alive:
