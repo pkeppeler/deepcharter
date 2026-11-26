@@ -58,7 +58,7 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
     private static final String DISCONNECT = "DISCONNECT";
     /**
      * The latest the button may come for a broken envelope, from the death: the cut, the skip and the steady fallback laugh (3.68 s) take
-     * under 5 s, with room for a slow machine. An envelope read as it is would put the button at 20 s or later, at the cap, or never.
+     * under 5 s, with room for a slow machine. An envelope read as it is would put the button well past this, at the cap, or never.
      */
     private static final double FALLBACK_BUTTON_SECONDS = 10.0;
 
@@ -71,7 +71,7 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
             "{\"framesPerSecond\": 25, \"seconds\": Infinity, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": -1, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": 1e9, \"values\": [0.5, 0.5]}",
-            // Just over LaughEnvelope.MAX_SECONDS: pins the bound that keeps a valid pack 12 s inside the cap.
+            // Just over LaughEnvelope.MAX_SECONDS, so raising that bound fails here.
             "{\"framesPerSecond\": 25, \"seconds\": 21, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"values\": [0.5, 0.5]}",
             // Lengths a valid envelope may have, so the button would come late if these were read as they are.
@@ -156,8 +156,7 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
         buttonShown(context, "RETURN TO WORK shown");
         context.runOnClient(client -> {
             Screen sequence = shown(client);
-            // Pressed directly, not through RealInput: the press and the staged second death must land in one client
-            // batch.
+            // Pressed directly, not via RealInput: the press and the staged second death must land in one client batch.
             ClientChecks.button(sequence, RETURN).onPress(new KeyEvent(InputConstants.KEY_RETURN, 0, 0));
             LocalPlayer died = Objects.requireNonNull(client.player, "<in the world>");
             LocalPlayer again = Objects.requireNonNull(client.gameMode, "<in the world>")

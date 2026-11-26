@@ -41,9 +41,9 @@ import org.jspecify.annotations.Nullable;
 public final class ContinuityScreen extends Screen {
     /**
      * The latest RETURN TO WORK can come, in seconds from the screen's opening at the death, whatever the packs say: Esc and DISCONNECT
-     * wait only for the button, so no data can hold a dead person on this screen for longer. The theme's bounds ({@code
-     * ContinuityLook.of}) put the laugh's start at most 8 s in, and the laugh ({@link LaughEnvelope#MAX_SECONDS}) lasts at most 20 s, so
-     * any valid pack's button comes by 28 s, 12 s inside the cap; it is here for whatever slips past them.
+     * wait only for the button, so no data can hold a dead person on this screen for longer. The theme's bound on when the laugh starts
+     * ({@code ContinuityLook.of}) and {@link LaughEnvelope#MAX_SECONDS} on how long it lasts keep any valid pack's button well inside it
+     * (ADR 0100 gives the margin); it is here for whatever slips past them.
      */
     static final double LONGEST_SECONDS = 40.0;
 
