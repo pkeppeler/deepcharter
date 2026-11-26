@@ -116,7 +116,7 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         rebind(HandbookKeys.OPEN, InputConstants.KEY_J, 1, "[H]", "[J]");
         rebind(options.keyUp, InputConstants.KEY_I, controlsPartOf("drive"), "[W]", "[I]");
         rebind(options.keySprint, InputConstants.KEY_O, controlsPartOf("dig"), "[Left Control]", "[O]");
-        rebind(CatalogueKeys.SPEC_SHEET, InputConstants.KEY_K, controlsPartOf("lookup"), "[J]", "[K]");
+        rebind(CatalogueKeys.SPEC_SHEET, InputConstants.KEY_K, controlsPartOf("spec"), "[J]", "[K]");
     }
 
     private static int controlsPartOf(String sheet) {
