@@ -339,7 +339,7 @@ public class CompanyRationsTest {
      * it was. The canteen reads no ledger, so it still gives its ration.
      */
     @GameTest(maxTicks = 100)
-    public void anUnreadableLedgerGivesNothingAndNeverThrows(GameTestHelper helper) {
+    public void anUnreadableLedgerGivesNoStartingTinsAndNeverThrows(GameTestHelper helper) {
         ServerPlayer player = MockPlayers.join(helper, "Stranger").player();
         BlockPos pos = helper.absolutePos(BLOCK);
         boolean[] done = {false};

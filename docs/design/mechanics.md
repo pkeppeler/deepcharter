@@ -1984,7 +1984,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Problem.** A new player's first playtest found no food anywhere and starved before reaching the first crop. The surface has no animals or plants, and the first terminal repair takes real time.
 
-**The answer.** The Company feeds its hands, in four sources and one renewable one. All of it is free: no money, no charter state.
+**The answer.** The Company feeds its hands, in five sources, two of them endless (the canteen and stalk mash). All of it is free: no money, no charter state.
 - **Starting tins.** Every player is given 3 Company rations once, with the handbook on first join. A ledger on the player (`ColonyRations.LEDGER`, kept on death) records it, so a later join, a death or a respawn gives none.
 - **Ore cars.** Each ore car on the colony's track holds 2 tins, a one-time find for whoever opens it first. The car's block state `looted` stores it (the world holds only the block), and a looted car is drawn without its heaped ore. A later use says it is empty. Per car, not per charter or per player: it is a find, the cars are few, and the crew shares it.
 - **The canteen.** A dispenser in the Lamp and Pick gives a ration on every use, with no limit and no record (#1439: one a day was too little for a hungry player, and the limit stopped no problem). It gives no light, so the bar stays a dark room.
