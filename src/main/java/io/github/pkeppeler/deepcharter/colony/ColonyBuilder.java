@@ -283,8 +283,8 @@ public final class ColonyBuilder {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         int minX = centre.getX() - half;
         int minZ = centre.getZ() - half;
-        // The least margin, and the columns beside it that sealing the fluid reads, are always read: load them at once.
-        int least = ColonyTuning.DEFAULT.edgeMargin() + 1;
+        // Every grade reads the least margin, so it is loaded early; the final grid's box below covers the rest.
+        int least = ColonyTuning.DEFAULT.edgeMargin();
         loadChunks(level, minX - least, minZ - least, minX + 2 * half - 1 + least, minZ + 2 * half - 1 + least);
         ColonyEdge.Margins margins = ColonyEdge.margins(
                 centre.getY(), minX, minZ, minX + 2 * half - 1, minZ + 2 * half - 1, this::naturalGround);

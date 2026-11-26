@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 
@@ -52,7 +53,8 @@ public class LightWatchReportTest {
                 if (!ready) {
                     return;
                 }
-                if (level.getChunkSource().isPositionTicking(rim.pack())) {
+                ChunkHolder holder = level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(rim.pack());
+                if (holder != null && holder.getTickingChunk() != null) {
                     throw failure(helper, "%s ticks, so the case proves nothing", rim);
                 }
                 LightSync.holdSendUntilLit(level, drawn);

@@ -452,8 +452,9 @@ public final class LightSync {
             if (held || key.level.getChunkSource().chunkMap.getChunkToSend(key.chunk.pack()) == null) {
                 // Not sent yet, so nothing it was sent can be stale: the window starts when it can be sent (#954).
                 watch.keepOpen(now);
-                if (!key.level.getChunkSource().isPositionTicking(key.chunk.pack())) {
-                    // It waits to tick, not for light: a chunk on the rim of the ticking area may never tick (#1297).
+                ChunkHolder holder = key.level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(key.chunk.pack());
+                if (holder == null || holder.getTickingChunk() == null) {
+                    // It waits to tick, not for light: a chunk on the rim of the loaded area may never tick (#1297).
                     watch.unsentSince = -1;
                 } else if (watch.unsentSince < 0) {
                     watch.unsentSince = now;
