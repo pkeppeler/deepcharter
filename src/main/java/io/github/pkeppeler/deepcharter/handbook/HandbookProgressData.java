@@ -39,9 +39,23 @@ public final class HandbookProgressData extends SavedData {
             new SavedDataType<>(ID, HandbookProgressData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
     /** A directive whose id changed, by its old id: a charter that completed the old one has completed the new one (ADR 0047). */
-    private static final Map<Identifier, Identifier> RENAMED = Map.of(
-            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/mine_iron_ore"),
-            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/gather_scrap"));
+    private static final Map<Identifier, Identifier> RENAMED =
+            Map.of(welcome("mine_iron_ore"), welcome("gather_scrap"));
+
+    /**
+     * A directive added to a chapter after charters had finished it, with the chapter's directives before it was added: a charter
+     * that completed all of those has completed the new one, so the new step never reopens a finished chapter (#1423).
+     */
+    private static final Map<Identifier, Set<Identifier>> ADDED = Map.of(
+            welcome("smelt_charcoal"),
+            Set.of(
+                    welcome("gather_wood"),
+                    welcome("craft_crafting_table"),
+                    welcome("craft_stone_tools"),
+                    welcome("gather_scrap"),
+                    welcome("smelt_iron"),
+                    welcome("craft_scanner"),
+                    welcome("make_light")));
 
     private final SavedState<Map<CharterId, Set<Identifier>>> state;
 
@@ -59,10 +73,19 @@ public final class HandbookProgressData extends SavedData {
                         completed.add(renamed);
                     }
                 });
+                ADDED.forEach((added, chapter) -> {
+                    if (completed.containsAll(chapter)) {
+                        completed.add(added);
+                    }
+                });
                 progress.put(entry.charter(), completed);
             });
             return progress;
         });
+    }
+
+    private static Identifier welcome(String directive) {
+        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/" + directive);
     }
 
     /** The world's handbook progress. Call on the server thread. */
