@@ -53,6 +53,7 @@ public final class HandbookControls {
             new Sheet(
                     "materials",
                     List.of(new Row("show", List.of(options -> CatalogueKeys.MATERIALS)), new Row("held"))),
+            new Sheet("spec", List.of(new Row("open", List.of(options -> CatalogueKeys.SPEC_SHEET)))),
             new Sheet("shelf", List.of(new Row("craftable"))),
             new Sheet(
                     "board",
@@ -66,11 +67,16 @@ public final class HandbookControls {
                                     "drive",
                                     List.of(
                                             options -> options.keyUp,
-                                            options -> options.keyLeft,
                                             options -> options.keyDown,
+                                            options -> options.keyLeft,
                                             options -> options.keyRight)),
+                            new Row("camera", List.of(options -> options.keyTogglePerspective)),
                             new Row("climb", List.of(options -> options.keyJump)))),
-            new Sheet("dig", List.of(new Row("down", List.of(options -> options.keySprint)), new Row("side"))),
+            new Sheet(
+                    "dig",
+                    List.of(
+                            new Row("down", List.of(options -> options.keySprint)),
+                            new Row("side", List.of(options -> options.keyUp)))),
             new Sheet(
                     "crew",
                     List.of(

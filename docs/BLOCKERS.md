@@ -66,8 +66,8 @@ All M1 prototypes are merged. On a real dedicated server, two players each pilot
 
 ### What each piece does
 1. **The Mole pod**: you ride it and it holds one pilot. It has hull, fuel and cargo gauges. See [PR #40](https://github.com/pkeppeler/deepcharter/blob/pr-media/40/pod-rider-third-person.png?raw=true).
-2. **Driving and rotor flight**: it drives on one axis at a time and never diagonally. Jump is the rotor. Hard landings damage the hull. See [the drive GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/44/pod-drive.gif?raw=true) (PR #44).
-3. **Drilling**: sprint to drill down, and push into a wall to drill sideways. It never drills up. Ore goes to cargo, and the floor crust is slow and hurts the hull. See [the drill GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/86/pod-drill.gif?raw=true) (PR #86).
+2. **Driving and rotor flight**: it steers like a boat (W forward, S reverse, A and D turn). Jump is the rotor. Hard landings damage the hull. See [the drive GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/44/pod-drive.gif?raw=true) (PR #44).
+3. **Drilling**: sprint to drill down, and drive forward (W) into a wall to drill sideways. It never drills up. Ore goes to cargo, and the floor crust is slow and hurts the hull. See [the drill GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/86/pod-drill.gif?raw=true) (PR #86).
 4. **Cargo, lift and fuel**: 7 ore slots, and weight cuts lift. Fuel drains when idle, faster when moving, and fastest when drilling. An empty tank strands the pod. Coal refuels it. (PR #48)
 5. **Layers and the breach**: layer 1 and layer 2 each get darker with depth. The altimeter reads in feet. A breach plays a rumble, a fade to black and a typed transmission. See [the breach GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/49/breach-crossing.gif?raw=true) (PRs #41, #42, #49).
 6. **The scanner**: a side-view minimap of ore around the pod. It stays readable at midnight and in the dark layers. See [the scanner GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/46/scanner-hud.gif?raw=true) (PR #46).
