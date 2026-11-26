@@ -31,8 +31,8 @@ import net.minecraft.world.phys.Vec3;
 public final class SeatedTerminals {
     private SeatedTerminals() {}
 
-    /** The pod {@code player} is seated in, in any seat, or empty on foot. Safe on both sides. */
-    public static Optional<PodEntity> seat(Player player) {
+    /** The pod {@code player} is seated in, in any seat, or empty on foot. */
+    static Optional<PodEntity> seat(Player player) {
         return player.getRootVehicle() instanceof PodEntity pod ? Optional.of(pod) : Optional.empty();
     }
 

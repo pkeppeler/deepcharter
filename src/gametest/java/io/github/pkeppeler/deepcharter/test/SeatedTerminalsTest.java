@@ -186,6 +186,19 @@ public class SeatedTerminalsTest {
                 .toList();
     }
 
+    /** Expects the seat requests so far to have opened nothing and been refused once, as none in reach. */
+    private static void refusedNoneInReach(GameTestHelper helper, ServerPlayer player, String what) {
+        expect(
+                helper,
+                openedBy(player).isEmpty()
+                        && refusedFor(player)
+                                .equals(List.of(new Refused(player.getUUID(), TerminalRefusal.NONE_IN_REACH))),
+                "%s, opened %s, refused %s",
+                what,
+                openedBy(player),
+                refusedFor(player));
+    }
+
     private static boolean saw(MockPlayer mock, String key) {
         return mock.actionBarMessages().stream()
                 .map(Component::getContents)
@@ -304,17 +317,7 @@ public class SeatedTerminalsTest {
                 double gap = pod.getBoundingBox().distanceToSqr(Vec3.atCenterOf(pump));
                 expect(helper, gap > REACH * REACH, "the pump must stand past reach of the pod, is %s", Math.sqrt(gap));
                 pilot.send(SeatedTerminalPayload.INSTANCE);
-                expect(
-                        helper,
-                        openedBy(player).isEmpty(),
-                        "nothing in reach should open nothing, opened %s",
-                        openedBy(player));
-                expect(
-                        helper,
-                        refusedFor(player)
-                                .equals(List.of(new Refused(player.getUUID(), TerminalRefusal.NONE_IN_REACH))),
-                        "nothing in reach should be refused as such, got %s",
-                        refusedFor(player));
+                refusedNoneInReach(helper, player, "nothing in reach should open nothing and be refused as such");
 
                 pod.setPos(pod.position().add(0.1, 0, 0));
                 pod.positionRider(player);
@@ -706,14 +709,7 @@ public class SeatedTerminalsTest {
                 expect(helper, !Terminals.inReach(player, pump), "a pod not parked at the pump should not reach it");
                 face(player, pump);
                 pilot.send(SeatedTerminalPayload.INSTANCE);
-                expect(
-                        helper,
-                        openedBy(player).isEmpty()
-                                && refusedFor(player)
-                                        .equals(List.of(new Refused(player.getUUID(), TerminalRefusal.NONE_IN_REACH))),
-                        "the pump should be out of reach, opened %s, refused %s",
-                        openedBy(player),
-                        refusedFor(player));
+                refusedNoneInReach(helper, player, "the pump should be out of reach");
 
                 pod.setPos(pod.position().add(0.1, 0, 0.1));
                 pod.positionRider(player);
@@ -750,14 +746,7 @@ public class SeatedTerminalsTest {
                 expect(helper, Terminals.inReach(player, pump), "the walled pump should be within reach of the pod");
                 face(player, pump);
                 pilot.send(SeatedTerminalPayload.INSTANCE);
-                expect(
-                        helper,
-                        openedBy(player).isEmpty()
-                                && refusedFor(player)
-                                        .equals(List.of(new Refused(player.getUUID(), TerminalRefusal.NONE_IN_REACH))),
-                        "a pump behind a wall should not open from the seat, opened %s, refused %s",
-                        openedBy(player),
-                        refusedFor(player));
+                refusedNoneInReach(helper, player, "a pump behind a wall should not open from the seat");
 
                 wall.forEach(pos -> helper.setBlock(pos, Blocks.AIR));
                 opensFacing(helper, pilot, pump, TerminalTypes.FUEL_PUMP);

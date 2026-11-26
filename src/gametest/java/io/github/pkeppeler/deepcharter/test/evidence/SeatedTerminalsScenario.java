@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.test.SeatedTerminalsClientTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
+import java.util.function.BooleanSupplier;
 import java.util.function.LongPredicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -43,45 +44,33 @@ public class SeatedTerminalsScenario extends EvidenceScenario {
                     "the charter's view",
                     client -> ClientCharter.view().isPresent());
             clearOverlays(context);
-            hold(context);
-            screenshot(context, "seated-at-the-pump");
+            still(context, "seated-at-the-pump");
 
             SeatedTerminalsClientTest.useFacing(context, scene.pump(), FuelPumpScreen.class);
             FuelPumpScreen pump = context.computeOnClient(client -> ClientSession.screen(client, FuelPumpScreen.class));
-            for (int i = 0; i < TYPING_FRAMES && !pump.typewriter().done(); i++) {
-                context.waitTicks(TICKS_PER_FRAME);
-                frame(context);
-            }
-            hold(context);
-            screenshot(context, "pump-from-the-seat");
+            typeOut(context, () -> pump.typewriter().done());
+            still(context, "pump-from-the-seat");
             long start = SeatedTerminalsClientTest.START_BALANCE;
             context.clickScreenButton("FILL UP");
             awaitBalance(context, "less than " + start, balance -> balance < start);
             clearOverlays(context);
-            hold(context);
-            screenshot(context, "pump-filled");
+            still(context, "pump-filled");
             long afterFuel = context.computeOnClient(
                     client -> ClientCharter.view().orElseThrow().balance());
 
             RealInput.key(context, InputConstants.KEY_ESCAPE, 0);
             ClientWait.until(context, "the pump screen closed", client -> client.gui.screen() == null);
-            hold(context);
-            screenshot(context, "still-seated");
+            still(context, "still-seated");
 
             SeatedTerminalsClientTest.useFacing(context, scene.processor(), OreProcessorScreen.class);
             OreProcessorScreen processor =
                     context.computeOnClient(client -> ClientSession.screen(client, OreProcessorScreen.class));
-            for (int i = 0; i < TYPING_FRAMES && !processor.typewriter().done(); i++) {
-                context.waitTicks(TICKS_PER_FRAME);
-                frame(context);
-            }
-            hold(context);
-            screenshot(context, "processor-from-the-seat");
+            typeOut(context, () -> processor.typewriter().done());
+            still(context, "processor-from-the-seat");
             context.clickScreenButton("SELL ALL POD CARGO");
             awaitBalance(context, "more than " + afterFuel, balance -> balance > afterFuel);
             clearOverlays(context);
-            hold(context);
-            screenshot(context, "cargo-sold");
+            still(context, "cargo-sold");
             context.setScreen(() -> null);
             hold(context);
         } finally {
@@ -108,6 +97,19 @@ public class SeatedTerminalsScenario extends EvidenceScenario {
             TransmissionOverlay.reset();
             client.gui.toastManager().clear();
         });
+    }
+
+    /** Records frames while the screen types out, up to {@link #TYPING_FRAMES}. */
+    private void typeOut(ClientGameTestContext context, BooleanSupplier done) {
+        for (int i = 0; i < TYPING_FRAMES && !done.getAsBoolean(); i++) {
+            context.waitTicks(TICKS_PER_FRAME);
+            frame(context);
+        }
+    }
+
+    private void still(ClientGameTestContext context, String screenshotName) {
+        hold(context);
+        screenshot(context, screenshotName);
     }
 
     private void hold(ClientGameTestContext context) {
