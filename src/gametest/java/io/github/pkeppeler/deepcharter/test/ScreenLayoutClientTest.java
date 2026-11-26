@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import static io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields.intField;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterTuning;
@@ -11,9 +12,12 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminalTuning;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
+import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.RecipeConsoleScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.outpost.IncidentReportScreen;
@@ -38,6 +42,8 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability;
 import io.github.pkeppeler.deepcharter.outpost.Ratings;
 import io.github.pkeppeler.deepcharter.outpost.VisitCause;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.suit.OutpostRisks;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.RepairMenu;
@@ -47,6 +53,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -54,6 +61,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -73,11 +81,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -86,6 +96,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -203,8 +214,17 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             cases.addAll(terminalCases());
             cases.addAll(menuCases());
             cases.addAll(standalone());
-            for (Case screenCase : cases) {
-                check(context, screenCase, problems);
+            try {
+                for (Case screenCase : cases) {
+                    check(context, screenCase, problems);
+                }
+            } finally {
+                // The recipe console's case taught the client's book the nanobots' recipe: it goes again.
+                context.runOnClient(client -> {
+                    ClientRecipeBook book = ClientSession.player(client).getRecipeBook();
+                    book.remove(CatalogueFixtures.nanobots().id());
+                    book.rebuildCollections();
+                });
             }
             checkWithACharter(context, world, problems);
             context.setScreen(() -> null);
@@ -840,13 +860,52 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return new IncidentReportPayload(1, 99999, lines, 99, List.of(VisitCause.DARK));
     }
 
-    /** The screens nothing registers: the handbook, opened from a key, and the UI kit's demo. */
+    /** The screens nothing registers: the handbook, opened from a key, the UI kit's demo, and the Continuity Event's, opened at a death. */
     private static List<Case> standalone() {
         List<Case> cases = new ArrayList<>();
         cases.add(new Case("ui demo", CrtDemoScreen::new));
+        // The largest numbers there are; the buttons show only once the laugh ends, so the variants wait for them, then
+        // show DISCONNECT. Built outside a death, the screen is not the live sequence: it plays none of the sequence's
+        // sounds, which nothing would ever stop.
+        List<Identifier> sequenceSounds = new CopyOnWriteArrayList<>();
+        SoundEventListener heard = (sound, events, range) -> {
+            if (sound.getIdentifier().getPath().startsWith("continuity.")) {
+                sequenceSounds.add(sound.getIdentifier());
+            }
+        };
+        cases.add(new Case(
+                "continuity event",
+                () -> {
+                    Minecraft client = Minecraft.getInstance();
+                    client.getSoundManager().addListener(heard);
+                    return new ContinuityScreen(ClientSession.player(client), 99999, 9999);
+                },
+                List.of(new Variant("its buttons", (context, screen) -> {
+                    ClientWait.until(
+                            context,
+                            "RETURN TO WORK shown",
+                            client -> !ClientChecks.visibleWidgets(screen).isEmpty());
+                    context.runOnClient(client -> client.getSoundManager().removeListener(heard));
+                    require(
+                            sequenceSounds.isEmpty(),
+                            "a Continuity Event screen that is not the live sequence plays nothing, it played "
+                                    + sequenceSounds);
+                    RealInput.key(context, InputConstants.KEY_ESCAPE, 0);
+                    return List.of();
+                }))));
         cases.add(new Case("incident report", () -> new IncidentReportScreen(longestIncidentReport(), null)));
         // The longest sheet there is: a part with a stock tier and six bought ones.
         cases.add(new Case("spec sheet", () -> new SpecSheetScreen(ComponentItems.item(ComponentTrack.DRILL))));
+        // The recipe console a chest's R opens, at the longest recipe of the fixtures: the nanobots' 3 x 3 grid and
+        // long name.
+        cases.add(new Case("recipe console", () -> {
+            ClientRecipeBook book =
+                    ClientSession.player(Minecraft.getInstance()).getRecipeBook();
+            book.add(CatalogueFixtures.nanobots());
+            book.rebuildCollections();
+            return new RecipeConsoleScreen(
+                    null, RepairRegistry.item(Consumable.HULL_NANOBOTS), CatalogueState.Mode.RECIPES);
+        }));
         // The notes the game ships, all found: the longest real one is what the page must hold.
         List<HandbookNote> notes =
                 ShippedNotes.ids().stream().map(ClientNotes::entry).toList();

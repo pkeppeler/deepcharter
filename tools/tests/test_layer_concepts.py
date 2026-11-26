@@ -100,14 +100,15 @@ class SeamCheckTest(unittest.TestCase):
         self.assertFalse(found.seamless())
 
     def test_every_rock_texture_tiles_at_a_contrast_near_vanillas(self):
-        shipped = {p.stem: p for p in SHIPPED_TEXTURES.glob("*_shale*.png")}
-        self.assertEqual(2 * (make.ROCK_VARIANTS[1] + make.END_VARIANTS + make.RUBBLE_VARIANTS + 1), len(shipped))
+        shipped = {p.stem: p for p in [*SHIPPED_TEXTURES.glob("*_shale*.png"), *SHIPPED_TEXTURES.glob("hardpan*.png")]}
+        strata = len(make.STRATA) * (make.ROCK_VARIANTS[1] + make.END_VARIANTS)
+        self.assertEqual(2 * (make.ROCK_VARIANTS[1] + make.END_VARIANTS + make.RUBBLE_VARIANTS + 1) + strata, len(shipped))
         groups = {"mod": shipped} | {pack: tiling_textures(pack) for pack in make.PACKS}
         for pack, textures in groups.items():
             self.assertTrue(textures, f"{pack} has no rock texture to check")
             for name, path in textures.items():
                 found = measure(path)
-                ceiling = seams.MAX_INSIDE if re.fullmatch(r"(lc_rock_\d|(packed|green)_shale)_(\d|end_\d)", name) else seams.MAX_RUBBLE_INSIDE
+                ceiling = seams.MAX_INSIDE if re.fullmatch(r"(lc_rock_\d|(packed|green|black)_shale|hardpan)_(\d|end_\d)", name) else seams.MAX_RUBBLE_INSIDE
                 with self.subTest(pack=pack, texture=name):
                     self.assertLessEqual(found.wrap_ratio, 1 + seams.MARGIN, "does not run on across its wrap seams")
                     self.assertLessEqual(found.rim_ratio, 1 + seams.MARGIN, "has an edge of its own")
@@ -128,6 +129,11 @@ class SeamCheckTest(unittest.TestCase):
             plain = make.image(art.grained(make.SHADES[layer], base, make.MID[layer]))
             with self.subTest(layer=layer, top=top):
                 self.assertTrue(seams.measure(plain.pixels, SIZE).seamless())
+        for block, (ramp, side, end, _) in make.STRATA.items():
+            for base in (side, end):
+                plain = make.image(art.grained(art.ramp(ramp, 6), base, make.MID[1]))
+                with self.subTest(stratum=block, base=base):
+                    self.assertTrue(seams.measure(plain.pixels, SIZE).seamless())
 
 
 class StyleTest(unittest.TestCase):
@@ -309,7 +315,7 @@ class LayerConceptsTest(unittest.TestCase):
         """The mod's rock is its own blocks (no vanilla file is redrawn), layer 3's included (#972); the scenes' stand-ins for layer 3 are vanilla
         andesite and diorite, and stone and deepslate, which the hall of each scene shows untouched, are never redrawn."""
         shipped = {p.relative_to(make.MOD_ASSETS).as_posix() for p in self.files if p.is_relative_to(make.MOD_ASSETS) and "/blockstates/" in p.as_posix()}
-        blocks = {block for pair in make.BLOCKS.values() for block in pair} | {make.COLUMNS, make.CORE}
+        blocks = {block for pair in make.BLOCKS.values() for block in pair} | {make.COLUMNS, make.CORE} | set(make.STRATA)
         self.assertEqual({f"deepcharter/blockstates/{block}.json" for block in blocks}, shipped)
         redrawn_by_grain = {f"minecraft/blockstates/{n}.json" for n in make.LAYER_3}
         pack = make.pack_dir(make.GRAIN) / "assets"

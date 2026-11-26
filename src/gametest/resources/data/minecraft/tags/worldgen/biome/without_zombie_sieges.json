@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "deepcharter:reference_topsoil_claims",
+    "deepcharter:reference_stone_benches",
+    "deepcharter:reference_deep_claim"
+  ]
+}

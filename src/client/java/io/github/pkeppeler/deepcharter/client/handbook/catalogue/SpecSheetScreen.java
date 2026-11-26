@@ -23,12 +23,19 @@ import org.jspecify.annotations.Nullable;
  * follow; the Recipes link closes it and shows the item's recipes in the catalogue, over the inventory.
  */
 public final class SpecSheetScreen extends Screen {
+    private final Item item;
     private final SpecSheet sheet;
     private @Nullable Placed placed;
 
     public SpecSheetScreen(Item item) {
         super(Component.translatable("deepcharter.catalogue.spec"));
+        this.item = item;
         this.sheet = SpecSheets.of(item);
+    }
+
+    /** The item whose sheet this screen shows. */
+    Item item() {
+        return item;
     }
 
     @Override
