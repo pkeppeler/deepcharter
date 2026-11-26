@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.ColonyRations;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.fuel.FuelRegistry;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
@@ -62,8 +63,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses, biofuel is
- * crafted from four crops and refuels, and a reserve tank adds 25 litres of capacity and clears Stranded.
+ * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses,
+ * biofuel crafts from three stalk mash and refuels, and a reserve tank adds 25 litres of capacity and clears Stranded.
  */
 public class FuelPumpTest {
     private static final float EPSILON = 0.001f;
@@ -404,40 +405,21 @@ public class FuelPumpTest {
     }
 
     @GameTest
-    public void biofuelIsCraftedFromFourCropsAndRefuels(GameTestHelper helper) {
+    public void biofuelIsCraftedFromThreeStalkMashAndRefuels(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        for (Item crop : List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT)) {
-            ItemStack made = craft(
-                    helper,
-                    List.of(new ItemStack(crop), new ItemStack(crop), new ItemStack(crop), new ItemStack(crop)));
-            if (!made.is(FuelRegistry.BIOFUEL) || made.getCount() != 1) {
-                throw failure(helper, "four %s should craft one biofuel, got %s", crop, made);
-            }
+        Item mash = ColonyRations.STALK_MEAL;
+        ItemStack made = craft(helper, List.of(new ItemStack(mash), new ItemStack(mash), new ItemStack(mash)));
+        if (!made.is(FuelRegistry.BIOFUEL) || made.getCount() != 1) {
+            throw failure(helper, "three stalk mash should craft one biofuel, got %s", made);
         }
-        ItemStack mixed = craft(
-                helper,
-                List.of(
-                        new ItemStack(Items.WHEAT),
-                        new ItemStack(Items.CARROT),
-                        new ItemStack(Items.POTATO),
-                        new ItemStack(Items.BEETROOT)));
-        if (!mixed.is(FuelRegistry.BIOFUEL)) {
-            throw failure(helper, "four different crops should craft biofuel, got %s", mixed);
+        ItemStack two = craft(helper, List.of(new ItemStack(mash), new ItemStack(mash)));
+        if (!two.isEmpty()) {
+            throw failure(helper, "two stalk mash should craft nothing, got %s", two);
         }
-        ItemStack three = craft(
+        ItemStack wheat = craft(
                 helper, List.of(new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT)));
-        if (!three.isEmpty()) {
-            throw failure(helper, "three crops should craft nothing, got %s", three);
-        }
-        ItemStack sticks = craft(
-                helper,
-                List.of(
-                        new ItemStack(Items.STICK),
-                        new ItemStack(Items.STICK),
-                        new ItemStack(Items.STICK),
-                        new ItemStack(Items.STICK)));
-        if (!sticks.isEmpty()) {
-            throw failure(helper, "four sticks are not crops, got %s", sticks);
+        if (!wheat.isEmpty()) {
+            throw failure(helper, "the campaign world has no crops: wheat should craft nothing, got %s", wheat);
         }
 
         var litres = PodFuelItems.litresOf(new ItemStack(FuelRegistry.BIOFUEL));
