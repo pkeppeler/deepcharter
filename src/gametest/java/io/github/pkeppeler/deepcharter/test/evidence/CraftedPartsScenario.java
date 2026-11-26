@@ -5,6 +5,9 @@ import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -20,6 +23,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -38,6 +42,7 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -51,6 +56,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -76,6 +82,13 @@ public class CraftedPartsScenario extends EvidenceScenario {
     private static final int INGREDIENTS_EACH = 16;
     /** The Bronzium a dig left in the pod's cargo: the lights unit takes one. */
     private static final int ORE_IN_CARGO = 3;
+    /**
+     * The colony's ore processor is used from the pad south of it, with the pod parked to the west of the player
+     * (the fuel pump's side).
+     */
+    private static final Vec3i PLAYER_FROM_PROCESSOR = new Vec3i(0, 0, 4);
+
+    private static final Vec3i POD_FROM_PROCESSOR = new Vec3i(-3, 0, 3);
 
     private static final int TYPING_FRAMES = 40;
 
@@ -138,18 +151,22 @@ public class CraftedPartsScenario extends EvidenceScenario {
     }
 
     /**
-     * A hazard unit's ore: a pod parked at the ore processor holds Bronzium from the dig, WITHDRAW ORE moves one into the pack (the account is not paid), the
-     * pilot crafts the lights unit from it, and fits it to the Mole.
+     * A hazard unit's ore: a pod parked at the colony's ore processor holds Bronzium from the dig, WITHDRAW ORE
+     * moves one into the pack (the account is not paid), and back in the room the pilot crafts the lights unit
+     * from it and fits it to the Mole.
      */
     private void withdrawTheOreAndCraftTheLights(
             ClientGameTestContext context, TestServerContext server, BlockPos table, PodEntity pod) {
-        BlockPos processor = server.computeOnServer(CraftedPartsScenario::setUpTheProcessor);
+        Trip trip = server.computeOnServer(CraftedPartsScenario::goToTheProcessor);
+        BlockPos processor = trip.processor();
         ClientWait.until(
                 context,
-                "the ore processor in the client's world",
-                client -> ClientLight.clientLevel(client)
-                        .getBlockState(processor)
-                        .is(TerminalTypes.ORE_PROCESSOR.block()));
+                "the player and the pod at the colony's ore processor",
+                client -> ClientSession.player(client).position().distanceToSqr(trip.playerAtProcessor()) < 1
+                        && pod.position().distanceToSqr(trip.podAtProcessor()) < 1
+                        && ClientLight.clientLevel(client)
+                                .getBlockState(processor)
+                                .is(TerminalTypes.ORE_PROCESSOR.block()));
         context.getInput().lookAt(processor);
         hold(context);
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
@@ -184,6 +201,12 @@ public class CraftedPartsScenario extends EvidenceScenario {
         hold(context);
         screenshot(context, "bronzium-withdrawn");
         context.setScreen(() -> null);
+        server.runOnServer(minecraft -> goBack(minecraft, trip));
+        ClientWait.until(
+                context,
+                "the player and the pod back in the room",
+                client -> ClientSession.player(client).position().distanceToSqr(trip.playerHome()) < 1
+                        && pod.position().distanceToSqr(trip.podHome()) < 1);
 
         Item unit = BuiltInRegistries.ITEM.getValue(
                 Identifier.fromNamespaceAndPath("deepcharter", ComponentTrack.LIGHTS.id() + "_unit"));
@@ -211,21 +234,69 @@ public class CraftedPartsScenario extends EvidenceScenario {
         screenshot(context, "lights-unit-used-on-the-mole");
     }
 
-    /** Repairs the pump and the processor, stands the processor between the table and the pod, and puts three Bronzium in the pod's cargo, where a dig leaves them. */
-    private static BlockPos setUpTheProcessor(MinecraftServer server) {
+    /** Where the processor beat takes the player and the pod, and where each stood in the room. */
+    private record Trip(
+            BlockPos processor, Vec3 playerAtProcessor, Vec3 podAtProcessor, Vec3 playerHome, Vec3 podHome) {}
+
+    /**
+     * Repairs the pump and the colony's ore processor, puts three Bronzium in the pod's cargo, where a dig leaves
+     * them, and parks the pod at the processor with the player in reach of it. Not a processor in the room: at
+     * depth one serves only in its charter's outpost hall (OutpostAccess), and the room is none.
+     */
+    private static Trip goToTheProcessor(MinecraftServer server) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-        ServerLevel level = player.level();
+        PodEntity pod = podOnServer(server);
+        if (player.level() != server.overworld()) {
+            throw new AssertionError(
+                    "the room is not in the colony's level: " + player.level().dimension());
+        }
         RepairState state = RepairState.get(server);
         for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
             type.parts().forEach(part -> state.insert(type, part));
         }
-        BlockPos processor = player.blockPosition().offset(0, 0, POD_AHEAD);
-        level.setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
-        PodEntity pod = podOnServer(server);
         for (int i = 0; i < ORE_IN_CARGO; i++) {
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.BRONZIUM));
         }
-        return processor;
+        ColonySite.Placed colony =
+                Colony.placed(server).orElseThrow(() -> new AssertionError("the colony was not built"));
+        BlockPos processor = TestColony.anchor(colony, ColonyAnchor.ORE_PROCESSOR);
+        Trip trip = new Trip(
+                processor,
+                Vec3.atBottomCenterOf(processor.offset(PLAYER_FROM_PROCESSOR)),
+                Vec3.atBottomCenterOf(processor.offset(POD_FROM_PROCESSOR)),
+                player.position(),
+                pod.position());
+        pod.setPos(trip.podAtProcessor());
+        Vec3 look = Vec3.atCenterOf(processor).subtract(trip.playerAtProcessor().add(0, player.getEyeHeight(), 0));
+        player.teleportTo(
+                server.overworld(),
+                trip.playerAtProcessor().x,
+                trip.playerAtProcessor().y,
+                trip.playerAtProcessor().z,
+                Set.of(),
+                (float) Math.toDegrees(Math.atan2(-look.x, look.z)),
+                (float) Math.toDegrees(Math.atan2(-look.y, Math.hypot(look.x, look.z))),
+                true);
+        return trip;
+    }
+
+    /** Takes the player and the pod back to where they stood in the room. */
+    private static void goBack(MinecraftServer server, Trip trip) {
+        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+        // entity-query: the pod was parked 3 blocks from the player, who is still beside it
+        PodEntity pod = player.level()
+                .getEntitiesOfClass(PodEntity.class, AABB.ofSize(trip.podAtProcessor(), 1, 1, 1))
+                .getFirst();
+        pod.setPos(trip.podHome());
+        player.teleportTo(
+                server.overworld(),
+                trip.playerHome().x,
+                trip.playerHome().y,
+                trip.playerHome().z,
+                Set.of(),
+                0f,
+                0f,
+                true);
     }
 
     /** Lights the sealed room, stands a crafting table and a registered pod in it, and puts the ingredients in the pack. */
