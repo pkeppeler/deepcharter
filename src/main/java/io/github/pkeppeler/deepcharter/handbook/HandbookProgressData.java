@@ -23,8 +23,8 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * when it goes dormant. It only records: {@link HandbookProgress} is what the rest of the mod calls.
  *
  * <p>The saved form has a {@link #VERSION}. Data of another version loads as unreadable, is written back unchanged, and every use
- * of it throws, so a newer world is never overwritten by an older build (see ADR 0007). Version 1 has the same shape and is
- * read through {@link DirectiveCarry#fromVersion1}.
+ * of it throws, so a newer world is never overwritten by an older build (see ADR 0007).
+ * Version 1 has the same shape and is read through {@link DirectiveCarry#fromVersion1}.
  */
 public final class HandbookProgressData extends SavedData {
     public static final int VERSION = 2;

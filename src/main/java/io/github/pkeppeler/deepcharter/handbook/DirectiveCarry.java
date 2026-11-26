@@ -43,7 +43,7 @@ final class DirectiveCarry {
         return carried;
     }
 
-    /** {@code completed} as a version 1 store saved it, read as this build's: renamed, then given the steps added since. */
+    /** {@code completed} as a version 1 store saved it, read as this build's: renamed, then given the steps added. */
     static List<Identifier> fromVersion1(List<Identifier> completed) {
         Set<Identifier> carried = renamed(completed);
         ADDED_AFTER_VERSION_1.forEach((added, chapter) -> {

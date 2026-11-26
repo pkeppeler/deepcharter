@@ -237,7 +237,10 @@ public class HandbookChaptersOneToFiveTest {
         helper.succeed();
     }
 
-    /** A store saved before #245 holds {@code mine_iron_ore}: it reads as {@code gather_scrap}, and then as the charcoal step. */
+    /**
+     * A store saved before #245 holds {@code mine_iron_ore}: it reads as {@code gather_scrap}, and then as the charcoal
+     * step.
+     */
     @GameTest
     public void aCharterSavedBeforeTheScrapRenameGetsBothTheRenameAndTheCharcoalStep(GameTestHelper helper) {
         Identifier scrap = id(directive("welcome", "gather_scrap"));
