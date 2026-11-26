@@ -5,6 +5,7 @@
 - A before/after still of a permission toggle shows the screen of the party that holds the permission, never a bystander's.
 - A HUD element a PR adds must stay clear of vanilla's action-bar and title rows at the smallest GUI size; a still showing an overlap is a defect, not noise. A client test checks its box against `VanillaHudRows` (`test/support`) at 320 x 240 and 427 x 240, as `SuitGaugeClientTest` does.
 - A HUD element's clearance test covers every state in which it draws, including riding and an unreadable attachment, not only the on-foot state the feature is about.
+- An icon drawn inline with text in the text's colour must not match a font glyph's shape at the font's size (a hollow 5x7 outline reads as 0 or D); judge it in the plate zoom, not alone. `IconsAreNotGlyphs` in `tools/tests/test_cockpit_ribbon.py` checks the cockpit's icons against the font.
 - The README tour is refreshed with `tools/readme-tour.sh [item...]` (manifest `docs/readme-tour.tsv`). Run it after a PR that changes something the tour shows, and after an art PR. See [docs/tooling/readme-tour.md](../../../docs/tooling/readme-tour.md).
 - Before and after stills for an art PR (`design-tour`, the same views of the whole game):
   1. Record before on `main`, from a checkout or worktree of `main` (never switch the main checkout): `tools/record-evidence.sh design-tour`. It takes about 30 minutes and ends in `build/evidence/design-tour/screenshots`. Copy that directory away, because the next run replaces it.

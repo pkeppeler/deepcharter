@@ -247,6 +247,72 @@ class Titles(unittest.TestCase):
         self.assertTrue(all(icon is None for row in cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["burning"])[1:] for _, _, icon in row))
 
 
+# The game font's digits and capitals, the 5 x 7 of each glyph's cell, transcribed from assets/minecraft/textures/font/ascii.png in the 26.3 client jar (the
+# tool-tests job has no Gradle cache to read it from).
+_FONT_TEXT = """
+0 .###. #...# #..## #.#.# ##..# #...# .###.
+1 ..#.. .##.. ..#.. ..#.. ..#.. ..#.. #####
+2 .###. #...# ....# ..##. .#... #...# #####
+3 .###. #...# ....# ..##. ....# #...# .###.
+4 ...## ..#.# .#..# #...# ##### ....# ....#
+5 ##### #.... ####. ....# ....# #...# .###.
+6 ..##. .#... #.... ####. #...# #...# .###.
+7 ##### #...# ....# ...#. ..#.. ..#.. ..#..
+8 .###. #...# #...# .###. #...# #...# .###.
+9 .###. #...# #...# .#### ....# ...#. .##..
+A .###. #...# ##### #...# #...# #...# #...#
+B ####. #...# ####. #...# #...# #...# ####.
+C .###. #...# #.... #.... #.... #...# .###.
+D ####. #...# #...# #...# #...# #...# ####.
+E ##### #.... ###.. #.... #.... #.... #####
+F ##### #.... ###.. #.... #.... #.... #....
+G .#### #.... #..## #...# #...# #...# .###.
+H #...# #...# ##### #...# #...# #...# #...#
+I ###.. .#... .#... .#... .#... .#... ###..
+J ....# ....# ....# ....# ....# #...# .###.
+K #...# #..#. ###.. #..#. #...# #...# #...#
+L #.... #.... #.... #.... #.... #.... #####
+M #...# ##.## #.#.# #...# #...# #...# #...#
+N #...# ##..# #.#.# #..## #...# #...# #...#
+O .###. #...# #...# #...# #...# #...# .###.
+P ####. #...# ####. #.... #.... #.... #....
+Q .###. #...# #...# #...# #...# #..#. .##.#
+R ####. #...# ####. #...# #...# #...# #...#
+S .#### #.... .###. ....# ....# #...# .###.
+T ##### ..#.. ..#.. ..#.. ..#.. ..#.. ..#..
+U #...# #...# #...# #...# #...# #...# .###.
+V #...# #...# #...# #...# .#.#. .#.#. ..#..
+W #...# #...# #...# #...# #.#.# ##.## #...#
+X #...# .#.#. ..#.. .#.#. #...# #...# #...#
+Y #...# .#.#. ..#.. ..#.. ..#.. ..#.. ..#..
+Z ##### ....# ...#. ..#.. .#... #.... #####
+"""
+FONT = {line[0]: tuple(line[2:].split(" ")) for line in _FONT_TEXT.strip().splitlines()}
+# Two shapes read apart at 5 x 7 when they differ in at least a quarter of the 35 pixels. The hollow shield of #1436, 6 from "Q" and 8 from "D", read as "0".
+MIN_PIXELS_APART = 9
+
+
+def pixels_apart(a, b) -> int:
+    return sum(p != q for row_a, row_b in zip(a, b) for p, q in zip(row_a, row_b))
+
+
+class IconsAreNotGlyphs(unittest.TestCase):
+    """An icon is drawn inline with text in the text's colour (the tally), so it must not read as a glyph of the game's font, nor as another icon."""
+
+    def test_no_icon_reads_as_a_digit_or_a_capital(self):
+        for name, rows in cockpit_ribbon.ICONS.items():
+            for glyph, glyph_rows in FONT.items():
+                with self.subTest(icon=name, glyph=glyph):
+                    self.assertGreaterEqual(pixels_apart(rows, glyph_rows), MIN_PIXELS_APART)
+
+    def test_no_two_icons_read_as_each_other(self):
+        for a, rows_a in cockpit_ribbon.ICONS.items():
+            for b, rows_b in cockpit_ribbon.ICONS.items():
+                if a < b:
+                    with self.subTest(a=a, b=b):
+                        self.assertGreaterEqual(pixels_apart(rows_a, rows_b), MIN_PIXELS_APART)
+
+
 class Coverage(unittest.TestCase):
     def test_the_status_is_under_the_budget_and_smaller_than_the_scanner(self):
         screen = cockpit_ribbon.SCREEN_W * cockpit_ribbon.SCREEN_H
