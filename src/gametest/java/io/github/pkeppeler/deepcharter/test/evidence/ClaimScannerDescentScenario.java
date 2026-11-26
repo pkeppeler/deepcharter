@@ -75,17 +75,28 @@ public class ClaimScannerDescentScenario extends EvidenceScenario {
                         new BlockPos(X, bottom - 1, Z),
                         new BlockPos(X + 1, rock + 2, Z + 1),
                         Blocks.AIR.defaultBlockState());
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.teleportTo(level, X + 1.0, rock, Z + 1.0, Set.of(), 0f, 0f, true);
                 return rock;
             });
             ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 1);
+            // The pilot arrives over the open shaft only now, held in the air until the pod holds it: the far teleport
+            // must land (ClientWait.arrived) before the mount.
+            singleplayer.getServer().runOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                player.teleportTo(TestLayers.level(server, 1), X + 1.0, top, Z + 1.0, Set.of(), 0f, 0f, true);
+                player.getAbilities().mayfly = true;
+                player.getAbilities().flying = true;
+                player.onUpdateAbilities();
+                player.setDeltaMovement(Vec3.ZERO);
+            });
             ClientWait.arrived(context, singleplayer.getServer());
             ScannerHudTest.mountFirstPlayer(singleplayer.getServer(), TIER);
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 HELD_Y.set((double) top);
                 HELD.set(TestEntities.vehicle(player, PodEntity.class).getUUID());
+                player.getAbilities().mayfly = false;
+                player.getAbilities().flying = false;
+                player.onUpdateAbilities();
             });
             try {
                 ClientChecks.withHudShown(context, () -> descend(context, top, bottom));
