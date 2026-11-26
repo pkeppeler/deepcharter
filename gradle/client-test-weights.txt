@@ -7,6 +7,7 @@
 # PodDriveLateClientTest and PodDriveSmoothClientTest: the mean of three local runs after #1112 split the class; refresh from CI.
 # PodLoadClientTest: one local run (#1449), 24 s, scaled by CockpitHudClientTest's local-to-CI ratio (48 s to 36); refresh from CI.
 # ContinuityPackClientTest: one CI run (#1377, shard 2), from its START line to the next; refresh from CI.
+# RealInputTypingClientTest: one local run (#1385); refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
 BlockReadoutClientTest 16
@@ -77,6 +78,7 @@ PodShellClientTest 11
 PodSounderClientTest 14
 ProspectorChassisClientTest 18
 QuestMapClientTest 9
+RealInputTypingClientTest 13
 RecipeFillClientTest 20
 RepairStationClientTest 12
 RepairStationFitClientTest 14
