@@ -27,7 +27,10 @@ public final class ShippedHandbook {
                 HandbookPages.of(chapters(client), ClientHandbook.completed()), ClientPencil.entries());
     }
 
-    /** The pages with every shipped directive done, so that every chapter is full and binds all of its text pages. */
+    /**
+     * The pages with every shipped directive done, so that every chapter is full and binds all of its text pages. No
+     * pencil sheet is bound: those come from the Notes a charter has found, not from the chapters.
+     */
     public static List<HandbookPage> everyChapterFull(Minecraft client) {
         Map<Identifier, HandbookChapter> chapters = chapters(client);
         Set<Identifier> done = chapters.values().stream()

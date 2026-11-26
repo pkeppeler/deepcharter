@@ -112,8 +112,14 @@ final class PaperDraw {
         return font.lineHeight + 3;
     }
 
-    /** A word in ink, or a bar over a redacted run, {@code x} pixels from the left of its line. A bar has no word. */
-    record Piece(Component word, int x, int width, boolean bar) {}
+    /** A piece of a line of {@link #redactedLines}, {@code x} pixels from the left of its line. */
+    sealed interface Piece permits Word, Bar {}
+
+    /** A word in ink. */
+    record Word(Component word, int x) implements Piece {}
+
+    /** A black bar over a redacted run of words. */
+    record Bar(int x, int width) implements Piece {}
 
     /** The lines {@link #redacted} draws {@code text} in, wrapped to {@code width}, without drawing them. */
     static List<List<Piece>> redactedLines(Font font, String text, int width, int color) {
@@ -135,9 +141,9 @@ final class PaperDraw {
             }
             if (token.redacted()) {
                 int barStart = previousRedacted ? cursor : cursor + gap;
-                line.add(new Piece(Component.empty(), barStart, cursor + gap + wordWidth - barStart, true));
+                line.add(new Bar(barStart, cursor + gap + wordWidth - barStart));
             } else {
-                line.add(new Piece(word, cursor + gap, wordWidth, false));
+                line.add(new Word(word, cursor + gap));
             }
             cursor += gap + wordWidth;
             previousRedacted = token.redacted();
@@ -151,10 +157,9 @@ final class PaperDraw {
     /** Draws one line of {@link #redactedLines} with its left edge at {@code x} and its letters' top at {@code y}. */
     static void redactedLine(GuiGraphicsExtractor graphics, Font font, List<Piece> line, int x, int y, int color) {
         for (Piece piece : line) {
-            if (piece.bar()) {
-                redaction(graphics, x + piece.x(), y - 1, piece.width(), font.lineHeight + 1);
-            } else {
-                graphics.text(font, piece.word(), x + piece.x(), y, Colors.opaque(color), false);
+            switch (piece) {
+                case Bar bar -> redaction(graphics, x + bar.x(), y - 1, bar.width(), font.lineHeight + 1);
+                case Word word -> graphics.text(font, word.word(), x + word.x(), y, Colors.opaque(color), false);
             }
         }
     }

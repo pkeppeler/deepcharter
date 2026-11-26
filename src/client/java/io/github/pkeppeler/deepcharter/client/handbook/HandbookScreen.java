@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,7 +32,6 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
 import org.jspecify.annotations.Nullable;
@@ -101,7 +101,7 @@ public final class HandbookScreen extends Screen {
      * The first line of each sheet of each page, by page index, as {@link #init} last laid them out; before that, every
      * page has one sheet.
      */
-    private List<List<Integer>> sheetStarts = List.of();
+    private List<List<Integer>> sheetStarts;
 
     private int flipTicks;
     private boolean notesTab;
@@ -164,6 +164,7 @@ public final class HandbookScreen extends Screen {
             throw new IllegalArgumentException("the handbook needs at least one page");
         }
         this.pages = List.copyOf(pages);
+        this.sheetStarts = Collections.nCopies(this.pages.size(), List.of(0));
         Map<Integer, Integer> firstPages = new HashMap<>();
         Map<Integer, HandbookPage.Chapter> byNumber = new HashMap<>();
         Map<Integer, Integer> maps = new HashMap<>();
@@ -750,11 +751,11 @@ public final class HandbookScreen extends Screen {
             case HandbookPage.Letter letter -> drawLetter(graphics);
             case HandbookPage.Contents contents -> drawContents(graphics, contents);
             case HandbookPage.Controls controls -> drawControls(graphics, controls);
-            case HandbookPage.ChapterText text -> drawChapterText(graphics, text, index, onSheet);
+            case HandbookPage.ChapterText text -> drawFlowing(graphics, chapterTextFlow(text), index, onSheet);
             case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
             case HandbookPage.Pencil pencil -> drawPencil(graphics, pencil);
             case HandbookPage.Appendix appendix -> drawAppendix(graphics);
-            case HandbookPage.Contract contract -> drawContract(graphics, contract, index, onSheet);
+            case HandbookPage.Contract contract -> drawFlowing(graphics, contractFlow(contract), index, onSheet);
         }
     }
 
@@ -925,23 +926,12 @@ public final class HandbookScreen extends Screen {
 
     /** A page of the controls: its label and title, then each line, with the keys the player has bound now. */
     private void drawControls(GuiGraphicsExtractor graphics, HandbookPage.Controls controls) {
-        int y = PaperDraw.wrapped(
+        int y = SheetFlow.draw(
                 graphics,
-                font,
-                tr("controls.label", controls.part(), controls.parts()),
-                textLeft,
-                paperTop + tuning().topMargin(),
-                textWidth,
-                tuning().faintInkColor());
-        y = PaperDraw.wrapped(
-                graphics,
-                font,
-                Component.translatable(HandbookControls.titleKey(controls.part())),
-                textLeft,
-                y + 3,
-                textWidth,
-                tuning().inkColor());
-        y = titleRule(graphics, y);
+                heading(
+                        tr("controls.label", controls.part(), controls.parts()),
+                        Component.translatable(HandbookControls.titleKey(controls.part()))),
+                paperTop + tuning().topMargin());
         for (Component line : HandbookControls.lines(controls.part(), Minecraft.getInstance().options)) {
             y = PaperDraw.wrapped(graphics, font, line, textLeft, y, textWidth, tuning().inkColor())
                     + tuning().paragraphGap();
@@ -949,32 +939,55 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * A sheet of a page of the text of a chapter: its label and title, the lines of the text that fall on this sheet,
-     * and on the first sheet the margin note beside it if the language file has one.
+     * What a page that flows is made of: the heading every sheet repeats, the body that runs over the sheets, and the
+     * key of the margin note beside its first sheet.
      */
-    private void drawChapterText(GuiGraphicsExtractor graphics, HandbookPage.ChapterText text, int index, int onSheet) {
-        int y = PaperDraw.wrapped(
-                graphics,
-                font,
-                tr("chapter.label", text.number()),
-                textLeft,
-                paperTop + tuning().topMargin(),
-                textWidth,
-                tuning().faintInkColor());
-        y = PaperDraw.wrapped(graphics, font, text.chapter().title(), textLeft, y + 3, textWidth, tuning().inkColor());
-        titleRule(graphics, y);
-        SheetFlow.draw(graphics, textLines(text), sheetStarts(index), onSheet, bodyTop(text));
+    private record Flow(List<SheetFlow.Line> heading, List<SheetFlow.Line> body, String marginKey) {}
+
+    /** A chapter's text page: the chapter's label and title, then the text. */
+    private Flow chapterTextFlow(HandbookPage.ChapterText text) {
+        return new Flow(
+                heading(tr("chapter.label", text.number()), text.chapter().title()),
+                inked(Component.translatable(textKey(text.id(), text.part())), tuning().inkColor()),
+                textMarginKey(text.id(), text.part()));
+    }
+
+    /**
+     * A sheet of a page that flows: its heading, the lines of its body that fall on this sheet, and on the first sheet
+     * the margin note beside it if the language file has one.
+     */
+    private void drawFlowing(GuiGraphicsExtractor graphics, Flow flow, int index, int onSheet) {
+        int top = SheetFlow.draw(graphics, flow.heading(), paperTop + tuning().topMargin());
+        SheetFlow.draw(graphics, SheetFlow.sheet(flow.body(), sheetStarts.get(index), onSheet), top);
         if (onSheet == 0) {
-            margin(graphics, textMarginKey(text.id(), text.part()), paperTop + tuning().contentTop() * 2);
+            margin(graphics, flow.marginKey(), paperTop + tuning().contentTop() * 2);
         }
     }
 
-    /** The lines of a chapter's text page, wrapped to the text column. */
-    private List<SheetFlow.Line> textLines(HandbookPage.ChapterText text) {
-        int color = tuning().inkColor();
-        return font
-                .split(PaperDraw.ink(Component.translatable(textKey(text.id(), text.part())), color), textWidth)
-                .stream()
+    /**
+     * A page's heading as lines, laid out once both to draw it and to find where the text under it starts:
+     * {@code label} in faint ink, then {@code title} in ink if there is one, then a rule across the text column.
+     */
+    private List<SheetFlow.Line> heading(Component label, @Nullable Component title) {
+        List<SheetFlow.Line> lines = new ArrayList<>(inked(label, tuning().faintInkColor()));
+        if (title != null) {
+            if (!lines.isEmpty()) {
+                SheetFlow.Line last = lines.removeLast();
+                lines.add(new SheetFlow.Line(
+                        last.pitch() + QuestMapTuning.current().headingGap(), last.draw()));
+            }
+            lines.addAll(inked(title, tuning().inkColor()));
+        }
+        lines.add(new SheetFlow.Line(
+                tuning().paragraphGap() + 2,
+                (graphics, y) -> graphics.fill(
+                        textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()))));
+        return lines;
+    }
+
+    /** {@code text} in {@code color} ink, wrapped to the text column, a line each. */
+    private List<SheetFlow.Line> inked(Component text, int color) {
+        return font.split(PaperDraw.ink(text, color), textWidth).stream()
                 .map(line -> new SheetFlow.Line(
                         font.lineHeight + 1,
                         (graphics, y) -> graphics.text(font, line, textLeft, y, Colors.opaque(color), false)))
@@ -1230,23 +1243,14 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * A sheet of a page of Appendix A: its title, and the lines of its clauses that fall on this sheet, one clause a
-     * paragraph, with a black bar over each redacted word.
+     * A page of Appendix A: its title, then its clauses, one clause a paragraph, with a black bar over each redacted
+     * word.
      */
-    private void drawContract(GuiGraphicsExtractor graphics, HandbookPage.Contract contract, int index, int onSheet) {
-        int y = PaperDraw.wrapped(
-                graphics,
-                font,
-                contractHeading(contract),
-                textLeft,
-                paperTop + tuning().topMargin(),
-                textWidth,
-                tuning().faintInkColor());
-        titleRule(graphics, y);
-        SheetFlow.draw(graphics, contractLines(contract), sheetStarts(index), onSheet, bodyTop(contract));
-        if (onSheet == 0) {
-            margin(graphics, contractKey(contract.part()) + ".margin", paperTop + tuning().contentTop() * 2);
-        }
+    private Flow contractFlow(HandbookPage.Contract contract) {
+        return new Flow(
+                heading(contractHeading(contract), null),
+                contractLines(contract),
+                contractKey(contract.part()) + ".margin");
     }
 
     private static Component contractHeading(HandbookPage.Contract contract) {
@@ -1284,47 +1288,27 @@ public final class HandbookScreen extends Screen {
      * Splits each page's body into the sheets this window holds, and keeps the screen on a sheet that is still there.
      */
     private void layOutSheets() {
+        int top = paperTop + tuning().topMargin();
         sheetStarts = pages.stream()
-                .map(content -> SheetFlow.starts(bodyLines(content), bodyTop(content), bottom(), font.lineHeight + 1))
+                .map(content -> {
+                    Flow flow = switch (content) {
+                        case HandbookPage.ChapterText text -> chapterTextFlow(text);
+                        case HandbookPage.Contract contract -> contractFlow(contract);
+                        default -> null;
+                    };
+                    if (flow == null) {
+                        return List.of(0);
+                    }
+                    int bodyTop = top + SheetFlow.height(flow.heading());
+                    return SheetFlow.starts(flow.body(), bodyTop, bodyTop, bottom(), font.lineHeight + 1);
+                })
                 .toList();
         sheet = Mth.clamp(sheet, 0, sheetsOf(page) - 1);
         previousSheet = Mth.clamp(previousSheet, 0, sheetsOf(previousPage) - 1);
     }
 
-    /**
-     * The lines that flow over a page's sheets: a chapter's text, the clauses of a page of Appendix A; none on any
-     * other page.
-     */
-    private List<SheetFlow.Line> bodyLines(HandbookPage content) {
-        return switch (content) {
-            case HandbookPage.ChapterText text -> textLines(text);
-            case HandbookPage.Contract contract -> contractLines(contract);
-            default -> List.of();
-        };
-    }
-
-    /** Where the lines of a page's body start on each of its sheets: under the heading and rule every sheet repeats. */
-    private int bodyTop(HandbookPage content) {
-        int top = paperTop + tuning().topMargin();
-        return switch (content) {
-            case HandbookPage.ChapterText text ->
-                underRule(below(text.chapter().title(), below(tr("chapter.label", text.number()), top) + 3));
-            case HandbookPage.Contract contract -> underRule(below(contractHeading(contract), top));
-            default -> top;
-        };
-    }
-
-    /** The y below {@code text} wrapped to the text column from {@code y}, as {@link PaperDraw#wrapped} draws it. */
-    private int below(Component text, int y) {
-        return y + font.split(PaperDraw.ink(text, 0), textWidth).size() * (font.lineHeight + 1);
-    }
-
-    private List<Integer> sheetStarts(int index) {
-        return index < sheetStarts.size() ? sheetStarts.get(index) : List.of(0);
-    }
-
     private int sheetsOf(int index) {
-        return sheetStarts(index).size();
+        return sheetStarts.get(index).size();
     }
 
     /**
@@ -1400,32 +1384,18 @@ public final class HandbookScreen extends Screen {
     }
 
     private void drawNote(GuiGraphicsExtractor graphics, HandbookNote note) {
-        int pitch = font.lineHeight + 1;
-        List<FormattedCharSequence> body = noteBody(note);
-        int first = noteFirstSheetLines(note);
-        int start = notePage == 0 ? 0 : first + (notePage - 1) * noteLaterSheetLines();
-        int top = paperTop + tuning().topMargin();
-        int y = top;
+        List<Integer> starts = noteStarts(note);
+        int y = paperTop + tuning().topMargin();
         if (notePage == 0) {
-            y = PaperDraw.wrapped(
-                    graphics, font, tr("notes.label", label(note)), textLeft, top, textWidth, tuning().faintInkColor());
-            y = PaperDraw.wrapped(graphics, font, note.title(), textLeft, y + 3, textWidth, tuning().inkColor());
-            graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
-            y += tuning().paragraphGap() + 2;
+            y = SheetFlow.draw(graphics, noteHeading(note), y);
         }
-        int count = notePage == 0 ? first : noteLaterSheetLines();
-        for (FormattedCharSequence line :
-                body.subList(Math.min(start, body.size()), Math.min(body.size(), start + count))) {
-            graphics.text(font, line, textLeft, y, Colors.opaque(tuning().marginInkColor()), false);
-            y += pitch;
-        }
-        int sheets = notePages(note);
-        if (sheets > 1) {
+        SheetFlow.draw(graphics, SheetFlow.sheet(noteBody(note), starts, notePage), y);
+        if (starts.size() > 1) {
             Buttons built = widgets();
             PaperDraw.centered(
                     graphics,
                     font,
-                    Component.translatable("deepcharter.handbook.screen.page", notePage + 1, sheets),
+                    Component.translatable("deepcharter.handbook.screen.page", notePage + 1, starts.size()),
                     (built.next().getX() + built.noteBack().getRight()) / 2,
                     built.noteBack().getY() + 3,
                     1,
@@ -1433,51 +1403,27 @@ public final class HandbookScreen extends Screen {
         }
     }
 
-    private List<FormattedCharSequence> noteBody(HandbookNote note) {
-        return font.split(PaperDraw.ink(note.text(), tuning().marginInkColor()), textWidth);
+    private List<SheetFlow.Line> noteHeading(HandbookNote note) {
+        return heading(tr("notes.label", label(note)), note.title());
     }
 
-    /** The y where the text of a Note starts on its first sheet: under the label, the title and the rule. */
-    private int noteBodyTop(HandbookNote note) {
-        int pitch = font.lineHeight + 1;
-        int labelEnd = paperTop
-                + tuning().topMargin()
-                + font.split(PaperDraw.ink(tr("notes.label", label(note)), tuning().faintInkColor()), textWidth)
-                                .size()
-                        * pitch;
-        int titleEnd = labelEnd
-                + 3
-                + font.split(PaperDraw.ink(note.title(), tuning().inkColor()), textWidth)
-                                .size()
-                        * pitch;
-        return titleEnd + tuning().paragraphGap() + 2;
+    private List<SheetFlow.Line> noteBody(HandbookNote note) {
+        return inked(note.text(), tuning().marginInkColor());
     }
 
-    /** How many lines of a Note fit on its first sheet, which also holds the label and the title. At least one. */
-    private int noteFirstSheetLines(HandbookNote note) {
-        return Math.max(1, (bottom() - noteBodyTop(note)) / (font.lineHeight + 1));
-    }
-
-    /** How many lines fit on each later sheet of a Note, which has the whole sheet. At least one. */
-    private int noteLaterSheetLines() {
-        return Math.max(1, (bottom() - (paperTop + tuning().topMargin())) / (font.lineHeight + 1));
+    /**
+     * The first line of each sheet of a Note. Its label and title head the first sheet only: a Note is a loose paper
+     * read on its own, under its own sheet counter, not a page of the book.
+     */
+    private List<Integer> noteStarts(HandbookNote note) {
+        int top = paperTop + tuning().topMargin();
+        return SheetFlow.starts(
+                noteBody(note), top + SheetFlow.height(noteHeading(note)), top, bottom(), font.lineHeight + 1);
     }
 
     /** How many sheets a Note takes, so that none of its text runs past the buttons. */
     private int notePages(HandbookNote note) {
-        int rest = Math.max(0, noteBody(note).size() - noteFirstSheetLines(note));
-        return 1 + (rest + noteLaterSheetLines() - 1) / noteLaterSheetLines();
-    }
-
-    /** Draws the rule under a page title that ends at {@code y}, and returns where the text below it starts. */
-    private int titleRule(GuiGraphicsExtractor graphics, int y) {
-        graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
-        return underRule(y);
-    }
-
-    /** Where the text below the rule under a page title that ends at {@code y} starts. */
-    private int underRule(int y) {
-        return y + tuning().paragraphGap() + 2;
+        return noteStarts(note).size();
     }
 
     /** A previous miner's note in pencil, in the margin column, if the sheet has one and the language file has a note for it. */

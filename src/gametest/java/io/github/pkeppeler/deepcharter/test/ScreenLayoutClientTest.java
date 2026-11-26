@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.RecipeConsoleScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetScreen;
@@ -58,6 +59,7 @@ import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
+import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -89,6 +91,8 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -871,28 +875,51 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                 "handbook",
                 () -> {
                     return new HandbookScreen(
-                            HandbookScreen.currentPages(Minecraft.getInstance()), id -> true, id -> {}, notes);
+                            ShippedHandbook.everyChapterFull(Minecraft.getInstance()), id -> true, id -> {}, notes);
                 },
                 handbookVariants(notes)));
         return cases;
     }
 
-    /** Every page of the handbook, then the Notes tab with its list and with a Note open. */
+    /** More sheets than the handbook has; past it, Next is going round in circles. */
+    private static final int HANDBOOK_MAX_SHEETS = 500;
+
+    /**
+     * Every sheet of the handbook, every chapter full so each has all its text, walked with Next from the cover, so a
+     * page whose text runs on to more sheets is checked on each; then the Notes tab with its list and with a Note open.
+     */
     private static List<Variant> handbookVariants(List<HandbookNote> notes) {
         List<Variant> variants = new ArrayList<>();
-        variants.add(new Variant("every page", (context, screen) -> {
-            HandbookScreen handbook = (HandbookScreen) screen;
-            List<String> problems = new ArrayList<>();
-            int pages = context.computeOnClient(
-                    client -> HandbookScreen.currentPages(client).size());
-            for (int page = 0; page < pages; page++) {
-                int turned = page;
-                context.runOnClient(client -> handbook.goTo(turned));
-                problems.addAll(context.computeOnClient(
-                        client -> problemsOf("handbook / page " + turned, handbook, List.of())));
-            }
-            return problems;
-        }));
+        variants.add(new Variant(
+                "every sheet",
+                (context, screen) -> context.computeOnClient(client -> {
+                    HandbookScreen handbook = (HandbookScreen) screen;
+                    List<String> problems = new ArrayList<>();
+                    handbook.goTo(0);
+                    AbstractWidget next = ClientChecks.visibleWidgets(handbook).stream()
+                            .filter(widget -> widget.getMessage()
+                                    .getString()
+                                    .equals(Component.translatable("deepcharter.handbook.screen.next")
+                                            .getString()))
+                            .findFirst()
+                            .orElseThrow(() -> new AssertionError("the handbook shows no Next button"));
+                    for (int sheet = 1; ; sheet++) {
+                        require(sheet <= HANDBOOK_MAX_SHEETS, "Next never reaches the end of the handbook");
+                        for (int tick = 0; tick < HandbookScreenTuning.current().flipTicks(); tick++) {
+                            handbook.tick();
+                        }
+                        problems.addAll(problemsOf("handbook / sheet " + sheet, handbook, List.of()));
+                        if (!next.active) {
+                            return problems;
+                        }
+                        handbook.mouseClicked(
+                                new MouseButtonEvent(
+                                        next.getX() + 2,
+                                        next.getY() + 2,
+                                        new MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0)),
+                                false);
+                    }
+                })));
         variants.add(new Variant("notes tab", (context, screen) -> {
             context.runOnClient(client -> ((HandbookScreen) screen).showNotes());
             return List.of();

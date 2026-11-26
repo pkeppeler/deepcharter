@@ -27,10 +27,11 @@ import net.minecraft.network.chat.Component;
 
 /**
  * Client GameTest for #1429: text that does not fit a handbook sheet runs on to the next sheet. The shipped handbook,
- * every chapter full, is walked sheet by sheet with Next at the GUI sizes real windows reach, and no text may end below
- * the top of Back and Next. The sheets of a text page draw its text once, in order, and the page counter, Back, the
- * arrow keys, the contents, the index card's page link and a resize all count the extra sheets. A world is loaded only
- * for the synced chapter registry; the screens are built by hand and read from the text they draw ({@link DrawnText}).
+ * every chapter full, is walked sheet by sheet with Next at the GUI sizes real windows reach beyond the default one
+ * (whose layout is {@code ScreenLayoutClientTest}'s), and no text may end below the top of Back and Next. At every size
+ * the sheets of a text page draw its text once, in order, and the page counter, Back, the arrow keys, the contents, the
+ * index card's page link and a resize all count the extra sheets. A world is loaded only for the synced chapter
+ * registry; the screens are built by hand and read from the text they draw ({@link DrawnText}).
  */
 public class HandbookPageFlowClientTest implements FabricClientGameTest {
     private static final Pattern COUNTER = Pattern.compile("(\\d+) / (\\d+)");
@@ -46,12 +47,12 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
     private static final Size DEFAULT = Size.of(854, 480, 2);
 
     /**
-     * The GUI sizes no text may run off the sheet at: the default window; the smallest window GUI scale 4 allows, whose
-     * 320 x 240 GUI is the narrowest sheet any GUI scale reaches; and a 1920 x 1080 window at GUI scales 3 and 4. A
-     * wider or taller window draws the default sheet.
+     * The GUI sizes besides the default window that no text may run off the sheet at: the smallest window GUI scale 4
+     * allows, whose 320 x 240 GUI is the narrowest sheet any GUI scale reaches, and a 1920 x 1080 window at GUI scales 3
+     * and 4. A wider or taller window draws the default sheet.
      */
-    private static final List<Size> SIZES =
-            List.of(DEFAULT, Size.of(1280, 960, 4), Size.of(1920, 1080, 3), Size.of(1920, 1080, 4));
+    private static final List<Size> OTHER_SIZES =
+            List.of(Size.of(1280, 960, 4), Size.of(1920, 1080, 3), Size.of(1920, 1080, 4));
 
     /** A GUI size, named by the window and GUI scale it comes from. */
     private record Size(String name, int width, int height) {
@@ -70,12 +71,11 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
      */
     private record Stop(int page, int sheet, int number, int total, List<Drawn> drawn) {}
 
-    // The world is only here for the chapter registry it syncs; the screens do not touch it.
-    @SuppressWarnings("try")
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
-        try (TestSingleplayerContext ignored = context.worldBuilder().create()) {
+        // The world is only here for the chapter registry it syncs; the screens do not touch it.
+        try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             ClientWait.until(
                     context,
                     "the player and the synced chapters",
@@ -94,10 +94,10 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
         }
     }
 
-    /** Every sheet of every page, at every size: no text the screen draws ends below the top of Back and Next. */
+    /** Every sheet of every page, at each other size: no text the screen draws ends below the top of Back and Next. */
     private static void noTextRunsOffASheet(List<HandbookPage> pages) {
         List<String> problems = new ArrayList<>();
-        for (Size size : SIZES) {
+        for (Size size : OTHER_SIZES) {
             HandbookScreen screen = screen(pages, size);
             int limit = nextButton(screen).getY();
             for (Stop stop : walk(screen)) {
@@ -327,8 +327,10 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
                         + " / " + wide.size() + ", got page " + screen.page() + " at " + shown[0] + " / " + shown[1]);
     }
 
+    /** The default window, the other sizes and the minimum sheet. */
     private static List<Size> withSmallest() {
-        List<Size> sizes = new ArrayList<>(SIZES);
+        List<Size> sizes = new ArrayList<>(List.of(DEFAULT));
+        sizes.addAll(OTHER_SIZES);
         sizes.add(SMALLEST);
         return sizes;
     }
