@@ -677,7 +677,7 @@ public final class HandbookScreen extends Screen {
                 goTo(firstPageOf(chapter));
                 return true;
             }
-            QuestMap.CardItem item = card.itemAt(event.x(), event.y());
+            QuestMap.CardItem item = cardItemUnder(chapter, event.x(), event.y());
             if (item != null) {
                 CatalogueScreens.open(item.shown(cycleTicks));
                 return true;
@@ -724,10 +724,11 @@ public final class HandbookScreen extends Screen {
         if (notesTab) {
             drawNotes(graphics);
         } else {
-            int hoveredStep = flipTicks == 0 && pages.get(shown) instanceof HandbookPage.Chapter chapter
-                    ? stepUnder(chapter, mouseX, mouseY)
-                    : -1;
-            drawPage(graphics, shown, shownSheet, hoveredStep);
+            HandbookPage.Chapter under =
+                    flipTicks == 0 && pages.get(shown) instanceof HandbookPage.Chapter chapter ? chapter : null;
+            int hoveredStep = under == null ? -1 : stepUnder(under, mouseX, mouseY);
+            QuestMap.CardItem hoveredItem = under == null ? null : cardItemUnder(under, mouseX, mouseY);
+            drawPage(graphics, shown, shownSheet, hoveredStep, hoveredItem);
             Buttons built = widgets();
             PaperDraw.centered(
                     graphics,
@@ -744,10 +745,15 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * Draws sheet {@code onSheet} (from 0) of page {@code index}; on a chapter's map, step {@code hoveredStep} is under
-     * the mouse.
+     * Draws sheet {@code onSheet} (from 0) of page {@code index}; on a chapter's map, step {@code hoveredStep} and the
+     * index card's item {@code hoveredItem} are under the mouse.
      */
-    private void drawPage(GuiGraphicsExtractor graphics, int index, int onSheet, int hoveredStep) {
+    private void drawPage(
+            GuiGraphicsExtractor graphics,
+            int index,
+            int onSheet,
+            int hoveredStep,
+            QuestMap.@Nullable CardItem hoveredItem) {
         switch (pages.get(index)) {
             case HandbookPage.Cover cover -> drawCover(graphics);
             case HandbookPage.Slip slip -> drawSlip(graphics);
@@ -755,7 +761,7 @@ public final class HandbookScreen extends Screen {
             case HandbookPage.Contents contents -> drawContents(graphics, contents);
             case HandbookPage.Controls controls -> drawControls(graphics, controls);
             case HandbookPage.ChapterText text -> drawFlowing(graphics, chapterTextFlow(text), index, onSheet);
-            case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter, hoveredStep);
+            case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter, hoveredStep, hoveredItem);
             case HandbookPage.Pencil pencil -> drawPencil(graphics, pencil);
             case HandbookPage.Appendix appendix -> drawAppendix(graphics);
             case HandbookPage.Contract contract -> drawFlowing(graphics, contractFlow(contract), index, onSheet);
@@ -997,9 +1003,13 @@ public final class HandbookScreen extends Screen {
                 .toList();
     }
 
-    private void drawChapter(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter, int hoveredStep) {
+    private void drawChapter(
+            GuiGraphicsExtractor graphics,
+            HandbookPage.Chapter chapter,
+            int hoveredStep,
+            QuestMap.@Nullable CardItem hoveredItem) {
         if (chapter.visibility() != HandbookVisibility.CLASSIFIED) {
-            drawMap(graphics, chapter, hoveredStep);
+            drawMap(graphics, chapter, hoveredStep, hoveredItem);
             return;
         }
         int y = PaperDraw.wrapped(
@@ -1168,10 +1178,30 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * A chapter's heading, then its quest map with step {@code hoveredStep} under the mouse, then the index card of
-     * the step the player has picked.
+     * Whether a click on an item of {@code chapter}'s index card opens its recipe: the card is up, on a chapter in full,
+     * and the window has room for the catalogue.
      */
-    private void drawMap(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter, int hoveredStep) {
+    private static boolean itemsOpen(HandbookPage.Chapter chapter) {
+        return chapter.visibility() == HandbookVisibility.FULL && CatalogueScreens.canOpen();
+    }
+
+    /**
+     * The item of {@code chapter}'s index card under screen point ({@code x}, {@code y}), the one whose recipe a click
+     * there opens; null off the items or when the items open nothing ({@link #itemsOpen}).
+     */
+    private QuestMap.@Nullable CardItem cardItemUnder(HandbookPage.Chapter chapter, double x, double y) {
+        return itemsOpen(chapter) ? indexCard(chapter).itemAt(x, y) : null;
+    }
+
+    /**
+     * A chapter's heading, then its quest map with step {@code hoveredStep} under the mouse, then the index card of
+     * the step the player has picked, with its item {@code hoveredItem} under the mouse.
+     */
+    private void drawMap(
+            GuiGraphicsExtractor graphics,
+            HandbookPage.Chapter chapter,
+            int hoveredStep,
+            QuestMap.@Nullable CardItem hoveredItem) {
         boolean full = chapter.visibility() == HandbookVisibility.FULL;
         MapFrame frame = mapFrame(chapter);
         int y = PaperDraw.wrapped(
@@ -1221,7 +1251,15 @@ public final class HandbookScreen extends Screen {
             HandbookChapter.Entry step = QuestMap.shown(chapter, memory.picked(chapter.number()));
             QuestMap.Card card = indexCard(chapter);
             QuestMap.drawCard(
-                    graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter), cycleTicks);
+                    graphics,
+                    font,
+                    card,
+                    step,
+                    tr("quest.step", card.stepNumber()),
+                    seePageLink(chapter),
+                    cycleTicks,
+                    itemsOpen(chapter),
+                    hoveredItem);
         }
     }
 

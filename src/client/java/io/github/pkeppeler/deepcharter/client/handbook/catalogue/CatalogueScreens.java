@@ -95,7 +95,7 @@ public final class CatalogueScreens {
     }
 
     /** Whether the window has room for the catalogue beside the inventory, which is when {@link #open} shows anything. */
-    static boolean canOpen() {
+    public static boolean canOpen() {
         Minecraft client = Minecraft.getInstance();
         return fits(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight(), true);
     }
