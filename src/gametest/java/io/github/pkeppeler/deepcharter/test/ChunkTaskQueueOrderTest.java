@@ -11,11 +11,9 @@ import net.minecraft.server.level.ChunkTaskPriorityQueue;
 import net.minecraft.world.level.ChunkPos;
 
 /**
- * Tasks queued at one chunk run in the order they were queued, whatever the chunk's level changes (#1448, ADR 0105). The
- * worldgen and light dispatchers share each chunk holder's queue level, so the light dispatcher's resort can read the level
- * the worldgen one has just set and move nothing; vanilla then keeps the chunk's earlier tasks at the old level and queues
- * later ones at the new, higher priority, where they run first. {@code ChunkTaskPriorityQueueMixin} keeps one list per
- * chunk. Each case drives a queue of its own on the server thread, as the dispatcher's one thread would.
+ * Tasks queued at one chunk run in the order they were queued, whatever the chunk's level changes
+ * ({@code ChunkTaskPriorityQueueMixin}, #1448, ADR 0105). Each case drives a queue of its own on the server thread, as the
+ * dispatcher's one thread would.
  */
 public class ChunkTaskQueueOrderTest {
     private static final ChunkPos A = new ChunkPos(3, -4);

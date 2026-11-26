@@ -24,7 +24,7 @@ So two light tasks at one chunk can run out of order. `LightSync.holdSendUntilLi
 - **A scan, not an index.** To find a chunk's list the mixin looks in each level's map (`ChunkLevel.MAX_LEVEL + 2` of them), skipping an empty map on one field read. An index of chunk to level would be faster per call but would also have to follow `pop` and `release`, and any drift in it would lose or misplace tasks. The scan has no state of its own to get wrong. All four methods run on the dispatcher's one executor thread, so neither needs a lock.
 - **The queue level field stays shared.** `ChunkHolder.queueLevel` is still read and written by both dispatchers. The fix makes the queue indifferent to which of them reads it first.
 - **`LightSync` and `LightSyncRingHoldTest` are unchanged.** The hold's assumption is now true.
-- **The guard** is `ChunkTaskQueueOrderTest`: it sets the race on a queue of its own (a task at level 10, a resort from 5 to 5, a task at 5) and checks the first task runs first. It fails without the mixin. Its other cases check vanilla's own resort and that other chunks keep their levels and order.
+- **The guard** is `ChunkTaskQueueOrderTest`: it sets the race on a queue of its own (a task at level 10, a resort from 5 to 5, a task at 5) and checks the first task runs first. It fails without the mixin. Its other cases check vanilla's own resort, that other chunks keep their levels and order, and that a submit at a lower priority takes the chunk's earlier tasks with it.
 
 ## Considered options
 
