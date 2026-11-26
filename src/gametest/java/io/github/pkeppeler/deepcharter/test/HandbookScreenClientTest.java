@@ -79,6 +79,7 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
         everythingDoneLeavesNothingClassified();
         pagesAreBoundInOrderWithVisibilityOnTheChapters();
         textPagesComeBeforeTheirChapterAndOnlyForFullChapters();
+        aChaptersControlsPageFollowsItsTextOnlyWhenFull();
         contentsPointAtTheFirstPageOfAChapter(context);
         viewingATextPageReportsItsChapterOnce(context);
         viewingOnlyFullChaptersMarksThemReadOnce(context);
@@ -273,11 +274,16 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
         return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, chapter);
     }
 
-    /** A page of a chapter as a short word: {@code text:<id>:<part>} or {@code chapter:<id>:<visibility>}; any other page is its class name. */
+    /**
+     * A page of a chapter as a short word: {@code text:<id>:<part>}, {@code controls:<id>} or {@code
+     * chapter:<id>:<visibility>}; any other page is its class name.
+     */
     private static String describe(HandbookPage page) {
         return switch (page) {
             case HandbookPage.ChapterText text ->
                 "text:" + text.id().getPath() + ":" + text.part() + "/" + text.parts();
+            case HandbookPage.ChapterControls controls ->
+                "controls:" + controls.id().getPath();
             case HandbookPage.Chapter chapter -> "chapter:" + chapter.id().getPath() + ":" + chapter.visibility();
             default -> page.getClass().getSimpleName();
         };
@@ -319,6 +325,24 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
                         .map(page -> ((HandbookPage.ChapterText) page).id())
                         .allMatch(real("welcome")::equals),
                 "with nothing done only the first chapter has text pages");
+    }
+
+    /**
+     * Once meet_the_mole is full, its pages are its text, then its controls page, then its page of directives (#1414).
+     * While it is a preview no page of controls is bound into any chapter.
+     */
+    private static void aChaptersControlsPageFollowsItsTextOnlyWhenFull() {
+        List<String> full = HandbookPages.of(realChapters(), done(1, 2)).stream()
+                .filter(page -> HandbookPage.chapterNumber(page) == 3)
+                .map(HandbookScreenClientTest::describe)
+                .toList();
+        List<String> expected =
+                List.of("text:meet_the_mole:1/1", "controls:meet_the_mole", "chapter:meet_the_mole:FULL");
+        require(full.equals(expected), "meet_the_mole's pages should be " + expected + ", got " + full);
+        require(
+                HandbookPages.of(realChapters(), done(1)).stream()
+                        .noneMatch(HandbookPage.ChapterControls.class::isInstance),
+                "a previewed chapter has no controls page");
     }
 
     /** Every contents entry opens the first page of its chapter: the first text page when it has one, else its page of directives. */

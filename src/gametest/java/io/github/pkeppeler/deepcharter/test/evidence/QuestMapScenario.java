@@ -25,6 +25,7 @@ import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -36,7 +37,9 @@ import net.minecraft.server.level.ServerPlayer;
  * the sixth shows the scanner unit it asks for. Then the first two chapters are done, and chapter 3's map, with the
  * chapters after it redacted, is shown whole. Every page carries the tabs: the stills show them on the Founder's letter
  * (the intro), on a chapter text page and on the maps, and a step with a very long line shows its popup grown to fit it
- * (#962). Last, the controls pages, and the first of them again with the handbook key rebound (#1260).
+ * (#962). Then the controls pages, and the first of them again with the handbook key rebound (#1260). Last, with
+ * chapters 4 and 5 done too, every page of the Mole and scanner chapters but their maps, where their controls are
+ * (#1414).
  */
 public class QuestMapScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
@@ -131,8 +134,35 @@ public class QuestMapScenario extends EvidenceScenario {
                 context.runOnClient(client -> rebind(
                         HandbookKeys.OPEN, HandbookKeys.OPEN.getDefaultKey().getValue()));
             }
+
+            complete(context, singleplayer, 4, Integer.MAX_VALUE);
+            complete(context, singleplayer, 5, Integer.MAX_VALUE);
+            context.runOnClient(client -> client.gui.toastManager().clear());
+            for (String chapter : List.of("meet_the_mole", "seeing_below")) {
+                List<HandbookPage> pages = context.computeOnClient(client -> pagesBeforeTheMap(client, chapter));
+                for (int part = 0; part < pages.size(); part++) {
+                    HandbookPage target = pages.get(part);
+                    openAt(context, target::equals);
+                    hold(context);
+                    screenshot(context, chapter + "-" + (part + 1));
+                }
+            }
             context.setScreen(() -> null);
         }
+    }
+
+    /** The pages of the shipped chapter {@code path}, as the synced progress binds them, without its map. */
+    private static List<HandbookPage> pagesBeforeTheMap(Minecraft client, String path) {
+        List<HandbookPage> pages = ShippedHandbook.pages(client);
+        int number = pages.stream()
+                .filter(page -> page instanceof HandbookPage.Chapter map
+                        && map.id().getPath().equals(path))
+                .mapToInt(HandbookPage::chapterNumber)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no chapter " + path + " in the handbook"));
+        return pages.stream()
+                .filter(page -> HandbookPage.chapterNumber(page) == number && !(page instanceof HandbookPage.Chapter))
+                .toList();
     }
 
     private static void rebind(KeyMapping mapping, int key) {
@@ -174,7 +204,7 @@ public class QuestMapScenario extends EvidenceScenario {
     /** Opens the handbook, as the shipped chapters and the synced progress make it, on the first page that {@code target} accepts. */
     private void openAt(ClientGameTestContext context, Predicate<HandbookPage> target) {
         context.setScreen(() -> {
-            var client = net.minecraft.client.Minecraft.getInstance();
+            var client = Minecraft.getInstance();
             return new HandbookScreen(
                     ShippedHandbook.pages(client), ClientReadMarks::isRead, id -> {}, List.of(), new HandbookMemory());
         });
