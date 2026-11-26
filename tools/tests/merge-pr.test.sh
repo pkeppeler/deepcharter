@@ -490,6 +490,37 @@ client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:succe
 refusal "game path, one shard cancelled, no aggregate" "client-gametest-shard 2 (newest non-skipped run: cancelled)" "${client_vars[@]}"
 client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:in_progress")" "$game"
 refusal "game path, one shard still running" "client-gametest-shard 2 (newest non-skipped run: in_progress)" "${client_vars[@]}"
+# [client-only] (#1451; conditions in merge-pr.sh's header).
+# client_only <name> <expect: yes|no> <runs>: refuses either way; the marker is there exactly when expected.
+client_only() {
+  client_args "$3" "$game"
+  run_script "${client_vars[@]}"
+  if [[ $rc -ne 0 && $out == *"REFUSED:"* && ( ($2 == yes && $out == *"[client-only]"*) || ($2 == no && $out != *"[client-only]"*) ) ]]; then
+    pass "$1"
+  else
+    fail "$1 (rc=$rc out=$out)"
+  fi
+}
+client_only "client-only: a failed shard and aggregate carry the marker" yes \
+  "$(runs "${required_pass_specs[@]}" client-gametest:3:failure "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:failure")"
+printed "client-only: the refusal still names the first failed check" "not passing: client-gametest (newest non-skipped run: failure)"
+printed "client-only: the refusal says to re-run the whole run" "re-run the whole Client tests run"
+client_only "client-only: a timed-out shard carries the marker" yes \
+  "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:timed_out")"
+client_only "client-only: a cancelled aggregate carries the marker" yes "$(runs "${required_pass_specs[@]}" client-gametest:3:cancelled)"
+client_only "client-only: a shard still running has no marker" no \
+  "$(runs "${required_pass_specs[@]}" client-gametest:3:failure "client-gametest-shard 2:6:in_progress")"
+client_only "client-only: a failed build beside a failed shard has no marker" no \
+  "$(runs build:2:failure tool-tests:2:success client-gametest:3:failure "client-gametest-shard 1:5:failure")"
+printed "client-only: a failed build is named" "not passing: build (newest non-skipped run: failure)"
+client_only "client-only: failed tool-tests beside a failed aggregate has no marker" no \
+  "$(runs build:2:success tool-tests:2:failure client-gametest:3:failure)"
+client_only "client-only: a skipped required check beside a failed aggregate has no marker" no \
+  "$(runs build:2:success tool-tests:2:skipped client-gametest:3:failure)"
+client_only "client-only: another failed check beside a failed shard has no marker" no \
+  "$(runs "${required_pass_specs[@]}" lint:4:failure "client-gametest-shard 1:5:failure")"
+client_only "client-only: a lookalike name has no marker" no \
+  "$(runs "${required_pass_specs[@]}" client-gametest-extra:4:failure)"
 # Only the shard template is dropped: another template-named check that failed still refuses.
 # shellcheck disable=SC2016 # a literal template, not an expansion
 client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" 'other-job ${{ matrix.x }}:7:failure')" "$game"

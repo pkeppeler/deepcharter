@@ -22,6 +22,8 @@
 # Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each client-gametest-shard, when they ran) runs
 # each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
 # from it only by docs/ROADMAP.md or .papercuts.jsonl.
+# A failing-check refusal carries [client-only] when every check that is not passing is a failed, timed-out or cancelled
+# client-gametest or client-gametest-shard <i>, and build and tool-tests passed: the queue re-runs the whole Client tests run.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
 # and regenerates docs/ROADMAP.md. The commit title and message go through tools/merge_message.py first: the merge proxy
 # refuses a long URL there, so it is shortened in the commit only, never in the PR body (#1007); --check warns when it will.
@@ -125,12 +127,25 @@ checks=$(cut -f1,2 <<<"$checks_full")
 if [[ $gate_only -eq 1 ]]; then
   while IFS=$'\t' read -r bucket name; do echo "check $name: $bucket"; done <<<"$checks"
 fi
+# The refusal names the first check that is not passing; the [client-only] conditions are in the header (#1451).
+first_bad=
+client_only=1
 while IFS=$'\t' read -r bucket name; do
   case $bucket in
-    pass | skipping) ;;
-    *) refuse "has a check that is not passing: $name (newest non-skipped run: $bucket)" ;;
+    pass | skipping) continue ;;
   esac
+  [[ -n $first_bad ]] || first_bad="$name (newest non-skipped run: $bucket)"
+  [[ $name =~ ^client-gametest(-shard .+)?$ && $bucket =~ ^(failure|timed_out|cancelled)$ ]] || client_only=0
 done <<<"$checks"
+if [[ -n $first_bad ]]; then
+  for required in "${REQUIRED_CHECKS[@]}"; do
+    grep -qxF "pass"$'\t'"$required" <<<"$checks" || client_only=0
+  done
+  if [[ $client_only -eq 1 ]]; then
+    first_bad+="; only client-suite checks failed: re-run the whole Client tests run holding the head's newest non-skipped client-gametest job [client-only] (never --failed or one job; why: merging.md's client-suite note)"
+  fi
+  refuse "has a check that is not passing: $first_bad"
+fi
 for required in "${REQUIRED_CHECKS[@]}"; do
   grep -qxF "pass"$'\t'"$required" <<<"$checks" && continue
   if grep -qxF "skipping"$'\t'"$required" <<<"$checks"; then
