@@ -25,10 +25,12 @@ import net.minecraft.network.chat.Component;
 public class HandbookTaskCueScenario extends EvidenceScenario {
     private static final int GUI_SCALE = 2;
     private static final int HOLD_FRAMES = 3;
-    /** The still is cut to the steps around the hovered one, this many GUI pixels each way, for the close-up. */
-    private static final int ZOOM_REACH_X = 110;
+    /** Where the mouse rests, in GUI pixels, when it is off the steps: the screen's top left corner. */
+    private static final int AWAY = 0;
+    /** The close-up of the hovered step: a cut of the still this wide and tall, in GUI pixels, with the step a quarter in. */
+    private static final int ZOOM_WIDTH = 220;
 
-    private static final int ZOOM_REACH_Y = 30;
+    private static final int ZOOM_HEIGHT = 60;
 
     @Override
     protected String name() {
@@ -41,7 +43,7 @@ public class HandbookTaskCueScenario extends EvidenceScenario {
             ClientWait.until(context, "the player", client -> client.player != null && client.getConnection() != null);
             context.runOnClient(client -> client.options.guiScale().set(GUI_SCALE));
             HandbookScreen screen = open(context, 1);
-            ClientCursor.moveTo(context, 0, 0);
+            ClientCursor.moveTo(context, AWAY, AWAY);
             hold(context);
             screenshot(context, "chapter-1-map");
 
@@ -61,13 +63,13 @@ public class HandbookTaskCueScenario extends EvidenceScenario {
                     context,
                     "chapter-1-map-hover",
                     "chapter-1-map-hover-zoom",
-                    Math.max(0, step.x() - ZOOM_REACH_X / 2),
-                    Math.max(0, step.y() - ZOOM_REACH_Y / 2),
-                    ZOOM_REACH_X * 2,
-                    ZOOM_REACH_Y * 2);
+                    Math.max(0, step.x() - ZOOM_WIDTH / 4),
+                    Math.max(0, step.y() - ZOOM_HEIGHT / 4),
+                    ZOOM_WIDTH,
+                    ZOOM_HEIGHT);
 
             open(context, 2);
-            ClientCursor.moveTo(context, 0, 0);
+            ClientCursor.moveTo(context, AWAY, AWAY);
             hold(context);
             screenshot(context, "chapter-2-preview");
             context.setScreen(() -> null);
