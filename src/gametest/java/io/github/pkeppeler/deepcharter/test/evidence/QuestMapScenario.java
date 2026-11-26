@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.HandbookSyncPayload;
+import io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
@@ -34,7 +35,8 @@ import net.minecraft.server.level.ServerPlayer;
  * Evidence scenario "m2-quest-map" for #847: the handbook's quest map, in the real game with the shipped chapters. A
  * player on a charter has done five of chapter 1's steps, the last of them, the charcoal (#1423), just now (the step
  * popup); the card of the sixth shows the iron it asks for. Then the first two chapters are done, and chapter 3's map,
- * with the chapters after it redacted, is shown whole. Every page carries the tabs: the stills show them on the
+ * with the chapters after it redacted, is shown whole, and chapter 6's, where the scanner is crafted and fitted (#1431).
+ * Every page carries the tabs: the stills show them on the
  * Founder's letter (the intro), on a chapter text page and on the maps, and a step with a very long line shows its
  * popup grown to fit it (#962). Last, the controls pages, and the first of them again with the handbook key rebound
  * (#1260).
@@ -95,8 +97,8 @@ public class QuestMapScenario extends EvidenceScenario {
             hold(context);
             screenshot(context, "quest-map-chapter-1");
 
-            // the scanner step done, the current step is the light: a torch or a lantern, two items to click
-            complete(context, singleplayer, 1, 7);
+            // every step but the last done, the current step is the light: a torch or a lantern, two items to click
+            complete(context, singleplayer, 1, HandbookChaptersOneToFiveTest.chapterOne().size() - 1);
             open(context, 1);
             context.runOnClient(client -> client.gui.toastManager().clear());
             hold(context);
@@ -115,6 +117,12 @@ public class QuestMapScenario extends EvidenceScenario {
             context.runOnClient(client -> client.gui.toastManager().clear());
             hold(context);
             screenshot(context, "quest-map-chapter-4");
+            complete(context, singleplayer, 4, Integer.MAX_VALUE);
+            complete(context, singleplayer, 5, Integer.MAX_VALUE);
+            open(context, 6);
+            context.runOnClient(client -> client.gui.toastManager().clear());
+            hold(context);
+            screenshot(context, "quest-map-chapter-6");
 
             // the controls pages name each key as it is bound now: the handbook key is H, then J once rebound (#1260)
             for (int part = 1; part <= HandbookControls.sheets(); part++) {
