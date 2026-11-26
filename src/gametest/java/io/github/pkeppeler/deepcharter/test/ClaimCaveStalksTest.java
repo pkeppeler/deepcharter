@@ -32,8 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Layer 1's cave stalks ({@code fungal_stalks_cave}, Topsoil Claims) write only inside the chunk they are placed for (ADR
- * 0088, #1348), read from the blocks they write and not from where they plan to. The placed feature runs, every
+ * Layer 1's cave stalks ({@code fungal_stalks_cave}, Topsoil Claims) write only inside the chunk they are placed for
+ * (ADR 0088, #1348), read from the blocks they write and not from where they plan to. The placed feature runs, every
  * placement step and the stalk itself, on a stand-in level: floors of stone every {@value #FLOOR_EVERY} rows of the
  * band with air between, so every chunk gets stalks, ordinary and great, whatever the generated claim holds. Its
  * writes are recorded and dropped, so nothing loads or changes in the world.
