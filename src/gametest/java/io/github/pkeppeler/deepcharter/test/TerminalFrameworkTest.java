@@ -848,7 +848,7 @@ public class TerminalFrameworkTest {
     public void anOversizedActionPayloadDoesNotDecode(GameTestHelper helper) {
         BlockPos pos = helper.absolutePos(BlockPos.ZERO);
         CompoundTag small = new CompoundTag();
-        small.putString(Terminals.PART_KEY, "deepcharter:pump_motor");
+        small.putString("part", "deepcharter:pump_motor");
         CompoundTag big = new CompoundTag();
         big.putString("junk", "x".repeat(TerminalActionPayload.MAX_ARGS_BYTES * 4));
         if (!decodes(helper, pos, small)) {
@@ -864,7 +864,7 @@ public class TerminalFrameworkTest {
         RegistryFriendlyByteBuf buf =
                 new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
         BlockPos.STREAM_CODEC.encode(buf, pos);
-        Identifier.STREAM_CODEC.encode(buf, Terminals.INSERT_PART);
+        Identifier.STREAM_CODEC.encode(buf, Identifier.fromNamespaceAndPath("deepcharter_test", "any_action"));
         ByteBufCodecs.COMPOUND_TAG.encode(buf, args);
         try {
             TerminalActionPayload payload = TerminalActionPayload.CODEC.decode(buf);
@@ -1031,12 +1031,7 @@ public class TerminalFrameworkTest {
     public void aTerminalViewCarriesItsTypesFeatureOnTheWire(GameTestHelper helper) {
         BlockPos pos = new BlockPos(1, 2, 3);
         TerminalView withFeature = new TerminalView(
-                pos,
-                TerminalTestTypes.OPEN.id(),
-                true,
-                true,
-                List.of(),
-                Optional.of(new TerminalTestTypes.Note("hello")));
+                pos, TerminalTestTypes.OPEN.id(), Optional.of(new TerminalTestTypes.Note("hello")), List.of());
         TerminalView decoded = roundTrip(withFeature);
         if (!decoded.equals(withFeature)
                 || !decoded.feature(TerminalTestTypes.Note.class)
@@ -1048,8 +1043,7 @@ public class TerminalFrameworkTest {
                 || decoded.feature(TerminalTestTypes.Note.class).isEmpty()) {
             throw failure(helper, "the feature should be readable by its class");
         }
-        TerminalView without =
-                new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), false, true, List.of(), Optional.empty());
+        TerminalView without = new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), Optional.empty(), List.of());
         if (!roundTrip(without).equals(without)) {
             throw failure(
                     helper, "a view of a type with no feature should round-trip with none, got %s", roundTrip(without));
@@ -1065,12 +1059,7 @@ public class TerminalFrameworkTest {
         boolean refused = false;
         try {
             roundTrip(new TerminalView(
-                    pos,
-                    TerminalTestTypes.REPAIRABLE.id(),
-                    true,
-                    true,
-                    List.of(),
-                    Optional.of(new TerminalTestTypes.Note("x"))));
+                    pos, TerminalTestTypes.REPAIRABLE.id(), Optional.of(new TerminalTestTypes.Note("x")), List.of()));
         } catch (IllegalStateException unregistered) {
             refused = true;
         }

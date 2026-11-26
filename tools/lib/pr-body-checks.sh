@@ -48,8 +48,8 @@ has_label() { grep -qxF -- "$1" <<<"$labels"; }
 
 # Sets $pr_files: one status, path and previous path (or empty) per line.
 load_pr_files() {
-  pr_files=$(gh api "repos/$repo/pulls/$pr/files?per_page=100" --paginate \
-    --jq '.[] | [.status, .filename, (.previous_filename // "")] | @tsv') || refuse "could not read its changed files"
+  gh_list pr_files "repos/$repo/pulls/$pr/files?per_page=100" '.[] | [.status, .filename, (.previous_filename // "")] | @tsv' \
+    || refuse "could not read its changed files: $gh_list_err"
 }
 
 # In-game code (src/main/, src/client/, src/lang/) needs a demo: the `demo` label and a

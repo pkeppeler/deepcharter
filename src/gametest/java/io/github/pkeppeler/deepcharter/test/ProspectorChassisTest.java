@@ -35,6 +35,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
+import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -438,8 +439,9 @@ public class ProspectorChassisTest {
                             "restoring the Prospector on the advance alone");
                     expect(
                             helper,
-                            !Wrecks.isWreck(wreck) && FoundingMoleHangarTest.balance(helper, owner) == 0,
-                            "the Prospector is restored for its $1,390");
+                            !Wrecks.isWreck(wreck)
+                                    && FoundingMoleHangarTest.balance(helper, owner) == Transmission.Bonus.B3.amount(),
+                            "the Prospector is restored for its $1,390, and T17 pays B3");
                     expect(
                             helper,
                             FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == 0,
@@ -597,8 +599,10 @@ public class ProspectorChassisTest {
                             "the first charter restoring a second Prospector with no Cicatrium");
                     expect(
                             helper,
-                            Wrecks.isWreck(two) && FoundingMoleHangarTest.balance(helper, first) == PRICE,
-                            "the refused restore took nothing");
+                            Wrecks.isWreck(two)
+                                    && FoundingMoleHangarTest.balance(helper, first)
+                                            == PRICE + Transmission.Bonus.B3.amount(),
+                            "the refused restore took nothing (the first restore's T17 paid B3)");
 
                     // The second charter gets its own advance for the other wreck.
                     FoundingMoleHangarTest.expectDone(
@@ -649,8 +653,9 @@ public class ProspectorChassisTest {
                             "restoring the Prospector");
                     expect(
                             helper,
-                            FoundingMoleHangarTest.balance(helper, owner) == FoundingMoleHangarTest.RICH - PRICE,
-                            "restoring a Prospector costs $1,390, the account holds %s",
+                            FoundingMoleHangarTest.balance(helper, owner)
+                                    == FoundingMoleHangarTest.RICH - PRICE + Transmission.Bonus.B3.amount(),
+                            "restoring a Prospector costs $1,390 and T17 pays B3, the account holds %s",
                             FoundingMoleHangarTest.balance(helper, owner));
                     expect(
                             helper,
