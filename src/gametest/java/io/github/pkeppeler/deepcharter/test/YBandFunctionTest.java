@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.densityfunction.DensityFunction;
 import net.minecraft.world.level.levelgen.densityfunction.DensitySamplerSet;
@@ -34,19 +33,21 @@ import org.slf4j.LoggerFactory;
  * paths of the stepped case), the interpolation corners' grid, single points either side, and a whole column of the
  * campaign world. A band over an interpolation must start on its cell grid, or the cell the edge cuts is interpolated
  * from another start; the shipped bands are checked for it. The caves are 0 near most edges, so a band's own rows are
- * checked on a band with odd edges over an input that is never constant, against its {@code range_choice}. Run red: a
- * band one row too tall, a sub-volume one row off, and an outside value of {@code 0.0} for the caves' {@code -0.0}.
+ * also checked on test bands against their {@code range_choice}. Run red: a band one row too tall, a sub-volume one row
+ * off, a stepped volume sampled from its first row in the band, a band cutting a cell, and an outside value of
+ * {@code 0.0} for the caves' {@code -0.0}.
  */
 public class YBandFunctionTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(YBandFunctionTest.class);
     /** Every {@code min_inclusive} and {@code max_exclusive} of a {@code y_band} in {@code claim_caves.json}. */
     private static final List<Integer> EDGES = List.of(-248, -240, -96, 24);
 
-    private static final ResourceKey<DensityFunction> ODD = NarrowCaveFunctionTest.key("test/y_band_odd");
-    private static final ResourceKey<DensityFunction> ODD_VANILLA =
-            NarrowCaveFunctionTest.key("test/y_band_odd_vanilla");
-    /** {@code test/y_band_odd}'s edges. */
-    private static final List<Integer> ODD_EDGES = List.of(-37, 29);
+    /**
+     * Test bands with their edges, each beside its {@code range_choice} as {@code <name>_vanilla}: one off the cell grid
+     * over an input that is never constant, and one over an interpolation, whose stepped volumes cross its bottom edge.
+     */
+    private static final List<TestBand> TEST_BANDS =
+            List.of(new TestBand("test/y_band_odd", -37, 29), new TestBand("test/y_band_interpolated", -40, 29));
 
     @GameTest
     public void theBandedCavesAreTheirVanillaExpressionAcrossEveryBandEdge(GameTestHelper helper) {
@@ -127,39 +128,42 @@ public class YBandFunctionTest {
     @GameTest
     public void aBandIsItsInputInsideAndItsConstantOutsideOnEveryPath(GameTestHelper helper) {
         ServerLevel level = campaign(helper);
-        DensityFunction band = function(level, ODD);
-        DensityFunction vanilla = function(level, ODD_VANILLA);
         DensitySamplerSet samplers = samplers(level);
         int[] tally = new int[2];
-        for (int edge : ODD_EDGES) {
-            for (int step = 1; step <= 4; step++) {
-                for (int start = edge - 3 * step; start <= edge + 1; start++) {
-                    compare(
+        for (TestBand test : TEST_BANDS) {
+            DensityFunction band = function(level, NarrowCaveFunctionTest.key(test.path()));
+            DensityFunction vanilla = function(level, NarrowCaveFunctionTest.key(test.path() + "_vanilla"));
+            for (int edge : List.of(test.bottom(), test.top())) {
+                for (int step = 1; step <= 4; step++) {
+                    for (int start = edge - 3 * step; start <= edge + 1; start++) {
+                        compare(
+                                helper,
+                                samplers,
+                                band,
+                                vanilla,
+                                tally,
+                                new DensityVolume(3, 6, 2, 5, start, -7, 1 + step % 2, step, 2));
+                    }
+                }
+                for (int y = edge - 1; y <= edge; y++) {
+                    float got = samplers.sampleValue(band, 5, y, -7);
+                    float want = samplers.sampleValue(vanilla, 5, y, -7);
+                    expect(
                             helper,
-                            samplers,
-                            band,
-                            vanilla,
-                            tally,
-                            new DensityVolume(3, 6, 2, 5, start, -7, 1 + step % 2, step, 2));
+                            Float.floatToRawIntBits(got) == Float.floatToRawIntBits(want),
+                            "%s at y %s is %s, range_choice %s",
+                            test.path(),
+                            y,
+                            got,
+                            want);
                 }
             }
-            for (int y = edge - 1; y <= edge; y++) {
-                float got = samplers.sampleValue(band, 5, y, -7);
-                float want = samplers.sampleValue(vanilla, 5, y, -7);
-                expect(
-                        helper,
-                        Float.floatToRawIntBits(got) == Float.floatToRawIntBits(want),
-                        "y_band at y %s is %s, range_choice %s",
-                        y,
-                        got,
-                        want);
-            }
+            // Wholly inside, wholly outside, and both edges in one volume.
+            compare(helper, samplers, band, vanilla, tally, new DensityVolume(3, 20, 2, 5, -20, -7));
+            compare(helper, samplers, band, vanilla, tally, new DensityVolume(3, 20, 2, 5, 40, -7));
+            compare(helper, samplers, band, vanilla, tally, new DensityVolume(3, 90, 2, 5, -50, -7));
         }
-        // Wholly inside, wholly outside, and both edges in one volume.
-        compare(helper, samplers, band, vanilla, tally, new DensityVolume(3, 20, 2, 5, -20, -7));
-        compare(helper, samplers, band, vanilla, tally, new DensityVolume(3, 20, 2, 5, 40, -7));
-        compare(helper, samplers, band, vanilla, tally, new DensityVolume(3, 90, 2, 5, -50, -7));
-        LOGGER.info("[y-band] odd band: {} values compared", tally[0]);
+        LOGGER.info("[y-band] test bands: {} values compared", tally[0]);
         helper.succeed();
     }
 
@@ -207,4 +211,6 @@ public class YBandFunctionTest {
             return child;
         });
     }
+
+    private record TestBand(String path, int bottom, int top) {}
 }

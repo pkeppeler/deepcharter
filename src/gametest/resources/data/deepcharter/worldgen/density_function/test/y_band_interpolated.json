@@ -1,0 +1,17 @@
+{
+  "type": "deepcharter:y_band",
+  "min_inclusive": -40,
+  "max_exclusive": 29,
+  "outside": 0.5,
+  "input": {
+    "type": "minecraft:interpolated",
+    "cell_size_xz": 4,
+    "cell_size_y": 8,
+    "input": {
+      "type": "minecraft:noise",
+      "noise": "minecraft:cave_cheese",
+      "xz_scale": 2.4,
+      "y_scale": 1.8
+    }
+  }
+}
