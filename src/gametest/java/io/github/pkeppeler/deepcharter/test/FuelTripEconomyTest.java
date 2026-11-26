@@ -158,7 +158,7 @@ public class FuelTripEconomyTest {
             trips++;
             pod.setFuel(100f);
             if (fuel != null) {
-                EngineSoot.refuelled(pod, tank, perLitre);
+                EngineSoot.refuelled(pod, tank, perLitre, BuiltInRegistries.ITEM.getKey(fuel));
             }
             double base = run.litres();
             double burned = 0;

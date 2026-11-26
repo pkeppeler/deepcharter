@@ -16,10 +16,12 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
+import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
@@ -36,8 +38,8 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 
 /**
- * The engine's soot is a persistent pod attachment (ADR 0097): it is saved with literal values, an unreadable one is
- * kept through a tick and a refuel, and it crosses a breach with the pod.
+ * The engine's soot is a persistent pod attachment (ADR 0097): it is saved with literal values, a version 1 one loads,
+ * an unreadable one is kept through a tick and a refuel, and it crosses a breach with the pod.
  */
 public class EngineSootPersistenceTest {
     private static final String ATTACHMENTS_KEY = "fabric:attachments";
@@ -74,10 +76,12 @@ public class EngineSootPersistenceTest {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         PodEntity loaded = null;
         try {
-            pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(7.5f, 2.25f, 1.125f)));
+            EngineSoot.State state =
+                    new EngineSoot.State(7.5f, 2.25f, 1.125f, Optional.of(Identifier.withDefaultNamespace("charcoal")));
+            pod.setAttached(EngineSoot.STATE, Versioned.of(state));
             CompoundTag saved = savedSoot(helper, pod);
-            // Pinned literally: version 1, and the three fields by these names.
-            expect(helper, saved.getIntOr("version", -1) == 1, "the soot should save as version 1, got %s", saved);
+            // Pinned literally: version 2, and the four fields by these names (#1438 added the solid fuel's id).
+            expect(helper, saved.getIntOr("version", -1) == 2, "the soot should save as version 2, got %s", saved);
             expect(helper, saved.getFloatOr("soot", -1f) == 7.5f, "the saved soot should be 7.5, got %s", saved);
             expect(
                     helper,
@@ -89,13 +93,59 @@ public class EngineSootPersistenceTest {
                     saved.getFloatOr("tank_soot", -1f) == 1.125f,
                     "the saved tank soot should be 1.125: %s",
                     saved);
+            expect(
+                    helper,
+                    saved.getStringOr("solid", "").equals("minecraft:charcoal"),
+                    "the saved solid fuel should be minecraft:charcoal: %s",
+                    saved);
             loaded = reload(helper, pod);
+            EngineSoot.State read = Versioned.orThrow(loaded, EngineSoot.STATE);
+            expect(helper, read.equals(state), "the soot should load as it was saved, got %s", read);
+            helper.succeed();
+        } finally {
+            if (loaded != null) {
+                loaded.discard();
+            }
+        }
+    }
+
+    /** A pod saved before #1438 (version 1, no solid fuel's id) loads with its numbers, as solid fuel of no one name. */
+    @GameTest
+    public void aVersionOneSootStateLoadsWithItsNumbersAndNoFuelName(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+        PodEntity loaded = null;
+        try {
+            ServerLevel level = helper.getLevel();
+            TagValueOutput output =
+                    TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+            pod.saveWithoutId(output);
+            pod.discard();
+            CompoundTag old = new CompoundTag();
+            old.putInt("version", 1);
+            old.putFloat("soot", 7.5f);
+            old.putFloat("tank_litres", 2.25f);
+            old.putFloat("tank_soot", 1.125f);
+            CompoundTag attachments = new CompoundTag();
+            attachments.put(EngineSoot.STATE.identifier().toString(), old);
+            CompoundTag tag = output.buildResult();
+            tag.put(ATTACHMENTS_KEY, attachments);
+            loaded = (PodEntity) EntityType.create(
+                            PodRegistry.POD,
+                            TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag),
+                            level,
+                            EntitySpawnReason.LOAD)
+                    .orElseThrow(() -> failure(helper, "the saved pod did not load"));
             EngineSoot.State read = Versioned.orThrow(loaded, EngineSoot.STATE);
             expect(
                     helper,
-                    read.equals(new EngineSoot.State(7.5f, 2.25f, 1.125f)),
-                    "the soot should load as it was saved, got %s",
+                    read.equals(new EngineSoot.State(7.5f, 2.25f, 1.125f, Optional.empty())),
+                    "a version 1 state should load with its numbers and no fuel name, got %s",
                     read);
+            expect(
+                    helper,
+                    savedSoot(helper, loaded).getIntOr("version", -1) == 2,
+                    "it should save back as version 2, got %s",
+                    savedSoot(helper, loaded));
             helper.succeed();
         } finally {
             if (loaded != null) {

@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.netty.buffer.ByteBuf;
@@ -36,7 +35,8 @@ import net.minecraft.server.level.ServerPlayer;
  * ends: once its repair station works, a pod in limp mode cannot launch (drill) from the surface until it is serviced
  * or scraped ({@link #launchRefused}).
  *
- * <p>Refuelling with a solid fuel puts its litres, and the soot those litres will leave, in the tank's account; the
+ * <p>Refuelling with a solid fuel puts its litres, and the soot those litres will leave, in the tank's account, with
+ * the fuel's item id while the account holds one fuel (#1438: the cockpit names what burns, {@link #solidLeft}); the
  * burn takes litres off that account in proportion. Each write clamps the account to the litres really in the tank, so
  * fuel that came from elsewhere (a pump, a reserve tank, a recovery) is never counted as solid. The burn is taken off
  * the solid fuel first, which counts a mixed tank pessimistically.
@@ -48,7 +48,7 @@ import net.minecraft.server.level.ServerPlayer;
  * #isReadable} first.
  */
 public final class EngineSoot {
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
 
     /** Litres of fuel burned on solid fuel before the attachment is written and synced. */
     public static final float QUANTUM = 0.1f;
@@ -60,15 +60,17 @@ public final class EngineSoot {
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_soot");
 
     /**
-     * Litres of soot in the engine, the litres of solid fuel in the tank that have not burned, and the litres of soot
-     * those will leave when they do.
+     * Litres of soot in the engine, the litres of solid fuel in the tank that have not burned, the litres of soot those
+     * will leave when they do, and the item id of that solid fuel: empty when there is none, or a mix of fuels, or the
+     * litres came from version 1, which did not keep it.
      */
-    public record State(float soot, float tankLitres, float tankSoot) {
+    public record State(float soot, float tankLitres, float tankSoot, Optional<Identifier> solid) {
         public static final State CLEAN = new State(0f, 0f, 0f);
         public static final MapCodec<State> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
                         Codec.FLOAT.fieldOf("soot").forGetter(State::soot),
                         Codec.FLOAT.fieldOf("tank_litres").forGetter(State::tankLitres),
-                        Codec.FLOAT.fieldOf("tank_soot").forGetter(State::tankSoot))
+                        Codec.FLOAT.fieldOf("tank_soot").forGetter(State::tankSoot),
+                        Identifier.CODEC.optionalFieldOf("solid").forGetter(State::solid))
                 .apply(instance, State::new));
         public static final StreamCodec<ByteBuf, State> STREAM = StreamCodec.composite(
                 ByteBufCodecs.FLOAT,
@@ -77,6 +79,8 @@ public final class EngineSoot {
                 State::tankLitres,
                 ByteBufCodecs.FLOAT,
                 State::tankSoot,
+                ByteBufCodecs.optional(Identifier.STREAM_CODEC),
+                State::solid,
                 State::new);
 
         public State {
@@ -86,6 +90,11 @@ public final class EngineSoot {
             tankSoot = clean(tankSoot);
         }
 
+        /** A state whose solid fuel, if any, has no one name. */
+        public State(float soot, float tankLitres, float tankSoot) {
+            this(soot, tankLitres, tankSoot, Optional.empty());
+        }
+
         private static float clean(float litres) {
             return litres >= 0f && Float.isFinite(litres) ? litres : 0f;
         }
@@ -93,9 +102,13 @@ public final class EngineSoot {
 
     public static final AttachmentType<Versioned<State>> STATE = AttachmentRegistry.create(
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "engine_soot"),
-            builder -> builder.persistent(Versioned.codec(VERSION, State.BODY))
+            // Version 1 lacked the solid fuel's id, which the body reads as absent.
+            builder -> builder.persistent(Versioned.codec(VERSION, State.BODY, Map.of(1, State.BODY)))
                     .initializer(() -> Versioned.of(State.CLEAN))
                     .syncWith(Versioned.streamCodec(VERSION, State.STREAM), AttachmentSyncPredicate.all()));
+
+    /** Litres of the tank's solid account under which it is spent: float rounding, not fuel. */
+    private static final float SPENT_LITRES = 0.0001f;
 
     /** Litres burned on solid fuel and not yet written, for each pod. Server thread only. */
     private static final Map<PodEntity, Float> UNWRITTEN = new WeakHashMap<>();
@@ -180,20 +193,51 @@ public final class EngineSoot {
     }
 
     /**
-     * Server only: {@code litres} of a fuel that leaves {@code sootPerLitre} of soot a litre went into the tank. A
-     * clean fuel (0) changes nothing, and so does an unreadable state, which is kept as it is: the refuel is a callback
-     * path.
+     * Server only: {@code litres} of {@code fuel}, an item that leaves {@code sootPerLitre} of soot a litre, went into
+     * the tank. The account keeps the fuel's id while it holds that fuel alone. A clean fuel (0) changes nothing, and
+     * so does an unreadable state, which is kept as it is: the refuel is a callback path.
      */
-    public static void refuelled(PodEntity pod, float litres, float sootPerLitre) {
+    public static void refuelled(PodEntity pod, float litres, float sootPerLitre, Identifier fuel) {
         Optional<State> read = Versioned.readable(pod, STATE);
         if (read.isEmpty() || !(litres > 0f) || !(sootPerLitre > 0f)) {
             return;
         }
         State state = read.get();
+        Optional<Identifier> solid = state.tankLitres() > 0f ? state.solid().filter(fuel::equals) : Optional.of(fuel);
         pod.setAttached(
                 STATE,
                 Versioned.of(new State(
-                        state.soot(), state.tankLitres() + litres, state.tankSoot() + litres * sootPerLitre)));
+                        state.soot(), state.tankLitres() + litres, state.tankSoot() + litres * sootPerLitre, solid)));
+    }
+
+    /**
+     * The solid fuel still in the tank, which burns before anything else: its item id while it is one fuel (empty for
+     * a mix, or a version 1 account), and its litres.
+     */
+    public record Solid(Optional<Identifier> fuel, float litres) {
+        /**
+         * The fuel's name in capitals, as the cockpit and the pump print it: from {@code deepcharter.fuel.solid.<item
+         * id>}, and "SOLID FUEL" for a mix or a fuel a datapack added with no name of its own.
+         */
+        public Component name() {
+            return fuel.map(id -> Component.translatableWithFallback(
+                            "deepcharter.fuel.solid." + id.toLanguageKey(), SOLID_FUEL))
+                    .orElseGet(() -> Component.translatable("deepcharter.fuel.solid"));
+        }
+    }
+
+    /** What {@link Solid#name} falls back to for a solid fuel with no lang key: the mix's own name, in English. */
+    private static final String SOLID_FUEL = "SOLID FUEL";
+
+    /**
+     * What the engine burns now (#1438): the solid fuel still in the tank, never more than the tank holds; empty when
+     * it burns pump fuel, which is everything else in the tank, or the tank is empty, or the state cannot be read.
+     * Either side.
+     */
+    public static Optional<Solid> solidLeft(PodEntity pod) {
+        State state = state(pod);
+        float litres = Math.min(state.tankLitres(), FuelPump.litres(pod));
+        return litres > 0f ? Optional.of(new Solid(state.solid(), litres)) : Optional.empty();
     }
 
     /** Whether the engine's soot can be read and changed: false for saved data of another version. */
@@ -236,16 +280,21 @@ public final class EngineSoot {
         }
         // The litres in the tank before this burn: those left, and those burned since the last write. The account of
         // solid fuel can be no more, whatever a pump, a reserve tank or a recovery did to the tank meanwhile.
-        float inTank = pod.fuel()
-                        / PodTuning.DEFAULT.shell().fullFuel()
-                        * PodStats.of(pod).tankLitres()
-                + litres;
+        float inTank = FuelPump.litres(pod) + litres;
         float account = Math.min(state.tankLitres(), inTank);
         float accountSoot = state.tankSoot() * account / state.tankLitres();
         float share = Math.min(1f, litres / account);
         float soot = state.soot() + accountSoot * share;
         float grace = FuelTuning.DEFAULT.soot().graceLitres();
-        pod.setAttached(STATE, Versioned.of(new State(soot, account * (1f - share), accountSoot * (1f - share))));
+        // Float rounding can leave a crumb of the account once its last litre has burned: that is no solid fuel left.
+        float kept = account * (1f - share) < SPENT_LITRES ? 0f : 1f - share;
+        pod.setAttached(
+                STATE,
+                Versioned.of(new State(
+                        soot,
+                        account * kept,
+                        accountSoot * kept,
+                        kept > 0f ? state.solid() : Optional.empty())));
         if (state.soot() <= grace && soot > grace) {
             explainFirstSoot(pod);
         }
@@ -286,7 +335,8 @@ public final class EngineSoot {
      */
     public static void service(PodEntity pod) {
         flush(pod);
-        Versioned.modifyOrThrow(pod, STATE, state -> new State(0f, state.tankLitres(), state.tankSoot()));
+        Versioned.modifyOrThrow(
+                pod, STATE, state -> new State(0f, state.tankLitres(), state.tankSoot(), state.solid()));
     }
 
     /** Server only: clears {@code litres} of the engine's soot, a part service. Throws on an unreadable state. */
@@ -295,7 +345,8 @@ public final class EngineSoot {
         Versioned.modifyOrThrow(
                 pod,
                 STATE,
-                state -> new State(Math.max(0f, state.soot() - litres), state.tankLitres(), state.tankSoot()));
+                state -> new State(
+                        Math.max(0f, state.soot() - litres), state.tankLitres(), state.tankSoot(), state.solid()));
     }
 
     /**
@@ -311,7 +362,7 @@ public final class EngineSoot {
         }
         State state = read.get();
         float left = Math.min(state.soot(), FuelTuning.DEFAULT.soot().scrapeLeavesLitres());
-        pod.setAttached(STATE, Versioned.of(new State(left, state.tankLitres(), state.tankSoot())));
+        pod.setAttached(STATE, Versioned.of(new State(left, state.tankLitres(), state.tankSoot(), state.solid())));
         return true;
     }
 

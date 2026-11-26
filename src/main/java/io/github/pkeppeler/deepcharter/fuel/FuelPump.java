@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.fuel;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -12,12 +13,18 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
+import io.github.pkeppeler.deepcharter.terminal.TerminalNotices;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * The fuel pump's two actions. {@link #BUY} sells exactly the litres asked for (with {@link #LITRES_KEY}) and refuses when the
@@ -27,6 +34,10 @@ import net.minecraft.server.MinecraftServer;
  *
  * <p>The fuel goes into the pod parked at the pump (see {@link Terminals#parkedPods}). Selling clears Stranded, because the pod has fuel.
  * The screen never decides: it shows what it can see and the server checks every press.
+ *
+ * <p>Under its header the pump's screen says what a fill does not change ({@link #notices}, #1438): solid fuel still in that pod's tank,
+ * which burns first, and soot that only a service clears. The view the server sends after each press carries them, so they stand there
+ * as the pod is filled.
  */
 public final class FuelPump {
     public static final Identifier BUY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "buy_fuel");
@@ -43,6 +54,36 @@ public final class FuelPump {
         TerminalActions.register(TerminalTypes.FUEL_PUMP, BUY, OutpostAccess.guarded(FuelPump::buy));
         TerminalActions.register(TerminalTypes.FUEL_PUMP, FILL, OutpostAccess.guarded(FuelPump::fill));
         ParkedPodView.register(TerminalTypes.FUEL_PUMP);
+        TerminalNotices.register(FuelPump::notices);
+    }
+
+    /** The pod the pump at {@code pos} fills for {@code charter}: its own parked pods first, then unowned ones. */
+    private static Optional<PodEntity> parked(ServerLevel level, BlockPos pos, Optional<Charter> charter) {
+        return Terminals.parkedPods(level, pos, charter).stream().findFirst();
+    }
+
+    /**
+     * At a fuel pump, about the pod it fills: the solid fuel still in its tank, which burns before the pump's, and soot
+     * past the grace, which a fill does not clear. Read only through the safe accessors: unreadable soot says nothing.
+     */
+    private static List<Component> notices(
+            MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
+        ServerLevel level = player.level();
+        if (!level.getBlockState(pos).is(TerminalTypes.FUEL_PUMP.block())) {
+            return List.of();
+        }
+        Optional<PodEntity> pod = parked(level, pos, charter);
+        if (pod.isEmpty()) {
+            return List.of();
+        }
+        List<Component> lines = new ArrayList<>();
+        EngineSoot.solidLeft(pod.get())
+                .ifPresent(solid -> lines.add(Component.translatable(
+                        "notice.deepcharter.fuel.solid_first", solid.name(), (int) Math.ceil(solid.litres()))));
+        if (EngineSoot.soot(pod.get()) > FuelTuning.DEFAULT.soot().graceLitres()) {
+            lines.add(Component.translatable("notice.deepcharter.fuel.sooted"));
+        }
+        return lines;
     }
 
     /** The litres in the tank now. */
@@ -71,9 +112,7 @@ public final class FuelPump {
         if (charter.isEmpty()) {
             return Optional.of(CharterRefusal.NOT_ON_A_CHARTER.message());
         }
-        Optional<PodEntity> parked =
-                Terminals.parkedPods(context.player().level(), context.pos(), context.charter()).stream()
-                        .findFirst();
+        Optional<PodEntity> parked = parked(context.player().level(), context.pos(), context.charter());
         if (parked.isEmpty()) {
             return Optional.of(Component.translatable("message.deepcharter.fuel.no_pod"));
         }

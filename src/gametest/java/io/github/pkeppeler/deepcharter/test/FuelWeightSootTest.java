@@ -29,6 +29,7 @@ import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
@@ -202,7 +203,7 @@ public class FuelWeightSootTest {
                     EngineSoot.serviceCost(pod));
             // Past the limit: limp mode, which burns double and moves at 30%, and still climbs.
             for (int i = 0; i < 10; i++) {
-                EngineSoot.refuelled(pod, 1f, 1f);
+                EngineSoot.refuelled(pod, 1f, 1f, Identifier.withDefaultNamespace("charcoal"));
             }
             burn(pod, soot.limpLitres() - 4f);
             PodStats limp = PodStats.of(pod);
@@ -310,7 +311,7 @@ public class FuelWeightSootTest {
         MockPlayer pilot = MockPlayers.join(helper, "soot-reader");
         expect(helper, pilot.player().startRiding(pod), "the pilot should mount the pod");
         pod.setFuel(50f);
-        EngineSoot.refuelled(pod, 100f, 1f);
+        EngineSoot.refuelled(pod, 100f, 1f, Identifier.withDefaultNamespace("charcoal"));
         // One more quantum of soot takes the engine over the grace.
         burn(pod, FuelTuning.DEFAULT.soot().graceLitres() - 0.05f);
         Object written = pod.getAttached(EngineSoot.STATE);

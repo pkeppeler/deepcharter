@@ -145,7 +145,7 @@ public class UnreadableAccessTest {
                 EngineSoot.burnMultiplier(pod);
                 EngineSoot.output(EngineSoot.soot(pod));
                 EngineSoot.launchRefused(pod);
-                EngineSoot.refuelled(pod, 1f, 1f);
+                EngineSoot.refuelled(pod, 1f, 1f, Identifier.withDefaultNamespace("charcoal"));
                 EngineSoot.burned(pod, 1f);
                 EngineSoot.flush(pod);
             });
