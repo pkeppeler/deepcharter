@@ -30,7 +30,12 @@ public final class TerminalMusic {
             return;
         }
         client.getMusicManager().stopPlaying();
-        if (playing != null && !playing.isStopped()) {
+        // The engine can drop a loop without stopping it (SoundManager.stop() clears its channels and leaves the
+        // instances as they
+        // were, as the Continuity Event's silence does at a death), so a loop it no longer plays is gone, as vanilla's
+        // MusicManager
+        // reads it.
+        if (playing != null && !playing.isStopped() && client.getSoundManager().isActive(playing)) {
             return;
         }
         playing = new Music();

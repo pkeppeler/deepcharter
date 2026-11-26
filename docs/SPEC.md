@@ -180,7 +180,7 @@ One job each. They can point at each other; a transmission can unlock a handbook
 
 There are no Directives after layer 2, only pencil paths. Each new mechanic is explained the first time you meet it:
 
-- A **Spec sheet** when you craft or buy something, for example a pad's power cost or a material's heat rating. It is the item's page in the **parts catalogue**, and can be looked up any time after.
+- A **Spec sheet** when you craft or buy something, for example a pad's power cost or a material's heat rating: a small corner slip names it and the key that opens it, so a first craft never stops play. It is the item's page in the **parts catalogue**, and can be looked up any time after.
 - A one-time HUD or scanner warning on first exposure, such as "PRESSURE EXCEEDS HULL RATING".
 
 The story stays in Transmissions and Notes.
