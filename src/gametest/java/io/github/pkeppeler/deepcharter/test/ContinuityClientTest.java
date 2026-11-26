@@ -376,9 +376,9 @@ public class ContinuityClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The player dies in lava, on the server. The server does not let a player be hurt until their client says it has loaded the world,
-     * after the join and again after each return to work, which a lagging server can stretch, so the blow is struck again until it lands
-     * (#1462).
+     * The player dies in lava, on the server. The server does not let a player be hurt until their client says it has loaded the world
+     * or 60 server ticks pass, after the join and again after each return to work; a server running behind stretches that, so the blow
+     * is struck again until it lands (#1462).
      */
     private static void burn(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         ClientWait.until(
@@ -387,11 +387,17 @@ public class ContinuityClientTest implements FabricClientGameTest {
                 () -> singleplayer.getServer().computeOnServer(server -> {
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     if (!player.isDeadOrDying()) {
-                        player.hurtServer(player.level(), player.level().damageSources().lava(), 1000f);
+                        player.hurtServer(
+                                player.level(), player.level().damageSources().lava(), 1000f);
                     }
                     return player.isDeadOrDying();
                 }),
-                () -> "a player who could not be hurt");
+                () -> singleplayer.getServer().computeOnServer(server -> {
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                    return "a player who could not be hurt: health " + player.getHealth() + ", " + player.gameMode()
+                            + ", client loaded " + player.connection.hasClientLoaded() + ", changing dimension "
+                            + player.isChangingDimension();
+                }));
     }
 
     /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would. */
