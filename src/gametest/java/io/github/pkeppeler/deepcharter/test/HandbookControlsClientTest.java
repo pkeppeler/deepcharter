@@ -109,14 +109,15 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The handbook's own key, a mod key of the catalogue and a vanilla key are each rebound: the page names the new
-     * key, not the old.
+     * The handbook's own key, the catalogue's spec sheet and materials keys, and vanilla keys are each rebound: the
+     * page names the new key, not the old.
      */
     private static void aRebindChangesWhatThePageShows(Options options) {
         rebind(HandbookKeys.OPEN, InputConstants.KEY_J, 1, "[H]", "[J]");
         rebind(options.keyUp, InputConstants.KEY_I, controlsPartOf("drive"), "[W]", "[I]");
         rebind(options.keySprint, InputConstants.KEY_O, controlsPartOf("dig"), "[Left Control]", "[O]");
         rebind(CatalogueKeys.SPEC_SHEET, InputConstants.KEY_K, controlsPartOf("spec"), "[J]", "[K]");
+        rebind(CatalogueKeys.MATERIALS, InputConstants.KEY_N, controlsPartOf("materials"), "[M]", "[N]");
     }
 
     private static int controlsPartOf(String sheet) {
