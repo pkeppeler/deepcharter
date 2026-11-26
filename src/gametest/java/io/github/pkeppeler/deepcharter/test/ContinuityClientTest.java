@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PlayerDeaths;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import java.util.List;
 import java.util.Objects;
@@ -52,6 +53,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Util;
+import net.minecraft.world.damagesource.DamageSources;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -375,29 +377,9 @@ public class ContinuityClientTest implements FabricClientGameTest {
         return SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f);
     }
 
-    /**
-     * The player dies in lava, on the server. The server does not let a player be hurt until their client says it has loaded the world
-     * or 60 server ticks pass, after the join and again after each return to work; a server running behind stretches that, so the blow
-     * is struck again until it lands (#1462).
-     */
+    /** The player dies in lava, on the server. */
     private static void burn(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-        ClientWait.until(
-                context,
-                "the player dead",
-                () -> singleplayer.getServer().computeOnServer(server -> {
-                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                    if (!player.isDeadOrDying()) {
-                        player.hurtServer(
-                                player.level(), player.level().damageSources().lava(), 1000f);
-                    }
-                    return player.isDeadOrDying();
-                }),
-                () -> singleplayer.getServer().computeOnServer(server -> {
-                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                    return "a player who could not be hurt: health " + player.getHealth() + ", " + player.gameMode()
-                            + ", client loaded " + player.connection.hasClientLoaded() + ", changing dimension "
-                            + player.isChangingDimension();
-                }));
+        PlayerDeaths.strikeUntilDead(context, singleplayer, DamageSources::lava);
     }
 
     /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would. */

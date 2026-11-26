@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PlayerDeaths;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import java.io.IOException;
 import java.io.Reader;
@@ -36,6 +37,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Util;
+import net.minecraft.world.damagesource.DamageSources;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.TeleportTransition;
@@ -214,23 +216,9 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
                 client -> client.gui.screen() == null && client.player != null && client.player.isAlive());
     }
 
-    /**
-     * The player dies, on the server, as {@code /kill} kills. The server does not let a player be hurt until their client says it has
-     * loaded the world, which can be a while after the join, so the blow is struck again until it lands.
-     */
+    /** The player dies, on the server, as {@code /kill} kills. */
     private static void kill(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-        ClientWait.until(
-                context,
-                "the player dead",
-                () -> singleplayer.getServer().computeOnServer(server -> {
-                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                    if (!player.isDeadOrDying()) {
-                        player.hurtServer(
-                                player.level(), player.level().damageSources().genericKill(), 1000f);
-                    }
-                    return player.isDeadOrDying();
-                }),
-                () -> "a player who could not be hurt");
+        PlayerDeaths.strikeUntilDead(context, singleplayer, DamageSources::genericKill);
     }
 
     /** The laugh envelope the game reads now, as text; empty when there is none. */
