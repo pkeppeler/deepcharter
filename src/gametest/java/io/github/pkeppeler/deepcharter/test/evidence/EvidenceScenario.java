@@ -174,8 +174,9 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     }
 
     /**
-     * Right-clicks {@code target} as a player does: waits for the crosshair to rest on it, then presses the use key, so the game's own path
-     * ({@code Minecraft.startUseItem}) picks the entity and sends the interaction. The caller looks at it first.
+     * Right-clicks {@code target} as a player does: waits for the crosshair to rest on it, then presses the use
+     * key, so the game's own path ({@code Minecraft.startUseItem}) picks the entity and sends the interaction. The
+     * caller looks at it first.
      */
     protected static void rightClick(ClientGameTestContext context, Entity target) {
         ClientWait.until(

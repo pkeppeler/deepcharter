@@ -56,7 +56,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Evidence scenario "crafted-parts" (#536): in a sealed room of layer 1 rock, a player lays the fuel tank unit's recipe and then the drill unit's
  * out in a crafting table (iron, copper and redstone, from the shipped recipe files) and takes each unit. Each is used on the Mole from outside,
- * the client's own right click, and the pod holds a tier 1 fuel tank and a tier 1 drill, which the terminal no longer sells. Then a hazard unit: the pod, parked at the ore processor
+ * the client's own right click, and the pod holds a tier 1 fuel tank and a tier 1 drill, which the terminal no
+ * longer sells. Then a hazard unit: the pod, parked at the ore processor
  * with Bronzium in its cargo, gives one to the pack through WITHDRAW ORE (the account is not paid), and the lights unit made of it is fitted too.
  */
 public class CraftedPartsScenario extends EvidenceScenario {

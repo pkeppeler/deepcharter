@@ -478,8 +478,9 @@ public class PartFittingTest {
     }
 
     /**
-     * A right click on the pod reaches the server as the one interact packet 26.3 sends, with the hit relative to the pod. Handled by the real
-     * packet listener, it passes the range check and every entity-use listener before {@code PartFitting}, and fits the part (#1404).
+     * A right click on the pod reaches the server as the one interact packet 26.3 sends, with the hit relative
+     * to the pod. Handled by the real packet listener, it passes the range check and every entity-use listener
+     * before {@code PartFitting}, and fits the part (#1404).
      */
     @GameTest
     public void aUnitFitsThroughTheInteractPacketARightClickSends(GameTestHelper helper) {
