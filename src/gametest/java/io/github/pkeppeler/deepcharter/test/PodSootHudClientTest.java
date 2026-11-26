@@ -36,7 +36,6 @@ public class PodSootHudClientTest implements FabricClientGameTest {
     private static final int FEET_Y = TestLayers.worldY(1, 10);
     private static final String SOOT = "hud.deepcharter.pod.soot";
     private static final String LIMP = "hud.deepcharter.pod.soot_limp";
-    private static final int[][] GUIS = {{320, 240}, {427, 240}};
     /** Pixels kept clear at each end of the action bar line. */
     private static final int ACTION_BAR_MARGIN = 4;
 
@@ -87,10 +86,11 @@ public class PodSootHudClientTest implements FabricClientGameTest {
             if (!lower.contains("service") || !lower.contains("scrape") || !lower.contains("free")) {
                 throw new AssertionError("the launch refusal should name the service and the free scrape: " + line);
             }
-            int room = GUIS[0][0] - 2 * ACTION_BAR_MARGIN;
+            int room = PodReadout.SMALLEST_GUI_WIDTH - 2 * ACTION_BAR_MARGIN;
             if (client.font.width(line) > room) {
-                throw new AssertionError("the launch refusal is " + client.font.width(line)
-                        + " px, the action bar of a " + GUIS[0][0] + " px GUI has " + room + ": " + line);
+                throw new AssertionError(
+                        "the launch refusal is " + client.font.width(line) + " px, the action bar of a "
+                                + PodReadout.SMALLEST_GUI_WIDTH + " px GUI has " + room + ": " + line);
             }
         });
     }

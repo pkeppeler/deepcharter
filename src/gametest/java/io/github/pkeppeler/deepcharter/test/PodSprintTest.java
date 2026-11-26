@@ -46,7 +46,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Input;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -490,7 +489,7 @@ public class PodSprintTest {
         Vec3 sprintAt = new Vec3(cruiseAt.x, FLOOR, Z + 2 * LANE + 1.0);
         RoomCarver.carve(level, x - 4, wallX + 24, FLOOR - 6, FLOOR - 1, Z - LANE, Z + 3 * LANE, Blocks.STONE);
         RoomCarver.carve(level, x - 4, wallX + 24, FLOOR, FLOOR + 8, Z - LANE, Z + 3 * LANE, Blocks.AIR);
-        box(level, wallX, wallX + 24, FLOOR, FLOOR + 7, Z + LANE - 2, Z + 3 * LANE, Blocks.STONE);
+        RoomCarver.carve(level, wallX, wallX + 24, FLOOR, FLOOR + 7, Z + LANE - 2, Z + 3 * LANE, Blocks.STONE);
         List<Input> inputs = List.of(SPRINT, FORWARD, FORWARD_SPRINT);
         List<Vec3> starts = List.of(downAt, cruiseAt, sprintAt);
         List<MockPlayer> pilots = new ArrayList<>();
@@ -658,15 +657,5 @@ public class PodSprintTest {
             pods.forEach(pod -> pod.get().discard());
             helper.succeed();
         });
-    }
-
-    private static void box(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
-        for (int x = x1; x <= x2; x++) {
-            for (int y = y1; y <= y2; y++) {
-                for (int z = z1; z <= z2; z++) {
-                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 2);
-                }
-            }
-        }
     }
 }

@@ -14,8 +14,11 @@ import net.minecraft.network.chat.Component;
 
 /** The text of the pilot's readout, the lines the pod HUD and the cockpit plate both draw. */
 public final class PodReadout {
+    /** The smallest GUI's width. */
+    public static final int SMALLEST_GUI_WIDTH = 320;
+
     /** The two smallest GUIs a readout must fit, width by height. */
-    private static final int[][] GUIS = {{320, 240}, {427, 240}};
+    private static final int[][] GUIS = {{SMALLEST_GUI_WIDTH, 240}, {427, 240}};
 
     private PodReadout() {}
 
