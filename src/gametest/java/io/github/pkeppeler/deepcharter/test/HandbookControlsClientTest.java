@@ -145,7 +145,9 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
             List<HandbookPage> pages, KeyMapping mapping, int newKey, String section, String before, String after) {
         try {
             String shown = sectionTexts(pages, walk(pages, WIDTH, HEIGHT)).getOrDefault(section, "");
-            require(shown.contains(before), mapping.getName() + " shows as " + before + " in " + section + ": " + shown);
+            require(
+                    shown.contains(before),
+                    mapping.getName() + " shows as " + before + " in " + section + ": " + shown);
             mapping.setKey(InputConstants.Type.KEYBOARD.getOrCreate(newKey));
             KeyMapping.resetMapping();
             String rebound = sectionTexts(pages, walk(pages, WIDTH, HEIGHT)).getOrDefault(section, "");

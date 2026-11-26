@@ -119,7 +119,8 @@ public final class HandbookControls {
     // test-seam: the keys-are-all-listed guard reads the sheets' bindings, which no draw path needs as a set
     public static Set<KeyMapping> mappings(Options options) {
         Set<KeyMapping> mappings = new LinkedHashSet<>();
-        for (Sheet sheet : Stream.concat(SHEETS.stream(), CHAPTER_SHEETS.stream()).toList()) {
+        for (Sheet sheet :
+                Stream.concat(SHEETS.stream(), CHAPTER_SHEETS.stream()).toList()) {
             for (Row row : sheet.rows()) {
                 row.keys().forEach(key -> mappings.add(key.apply(options)));
             }

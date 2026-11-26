@@ -282,7 +282,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
         return switch (page) {
             case HandbookPage.ChapterText text ->
                 "text:" + text.id().getPath() + ":" + text.part() + "/" + text.parts();
-            case HandbookPage.ChapterControls controls -> "controls:" + controls.id().getPath();
+            case HandbookPage.ChapterControls controls ->
+                "controls:" + controls.id().getPath();
             case HandbookPage.Chapter chapter -> "chapter:" + chapter.id().getPath() + ":" + chapter.visibility();
             default -> page.getClass().getSimpleName();
         };
@@ -335,7 +336,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
                 .filter(page -> HandbookPage.chapterNumber(page) == 3)
                 .map(HandbookScreenClientTest::describe)
                 .toList();
-        List<String> expected = List.of("text:meet_the_mole:1/1", "controls:meet_the_mole", "chapter:meet_the_mole:FULL");
+        List<String> expected =
+                List.of("text:meet_the_mole:1/1", "controls:meet_the_mole", "chapter:meet_the_mole:FULL");
         require(full.equals(expected), "meet_the_mole's pages should be " + expected + ", got " + full);
         require(
                 HandbookPages.of(realChapters(), done(1)).stream()
