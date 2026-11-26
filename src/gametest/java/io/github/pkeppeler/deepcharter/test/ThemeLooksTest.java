@@ -71,8 +71,8 @@ public class ThemeLooksTest {
         }
     }
 
-    // The expected values below are the literals the Java held before #226, written out. Do not read them from the
-    // files.
+    // The expected values below are the literals the Java held before #226, written out, and the values added since
+    // (#1265 added the ghost veil, 0xA8050A06). Do not read them from the files.
 
     @GameTest
     public void theDefaultCrtLookIsTheOldOne(GameTestHelper helper) {
@@ -92,6 +92,7 @@ public class ThemeLooksTest {
                         0xFF2E7A45,
                         0xFF123D20,
                         0xFFFFB000,
+                        0xA8050A06,
                         6,
                         2,
                         1,
@@ -738,7 +739,8 @@ public class ThemeLooksTest {
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cellAspect\": 3 }")), "cellAspect");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"jawSteps\": 0 }")), "jawSteps");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"bodySolidTicks\": 21 }")), "bodySolidTicks");
-        // Gson reads NaN and Infinity as numbers: a timing that is not one is refused, or it would hold the button.
+        // Gson reads a bare NaN or Infinity leniently as a string, which the number check refuses: a timing that is not
+        // a number would hold the button.
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cutSeconds\": NaN }")), "cutSeconds");
         rejected(
                 helper,

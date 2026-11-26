@@ -101,7 +101,10 @@ public final class TerminalPanelScene {
         return terminal;
     }
 
-    /** In a world where the player is on a charter and nobody has repaired anything: an ore processor, which opens the generic terminal screen offline. Returns it. */
+    /**
+     * In a world where the player is on a charter and nobody has repaired anything: an ore processor, which opens its
+     * repair screen. Returns it.
+     */
     public static BlockPos setUpOffline(MinecraftServer server) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
         require(Charters.found(server, player.getUUID(), "Riggs and Sons").isEmpty(), "founding should succeed");
