@@ -65,6 +65,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - A pure client model with no `net.minecraft.client` import (`MaterialsTree`, `KnownRecipe`) may be driven from a server GameTest; it never imports a client-only class.
 - A loop or undo rule in a recipe walk is tested against shipped vanilla recipe chains of at least three steps (for example ingot → nugget → smelted tool), not only one-step pack/unpack pairs.
 - A memoised recursive walk that cuts cycles is tested with the same recipe set listed in two orders and must give the same tree.
+- A recursive walk on the render path is timed in a test against a synthetic loop of 30+ items, and stays polynomial in the items.
 - Scan the world in tests and scenarios through `test/support/BlockSurvey`.
 - Before you write a new bore bot (a pilot's `Input`s, a sidestep `Side`, a lining check) or a scenario camera helper (a structure-axis `at`), look in `test/support` (`BoreBot`, and `Inputs` for the shared pod inputs `FORWARD`, `JUMP`, `FORWARD_JUMP`, `SNEAK` and `SPRINT`) and `EvidenceScenario` and in the nearest sibling test or scenario, and extract there if a second copy would appear.
 - A client test that wants its own pod never uses `getEntities(POD).getFirst()`; the colony's wreck pod shares the level. Select by tag, UUID or position.

@@ -5,10 +5,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay;
@@ -141,8 +143,6 @@ public record MaterialsTree(Node root, List<Material> materials) {
         private final Map<Item, List<KnownRecipe>> followed = new HashMap<>();
         /** For each X asked about, whether an item is made solely from X. */
         private final Map<Item, Map<Item, Boolean>> solelyFrom = new HashMap<>();
-        /** Whether the innermost {@link #solely} call under way has met an item again on its path. */
-        private boolean revisited;
 
         Walk(Function<Item, List<KnownRecipe>> known, Map<Item, Integer> stock) {
             this.known = known;
@@ -206,28 +206,29 @@ public record MaterialsTree(Node root, List<Material> materials) {
 
         /**
          * Whether {@code recipe}, which makes {@code item}, undoes a known recipe: some cell of it takes only items made solely from
-         * {@code item} (ingots from an iron block, or from nuggets, when the block and the nuggets are made only from ingots).
+         * {@code item} (ingots from an iron block, or from nuggets, when the block and the nuggets are made only from ingots). Each
+         * answer is worked out once per {@code item} by {@link #solely}.
          */
         private boolean undoes(KnownRecipe recipe, Item item) {
             Map<Item, Boolean> settled = solelyFrom.computeIfAbsent(item, key -> new HashMap<>());
-            return recipe.needs().stream().anyMatch(need -> takesOnly(need, item, settled, new HashSet<>()));
-        }
-
-        /** Whether every choice of {@code need} is {@code from} or made solely from it. */
-        private boolean takesOnly(KnownRecipe.Need need, Item from, Map<Item, Boolean> settled, Set<Item> path) {
-            return need.choices().stream().allMatch(choice -> solely(choice.getItem(), from, settled, path));
+            return recipe.needs().stream()
+                    .anyMatch(need ->
+                            need.choices().stream().allMatch(choice -> solely(choice.getItem(), item, settled)));
         }
 
         /**
          * Whether {@code item} is {@code from}, or has a known recipe and every one has a cell taking only {@code from} or items made
-         * solely from it. An item met again on {@code path} counts as not made solely from {@code from}, which errs towards following a
-         * recipe; the branch guard still stops that recipe going round. {@code settled} keeps only answers that met no item again below
-         * them: an answer that did depends on where the walk came in, and keeping it would make the tree depend on the order the recipes
-         * are listed. So an item off every recipe loop is worked out once per {@code from}, and one on a loop again each time it is
-         * reached. The walk still ends, since {@code path} never repeats an item, but through a tangle of loops it can take a step for
-         * each path without a repeat.
+         * solely from it, without going round a loop: the item has a derivation from {@code from} that never needs itself.
+         *
+         * <p>A least fixpoint over the items {@code item} reaches through known recipes, stopping at {@code from} and at items already
+         * in {@code settled}: start from {@code from} and the settled items made solely from it, add every reached item whose every
+         * recipe has a cell taking only items already added, and repeat until none is added. Every reached item's answer goes into
+         * {@code settled}: added is made solely from {@code from}, the rest is not. An item on a loop that never reaches {@code from}
+         * is never added, so the loop leaves it out without any order of visits mattering. Each pass is linear in the choices of the
+         * reached items' recipes and at most one pass more than the reached items is needed, so the cost is polynomial in the items,
+         * paid once per item for each {@code from}.
          */
-        private boolean solely(Item item, Item from, Map<Item, Boolean> settled, Set<Item> path) {
+        private boolean solely(Item item, Item from, Map<Item, Boolean> settled) {
             if (item == from) {
                 return true;
             }
@@ -235,23 +236,44 @@ public record MaterialsTree(Node root, List<Material> materials) {
             if (answer != null) {
                 return answer;
             }
-            if (!path.add(item)) {
-                revisited = true;
-                return false;
+            Set<Item> reached = new LinkedHashSet<>();
+            List<Item> toVisit = new ArrayList<>(List.of(item));
+            while (!toVisit.isEmpty()) {
+                Item next = toVisit.removeLast();
+                if (next == from || settled.containsKey(next) || !reached.add(next)) {
+                    continue;
+                }
+                for (KnownRecipe recipe : recipes(next)) {
+                    for (KnownRecipe.Need need : recipe.needs()) {
+                        for (ItemStack choice : need.choices()) {
+                            toVisit.add(choice.getItem());
+                        }
+                    }
+                }
             }
-            boolean above = revisited;
-            revisited = false;
-            List<KnownRecipe> recipes = recipes(item);
-            boolean solely = !recipes.isEmpty()
-                    && recipes.stream()
-                            .allMatch(recipe ->
-                                    recipe.needs().stream().anyMatch(need -> takesOnly(need, from, settled, path)));
-            path.remove(item);
-            if (!revisited) {
-                settled.put(item, solely);
+            Set<Item> made = new HashSet<>();
+            Predicate<Item> madeSolely =
+                    choice -> choice == from || made.contains(choice) || settled.getOrDefault(choice, false);
+            boolean grew = true;
+            while (grew) {
+                grew = false;
+                for (Item next : reached) {
+                    List<KnownRecipe> recipes = recipes(next);
+                    if (!made.contains(next)
+                            && !recipes.isEmpty()
+                            && recipes.stream()
+                                    .allMatch(recipe -> recipe.needs().stream()
+                                            .anyMatch(need -> need.choices().stream()
+                                                    .allMatch(choice -> madeSolely.test(choice.getItem()))))) {
+                        made.add(next);
+                        grew = true;
+                    }
+                }
             }
-            revisited |= above;
-            return solely;
+            for (Item next : reached) {
+                settled.put(next, made.contains(next));
+            }
+            return made.contains(item);
         }
 
         /**

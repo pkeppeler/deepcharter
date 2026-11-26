@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.KnownRecipe;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.MaterialsTree;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.MaterialsTree.Material;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.MaterialsTree.Node;
+import io.github.pkeppeler.deepcharter.handbook.ObtainableItems;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -528,6 +529,64 @@ public class MaterialsTreeTest {
                         .anyMatch(material -> material.item() == COPPER_BLOCK && material.shortBy() == 1),
                 "the block is short by one, got %s",
                 describe(tree.materials()));
+        helper.succeed();
+    }
+
+    /** Items in the long loop: the tree is rebuilt on the render thread, so its cost must stay polynomial in the items. */
+    private static final int LOOP_ITEMS = 32;
+
+    /**
+     * The fastest of a few builds, after as many to warm the JIT, must stay under this. One build takes well under 5 ms; the bound
+     * leaves room for a shared CI runner, and a walk exponential in the loop takes seconds here. The walk has no step count to read
+     * without a test-only member, so the test times it.
+     */
+    private static final long LOOP_BUDGET_NANOS = 50_000_000L;
+
+    private static final int LOOP_BUILDS = 5;
+
+    @GameTest
+    public void aLongRecipeLoopBuildsQuickly(GameTestHelper helper) {
+        // The shown recipe takes a head item, made from the first item of a loop; loop item i is made only from items
+        // i+1 and i+2, wrapping round. Whether the head's recipe undoes another asks whether the first loop item is
+        // made solely from the head, and no path round the loop reaches it: the walk must not try every such path.
+        List<Item> items = BuiltInRegistries.ITEM.stream()
+                .filter(item -> ObtainableItems.isObtainable(item.getDefaultInstance()))
+                .limit(LOOP_ITEMS + 2)
+                .toList();
+        Item shown = items.get(0);
+        Item head = items.get(1);
+        List<Item> loop = items.subList(2, items.size());
+        List<KnownRecipe> recipes = new ArrayList<>();
+        recipes.add(recipe(helper, shown, 1, item(head)));
+        recipes.add(recipe(helper, head, 1, item(loop.getFirst())));
+        for (int i = 0; i < LOOP_ITEMS; i++) {
+            recipes.add(recipe(
+                    helper,
+                    loop.get(i),
+                    1,
+                    item(loop.get((i + 1) % LOOP_ITEMS)),
+                    item(loop.get((i + 2) % LOOP_ITEMS))));
+        }
+        Function<Item, List<KnownRecipe>> known = known(recipes.toArray(KnownRecipe[]::new));
+        MaterialsTree tree = MaterialsTree.of(recipes.getFirst(), known, stock());
+        for (int warm = 1; warm < LOOP_BUILDS; warm++) {
+            MaterialsTree.of(recipes.getFirst(), known, stock());
+        }
+        long fastest = Long.MAX_VALUE;
+        for (int build = 0; build < LOOP_BUILDS; build++) {
+            long start = System.nanoTime();
+            MaterialsTree.of(recipes.getFirst(), known, stock());
+            fastest = Math.min(fastest, System.nanoTime() - start);
+        }
+        expect(
+                helper,
+                fastest < LOOP_BUDGET_NANOS,
+                "one tree over a loop of %s items builds in %s ms",
+                LOOP_ITEMS,
+                fastest / 1e6);
+        // The head is made from the first loop item, whose recipe undoes the last item's, so it is a base material.
+        expectMaterials(helper, tree, "the head is made from the first loop item", loop.getFirst(), 1, 0);
+        expect(helper, node(helper, tree, head).recipe() == recipes.get(1), "the head is made by its recipe");
         helper.succeed();
     }
 
