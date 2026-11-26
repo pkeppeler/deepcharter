@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
@@ -33,8 +34,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * Evidence scenario "seated-hotbar" for #1457: a pilot in a Mole with a scanner, in a lit stone chamber in layer 1, with the repair station's consumables in the hotbar.
@@ -165,15 +164,7 @@ public class SeatedHotbarScenario extends EvidenceScenario {
             if (!(player.getVehicle() instanceof PodEntity pod)) {
                 throw new AssertionError("the pilot left the pod");
             }
-            ServerLevel level = player.level();
-            BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
-            Vec3 eye = player.getEyePosition();
-            for (BlockPos cell : BlockPos.betweenClosed(
-                    middle.offset(-radius, -radius, -radius), middle.offset(radius, radius, radius))) {
-                if (level.getBlockState(cell).isAir() && !new AABB(cell).contains(eye)) {
-                    level.setBlock(cell, Blocks.STONE.defaultBlockState(), 3);
-                }
-            }
+            ChargeUse.packRound(player, pod, radius);
         });
     }
 
@@ -213,16 +204,8 @@ public class SeatedHotbarScenario extends EvidenceScenario {
         context.runOnClient(client -> client.getWindow().setWindowed(NARROW_WINDOW_WIDTH, NARROW_WINDOW_HEIGHT));
         context.waitTicks(WINDOW_SETTLE_TICKS); // tick-wait: the window resizes over a few frames
         try {
-            context.runOnClient(client -> {
-                client.getWindow().setGuiScale(GUI_SCALE);
-                ClientSession.player(client).setXRot(EYE_PITCH);
-                ClientSession.player(client).xRotO = EYE_PITCH;
-                client.gui.toastManager().clear();
-                TransmissionOverlay.reset();
-            });
-            ClientWait.until(
-                    context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
-            context.waitTicks(SETTLE_TICKS); // tick-wait: the gauges ease and the pod settles
+            context.runOnClient(client -> client.getWindow().setGuiScale(GUI_SCALE));
+            settle(context);
             // A still of another window size: the scenario's own screenshot refuses it, so it goes to the client's
             // screenshot folder, build/run/clientGameTest/screenshots.
             context.takeScreenshot("seated-hotbar-long-plate-narrow");
@@ -233,8 +216,15 @@ public class SeatedHotbarScenario extends EvidenceScenario {
         }
     }
 
-    /** A still and a frame of the GIF, the view level and the popups cleared, once the view has rendered and the gauges have eased. */
+    /** A still and a frame of the GIF, once the view {@link #settle}s. */
     private void shoot(ClientGameTestContext context, String still) {
+        settle(context);
+        screenshot(context, still);
+        frame(context);
+    }
+
+    /** The view level and the popups cleared, then a wait until the view has rendered and the gauges have eased. */
+    private static void settle(ClientGameTestContext context) {
         context.runOnClient(client -> {
             ClientSession.player(client).setXRot(EYE_PITCH);
             ClientSession.player(client).xRotO = EYE_PITCH;
@@ -244,7 +234,5 @@ public class SeatedHotbarScenario extends EvidenceScenario {
         ClientWait.until(
                 context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
         context.waitTicks(SETTLE_TICKS); // tick-wait: the scanner rescans, the gauges ease and the pod settles
-        screenshot(context, still);
-        frame(context);
     }
 }

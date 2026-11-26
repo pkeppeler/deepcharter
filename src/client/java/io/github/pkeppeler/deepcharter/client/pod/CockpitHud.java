@@ -172,9 +172,8 @@ public final class CockpitHud {
                     SeatedHotbar.slots(client, guiWidth, guiHeight),
                     guiWidth,
                     guiHeight);
-            Box plate = plateBox(client.font, layout, look, rows, guiWidth, guiHeight);
-            into.add(new HudKeepClear.Rect(
-                    "cockpit readout plate", plate.left(), plate.top(), plate.width(), plate.height()));
+            into.add(plateBox(client.font, layout, look, rows, guiWidth, guiHeight)
+                    .rect("cockpit readout plate"));
         }
     }
 
@@ -453,7 +452,11 @@ public final class CockpitHud {
     }
 
     /** Where the plate is on the screen. */
-    public record Box(int left, int top, int width, int height) {}
+    public record Box(int left, int top, int width, int height) {
+        public HudKeepClear.Rect rect(String what) {
+            return new HudKeepClear.Rect(what, left, top, width, height);
+        }
+    }
 
     /**
      * The space from the plate's edge to its text: the plate sprite's nine-slice border on each side, which the sprite's own metadata gives (so a pack that draws a
@@ -504,8 +507,8 @@ public final class CockpitHud {
             int guiWidth,
             int guiHeight) {
         List<Row> rows = fitting(all, roomForRows(font, layout, look, guiHeight, guiHeight));
-        Box box = plateBox(font, layout, look, rows, guiWidth, guiHeight);
-        HudKeepClear.Rect plate = new HudKeepClear.Rect("plate", box.left(), box.top(), box.width(), box.height());
+        HudKeepClear.Rect plate =
+                plateBox(font, layout, look, rows, guiWidth, guiHeight).rect("plate");
         OptionalInt floor = hotbar.stream()
                 .filter(plate::overlaps)
                 .mapToInt(HudKeepClear.Rect::y)

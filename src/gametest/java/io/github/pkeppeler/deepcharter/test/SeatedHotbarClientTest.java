@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
@@ -21,7 +22,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import javax.imageio.ImageIO;
@@ -38,7 +38,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for the hotbar under the cockpit (#1457): a seated pilot sees vanilla's hotbar and its selection frame (read from pixels: the frame moves to the slot a
@@ -160,13 +159,15 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
     }
 
     private static List<String> names(Minecraft client) {
+        return listed(client).stream().map(HudKeepClear.Rect::what).toList();
+    }
+
+    /** The keep-clear list on the client's current GUI. */
+    private static List<HudKeepClear.Rect> listed(Minecraft client) {
         return HudKeepClear.rects(
-                        client,
-                        client.getWindow().getGuiScaledWidth(),
-                        client.getWindow().getGuiScaledHeight())
-                .stream()
-                .map(HudKeepClear.Rect::what)
-                .toList();
+                client,
+                client.getWindow().getGuiScaledWidth(),
+                client.getWindow().getGuiScaledHeight());
     }
 
     /**
@@ -194,15 +195,10 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
      * ({@link EvidencePins#itemNameHidden}), the box changes and the strip just over it does not.
      */
     private static void expectTheNameIsDrawnWhereItIsListed(ClientGameTestContext context, BufferedImage named) {
-        HudKeepClear.Rect name = context.computeOnClient(client ->
-                HudKeepClear.rects(
-                                client,
-                                client.getWindow().getGuiScaledWidth(),
-                                client.getWindow().getGuiScaledHeight())
-                        .stream()
-                        .filter(rect -> rect.what().equals("held item name"))
-                        .findFirst()
-                        .orElseThrow(() -> new AssertionError("the held item's name is not on the keep-clear list")));
+        HudKeepClear.Rect name = context.computeOnClient(client -> listed(client).stream()
+                .filter(rect -> rect.what().equals("held item name"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the held item's name is not on the keep-clear list")));
         EvidencePins.itemNameHidden = true;
         BufferedImage nameless;
         try {
@@ -247,23 +243,12 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
         int radius = RepairTuning.DEFAULT.dynamiteRadius();
         List<BlockPos> packed = singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = (PodEntity) player.getVehicle();
-            if (pod == null) {
+            if (!(player.getVehicle() instanceof PodEntity pod)) {
                 throw new AssertionError("the pilot left the pod before the dynamite");
             }
-            ServerLevel level = (ServerLevel) pod.level();
+            List<BlockPos> cells = ChargeUse.packRound(player, pod, radius);
             BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
-            Vec3 eye = player.getEyePosition();
-            List<BlockPos> cells = new ArrayList<>();
-            for (BlockPos cell : BlockPos.betweenClosed(
-                    middle.offset(-radius, -radius, -radius), middle.offset(radius, radius, radius))) {
-                // Not where the pilot's eyes are, which would choke it.
-                if (level.getBlockState(cell).isAir() && !new AABB(cell).contains(eye)) {
-                    level.setBlock(cell, Blocks.STONE.defaultBlockState(), 3);
-                    cells.add(cell.immutable());
-                }
-            }
-            level.setBlock(middle.offset(radius + 1, 0, 0), Blocks.STONE.defaultBlockState(), 3);
+            player.level().setBlock(middle.offset(radius + 1, 0, 0), Blocks.STONE.defaultBlockState(), 3);
             return cells;
         });
         if (packed.isEmpty()) {
@@ -327,29 +312,23 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "slot " + (slot + 1) + " picked on the client and the server",
-                () -> context.computeOnClient(client -> ClientSession.player(client)
-                                        .getInventory()
-                                        .getSelectedSlot())
-                                == slot
-                        && singleplayer
-                                        .getServer()
-                                        .computeOnServer(server -> server.getPlayerList()
-                                                .getPlayers()
-                                                .getFirst()
-                                                .getInventory()
-                                                .getSelectedSlot())
-                                == slot,
-                () -> "client slot "
-                        + context.computeOnClient(client ->
-                                ClientSession.player(client).getInventory().getSelectedSlot())
-                        + ", server slot "
-                        + singleplayer
-                                .getServer()
-                                .computeOnServer(server -> server.getPlayerList()
-                                        .getPlayers()
-                                        .getFirst()
-                                        .getInventory()
-                                        .getSelectedSlot()));
+                () -> clientSlot(context) == slot && serverSlot(singleplayer) == slot,
+                () -> "client slot " + clientSlot(context) + ", server slot " + serverSlot(singleplayer));
+    }
+
+    private static int clientSlot(ClientGameTestContext context) {
+        return context.computeOnClient(
+                client -> ClientSession.player(client).getInventory().getSelectedSlot());
+    }
+
+    private static int serverSlot(TestSingleplayerContext singleplayer) {
+        return singleplayer
+                .getServer()
+                .computeOnServer(server -> server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .getInventory()
+                        .getSelectedSlot());
     }
 
     private static BufferedImage shot(ClientGameTestContext context, String name) {

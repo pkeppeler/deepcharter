@@ -905,8 +905,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         pieces.put("scanner", box(layout.scanner(), guiWidth, guiHeight));
         // Vanilla's hotbar, which a seated pilot keeps (#1457): it must not cover the band, the bezel, the scanner or
         // the plate.
-        HudKeepClear.Rect bar = SeatedHotbar.bar(guiWidth, guiHeight);
-        pieces.put("hotbar", new int[] {bar.x(), bar.y(), bar.right(), bar.bottom()});
+        pieces.put("hotbar", box(SeatedHotbar.bar(guiWidth, guiHeight)));
         for (String piece : List.of("band", "bezel", "scanner")) {
             if (overlap(pieces.get("hotbar"), Objects.requireNonNull(pieces.get(piece), "a piece of the Ribbon"))) {
                 problems.add(where + ": the hotbar covers the " + piece);
@@ -972,7 +971,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     }
                 }
                 for (HudKeepClear.Rect slot : slots) {
-                    if (overlap(plateBox, new int[] {slot.x(), slot.y(), slot.right(), slot.bottom()})) {
+                    if (overlap(plateBox, box(slot))) {
                         problems.add(where + ": the plate with " + kept.size() + " rows covers the " + slot.what()
                                 + " of "
                                 + slots.stream().map(HudKeepClear.Rect::what).toList());
@@ -1056,8 +1055,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             int guiWidth,
             int guiHeight) {
         List<CockpitHud.Row> kept = CockpitHud.plateRows(font, layout, look, rows, slots, guiWidth, guiHeight);
-        CockpitHud.Box box = CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight);
-        return new HudKeepClear.Rect("plate", box.left(), box.top(), box.width(), box.height());
+        return CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight)
+                .rect("plate");
     }
 
     /** The plates to fit: each warning alone, and every warning a pilot can have at once with every note too. */
@@ -1138,6 +1137,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     private static PodStatusHud.Line line(String name, Object... args) {
         return new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod." + name, args), 0);
+    }
+
+    private static int[] box(HudKeepClear.Rect rect) {
+        return new int[] {rect.x(), rect.y(), rect.right(), rect.bottom()};
     }
 
     private static int[] box(PanelLook.Decal decal, int guiWidth, int guiHeight) {

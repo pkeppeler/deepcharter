@@ -79,14 +79,15 @@ public final class SeatedHotbar {
     /** {@link #slots(Minecraft, int, int)} for a player whose main arm is {@code mainArm}, with or without an off-hand item and the hotbar's attack indicator. */
     public static List<HudKeepClear.Rect> slots(
             HumanoidArm mainArm, boolean offhandHeld, boolean attackIndicator, int guiWidth, int guiHeight) {
-        List<HudKeepClear.Rect> slots = new ArrayList<>(List.of(bar(guiWidth, guiHeight)));
+        HudKeepClear.Rect bar = bar(guiWidth, guiHeight);
+        List<HudKeepClear.Rect> slots = new ArrayList<>(List.of(bar));
         int centre = guiWidth / 2;
         boolean offhandLeft = mainArm.getOpposite() == HumanoidArm.LEFT;
         if (offhandHeld) {
             slots.add(new HudKeepClear.Rect(
                     "off-hand slot",
                     offhandLeft ? centre - HALF - OFFHAND_WIDTH : centre + HALF,
-                    guiHeight - BAR_HEIGHT - FRAME,
+                    bar.y(),
                     OFFHAND_WIDTH,
                     OFFHAND_HEIGHT));
         }
