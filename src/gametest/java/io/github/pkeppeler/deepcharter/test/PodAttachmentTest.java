@@ -74,9 +74,9 @@ public class PodAttachmentTest {
     }
 
     /**
-     * The real load path. Fabric reads all of an entity's attachments as one map and drops the whole
-     * map if it fails to decode, so a bad entry must not fail: it must load as Unreadable, leave the
-     * valid attachment intact, fail loud when a feature reads it, and be written back unchanged.
+     * The real load path. Fabric skips a saved attachment entry that fails to decode, and the next save
+     * omits it, so a bad entry must not fail: it must load as Unreadable, leave the valid attachment
+     * intact, fail loud when a feature reads it, and be written back unchanged.
      */
     @GameTest
     public void anUnreadableVersionLoadsKeepsItsDataAndCostsOtherAttachmentsNothing(GameTestHelper helper) {
