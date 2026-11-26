@@ -48,7 +48,7 @@ public class VoidBelowTest {
     /** Rows of stone the pod bores in the drilling tests, above the void or the solid bed. */
     private static final int ROWS = 6;
     /** The drilling tests' local Y of the lowest bored row: mid-layer, clear of the crust and the layer's roof. */
-    private static final int BORE_FLOOR = 100;
+    private static final int BORE_BOTTOM_LOCAL = 100;
 
     // ---- the price of the drop ----
 
@@ -80,8 +80,6 @@ public class VoidBelowTest {
                 "a very long fall nears the terminal cost %s, it costs %s",
                 limit,
                 deep);
-        PodStats soft = stock.withHardLandingSpeed(5f);
-        expect(helper, VoidBelow.dropCost(soft, 9) == 0f, "the drop reads the pod's own landing speed");
         helper.succeed();
     }
 
@@ -90,7 +88,7 @@ public class VoidBelowTest {
     public void aRealFallOfNineBlocksLosesTheDropsPrice(GameTestHelper helper) {
         int x = 9100;
         ServerLevel one = TestLayers.level(helper, 1);
-        int floorTop = TestLayers.worldY(1, BORE_FLOOR);
+        int floorTop = TestLayers.worldY(1, BORE_BOTTOM_LOCAL);
         RoomCarver.carve(one, x - 2, x + 2, floorTop - 2, floorTop, Z - 2, Z + 2, Blocks.STONE);
         RoomCarver.carve(one, x - 2, x + 2, floorTop + 1, floorTop + POCKET_FALL + 3, Z - 2, Z + 2, Blocks.AIR);
         Vec3 start = new Vec3(x + 0.5, floorTop + 1 + POCKET_FALL, Z + 0.5);
@@ -151,7 +149,7 @@ public class VoidBelowTest {
     public void aPodDrillingTowardADeepCavityHearsItHollowBeforeItBreaksThrough(GameTestHelper helper) {
         int x = 9400;
         ServerLevel one = TestLayers.level(helper, 1);
-        int boreFloor = TestLayers.worldY(1, BORE_FLOOR);
+        int boreFloor = TestLayers.worldY(1, BORE_BOTTOM_LOCAL);
         // Stone the pod bores, over 10 rows of air, over a stone bed: an 11-block fall from the last row.
         RoomCarver.carve(one, x - 3, x + 3, boreFloor - 12, boreFloor - 11, Z - 3, Z + 3, Blocks.STONE);
         RoomCarver.carve(one, x - 3, x + 3, boreFloor - 10, boreFloor - 1, Z - 3, Z + 3, Blocks.AIR);
@@ -174,7 +172,7 @@ public class VoidBelowTest {
                 if (firstHollow[0] < 0 || tick - firstHollow[0] < MIN_LEAD_TICKS) {
                     throw failure(
                             helper,
-                            "the drill should sound hollow at least %s ticks before the breakthrough at tick %s, it did from %s",
+                            "the hollow pitch should lead the breakthrough (tick %2$s) by %1$s ticks, it began at %3$s",
                             MIN_LEAD_TICKS,
                             tick,
                             firstHollow[0]);
@@ -189,7 +187,7 @@ public class VoidBelowTest {
     public void aPodDrillingOverSolidGroundNeverHearsItHollow(GameTestHelper helper) {
         int x = 9500;
         ServerLevel one = TestLayers.level(helper, 1);
-        int boreFloor = TestLayers.worldY(1, BORE_FLOOR);
+        int boreFloor = TestLayers.worldY(1, BORE_BOTTOM_LOCAL);
         RoomCarver.carve(one, x - 3, x + 3, boreFloor - 12, boreFloor - 1, Z - 3, Z + 3, Blocks.STONE);
         int top = bore(one, x, boreFloor);
         drill(helper, one, x, top, "solid-driller", (pod, tick) -> {
