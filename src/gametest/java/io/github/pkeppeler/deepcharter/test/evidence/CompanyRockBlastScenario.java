@@ -42,7 +42,8 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
     private static final int LAMP = 12;
     /**
      * The room's floor in {@code layer}: the same height above the layer's own floor in each, since a layer is a band of the
-     * campaign level and a world Y belongs to one layer only (#1372).
+     * campaign level and a world Y belongs to one layer only (#1372). Only a room height in layer 2: there it sits inside the
+     * signal decay, which this scenario does not show (the HUD is hidden).
      */
     private static int floorY(int layer) {
         return TestLayers.worldY(layer, LIVE_GAUGES_LOCAL_Y);
