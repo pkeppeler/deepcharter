@@ -227,7 +227,20 @@ public final class EngineSoot {
                             "deepcharter.fuel.solid." + id.toLanguageKey(), SOLID_FUEL))
                     .orElseGet(() -> Component.translatable("deepcharter.fuel.solid"));
         }
+
+        /**
+         * The fuel's name in four letters or fewer, for the cockpit's FUEL tab (#1438), from {@code deepcharter.fuel.short.<item id>}: "MIX" for a mix, or a
+         * fuel a datapack added with no short name of its own.
+         */
+        public Component shortName() {
+            return fuel.map(id ->
+                            Component.translatableWithFallback("deepcharter.fuel.short." + id.toLanguageKey(), MIX))
+                    .orElseGet(() -> Component.translatable("deepcharter.fuel.short.mix"));
+        }
     }
+
+    /** What {@link Solid#shortName} falls back to for a solid fuel with no short name: the mix's, in English. */
+    private static final String MIX = "MIX";
 
     /** What {@link Solid#name} falls back to for a solid fuel with no lang key: the mix's own name, in English. */
     private static final String SOLID_FUEL = "SOLID FUEL";

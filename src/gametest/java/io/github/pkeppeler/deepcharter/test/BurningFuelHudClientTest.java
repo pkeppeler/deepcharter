@@ -49,12 +49,19 @@ public class BurningFuelHudClientTest implements FabricClientGameTest {
     private static final String PUMP = "hud.deepcharter.pod.burns_pump";
     private static final String SOLID = "hud.deepcharter.pod.burns_solid";
     private static final Identifier CHARCOAL = Identifier.withDefaultNamespace("charcoal");
+    private static final Identifier COAL = Identifier.withDefaultNamespace("coal");
+    private static final Identifier BIOFUEL = Identifier.fromNamespaceAndPath("deepcharter", "biofuel");
+    /** A fuel a datapack added: no short name of its own. */
+    private static final Identifier PEAT = Identifier.fromNamespaceAndPath("somepack", "peat");
+
     private static final int[] GUI_SCALES = {2, 1};
     private static final int[][] SMALL_GUIS = {{320, 240}, {427, 240}};
     /** A row of the plate in the game's font is well over 60 GUI pixels of ink; half of that is the least a drawn row has. */
     private static final int TEXT_INK = 30;
     /** The least a drawn icon has: the fuel's drop lights 25 of its pixels. */
     private static final int ICON_INK = 8;
+    /** A short name in the game's font is 25 to 35 GUI pixels of ink (MIX is the least); half of that is the least a drawn one has. */
+    private static final int TAB_INK = 12;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -80,6 +87,7 @@ public class BurningFuelHudClientTest implements FabricClientGameTest {
             try {
                 expectBurning(context, singleplayer, 60f, EngineSoot.State.CLEAN, "BURNING PUMP FUEL");
                 problems.addAll(context.computeOnClient(client -> plateProblems(client, false)));
+                problems.addAll(tabProblems(context, "PUMP", "burning-pump-tab"));
 
                 expectBurning(
                         context,
@@ -96,8 +104,20 @@ public class BurningFuelHudClientTest implements FabricClientGameTest {
                     BufferedImage shot = ScreenInk.shot(context, "burning-charcoal-gui" + scale);
                     problems.addAll(context.computeOnClient(client -> plateProblems(client, true)));
                     problems.addAll(context.computeOnClient(client -> inkProblems(client, shot, scale)));
+                    problems.addAll(context.computeOnClient(client -> tabInkProblems(client, shot, scale, "CHAR")));
                 }
                 context.runOnClient(client -> client.options.guiScale().set(2));
+
+                // The FUEL tab names each solid fuel: coal, biofuel, a fuel with no short name of its own and a mix are
+                // told apart from charcoal and from the pump.
+                for (Object[] fuel : new Object[][] {
+                    {COAL, "COAL"}, {BIOFUEL, "BIO"}, {PEAT, "MIX"},
+                }) {
+                    setTank(singleplayer, 60f, new EngineSoot.State(0f, 3f, 3f, Optional.of((Identifier) fuel[0])));
+                    problems.addAll(tabProblems(context, (String) fuel[1], "burning-" + fuel[1] + "-tab"));
+                }
+                setTank(singleplayer, 60f, new EngineSoot.State(1f, 3f, 3f, Optional.empty()));
+                problems.addAll(tabProblems(context, "MIX", "burning-mix-tab"));
 
                 // The widest line: a mix, double figures (never more than the stock tank's 10 L), and the soot line
                 // under it.
@@ -109,12 +129,22 @@ public class BurningFuelHudClientTest implements FabricClientGameTest {
                         "BURNING SOLID FUEL 10 L");
                 problems.addAll(context.computeOnClient(BurningFuelHudClientTest::fitProblems));
 
-                // The charcoal has burned: pump fuel again, and the plate's row is gone.
+                // The charcoal has burned: pump fuel again, the plate's row is gone and the tab reads PUMP again.
                 expectBurning(context, singleplayer, 60f, EngineSoot.State.CLEAN, "BURNING PUMP FUEL");
                 problems.addAll(context.computeOnClient(client -> plateProblems(client, false)));
+                for (int scale : GUI_SCALES) {
+                    context.runOnClient(client -> client.options.guiScale().set(scale));
+                    ClientWait.until(
+                            context,
+                            "the GUI at scale " + scale,
+                            client -> client.getWindow().getGuiScale() == scale && CockpitHud.showsReadout(client));
+                    problems.addAll(tabProblems(context, "PUMP", "burned-out-tab-gui" + scale));
+                }
+                context.runOnClient(client -> client.options.guiScale().set(2));
 
-                // An empty tank burns nothing.
+                // An empty tank burns nothing: the tab is the plain FUEL.
                 setTank(singleplayer, 0f, new EngineSoot.State(0f, 3f, 3f, Optional.of(CHARCOAL)));
+                problems.addAll(tabProblems(context, "FUEL", "empty-tab"));
                 ClientWait.until(
                         context,
                         "no burning line for an empty tank",
@@ -229,6 +259,56 @@ public class BurningFuelHudClientTest implements FabricClientGameTest {
                 "cockpit readout plate", plate.left(), plate.top(), plate.width(), plate.height());
         if (!HudKeepClear.rects(client, width, height).contains(want)) {
             problems.add("popups keep clear of the plate that holds the solid fuel's row " + want);
+        }
+        return problems;
+    }
+
+    /** Waits until the FUEL tab reads {@code want}, then checks its ink. */
+    private static List<String> tabProblems(ClientGameTestContext context, String want, String shotName) {
+        ClientWait.until(
+                context,
+                "the FUEL tab reads " + want,
+                client -> CockpitHud.title(CockpitHud.Meter.FUEL, pod(client))
+                        .getString()
+                        .equals(want));
+        BufferedImage shot = ScreenInk.shot(context, shotName);
+        int scale = context.computeOnClient(client -> client.getWindow().getGuiScale());
+        return context.computeOnClient(client -> tabInkProblems(client, shot, scale, want));
+    }
+
+    /**
+     * The FUEL tab's title is {@code want}, as the HUD computes it, and it is drawn: ink in the fuel's colour after the icon, and nothing after the title's own
+     * width in the tab, which keeps the size of the widest title it can show.
+     */
+    private static List<String> tabInkProblems(Minecraft client, BufferedImage shot, int scale, String want) {
+        CockpitLook look = CockpitLook.current();
+        Component title = CockpitHud.title(CockpitHud.Meter.FUEL, pod(client));
+        if (!title.getString().equals(want)) {
+            return List.of("the FUEL tab reads '" + title.getString() + "', not '" + want + "'");
+        }
+        int width = client.getWindow().getGuiScaledWidth();
+        int height = client.getWindow().getGuiScaledHeight();
+        CockpitHud.Box box =
+                CockpitHud.titleBox(client.font, look.ribbon(), look, CockpitHud.Meter.FUEL, width, height);
+        int inset = CockpitHud.spriteBorder(look.ribbon().sprite("tab")).left() + look.titleGap();
+        int textLeft = box.left() + inset + look.iconWidth() + look.iconGap();
+        int top = box.top() + inset;
+        int color = CockpitHud.Meter.FUEL.color(look);
+        int ink = ScreenInk.count(
+                shot, scale, color, textLeft, top, box.left() + box.width() - inset - textLeft, look.titleTextHeight());
+        // The tab keeps the size of its widest title, so a title that is not the one it should be shows as ink past the
+        // end of the one it should.
+        int past = textLeft + client.font.width(title);
+        int room = box.left() + box.width() - inset - past;
+        int beside = room > 0 ? ScreenInk.count(shot, scale, color, past, top, room, look.titleTextHeight()) : 0;
+        List<String> problems = new ArrayList<>();
+        if (ink < TAB_INK * scale * scale) {
+            problems.add(
+                    "at GUI scale " + scale + " the FUEL tab '" + want + "' has " + ink + " screen pixels of title");
+        }
+        if (beside > 0) {
+            problems.add("at GUI scale " + scale + " the FUEL tab '" + want + "' has " + beside
+                    + " screen pixels of ink past its title: another title is drawn");
         }
         return problems;
     }

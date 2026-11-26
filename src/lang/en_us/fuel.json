@@ -1,6 +1,11 @@
 {
   "deepcharter.fuel.first_soot": "Soot from coal or charcoal burned earlier is slowing the engine. Solid fuel in the tank burns first, and a pump fill does not clear soot: only a service at the repair station does.",
   "deepcharter.fuel.launch_refused": "Clogged. Repair station: service it, or scrape the flue (free).",
+  "deepcharter.fuel.short.deepcharter.biofuel": "BIO",
+  "deepcharter.fuel.short.minecraft.charcoal": "CHAR",
+  "deepcharter.fuel.short.minecraft.coal": "COAL",
+  "deepcharter.fuel.short.mix": "MIX",
+  "deepcharter.fuel.short.pump": "PUMP",
   "deepcharter.fuel.solid": "SOLID FUEL",
   "deepcharter.fuel.solid.deepcharter.biofuel": "BIOFUEL",
   "deepcharter.fuel.solid.minecraft.charcoal": "CHARCOAL",

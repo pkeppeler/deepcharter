@@ -200,6 +200,24 @@ class Titles(unittest.TestCase):
             with self.subTest(gauge=gauge):
                 self.assertEqual(lang["hud.deepcharter.cockpit." + cockpit_ribbon.TITLE_KEYS[gauge]], title)
 
+    def test_the_fuel_tab_names_the_burning_fuel_in_a_short_name_that_fits_the_tab_the_word_fuel_has(self):
+        # #1438: at the least GUI the FUEL and HULL tabs are 2 px apart, so no short name may be wider than the word FUEL, as the tool measures a title.
+        lang = json.loads((ROOT / "src/lang/en_us/fuel.json").read_text(encoding="utf-8"))
+        names = {key: text for key, text in lang.items() if key.startswith("deepcharter.fuel.short.")}
+        self.assertEqual(
+            {"pump", "mix", "minecraft.coal", "minecraft.charcoal", "deepcharter.biofuel"},
+            {key.removeprefix("deepcharter.fuel.short.") for key in names},
+        )
+        self.assertEqual(sorted(names.values()), sorted(cockpit_ribbon.FUEL_SHORT_NAMES))
+        word = cockpit_ribbon.title_width(cockpit_ribbon.TITLES["fuel"])
+        for key, text in names.items():
+            with self.subTest(key=key):
+                self.assertLessEqual(cockpit_ribbon.title_width(text), word, "the tab holds no more than the word FUEL did")
+                self.assertEqual(text, text.upper(), "the tabs are in capitals")
+        widest = max(cockpit_ribbon.title_width(t) for t in [*names.values(), cockpit_ribbon.TITLES["fuel"]])
+        chrome = cockpit_ribbon.tab_size("hull")[0] - cockpit_ribbon.title_width(cockpit_ribbon.TITLES["hull"])
+        self.assertEqual(chrome + widest, cockpit_ribbon.tab_size("fuel")[0], "the FUEL tab is sized for the widest title it shows")
+
     def test_each_title_is_centred_under_its_bar_and_rides_the_bands_lower_edge_clear_of_the_bar(self):
         for screen in GUI_SIZES:
             band = rect(STYLE + "PartA", screen)

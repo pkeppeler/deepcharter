@@ -58,6 +58,7 @@ public final class HandbookControls {
                             new Row("board", List.of(options -> options.keyUse)),
                             new Row("leave", List.of(options -> options.keyShift)))),
             new Sheet("cockpit", List.of(new Row("readouts"))),
+            new Sheet("fuel_tab", List.of(new Row("burning"), new Row("names"))),
             new Sheet(
                     "drive",
                     List.of(

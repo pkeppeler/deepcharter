@@ -47,6 +47,7 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
             everyControlsPageFitsTheDefaultWindowAndTheSmallestGui();
             everyModKeyAndEveryPodInputKeyIsOnASheet(client.options);
             theMolesSheetNamesEveryCockpitTitle();
+            theFuelTabSheetListsTheAbbreviations();
         });
     }
 
@@ -185,6 +186,24 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         require(
                 page.contains("cart is the ore in the bay"),
                 "the Mole's cockpit sheet says the plate's cart is the ore in the bay: " + page);
+    }
+
+    /**
+     * The sheet after the cockpit's says the FUEL tab names the burning fuel and lists the abbreviations, each with what
+     * it stands for (#1438); the cockpit's own sheet has no room for them at the smallest GUI.
+     */
+    private static void theFuelTabSheetListsTheAbbreviations() {
+        String page = String.join(" ", texts(screenOn(controlsPartOf("fuel_tab"), WIDTH, HEIGHT)));
+        require(
+                controlsPartOf("fuel_tab") == controlsPartOf("cockpit") + 1,
+                "the fuel tab's sheet comes right after the cockpit's");
+        require(
+                page.contains("FUEL tab names the burning fuel"),
+                "the fuel tab's sheet says the FUEL tab names the burning fuel: " + page);
+        for (String entry : List.of(
+                "PUMP: pump fuel", "COAL: coal", "CHAR: charcoal", "BIO: biofuel", "MIX: a mix of solid fuels")) {
+            require(page.contains(entry), "the fuel tab's sheet lists '" + entry + "': " + page);
+        }
     }
 
     /**

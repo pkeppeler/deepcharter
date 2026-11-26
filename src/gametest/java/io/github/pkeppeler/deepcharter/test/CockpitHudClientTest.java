@@ -1000,9 +1000,14 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 problems.add(where + ": the " + name + " title " + Arrays.toString(title)
                         + " covers the scanner window or the room under the altimeter's recess");
             }
-            if (box.width() - font.width(gauge.title()) < look.iconWidth() + look.iconGap()
-                    || box.height() < look.titleTextHeight()) {
-                problems.add(where + ": the " + name + " title's tab does not hold its icon and title");
+            // The FUEL tab names what burns (#1438): it must hold the widest of the titles it can show.
+            List<Component> titles = gauge == CockpitHud.Meter.FUEL ? CockpitHud.fuelTitles() : List.of(gauge.title());
+            for (Component text : titles) {
+                if (box.width() - font.width(text) < look.iconWidth() + look.iconGap()
+                        || box.height() < look.titleTextHeight()) {
+                    problems.add(where + ": the " + name + " title's tab does not hold its icon and '"
+                            + text.getString() + "'");
+                }
             }
             for (int[] other : placed) {
                 if (overlap(new int[] {title[0] - 1, title[1], title[2] + 1, title[3]}, other)) {

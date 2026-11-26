@@ -56,6 +56,9 @@ LOAD_LIMIT_SEGMENT = 10
 TITLE_KEYS = {"fuel": "fuel", "hull": "hull", "cargo": "load", "depth": "depth", "heat": "heat"}
 _LANG = json.loads((ROOT / "src/lang/en_us/pod.json").read_text(encoding="utf-8"))
 TITLES = {gauge: _LANG["hud.deepcharter.cockpit." + key] for gauge, key in TITLE_KEYS.items()}
+# The FUEL tab names the burning fuel (#1438) in place of the word, so its tab is sized for the widest title it shows: the word and each short name in the lang file.
+_FUEL_LANG = json.loads((ROOT / "src/lang/en_us/fuel.json").read_text(encoding="utf-8"))
+FUEL_SHORT_NAMES = [text for key, text in _FUEL_LANG.items() if key.startswith("deepcharter.fuel.short.")]
 # The altimeter's recess at the band's middle. The room under it is the altimeter's (#1432 hangs the sink rate there), so no title takes it.
 RECESS_W = 72
 # The icons, white, tinted by the game in the colour of what they mark, `iconWidth` wide and as tall as the font's capitals. Each gauge's title carries its
@@ -254,10 +257,20 @@ def icon(rows):
     return Sprite(img)
 
 
+def title_width(text):
+    """The width a title takes in its tab, as the coverage assumes the game's font: FONT_W a character."""
+    return len(text) * FONT_W
+
+
+def titles_of(gauge):
+    """Every title `gauge`'s tab can show: its word, and for FUEL the short name of each fuel too."""
+    return [TITLES[gauge], *FUEL_SHORT_NAMES] if gauge == "fuel" else [TITLES[gauge]]
+
+
 def tab_size(gauge):
     """The size of `gauge`'s title tab, (width, height): the tab's border and `titleGap` round the icon, `iconGap` and the title, as the client works it out."""
     chrome = 2 * (title_tab().border[0] + SHARED["titleGap"])
-    return chrome + SHARED["iconWidth"] + SHARED["iconGap"] + len(TITLES[gauge]) * FONT_W, chrome + SHARED["titleTextHeight"]
+    return chrome + SHARED["iconWidth"] + SHARED["iconGap"] + max(title_width(text) for text in titles_of(gauge)), chrome + SHARED["titleTextHeight"]
 
 
 def lamp_well(img, x, y):

@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
@@ -163,6 +164,8 @@ public final class CockpitHud {
             return bar.apply(layout);
         }
     }
+
+    private static final String PUMP_TITLE = "deepcharter.fuel.short.pump";
 
     private static double heat;
 
@@ -323,7 +326,7 @@ public final class CockpitHud {
                 () -> loadGauge(graphics, layout, decay, reading, look));
         bar(graphics, decay, layout, Meter.DEPTH, reading.depth(), false, look);
         bar(graphics, decay, layout, Meter.HEAT, reading.heat(), false, look);
-        titles(graphics, client.font, layout, look);
+        titles(graphics, client.font, layout, look, pod);
         draw(
                 graphics,
                 decay,
@@ -489,27 +492,60 @@ public final class CockpitHud {
                 + 2 * look.titleGap()
                 + look.iconWidth()
                 + look.iconGap()
-                + font.width(gauge.title());
+                + titleWidth(font, gauge);
         int height = border.top() + border.bottom() + 2 * look.titleGap() + look.titleTextHeight();
         Decal area = gauge.bar(layout).area();
         int left = area.left(guiWidth) + Math.floorDiv(area.width() - width, 2);
         return new Box(left, layout.band().top(guiHeight) + layout.titleY(), width, height);
     }
 
+    /**
+     * The title on {@code gauge}'s tab for {@code pod}: the gauge's word, except that the FUEL tab names what the engine burns (#1438), as {@link
+     * PodStatusHud#burnsLine} does: the short name of the solid fuel still in the tank, "PUMP" for pump fuel, and the plain "FUEL" for an empty tank, where
+     * nothing burns.
+     */
+    public static Component title(Meter gauge, PodEntity pod) {
+        if (gauge != Meter.FUEL || !(pod.fuel() > 0f)) {
+            return gauge.title();
+        }
+        return EngineSoot.solidLeft(pod)
+                .map(EngineSoot.Solid::shortName)
+                .orElseGet(() -> Component.translatable(PUMP_TITLE));
+    }
+
+    /** The width of the text of {@code gauge}'s tab: the FUEL tab's is that of the widest title it can show, so it keeps its size as the title changes. */
+    private static int titleWidth(Font font, Meter gauge) {
+        return (gauge == Meter.FUEL ? fuelTitles() : List.of(gauge.title()))
+                .stream().mapToInt(font::width).max().orElseThrow();
+    }
+
+    /** Every title the FUEL tab can show. */
+    public static List<Component> fuelTitles() {
+        return List.of(
+                Meter.FUEL.title(),
+                Component.translatable(PUMP_TITLE),
+                Component.translatable("deepcharter.fuel.short.mix"),
+                Component.translatable("deepcharter.fuel.short.minecraft.coal"),
+                Component.translatable("deepcharter.fuel.short.minecraft.charcoal"),
+                Component.translatable("deepcharter.fuel.short.deepcharter.biofuel"));
+    }
+
     /** Each gauge's title: the cab's labels, not the signal's, so they stay when a gauge goes dark. */
-    private static void titles(GuiGraphicsExtractor graphics, Font font, Layout layout, CockpitLook look) {
+    private static void titles(
+            GuiGraphicsExtractor graphics, Font font, Layout layout, CockpitLook look, PodEntity pod) {
         GuiSpriteScaling.NineSlice.Border border = spriteBorder(layout.sprite("tab"));
         for (Meter gauge : Meter.values()) {
             if (!gauge.bar(layout).on()) {
                 continue;
             }
+            Component title = title(gauge, pod);
             Box box = titleBox(font, layout, look, gauge, graphics.guiWidth(), graphics.guiHeight());
             CrtDraw.sprite(graphics, layout.sprite("tab"), box.left(), box.top(), box.width(), box.height());
             int x = box.left() + border.left() + look.titleGap();
             int y = box.top() + border.top() + look.titleGap();
             int color = gauge.color(look);
             icon(graphics, layout, look, gauge.icon(), x, y, color);
-            graphics.text(font, gauge.title(), x + look.iconWidth() + look.iconGap(), y, color);
+            graphics.text(font, title, x + look.iconWidth() + look.iconGap(), y, color);
         }
     }
 

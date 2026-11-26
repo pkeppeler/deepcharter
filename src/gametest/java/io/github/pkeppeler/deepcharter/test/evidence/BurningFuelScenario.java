@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
@@ -40,13 +41,16 @@ import net.minecraft.world.phys.Vec3;
  * Evidence scenario "burning-fuel" (#1438), beside the colony's pump: the pilot feeds the pod three charcoal and the cockpit's plate says BURNING CHARCOAL 3 L;
  * the engine soots past the grace and the one-time line names the cause; the charcoal burns out and the plate's row goes, the plain readout saying BURNING PUMP
  * FUEL; then, with charcoal fed again and a sooted engine, the pump's screen says both after FILL UP. Each still at GUI scale 2 and 1, the cockpit's with a zoom of
- * the plate, eight times, and the plain readout's on a GUI too small for the Ribbon.
+ * the left gauges (the FUEL tab names the burning fuel) and of the plate, each eight times, and the plain readout's on a GUI too small for the Ribbon.
  */
 public class BurningFuelScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 8;
     private static final int TICKS_PER_FRAME = 3;
     /** The plate's corner of the screen: under the scanner's bezel, at the right. */
     private static final int PLATE_ZOOM_WIDTH = 160;
+
+    /** GUI pixels either side of the left gauges' zoom. */
+    private static final int GAUGES_ZOOM_MARGIN = 4;
 
     private static final int PLATE_ZOOM_TOP = 118;
     private static final int PLATE_ZOOM_HEIGHT = 56;
@@ -222,6 +226,7 @@ public class BurningFuelScenario extends EvidenceScenario {
             String still = name + "-gui" + scale;
             screenshot(context, still);
             int width = context.computeOnClient(client -> client.getWindow().getGuiScaledWidth());
+            gaugesZoom(context, still);
             zoomStill(
                     context,
                     still,
@@ -232,6 +237,24 @@ public class BurningFuelScenario extends EvidenceScenario {
                     PLATE_ZOOM_HEIGHT);
         }
         context.runOnClient(client -> client.options.guiScale().set(2));
+    }
+
+    /** The ribbon's left gauges and their tabs, from the FUEL tab to the LOAD tab, eight times: the FUEL tab names what burns (#1438). */
+    private void gaugesZoom(ClientGameTestContext context, String still) {
+        int[] crop = context.computeOnClient(client -> {
+            CockpitLook look = CockpitLook.current();
+            int width = client.getWindow().getGuiScaledWidth();
+            int height = client.getWindow().getGuiScaledHeight();
+            CockpitHud.Box fuel =
+                    CockpitHud.titleBox(client.font, look.ribbon(), look, CockpitHud.Meter.FUEL, width, height);
+            CockpitHud.Box load =
+                    CockpitHud.titleBox(client.font, look.ribbon(), look, CockpitHud.Meter.CARGO, width, height);
+            int left = Math.max(0, fuel.left() - GAUGES_ZOOM_MARGIN);
+            return new int[] {
+                left, load.left() + load.width() + GAUGES_ZOOM_MARGIN - left, fuel.top() + fuel.height() + 2
+            };
+        });
+        zoomStill(context, still, still + "-zoom-gauges", crop[0], 0, crop[1], crop[2]);
     }
 
     /** The plain readout, which a GUI under the Ribbon's 320 x 240 shows: 284 x 160 here, the evidence window at GUI scale 3. */
