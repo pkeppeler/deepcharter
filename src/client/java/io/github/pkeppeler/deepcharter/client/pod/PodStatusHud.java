@@ -152,24 +152,14 @@ public final class PodStatusHud {
 
     /**
      * The lines shown, in their own colour, about the breach crust (#378), from one look at the crust ahead: when the hull would not outlast it, the slabs to it (or that
-     * the pod is in it), the hull, and what the crust rows left would take; then what a breach brace does about that, if the pod has one. {@code resting} is whether the
-     * pod is on the ground with its pilot giving no input.
+     * the pod is in it), the hull, what the crust rows left would take and, over open space, what the drop under the
+     * crust would (#1387); then what a breach brace does about that, if the pod has one. {@code resting} is whether
+     * the pod is on the ground with its pilot giving no input.
      */
     public static List<Component> crustLines(PodEntity pod, boolean resting) {
         PodBrace.Status status = PodBrace.status(pod, resting);
         List<Component> lines = new ArrayList<>();
-        status.warning()
-                .ifPresent(warning -> lines.add(
-                        warning.slabsAway() > 0
-                                ? Component.translatable(
-                                        "hud.deepcharter.pod.crust_ahead",
-                                        warning.slabsAway(),
-                                        Math.round(warning.hull()),
-                                        Math.round(warning.cost()))
-                                : Component.translatable(
-                                        "hud.deepcharter.pod.crust_in",
-                                        Math.round(warning.hull()),
-                                        Math.round(warning.cost()))));
+        status.warning().ifPresent(warning -> lines.add(crustLine(warning)));
         switch (status.patching()) {
             case IDLE -> {}
             case WAITS_FOR_REST -> lines.add(Component.translatable("hud.deepcharter.pod.brace_waits"));
@@ -178,6 +168,26 @@ public final class PodStatusHud {
             case WORKING -> lines.add(Component.translatable("hud.deepcharter.pod.brace_working"));
         }
         return lines;
+    }
+
+    /**
+     * The crust warning's line: the slabs down (or that the pod is in the crust), the hull and the crust's price, and
+     * the drop's when it costs a hull point or more.
+     */
+    private static Component crustLine(PodBrace.Warning warning) {
+        long drop = Math.round(warning.drop());
+        String key = (warning.slabsAway() > 0 ? "hud.deepcharter.pod.crust_ahead" : "hud.deepcharter.pod.crust_in")
+                + (drop > 0 ? "_drop" : "");
+        List<Object> args = new ArrayList<>();
+        if (warning.slabsAway() > 0) {
+            args.add(warning.slabsAway());
+        }
+        args.add(Math.round(warning.hull()));
+        args.add(Math.round(warning.cost()));
+        if (drop > 0) {
+            args.add(drop);
+        }
+        return Component.translatable(key, args.toArray());
     }
 
     /** Whether the ridden pod is at rest as the local pilot sees it: on the ground, with no drill, drive or rotor key held. */
@@ -278,6 +288,8 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.recovery", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.crust_ahead", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.crust_in", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.crust_ahead_drop", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.crust_in_drop", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_waits", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_dry", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_dear", Kind.ALERT),
