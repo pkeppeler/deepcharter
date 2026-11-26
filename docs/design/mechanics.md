@@ -1608,8 +1608,8 @@ A charter's deepest point is the greatest depth any online member in survival or
 **Problem.** Company Rock is the one block the drill refuses ([ADR 0015](../adr/0015-zones-are-filled-block-by-block-from-the-originals-rows.md)). A Mole's 2 x 2 bore meets it in about 1 slab in 13 in Stone Benches and 1 in 10 in Deep Claim, so a straight shaft is one in ten thousand and the only answer is the bot's: step two blocks aside and drill on. That costs fuel and time, breaks the shaft the charter would like to keep as a highway, and sends the pod into the next pocket of gas. The user (2026-10-11) asked for the rock to be destroyable and for a straight shaft to be possible with enough purchases. Motherload cleared rocks with dynamite and C4, and the Company sells you the means to break its own rock ([ADR 0050](../adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md)).
 
 **The ladder.**
-1. **The blasting charge** (built, this section): $70 ($40 before [#1458](#explosive-tiers-1458-a)), set from the seat on the slab under the pod, a 3 second fuse, clears Company Rock and natural rock in the bore square, 4 slab rows deep (2 before #1458). The pilot climbs clear or takes the hull hit.
-2. **The shaped charge** (built, [#526](https://github.com/pkeppeler/deepcharter/issues/526), [ADR 0052](../adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)): $180 ($100 before #1458), sold at the repair station. The same set-up, fuse, reach and damage as rung 1, and a directed blast: in each column of the bore square it clears the Company Rock from the slab under the pod down to the first block that is not Company Rock, at most 12 rows (8 before #1458). It costs more than two blasting charges ($140) and less than three ($210), and one climb and one fuse replace them in a thick stretch. See [The shaped charge](#the-shaped-charge-526-a).
+1. **The blasting charge** (built, this section): $60 ($40 before [#1458](#explosive-tiers-1458-a)), set from the seat on the slab under the pod, a 3 second fuse, clears Company Rock and natural rock in the bore square, 4 slab rows deep (2 before #1458). The pilot climbs clear or takes the hull hit.
+2. **The shaped charge** (built, [#526](https://github.com/pkeppeler/deepcharter/issues/526), [ADR 0052](../adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)): $160 ($100 before #1458), sold at the repair station. The same set-up, fuse, reach and damage as rung 1, and a directed blast: in each column of the bore square it clears the Company Rock from the slab under the pod down to the first block that is not Company Rock, at most 12 rows (8 before #1458). It costs more than two blasting charges ($120) and less than three ($180), and one climb and one fuse replace them in a thick stretch. See [The shaped charge](#the-shaped-charge-526-a).
 3. **A drill that bites** (built, #526, ADR 0052): the drill at tier 3 or more, as the chassis' cap leaves it (a Prospector's best; a Mole never), bores Company Rock slowly. It takes ten times as long as stone, burns three times the fuel and heats the hull. It needs no consumables, so a pilot who digs a lot stops buying charges; a pilot who needs one slab, or flies a Mole, buys a charge. See [The drill that bites](#the-drill-that-bites-526-a).
 
 **The mechanic (rung 1).**
@@ -1623,7 +1623,7 @@ A charter's deepest point is the greatest depth any online member in survival or
 
 **Trade-offs.** $40 a charge, a 3 second stop with the rotor held (fuel), and hull for a pod that is slow to leave. The default build is no harder than on main: the charge is a new purchase and changes nothing for a pod without it. Steering round the rock stays free, and costs a ragged shaft.
 
-**Tuning knobs.** `RepairTuning` `chargeFuseTicks` (60), `chargeDepth` (2; 4 since #1458), `chargeDamage` (20), `chargeReach` (3). The price: `Consumable.BLASTING_CHARGE` ($40; $70 since #1458), held by `EconomyAffordabilityTest` to a quarter to one stock layer 1 run ($115), and a straight layer 1 shaft (5.4 refused slabs counted from the zone tables, $217) to at most two (three since [#1458](#explosive-tiers-1458-a)). Skins: the item icon (`item/blasting_charge`), its lang keys, the three refusal messages.
+**Tuning knobs.** `RepairTuning` `chargeFuseTicks` (60), `chargeDepth` (2; 4 since #1458), `chargeDamage` (20), `chargeReach` (3). The price: `Consumable.BLASTING_CHARGE` ($40; $60 since #1458), held by `EconomyAffordabilityTest` to a quarter to one stock layer 1 run ($115), and a straight layer 1 shaft (5.4 refused slabs counted from the zone tables, $217) to at most two (three since [#1458](#explosive-tiers-1458-a)). Skins: the item icon (`item/blasting_charge`), its lang keys, the three refusal messages.
 
 ### Blasting charges vs. a straight shaft: measured
 
@@ -1782,13 +1782,13 @@ For a person the early-game cost is the dark display and the noise: a first dive
 
 | | Blasting charge | Shaped charge |
 |---|---|---|
-| Price | $70 ($40 before #1458) | $180 ($100 before #1458; a layer 2 net of $455: 0.40 runs, in the band 0.25 to 1) |
+| Price | $60 ($40 before #1458) | $160 ($100 before #1458; a layer 2 net of $455: 0.35 runs, in the band 0.25 to 1) |
 | Rows cleared | 4 (2 before #1458; any Company Rock or natural rock) | up to 12 (8 before #1458; Company Rock only, contiguous from the top) |
-| Dollars a row | $17.50 a row | $15 a row at 12 rows, $36 a row at 5 rows |
-| Break-even against blasting charges | | 9 rows (2 blasting charges are $140 for 8 rows, 3 are $210 for 12; the shaped charge is $180 for as many as 12) |
+| Dollars a row | $15 a row | $13.33 a row at 12 rows, $32 a row at 5 rows |
+| Break-even against blasting charges | | 9 rows (2 blasting charges are $120 for 8 rows, 3 are $180 for 12; the shaped charge is $160 for as many as 12) |
 | Fuse, reach, damage | 3 s, 3 blocks, 20 hull | the same |
 
-**Why $100 and 8 rows** (now $180 and 12, [#1458](#explosive-tiers-1458-a)). `EconomyAffordabilityTest` holds the price over two blasting charges and under three: the shaped charge is the buy for a stretch of three or more slabs, never for a short one. 8 rows was four blasting charges and the cap is what a cavern or a lava pocket one row past the rock would cost: a deeper blast is a longer unknown drop. Tuning knob: `RepairTuning.shapedDepth`.
+**Why $100 and 8 rows** (now $160 and 12, [#1458](#explosive-tiers-1458-a)). `EconomyAffordabilityTest` holds the price over two blasting charges and under three: the shaped charge is the buy for a stretch of three or more slabs, never for a short one. 8 rows was four blasting charges and the cap is what a cavern or a lava pocket one row past the rock would cost: a deeper blast is a longer unknown drop. Tuning knob: `RepairTuning.shapedDepth`.
 
 ### The drill that bites (#526, A)
 
@@ -1819,7 +1819,7 @@ The bite is 9.6 times slower than stone and costs about a charge's price per sla
 - **What it clears.** Dynamite and plastic still skip Company Rock (they are the answer to stone and gas); the charges are still the only blast that clears it. No change, so no ADR.
 - **The thrown charge** is a fighting round, not the shaft tool. It now clears 1 row of its 3 x 3 (9 cells), under a Mole's seated charge (4 rows, 16 cells) in both sizes. It still clears only where its volume holds Company Rock, and its fuse, reach and damage are unchanged.
 
-`ExplosiveTiersTest` holds the ladder for every chassis: depth rises dynamite < plastic < blasting < shaped, cells rise within each pair, the thrown charge is under every seated charge in both, and the price rises with the blast in each family. A retune that breaks it fails.
+`ExplosiveTiersTest` holds the ladder for every chassis: depth rises dynamite < plastic < blasting < shaped, cells rise within each pair, the thrown charge is under every seated charge in both, and the price rises with the blast in each pair (dynamite and plastic, the blasting and the shaped charge). A retune that breaks it fails.
 
 **Before and after.** Cells and depth are for a Mole (a Prospector's charges are 3 x 3: 36 and up to 108 cells). Runs are the price over the net of the run of the layer the item is for, from `EarlyRunModel`: a stock layer 1 run nets $124, a Mole with tier 2 parts in layer 2 nets $455 (`EconomyAffordabilityTest`, measured in the model, not in a bore).
 
@@ -1827,25 +1827,25 @@ The bite is 9.6 times slower than stone and costs about a charge's price per sla
 |---|---|---|---|---|---|---|
 | Dynamite | 3 x 3 x 3 (27), 0 rows down | $100 | the same | **$120** | $3.70 / $4.44 | 0.81 / 0.97 of a layer 1 run |
 | Plastic explosives | 5 x 5 x 5 (125), 1 row down | $300 | the same | **$400** | $2.40 / $3.20 | 0.66 / 0.88 of a layer 2 run |
-| Blasting charge | 2 x 2 x 2 (8), 2 rows down | $40 | **2 x 2 x 4 (16), 4 rows down** | **$70** | $5.00 / $4.38 ($20 / $17.50 a row) | 0.32 / 0.57 of a layer 1 run |
-| Shaped charge | up to 2 x 2 x 8 (32) of Company Rock | $100 | **up to 2 x 2 x 12 (48)** | **$180** | $3.13 / $3.75 at a full column | 0.22 / 0.40 of a layer 2 run |
-| Thrown charge | 3 x 3 x 2 (18) | $55 | **3 x 3 x 1 (9)** | **$60** | $3.06 / $6.67 | 0.44 / 0.49 of a layer 1 run |
+| Blasting charge | 2 x 2 x 2 (8), 2 rows down | $40 | **2 x 2 x 4 (16), 4 rows down** | **$60** | $5.00 / $3.75 ($20 / $15 a row) | 0.32 / 0.49 of a layer 1 run |
+| Shaped charge | up to 2 x 2 x 8 (32) of Company Rock | $100 | **up to 2 x 2 x 12 (48)** | **$160** | $3.13 / $3.33 at a full column | 0.22 / 0.35 of a layer 2 run |
+| Thrown charge | 3 x 3 x 2 (18) | $55 | **3 x 3 x 1 (9)** | **$65** | $3.06 / $7.22 | 0.44 / 0.53 of a layer 1 run |
 
-**Prices (A).** Each price rises, each stays in its band, and the dearer item of each family is the bigger blast.
+**Prices (A).** Each price rises, each stays in its band, and the dearer item of each pair is the bigger blast.
 - **Dynamite $120**, just under a stock layer 1 run: the first run still pays for the first stick, with a few dollars over. Its blast is unchanged, so it is now dearer a cell; it is the first-run answer, and a pilot who needs one pays a run's net for it.
 - **Plastic $400**, 0.88 of a layer 2 run, the plastic's layer. Unchanged blast.
-- **Blasting charge $70.** It now clears twice the rows. The price is held by two pins. The drill that bites ([#526](#the-drill-that-bites-526-a)) must cost no less a row than a charge, or the charge loses its niche: at $70 a row is $17.50 against the bitten slab's $21.41 (1.2 times; the band is 1 to 2). And a straight layer 1 shaft must stay a purchase a charter can make: at $80 it measured $361, 2.9 runs, and counted $399, 3.2 runs. At $70 it measures $316 (2.6 runs) and counts $349 (2.8). The guard rose from two runs to three (A): the shaft is a deliberate spend now, and still one the charter keeps.
-- **Shaped charge $180**, over two blasting charges ($140) and under three ($210), the pin of #526, and 12 rows is the three blasting charges it replaces (`shapedDepth` >= 3 x `chargeDepth`). It is a layer 2 and 3 tool, and at $180 it is past a stock layer 1 run, so `EconomyAffordabilityTest` now holds it to a layer 2 run's band (0.25 to 1) like the plastic.
-- **Thrown charge $60**, in its band of 0.35 to 0.55 of a layer 1 run, and under the blasting charge: the smaller blast costs less. A cell of it is dear, because what a throw buys is its fight (`ThrownKitPacingTest`: the Hush solo, 2 charges and 4 decoys, is now $220, 48% of a layer 2 run, in its band of 30% to 70%).
+- **Blasting charge $60.** It now clears twice the rows. Three pins hold the price. The drill that bites ([#526](#the-drill-that-bites-526-a)) must cost no less a row than a charge, or the charge loses its niche: at $60 a row is $15 against the bitten slab's $21.41 (1.4 times; the band is 1 to 2). The thrown charge must cost more than a seated one, for its reach (`ThrownKitPacingTest`, #985), and its band tops out at $68. And a straight layer 1 shaft must stay a purchase a charter can make: at $60 it measures $271 (2.2 stock runs) and counts $299 (2.4), over the old guard of two. The guard rose from two runs to three (A): the shaft is a deliberate spend now, and still one the charter keeps. A first price of $80 measured $361 (2.9 runs) and counted $399 (3.2), and broke the thrown charge's pin; $70 also broke it.
+- **Shaped charge $160**, over two blasting charges ($120) and under three ($180), the pin of #526, and 12 rows is the three blasting charges it replaces (`shapedDepth` >= 3 x `chargeDepth`). It is a layer 2 and 3 tool, and at $160 it is past a stock layer 1 run, so `EconomyAffordabilityTest` now holds it to a layer 2 run's band (0.25 to 1) like the plastic.
+- **Thrown charge $65**, in its band of 0.35 to 0.55 of a layer 1 run and over the blasting charge, the rule of #985: a throw pays for reaching from a distance, not for its blast, which is now the smallest. A cell of it is dear, because what a throw buys is its fight (`ThrownKitPacingTest`: the Hush solo, 2 charges and 4 decoys, is now $230, 51% of a layer 2 run, in its band of 30% to 70%; a Listener, a decoy and a charge, $90, 20%).
 
-The price order inside each family follows the blast. Across families it does not: a blasting charge ($70) is cheaper than a stick of dynamite ($120) and clears fewer cells (16 against 27), more rows down and Company Rock. A straight shaft needs several charges and the bite holds a row's price, so a charge cannot cost a stick's price.
+The price order inside each pair follows the blast. Across them it does not: a blasting charge ($60) is cheaper than a stick of dynamite ($120) and clears fewer cells (16 against 27), more rows down and Company Rock. A straight shaft needs several charges and the bite holds a row's price, so a charge cannot cost a stick's price.
 
 **A straight layer 1 shaft: measured.** `LavaBoreTest`, `DEEPCHARTER_LAVA_BORES=100`, `DEEPCHARTER_LAVA_BORES_CHARGES=1`, seed 0, braking on, gas `ignore`; the liner column adds `_LINER=2`, `_SOUNDER=2`, `_BRICKS=24`. Main is `a1cb037a`, run on 2026-11-26 with the same harness; the table in [Blasting charges vs. a straight shaft](#blasting-charges-vs-a-straight-shaft-measured) is from #509 and is stale (the game has moved since: main now measures 5.0 charges a bore there, not 5.3).
 
-| 100 bores | Charges, main ($40, 2 rows) | Charges, #1458 ($70, 4 rows) | Liner 2 + sounder 2, charges, main | Liner 2 + sounder 2, charges, #1458 |
+| 100 bores | Charges, main ($40, 2 rows) | Charges, #1458 ($60, 4 rows) | Liner 2 + sounder 2, charges, main | Liner 2 + sounder 2, charges, #1458 |
 |---|---|---|---|---|
 | Charges a bore (p10 / p50 / p90) | 5.0 (2 / 5 / 8) | 4.5 (2 / 4 / 7) | 8.7 (4 / 9 / 12) | 7.9 (4 / 8 / 11) |
-| Cost a bore | $202 | $316 ($361 at $80) | $350 | $553 ($630 at $80) |
+| Cost a bore | $202 | $271 ($361 at $80) | $350 | $474 ($630 at $80) |
 | Never stepped aside from a refused slab | 92 | 89 | 87 | 93 |
 | Reached layer 2 | 0 | 0 | 71 | **78** |
 | Died | 100 | 100 | 29 | 22 |
@@ -1853,15 +1853,15 @@ The price order inside each family follows the blast. Across families it does no
 | Pod ticks a bore | 5,490 | 5,072 | 11,174 | 10,118 |
 
 **Reading.**
-- **Twice the depth saves about a tenth of the charges, not half.** Company Rock comes a slab here and a slab there, so the rows a deep blast clears past the refused one seldom hold any: 4.5 charges against 5.0. The renewal count in `EconomyAffordabilityTest` predicts the same tenth (5.4 to 5.0); it counts higher than the bot because no unlined bore lives to the crust. So the shaft's price follows the charge's: $316 a bore at $70, half again main's $202, 2.6 stock runs.
-- **The deeper hole costs the pod nothing more.** Hull lost to charges is 1.0 a bore against 0.9, and no death's last loss was a charge, in either column. The pod hovers clear during the fuse and then drops 4 rows instead of 2, a fall the rotor brakes as any other ([Hard landings](#hard-landings-319-a)).
+- **Twice the depth saves about a tenth of the charges, not half.** Company Rock comes a slab here and a slab there, so the rows a deep blast clears past the refused one seldom hold any: 4.5 charges against 5.0. The renewal count in `EconomyAffordabilityTest` predicts the same tenth (5.4 to 5.0); it counts higher than the bot because no unlined bore lives to the crust. So the shaft's price follows the charge's: $271 a bore at $60, a third more than main's $202, 2.2 stock runs.
+- **The deeper hole costs the pod nothing more.** Hull lost to charges is 1.0 a bore against 0.9, and no death's last loss was a charge, in either column. The pod hovers clear during the fuse and then drops 4 rows instead of 2, a fall the rotor brakes as any other ([Hard landings](#hard-landings-319-a)). A pod left sitting on the blast takes its 20 hull and then falls the 4 rows unbraked: 1.2 hull more in `BlastingChargeTest`, which now holds that pod up on planks to count the blast alone.
 - **A few more unlined bores step aside.** 11 of 100 against 8; in the lined column fewer do (7 against 13). The bot sidesteps when a charge is refused, and a pod with hull at or under 20 is refused one (never a suicide button); unlined, almost every bore is burning in lava by then. The cause of the 3 was not traced.
 - **The deeper charge helps the lined shaft.** With the tier 2 liner and sounder, 78 bores of 100 reach layer 2 against 71, 22 die against 29 (crust deaths 5 against 11), and the pod loses 34 hull a bore to charges against 40, in 10,118 ticks against 11,174. Fewer fuses means fewer hovers of a heavy pod, and the hole is no wider, so the liner rings no more air: its rack never ran dry. The width the liner punished at #509 stays out; the depth it does not mind is the size the charge grew in.
-- **The runs that cost.** Every charge of these runs was set at $80 (the price was cut to $70 after the runs started); the counts do not read the price, and the $70 costs are the measured counts times $70.
+- **The runs that cost.** Every charge of these runs was set at $80, the first price tried; the counts do not read the price, and the $60 costs are the measured counts times $60.
 
 **The cave-in shake (A).** Its charter and PvP rules are unchanged: a blast shakes the roof over a person on foot of the blaster's charter, or anyone where the server allows PvP, never a person in a seat. Its reach now scales with the blast: `CaveIns.blasted` takes the volume the blast broke, and the 12 blocks of `shakeReach` count from that volume's edge, not its middle. A dynamite blast so reaches 13.5 blocks from its middle along an axis, a plastic one 14.5, a blasting charge's column 12 from each of its sides and 12 under its bottom row, which is 4 rows deeper than before. That reads right: the roof shakes where the rock broke, and a bigger blast breaks more. The bolt driver's pacing (`BoltDriverPacingTest`) blasts a point and is unchanged. `BoltDriverTest.aBiggerBlastShakesFartherBecauseTheReachIsCountedFromItsEdge` pins it: a person beyond 12 of a plastic blast's middle and within 12 of its edge is shaken, one beyond 12 of its edge is not.
 
-**Harder than main.** Every explosive costs more, so the default build pays more for the same clearing: dynamite a fifth more, plastic a third, a straight layer 1 shaft half again ($202 to $316 measured), and a thick Company Rock column in layer 2 80% more ($100 to $180, for 12 rows instead of 8). Unpacked, the early game still affords its first stick from its first run ($120 of $124), and a first charge from half a run. Sidestepping Company Rock stays free.
+**Harder than main.** Every explosive costs more, so the default build pays more for the same clearing: dynamite a fifth more, plastic a third, a straight layer 1 shaft a third more ($202 to $271 measured), and a thick Company Rock column in layer 2 60% more ($100 to $160, for 12 rows instead of 8). Unpacked, the early game still affords its first stick from its first run ($120 of $124), and a first charge from half a run. Sidestepping Company Rock stays free.
 
 **Rules kept.** A charge is never a suicide button (refused at hull 20 or less, and the climb-clear warning). A blast does not gather ore: ore in a volume is destroyed, as before. Dynamite and plastic skip Company Rock.
 
@@ -2388,7 +2388,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 |---|---|---|---|
 | Flare | stands a burning light block for 90 s | real block light, so every rule that reads block light sees it (the natural spawn, the Retained on foot at block light under 3); and a pod or a person on foot within 10 blocks counts as lit from the tick the flare lands, while the block stands, so neither draws a Retained: the light engine publishes the block's light a tick or more later, and the person is not left open till then (#1073). A flare that finds no footing (water, a solid cell) goes out and comes back to the thrower | $12 |
 | Decoy | rings a bell every second for 45 s | a noise source: `DrawSources.noiseTarget` hands a creature within 40 blocks the decoy instead of the drill. Drifters (#918) steer at it, and it is on sale | $25 |
-| Charge | burns a 3 second fuse, then blasts | the pod's blasting charge, through `PodCharge.detonate`: the 3 x 3 column under it, 1 row deep (2 before [#1458](#explosive-tiers-1458-a), when it shared the seated charge's depth), clears Company rock and natural rock only where the column holds Company rock, spares what is built, bedrock and fluids, hurts a pod in reach by distance | $60 ($55 before #1458) |
+| Charge | burns a 3 second fuse, then blasts | the pod's blasting charge, through `PodCharge.detonate`: the 3 x 3 column under it, 1 row deep (2 before [#1458](#explosive-tiers-1458-a), when it shared the seated charge's depth), clears Company rock and natural rock only where the column holds Company rock, spares what is built, bedrock and fluids, hurts a pod in reach by distance | $65 ($55 before #1458) |
 
 **Ladder.** By hand: the kit is the hand stage of the operator's flare rounds, decoy rounds and charge launcher (layer 4 and the Badger), which fire the same three from a seat at range. A crew with the operator throws less; a solo player on foot throws more.
 
@@ -2401,8 +2401,8 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 | Flat throw, level with the eyes (measured) | lands 11 blocks away after 11 ticks | 8 to 16 |
 | Lob, 15 degrees up (measured) | lands 24 blocks away after 25 ticks | 14 to 30 |
 | Holding a dark stretch for five minutes (modelled fight, measured burn) | 4 flares, $48, 11% of a layer 2 run | 2 to 6 throws, 5% to 25% |
-| The Hush, solo: a three minute tow under decoys, two charges | 6 throws, $220, 48% of a layer 2 run ($210 before #1458) | 4 to 10 throws, 30% to 70% |
-| A Listener: a decoy, a charge | 2 throws, $85, 19% of a layer 2 run ($80 before #1458) | 2 to 3 throws, 10% to 35% |
+| The Hush, solo: a three minute tow under decoys, two charges | 6 throws, $230, 51% of a layer 2 run ($210 before #1458) | 4 to 10 throws, 30% to 70% |
+| A Listener: a decoy, a charge | 2 throws, $90, 20% of a layer 2 run ($80 before #1458) | 2 to 3 throws, 10% to 35% |
 | One flare against the Retained's cadence (measured burn) | 90 s against a 20 s wait after a kill: 4.5 gaps | 3 to 10 |
 | A decoy's lifetime (measured) | 45 s | 20 s to 90 s |
 | A charge's fuse against the walk out of its reach (measured fuse, modelled walk) | 61 ticks against 24 | at least twice, at most 6 s |
@@ -2414,7 +2414,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 - The decoy's hook is `DrawSources.noiseTarget(level, from, drillAt)`: `Drifter.steer` calls it, so the decoy is on sale (#975); the Listeners and the Hush add their own call when they land.
 - A flare that finds no footing goes out and is given back, with a message: a throw into a flooded bore is a lesson, not a loss.
 - Friendly fire is deliberate. A thrown charge hurts the thrower and their own charter's crew (the fuse and the GET CLEAR bar warn them), and other players only where the server allows PvP. It never hurts a pod that another charter owns; an unowned pod and one of the thrower's charter are hurt as the pod's own charge hurts them.
-- A thrown charge clears rock only where its column holds Company rock, the pod's own rule, kept in one place in `PodCharge`: otherwise a $60 throw would be dynamite that outranges the seat.
+- A thrown charge clears rock only where its column holds Company rock, the pod's own rule, kept in one place in `PodCharge`: otherwise a $65 throw would be dynamite that outranges the seat.
 - Thrown things are not saved. A throw whose chunk unloads is spent, as the pod's fuse is; a flare's block is saved and burns out on its own, though after a restart it no longer keeps a pod from being drawn to the dark.
 
 **Open questions.** Whether a decoy should wake the Retained's cousins (Tallies click toward noise); whether a thrown charge should break a creature's grip on a pod when it lands on the hull; a suit lamp that makes the flare optional on foot.

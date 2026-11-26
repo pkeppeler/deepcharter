@@ -8,7 +8,7 @@ Amends [ADR 0050](0050-company-rock-can-be-blasted-and-the-drill-still-refuses-i
 
 Amended by [ADR 0069](0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md): a hand tool can brute-force Company rock at a ruinous cost. The bite and the shaped charge stand.
 
-Retuned 2026-11-26 (#1458, [mechanics.md](../design/mechanics.md#explosive-tiers-1458-a)): the blasting charge clears 4 rows for $70 and the shaped charge 12 rows for $180. The decision stands; only the numbers moved.
+Retuned 2026-11-26 (#1458, [mechanics.md](../design/mechanics.md#explosive-tiers-1458-a)): the blasting charge clears 4 rows for $60 and the shaped charge 12 rows for $160. The decision stands; only the numbers moved.
 
 ## Decision
 

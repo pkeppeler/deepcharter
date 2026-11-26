@@ -44,6 +44,8 @@ public class BlastingChargeTest {
     private static final double FAR = 9.5;
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 400;
+    /** The lowest row the blast clears, under the pod's feet. */
+    private static final int BOTTOM = -TUNING.chargeDepth();
 
     /** What a test checks once the charge has blown, with the pod and the hull it had when the charge was set. */
     private interface Verify {
@@ -141,19 +143,21 @@ public class BlastingChargeTest {
                 x,
                 level -> {
                     level.setBlock(
-                            cell(x - 1, -2, -1),
+                            cell(x - 1, BOTTOM, -1),
                             HazardBlocks.COMPANY_ROCK.defaultBlockState(),
                             2); // a corner of the volume
                     level.setBlock(
-                            cell(x + 1, -2, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2); // just outside it
+                            cell(x + 1, BOTTOM, 0),
+                            HazardBlocks.COMPANY_ROCK.defaultBlockState(),
+                            2); // just outside it
                     level.setBlock(cell(x + 1, -1, 0), Blocks.STONE.defaultBlockState(), 2);
-                    level.setBlock(cell(x, -3, 0), Blocks.STONE.defaultBlockState(), 2); // one row under it
+                    level.setBlock(cell(x, BOTTOM - 1, 0), Blocks.STONE.defaultBlockState(), 2); // one row under it
                 },
                 pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()),
                 (helper2, level, pod, pilot, hull) -> {
                     for (int dx = -1; dx <= 0; dx++) {
                         for (int dz = -1; dz <= 0; dz++) {
-                            for (int dy = -2; dy <= -1; dy++) {
+                            for (int dy = BOTTOM; dy <= -1; dy++) {
                                 expectAir(helper2, level, cell(x + dx, dy, dz), "inside the volume");
                             }
                         }
@@ -161,12 +165,13 @@ public class BlastingChargeTest {
                     ChargeUse.expectBlock(
                             helper2,
                             level,
-                            cell(x + 1, -2, 0),
+                            cell(x + 1, BOTTOM, 0),
                             HazardBlocks.COMPANY_ROCK,
                             "Company rock beside the volume stays");
                     ChargeUse.expectBlock(
                             helper2, level, cell(x + 1, -1, 0), Blocks.STONE, "stone beside the volume stays");
-                    ChargeUse.expectBlock(helper2, level, cell(x, -3, 0), Blocks.STONE, "stone under the volume stays");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x, BOTTOM - 1, 0), Blocks.STONE, "stone under the volume stays");
                 });
     }
 
@@ -200,10 +205,18 @@ public class BlastingChargeTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodOnTheBlastTakesTheWholeCharge(GameTestHelper helper) {
+        int x = 3136;
         scene(
                 helper,
-                3136,
-                level -> {},
+                x,
+                // Planks under the rest of the pod (a blast spares them) hold it up, so the hull counts the blast alone
+                // and not
+                // the fall into the hole after it.
+                level -> {
+                    for (BlockPos plank : new BlockPos[] {cell(x - 1, -1, -1), cell(x, -1, -1), cell(x - 1, -1, 0)}) {
+                        level.setBlock(plank, Blocks.OAK_PLANKS.defaultBlockState(), 2);
+                    }
+                },
                 pod -> {},
                 (helper2, level, pod, pilot, hull) ->
                         expectHullLost(helper2, pod, hull, TUNING.chargeDamage(), "a pod that did not move"));

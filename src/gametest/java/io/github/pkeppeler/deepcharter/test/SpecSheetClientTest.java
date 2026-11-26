@@ -253,8 +253,8 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 textsOf(item("part_radiator")).contains("HEAT x0.75"),
                 "the radiator's tier 2 lowers the heat to x0.75");
         require(
-                textsOf(RepairRegistry.item(Consumable.BLASTING_CHARGE)).containsAll(List.of("$40", "2 SLABS", "3 S")),
-                "a blasting charge reads its $40, the 2 slabs it clears and its 3 second fuse, it draws "
+                textsOf(RepairRegistry.item(Consumable.BLASTING_CHARGE)).containsAll(List.of("$60", "4 SLABS", "3 S")),
+                "a blasting charge reads its $60, the 4 slabs it clears and its 3 second fuse, it draws "
                         + textsOf(RepairRegistry.item(Consumable.BLASTING_CHARGE)));
         require(
                 textsOf(item("goldium")).contains("$250"),

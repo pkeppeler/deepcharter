@@ -105,20 +105,21 @@ public class ExplosiveTiersTest {
         helper.succeed();
     }
 
-    /** The price rises with the blast in each family: the explosives, and the charges from the thrown one to the shaped one. */
+    /**
+     * The price rises with the blast in each pair: dynamite and plastic, the blasting and the shaped charge. The thrown charge is not in it: it costs
+     * more than a seated one for its reach, not its blast ({@code ThrownKitPacingTest}).
+     */
     @GameTest
-    public void theBiggerBlastOfEachFamilyCostsMore(GameTestHelper helper) {
+    public void theBiggerBlastOfEachPairCostsMore(GameTestHelper helper) {
         long dynamite = Consumable.DYNAMITE.price();
         long plastic = Consumable.PLASTIC_EXPLOSIVES.price();
-        long thrown = Consumable.THROWN_CHARGE.price();
         long blasting = Consumable.BLASTING_CHARGE.price();
         long shaped = Consumable.SHAPED_CHARGE.price();
         expect(helper, dynamite < plastic, "dynamite $%d must cost less than plastic $%d", dynamite, plastic);
         expect(
                 helper,
-                thrown < blasting && blasting < shaped,
-                "the charges must cost more as they grow: thrown $%d < blasting $%d < shaped $%d",
-                thrown,
+                blasting < shaped,
+                "the blasting charge $%d must cost less than the shaped $%d",
                 blasting,
                 shaped);
         helper.succeed();
