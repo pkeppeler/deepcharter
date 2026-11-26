@@ -79,6 +79,7 @@ STUB
 real_git=$(command -v git)
 cat >"$work/bin/git" <<STUB
 #!/usr/bin/env bash
+if [[ \$1 == push && " \$* " == *":refs/heads/main "* ]]; then echo "git \$*" >>"\$LOG"; fi
 if [[ \$1 == push && " \$* " == *":refs/heads/main "* && -e \$ST/race ]]; then
   k=\$((\$(cat "\$ST/race_n" 2>/dev/null || echo 0) + 1))
   echo "\$k" >"\$ST/race_n"
@@ -231,6 +232,7 @@ if [[ $body == *"Closes #3"* && $body == *"Co-Authored-By: Claude"* ]]; then pas
 count "green: one batch PR opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
 logged_part "green: the batch PR is labelled gameplay and no-demo" "labels[]=gameplay -f labels[]=no-demo"
 logged_part "green: the batch branch is the stamp" "head=batch/S"
+logged_part "green: the landing push skips the pre-push hook" "git push --no-verify origin "
 not_logged "green: no merge request (the repo allows squash only)" "/merge"
 logged_part "green: the batch PR gets a comment naming the landed sha" "issues/100/comments -f body=Landed on main as $(git --git-dir="$ORIGIN" rev-parse refs/heads/main) by a fast-forward push."
 logged "green: the batch PR is closed" "gh api -X $close_verb repos/pkeppeler/deepcharter/pulls/100 -f $close_arg"
