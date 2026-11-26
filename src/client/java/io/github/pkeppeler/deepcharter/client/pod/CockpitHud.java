@@ -547,7 +547,6 @@ public final class CockpitHud {
 
     /** One cell of a plate's row: its line, after {@code icon} when it has one, both in the line's colour. */
     public record Cell(Line line, @Nullable Icon icon) {
-        /** How wide the cell is drawn. */
         int width(Font font, CockpitLook look) {
             return font.width(line.text()) + (icon == null ? 0 : look.iconWidth() + look.iconGap());
         }
@@ -564,7 +563,6 @@ public final class CockpitHud {
             return cells.getFirst().line();
         }
 
-        /** How wide the row's cells are drawn. */
         public int width(Font font, CockpitLook look) {
             int width = look.tallyGap() * (cells.size() - 1);
             for (Cell cell : cells) {
@@ -641,7 +639,7 @@ public final class CockpitHud {
     }
 
     /** A GUI sprite's nine-slice border, from the sprite's own metadata; none for a sprite that is not cut in nine. */
-    private static GuiSpriteScaling.NineSlice.Border spriteBorder(Identifier sprite) {
+    public static GuiSpriteScaling.NineSlice.Border spriteBorder(Identifier sprite) {
         GuiSpriteScaling scaling = Minecraft.getInstance()
                 .getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.GUI)

@@ -29,9 +29,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
-import net.minecraft.data.AtlasIds;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
@@ -112,7 +110,7 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
         CockpitLook look = CockpitLook.current();
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
-        int inset = tabBorder(look) + look.titleGap();
+        int inset = CockpitHud.spriteBorder(look.ribbon().sprite("tab")).left() + look.titleGap();
         for (CockpitHud.Meter gauge : CockpitHud.Meter.values()) {
             CockpitHud.Box box = CockpitHud.titleBox(client.font, look.ribbon(), look, gauge, width, height);
             int color = gauge.color(look);
@@ -208,20 +206,6 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
 
     private static String name(CockpitHud.Meter gauge) {
         return gauge.name().toLowerCase(Locale.ROOT);
-    }
-
-    /** The tab sprite's border, which the tests read from the theme's sprite as the cockpit does: one pixel, a thin steel rim. */
-    private static int tabBorder(CockpitLook look) {
-        return Minecraft.getInstance()
-                .getAtlasManager()
-                .getAtlasOrThrow(AtlasIds.GUI)
-                .getSprite(look.ribbon().sprite("tab"))
-                .contents()
-                .getAdditionalMetadata(GuiMetadataSection.TYPE)
-                .map(section -> section.scaling() instanceof GuiSpriteScaling.NineSlice nine
-                        ? nine.border().left()
-                        : 0)
-                .orElse(0);
     }
 
     /** How many screen pixels of the GUI rectangle ({@code left}, {@code top}, {@code width} x {@code height}) are near {@code color}. */

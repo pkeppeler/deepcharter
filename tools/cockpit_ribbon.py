@@ -283,22 +283,20 @@ def bar_places():
     """Where each bar, the recess and the lamps go on a band laid out from its left end: ({gauge: x}, recess x, lamps x, band width). The recess is at the band's
     middle, so the band is as wide as twice its wider side."""
 
-    def overhang(gauge):
-        width = tab_size(gauge)[0]
-        left = -((BAR_W - width) // 2)
-        return left, width - BAR_W - left
+    xs = {}
 
-    xs, tab_end, bar_end = {}, -TAB_SPACE, EDGE - BAR_SPACE
-    for gauge in ("fuel", "hull", "cargo"):
-        left, right = overhang(gauge)
-        xs[gauge] = max(bar_end + BAR_SPACE, tab_end + TAB_SPACE + left)
-        bar_end, tab_end = xs[gauge] + BAR_W, xs[gauge] + BAR_W + right
+    def place(gauges, bar_end, tab_end):
+        """Puts `gauges` left to right after a bar ending at `bar_end` and a tab at `tab_end`; returns where the last bar and tab end."""
+        for gauge in gauges:
+            width = tab_size(gauge)[0]
+            left = -((BAR_W - width) // 2)
+            xs[gauge] = max(bar_end + BAR_SPACE, tab_end + TAB_SPACE + left)
+            bar_end, tab_end = xs[gauge] + BAR_W, xs[gauge] + width - left
+        return bar_end, tab_end
+
+    bar_end, tab_end = place(("fuel", "hull", "cargo"), EDGE - BAR_SPACE, -TAB_SPACE)
     recess = max(bar_end + BAR_SPACE, tab_end + TAB_SPACE)
-    tab_end, bar_end = recess + RECESS_W, recess + RECESS_W
-    for gauge in ("depth", "heat"):
-        left, right = overhang(gauge)
-        xs[gauge] = max(bar_end + BAR_SPACE, tab_end + TAB_SPACE + left)
-        bar_end, tab_end = xs[gauge] + BAR_W, xs[gauge] + BAR_W + right
+    bar_end, _ = place(("depth", "heat"), recess + RECESS_W, recess + RECESS_W)
     lamps = bar_end + BAR_SPACE
     side = max(recess, lamps + LAMPS * 4 + (LAMPS - 1) * SHARED["lampGap"] + EDGE - recess - RECESS_W)
     shift = side - recess

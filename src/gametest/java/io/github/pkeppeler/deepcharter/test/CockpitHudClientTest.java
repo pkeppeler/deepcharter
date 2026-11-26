@@ -939,11 +939,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
                         + Arrays.toString(plateBox));
             }
-            for (String piece : pieces.keySet()) {
-                if (!piece.equals("scanner")
-                        && overlap(
-                                plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
-                    problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
+            for (Map.Entry<String, int[]> piece : pieces.entrySet()) {
+                if (!piece.getKey().equals("scanner") && overlap(plateBox, piece.getValue())) {
+                    problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece.getKey());
                 }
             }
             long alerts = rows.stream()
