@@ -28,11 +28,14 @@ import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptio
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -174,6 +177,40 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     protected static void awaitWorld(ClientGameTestContext context) {
         ClientWait.until(
                 context, "the player and level of the world", client -> client.player != null && client.level != null);
+    }
+
+    /** Records {@code frames} frames, one a tick. */
+    protected final void tickFrames(ClientGameTestContext context, int frames) {
+        for (int i = 0; i < frames; i++) {
+            context.waitTicks(1); // tick-wait: one frame a tick, the recording's frame rate
+            frame(context);
+        }
+    }
+
+    /**
+     * A lit chamber round the column ({@code x}, {@code z}): a solid stone box 13 blocks square from two rows under {@code floorY} to
+     * eight above it, an 11-block room cut inside it from {@code floorY} up seven rows, and glowstone at each of {@code lamps}. The stone
+     * is laid first, so no worldgen lava is in or beside the room.
+     */
+    protected static void stoneChamber(ServerLevel level, int x, int z, int floorY, BlockPos... lamps) {
+        fillAround(level, x, z, floorY - 2, floorY - 1, 6, Blocks.STONE);
+        fillAround(level, x, z, floorY, floorY + 8, 6, Blocks.STONE);
+        // room-carver: a room cut inside the solid stone box built just above, so no worldgen lava is in or beside it
+        fillAround(level, x, z, floorY, floorY + 7, 5, Blocks.AIR);
+        for (BlockPos lamp : lamps) {
+            level.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    /** A square of {@code block} {@code radius} blocks out from the column ({@code x}, {@code z}), from {@code yFrom} to {@code yTo}. */
+    private static void fillAround(ServerLevel level, int x, int z, int yFrom, int yTo, int radius, Block block) {
+        for (int bx = x - radius; bx <= x + radius; bx++) {
+            for (int y = yFrom; y <= yTo; y++) {
+                for (int bz = z - radius; bz <= z + radius; bz++) {
+                    level.setBlock(new BlockPos(bx, y, bz), block.defaultBlockState(), Block.UPDATE_ALL);
+                }
+            }
+        }
     }
 
     /**

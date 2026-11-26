@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter;
 
 import io.github.pkeppeler.deepcharter.charter.CharterInit;
 import io.github.pkeppeler.deepcharter.colony.ColonyInit;
+import io.github.pkeppeler.deepcharter.continuity.ContinuityInit;
 import io.github.pkeppeler.deepcharter.creature.CreatureInit;
 import io.github.pkeppeler.deepcharter.fuel.FuelInit;
 import io.github.pkeppeler.deepcharter.handbook.HandbookInit;
@@ -34,6 +35,7 @@ public class DeepCharter implements ModInitializer {
     public void onInitialize() {
         CharterInit.init();
         ColonyInit.init();
+        ContinuityInit.init();
         CreatureInit.init();
         FuelInit.init();
         HandbookInit.init();

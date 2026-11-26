@@ -14,6 +14,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -34,6 +35,13 @@ public final class WreckRegistry {
                     .syncWith(
                             Versioned.streamCodec(WreckState.VERSION, WreckState.STREAM),
                             AttachmentSyncPredicate.all()));
+
+    /**
+     * What a wreck kills its crew with ({@link CrewFate}): vanilla's {@code generic_kill} in all but name (its tags let it through armour,
+     * resistance and invulnerability, as a kill), so the Continuity Event can say HULL LOSS (#1337).
+     */
+    public static final ResourceKey<DamageType> HULL_LOSS = ResourceKey.create(
+            Registries.DAMAGE_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hull_loss"));
 
     /** Where a broken storage block's contents are kept ({@link SalvageHeaps}). */
     public static final Block HEAP = registerHeap();

@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -10,7 +11,6 @@ import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
-import net.minecraft.client.gui.screens.DeathScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
@@ -110,16 +110,16 @@ public class WreckRespawnScenario extends EvidenceScenario {
 
             // The pod loses its hull and the crew die.
             singleplayer.getServer().runOnServer(server -> pod[0].damageHull(pod[0].maxHull()));
-            ClientWait.screen(context, DeathScreen.class);
+            ClientWait.screen(context, ContinuityScreen.class);
             context.waitTicks(25);
             beat(context);
-            screenshot(context, "death-screen");
+            screenshot(context, "continuity-event");
 
-            // The player clicks Respawn.
+            // The player returns to work.
             context.runOnClient(client -> ClientSession.player(client).respawn());
             ClientWait.until(
                     context,
-                    "the death screen closed and the player alive",
+                    "the Continuity Event closed and the player alive",
                     client -> client.gui.screen() == null && client.player != null && client.player.isAlive());
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
