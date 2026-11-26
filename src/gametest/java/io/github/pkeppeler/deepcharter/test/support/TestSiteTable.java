@@ -169,7 +169,7 @@ final class TestSiteTable {
         claim("LamplessFigureTest", 0, 6000, 6015, 6576, 6591);
         claim("LamplessFigureTest", 1, 3760, 3775, 3616, 3695);
 
-        row("LavaBoreTest", 1, 40006, 40009, 32, 3, 40006, 40009);
+        row("LavaBoreTest", 1, 40006, 40009, 32, 3, 41606, 41609);
 
         claim("LayerConceptsTest", 1, 3007, 3112, 3007, 3029);
         claim("LayerConceptsTest", 2, 3135, 3240, 3007, 3029);

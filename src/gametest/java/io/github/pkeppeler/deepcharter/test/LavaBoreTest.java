@@ -292,7 +292,7 @@ public class LavaBoreTest {
      */
     private static final int IN_TIME_SLABS = ScannerTuning.DEFAULT.tierOneArea().down() / 4;
 
-    /** Far from every other test's columns. Each bore has a chunk of its own, two chunks apart from the next. */
+    /** Each bore has a chunk of its own, two chunks apart from the next. */
     private static final int FIRST_CHUNK_X = 2500;
 
     private static final int CHUNK_Z = 2600;
