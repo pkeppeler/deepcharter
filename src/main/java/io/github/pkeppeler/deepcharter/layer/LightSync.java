@@ -119,6 +119,13 @@ public final class LightSync {
     /** The chunks in the 3x3 of a hold, until the window after they can be sent runs out and the light settles. Server thread only. */
     private static final Map<Key, NetWatch> NET = new HashMap<>();
 
+    /**
+     * The chunks whose watch was dropped because they did not tick and no player held them: they cannot be sent until
+     * they tick, and a watch kept open for that would never end (#1297). Each is watched again when it is sent. Server
+     * thread only.
+     */
+    private static final Set<Key> DORMANT = new HashSet<>();
+
     private LightSync() {}
 
     public static void init() {
@@ -131,6 +138,7 @@ public final class LightSync {
             QUEUED.keySet().removeIf(key -> key.level.getServer() == server);
             OFFERS.keySet().removeIf(key -> key.level.getServer() == server);
             NET.keySet().removeIf(key -> key.level.getServer() == server);
+            DORMANT.removeIf(key -> key.level.getServer() == server);
         });
     }
 
@@ -139,6 +147,7 @@ public final class LightSync {
         Key key = new Key(level, chunk.getPos());
         QUEUED.remove(key);
         OFFERS.remove(key);
+        DORMANT.remove(key);
     }
 
     /** Whether the chunk has a queued-tasks entry or an armed offer. */
@@ -410,7 +419,7 @@ public final class LightSync {
      * level} (#1229): it holds the light published now, and the watch compares it later like any other.
      */
     public static void seamSent(ServerPlayer player, ServerLevel level, ChunkPos chunk) {
-        NetWatch watch = NET.get(new Key(level, chunk));
+        NetWatch watch = sentWatch(new Key(level, chunk));
         if (watch != null) {
             watch.held.put(player.getUUID(), lightPrint(level, chunk));
             watch.keepOpen(level.getServer().getTickCount());
@@ -423,11 +432,20 @@ public final class LightSync {
         if (offer != null) {
             offer.sentSince().add(player.getUUID());
         }
-        NetWatch watch = NET.get(new Key(player.level(), chunk.getPos()));
+        NetWatch watch = sentWatch(new Key(player.level(), chunk.getPos()));
         if (watch != null) {
             watch.held.put(player.getUUID(), lightPrint(player.level(), chunk.getPos()));
             watch.keepOpen(player.level().getServer().getTickCount());
         }
+    }
+
+    /** The watch of a chunk being sent, armed again if it was dropped as {@link #DORMANT}; null if it has none. */
+    private static @Nullable NetWatch sentWatch(Key key) {
+        if (DORMANT.remove(key)) {
+            int now = key.level.getServer().getTickCount();
+            NET.put(key, new NetWatch(now + NET_INTERVAL_TICKS, now + NET_WINDOW_TICKS));
+        }
+        return NET.get(key);
     }
 
     /**
@@ -455,6 +473,11 @@ public final class LightSync {
                 ChunkHolder holder = key.level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(key.chunk.pack());
                 if (holder == null || holder.getTickingChunk() == null) {
                     // It waits to tick, not for light: a chunk on the rim of the loaded area may never tick (#1297).
+                    if (!held && watch.held.isEmpty()) {
+                        watches.remove();
+                        DORMANT.add(key);
+                        continue;
+                    }
                     watch.unsentSince = -1;
                 } else if (watch.unsentSince < 0) {
                     watch.unsentSince = now;
