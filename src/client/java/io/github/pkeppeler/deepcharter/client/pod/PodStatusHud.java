@@ -95,11 +95,10 @@ public final class PodStatusHud {
         return lines;
     }
 
-    /** The line shown, in its own colour, while the pod runs on its sprint boost (#1276): what it adds and costs. */
+    /** The line shown, in its own colour, while the pod runs on its sprint boost (#1276): what it adds. */
     public static Optional<Component> sprintLine(PodEntity pod) {
         return PodSprint.boosting(pod)
-                ? Optional.of(Component.translatable(
-                        "hud.deepcharter.pod.sprint", PodSprint.boostPercent(), PodSprint.burnPercent()))
+                ? Optional.of(Component.translatable("hud.deepcharter.pod.sprint", PodSprint.boostPercent()))
                 : Optional.empty();
     }
 

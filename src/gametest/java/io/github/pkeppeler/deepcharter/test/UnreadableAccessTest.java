@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_SPRINT;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
@@ -24,6 +25,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSprint;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.test.support.HangarPods;
@@ -122,6 +124,7 @@ public class UnreadableAccessTest {
             UnreadableChecks.makeUnreadable(pod, WreckRegistry.STATE);
             UnreadableChecks.makeUnreadable(pod, ReserveTank.STATE);
             UnreadableChecks.makeUnreadable(pod, EngineSoot.STATE);
+            UnreadableChecks.makeUnreadable(pod, PodSprint.STATE);
             Map<String, Runnable> paths = new LinkedHashMap<>();
             paths.put("stats", () -> PodStats.of(pod));
             paths.put("components", () -> {
@@ -157,6 +160,42 @@ public class UnreadableAccessTest {
             });
             paths.put("hull break", () -> pod.setHull(0f));
             UnreadableChecks.assertNoThrow(helper, "pod attachments", paths);
+            helper.succeed();
+        } finally {
+            mock.leave();
+            pod.discard();
+        }
+    }
+
+    /** A pilot sprinting with W in a pod whose sprint state is unreadable: no throw, no boost, nothing written over it. */
+    @GameTest
+    public void anUnreadableSprintStateNeverThrowsFromASprintingPilotAndIsKept(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+        MockPlayer mock = MockPlayers.join(helper, "unreadable-sprint");
+        try {
+            UnreadableChecks.makeUnreadable(pod, PodSprint.STATE);
+            if (!mock.player().startRiding(pod)) {
+                throw failure(helper, "the pilot could not mount the pod");
+            }
+            mock.setInput(FORWARD_SPRINT);
+            Map<String, Runnable> paths = new LinkedHashMap<>();
+            paths.put("ticks with sprint and W held", () -> {
+                pod.setFuel(60f);
+                for (int i = 0; i < 5; i++) {
+                    pod.tick();
+                }
+            });
+            paths.put("stats", () -> PodStats.of(pod));
+            paths.put("boosting", () -> PodSprint.boosting(pod));
+            paths.put("hull break", () -> pod.setHull(0f));
+            UnreadableChecks.assertNoThrow(helper, "pod sprint", paths);
+            if (PodSprint.boosting(pod)) {
+                throw failure(helper, "an unreadable sprint state reads as a boost");
+            }
+            if (!(pod.getAttached(PodSprint.STATE) instanceof Versioned.Unreadable<?>)) {
+                throw failure(
+                        helper, "the sprint wrote over its unreadable state: %s", pod.getAttached(PodSprint.STATE));
+            }
             helper.succeed();
         } finally {
             mock.leave();

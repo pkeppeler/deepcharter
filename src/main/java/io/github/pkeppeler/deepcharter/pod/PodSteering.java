@@ -17,14 +17,14 @@ final class PodSteering {
     private PodSteering() {}
 
     /**
-     * The speed along the pod's facing the keys ask for: forward, boosted by sprint when {@code boosting}
-     * ({@link PodSprint}), a slower reverse, the creep of a bare A or D, or none.
+     * The speed along the pod's facing the keys ask for: forward, a slower reverse, the creep of a bare A or D, or
+     * none.
      */
-    static double throttle(Input input, PodStats stats, boolean boosting) {
+    static double throttle(Input input, PodStats stats) {
         PodSteeringTuning tuning = PodSteeringTuning.DEFAULT;
         double top = stats.horizontalSpeed();
         if (input.forward() != input.backward()) {
-            return input.forward() ? top * (boosting ? tuning.sprintBoost() : 1) : -top * tuning.reverseShare();
+            return input.forward() ? top : -top * tuning.reverseShare();
         }
         if (!input.forward() && input.left() != input.right()) {
             return top * tuning.creepShare();

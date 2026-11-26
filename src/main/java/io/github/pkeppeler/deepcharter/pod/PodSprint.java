@@ -14,7 +14,6 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Input;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Pod sprint (#1276): the pilot's sprint key held with W drives the pod {@link PodSteeringTuning#sprintBoost} times
@@ -22,8 +21,10 @@ import org.jspecify.annotations.Nullable;
  * reaches the drill: sprint with no direction key still bores down ({@link PodDrill}), and a pod that drills, or stands
  * in a bore as wide as itself, cruises. S, a bare A or D and a passenger's keys do not boost.
  *
- * <p>The server decides each tick from the pilot's input. The state is session only (no {@code persistent}), as
- * {@code FlueScrape}'s is, because the next tick decides it again; it is synced so the pilot's readout shows it.
+ * <p>The server decides at the end of each tick from the pilot's input, so the boost starts and ends a tick after the
+ * keys. It reaches the drive as a stat ({@link PodStats#MODIFY}), so it multiplies with the engine tier and with soot.
+ * The state is session only (no {@code persistent}), as {@code FlueScrape}'s is, because the next tick decides it
+ * again; it is synced so the pilot's readout and the client's glide see it.
  */
 public final class PodSprint {
     public static final int VERSION = 1;
@@ -46,8 +47,12 @@ public final class PodSprint {
     private PodSprint() {}
 
     public static void init() {
+        PodEvents.AFTER_TICK.register(PodSprint::afterTick);
         // A wreck does not tick, so its boost would stay set.
-        PodEvents.HULL_DEPLETED.register(pod -> set(pod, null, false));
+        PodEvents.HULL_DEPLETED.register(PodSprint::stop);
+        PodStats.MODIFY.register((pod, stats) -> boosting(pod)
+                ? stats.withHorizontalSpeed(stats.horizontalSpeed() * PodSteeringTuning.DEFAULT.sprintBoost())
+                : stats);
     }
 
     /** Whether the pod runs on its sprint boost. Either side: the client reads the synced value. */
@@ -55,32 +60,46 @@ public final class PodSprint {
         return Versioned.readable(pod, STATE).map(State::boosting).orElse(false);
     }
 
-    /** The share the boost adds to the drive speed, in percent, for the readout and the one-time line. */
+    /** The share the boost adds to the drive speed, in percent. */
     public static int boostPercent() {
         return Math.round((PodSteeringTuning.DEFAULT.sprintBoost() - 1f) * 100);
     }
 
-    /** The share the boost adds to the moving burn, in percent. */
-    public static int burnPercent() {
-        return Math.round((PodSteeringTuning.DEFAULT.sprintBurn() - 1f) * 100);
+    /** The share the boost adds to the fuel a block driven costs, in percent: the burn a second over the speed. */
+    static int burnPerBlockPercent() {
+        PodSteeringTuning tuning = PodSteeringTuning.DEFAULT;
+        return Math.round((tuning.sprintBurn() / tuning.sprintBoost() - 1f) * 100);
     }
 
     /**
-     * Whether the pilot's {@code input} boosts the pod this tick: sprint with W and not S, while the pod neither drills
-     * nor stands in a bore as wide as itself, where the drill sets the pace.
+     * Whether the pilot's {@code input} boosts the pod: sprint with W and not S, while the pod neither drills nor stands
+     * in a bore as wide as itself, where the drill sets the pace.
      */
-    static boolean wants(PodEntity pod, Input input) {
+    private static boolean wants(PodEntity pod, Input input) {
         return input.sprint() && input.forward() && !input.backward() && !pod.drilling() && !PodSteering.inBore(pod);
     }
 
-    /** Server only: records whether the pod boosts this tick, and tells {@code pilot} once, on their first boost. */
-    static void set(PodEntity pod, @Nullable ServerPlayer pilot, boolean boosting) {
+    /** Sets the boost from the powered pod's pilot, and tells them once, on their first boost. */
+    private static void afterTick(PodEntity pod) {
+        ServerPlayer pilot = PodEvents.isPowered(pod) && pod.getControllingPassenger() instanceof ServerPlayer player
+                ? player
+                : null;
+        boolean boosting = pilot != null && wants(pod, pilot.getLastClientInput());
+        record(pod, boosting);
+        if (pilot != null && boosting) {
+            tellOnce(pilot);
+        }
+    }
+
+    /** Server only: ends the boost now, as the drill does on its first tick. */
+    static void stop(PodEntity pod) {
+        record(pod, false);
+    }
+
+    private static void record(PodEntity pod, boolean boosting) {
         Optional<State> read = Versioned.readable(pod, STATE);
         if (read.isPresent() && read.get().boosting() != boosting) {
             pod.setAttached(STATE, Versioned.of(new State(boosting)));
-        }
-        if (boosting && pilot != null) {
-            tellOnce(pilot);
         }
     }
 
@@ -94,6 +113,6 @@ public final class PodSprint {
                 Component.keybind("key.sprint"),
                 Component.keybind("key.forward"),
                 boostPercent(),
-                burnPercent()));
+                burnPerBlockPercent()));
     }
 }

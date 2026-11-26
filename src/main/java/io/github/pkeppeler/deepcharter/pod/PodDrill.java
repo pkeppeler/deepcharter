@@ -101,7 +101,7 @@ public final class PodDrill {
         }
         pod.setDrilling(true);
         // The drill sets the pace from its first tick: a sprint that drove the pod into the rock ends here.
-        PodSprint.set(pod, null, false);
+        PodSprint.stop(pod);
         pod.setDrillDirection(wanted);
         // The turn to the grid and the slide to the centre both finish before the first tick of the slab counts.
         boolean squared =

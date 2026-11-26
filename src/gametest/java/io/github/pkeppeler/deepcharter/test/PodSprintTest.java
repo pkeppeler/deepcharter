@@ -12,6 +12,9 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -99,6 +102,9 @@ public class PodSprintTest {
 
     private static final String FIRST_SPRINT_KEY = "deepcharter.pod.first_sprint";
 
+    /** Litres of soot just short of limp mode: the most fouled engine the outrun rule still holds for. */
+    private static final float SOOT_SHORT_OF_LIMP = FuelTuning.DEFAULT.soot().limpLitres() - 0.01f;
+
     /** What the pods do in a phase: a cruise or a sprint, on the ground or in the air. */
     private enum Phase {
         GROUND_CRUISE(FORWARD, false),
@@ -126,6 +132,7 @@ public class PodSprintTest {
     private static final class Lane {
         private final Chassis chassis;
         private final int tier;
+        private final float soot;
         private final MockPlayer pilot;
         private final Vec3 start;
         private final Arrival<PodEntity> pod = new Arrival<>("pod", "the room's chunks tick");
@@ -133,15 +140,16 @@ public class PodSprintTest {
         private double startX;
         private float startFuel;
 
-        Lane(Chassis chassis, int tier, MockPlayer pilot, Vec3 start) {
+        Lane(Chassis chassis, int tier, float soot, MockPlayer pilot, Vec3 start) {
             this.chassis = chassis;
             this.tier = tier;
+            this.soot = soot;
             this.pilot = pilot;
             this.start = start;
         }
 
         String name() {
-            return chassis.id() + " engine " + tier;
+            return chassis.id() + " engine " + tier + (soot > 0 ? " with " + soot + " L of soot" : "");
         }
 
         Run run(Phase phase) {
@@ -197,7 +205,9 @@ public class PodSprintTest {
     /**
      * The outrun rule and the boost, every shipped chassis at every engine tier it takes, on the ground and in the
      * air: a clean engine's cruise beats a player's sprint and sprint-jump, the sprint is about 40% faster, and it
-     * burns more fuel a block. Sprint with W never drills on open ground, and the pilot is told once.
+     * burns more fuel a block. A stock Mole with soot just short of limp mode still cruises past a sprinting player and
+     * sprints past a sprint-jumping one, and its boost multiplies with the soot's loss. Sprint with W never drills on
+     * open ground, and the pilot is told once.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void cruiseOutrunsAPlayerOnFootAndSprintIsFasterForMoreFuelABlock(GameTestHelper helper) {
@@ -209,9 +219,13 @@ public class PodSprintTest {
                 Vec3 start = laneStart(index++);
                 MockPlayer pilot = MockPlayers.join(helper, "sprint-" + chassis.id() + "-" + tier);
                 pilot.teleportTo(level, start, EAST, 0f);
-                lanes.add(new Lane(chassis, tier, pilot, start));
+                lanes.add(new Lane(chassis, tier, 0f, pilot, start));
             }
         }
+        Vec3 sootedStart = laneStart(index++);
+        MockPlayer sootedPilot = MockPlayers.join(helper, "sprint-sooted");
+        sootedPilot.teleportTo(level, sootedStart, EAST, 0f);
+        lanes.add(new Lane(Chassis.MOLE, 0, SOOT_SHORT_OF_LIMP, sootedPilot, sootedStart));
         List<Runner> runners = new ArrayList<>();
         for (boolean jumps : new boolean[] {false, true}) {
             Vec3 start = laneStart(index++);
@@ -229,6 +243,9 @@ public class PodSprintTest {
                 pod.setPos(lane.start);
                 pod.setYRot(EAST);
                 level.addFreshEntity(pod);
+                if (lane.soot > 0) {
+                    pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(lane.soot, 0f, 0f)));
+                }
                 if (lane.tier > 0) {
                     ScannerPods.fit(level.getServer(), lane.pilot.player(), pod, ComponentTrack.ENGINE, lane.tier);
                 }
@@ -380,9 +397,22 @@ public class PodSprintTest {
                 Run cruise = lane.run(air ? Phase.AIR_CRUISE : Phase.GROUND_CRUISE);
                 Run boost = lane.run(air ? Phase.AIR_SPRINT : Phase.GROUND_SPRINT);
                 String where = air ? "in the air" : "on the ground";
+                if (lane.soot > 0) {
+                    check(
+                            wrong,
+                            cruise.speed() > sprint && boost.speed() > sprintJump,
+                            "%s %s cruises at %.2f b/s and sprints at %.2f: short of limp mode the cruise should beat"
+                                    + " a player's sprint (%.2f) and the sprint a sprint-jump (%.2f)",
+                            lane.name(),
+                            where,
+                            cruise.blocksPerSecond(),
+                            boost.blocksPerSecond(),
+                            sprint * TICKS_PER_SECOND,
+                            sprintJump * TICKS_PER_SECOND);
+                }
                 check(
                         wrong,
-                        cruise.speed() > onFoot,
+                        lane.soot > 0 || cruise.speed() > onFoot,
                         "%s %s cruises at %.2f b/s, not faster than a player on foot (sprint %.2f, sprint-jump %.2f)",
                         lane.name(),
                         where,
