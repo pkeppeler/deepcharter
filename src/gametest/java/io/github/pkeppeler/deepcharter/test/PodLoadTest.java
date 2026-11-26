@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -38,6 +39,8 @@ public class PodLoadTest {
     private static final float TOLERANCE = 1e-4f;
     /** Ticks of held jump in which an unloaded pod climbs well clear of its floor. */
     private static final int CLIMB_TICKS = 15;
+    /** Blocks a load under the climb limit rises in {@link #CLIMB_TICKS}: two einsteinium and an ironium (45 of 50) rise well over this. */
+    private static final double CLIMBED = 0.1;
 
     /** A pod on a small stone floor with a mock pilot seated. */
     private record Rig(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
@@ -201,5 +204,64 @@ public class PodLoadTest {
                 }
             });
         });
+    }
+
+    /**
+     * The climb limit is where the held rotor stops climbing, well under the engine's power: a load under it climbs, a load over it stays on the
+     * ground while {@code overloaded()} is still false. Two einsteinium in the bay and {@code packIronium} in the pack.
+     */
+    private static void climbs(GameTestHelper helper, int packIronium, boolean expected) {
+        Rig rig = Rig.build(helper, "climb pilot " + packIronium);
+        rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.EINSTEINIUM));
+        rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.EINSTEINIUM));
+        rig.pilot.player().getInventory().add(new ItemStack(OreRegistry.item(OreType.IRONIUM), packIronium));
+        PodLoad load = PodLoad.of(rig.pod);
+        double startY = rig.pod.getY();
+        rig.pilot.setInput(JUMP);
+        helper.runAfterDelay(CLIMB_TICKS, () -> {
+            try {
+                double rose = rig.pod.getY() - startY;
+                expect(
+                        helper,
+                        load.cannotClimb() != expected && (rose > CLIMBED) == expected && !load.overloaded(),
+                        "%s should %s and not be overloaded (climb limit %s): it rose %s",
+                        load,
+                        expected ? "climb" : "not climb",
+                        load.climbLimit(),
+                        rose);
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = 40)
+    public void aLoadJustUnderTheClimbLimitClimbs(GameTestHelper helper) {
+        climbs(helper, 1, true);
+    }
+
+    @GameTest(maxTicks = 40)
+    public void aLoadJustOverTheClimbLimitDoesNotClimbThoughTheEngineStillLiftsSome(GameTestHelper helper) {
+        climbs(helper, 3, false);
+    }
+
+    /** The climb limit is the real tuning's: half the engine for a stock Mole, whose thrust at full lift is twice gravity. */
+    @GameTest
+    public void theClimbLimitIsWhereThrustPaysGravity(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(1.5, 3, 1.5));
+        try {
+            PodStats stats = PodStats.of(pod);
+            PodTuning.Movement movement = PodTuning.DEFAULT.movement();
+            near(
+                    helper,
+                    "the climb limit",
+                    stats.enginePower() * (1 - movement.gravity() / stats.thrustAcceleration()),
+                    PodLoad.of(pod).climbLimit());
+            near(helper, "a stock Mole's climb limit", 50, PodLoad.of(pod).climbLimit());
+            helper.succeed();
+        } finally {
+            pod.discard();
+        }
     }
 }

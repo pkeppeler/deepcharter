@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodHeatShield;
 import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
@@ -122,6 +123,16 @@ public final class PodStatusHud {
                 .map(state -> Component.translatable(
                         state.above() ? "hud.deepcharter.pod.lava_above" : "hud.deepcharter.pod.lava_near",
                         state.blocksOff()));
+    }
+
+    /**
+     * The warning line shown, steady, while the load is at or over the climb limit ({@link PodLoad#cannotClimb}, #1449): the held rotor cannot climb, though the pod
+     * still drives. It labels the cockpit's overloaded lamp, and is the plain HUD's only overload cue.
+     */
+    public static Optional<Component> overloadedLine(PodEntity pod) {
+        return PodLoad.of(pod).cannotClimb()
+                ? Optional.of(Component.translatable("hud.deepcharter.pod.overloaded"))
+                : Optional.empty();
     }
 
     /** The warning line shown while the alarm of the pod's zone rings (#973, {@link DrifterAlarm}): the seconds it has left. */
@@ -250,6 +261,7 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.soot_limp", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
             Map.entry("hud.deepcharter.pod.burning", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.overloaded", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_spent", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT),
@@ -289,6 +301,7 @@ public final class PodStatusHud {
         HudLook look = HudLook.current();
         List<Line> readout = new ArrayList<>(statusLines(pod));
         burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+        overloadedLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         glazeLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         drifterAlarmLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));

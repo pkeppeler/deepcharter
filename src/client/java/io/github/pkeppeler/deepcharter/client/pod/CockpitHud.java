@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook.Layout;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
@@ -33,6 +34,8 @@ import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
@@ -43,12 +46,16 @@ import org.jspecify.annotations.Nullable;
  * smaller than the Ribbon needs (or a pack that sets {@code enabled} to 0), nothing here draws or hides anything.
  *
  * <p>Every piece goes through {@link #draw}, so the signal decay near the bottom of a layer (#502, {@link CockpitDecay}) wraps one place and not each gauge. It darkens a
- * gauge or the scanner's window, draws static over the scanner, makes a gauge or the plate's numbers jump, and swaps the plate for a tag. It never touches the hull lamp or
- * the burning lamp, which stay true so that a pilot who dies in the dark still sees what killed them, and the scanner's cells are drawn by {@link ScannerHud} unchanged.
+ * gauge or the scanner's window, draws static over the scanner, makes a gauge or the plate's numbers jump, and swaps the plate for a tag. It never touches the hull lamp,
+ * the burning lamp or the overloaded lamp, which stay true so that a pilot who dies or sticks in the dark still sees why, and the scanner's cells are drawn by
+ * {@link ScannerHud} unchanged.
+ *
+ * <p>The cargo slot's gauge reads the pod's load against its climb limit (#1449, {@link CockpitReading#load}): a mark in the limit colour after
+ * {@link Layout#loadLimit} segments, the bar in that colour at and over it, and a LOAD title on a small plate hung under it from the band.
  */
 public final class CockpitHud {
-    /** How many warning lamps the Ribbon has: low fuel, low hull, burning, and any other warning of the readout. */
-    public static final int LAMPS = 4;
+    /** How many warning lamps the Ribbon has: low fuel, low hull, burning, any other warning of the readout, and overloaded. */
+    public static final int LAMPS = 5;
 
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cockpit");
     /** The vanilla elements a seated pilot does not get: the cluster of hotbar, health, armour, hunger, air, experience and the held item's name. */
@@ -159,6 +166,11 @@ public final class CockpitHud {
         }
         if (showsReadout(client, guiWidth, guiHeight)) {
             CockpitLook look = CockpitLook.current();
+            if (layout.cargo().on()) {
+                Box title = loadTitleBox(client.font, layout, look, guiWidth, guiHeight);
+                into.add(new HudKeepClear.Rect(
+                        "cockpit load title", title.left(), title.top(), title.width(), title.height()));
+            }
             List<Row> rows = fitting(
                     rows(pod, CockpitReading.of(pod, heat), look, PodStatusHud.readout(client.player, pod)),
                     roomForRows(client.font, layout, look, guiHeight));
@@ -250,8 +262,8 @@ public final class CockpitHud {
                 decay,
                 Part.CARGO,
                 layout.cargo().area(),
-                () -> gauge(
-                        graphics, layout.cargo(), decay.shown(Part.CARGO, reading.cargo()), look.cargoColor(), look));
+                () -> loadGauge(graphics, layout, decay, reading, look));
+        loadTitle(graphics, client.font, layout, look);
         draw(
                 graphics,
                 decay,
@@ -273,8 +285,10 @@ public final class CockpitHud {
                 () -> lamps(
                         graphics,
                         layout.lamps(),
-                        decayedLamps(decay, lampsLit(fuelLow, hullLow, pod.hullBurning(), lines)),
-                        new int[] {look.lowColor(), look.lowColor(), look.heatColor(), look.depthColor()},
+                        decayedLamps(decay, lampsLit(fuelLow, hullLow, pod.hullBurning(), reading.overloaded(), lines)),
+                        new int[] {
+                            look.lowColor(), look.lowColor(), look.heatColor(), look.depthColor(), look.lowColor()
+                        },
                         look));
         draw(
                 graphics,
@@ -306,11 +320,11 @@ public final class CockpitHud {
     }
 
     /**
-     * The lamps as the decay lets them read: the fuel lamp and the alert lamp go dark or show a false state, and the hull lamp and the burning lamp never change, so a pilot
-     * who is dying in the dark still sees why.
+     * The lamps as the decay lets them read: the fuel lamp and the alert lamp go dark or show a false state, and the hull lamp, the burning lamp and the overloaded
+     * lamp never change, so a pilot who is dying or stuck in the dark still sees why.
      */
     public static boolean[] decayedLamps(CockpitDecay decay, boolean[] lit) {
-        return new boolean[] {decay.lampShown(lit[0], 0), lit[1], lit[2], decay.lampShown(lit[3], 1)};
+        return new boolean[] {decay.lampShown(lit[0], 0), lit[1], lit[2], decay.lampShown(lit[3], 1), lit[4]};
     }
 
     /** The altimeter's reading as the decay lets it read: gone when the depth gauge is dark, its digits jumping when it jumps. Not seated in a pod, the reading as given; empty only on a drop-out of the depth gauge. */
@@ -359,9 +373,78 @@ public final class CockpitHud {
         }
     }
 
-    /** Which of the {@link #LAMPS} are lit: low fuel, low hull, the hull burning, and any line of the readout that is a warning ({@link Kind#ALERT}). */
-    public static boolean[] lampsLit(boolean fuelLow, boolean hullLow, boolean burning, List<Line> readout) {
-        return new boolean[] {fuelLow, hullLow, burning, readout.stream().anyMatch(line -> line.kind() == Kind.ALERT)};
+    /**
+     * Which of the {@link #LAMPS} are lit: low fuel, low hull, the hull burning, any line of the readout that is a warning ({@link Kind#ALERT}), and a load the rotor
+     * cannot climb with.
+     */
+    public static boolean[] lampsLit(
+            boolean fuelLow, boolean hullLow, boolean burning, boolean overloaded, List<Line> readout) {
+        return new boolean[] {
+            fuelLow, hullLow, burning, readout.stream().anyMatch(line -> line.kind() == Kind.ALERT), overloaded
+        };
+    }
+
+    /**
+     * The load gauge: the load as a share of the bar, which runs to {@code segments / loadLimit} of the climb limit, in the gauge's colour under the limit and the limit
+     * colour at and over it, and the limit's mark, a line in the limit colour through the gap before segment {@code loadLimit} and a pixel past the bar each side.
+     */
+    private static void loadGauge(
+            GuiGraphicsExtractor graphics,
+            Layout layout,
+            CockpitDecay decay,
+            CockpitReading reading,
+            CockpitLook look) {
+        Gauge gauge = layout.cargo();
+        if (!gauge.on()) {
+            return;
+        }
+        double share = Math.min(1.0, reading.load() * layout.loadLimit() / gauge.segments());
+        gauge(
+                graphics,
+                gauge,
+                decay.shown(Part.CARGO, share),
+                reading.overloaded() ? look.lowColor() : look.cargoColor(),
+                look);
+        int left = gauge.area().left(graphics.guiWidth());
+        int top = gauge.area().top(graphics.guiHeight());
+        int mark = left + layout.loadLimit() * gauge.area().width() / gauge.segments() - 1;
+        graphics.fill(mark, top - 1, mark + 1, top + gauge.area().height() + 1, look.lowColor());
+    }
+
+    /** The load gauge's title, in the terminal font, so the bar reads as the load and not the bay's slots. */
+    private static Component loadTitleText() {
+        return Component.translatable("hud.deepcharter.pod.load_title")
+                .withStyle(Style.EMPTY.withFont(new FontDescription.Resource(CrtText.FONT)));
+    }
+
+    /**
+     * Where the load gauge's title plate is: as wide as the title and {@link CockpitLook#titleGap} past the plate sprite's border each side, as tall as the terminal
+     * font's capitals ({@link CockpitLook#titleTextHeight}) the same way, centred under the gauge and hung from the band's lower edge.
+     */
+    public static Box loadTitleBox(Font font, Layout layout, CockpitLook look, int guiWidth, int guiHeight) {
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        int width = font.width(loadTitleText()) + border.left() + border.right() + 2 * look.titleGap();
+        int height = look.titleTextHeight() + border.top() + border.bottom() + 2 * look.titleGap();
+        Decal area = layout.cargo().area();
+        int left = area.left(guiWidth) + (area.width() - width) / 2;
+        int top = layout.band().top(guiHeight) + layout.band().height();
+        return new Box(left, top, width, height);
+    }
+
+    /** The cab's label, not the signal's: it stays when the gauge goes dark. */
+    private static void loadTitle(GuiGraphicsExtractor graphics, Font font, Layout layout, CockpitLook look) {
+        if (!layout.cargo().on()) {
+            return;
+        }
+        Box box = loadTitleBox(font, layout, look, graphics.guiWidth(), graphics.guiHeight());
+        CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        graphics.text(
+                font,
+                loadTitleText(),
+                box.left() + border.left() + look.titleGap(),
+                box.top() + border.top() + look.titleGap(),
+                look.cargoColor());
     }
 
     /** The warning lamps: {@link #LAMPS} squares in a row (a slot wider than it is tall) or a column, each lit in its colour or off. */
@@ -450,6 +533,14 @@ public final class CockpitHud {
      * thicker border keeps its text clear of it), and {@link CockpitLook#plateGap} past it. A sprite that is not cut in nine has no border.
      */
     public static GuiSpriteScaling.NineSlice.Border plateInset(Layout layout, CockpitLook look) {
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        int gap = look.plateGap();
+        return new GuiSpriteScaling.NineSlice.Border(
+                border.left() + gap, border.top() + gap, border.right() + gap, border.bottom() + gap);
+    }
+
+    /** The plate sprite's nine-slice border, from the sprite's own metadata; none for a sprite that is not cut in nine. */
+    private static GuiSpriteScaling.NineSlice.Border plateBorder(Layout layout) {
         GuiSpriteScaling scaling = Minecraft.getInstance()
                 .getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.GUI)
@@ -458,13 +549,9 @@ public final class CockpitHud {
                 .getAdditionalMetadata(GuiMetadataSection.TYPE)
                 .orElse(GuiMetadataSection.DEFAULT)
                 .scaling();
-        int gap = look.plateGap();
-        if (scaling instanceof GuiSpriteScaling.NineSlice nine) {
-            GuiSpriteScaling.NineSlice.Border border = nine.border();
-            return new GuiSpriteScaling.NineSlice.Border(
-                    border.left() + gap, border.top() + gap, border.right() + gap, border.bottom() + gap);
-        }
-        return new GuiSpriteScaling.NineSlice.Border(gap, gap, gap, gap);
+        return scaling instanceof GuiSpriteScaling.NineSlice nine
+                ? nine.border()
+                : new GuiSpriteScaling.NineSlice.Border(0, 0, 0, 0);
     }
 
     /** The plate that holds {@code rows}, as big as its longest row and the number of rows, hung from the layout's readout anchor. */
