@@ -48,7 +48,7 @@ public class LightSyncRingHoldTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1_200;
 
     /** A draw's chunk, and the light tasks queued at it after the draw. */
-    private record Drawn(ChunkPos chunk, CompletableFuture<?> tasks) {}
+    private record Drawn(ChunkPos chunk, CompletableFuture<?> tasks, int tick) {}
 
     /** The draws of the running case, filled by the chunk load callback. Null when no case runs. */
     private static volatile @Nullable Case running;
@@ -89,7 +89,7 @@ public class LightSyncRingHoldTest {
                 CompletableFuture<?> tasks =
                         level.getChunkSource().getLightEngine().waitForPendingTasks(pos.x(), pos.z());
                 LightSync.holdSendUntilLit(level, pos);
-                current.drawn.add(new Drawn(pos, tasks));
+                current.drawn.add(new Drawn(pos, tasks, level.getServer().getTickCount()));
             }
         });
     }
@@ -121,11 +121,26 @@ public class LightSyncRingHoldTest {
                             .filter(near -> level.getChunkSource().chunkMap.getChunkToSend(near.pack()) != null)
                             .findFirst()
                             .ifPresent(early -> {
+                                ChunkHolder nearHolder =
+                                        level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(early.pack());
                                 throw failure(
                                         helper,
-                                        "%s is sendable while the light tasks queued by the draw of %s are waiting",
+                                        "%s is sendable while the light tasks queued by the draw of %s are waiting"
+                                                + " [DIAG holdPending=%s drawnLoaded=%s drawnAt=%s now=%s"
+                                                + " nearSendSyncDone=%s]",
                                         early,
-                                        each.chunk());
+                                        each.chunk(),
+                                        LightSync.hasPending(level, each.chunk()),
+                                        level.getChunkSource()
+                                                        .getChunkNow(
+                                                                each.chunk().x(),
+                                                                each.chunk().z())
+                                                != null,
+                                        each.tick(),
+                                        level.getServer().getTickCount(),
+                                        nearHolder == null
+                                                ? "noHolder"
+                                                : nearHolder.getSendSyncFuture().isDone());
                             });
                 }
                 boolean finished = current.drawn.size() >= SIDE * SIDE
