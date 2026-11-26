@@ -39,7 +39,8 @@ import org.jspecify.annotations.Nullable;
  * only the recipes it is given (the charter's known ones), crafts an intermediate as often as the need takes, rounding up, feeds a later
  * need from what an earlier craft made too many of, does not follow a recipe that undoes another (ingots from an iron block, or round a longer loop) or salvages worn gear,
  * stops at an item already being made further up, takes the tag member the player holds most of, and takes what the player
- * holds before it breaks anything down.
+ * holds before it breaks anything down. A dense tangle of recipes is cut short at the tree's node budget, and the rows left unbroken are
+ * marked (#1419).
  */
 public class MaterialsTreeTest {
     private static final SlotDisplay PLANKS = item(Items.OAK_PLANKS);
@@ -587,6 +588,77 @@ public class MaterialsTreeTest {
         // The head is made from the first loop item, whose recipe undoes the last item's, so it is a base material.
         expectMaterials(helper, tree, "the head is made from the first loop item", loop.getFirst(), 1, 0);
         expect(helper, node(helper, tree, head).recipe() == recipes.get(1), "the head is made by its recipe");
+        helper.succeed();
+    }
+
+    /** The tree's nodes, the root's included. */
+    private static int size(Node node) {
+        int size = 1;
+        for (Node child : node.children()) {
+            size += size(child);
+        }
+        return size;
+    }
+
+    /**
+     * A dense tangle of {@code items}, each made by its first recipe from the two before it: the first three are base materials,
+     * and each other item has two recipes of two cells, each cell taking either of two of the three items before it. Unfolded, the
+     * tree of item i has a node for every path down, 2 * Fibonacci(i) - 1 of them.
+     */
+    private static Function<Item, List<KnownRecipe>> tangle(GameTestHelper helper, List<Item> items) {
+        List<KnownRecipe> recipes = new ArrayList<>();
+        for (int i = 3; i < items.size(); i++) {
+            SlotDisplay near = either(items.get(i - 1), items.get(i - 2));
+            SlotDisplay far = either(items.get(i - 2), items.get(i - 3));
+            SlotDisplay skip = either(items.get(i - 1), items.get(i - 3));
+            recipes.add(recipe(helper, items.get(i), 1, near, far));
+            recipes.add(recipe(helper, items.get(i), 1, skip, far));
+        }
+        return known(recipes.toArray(KnownRecipe[]::new));
+    }
+
+    private static SlotDisplay either(Item first, Item second) {
+        return new SlotDisplay.Composite(List.of(item(first), item(second)));
+    }
+
+    /** Items in the dense tangle: unfolded, the tree of its last item has 8,361 nodes. */
+    private static final int TANGLE_ITEMS = 20;
+
+    /** Well above the tree's node budget, which lets the crafts under way finish their cells; far below the unfolded tree. */
+    private static final int TANGLE_MAX_NODES = 2_000;
+
+    @GameTest
+    public void aDenseRecipeTangleKeepsTheTreeSmall(GameTestHelper helper) {
+        List<Item> items = BuiltInRegistries.ITEM.stream()
+                .filter(item -> ObtainableItems.isObtainable(item.getDefaultInstance()))
+                .limit(TANGLE_ITEMS)
+                .toList();
+        Function<Item, List<KnownRecipe>> known = tangle(helper, items);
+        MaterialsTree tree = MaterialsTree.of(known.apply(items.getLast()).getFirst(), known, stock());
+        expect(
+                helper,
+                size(tree.root()) <= TANGLE_MAX_NODES,
+                "a tangle of %s items builds a tree of %s nodes",
+                TANGLE_ITEMS,
+                size(tree.root()));
+        expect(helper, tree.cut(), "the tree says it was cut short");
+        // With nothing held, a material a known recipe makes is listed only because the tree stopped short of it.
+        expect(
+                helper,
+                tree.materials().stream()
+                        .allMatch(material ->
+                                material.cut() == !known.apply(material.item()).isEmpty()),
+                "exactly the rows not broken down are marked, got %s",
+                tree.materials());
+
+        // A small tangle is broken down in full: item 7 is made from items 6 and 5, and so on down to items 2 and 1,
+        // the
+        // Fibonacci numbers 8 and 5 of times.
+        List<Item> few = items.subList(0, 8);
+        Function<Item, List<KnownRecipe>> knownFew = tangle(helper, few);
+        MaterialsTree whole = MaterialsTree.of(knownFew.apply(few.getLast()).getFirst(), knownFew, stock());
+        expect(helper, !whole.cut(), "a small tangle is not cut short, got %s", whole.materials());
+        expectMaterials(helper, whole, "a small tangle down to its base materials", few.get(2), 8, 0, few.get(1), 5, 0);
         helper.succeed();
     }
 

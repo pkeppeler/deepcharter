@@ -38,6 +38,10 @@ import org.jspecify.annotations.Nullable;
  * <li>It is made as many times as the need takes, rounding up; what that makes beyond the need feeds later needs.
  * <li>A cell that takes several items (a tag) takes the one the player has most of, or with none held, the first that a known recipe
  * can make, or else the first.
+ * <li>Once the tree has {@link #NODE_BUDGET} nodes, nothing more is broken down: an item a known recipe would make is cut, listed as
+ * it is and marked. A dense tangle of recipes would otherwise unfold into a node for every path down, exponential in the items, and
+ * the tree is built on the render thread. Sharing repeated subtrees would not keep the totals: each need takes the leftovers and the
+ * stock as the walk reaches it, and which recipe and tag member it takes depends on what is being made above it.
  * </ul>
  *
  * @param root the shown recipe, made once
@@ -54,6 +58,7 @@ public record MaterialsTree(Node root, List<Material> materials) {
      * @param recipe the known recipe it is made by, or null when none is made
      * @param crafts how many times that recipe is made
      * @param children what those crafts take
+     * @param cut whether a known recipe makes it but the tree stopped short of it, its node budget spent
      */
     public record Node(
             Item item,
@@ -62,7 +67,8 @@ public record MaterialsTree(Node root, List<Material> materials) {
             int fromSpare,
             @Nullable KnownRecipe recipe,
             int crafts,
-            List<Node> children) {
+            List<Node> children,
+            boolean cut) {
         /** How many must still be found: what neither the stock, the leftovers nor a known recipe covers. */
         public int missing() {
             return recipe == null ? needed - fromStock - fromSpare : 0;
@@ -75,12 +81,24 @@ public record MaterialsTree(Node root, List<Material> materials) {
      * @param item the item
      * @param need how many the craft takes of it in all
      * @param have how many the player holds
+     * @param cut whether the tree stopped short of breaking some of it down: it is made from materials not listed
      */
-    public record Material(Item item, int need, int have) {
+    public record Material(Item item, int need, int have, boolean cut) {
         /** How many more the player must find. */
         public int shortBy() {
             return Math.max(0, need - have);
         }
+    }
+
+    /**
+     * How many nodes the tree breaks down to at most, before the crafts under way finish their cells. Far above the largest tree of
+     * the shipped recipes, and small enough to build on the render thread.
+     */
+    private static final int NODE_BUDGET = 500;
+
+    /** Whether the tree stopped short of breaking some material down ({@link #NODE_BUDGET}). */
+    public boolean cut() {
+        return materials.stream().anyMatch(Material::cut);
     }
 
     /** Whether the player holds everything the craft takes. */
@@ -99,22 +117,30 @@ public record MaterialsTree(Node root, List<Material> materials) {
         int makes = makes(recipe, made);
         Node root = walk.made(made, makes, 0, 0, recipe, makes);
         Map<Item, Integer> needs = new LinkedHashMap<>();
-        tally(root, needs);
+        Set<Item> cut = new HashSet<>();
+        tally(root, needs, cut);
         List<Material> materials = new ArrayList<>();
-        needs.forEach((item, need) -> materials.add(new Material(item, need, stock.getOrDefault(item, 0))));
+        needs.forEach((item, need) ->
+                materials.add(new Material(item, need, stock.getOrDefault(item, 0), cut.contains(item))));
         // What is short first; the sort is stable, so each group keeps the order the tree met them in.
         materials.sort(Comparator.comparing((Material material) -> material.shortBy() == 0));
         return new MaterialsTree(root, List.copyOf(materials));
     }
 
-    /** Adds what {@code node} and the nodes under it take from the stock or leave missing to {@code needs}. */
-    private static void tally(Node node, Map<Item, Integer> needs) {
+    /**
+     * Adds what {@code node} and the nodes under it take from the stock or leave missing to {@code needs}, and the items of the cut
+     * nodes to {@code cut}.
+     */
+    private static void tally(Node node, Map<Item, Integer> needs, Set<Item> cut) {
         int taken = node.fromStock() + node.missing();
         if (taken > 0) {
             needs.merge(node.item(), taken, Integer::sum);
         }
+        if (node.cut()) {
+            cut.add(node.item());
+        }
         for (Node child : node.children()) {
-            tally(child, needs);
+            tally(child, needs, cut);
         }
     }
 
@@ -134,7 +160,7 @@ public record MaterialsTree(Node root, List<Material> materials) {
                 && recipe.cells().stream().flatMap(List::stream).anyMatch(ItemStack::isDamageableItem);
     }
 
-    /** One walk of the tree: the stock and the leftovers it uses up, and the items being made on the branch walked. */
+    /** One walk of the tree: the stock and the leftovers it uses up, the items being made on the branch walked, and its size. */
     private static final class Walk {
         private final Function<Item, List<KnownRecipe>> known;
         private final Map<Item, Integer> stock;
@@ -143,20 +169,26 @@ public record MaterialsTree(Node root, List<Material> materials) {
         private final Map<Item, List<KnownRecipe>> followed = new HashMap<>();
         /** For each X asked about, whether an item is made solely from X. */
         private final Map<Item, Map<Item, Boolean>> solelyFrom = new HashMap<>();
+        /** The nodes made so far. */
+        private int size;
 
         Walk(Function<Item, List<KnownRecipe>> known, Map<Item, Integer> stock) {
             this.known = known;
             this.stock = new HashMap<>(stock);
         }
 
-        /** {@code needed} of {@code item}: from the leftovers, the stock, then, when {@code craft}, its recipe. */
+        /**
+         * {@code needed} of {@code item}: from the leftovers, the stock, then, when {@code craft}, its recipe, unless the tree has
+         * reached its {@link #NODE_BUDGET}.
+         */
         private Node node(Item item, int needed, boolean craft) {
             int fromSpare = take(spare, item, needed);
             int fromStock = take(stock, item, needed - fromSpare);
             int rest = needed - fromSpare - fromStock;
             KnownRecipe recipe = rest == 0 || !craft ? null : recipeFor(item);
-            if (recipe == null) {
-                return new Node(item, needed, fromStock, fromSpare, null, 0, List.of());
+            if (recipe == null || size >= NODE_BUDGET) {
+                size++;
+                return new Node(item, needed, fromStock, fromSpare, null, 0, List.of(), recipe != null);
             }
             return made(item, needed, fromStock, fromSpare, recipe, rest);
         }
@@ -165,6 +197,7 @@ public record MaterialsTree(Node root, List<Material> materials) {
         Node made(Item item, int needed, int fromStock, int fromSpare, KnownRecipe recipe, int rest) {
             int makes = makes(recipe, item);
             int crafts = Math.ceilDiv(rest, makes);
+            size++;
             branch.add(item);
             List<Node> children = new ArrayList<>();
             for (KnownRecipe.Need need : recipe.needs()) {
@@ -176,7 +209,7 @@ public record MaterialsTree(Node root, List<Material> materials) {
             }
             branch.remove(item);
             spare.merge(item, crafts * makes - rest, Integer::sum);
-            return new Node(item, needed, fromStock, fromSpare, recipe, crafts, List.copyOf(children));
+            return new Node(item, needed, fromStock, fromSpare, recipe, crafts, List.copyOf(children), false);
         }
 
         /**

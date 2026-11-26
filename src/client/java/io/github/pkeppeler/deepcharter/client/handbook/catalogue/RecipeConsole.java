@@ -439,12 +439,14 @@ final class RecipeConsole {
     /**
      * The total materials in place of the recipe: a heading where the station stands (or that the player holds everything), then a row
      * for each item, its icon and have/need, and how many are short at the right, glowing; the last row says how many more the wheel
-     * shows.
+     * shows. When the tree was cut short ({@link MaterialsTree#cut}), the heading says so and each row it did not break down is marked.
      */
     private void drawMaterials(GuiGraphicsExtractor graphics, Card card, CatalogueLook look, MaterialsTree tree) {
         int width = card.right() - card.left();
         if (tree.allHeld()) {
             glow(graphics, font, fit(font, text("materials.all"), width), card.left(), card.stationY());
+        } else if (tree.cut()) {
+            glow(graphics, font, fit(font, text("materials.cut"), width), card.left(), card.stationY());
         } else {
             dim(graphics, font, fit(font, text("materials"), width), card.left(), card.stationY());
         }
@@ -455,7 +457,8 @@ final class RecipeConsole {
             Rect cell = materialCell(card, look, i);
             graphics.item(new ItemStack(material.item()), cell.x(), cell.y());
             int y = cell.y() + look.needTextY();
-            String figures = material.have() + "/" + material.need();
+            String figures =
+                    material.have() + "/" + material.need() + (material.cut() ? text("materials.cut.mark") : "");
             if (material.shortBy() == 0) {
                 dim(graphics, font, fit(font, figures, card.right() - textX), textX, y);
                 continue;
