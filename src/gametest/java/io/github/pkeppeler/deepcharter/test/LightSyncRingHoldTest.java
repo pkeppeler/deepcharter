@@ -130,6 +130,8 @@ public class LightSyncRingHoldTest {
                             .ifPresent(early -> {
                                 ChunkHolder nearHolder =
                                         level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(early.pack());
+                                Object[] atDraw =
+                                        Objects.requireNonNull(each.ringAtDraw().get(early));
                                 throw failure(
                                         helper,
                                         "%s is sendable while the light tasks queued by the draw of %s are waiting"
@@ -149,9 +151,9 @@ public class LightSyncRingHoldTest {
                                         nearHolder == null
                                                 ? "noHolder"
                                                 : nearHolder.getSendSyncFuture().isDone(),
-                                        each.ringAtDraw().get(early)[0] != null,
-                                        each.ringAtDraw().get(early)[0] == nearHolder,
-                                        each.ringAtDraw().get(early)[1] == null
+                                        atDraw[0] != null,
+                                        atDraw[0] == nearHolder,
+                                        atDraw[1] == null
                                                 ? "none"
                                                 : ((CompletableFuture<?>) each.ringAtDraw()
                                                                 .get(early)[1])
