@@ -38,9 +38,10 @@ import org.slf4j.LoggerFactory;
  * leak.
  *
  * <p>This is the chain of separate layer dimensions, not the campaign world, whose layers are bands of one level and
- * whose crossings move nobody. The comparison is last trip against first (light watches: against the second, once
- * settled), so it misses an object kept once and never again. The server's chunks are counted through their tickets, so it also misses a chunk whose ticket is gone but
- * whose unload stalls; left to settle, the layers held 4418 chunks after trips 1, 2 and 10 (#1301), so none did then.
+ * whose crossings move nobody. The comparison is last trip against first (light watches: against the second), so it
+ * misses an object kept once and never again. The server's chunks are counted through their tickets, so it also misses
+ * a chunk whose ticket is gone but whose unload stalls; left to settle, the layers held 4418 chunks after trips 1, 2
+ * and 10 (#1301), so none did then.
  */
 public class BoreTripsClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger("BoreTripsClientTest");
@@ -239,44 +240,49 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Waits until LightSync is done with every chunk round the site in both layers: none is held, watched or waiting on
-     * queued light tasks, and no player has a send of one queued. A light watch lives for a window after its chunk can be
-     * sent, so a census straight after a crossing counted the crossing's watches still in flight, a number that rose and
-     * fell with timing and failed the steady check on a high last sample (#1405). A watch that never ends fails here, named.
+     * Waits until LightSync is done with the site ({@link #unsettled} is empty), samples, and samples again if
+     * something started on the site between the wait and the census: a hold or watch begun there would be counted as
+     * one that stayed. A light watch lives for a window after its chunk can be sent, so a census straight after a
+     * crossing counted the crossing's watches still in flight, a number that rose and fell with timing and failed the
+     * steady check on a high last sample (#1405).
      */
-    private static void settle(ClientGameTestContext context, TwoPlayerServer two, Site site) {
-        long start = System.nanoTime();
-        ClientWait.until(
-                context,
-                "LightSync to be done with the chunks round the site in both layers",
-                () -> two.server()
-                        .computeOnServer(server -> unsettled(server, site).isEmpty()),
-                () -> "unsettled: " + two.server().computeOnServer(server -> unsettled(server, site)));
-        LOGGER.info("BORE-SETTLE {} ms", (System.nanoTime() - start) / 1_000_000);
+    private static Tripped settledSample(
+            ClientGameTestContext context, TwoPlayerServer two, int trip, Site site, int forceSendsBefore) {
+        for (int attempt = 1; ; attempt++) {
+            long start = System.nanoTime();
+            ClientWait.until(
+                    context,
+                    "LightSync to be done with the chunks round the site in both layers",
+                    () -> two.server()
+                            .computeOnServer(server -> unsettled(server, site).isEmpty()),
+                    () -> "unsettled: " + two.server().computeOnServer(server -> unsettled(server, site)));
+            LOGGER.info("BORE-SETTLE {} ms", (System.nanoTime() - start) / 1_000_000);
+            Tripped held = sample(context, two, trip, site, forceSendsBefore);
+            List<String> since = two.server().computeOnServer(server -> unsettled(server, site));
+            if (since.isEmpty()) {
+                return held;
+            }
+            require(attempt < 3, "trip " + trip + ": the site kept unsettling during the census: " + since);
+        }
     }
 
     /**
-     * The chunks of both layers round the site, out to the last ring that ticks, that LightSync is not done with or
-     * whose send is queued, each tagged with why. Not the outermost loaded ring past it: a chunk there never ticks, so a
-     * watch on it lasts until the chunk unloads, and the first trip's settle waited out the 120 s on a handful of them
-     * (#1394 drops such watches; once it lands, the ring can join the settle). The last ticking ring is one past the
-     * simulation distance, which TwoPlayerServer leaves at the view distance's default.
+     * The chunks of both layers round the site, out to the last ring that ticks, that LightSync holds, watches or waits
+     * on queued light tasks for, or whose send to a player is queued, each tagged with why. Not the outermost loaded
+     * ring past it: a chunk there never ticks, so a watch on it lasts until the chunk unloads, and the first trip's
+     * settle waited out the 120 s on a handful of them (#1394 drops such watches; once it lands, the ring can join the
+     * settle). The last ticking ring is one past the simulation distance, which TwoPlayerServer leaves at the view
+     * distance's default.
      */
     private static List<String> unsettled(MinecraftServer server, Site site) {
-        int radius = tickingRadius(server);
         List<String> unsettled = new ArrayList<>();
-        for (ServerLevel level : List.of(site.one(), site.two())) {
-            for (int dx = -radius; dx <= radius; dx++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    ChunkPos pos =
-                            new ChunkPos(site.centre().x() + dx, site.centre().z() + dz);
-                    boolean queued = level.players().stream()
-                            .anyMatch(player -> player.connection.chunkSender.isPending(pos.pack()));
-                    if (queued || LightSync.watching(level, pos)) {
-                        unsettled.add(level.dimension().identifier().getPath() + " " + pos
-                                + (queued ? " send queued" : " watched"));
-                    }
-                }
+        for (LayerChunk chunk : around(site, tickingRadius(server))) {
+            boolean queued = chunk.level().players().stream()
+                    .anyMatch(player ->
+                            player.connection.chunkSender.isPending(chunk.pos().pack()));
+            if (queued || LightSync.watching(chunk.level(), chunk.pos())) {
+                unsettled.add(chunk.level().dimension().identifier().getPath() + " " + chunk.pos()
+                        + (queued ? " send queued" : " watched"));
             }
         }
         return unsettled;
@@ -285,43 +291,31 @@ public class BoreTripsClientTest implements FabricClientGameTest {
     /** The watched chunks of both layers on the outermost loaded ring, the one past {@link #tickingRadius}. */
     private static int ringWatches(MinecraftServer server, Site site) {
         int ring = tickingRadius(server) + 1;
-        int watched = 0;
-        for (ServerLevel level : List.of(site.one(), site.two())) {
-            for (int dx = -ring; dx <= ring; dx++) {
-                for (int dz = -ring; dz <= ring; dz++) {
-                    if (Math.max(Math.abs(dx), Math.abs(dz)) == ring
-                            && LightSync.watching(
-                                    level,
-                                    new ChunkPos(
-                                            site.centre().x() + dx,
-                                            site.centre().z() + dz))) {
-                        watched++;
-                    }
-                }
-            }
-        }
-        return watched;
+        return (int) around(site, ring).stream()
+                .filter(chunk -> chunk.pos().getChessboardDistance(site.centre()) == ring
+                        && LightSync.watching(chunk.level(), chunk.pos()))
+                .count();
     }
 
     private static int tickingRadius(MinecraftServer server) {
         return server.getPlayerList().getSimulationDistance() + 1;
     }
 
-    /**
-     * Settles, then samples, and samples again if something started on the site between the settle and the census: a
-     * hold or watch begun there would be counted as one that stayed.
-     */
-    private static Tripped settledSample(
-            ClientGameTestContext context, TwoPlayerServer two, int trip, Site site, int forceSendsBefore) {
-        for (int attempt = 1; ; attempt++) {
-            settle(context, two, site);
-            Tripped held = sample(context, two, trip, site, forceSendsBefore);
-            List<String> since = two.server().computeOnServer(server -> unsettled(server, site));
-            if (since.isEmpty()) {
-                return held;
+    private record LayerChunk(ServerLevel level, ChunkPos pos) {}
+
+    /** The chunks of both layers within {@code radius} chunks of the site's centre. */
+    private static List<LayerChunk> around(Site site, int radius) {
+        List<LayerChunk> chunks = new ArrayList<>();
+        for (ServerLevel level : List.of(site.one(), site.two())) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    chunks.add(new LayerChunk(
+                            level,
+                            new ChunkPos(site.centre().x() + dx, site.centre().z() + dz)));
+                }
             }
-            require(attempt < 3, "trip " + trip + ": the site kept unsettling during the census: " + since);
         }
+        return chunks;
     }
 
     private static Tripped sample(
