@@ -252,7 +252,7 @@ public final class FarChunks {
         return new Deadline(WAIT_SECONDS);
     }
 
-    /** A clock for a wait longer than {@link #WAIT_SECONDS}, such as a world load. */
+    /** A clock with its own limit: longer than {@link #WAIT_SECONDS} for a world load, shorter for a wait that must fail before a class limit. */
     public static Deadline deadline(int seconds) {
         return new Deadline(seconds);
     }

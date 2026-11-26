@@ -200,6 +200,7 @@ final class ChassisChecks {
             // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
             pilot.teleportTo(level, start, EAST, 0f);
             pod[0] = spawn(level, start);
+            pod[0].setYRot(EAST);
             expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
             pilot.setInput(FORWARD);
         });

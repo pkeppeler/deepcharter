@@ -78,6 +78,19 @@ public class CampaignTerrainTest {
     /** The cave stalks of layer 1's first zone are the one thing besides rock that its biomes place. */
     private static final String STALK = "deepcharter:fungal_stalk";
     /**
+     * Layer 1's rock by zone (#1277), and what its abandoned shafts and salvage caches put in it: rubble, timber, a
+     * lunch pail, a prayer card, a crate, and the shafts' ladders and candle stubs, the two vanilla blocks the campaign
+     * world generates.
+     */
+    private static final Set<String> CLAIM_SHAFT_BLOCKS = Set.of(
+            "deepcharter:packed_shale_rubble",
+            "deepcharter:stalk_planks",
+            "deepcharter:lunch_pail",
+            "deepcharter:prayer_card",
+            "deepcharter:salvage_crate",
+            "minecraft:ladder",
+            "minecraft:candle");
+    /**
      * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the glowcaps and the surface's own
      * stalks and great stalks.
      */
@@ -228,7 +241,9 @@ public class CampaignTerrainTest {
                 }
             }
         }
-        Set<String> layer1 = Set.of(PACKED_SHALE, STALK);
+        Set<String> layer1 =
+                new TreeSet<>(Set.of(PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", STALK));
+        layer1.addAll(CLAIM_SHAFT_BLOCKS);
         expectOnly(helper, found, CampaignBands.SURFACE, SURFACE_BLOCKS);
         expectOnly(helper, found, CampaignBands.LAYER_1, layer1);
         expectOnly(helper, found, CampaignBands.LAYER_2, Set.of(GREEN_SHALE));
@@ -340,11 +355,16 @@ public class CampaignTerrainTest {
             for (int chunkZ = SAMPLE_CHUNK_Z; chunkZ < SAMPLE_CHUNK_Z + SAMPLE_CHUNKS; chunkZ++) {
                 // sync-load: whenBlocksLoaded loaded the sample's chunks
                 ChunkAccess chunk = level.getChunk(chunkX, chunkZ);
-                for (var section : chunk.getSections()) {
+                for (int index = 0; index < chunk.getSectionsCount(); index++) {
+                    var section = chunk.getSection(index);
+                    // Layer 1's shafts are the one place a vanilla block (their ladders and candle stubs) is generated.
+                    boolean claim = bandOf(chunk.getSectionYFromSectionIndex(index) << 4) == CampaignBands.LAYER_1;
                     section.maybeHas(state -> {
                         String id =
                                 BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
-                        if (id.startsWith("minecraft:") && !FLUIDS_AND_AIR.contains(id)) {
+                        if (id.startsWith("minecraft:")
+                                && !FLUIDS_AND_AIR.contains(id)
+                                && !(claim && CLAIM_SHAFT_BLOCKS.contains(id))) {
                             vanilla.add(id);
                         }
                         return false;

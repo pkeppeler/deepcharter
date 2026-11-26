@@ -44,6 +44,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -68,6 +69,7 @@ public class TowingTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final double EPSILON = 1e-6;
+    private static final float EAST_YAW = -90f;
     /** Ticks a pod needs, once its chunk ticks, to fall through the shaft and cross. */
     private static final int CROSSING_TICKS = 200;
     /** Entities BreachEvents.CROSSED has fired for. */
@@ -224,6 +226,16 @@ public class TowingTest {
                                 "the towed pod should rest on the floor at y %s, it is at %s",
                                 TOW_FLOOR,
                                 towed.getY());
+                    }
+                    // The tower drives east, so the pod trailing it faces the way it was dragged (yaw -90), not the yaw
+                    // it was left with (#1281).
+                    float off = Mth.wrapDegrees(towed.getYRot() - EAST_YAW);
+                    if (Math.abs(off) > 5f) {
+                        throw failure(
+                                helper,
+                                "a towed pod turns to the way it is dragged (east, yaw %s), its yaw is %s",
+                                EAST_YAW,
+                                towed.getYRot());
                     }
                     if (towed.hull() != hullStart[0]) {
                         throw failure(

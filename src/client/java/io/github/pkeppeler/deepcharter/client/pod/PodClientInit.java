@@ -11,6 +11,7 @@ public final class PodClientInit {
         PodClientRegistry.register();
         PodPaint.init();
         PodStatusHud.init();
+        PodChase.init();
         CockpitHud.init();
         FrontCameraFeed.init();
         LowFuelBeep.init();

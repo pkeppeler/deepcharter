@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.IntConsumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -122,14 +123,16 @@ public class CompanyRockLookTest {
                 }
             }
             int total = found.values().stream().mapToInt(Integer::intValue).sum();
-            int right = found.getOrDefault(expectedHost(layer), 0);
+            Set<Host> hosts = OreHostTest.generatedHosts(layer);
+            int right =
+                    hosts.stream().mapToInt(host -> found.getOrDefault(host, 0)).sum();
             if (total < AT_LEAST || right != total) {
                 throw failure(
                         helper,
                         "layer_%s should hold at least %s Company rock, all in %s, it holds %s",
                         layer,
                         AT_LEAST,
-                        expectedHost(layer),
+                        hosts,
                         found);
             }
         }

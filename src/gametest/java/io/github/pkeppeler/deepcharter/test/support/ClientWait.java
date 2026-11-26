@@ -58,11 +58,24 @@ public final class ClientWait {
      */
     public static void until(
             ClientGameTestContext context, String what, BooleanSupplier condition, Supplier<String> actual) {
-        FarChunks.Deadline deadline = FarChunks.deadline();
+        until(context, what, FarChunks.WAIT_SECONDS, condition, actual);
+    }
+
+    /**
+     * As {@link #until(ClientGameTestContext, String, BooleanSupplier, Supplier)}, for up to {@code seconds}: for a wait late in a class
+     * that must fail, named, before the class's own limit ({@link ClientTestWatchdog}) halts the run.
+     */
+    public static void until(
+            ClientGameTestContext context,
+            String what,
+            int seconds,
+            BooleanSupplier condition,
+            Supplier<String> actual) {
+        FarChunks.Deadline deadline = FarChunks.deadline(seconds);
         while (!condition.getAsBoolean()) {
             if (deadline.expired()) {
-                throw new AssertionError("Timed out after " + FarChunks.WAIT_SECONDS + " s waiting for " + what
-                        + "; it had " + actual.get() + "; LightSync holds: " + LightSync.heldChunks());
+                throw new AssertionError("Timed out after " + seconds + " s waiting for " + what + "; it had "
+                        + actual.get() + "; LightSync holds: " + LightSync.heldChunks());
             }
             try {
                 Thread.sleep(FarChunks.POLL_MILLIS);
@@ -93,8 +106,8 @@ public final class ClientWait {
 
     /**
      * Waits until the server has settled the light of the chunks round the square of {@code radius} at ({@code x},
-     * {@code z}) in {@code layer}. Call it after a carve, before a pod with a pilot moves in: a rider sends no move
-     * packets, so a pod dropped while a chunk send is queued stays dropped (#1249).
+     * {@code z}) in {@code layer}. Call it after a carve, before a pod with a pilot moves in: a pod dropped while a
+     * chunk send is queued stays off its pilot's client until the send lands (#1249, ADR 0092).
      */
     public static void lightSettled(
             ClientGameTestContext context, TestServerContext server, int layer, int x, int z, int radius) {

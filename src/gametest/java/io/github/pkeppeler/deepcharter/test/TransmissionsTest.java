@@ -3,13 +3,16 @@ package io.github.pkeppeler.deepcharter.test;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -163,46 +166,133 @@ public class TransmissionsTest {
         return Charters.findOrThrow(server(helper), charter).orElseThrow().account();
     }
 
-    @GameTest
-    public void theCatalogListsT01ToT18AndTheSurfaceArrivalWithTheThreeBonuses(GameTestHelper helper) {
-        List<Identifier> expected = Stream.concat(
-                        Stream.iterate(1, number -> number + 1)
-                                .limit(18)
-                                .map(number -> id(String.format("t%02d", number))),
-                        Stream.of(id("surface_arrival")))
-                .toList();
-        List<Identifier> actual =
-                TransmissionCatalog.all().stream().map(Transmission::id).toList();
-        if (!actual.equals(expected)) {
-            throw helper.assertionException(
-                    "the catalog should list T01 to T18 in order, then the surface arrival, lists %s", actual);
+    /** One row of the script's trigger lines ({@code docs/lore/transmissions.md}), as the data file must say it. */
+    private record Canon(
+            String sender,
+            Transmission.Framing framing,
+            Transmission.Trigger trigger,
+            Optional<Integer> loop,
+            Optional<Transmission.Bonus> bonus,
+            boolean replay) {
+        Canon paid(Transmission.Bonus tier) {
+            return new Canon(sender, framing, trigger, loop, Optional.of(tier), replay);
         }
+
+        Canon replayed() {
+            return new Canon(sender, framing, trigger, loop, bonus, true);
+        }
+    }
+
+    private static Canon live(String sender, Transmission.Trigger trigger) {
+        return new Canon(sender, Transmission.Framing.LIVE, trigger, Optional.empty(), Optional.empty(), false);
+    }
+
+    private static Canon relay(String pod, Transmission.Trigger trigger, int loop) {
+        return new Canon(pod, Transmission.Framing.RELAY, trigger, Optional.of(loop), Optional.empty(), false);
+    }
+
+    /**
+     * The data file says what the script's trigger lines say: T01 to T18, then the surface arrival, each with its sender, framing, trigger,
+     * bonus tier, and whether it replays (the terminal repairs, which are world-wide).
+     */
+    @GameTest
+    public void theCatalogMatchesTheScriptsTriggerLines(GameTestHelper helper) {
+        Transmission.Trigger event = new Transmission.Trigger.Event();
+        Map<String, Canon> expected = new LinkedHashMap<>();
+        expected.put("t01", live("personnel", event));
+        expected.put("t02", live("personnel", event).paid(Transmission.Bonus.B1).replayed());
+        expected.put("t03", live("personnel", event).replayed());
+        expected.put("t04", live("personnel", event).paid(Transmission.Bonus.B1).replayed());
+        expected.put("t05", live("personnel", event).replayed());
+        expected.put("t06", live("personnel", event).paid(Transmission.Bonus.B1));
+        expected.put("t07", live("personnel", zone(1, 0, false)).paid(Transmission.Bonus.B1));
+        expected.put("t08", live("hal", zone(1, 1, false)));
+        expected.put("t09", live("personnel", zone(1, 1, true)).paid(Transmission.Bonus.B2));
+        expected.put(
+                "t10",
+                new Canon(
+                        "unknown",
+                        Transmission.Framing.UNKNOWN,
+                        zone(1, 2, false),
+                        Optional.empty(),
+                        Optional.empty(),
+                        false));
+        expected.put(
+                "t11", live("personnel", new Transmission.Trigger.Breach(2)).paid(Transmission.Bonus.B2));
+        expected.put("t12", relay("mole_0388", zone(2, 0, false), 14_002));
+        expected.put("t13", live("hal", zone(2, 0, false)));
+        expected.put("t14", live("personnel", zone(2, 1, false)).paid(Transmission.Bonus.B2));
+        expected.put("t15", relay("prospector_0002", zone(2, 1, false), 15_048));
+        expected.put("t16", live("hal", zone(2, 2, false)));
+        expected.put("t17", live("personnel", event).paid(Transmission.Bonus.B3));
+        expected.put(
+                "t18", live("personnel", new Transmission.Trigger.Breach(3)).paid(Transmission.Bonus.B3));
+        expected.put("surface_arrival", live("company", new Transmission.Trigger.Breach(LayerChain.SURFACE)));
+
+        List<Identifier> order =
+                TransmissionCatalog.all().stream().map(Transmission::id).toList();
+        if (!order.equals(expected.keySet().stream().map(TransmissionsTest::id).toList())) {
+            throw helper.assertionException(
+                    "the catalog should list T01 to T18 in order, then the surface arrival, lists %s", order);
+        }
+        expected.forEach((name, canon) -> {
+            Transmission transmission = TransmissionCatalog.require(id(name));
+            Canon actual = new Canon(
+                    transmission.sender(),
+                    transmission.framing(),
+                    transmission.trigger(),
+                    transmission.loop(),
+                    transmission.bonus(),
+                    transmission.replay());
+            if (!actual.equals(canon)) {
+                throw helper.assertionException("%s should be %s, is %s", name, canon, actual);
+            }
+        });
         // Written out here, not read from the tuning, so the test checks the amounts rather than repeating them.
         Map<Transmission.Bonus, Long> amounts =
-                Map.of(Transmission.Bonus.B1, 1_000L, Transmission.Bonus.B2, 3_000L, Transmission.Bonus.B3, 10_000L);
+                Map.of(Transmission.Bonus.B1, 100L, Transmission.Bonus.B2, 250L, Transmission.Bonus.B3, 500L);
         amounts.forEach((bonus, amount) -> {
             if (bonus.amount() != amount) {
                 throw helper.assertionException("%s should be worth %s, is %s", bonus, amount, bonus.amount());
             }
-            long carriers = TransmissionCatalog.all().stream()
-                    .filter(transmission -> transmission.bonus().equals(Optional.of(bonus)))
-                    .count();
-            if (carriers != 1) {
-                throw helper.assertionException(
-                        "%s should come with exactly one transmission, comes with %s", bonus, carriers);
-            }
         });
-        for (Transmission.Framing framing : Transmission.Framing.values()) {
-            if (TransmissionCatalog.all().stream().noneMatch(transmission -> transmission.framing() == framing)) {
-                throw helper.assertionException("no transmission is framed %s", framing);
-            }
+        helper.succeed();
+    }
+
+    private static Transmission.Trigger zone(int layer, int zone, boolean lowerHalf) {
+        return new Transmission.Trigger.Zone(layer, zone, lowerHalf);
+    }
+
+    /** A relay's loop counter gains one a day; a relay without one, or a loop counter on anything else, does not load. */
+    @GameTest
+    public void aRelayCountsOneLoopADayAndOnlyARelayHasALoopCounter(GameTestHelper helper) {
+        Transmission t12 = TransmissionCatalog.require(id("t12"));
+        if (t12.loopOn(0) != 14_002 || t12.loopOn(3) != 14_005) {
+            throw helper.assertionException(
+                    "t12 loops 14,002 on day 0 and one more each day: %s, %s", t12.loopOn(0), t12.loopOn(3));
         }
-        for (Transmission.Trigger.Kind kind : Transmission.Trigger.Kind.values()) {
-            if (TransmissionCatalog.all().stream()
-                    .noneMatch(transmission -> transmission.trigger().kind() == kind)) {
-                throw helper.assertionException("no transmission has a %s trigger", kind);
-            }
-        }
+        Identifier any = id("t99");
+        Transmission.Trigger event = new Transmission.Trigger.Event();
+        expectThrows(
+                helper,
+                "a relay with no loop counter",
+                () -> new Transmission(
+                        any,
+                        "mole_0388",
+                        Transmission.Framing.RELAY,
+                        event,
+                        Optional.empty(),
+                        Optional.empty(),
+                        false));
+        expectThrows(
+                helper,
+                "a live transmission with a loop counter",
+                () -> new Transmission(
+                        any, "personnel", Transmission.Framing.LIVE, event, Optional.of(1), Optional.empty(), false));
+        expectThrows(
+                helper,
+                "the loop of a live transmission",
+                () -> TransmissionCatalog.require(id("t01")).loopOn(0));
         helper.succeed();
     }
 
@@ -221,16 +311,14 @@ public class TransmissionsTest {
             throw new UncheckedIOException(e);
         }
         for (Transmission transmission : TransmissionCatalog.all()) {
-            for (String key :
-                    List.of(transmission.senderKey(), transmission.framing().headerKey(), transmission.bodyKey())) {
+            for (String key : List.of(
+                    transmission.senderKey(),
+                    transmission.framing().headerKey(),
+                    transmission.framing().endKey(),
+                    transmission.bodyKey())) {
                 if (!lang.has(key) || lang.get(key).getAsString().isBlank()) {
                     throw helper.assertionException("%s needs the lang key %s", transmission.id(), key);
                 }
-            }
-            boolean placeholder = transmission.id().getPath().matches("t\\d\\d");
-            if (placeholder && !lang.get(transmission.bodyKey()).getAsString().contains("[CHARTER]")) {
-                throw helper.assertionException(
-                        "the placeholder text of %s should show the charter field", transmission.id());
             }
         }
         helper.succeed();
@@ -382,14 +470,14 @@ public class TransmissionsTest {
         MinecraftServer server = server(helper);
         TransmissionData data = new TransmissionData();
         CharterId first = directCharter(helper, UUID.randomUUID());
-        Transmissions.fire(server, data, first, id("t08"));
         Transmissions.fire(server, data, first, id("t03"));
+        Transmissions.fire(server, data, first, id("t07"));
         Transmissions.fire(server, data, first, id("t02"));
 
         MockPlayer founder = MockPlayers.join(helper, "tx-replay");
         CharterId later = directCharter(helper, founder.player().getUUID());
         Transmissions.replayTo(server, data, later);
-        if (!deliveredTo(founder).equals(ids("t08", "t02"))) {
+        if (!deliveredTo(founder).equals(ids("t03", "t02"))) {
             throw helper.assertionException(
                     "the new charter is sent the repairs in the order they first fired: %s", deliveredTo(founder));
         }
@@ -398,37 +486,37 @@ public class TransmissionsTest {
         }
         // A replayed transmission has fired for the new charter: firing it again changes nothing, and replaying again
         // adds nothing.
-        Transmissions.fire(server, data, later, id("t08"));
+        Transmissions.fire(server, data, later, id("t02"));
         Transmissions.replayTo(server, data, later);
         if (deliveredTo(founder).size() != 2 || account(helper, later) != 0) {
             throw helper.assertionException(
-                    "t08 should not be sent or paid again to the new charter: %s", deliveredTo(founder));
+                    "t02 should not be sent or paid again to the new charter: %s", deliveredTo(founder));
         }
-        if (!data.progress(later).fired().equals(ids("t08", "t02"))) {
+        if (!data.progress(later).fired().equals(ids("t03", "t02"))) {
             throw helper.assertionException(
                     "the replays belong to the new charter's fired set: %s", data.progress(later));
         }
         helper.succeed();
     }
 
-    /** The whole path with the hooks: a charter founded through {@code Charters} is sent what the world fired. */
+    /** The whole path with the hooks: a charter founded through {@code Charters} is welcomed (T01), then sent the repairs the world fired. */
     @GameTest
     public void foundingACharterSendsItTheRepairsTheWorldHasFired(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         withFreshWorldData(helper, data -> {
             CharterId first = directCharter(helper, UUID.randomUUID());
-            Transmissions.fire(server, first, id("t12"));
+            Transmissions.fire(server, first, id("t03"));
             Transmissions.fire(server, first, id("t18"));
 
             MockPlayer founder = MockPlayers.join(helper, "tx-found");
             CharterId later = foundedCharter(helper, founder.player().getUUID());
-            if (!deliveredTo(founder).equals(ids("t12"))) {
+            if (!deliveredTo(founder).equals(ids("t01", "t03"))) {
                 throw helper.assertionException(
-                        "founding should send t12, a repair, and not t18: %s", deliveredTo(founder));
+                        "founding should send t01, then t03, a repair, and not t18: %s", deliveredTo(founder));
             }
-            Transmissions.fire(server, later, id("t12"));
-            if (deliveredTo(founder).size() != 1) {
-                throw helper.assertionException("t12 should not be sent twice: %s", deliveredTo(founder));
+            Transmissions.fire(server, later, id("t03"));
+            if (deliveredTo(founder).size() != 2) {
+                throw helper.assertionException("t03 should not be sent twice: %s", deliveredTo(founder));
             }
         });
         helper.succeed();
@@ -441,30 +529,30 @@ public class TransmissionsTest {
         CharterId charter = directCharter(helper, UUID.randomUUID());
 
         for (int repeat = 0; repeat < 3; repeat++) {
-            Transmissions.fire(server, data, charter, id("t05"));
+            Transmissions.fire(server, data, charter, id("t02"));
         }
-        if (account(helper, charter) != 1_000) {
-            throw helper.assertionException("B1 is $1,000, credited once: the account is %s", account(helper, charter));
+        if (account(helper, charter) != 100) {
+            throw helper.assertionException("B1 is $100, credited once: the account is %s", account(helper, charter));
         }
-        Transmissions.fire(server, data, charter, id("t08"));
-        if (account(helper, charter) != 4_000) {
-            throw helper.assertionException("B2 is $3,000: the account is %s", account(helper, charter));
+        Transmissions.fire(server, data, charter, id("t09"));
+        if (account(helper, charter) != 350) {
+            throw helper.assertionException("B2 is $250: the account is %s", account(helper, charter));
         }
-        Transmissions.fire(server, data, charter, id("t14"));
-        if (account(helper, charter) != 14_000) {
-            throw helper.assertionException("B3 is $10,000: the account is %s", account(helper, charter));
+        Transmissions.fire(server, data, charter, id("t17"));
+        if (account(helper, charter) != 850) {
+            throw helper.assertionException("B3 is $500: the account is %s", account(helper, charter));
         }
-        for (String name : List.of("t05", "t08", "t14", "t05")) {
+        for (String name : List.of("t02", "t09", "t17", "t02")) {
             Transmissions.fire(server, data, charter, id(name));
         }
-        if (account(helper, charter) != 14_000) {
+        if (account(helper, charter) != 850) {
             throw helper.assertionException("nothing is credited twice: the account is %s", account(helper, charter));
         }
 
-        // A charter founded later is replayed t08, which carries B2, and is not paid for it.
+        // A charter founded later is replayed t02, which carries B1, and is not paid for it.
         CharterId later = directCharter(helper, UUID.randomUUID());
         Transmissions.replayTo(server, data, later);
-        if (!data.progress(later).fired().equals(ids("t08")) || account(helper, later) != 0) {
+        if (!data.progress(later).fired().equals(ids("t02")) || account(helper, later) != 0) {
             throw helper.assertionException(
                     "the replay should reach the new charter without paying it: %s, account %s",
                     data.progress(later), account(helper, later));
@@ -479,18 +567,18 @@ public class TransmissionsTest {
         Path dir = tempDir();
         try {
             try (SavedDataStorage first = storage(server, dir)) {
-                Transmissions.fire(server, first.computeIfAbsent(TransmissionData.TYPE), charter, id("t05"));
+                Transmissions.fire(server, first.computeIfAbsent(TransmissionData.TYPE), charter, id("t07"));
                 first.saveAndJoin();
             }
-            if (account(helper, charter) != 1_000) {
+            if (account(helper, charter) != 100) {
                 throw helper.assertionException(
                         "B1 should be credited once before the restart: %s", account(helper, charter));
             }
             try (SavedDataStorage second = storage(server, dir)) {
                 TransmissionData data = second.computeIfAbsent(TransmissionData.TYPE);
-                Transmissions.fire(server, data, charter, id("t05"));
-                if (account(helper, charter) != 1_000
-                        || !data.progress(charter).fired().equals(ids("t05"))) {
+                Transmissions.fire(server, data, charter, id("t07"));
+                if (account(helper, charter) != 100
+                        || !data.progress(charter).fired().equals(ids("t07"))) {
                     throw helper.assertionException(
                             "B1 must not be credited again after a restart: account %s, %s",
                             account(helper, charter), data.progress(charter));
@@ -513,31 +601,31 @@ public class TransmissionsTest {
         CharterId charter = directCharter(helper, UUID.randomUUID());
         expectDone(helper, Charters.deposit(server, charter, Long.MAX_VALUE), "filling the account");
 
-        Transmissions.fire(server, data, charter, id("t05"));
+        Transmissions.fire(server, data, charter, id("t07"));
         if (account(helper, charter) != Long.MAX_VALUE
                 || !data.progress(charter).pending().equals(List.of(Transmission.Bonus.B1))
-                || !data.progress(charter).fired().equals(ids("t05"))) {
+                || !data.progress(charter).fired().equals(ids("t07"))) {
             throw helper.assertionException(
                     "the refused B1 should wait, the transmission still fired: account %s, %s",
                     account(helper, charter), data.progress(charter));
         }
         // Still full: the next fire tries again and keeps it.
-        Transmissions.fire(server, data, charter, id("t17"));
+        Transmissions.fire(server, data, charter, id("t01"));
         if (!data.progress(charter).pending().equals(List.of(Transmission.Bonus.B1))) {
             throw helper.assertionException("a full account keeps the bonus waiting: %s", data.progress(charter));
         }
-        expectDone(helper, Charters.spend(server, charter, 1_000), "making room");
-        Transmissions.fire(server, data, charter, id("t18"));
+        expectDone(helper, Charters.spend(server, charter, 100), "making room");
+        Transmissions.fire(server, data, charter, id("t08"));
         if (account(helper, charter) != Long.MAX_VALUE
                 || !data.progress(charter).pending().isEmpty()) {
             throw helper.assertionException(
                     "B1 should be paid once there is room: account %s, %s",
                     account(helper, charter), data.progress(charter));
         }
-        expectDone(helper, Charters.spend(server, charter, 1_000), "making room again");
-        Transmissions.fire(server, data, charter, id("t05"));
+        expectDone(helper, Charters.spend(server, charter, 100), "making room again");
+        Transmissions.fire(server, data, charter, id("t07"));
         Transmissions.fire(server, data, charter, id("t01"));
-        if (account(helper, charter) != Long.MAX_VALUE - 1_000) {
+        if (account(helper, charter) != Long.MAX_VALUE - 100) {
             throw helper.assertionException("a paid bonus is not paid again: %s", account(helper, charter));
         }
 
@@ -545,8 +633,8 @@ public class TransmissionsTest {
         TransmissionData other = new TransmissionData();
         CharterId second = directCharter(helper, UUID.randomUUID());
         expectDone(helper, Charters.deposit(server, second, Long.MAX_VALUE), "filling the second account");
-        Transmissions.fire(server, other, second, id("t05"));
-        expectDone(helper, Charters.spend(server, second, 1_000), "making room for the second");
+        Transmissions.fire(server, other, second, id("t07"));
+        expectDone(helper, Charters.spend(server, second, 100), "making room for the second");
         Transmissions.payPending(server, other, second);
         if (account(helper, second) != Long.MAX_VALUE
                 || !other.progress(second).pending().isEmpty()) {
@@ -567,15 +655,15 @@ public class TransmissionsTest {
                 requireFired(helper, data, charter, "t01", true);
                 requireFired(helper, data, charter, "t02", true);
                 data.markSent(charter, member, 2);
-                requireFired(helper, data, charter, "t03", true);
+                requireFired(helper, data, charter, "t08", true);
                 data.addPending(charter, Transmission.Bonus.B2);
                 first.saveAndJoin();
             }
             try (SavedDataStorage second = storage(server, dir)) {
                 TransmissionData data = second.computeIfAbsent(TransmissionData.TYPE);
                 TransmissionData.Progress progress = data.progress(charter);
-                if (!progress.fired().equals(ids("t01", "t02", "t03"))
-                        || !progress.unsent(member).equals(ids("t03"))
+                if (!progress.fired().equals(ids("t01", "t02", "t08"))
+                        || !progress.unsent(member).equals(ids("t08"))
                         || !progress.pending().equals(List.of(Transmission.Bonus.B2))) {
                     throw helper.assertionException("the state should load as saved: %s", progress);
                 }
@@ -585,7 +673,7 @@ public class TransmissionsTest {
                             "the replay list should load as saved, a new charter is replayed %s", replayed);
                 }
                 requireFired(helper, data, charter, "t02", false);
-                requireFired(helper, data, charter, "t03", false);
+                requireFired(helper, data, charter, "t08", false);
             }
         } finally {
             deleteTree(dir);
@@ -809,12 +897,21 @@ public class TransmissionsTest {
                         one, new Vec3(BREACH_COLUMN, TestLayers.band(one, 1).minY() - 1, BREACH_COLUMN), 0, 0));
         helper.succeedWhen(() -> {
             List<Identifier> delivered = deliveredTo(crew);
-            if (!delivered.contains(id("t05"))) {
-                throw helper.assertionException("crossing into layer 2 should send t05, sent %s", delivered);
+            if (!delivered.contains(id("t11"))) {
+                throw helper.assertionException("crossing into layer 2 should send t11, sent %s", delivered);
             }
-            if (delivered.stream().filter(id("t05")::equals).count() != 1 || account(helper, charter) != 1_000) {
+            // The zone poll may have fired layer 1's zone transmissions on the way down: the account holds each bonus
+            // sent live, once. Founding replayed the repairs other tests fired into the shared world, and a replay pays
+            // nothing.
+            long paid = delivered.stream()
+                    .map(TransmissionCatalog::require)
+                    .filter(transmission -> !transmission.replay())
+                    .flatMap(transmission -> transmission.bonus().stream())
+                    .mapToLong(Transmission.Bonus::amount)
+                    .sum();
+            if (delivered.stream().filter(id("t11")::equals).count() != 1 || account(helper, charter) != paid) {
                 throw helper.assertionException(
-                        "t05 is sent once and pays B1 once: %s, account %s", delivered, account(helper, charter));
+                        "t11 is sent once and pays B2 once: %s, account %s", delivered, account(helper, charter));
             }
         });
     }
@@ -868,20 +965,101 @@ public class TransmissionsTest {
         boolean[] moved = {false};
         helper.succeedWhen(() -> {
             List<Identifier> delivered = deliveredTo(crew);
-            if (!delivered.contains(id("t07"))) {
-                throw helper.assertionException("standing in zone 1 of layer 2 should send t07, sent %s", delivered);
+            if (!delivered.containsAll(ids("t14", "t15"))) {
+                throw helper.assertionException(
+                        "standing in zone 1 of layer 2 should send t14 and t15, sent %s", delivered);
             }
             if (!moved[0]) {
                 moved[0] = true;
                 crew.teleportTo(two, new Vec3(ZONE_COLUMN, bottom, ZONE_COLUMN), 0, 0);
             }
-            if (!delivered.contains(id("t09"))) {
-                throw helper.assertionException("standing in zone 2 of layer 2 should send t09, sent %s", delivered);
+            if (!delivered.contains(id("t16"))) {
+                throw helper.assertionException("standing in zone 2 of layer 2 should send t16, sent %s", delivered);
             }
-            if (delivered.contains(id("t06"))) {
-                throw helper.assertionException("t06 is for zone 0, which this player never entered: %s", delivered);
+            if (delivered.contains(id("t12")) || delivered.contains(id("t13"))) {
+                throw helper.assertionException(
+                        "t12 and t13 are for zone 0, which this player never entered: %s", delivered);
             }
         });
+    }
+
+    /** T09 waits for the lower half of the Stone Benches: the upper half sends T08 alone, the lower half then sends T09. */
+    @GameTest(maxTicks = TRIGGER_TICKS)
+    public void theLowerHalfOfTheStoneBenchesSendsT09(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        ServerLevel one = TestLayers.level(server, 1);
+        LayerChain.Band oneBand = TestLayers.band(one, 1);
+        Zones.Span benches = Zones.span(oneBand.minY(), oneBand.height(), 1);
+        int upper = benches.high() - 2;
+        int lower = benches.low() + 2;
+        MockPlayer crew = MockPlayers.join(helper, "tx-half");
+        foundedCharter(helper, crew.player().getUUID());
+        crew.player().setPermanentlyInvulnerable(true);
+        crew.player().setNoGravity(true);
+        crew.teleportTo(one, new Vec3(ZONE_COLUMN + 64, upper, ZONE_COLUMN + 64), 0, 0);
+        boolean[] moved = {false};
+        helper.succeedWhen(() -> {
+            List<Identifier> delivered = deliveredTo(crew);
+            if (!delivered.contains(id("t08"))) {
+                throw helper.assertionException("the upper Stone Benches should send t08, sent %s", delivered);
+            }
+            if (!moved[0]) {
+                if (delivered.contains(id("t09"))) {
+                    throw helper.assertionException("t09 waits for the lower half, sent %s", delivered);
+                }
+                moved[0] = true;
+                crew.teleportTo(one, new Vec3(ZONE_COLUMN + 64, lower, ZONE_COLUMN + 64), 0, 0);
+            }
+            if (!delivered.contains(id("t09"))) {
+                throw helper.assertionException("the lower Stone Benches should send t09, sent %s", delivered);
+            }
+        });
+    }
+
+    /**
+     * The event triggers of the script: each colony terminal's repair fires its transmission (T05 for any further one), and a bought
+     * Mole fires T06. The hangar console's repair fires nothing here: the hangar fires T06 when it hands over the founding Mole.
+     * Called on the hooks' handlers, not the events, so no other feature's listener changes the shared world.
+     */
+    @GameTest
+    public void eachRepairAndTheMoleFireTheirTransmissions(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        withFreshWorldData(helper, data -> {
+            MockPlayer crew = MockPlayers.join(helper, "tx-repairs");
+            CharterId id = directCharter(helper, crew.player().getUUID());
+            Charter charter = Charters.findOrThrow(server, id).orElseThrow();
+            TransmissionTriggers.onRepaired(server, TerminalTypes.FUEL_PUMP, charter);
+            TransmissionTriggers.onRepaired(server, TerminalTypes.ORE_PROCESSOR, charter);
+            TransmissionTriggers.onRepaired(server, TerminalTypes.UPGRADE_TERMINAL, charter);
+            TransmissionTriggers.onRepaired(server, TerminalTypes.REPAIR_STATION, charter);
+            TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.RESTORE_WRECK);
+            if (!deliveredTo(crew).equals(ids("t02", "t03", "t04", "t05"))) {
+                throw helper.assertionException(
+                        "the colony repairs send t02 to t05 in order, and a restore sends nothing: %s",
+                        deliveredTo(crew));
+            }
+            TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.BUY_MOLE);
+            TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.BUY_MOLE);
+            if (!deliveredTo(crew).equals(ids("t02", "t03", "t04", "t05", "t06"))
+                    || account(helper, id) != 3 * Transmission.Bonus.B1.amount()) {
+                throw helper.assertionException(
+                        "a bought Mole sends t06 once, and the repairs pay B1 for the pump and the upgrade terminal and"
+                                + " the Mole: %s, account %s",
+                        deliveredTo(crew), account(helper, id));
+            }
+            MockPlayer other = MockPlayers.join(helper, "tx-repairs-2");
+            CharterId second = directCharter(helper, other.player().getUUID());
+            TransmissionTriggers.onRepaired(
+                    server,
+                    HangarTerminal.TYPE,
+                    Charters.findOrThrow(server, second).orElseThrow());
+            if (!deliveredTo(other).isEmpty()) {
+                throw helper.assertionException(
+                        "the console's repair alone sends nothing: the hangar sends t06 with the founding Mole, %s",
+                        deliveredTo(other));
+            }
+        });
+        helper.succeed();
     }
 
     private static void requireFired(
