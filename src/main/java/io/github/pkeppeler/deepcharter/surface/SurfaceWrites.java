@@ -129,6 +129,7 @@ public final class SurfaceWrites {
      * The section to write {@code state} into at {@code pos}, when the fast path may, else null. It does not read the toggle, so a
      * test of the guard does not depend on it.
      */
+    // test-seam: SurfaceWritesTest asserts the whole guard here (ADR 0090); set() runs the same guard, neutralWas.
     public static @Nullable LevelChunkSection fastSection(ChunkAccess chunk, BlockPos pos, BlockState state) {
         return neutralWas(chunk, pos, state) == null ? null : chunk.getSection(chunk.getSectionIndex(pos.getY()));
     }
