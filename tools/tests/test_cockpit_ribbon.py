@@ -246,6 +246,11 @@ class Titles(unittest.TestCase):
         self.assertNotIn("cart", icons.values())
         self.assertTrue(all(icon is None for row in cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["burning"])[1:] for _, _, icon in row))
 
+    def test_solid_fuel_left_in_the_tank_is_a_row_after_the_fuels_icon_and_pump_fuel_is_none(self):
+        solid = cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["solid-fuel"])
+        self.assertEqual([[(cockpit_ribbon.STATES["solid-fuel"]["solid"], cockpit_ribbon.SHARED["fuelColor"], cockpit_ribbon.GAUGE_ICONS["fuel"])]], solid[2:])
+        self.assertEqual(2, len(cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["calm"])))
+
 
 class Coverage(unittest.TestCase):
     def test_the_status_is_under_the_budget_and_smaller_than_the_scanner(self):

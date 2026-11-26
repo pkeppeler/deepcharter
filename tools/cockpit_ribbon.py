@@ -370,7 +370,8 @@ def write() -> None:
 # What the game draws on top of the sprites, as the preview and the coverage need it
 
 
-# The states the stills are shot in: the pod's real values, the numbers the plate shows and the alert lines (the plain readout's lines after the first four).
+# The states the stills are shot in: the pod's real values, the numbers the plate shows, the solid fuel left in the tank (#1438: pump fuel, the calm state's, gets
+# no row) and the alert lines (the plain readout's lines after the first four).
 STATES = {
     "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "Y150"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
              "lines": ["Hull 100/100", "Fuel 78%", "Cargo 0", "Y 150"]},
@@ -380,6 +381,8 @@ STATES = {
                 "lamps": [0, 0, 1, 1, 0], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Y 150", "HULL BURNING"]},
     "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.69, "tally": ["80/100", "50%", "5", "Y-420"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
              "lines": ["Hull 80/100", "Fuel 50%", "Cargo 5", "Y -420"]},
+    "solid-fuel": {"fuel": 0.7, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "70%", "0", "Y150"], "solid": "BURNING CHARCOAL 3 L",
+                   "alerts": [], "lamps": [0, 0, 0, 0, 0], "lines": ["Hull 100/100", "Fuel 70%", "Burning charcoal 3 L", "Cargo 0", "Y 150"]},
     "overloaded": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.85, "tally": ["80/100", "50%", "7", "Y-420"], "alerts": ["OVERLOADED"],
                    "lamps": [0, 0, 0, 1, 1], "lines": ["Hull 80/100", "Fuel 50%", "Cargo 7", "Y -420", "OVERLOADED"]},
 }
@@ -391,12 +394,14 @@ ACCOUNT = "Scanner Player0  $0"
 
 def plate_rows(state):
     """The rows of the readout plate in `state`, top to bottom, each a list of (text, colour, icon or None): the tally, hull, fuel and depth each after its
-    gauge's icon and the bay's ore count after the cart, the account line, then every other line of the readout."""
+    gauge's icon and the bay's ore count after the cart, the account line, the solid fuel left in the tank after the fuel's icon, then every other line of the
+    readout."""
     account = [[(ACCOUNT, "#6FD99A", None)]]
+    solid = [[(state["solid"], SHARED["fuelColor"], GAUGE_ICONS["fuel"])]] if "solid" in state else []
     alerts = [[(s, "#FF5522", None)] for s in state["alerts"]]
     marks = (GAUGE_ICONS["hull"], GAUGE_ICONS["fuel"], "cart", GAUGE_ICONS["depth"])
     tally = [[(text, SHARED[gauge + "Color"], mark) for text, gauge, mark in zip(state["tally"], ("hull", "fuel", "cargo", "depth"), marks)]]
-    return tally + account + alerts
+    return tally + account + solid + alerts
 
 
 def row_width(row):
