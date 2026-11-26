@@ -22,7 +22,7 @@ public record CockpitReading(double fuel, double hull, double depth, double heat
     /** The most fuel the tank holds, in the percent the pod counts it in. */
     private static final double FULL_TANK_PERCENT = 100.0;
 
-    /** The highest load share the reading gives; past it every bar is full. */
+    /** The highest load share the reading gives: it only bounds the value, and the gauge is full well before it. */
     private static final double MOST_LOAD = 2.0;
 
     public static CockpitReading of(PodEntity pod, double heat) {

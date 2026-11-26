@@ -222,7 +222,7 @@ public class PodLoadClientTest implements FabricClientGameTest {
                 }
             }
         }
-        // LOAD in the terminal font is some 40 GUI pixels of ink, 4 screen pixels each at GUI scale 2.
+        // LOAD in the game font is some 40 GUI pixels of ink, 4 screen pixels each at GUI scale 2.
         if (ink < 60) {
             throw new AssertionError("The LOAD title's plate " + box + " holds " + ink
                     + " screen pixels of the gauge colour, expected the title's ink");

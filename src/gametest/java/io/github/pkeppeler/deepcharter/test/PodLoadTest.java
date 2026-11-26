@@ -16,7 +16,6 @@ import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
-import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -24,6 +23,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
@@ -45,15 +45,13 @@ public class PodLoadTest {
     /** A pod on a small stone floor with a mock pilot seated. */
     private record Rig(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
         static Rig build(GameTestHelper helper, String name) {
+            return build(helper, name, PodRegistry.POD);
+        }
+
+        static Rig build(GameTestHelper helper, String name, EntityType<PodEntity> chassis) {
             floor(helper, Blocks.STONE);
-            PodEntity pod =
-                    helper.spawn(PodRegistry.POD, new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, FLOOR_RADIUS + 0.5));
-            MockPlayer pilot = MockPlayers.join(helper, name);
-            pilot.teleportTo(helper.getLevel(), pod.position(), 0f, 0f);
-            if (!pilot.player().startRiding(pod)) {
-                throw failure(helper, "the pilot could not mount the pod");
-            }
-            return new Rig(helper, pod, pilot);
+            PodEntity pod = helper.spawn(chassis, new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, FLOOR_RADIUS + 0.5));
+            return new Rig(helper, pod, seat(helper, pod, name));
         }
 
         void finish() {
@@ -61,6 +59,17 @@ public class PodLoadTest {
             pod.discard();
             floor(helper, Blocks.AIR);
         }
+    }
+
+    /** A mock player seated in {@code pod}'s next free seat. */
+    private static MockPlayer seat(GameTestHelper helper, PodEntity pod, String name) {
+        MockPlayer rider = MockPlayers.join(helper, name);
+        rider.teleportTo(helper.getLevel(), pod.position(), 0f, 0f);
+        if (!rider.player().startRiding(pod)) {
+            rider.leave();
+            throw failure(helper, "%s could not mount the pod", name);
+        }
+        return rider;
     }
 
     private static void floor(GameTestHelper helper, Block block) {
@@ -108,6 +117,92 @@ public class PodLoadTest {
                 rig.finish();
             }
         });
+    }
+
+    /**
+     * A passenger's pack weighs on the pod as the pilot's does: a Prospector's second seat carried ore for free. Once the passenger
+     * gets out their pack weighs nothing on the pod.
+     */
+    @GameTest(maxTicks = 40)
+    public void aPassengersPackOreWeighsOnThePodUntilTheyGetOut(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, "seat pilot", PodRegistry.PROSPECTOR);
+        MockPlayer passenger = seat(helper, rig.pod, "seat passenger");
+        try {
+            passenger.player().getInventory().add(new ItemStack(OreRegistry.item(OreType.IRONIUM), 3));
+            near(
+                    helper,
+                    "the extra mass of a passenger with three ironium",
+                    3 * OreType.IRONIUM.mass(),
+                    PodEvents.extraMass(rig.pod));
+            passenger.player().stopRiding();
+            near(helper, "the extra mass once the passenger is out", 0, PodEvents.extraMass(rig.pod));
+            helper.succeed();
+        } finally {
+            passenger.leave();
+            rig.finish();
+        }
+    }
+
+    /**
+     * A towed pod weighs with everything its own extra mass counts: the pack of whoever sits in it and its lining bricks, on top of the
+     * cable's base mass and its bay.
+     */
+    @GameTest(maxTicks = 40)
+    public void aTowedPodWeighsWithItsRidersPackAndItsBricks(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, "tow pilot");
+        PodEntity towed = helper.spawn(PodRegistry.POD, new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, FLOOR_RADIUS + 2.4));
+        MockPlayer rider = seat(helper, towed, "towed rider");
+        int bricks = 4;
+        try {
+            towed.cargo().tryAdd(towed, OreRegistry.stack(OreType.GOLDIUM));
+            rider.player().getInventory().add(new ItemStack(OreRegistry.item(OreType.IRONIUM), 2));
+            PodLining.modify(towed, state -> state.fused(0, bricks));
+            PodTowing.attach(rig.pod, towed);
+            near(
+                    helper,
+                    "the tower's extra mass",
+                    TowTuning.DEFAULT.baseMass()
+                            + OreType.GOLDIUM.mass()
+                            + 2 * OreType.IRONIUM.mass()
+                            + bricks * PodLiningTuning.DEFAULT.brickMass(),
+                    PodEvents.extraMass(rig.pod));
+            helper.succeed();
+        } finally {
+            PodTowing.detach(towed);
+            rider.leave();
+            towed.discard();
+            rig.finish();
+        }
+    }
+
+    /**
+     * A lining pod's rotor has no thrust, held still by the arm rather than by weight, so its climb limit is the engine's power: a load
+     * between a stock Mole's climb limit and its engine does not light OVERLOADED while it lines.
+     */
+    @GameTest(maxTicks = 40)
+    public void aLiningPodsClimbLimitIsTheEngine(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, "lining pilot");
+        try {
+            for (int i = 0; i < 3; i++) {
+                rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.EINSTEINIUM));
+            }
+            PodLining.modify(
+                    rig.pod,
+                    state -> new PodLining.State(state.spoil(), state.bricks(), state.used(), true, state.dry()));
+            PodStats stats = PodStats.of(rig.pod);
+            PodLoad load = PodLoad.of(rig.pod, stats);
+            expect(
+                    helper,
+                    stats.thrustAcceleration() == 0f && load.load() > 50f && load.load() < stats.enginePower(),
+                    "the rig should be a lining pod (thrust %s) with a load between 50 and the engine, got %s",
+                    stats.thrustAcceleration(),
+                    load);
+            near(helper, "a lining pod's climb limit", stats.enginePower(), load.climbLimit());
+            expect(helper, !load.cannotClimb(), "a lining pod with %s does not read OVERLOADED", load);
+            helper.succeed();
+        } finally {
+            rig.finish();
+        }
     }
 
     /**
@@ -160,7 +255,7 @@ public class PodLoadTest {
     }
 
     /**
-     * Lift and the load share one source: under the limit the held rotor thrusts, at the limit it does not and the load says overloaded, and ore
+     * Lift and the load share one source: under the limit the held rotor thrusts, at the limit it does not and the load leaves no lift, and ore
      * taken from the bay (as a dump takes it) brings the load under the limit on the same tick.
      */
     @GameTest(maxTicks = 60)
@@ -176,18 +271,18 @@ public class PodLoadTest {
         rig.pilot.setInput(JUMP);
         helper.runAfterDelay(2, () -> {
             PodLoad below = PodLoad.of(rig.pod);
-            if (below.overloaded() || !rig.pod.flying()) {
+            if (below.lift() == 0f || !rig.pod.flying()) {
                 rig.finish();
                 throw failure(helper, "a load of %s under the limit thrusts, flying %s", below, rig.pod.flying());
             }
             rig.pilot.player().getInventory().add(new ItemStack(OreRegistry.item(OreType.IRONIUM), 1));
             helper.runAfterDelay(2, () -> {
                 PodLoad at = PodLoad.of(rig.pod);
-                if (!at.overloaded() || rig.pod.flying() || at.lift() != 0f) {
+                if (at.lift() != 0f || rig.pod.flying()) {
                     rig.finish();
                     throw failure(
                             helper,
-                            "a load of %s at the limit is overloaded and does not thrust, flying %s",
+                            "a load of %s at the limit has no lift and does not thrust, flying %s",
                             at,
                             rig.pod.flying());
                 }
@@ -195,7 +290,7 @@ public class PodLoadTest {
                 try {
                     expect(
                             helper,
-                            !PodLoad.of(rig.pod).overloaded(),
+                            PodLoad.of(rig.pod).lift() > 0f,
                             "ore taken from the bay leaves the load under the limit on the same tick, got %s",
                             PodLoad.of(rig.pod));
                     helper.succeed();
@@ -208,7 +303,7 @@ public class PodLoadTest {
 
     /**
      * The climb limit is where the held rotor stops climbing, well under the engine's power: a load under it climbs, a load over it stays on the
-     * ground while {@code overloaded()} is still false. Two einsteinium in the bay and {@code packIronium} in the pack.
+     * ground while the engine still has lift left. Two einsteinium in the bay and {@code packIronium} in the pack.
      */
     private static void climbs(GameTestHelper helper, int packIronium, boolean expected) {
         Rig rig = Rig.build(helper, "climb pilot " + packIronium);
@@ -223,8 +318,8 @@ public class PodLoadTest {
                 double rose = rig.pod.getY() - startY;
                 expect(
                         helper,
-                        load.cannotClimb() != expected && (rose > CLIMBED) == expected && !load.overloaded(),
-                        "%s should %s and not be overloaded (climb limit %s): it rose %s",
+                        load.cannotClimb() != expected && (rose > CLIMBED) == expected && load.lift() > 0f,
+                        "%s should %s and keep some lift (climb limit %s): it rose %s",
                         load,
                         expected ? "climb" : "not climb",
                         load.climbLimit(),
@@ -255,12 +350,6 @@ public class PodLoadTest {
         PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(1.5, 3, 1.5));
         try {
             PodStats stats = PodStats.of(pod);
-            PodTuning.Movement movement = PodTuning.DEFAULT.movement();
-            near(
-                    helper,
-                    "the climb limit",
-                    stats.enginePower() * (1 - movement.gravity() / stats.thrustAcceleration()),
-                    PodLoad.of(pod).climbLimit());
             near(helper, "a stock Mole's climb limit", 50, PodLoad.of(pod).climbLimit());
             pod.setNoGravity(true);
             near(

@@ -12,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -60,11 +61,17 @@ public final class OreEncumbrance {
     }
 
     public static void init() {
-        // The pilot's pack rides in the seat, so all it holds weighs on the pod's lift: ore, fuel and containers
-        // (#1446).
-        // The bay's ore is the pod's own cargo mass and never in a pack, so nothing is counted twice.
-        PodEvents.EXTRA_MASS.register(
-                pod -> pod.getControllingPassenger() instanceof ServerPlayer pilot ? carriedMass(pilot) : 0f);
+        // Every rider's pack rides in a seat, so all it holds weighs on the pod's lift: ore, fuel and containers
+        // (#1446). The bay holds only loose ore, never a pack's items, so nothing is counted twice.
+        PodEvents.EXTRA_MASS.register(pod -> {
+            float mass = 0f;
+            for (Entity rider : pod.getPassengers()) {
+                if (rider instanceof ServerPlayer player) {
+                    mass += carriedMass(player);
+                }
+            }
+            return mass;
+        });
         ServerTickEvents.END_SERVER_TICK.register(
                 server -> server.getPlayerList().getPlayers().forEach(OreEncumbrance::apply));
     }

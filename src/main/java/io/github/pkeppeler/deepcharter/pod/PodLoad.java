@@ -16,7 +16,7 @@ import net.minecraft.resources.Identifier;
  * cockpit's load gauge all read, so the physics and what the pilot sees cannot drift apart.
  *
  * <p>The load is the bay's cargo mass, read live from the bay, so ore that leaves it is gone the same tick, plus {@link PodEvents#extraMass}: the
- * pilot's pack, a towed pod, the lining's spoil and bricks. The limit is the engine's power: at or over it the rotor has no lift left. The climb
+ * riders' packs, a towed pod with its own load, the lining's spoil and bricks. The limit is the engine's power: at or over it the rotor has no lift left. The climb
  * limit is lower: the rotor's thrust scales with the lift left ({@link PodMovement}), so once it no longer beats gravity the pod cannot climb, though
  * it still drives. That is what the cockpit calls OVERLOADED. On the server the extra mass is the listeners'; a client cannot run them, so the server
  * copies it to {@link #EXTRA} at the end of each pod tick, and a client reads that.
@@ -82,13 +82,6 @@ public record PodLoad(float load, float limit, float climbLimit) {
         double gravity = pod.gravityPull(PodTuning.DEFAULT.movement().gravity());
         double share = Math.max(0.0, 1.0 - gravity / stats.thrustAcceleration());
         return (float) (stats.enginePower() * share);
-    }
-
-    /** Whether the rotor has no lift left: the load is at or over the limit. */
-    // test-seam: part of the PodLoad contract agreed with #1456 (dump cargo from the seat), whose PR is its first
-    // production caller
-    public boolean overloaded() {
-        return load >= limit;
     }
 
     /** Whether the held rotor cannot climb: the load is at or over the climb limit. The cockpit's OVERLOADED. */
