@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.pod.PodSteeringTuning;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.PacketJitter;
 import io.github.pkeppeler.deepcharter.test.support.PodDrives;
@@ -96,6 +97,15 @@ public class PodDriveLateClientTest implements FabricClientGameTest {
                         true,
                         Stall.through(STALL_AT_TICK, LAGGED_STALL_TICKS));
                 flat(context, rig, speed, "a long server stall", false, Stall.through(STALL_AT_TICK, LONG_STALL_TICKS));
+                PodDrives.drive(
+                        context,
+                        rig,
+                        Drive.sprint(
+                                "sprint drive through a lagging server stall",
+                                STALL_DRIVE_TICKS,
+                                speed * PodSteeringTuning.DEFAULT.sprintBoost(),
+                                true,
+                                Stall.through(STALL_AT_TICK, LAGGED_STALL_TICKS)));
                 PodDrives.drive(
                         context,
                         rig,

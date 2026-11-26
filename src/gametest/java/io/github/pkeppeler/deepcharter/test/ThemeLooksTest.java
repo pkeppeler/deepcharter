@@ -198,6 +198,7 @@ public class ThemeLooksTest {
                         0xFFC9B8F0,
                         0xFFE060E0,
                         0xFFFFB020,
+                        0xFF7FE8FF,
                         4,
                         0xFFFFFFFF,
                         4,
