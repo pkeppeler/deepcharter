@@ -46,6 +46,9 @@ public class PodGlideTraceTest {
 
     private static final double FLOOR_SHARE = 0.5;
 
+    /** A tick of {@link #PAST_THE_REACH} by which the pod has used up its coast and stands at the reach. */
+    private static final int REACH_TICK = 52;
+
     /** Blocks above the test's floor the pod is held at: nothing for its coast to run into. */
     private static final int HELD_ABOVE = 40;
 
@@ -160,7 +163,20 @@ public class PodGlideTraceTest {
     /** The pod stands at the reach by design here, so its ticks are not held to the floor. */
     @GameTest
     public void aPodPastTheReachStandsAtIt(GameTestHelper helper) {
-        replay(helper, "a server late past the reach", PAST_THE_REACH);
+        String what = "a server late past the reach";
+        double[] drawn = replay(helper, what, PAST_THE_REACH);
+        int tick = REACH_TICK;
+        double lead = drawn[tick] - move(lastHandedBy(PAST_THE_REACH, tick));
+        double reach = reach();
+        if (lead < reach - 2 * DriveJudge.POSITION_QUANTUM) {
+            throw failure(
+                    helper,
+                    "%s: the pod stood %s blocks past the last move in tick %s, short of the reach of %s",
+                    what,
+                    lead,
+                    tick,
+                    reach);
+        }
         helper.succeed();
     }
 
@@ -207,11 +223,37 @@ public class PodGlideTraceTest {
                         stock.snapGap(),
                         stock.coastSweepSteps());
             } catch (IllegalArgumentException expected) {
+                if (!String.valueOf(expected.getMessage()).contains("was " + catchUp + ":")) {
+                    throw failure(
+                            helper,
+                            "the refusal of a catch-up of %s should name it: %s",
+                            catchUp,
+                            expected.getMessage());
+                }
                 continue;
             }
             throw failure(helper, "a glide tuning with a catch-up of %s should be refused", catchUp);
         }
         helper.succeed();
+    }
+
+    /** Move {@code n}: the server's position {@code n} ticks into the drive, relative to the start, rounded as the client receives it. */
+    private static double move(int n) {
+        return Math.rint((0.5 + n * SPEED) * QUANTA_PER_BLOCK) / QUANTA_PER_BLOCK - 0.5;
+    }
+
+    /** The furthest the coast may draw a pod past the last move it was handed, from the test's own copy of the reach. */
+    private static double reach() {
+        return DriveJudge.coastReach() * REPORTED_SPEED;
+    }
+
+    /** The index of the last move handed over by {@code tick}. */
+    private static int lastHandedBy(int[] handedAt, int tick) {
+        int last = -1;
+        for (int n = 0; n < handedAt.length && handedAt[n] <= tick; n++) {
+            last = n;
+        }
+        return last;
     }
 
     /** {@code handedAt} with the moves from {@code first} on handed over {@code extraTicks} later, one count per move. */
@@ -250,25 +292,20 @@ public class PodGlideTraceTest {
     private static double[] replay(GameTestHelper helper, String what, int[] handedAt) {
         PodEntity pod = TestEntities.create(PodRegistry.POD, helper.getLevel());
         Vec3 origin = Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(0, HELD_ABOVE, 0)));
-        double[] moves = new double[handedAt.length];
-        double z = 0.5;
-        for (int n = 0; n < moves.length; n++) {
-            moves[n] = Math.rint(z * QUANTA_PER_BLOCK) / QUANTA_PER_BLOCK - 0.5;
-            z += SPEED;
-        }
+        int moves = handedAt.length;
         pod.setPos(origin);
         pod.setDeltaMovement(0, 0, REPORTED_SPEED);
         InterpolationHandler glide = PodGlideProbe.glide(pod);
         double[] drawn = new double[TICKS];
-        double furthest = DriveJudge.coastReach() * REPORTED_SPEED + DriveJudge.POSITION_QUANTUM;
+        double furthest = reach() + DriveJudge.POSITION_QUANTUM;
         int next = 0;
         for (int tick = 0; tick < TICKS; tick++) {
-            for (; next < moves.length && handedAt[next] == tick; next++) {
-                glide.interpolateTo(PositionPath.of(origin.add(0, 0, moves[next])), pod.getYRot(), pod.getXRot(), true);
+            for (; next < moves && handedAt[next] == tick; next++) {
+                glide.interpolateTo(PositionPath.of(origin.add(0, 0, move(next))), pod.getYRot(), pod.getXRot(), true);
             }
             glide.interpolate();
             drawn[tick] = pod.getZ() - origin.z;
-            double lead = pod.getZ() - origin.z - (next == 0 ? 0 : moves[next - 1]);
+            double lead = pod.getZ() - origin.z - (next == 0 ? 0 : move(next - 1));
             if (lead > furthest) {
                 throw failure(
                         helper,
