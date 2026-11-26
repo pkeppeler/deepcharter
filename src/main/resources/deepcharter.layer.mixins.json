@@ -11,7 +11,8 @@
     "PlayerChunkSenderMixin",
     "ServerChunkCacheMixin",
     "ServerPlayerGameModeMixin",
-    "ServerPlayerSeamAccess"
+    "ServerPlayerSeamAccess",
+    "TrackedEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
