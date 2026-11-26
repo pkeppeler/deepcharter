@@ -17,7 +17,6 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import java.util.Arrays;
 import java.util.Set;
 import java.util.TreeSet;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -86,6 +85,7 @@ public class ScannerWindowFillClientTest implements FabricClientGameTest {
         int windowLeft = window.left(shot.guiWidth());
         int windowTop = window.top(shot.guiHeight());
         Set<Integer> margin = new TreeSet<>();
+        Set<Integer> covered = new TreeSet<>();
         for (int y = 0; y < window.height(); y++) {
             for (int x = 0; x < window.width(); x++) {
                 boolean cornerX = x < CORNER || x >= window.width() - CORNER;
@@ -96,20 +96,26 @@ public class ScannerWindowFillClientTest implements FabricClientGameTest {
                         && guiX < mapLeft + area.columns() * cell
                         && guiY >= mapTop
                         && guiY < mapTop + area.rows() * cell;
-                if (!onMap && !(cornerX && cornerY)) {
-                    margin.add(shot.image()
+                if (!(cornerX && cornerY)) {
+                    int rgb = shot.image()
                                     .getRGB(
                                             guiX * shot.scale() + shot.scale() / 2,
                                             guiY * shot.scale() + shot.scale() / 2)
-                            & RGB);
+                            & RGB;
+                    (onMap ? covered : margin).add(rgb);
                 }
             }
         }
-        if (margin.isEmpty()) {
-            return null;
-        }
         ScannerLook look = ScannerLook.current();
         Set<Integer> raster = Set.of(look.outOfRangeColor() & RGB, look.outOfRangeLineColor() & RGB);
+        if (margin.isEmpty()) {
+            // The map alone fills the window, so no pixel of it may be the raster showing through.
+            Set<Integer> showing = new TreeSet<>(covered);
+            showing.retainAll(raster);
+            return showing.isEmpty()
+                    ? null
+                    : "the map should cover the window, but raster colours %s show in it".formatted(hex(showing));
+        }
         if (!raster.containsAll(margin)) {
             return "the margin holds colours %s, outside the out-of-range raster %s"
                     .formatted(hex(margin), hex(raster));
@@ -123,7 +129,7 @@ public class ScannerWindowFillClientTest implements FabricClientGameTest {
     /** The area of the top tier is wider and taller than the window, so its whole cells reach every edge of it. */
     private static void requireCovered(ClientGameTestContext context, int scale) {
         ScanArea area = TUNING.area(TOP_TIER);
-        int[] covered = context.computeOnClient(client -> {
+        int[] gaps = context.computeOnClient(client -> {
             int guiWidth = client.getWindow().getGuiScaledWidth();
             int guiHeight = client.getWindow().getGuiScaledHeight();
             Decal window = CockpitLook.current().ribbon().scanner();
@@ -137,10 +143,12 @@ public class ScannerWindowFillClientTest implements FabricClientGameTest {
                 window.top(guiHeight) + window.height() - (top + area.rows() * cell)
             };
         });
-        for (int gap : covered) {
+        String[] sides = {"left", "top", "right", "bottom"};
+        for (int side = 0; side < sides.length; side++) {
             require(
-                    gap <= 0,
-                    "tier %d at GUI %d: the map leaves a gap, %s".formatted(TOP_TIER, scale, Arrays.toString(covered)));
+                    gaps[side] <= 0,
+                    "tier %d at GUI %d: the map leaves a gap of %d px at the %s of the window"
+                            .formatted(TOP_TIER, scale, gaps[side], sides[side]));
         }
     }
 

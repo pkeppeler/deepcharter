@@ -156,10 +156,8 @@ public final class ScannerHud {
         ScanArea area = scanned.area();
         int windowLeft = window.left(graphics.guiWidth());
         int windowTop = window.top(graphics.guiHeight());
-        // The cells are whole GUI pixels, so a tier whose area does not divide the window leaves a margin. It is the
-        // instrument's raster, not
-        // the air colour of an empty cell, so that it never reads as range with nothing in it; the area is drawn over
-        // it.
+        // Whole-pixel cells leave a margin at tiers 2 and 3; it is the instrument's raster, not air, and the area is
+        // drawn over it.
         graphics.fill(
                 windowLeft,
                 windowTop,
