@@ -48,7 +48,8 @@ public class LightSyncRingHoldTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1_200;
 
     /** A draw's chunk, and the light tasks queued at it after the draw. */
-    private record Drawn(ChunkPos chunk, CompletableFuture<?> tasks, int tick) {}
+    private record Drawn(
+            ChunkPos chunk, CompletableFuture<?> tasks, int tick, java.util.Map<ChunkPos, Object[]> ringAtDraw) {}
 
     /** The draws of the running case, filled by the chunk load callback. Null when no case runs. */
     private static volatile @Nullable Case running;
@@ -89,7 +90,13 @@ public class LightSyncRingHoldTest {
                 CompletableFuture<?> tasks =
                         level.getChunkSource().getLightEngine().waitForPendingTasks(pos.x(), pos.z());
                 LightSync.holdSendUntilLit(level, pos);
-                current.drawn.add(new Drawn(pos, tasks, level.getServer().getTickCount()));
+                // DIAG: each ring neighbour's holder and send future just after the hold.
+                java.util.Map<ChunkPos, Object[]> ringAtDraw = new java.util.HashMap<>();
+                ChunkPos.rangeClosed(pos, 1).filter(near -> !near.equals(pos)).forEach(near -> {
+                    ChunkHolder h = level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(near.pack());
+                    ringAtDraw.put(near, new Object[] {h, h == null ? null : h.getSendSyncFuture()});
+                });
+                current.drawn.add(new Drawn(pos, tasks, level.getServer().getTickCount(), ringAtDraw));
             }
         });
     }
@@ -127,7 +134,8 @@ public class LightSyncRingHoldTest {
                                         helper,
                                         "%s is sendable while the light tasks queued by the draw of %s are waiting"
                                                 + " [DIAG holdPending=%s drawnLoaded=%s drawnAt=%s now=%s"
-                                                + " nearSendSyncDone=%s]",
+                                                + " nearSendSyncDone=%s holderAtDraw=%s sameHolder=%s"
+                                                + " syncAtDrawDone=%s]",
                                         early,
                                         each.chunk(),
                                         LightSync.hasPending(level, each.chunk()),
@@ -140,7 +148,14 @@ public class LightSyncRingHoldTest {
                                         level.getServer().getTickCount(),
                                         nearHolder == null
                                                 ? "noHolder"
-                                                : nearHolder.getSendSyncFuture().isDone());
+                                                : nearHolder.getSendSyncFuture().isDone(),
+                                        each.ringAtDraw().get(early)[0] != null,
+                                        each.ringAtDraw().get(early)[0] == nearHolder,
+                                        each.ringAtDraw().get(early)[1] == null
+                                                ? "none"
+                                                : ((CompletableFuture<?>) each.ringAtDraw()
+                                                                .get(early)[1])
+                                                        .isDone());
                             });
                 }
                 boolean finished = current.drawn.size() >= SIDE * SIDE
