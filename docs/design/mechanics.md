@@ -2593,7 +2593,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 - **A bare A or D.** The creep stays a creep.
 - **A passenger.** Only the pilot's keys drive the pod, so a navigator's sprint does nothing.
 
-**Measured** (`PodSprintTest`, clean engine, pump fuel; litres a block from the tank's fall over 39 ticks of driving):
+**Measured** (`PodSprintTest`, pump fuel; litres a block from the tank's fall over 39 ticks of driving):
 
 | | Sprint on foot | Sprint-jump on foot |
 |---|---|---|
@@ -2605,6 +2605,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 | engine tier 1 | 8.53 | 11.95 | 0.00316 | 0.00407 |
 | engine tier 2 (the Mole's cap) | 9.07 | 12.69 | 0.00298 | 0.00383 |
 | engine tier 3 (Prospector) | 9.60 | 13.44 | 0.00281 | 0.00362 |
+| stock Mole, 11.99 L of soot (just short of limp) | 5.68 | 7.96 | 0.00712 | 0.00916 |
 
 The air rows are the same numbers: the rotor does not change the drive speed. Before #1276 the stock cruise was 4.00 b/s at 0.00675 L a block.
 
