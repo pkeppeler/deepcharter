@@ -738,6 +738,37 @@ The no-brace columns were measured again on the merged code and give the sounder
 - Should the brace burn spoil from the hopper before ore? Cargo holds only ore, spoil sits in the hopper, and bricks now cost spoil (#394).
 - Should the surface station sell a cheap layer 1 hull patch, so the warning has a by-hand answer short of Hull Nanobots?
 
+## The void below (#1387, A)
+
+**Problem.** The brace patches the hull to the crust's price plus its reserve of 4, so a braced pod crosses the crust with 4 to 15 hull. A cave under the crust then lands it hard: a free fall of 4 blocks or more costs hull (4 blocks about 1), and a 9-block fall costs about 27, which wrecks it. The crust warning had said the pilot was covered (`HULL 32, IT TAKES 24`), so the death read as the HUD lying. The only cue was the amber HARD LANDING line, about 10 ticks into the fall. Natural caves in layer 1 (#1300) make open space under the drill common.
+
+**The cue (by hand, every pod).** Counterplay, not a nerf: the hard landing stays ([Hard landings](#hard-landings-319-a)), and braking with the rotor becomes a choice the pilot makes before the breakthrough.
+- **The crust warning prices the drop.** The warning reads the open space under the crust, below the pod's footprint, and adds what a free fall into it would cost on landing: `CRUST 2 DOWN  HULL 28, IT TAKES 24 + DROP 27`, and `IN THE CRUST  HULL 28, IT TAKES 8 + DROP 27` in the crust. It shows when the hull is no more than the crust rows left plus the drop. Over solid rock, or over a drop that lands soft (3 blocks or less), the line is as before, with no drop part.
+- **The drill sounds hollow.** For the last 2 rows before the drill breaks through into a drop that lands hard, the drill-down loop plays at a higher pitch. That holds anywhere, not only at the crust. A pilot who listens can stop, and brake with the rotor in the fall.
+- **How the drop is priced.** `VoidBelow.dropCost` runs the pod's own fall: gravity 0.08 and drag 0.98 from `PodTuning.Movement`, from rest, over the blocks of the fall. It prices the sink speed at the end with `HardLanding.hullDamage`, so it reads the pod's own `hardLandingSpeed` and `hullDamagePerSpeed`. A fall of 3 blocks or less costs 0, 4 blocks about 1, 6 about 14, 9 about 27, and 20 about 56. The fall lands on the highest rock under any cell of the footprint. A fluid counts as a floor, and so does a block in an unloaded chunk or past the bottom of the level, so an unknown is never priced as open. The read stops at 64 blocks, so a deeper fall is priced as 64 (about 117 hull, more than a stock hull). The server and the client read the same blocks, so the HUD and the tests agree.
+- **Not across a seam yet.** The probe reads one level. In the campaign world the layers are bands of one level (layer 1 at Y -256 to -65, layer 2 at -512 to -257), so the space under layer 1's crust is layer 2's rock and is read. Where the next layer lies in another level, past a seam ([ADR 0085](../adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md), [ADR 0089](../adr/0089-a-seam-is-crossed-by-a-swap-to-a-client-world-built-ahead-and-the-teleport-with-its-fade-is-the-fallback.md)), the bottom of the level ends the read as rock, so no drop is priced and the drill never sounds hollow there. Reading the level beyond the seam is #1459.
+
+**The ladder.**
+1. By hand: this section. The warning prices the drop, and the drill sounds hollow before it.
+2. A sensor: the scanner shows cavities with their depth, and a `VOID BELOW` line shows when the drop would land hard at the current hull (#1392).
+3. Mastery: brace tier 2 patches to the crust plus the drop, or a breakout arrest part fires the rotor after the last crust row. The hull track covers both (#1393).
+
+**Trade-offs.**
+- The pilot who heeds the warning still pays: the rotor burns fuel in the fall, and a pod with no power cannot brake.
+- The brace still patches only to the crust's price plus its reserve. Covering the drop is rung 3.
+- The hollow pitch gives away a cave under the drill anywhere in a layer. That is the by-hand stage the ladder wants, and the scanner rung adds the depth and the reach.
+
+**Knobs.** `VoidBelowTuning`: `hollowRows` (2), `scanBlocks` (64), `hollowPitch` (1.4). `lang pod.json` `hud.deepcharter.pod.crust_ahead_drop` and `crust_in_drop`.
+
+**Decisions (A).**
+- **The drop goes on the crust warning, not on a line of its own.** It is the cost the warning left out. A second line would make the plate taller where it already carries the brace's line.
+- **Only a drop that lands hard is priced or heard.** A soft drop costs nothing, so a cue for it would teach the pilot to ignore the cue.
+- **2 rows of hollow pitch.** The drill takes over a second a row in layer 1, so the pilot hears it for at least one whole row before the breakthrough.
+- **A pitch, not a new sound.** The hollow drill is the drill-down recipe's own loop at pitch 1.4 ([ADR 0057](../adr/0057-every-shipped-sound-is-built-from-a-committed-recipe-and-a-layers-drone-lives-in-its-biome-data.md)), so no new OGG and no new recipe. A skin that replaces the drill sound keeps the cue.
+- **Unknown blocks are rock.** An unloaded chunk or the bottom of a level ends the read, so the cue never invents a drop.
+
+**Open question.** The issue asked whether the brace's warning should reference the void cue. It now carries the drop's price; the brace's own lines are unchanged.
+
 ## Bore size and the economy (#399)
 
 **Problem.** The Mole is 1.9 wide and tall and bores 2 x 2. Cab and HUD ergonomics may want a larger pod, and a Prospector is 2.9 and bores 3 x 3. Nothing in the code may assume either size, so a chassis of any width and height has to scale the economy by the rules below. `Chassis` holds the two sizes; `OddChassisTest` and `TallChassisTest` run every behaviour on two test-only chassis, 3.9 x 2.9 (a 4-wide, 3-tall bore) and 1.9 x 3.9 (a 2-wide, 4-tall bore).
