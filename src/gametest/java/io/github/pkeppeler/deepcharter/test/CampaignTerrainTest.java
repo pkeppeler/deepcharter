@@ -74,8 +74,14 @@ public class CampaignTerrainTest {
             "deepcharter:basalt_outcrop",
             "deepcharter:salvage_crate",
             "deepcharter:fungal_stalk");
-    /** The cave stalks of layer 1's first zone are the one thing besides rock that its biomes place. */
+    /**
+     * The cave stalks of layer 1's first zone, ordinary or great where the open room over the rock gives one room
+     * (#1401), are the one thing besides rock that its biomes place.
+     */
     private static final String STALK = "deepcharter:fungal_stalk";
+
+    private static final String GREAT_STALK = "deepcharter:great_stalk";
+    private static final String GREAT_STALK_CAP = "deepcharter:great_stalk_cap";
     /**
      * Layer 1's rock by zone (#1277), and what its abandoned shafts and salvage caches put in it: rubble, timber, a
      * lunch pail, a prayer card, a crate, and the shafts' ladders and candle stubs, the two vanilla blocks the campaign
@@ -93,13 +99,8 @@ public class CampaignTerrainTest {
      * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the glowcaps and the surface's own
      * stalks and great stalks.
      */
-    private static final Set<String> LAYER_3_BLOCKS = Set.of(
-            BASALT_CORE,
-            COLUMNAR_BASALT,
-            "deepcharter:glowcap",
-            STALK,
-            "deepcharter:great_stalk",
-            "deepcharter:great_stalk_cap");
+    private static final Set<String> LAYER_3_BLOCKS =
+            Set.of(BASALT_CORE, COLUMNAR_BASALT, "deepcharter:glowcap", STALK, GREAT_STALK, GREAT_STALK_CAP);
 
     /** Air, and the lava the zone fill leaves in a layer (#743). */
     private static final Set<String> FLUIDS_AND_AIR = Set.of("minecraft:air", "minecraft:cave_air", "minecraft:lava");
@@ -217,8 +218,8 @@ public class CampaignTerrainTest {
                 }
             }
         }
-        Set<String> layer1 =
-                new TreeSet<>(Set.of(PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", STALK));
+        Set<String> layer1 = new TreeSet<>(Set.of(
+                PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", STALK, GREAT_STALK, GREAT_STALK_CAP));
         layer1.addAll(CLAIM_SHAFT_BLOCKS);
         expectOnly(helper, found, CampaignBands.SURFACE, SURFACE_BLOCKS);
         expectOnly(helper, found, CampaignBands.LAYER_1, layer1);
