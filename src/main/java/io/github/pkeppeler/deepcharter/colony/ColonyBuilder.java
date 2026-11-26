@@ -49,6 +49,12 @@ public final class ColonyBuilder {
     /** A block set without neighbour updates. */
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
+    /**
+     * What fills the gap under the pad down to the ground: a block a player can dig out, so its drop is obtainable (ADR
+     * 0093).
+     */
+    public static final Block FILL = Blocks.DIRT;
+
     /** How many blocks under the surface the packed regolith goes before the rock. */
     private static final int LAYER_PACKED = 2;
 
@@ -450,7 +456,7 @@ public final class ColonyBuilder {
                                 ? scatter(x, z, 0, SurfaceBlocks.REGOLITH.defaultBlockState())
                                 : SurfaceBlocks.REGOLITH.defaultBlockState());
                 for (int y = ground - 1; y >= bottom && !isGround(level.getBlockState(pos.set(x, y, z))); y--) {
-                    set(pos, Blocks.DIRT.defaultBlockState());
+                    set(pos, FILL.defaultBlockState());
                 }
             }
         }

@@ -14,7 +14,7 @@ import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.RepairScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
@@ -656,11 +656,11 @@ public class DesignTourScenario extends EvidenceScenario {
                 ColonyAnchor.REPAIR_STATION
             };
             for (int i = 0; i < order.size(); i++) {
-                openTerminal(TestColony.anchor(colony, anchorOf[i]), TerminalScreen.class);
+                openTerminal(TestColony.anchor(colony, anchorOf[i]), RepairScreen.class);
                 still("screen-" + order.get(i).id().getPath().replace('_', '-') + "-offline");
                 ctx.setScreen(() -> null);
             }
-            openAt(console, consoleEye, TerminalScreen.class);
+            openAt(console, consoleEye, RepairScreen.class);
             still("screen-hangar-console-offline");
             ctx.setScreen(() -> null);
 
@@ -726,7 +726,7 @@ public class DesignTourScenario extends EvidenceScenario {
             view(0, eye, Vec3.atCenterOf(terminal), 20);
             ctx.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
             ClientWait.screen(ctx, screen.asSubclass(Screen.class));
-            if (!TerminalViewScreen.class.isAssignableFrom(screen)) {
+            if (!TerminalViewScreen.class.isAssignableFrom(screen) && screen != RepairScreen.class) {
                 throw new AssertionError(screen + " is not a terminal screen");
             }
             ctx.waitTicks(TERMINAL_TYPING_TICKS);

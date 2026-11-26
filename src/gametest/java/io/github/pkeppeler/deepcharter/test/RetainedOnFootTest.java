@@ -874,7 +874,7 @@ public class RetainedOnFootTest {
                     + 200)
     public void aSameLevelWinchKeepsTheGripButTheFigureOnlyTrailsWhereItsChunkTicks(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        BlockPos origin = slot(13);
+        BlockPos origin = slot(15);
         Room[] made = {null};
         PodEntity[] pod = {null};
         float[] speedFree = {0};

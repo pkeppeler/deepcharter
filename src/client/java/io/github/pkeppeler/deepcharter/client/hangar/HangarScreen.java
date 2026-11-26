@@ -54,7 +54,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 
     @Override
     public boolean accepts(TerminalView other) {
-        return view.pos().equals(other.pos()) && view.type().equals(other.type()) && other.repaired();
+        return view.pos().equals(other.pos()) && view.type().equals(other.type());
     }
 
     @Override

@@ -110,7 +110,8 @@ public final class BreachService {
         int arrivalY = descending ? to.getMaxY() - tuning.pocketHeight() : to.getMinY() + tuning.crustThickness();
         BlockPos requested = BlockPos.containing(entity.getX(), arrivalY, entity.getZ());
         ChunkPos requestedChunk = ChunkPos.containing(requested);
-        SeamStreaming.reportCrossing(entity, to, requestedChunk);
+        SeamStreaming.reportCrossing(
+                entity, to, requestedChunk, descending ? SeamStreaming.Direction.DOWN : SeamStreaming.Direction.UP);
         List<ServerPlayer> riders = entity.getSelfAndPassengers()
                 .filter(ServerPlayer.class::isInstance)
                 .map(ServerPlayer.class::cast)

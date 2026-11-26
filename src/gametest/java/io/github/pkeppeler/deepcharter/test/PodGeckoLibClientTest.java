@@ -298,8 +298,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
             after.ageInTicks = 1f;
             pod.setDrilling(true);
             try {
-                motion.advance(pod, before, 0f, scale);
-                motion.advance(pod, after, 0f, scale);
+                motion.advance(pod, before, 0f, scale, 1f);
+                motion.advance(pod, after, 0f, scale, 1f);
                 require(
                         before.drillSpin == 0f,
                         "the first frame of a motion turns nothing, turned " + before.drillSpin);

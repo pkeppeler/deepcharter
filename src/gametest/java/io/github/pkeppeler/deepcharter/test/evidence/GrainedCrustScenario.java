@@ -78,6 +78,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 player.teleportTo(one, X - 4, FLOOR_Y, Z + 0.5, Set.of(), EAST, LOOK_DOWN, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X - 4, FLOOR_Y, Z + 0.5);
+                pod.setYRot(EAST);
                 one.addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the player could not mount the pod");
@@ -244,6 +245,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = podOnTheFloor(server);
+            pod.setYRot(EAST);
             player.teleportTo(level(server), pod.getX(), pod.getY(), pod.getZ(), Set.of(), EAST, LOOK_DOWN, true);
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod again");
@@ -301,6 +303,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         float before = podHull(singleplayer);
         double from = podX(singleplayer);
         // Facing west, so that the pod drives away from the camera.
+        singleplayer.getServer().runOnServer(server -> podOnTheFloor(server).setYRot(WEST));
         context.runOnClient(client -> ClientSession.player(client).setYRot(WEST));
         context.getInput().holdKey(options -> options.keyUp);
         for (int i = 0; i < 7; i++) {

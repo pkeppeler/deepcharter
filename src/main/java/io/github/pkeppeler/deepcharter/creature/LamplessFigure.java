@@ -440,9 +440,24 @@ public class LamplessFigure extends PathfinderMob {
             held.sendOverlayMessage(Component.translatable("creature.deepcharter.foot_dead"));
         }
         release();
-        level.sendParticles(ParticleTypes.LARGE_SMOKE, getX(), getY() + 1.0, getZ(), DEATH_SMOKE, 0.3, 0.8, 0.3, 0.02);
-        level.sendParticles(ParticleTypes.ASH, getX(), getY() + 1.0, getZ(), DEATH_ASH, 0.4, 0.9, 0.4, 0.02);
+        dissolve(level, this);
         LamplessFigures.killed(level, natural, getBlockY());
+    }
+
+    /** The smoke and ash a dead body goes up in: a Retained's, and a person's at a Continuity Event (#1337). */
+    public static void dissolve(ServerLevel level, Entity body) {
+        level.sendParticles(
+                ParticleTypes.LARGE_SMOKE,
+                body.getX(),
+                body.getY() + 1.0,
+                body.getZ(),
+                DEATH_SMOKE,
+                0.3,
+                0.8,
+                0.3,
+                0.02);
+        level.sendParticles(
+                ParticleTypes.ASH, body.getX(), body.getY() + 1.0, body.getZ(), DEATH_ASH, 0.4, 0.9, 0.4, 0.02);
     }
 
     @Override

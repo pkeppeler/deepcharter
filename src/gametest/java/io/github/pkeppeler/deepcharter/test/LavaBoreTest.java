@@ -295,7 +295,7 @@ public class LavaBoreTest {
     /** Far from every other test's columns. Each bore has a chunk of its own, two chunks apart from the next. */
     private static final int FIRST_CHUNK_X = 2500;
 
-    private static final int CHUNK_Z = 2500;
+    private static final int CHUNK_Z = 2600;
     private static final int CHUNK_SPACING = 2;
     private static final int PILOT_WAIT_Y = TestLayers.worldY(1, 150);
 
@@ -1461,6 +1461,7 @@ public class LavaBoreTest {
         bore.sideStart = side.along(pod);
         bore.lastAlong = bore.sideStart;
         bore.idleTicks = 0;
+        side.face(pod);
         bore.pilot.setInput(side.input);
     }
 
