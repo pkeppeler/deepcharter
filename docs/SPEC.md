@@ -299,7 +299,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 - **Environment:** heat, pressure and toxic air outside the pod, worse with depth.
 - **Suit timer:** how long you can stay on foot outside a pod or habitable outpost.
 - **Suit:** upgraded separately: oxygen and toxins, heat, pressure, lamp battery.
-- **Food:** the world has no crops at the start, so the Company feeds a new hand: every player starts with a few sealed Company rations, the ore cars on the colony's track still hold the last shift's tins (a one-time find each), the canteen in the Lamp and Pick gives each player one ration per in-game day, and a salvage crate sometimes holds one. A fungal stalk cooks into a poor meal on a campfire or in a smoker, so food is renewable ([mechanics.md](design/mechanics.md#company-rations-838-a)).
+- **Food:** the world has no crops at the start, so the Company feeds a new hand: every player starts with a few sealed Company rations, the ore cars on the colony's track still hold the last shift's tins (a one-time find each), the canteen in the Lamp and Pick gives a ration every time it is used, and a salvage crate sometimes holds one. A fungal stalk cooks into a poor meal on a campfire or in a smoker, so food is renewable ([mechanics.md](design/mechanics.md#company-rations-838-a)).
 
 ## 10. Hazards
 
