@@ -67,7 +67,7 @@ public enum UpgradeStat {
             Unit.SHARE,
             tier -> UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, tier)),
     SCAN_DEPTH(ComponentTrack.SCANNER, Better.HIGHER, Shown.CHANGE, Unit.BLOCKS, tier ->
-            (float) ScannerTuning.DEFAULT.area(tier).down()),
+            (float) ScannerTuning.DEFAULT.area(tier).up()),
     LIGHT(ComponentTrack.LIGHTS, Better.HIGHER, Shown.CHANGE, Unit.PLAIN, tier ->
             (float) Math.round(UpgradeTuning.DEFAULT.value(ComponentTrack.LIGHTS, tier))),
     SIGNAL_REACH(

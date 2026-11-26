@@ -122,7 +122,7 @@ public final class SpecSheets {
         List<UpgradeStat> stats = UpgradeStat.of(track);
         return stats.isEmpty()
                 ? Component.translatable(key)
-                : Component.translatable(key, stats.getFirst().figure(tier));
+                : Component.translatable(key, stats.getLast().figure(tier));
     }
 
     private static void consumable(Consumable consumable, List<SpecSheet.Rating> ratings) {
