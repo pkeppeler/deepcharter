@@ -511,11 +511,11 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 2. **Fuel grades.** Charcoal gives 1 L, coal 2 L, biofuel 3 L (`pod_fuel/*.json`). Biofuel is the best solid per slot (48 L, against coal's 32 and charcoal's 16) and per mass, as the user asked ("more than coal"). It costs three stalk mash and three cooks for 3 L.
 3. **Soot.** Burning solid fuel leaves soot in the engine (`soot` in `pod_fuel/*.json`: charcoal 1 L of soot a litre burned, coal 0.75, biofuel 0.1, pump fuel none). The soot is a pod attachment (`EngineSoot`, ADR 0097), and the engine pays for it in steps:
    - **Up to 3 L** (the grace): nothing.
-   - **3 to 12 L**: the engine loses top speed and climb speed, in a straight line to 50% at 12 L, and burns more fuel, to +50%. At 4 L that is 5.6% slower and 5.6% more fuel; at 7.5 L, 25% and 25%. The pod's readout says so from the first percent: "ENGINE SOOTED 8 L: 25% SLOWER, 25% MORE FUEL". Engine power is untouched, so the lift is.
+   - **3 to 12 L**: the engine loses top speed and climb speed, in a straight line to a 29% loss at 12 L, and burns more fuel, to +50%. At 4 L that is 3.2% slower and 5.6% more fuel; at 7.5 L, 14.5% and 25%. The pod's readout says so from the first percent: "ENGINE SOOTED 8 L: 14% SLOWER, 25% MORE FUEL". The 29% is the most loss that keeps the [outrun rule](#pod-sprint-and-the-outrun-rule-1276-a) (#1276; it was 50%). Engine power is untouched, so the lift is.
    - **12 L and over: limp mode.** 30% of the speed and climb, twice the burn, and the readout says "ENGINE CLOGGED: LIMP MODE". The pod never stops, so one deep down can always climb home: the user's rule was a loss of efficiency until a service at the colony, not a stranding.
    - **At the colony the gate is hard, once the repair station works.** A pod in limp mode on the surface will not drill (launch): the pilot reads "Clogged. Repair station: service it, or scrape the flue (free)." and sprint does nothing. Driving, flying and the station are free, so it can reach the station. Both ways out are the repair station's, the last terminal of the repair chain, so until it is repaired (or its saved state cannot be read) the gate is off: a limp pod launches, slow and thirsty, and no line sends the pilot to a station that does not work. The HUD's limp line names no station for the same reason.
 4. **Service.** The repair station's SERVICE ENGINE row clears the soot for **$10 a litre**, dearer than hull repair (the parked pod, the charter's account, a refusal for a clean engine, a wreck or unreadable soot). The row shows only once the pod has a litre or more of soot. A service of a full limp engine is $120, a trip's haul. **An account short of the whole bill buys a part service**: as many whole litres as it pays for ("SERVICE 3/13 L ($30)" from $35), so the service never refuses only because the bill is bigger than the account. Short of $10 the row says "SERVICE: $10 A LITRE" and cannot be pressed.
-5. **The free flue scrape (no softlock).** Limp mode holds a pod at the colony, and a charter with $0 cannot pay for a litre, so a first-tank pilot on coal would be stuck. A pod in limp mode at the colony's repair station gets a second row, "SCRAPE FLUE (FREE, SLOW)" (`FlueScrape`). The pilot waits at the station for **60 s** (the row counts down) with the pod parked there, and the scrape leaves **11 L**, a litre under the limit: the pod launches, 44% slower and burning 44% more, and the paid service is still the way to a clean engine. It costs time, not money. It stops and clears nothing if the pilot walks out of the station's reach or leaves the game, or the pod is driven off, flies or drills; the pilot hears why. The server decides on the pod's tick, as the Company recovery's wait does. The row is not offered, and the action is refused, below the limit, away from the colony, or while a scrape runs.
+5. **The free flue scrape (no softlock).** Limp mode holds a pod at the colony, and a charter with $0 cannot pay for a litre, so a first-tank pilot on coal would be stuck. A pod in limp mode at the colony's repair station gets a second row, "SCRAPE FLUE (FREE, SLOW)" (`FlueScrape`). The pilot waits at the station for **60 s** (the row counts down) with the pod parked there, and the scrape leaves **11 L**, a litre under the limit: the pod launches, 26% slower and burning 44% more, and the paid service is still the way to a clean engine. It costs time, not money. It stops and clears nothing if the pilot walks out of the station's reach or leaves the game, or the pod is driven off, flies or drills; the pilot hears why. The server decides on the pod's tick, as the Company recovery's wait does. The row is not offered, and the action is refused, below the limit, away from the colony, or while a scrape runs.
 6. **Biofuel (#1288).** Three stalk mash (the colony's campfire meal, `deepcharter:stalk_meal`, cooked from a fungal stalk) are fermented into one biofuel, shapeless, at the crafting grid. Stalks grow on crater floors and in layer 1's caves ([SPEC](../SPEC.md)). The old recipe (four crops) and the `biofuel_crops` tag are gone. It is the cleanest solid, not clean: its soot is 0.1 L a litre, a seventh of coal's.
 
 **What the player pays.** Per litre, over the services the engine forces (`FuelTripEconomyTest` burns a fuel until the engine has been forced into limp mode and serviced three times, paying the real bill):
@@ -554,13 +554,13 @@ Before: coal, charcoal and biofuel 2 L, stack 64, no mass: 128 L a slot. Coal an
 | Coal soot a trip | about 1.04 L clean (1.39 L burned at 0.75 L a litre), more as the engine fouls and burns more |
 | Trips to limp | 10 on coal (charcoal 8, biofuel 75) |
 | A full service at limp | $120 to $130, about a trip's haul |
-| A flue scrape | free, 60 s at the station; leaves 11 L, 44% slower and 44% more fuel |
+| A flue scrape | free, 60 s at the station; leaves 11 L, 26% slower and 44% more fuel |
 | After a scrape | the next coal trip goes limp again about two thirds of the way through (1 L of headroom at 1.44 times the burn); below the surface limp mode slows the pod and never stops it, so the trip comes home |
 | A part service | whole litres at $10: $35 clears 3 L, a $113 haul clears 11 L, which takes a scraped engine from about 12.5 L to 1.5 L, under the grace |
 
 So a broke pilot scrapes once, makes one slow trip, and pays for a near-full service out of its haul. The scrape is not a way to skip the service: it leaves the engine a litre from the limit, so a pilot who only scrapes runs about the last third of every trip limp, at 30% speed and twice the burn.
 
-**For #1276 (pod sprint).** Sprint should multiply the burn per second on top of the engine's soot factor: `PodFuel.tick` takes `drainPercentPerTick x EngineSoot.burnMultiplier`, so a sprint multiplier is one more factor beside it. The soot a litre leaves is per litre, so a sprinting pod on charcoal soots faster per block: +40% speed at 1.8 times the burn is 29% more litres a block, and so 29% more soot. A limp engine's top speed is 30% of the clean one, so a sprint on top of it still loses to a clean engine's cruise. Headroom: the output and burn curves, the grace and the limit are `FuelTuning.Soot`, and the per-litre soot is data.
+**Pod sprint (#1276).** Built as planned here: sprint multiplies the burn per second beside the engine's soot factor, so a sprinting pod on charcoal soots 29% more per block. [Pod sprint](#pod-sprint-and-the-outrun-rule-1276-a) has the numbers.
 
 **Trade-offs.** A stack of 16 and a weight make a bore with carried fuel a real load, and the soot makes charcoal the poorest fuel. Coal is the best of the solids at cash a litre among the sooty ones, with one source (the colony's coal blocks). Biofuel is the best per slot and the cleanest, and the dearest in effort. Limp mode is a pace penalty and a trip to the station, never a stranding, and the flue scrape means it is never a softlock: money buys a clean engine, time buys a slow one. The service is paid at the colony, so a pilot who burns solid fuel at depth pays when they come home.
 
@@ -1287,7 +1287,7 @@ The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no
 | A lamp toggle (lamp off to save fuel) | an input, a packet and a cost on `PodFuel` | The lamp costs no fuel today, so there is nothing to save; the lights part is the choice. A follow-up if the lamp is given a fuel cost |
 | A flare (a consumable thrown to draw it away) | an item, a recipe, a repair-station price | A good rung 2.5 for a pilot with no lights. A follow-up |
 | A dynamic light that moves with the helmet lamp | a light block that follows it and a ledger | The glowmask already shows from afar with vanilla lighting; a follow-up |
-| Outrun it | none | It is already true on the way to the pod: 3 against 4 blocks a second |
+| Outrun it | none | It is already true on the way to the pod: 3 against 8 blocks a second (4 before #1276) |
 
 **Measured.** All from the data the game runs on; the run model is `EarlyRunModel` (see [Fuel per descent](#fuel-per-descent-289-a)) and the tests are `RetainedEconomyTest` and `RetainedTest`.
 - **A stock Mole in layer 1** (whole run: 16 slabs, $115 net, 9.66 litres): a grip met after the cue and killed by the cutter takes 0.45 litres (4.7 per cent of the run); without the cue, 0.68 (7.0); nobody answers, 9.5 (98.4 per cent: 0 slabs). A lights part costs $125, which is 1.08 unanswered grabs.
@@ -2187,7 +2187,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 | First tell to contact, at the edge of hearing (28 blocks) | about 17 s; 26 s under the alarm (42 blocks) | 27 blocks at 1.6 a second |
 | First tell to burst, already beside the hull | 3.2 to 3.5 s (the tell, 60 ticks) | `aDrifterBurstsWhenAPodDrillsBesideItButNotBeforeTheTell`: 64 to 69 ticks |
 | Hull lost by a pilot who ignores one (sits in the one cloud) | 23.85 of 100 (24 %) | `theGasEatsTheHullOfAPodWithAPersonAboard...` |
-| Hull lost leaving at once (the pod drives 4 blocks a second, the cloud is 4.5 round) | about 0.3 to 3 | the first tick costs 0.15 hull; `the gas had cost the hull 0.30 1 ticks after the burst` |
+| Hull lost leaving at once (measured at the pod's old 4 blocks a second; it drives 8 since #1276, so it is out of the 4.5-round cloud in half the time) | about 0.3 to 3 at 4 b/s, no more at 8 | the first tick costs 0.15 hull; `the gas had cost the hull 0.30 1 ticks after the burst` |
 | Hull lost by a pilot who ignores a chain (alarm, 3 clouds over the same hull) | up to 72 (a wreck is 100) | 3 clouds at 24; the zone holds 2 to 4 |
 | Placements a run, top / middle / bottom zone | 1.00 / 1.33 / 1.99 (expected 1.00 / 1.33 / 2.00) | `DrifterPacingTest`, 20,000 runs each, through the spawner's own roll |
 | The same under the alarm | 3.00 / 4.00 / 5.99 | the same, alarm ringing |
@@ -2581,7 +2581,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 | bare A or D | creeps forward at 1/8 of the drive speed | the boat's paddle creep | none |
 | Space | rotor up | unchanged | |
 | sneak | dismount | vanilla | |
-| sprint | drills down when no direction key is held | unchanged for now; #1276 makes sprint with a direction key a boost | |
+| sprint | drills down when no direction key is held; with W, a 40% boost ([Pod sprint](#pod-sprint-and-the-outrun-rule-1276-a)) | the boat has none | the boost never reaches the drill |
 
 **Camera.** Taking the pilot seat switches to third person (`THIRD_PERSON_BACK`) and leaving restores the view the player had. There is no option to turn it off. The view yaw takes the pod's turn every tick, as `AbstractBoat.positionRider` adds `deltaRotation` to its rider, so the angle to the pod stays in first and third person. **Unclamped view (a deviation):** the boat clamps the rider's view to 105 degrees from the nose; the pod does not, because #1268 and #1281 ask for free mouse look. In third person the view also eases back behind a driving pod (4 degrees a tick) once the mouse has been still for a second, so the camera chases; first person never settles.
 
@@ -2592,6 +2592,55 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 **Open questions.**
 - Whether the pod should accelerate to its speed as a boat does. It does not yet: the speed is a stat the client smoothing and the fuel numbers assume.
 - The turn rate is a boat's, 200 degrees a second; a heavy pod might want less. It is one number.
+
+## Pod sprint and the outrun rule (#1276, A)
+
+**Problem.** The user, 2026-11-25: "the player should be able to 'sprint' to make the pod move faster. And generally, the pod should be faster than a player on foot always." The stock pod drove at 4 blocks a second, slower than a sprinting player (5.6) and far slower than a sprint-jumping one (6.7), so walking beside the pod was faster than riding it.
+
+**The outrun rule.** Until limp mode, the pod's cruise outruns a sprinting player and its sprint outruns a sprint-jumping one, on the ground and in the air (not drilling), at every chassis and engine tier. A clean engine does more: its cruise beats a sprint-jump too. "On foot" is read as the fastest a player runs without items or effects: a sprint-jump, not only a sprint. `PodSprintTest` measures the player through vanilla's own `travel`, as the client runs it (a server only scales a player's motion, so the runner's ticks run back to back), and asserts the measured value, never an assumed one.
+
+**Pod sprint.** Holding the sprint key with W drives the pod 1.4 times faster, on the ground and in the air, and burns 1.8 times the moving fuel. The pod has no speed ramp ([Pod controls](#pod-controls-and-the-chase-camera-1281-1268-a): the speed is reached at once), so the boost is to the top speed alone; the acceleration is as instant as the cruise's. A readout line ("SPRINT +40% SPEED", in the theme's `podSprintColor`) shows while it boosts, and a one-time line tells the pilot the first time, naming their own keys and the cost a block (about 29% more fuel). The +80% is a second's burn; the readout leaves it out, since a pilot reads fuel by the block. The boost reaches the drive as a `PodStats.MODIFY` listener on `horizontalSpeed`, set a tick after the keys, so it multiplies with the engine tier and with soot. The handbook's Mole sheet "The Mole: drill and sprint" has the line.
+
+| | Cruise | Sprint |
+|---|---|---|
+| Speed | the `horizontalSpeed` stat | x1.4 |
+| Moving burn | `movingLitresPerSecond` | x1.8 |
+| Fuel a block | 1 | 1.29 |
+
+**Where it does not boost.**
+- **The drill.** Sprint with no direction key still drills down, and sprint with W into rock bores sideways at the drill's own rate. The boost is off while the drill bores and in a bore as wide as the pod (rock beside it on both sides), so it does not even shorten the drive from one slab to the next: without the bore check a sprinting pod bored 13 columns in 600 ticks to a cruising one's 12. The drill stays its own track (issue item A).
+- **S.** Reverse is never boosted: backing out is the slow, careful move, and the reverse share stays the one number for it. Sprint with S neither boosts nor drills.
+- **A bare A or D.** The creep stays a creep.
+- **A passenger.** Only the pilot's keys drive the pod, so a navigator's sprint does nothing.
+
+**Measured** (`PodSprintTest`, pump fuel; litres a block from the tank's fall over 39 ticks of driving):
+
+| | Sprint on foot | Sprint-jump on foot |
+|---|---|---|
+| Player | 5.61 b/s | 6.74 b/s |
+
+| Pod | Cruise | Sprint | Cruise fuel a block | Sprint fuel a block |
+|---|---|---|---|---|
+| Mole or Prospector, stock engine | 8.00 b/s | 11.20 b/s | 0.00337 L | 0.00434 L |
+| engine tier 1 | 8.53 | 11.95 | 0.00316 | 0.00407 |
+| engine tier 2 (the Mole's cap) | 9.07 | 12.69 | 0.00298 | 0.00383 |
+| engine tier 3 (Prospector) | 9.60 | 13.44 | 0.00281 | 0.00362 |
+| stock Mole, 11.99 L of soot (just short of limp) | 5.68 | 7.96 | 0.00712 | 0.00916 |
+
+The air rows are the same numbers: the rotor does not change the drive speed. Before #1276 the stock cruise was 4.00 b/s at 0.00675 L a block.
+
+**Tuning.** The stock `horizontalSpeed` went from 0.2 to 0.4 blocks a tick, 8 blocks a second: a vanilla boat's top speed on water, 19% over a sprint-jumping player and 43% over a sprinting one, so the rule holds with room for a heavy pack. The engine tiers keep their ratios. Doubling the speed halves the fuel a cruised block costs, because the burn is per second; the trip and fuel tables are unchanged, since `EarlyRunModel`, `PodFuelTripTest` and `FuelTripEconomyTest` price the vertical bore and the climb, not the drive. A sprinted block costs 29% more than a cruised one, and still less than a 4 b/s block cost before.
+
+**Soot and limp mode.** Soot cuts the drive speed ([Solid fuel](#solid-fuel-1280-a)) by up to 29% just short of limp mode, and the rule sets that figure: there a stock Mole cruises at 5.68 b/s, past a sprinting player's 5.61, and sprints at 7.96 b/s, past a sprint-jump's 6.74 (`PodSprintTest`'s sooted lane). The clean engine's extra, a cruise past a sprint-jump, holds up to about 7.9 L of soot. At #1323's 50% loss the rule broke above about 5.8 L of soot against a sprint-jump and 8.4 L against a sprint, so #1276 cut the loss to 29%. Limp mode is a penalty the pilot chose to run into, so the rule does not hold there: a limp pod cruises at 2.4 b/s and sprints at 3.4 b/s, slower than a player on foot, and its sprint burns 1.8 times limp mode's double burn.
+
+**Trade-offs.** Sprint is fuel for time: a sprinting trip across the yard or up a long cavern is faster and dearer. It never helps the drill, so a shaft costs what it did. On solid fuel it soots faster per block, so a coal pilot who sprints services sooner.
+
+**Knobs.** `PodTuning.Movement.horizontalSpeed` (0.4), `PodSteeringTuning`: `sprintBoost` (1.4), `sprintBurn` (1.8); `FuelTuning.Soot.lossAtLimit` (0.29, held down by the rule); `theme/hud.json` `podSprintColor`.
+
+**Open questions.**
+- Should a sprinting pod be louder to the Drifters, as a sprinting person is ([Drifters and the alarm](#drifters-and-the-alarm-973-a))? A second cost that fits the dread of the deep.
+- Should an engine tier raise the boost, or should a part (an afterburner) be the boost's own track?
+- Whether the pod should ramp to its speed, which would make the boost an acceleration as well.
 
 ## Pack ore and load (#1446)
 
