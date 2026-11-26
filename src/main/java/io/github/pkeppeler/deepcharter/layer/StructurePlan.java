@@ -45,29 +45,38 @@ final class StructurePlan {
     }
 
     /**
-     * Replaces every fluid and gas pocket in the structure's bounds and the one-block shell round them (the part in this chunk)
-     * with stone, before the carve: the walls, roof and floor are rock that the zone fill (ADR 0015) may have left lava or gas
-     * in, and lava has no fluid tick until a neighbour changes. The neighbour chunk seals its own part of the shell. The flags
-     * wake nothing, so no lava beside the shell is told that its neighbour changed. See {@link RoomSeal}.
+     * Replaces every fluid and gas pocket in the structure's bounds and the one-block shell round them (the part in
+     * this chunk) with stone, before the carve: the walls, roof and floor are rock that the zone fill (ADR 0015) may
+     * have left lava or gas in, and lava has no fluid tick until a neighbour changes. The neighbour chunk seals its own
+     * part of the shell. The flags wake nothing, so no lava beside the shell is told that its neighbour changed. See
+     * {@link RoomSeal}. A row is sealed with the layer rock found in the same row of the shell, so in layer 1's strata
+     * (#1277) a seal is the rock of the wall round it; a row with none takes the rock {@link LayerBlocks#layerGroundOf}
+     * names there.
      */
     void seal() {
         BoundingBox bounds = site.bounds();
-        BlockState ground = LayerBlocks.layerGround(band.layer()).defaultBlockState();
+        int minX = Math.max(bounds.minX() - 1, chunkPos.getMinBlockX());
+        int maxX = Math.min(bounds.maxX() + 1, chunkPos.getMaxBlockX());
+        int minZ = Math.max(bounds.minZ() - 1, chunkPos.getMinBlockZ());
+        int maxZ = Math.min(bounds.maxZ() + 1, chunkPos.getMaxBlockZ());
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        for (int x = Math.max(bounds.minX() - 1, chunkPos.getMinBlockX());
-                x <= Math.min(bounds.maxX() + 1, chunkPos.getMaxBlockX());
-                x++) {
-            for (int z = Math.max(bounds.minZ() - 1, chunkPos.getMinBlockZ());
-                    z <= Math.min(bounds.maxZ() + 1, chunkPos.getMaxBlockZ());
-                    z++) {
-                for (int y = Math.max(bounds.minY() - 1, band.minY());
-                        y <= Math.min(bounds.maxY() + 1, band.maxY());
-                        y++) {
+        for (int y = Math.max(bounds.minY() - 1, band.minY()); y <= Math.min(bounds.maxY() + 1, band.maxY()); y++) {
+            @Nullable BlockState ground = null;
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
                     pos.set(x, y, z);
-                    if (RoomSeal.needsSealing(chunk.getBlockState(pos))) {
-                        chunk.setBlockState(pos, ground, FLAGS);
-                        level.getLightEngine().checkBlock(pos);
+                    if (!RoomSeal.needsSealing(chunk.getBlockState(pos))) {
+                        continue;
                     }
+                    if (ground == null) {
+                        int row = y;
+                        ground = RoomSeal.rockOfRow(chunk, y, minX, maxX, minZ, maxZ)
+                                .orElseGet(() -> LayerBlocks.layerGroundOf(level, row)
+                                        .orElseGet(() -> LayerBlocks.layerGround(band.layer()))
+                                        .defaultBlockState());
+                    }
+                    chunk.setBlockState(pos, ground, FLAGS);
+                    level.getLightEngine().checkBlock(pos);
                 }
             }
         }

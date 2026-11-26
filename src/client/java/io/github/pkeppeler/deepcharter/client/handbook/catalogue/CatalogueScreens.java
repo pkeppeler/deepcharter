@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -57,8 +58,15 @@ public final class CatalogueScreens {
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof AbstractRecipeBookScreen<?> book) {
                 attach(book, width, height);
+            } else if (screen instanceof AbstractContainerScreen<?> container) {
+                SlotLookup.attach(container);
             }
         });
+    }
+
+    /** What every panel and the recipe console's own screen are set to. */
+    static CatalogueState state() {
+        return state;
     }
 
     /** Puts the catalogue back as a new client has it: the next panel opens on an empty search, the switch off and nothing looked up. */

@@ -148,8 +148,10 @@ public record CatalogueLayout(
      * @param needTop the top of the first have/need row
      * @param needRows how many have/need rows fit
      * @param needBottom the y under which no have/need row may reach
-     * @param spec the spec sheet switch, a plate with its legend
+     * @param spec the spec sheet switch, a plate with its legend, beside the back knob
      * @param fill the switch that puts the recipe in the crafting grid, or shows it there, a plate with its legend under the spec sheet's
+     * @param back the knob that goes back to the recipe looked at before, left of the spec sheet switch
+     * @param star the star at the end of the title's first line, full for a favourite: a click stars the item or takes the star off
      */
     public record Card(
             int left,
@@ -161,7 +163,9 @@ public record CatalogueLayout(
             int needRows,
             int needBottom,
             Rect spec,
-            Rect fill) {
+            Rect fill,
+            Rect back,
+            Rect star) {
         /**
          * The card with its title {@code extra} pixels taller (a name that takes more lines than one): the station, the grid and the
          * have/need rows move down by it, and fewer rows may fit.
@@ -178,9 +182,25 @@ public record CatalogueLayout(
                     Math.max(0, (needBottom - top) / needRow),
                     needBottom,
                     spec,
-                    fill);
+                    fill,
+                    back,
+                    star);
+        }
+
+        /** Where the title's lines end: short of the star. */
+        public int titleRight() {
+            return star.x() - 1;
         }
     }
+
+    /**
+     * A recipe console on its own: its casing, glass and content, for a screen that has no catalogue beside it.
+     *
+     * @param casing the console's casing
+     * @param glass its glass
+     * @param card what is drawn on the glass and under it
+     */
+    public record Console(Rect casing, Rect glass, Card card) {}
 
     /**
      * The layout on a screen {@code width} by {@code height}, or null when the window is too narrow for the units'
@@ -207,21 +227,54 @@ public record CatalogueLayout(
         int inventoryTop = (height - IMAGE_HEIGHT) / 2;
         Rect inventory = new Rect(inventoryLeft, inventoryTop, IMAGE_WIDTH, IMAGE_HEIGHT);
 
-        Rect recipe =
-                new Rect(inventoryLeft - look.gapLeft() - leftWidth, inventoryTop, leftWidth, look.consoleHeight());
-        Rect recipeGlass = glass(recipe, look, look.casing().consoleDeck());
-        Card card = card(recipeGlass, look, crt, lineHeight);
+        Console console = console(
+                new Rect(inventoryLeft - look.gapLeft() - leftWidth, inventoryTop, leftWidth, look.consoleHeight()),
+                look,
+                crt,
+                lineHeight);
         Rect casing = new Rect(rightX, inventoryTop, rightWidth, look.consoleHeight());
         Rect glass = glass(casing, look, look.casing().consoleDeck());
         Rect effects = row == EffectRow.NONE
                 ? null
                 : new Rect(
-                        recipe.x(),
+                        console.casing().x(),
                         inventoryTop - EFFECTS_GAP - row.height(),
-                        casing.right() - recipe.x(),
+                        casing.right() - console.casing().x(),
                         row.height());
         return new CatalogueLayout(
-                casing, glass, shelf(glass, look, crt, lineHeight), recipe, recipeGlass, card, inventory, effects);
+                casing,
+                glass,
+                shelf(glass, look, crt, lineHeight),
+                console.casing(),
+                console.glass(),
+                console.card(),
+                inventory,
+                effects);
+    }
+
+    /**
+     * A recipe console as wide as the catalogue's widest, centred on a screen {@code width} by {@code height}, or null when the window
+     * has no room for it.
+     */
+    public static @Nullable Console centred(int width, int height, CatalogueLook look, CrtTuning crt, int lineHeight) {
+        int consoleWidth = look.maxPanelWidth();
+        if (width < consoleWidth + 2 * look.screenEdge() || height < look.consoleHeight() + 2 * look.screenEdge()) {
+            return null;
+        }
+        return console(
+                new Rect(
+                        (width - consoleWidth) / 2,
+                        (height - look.consoleHeight()) / 2,
+                        consoleWidth,
+                        look.consoleHeight()),
+                look,
+                crt,
+                lineHeight);
+    }
+
+    private static Console console(Rect casing, CatalogueLook look, CrtTuning crt, int lineHeight) {
+        Rect glass = glass(casing, look, look.casing().consoleDeck());
+        return new Console(casing, glass, card(glass, look, crt, lineHeight));
     }
 
     static Rect glass(Rect casing, CatalogueLook look, int deck) {
@@ -299,12 +352,15 @@ public record CatalogueLayout(
         int stationY = belowTitle(titleY, look, crt, lineHeight);
         int gridY = stationY + look.stationGap();
         int upper = glass.bottom() + c.deckGap();
-        Rect spec = new Rect(glass.x(), upper, glass.width(), c.deckRow());
+        Rect back = new Rect(glass.x(), upper, c.knobSize(), c.knobSize());
+        int specX = back.right() + c.deckGap();
+        Rect spec = new Rect(specX, upper, glass.right() - specX, c.deckRow());
+        Rect star = new Rect(right - lineHeight, titleY, lineHeight, lineHeight);
         int needTop = gridY + look.needTop();
         int needBottom = glass.bottom() - look.contentBottom();
         int needRows = Math.max(0, (needBottom - needTop) / look.needRow());
         int lower = upper + c.deckRow() + c.deckRowGap();
         Rect fill = new Rect(glass.x(), lower, glass.width(), c.deckRow());
-        return new Card(left, right, titleY, stationY, gridY, needTop, needRows, needBottom, spec, fill);
+        return new Card(left, right, titleY, stationY, gridY, needTop, needRows, needBottom, spec, fill, back, star);
     }
 }

@@ -41,7 +41,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Each neighbour in the hold also waits for the light tasks queued at the drawn chunk itself (#494): vanilla's wait
  * covers only the tasks queued at the neighbour's own position, and the engine runs different positions' queues in no
- * fixed order.
+ * fixed order. The wait relies on light tasks at one position running in the order they were queued, which
+ * {@code ChunkTaskPriorityQueueMixin} guarantees (#1448, ADR 0105).
  *
  * <p>The safety net (#863, ADR 0068): {@code LightSync} records the light each player was sent of a chunk in a hold's 3x3, and for
  * a window that starts when the chunk can be sent sends a player whose chunk's published light differs from it.

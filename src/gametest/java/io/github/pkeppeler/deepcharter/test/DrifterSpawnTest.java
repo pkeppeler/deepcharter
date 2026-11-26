@@ -327,8 +327,10 @@ public class DrifterSpawnTest {
     }
 
     /**
-     * The alarm shows and ends: the pilot's readout carries the seconds it has left, the drone beats for a person in the zone, and after
-     * {@link DrifterTuning.Alarm#ticks()} ticks the line goes and the zone is quiet. It is held in memory only, so there is no saved form to read.
+     * The alarm shows and ends: the pilot's readout carries the seconds it has left, the drone beats for a person in
+     * the zone within {@link DrifterTuning.Alarm#droneTicks()} ticks of the alarm, and after
+     * {@link DrifterTuning.Alarm#ticks()} ticks the line goes and the zone is quiet. It is held in memory only, so
+     * there is no saved form to read.
      */
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 3_800)
     public void theAlarmShowsDronesAndEnds(GameTestHelper helper) {
@@ -338,6 +340,7 @@ public class DrifterSpawnTest {
         BlockPos origin = new BlockPos(25_900, middle, 25_900);
         Arena[] made = {null};
         long[] since = {-1};
+        long[] raisedAt = {-1};
         boolean[] droned = {false};
         TestTicks.each(helper, () -> {
             if (since[0] < 0) {
@@ -346,7 +349,18 @@ public class DrifterSpawnTest {
             Arena arena = made[0];
             long tick = helper.getTick() - since[0];
             PodEntity pod = arena.pod();
-            droned[0] |= arena.pilot().soundsHeard().contains(DRONE);
+            // The mock reads sounds after the test's tick, so judge a beat by its play tick (#1359).
+            int beat = droned[0] ? -1 : arena.pilot().soundsHeard().indexOf(DRONE);
+            if (beat >= 0) {
+                long after = arena.pilot().soundTicks().get(beat) - raisedAt[0];
+                expect(
+                        helper,
+                        after <= TUNING.alarm().droneTicks(),
+                        "the first drone beat came %d ticks after the alarm, past its %d",
+                        after,
+                        TUNING.alarm().droneTicks());
+                droned[0] = true;
+            }
             int seconds = TUNING.alarm().ticks() / 20;
             if (tick == 100) {
                 int shown = DrifterAlarm.warning(pod)
@@ -360,11 +374,6 @@ public class DrifterSpawnTest {
                         "the readout shows %d s 100 ticks after the alarm, of %d",
                         shown,
                         seconds);
-                expect(
-                        helper,
-                        droned[0],
-                        "no drone beat for a pilot in the zone: %s",
-                        arena.pilot().soundsHeard());
             }
             if (tick > 100 && tick < TUNING.alarm().ticks() - 40) {
                 expect(
@@ -381,6 +390,11 @@ public class DrifterSpawnTest {
                         "the alarm still rings %d ticks after it was raised",
                         tick);
                 expect(helper, DrifterAlarm.warning(pod).isEmpty(), "the readout still shows the alarm after it ended");
+                expect(
+                        helper,
+                        droned[0],
+                        "no drone beat for a pilot in the zone: %s",
+                        arena.pilot().soundsHeard());
                 arena.clear();
                 helper.succeed();
             }
@@ -389,6 +403,7 @@ public class DrifterSpawnTest {
             made[0] = Arena.build(helper, level, origin);
             DrifterAlarm.raise(level, middle);
             since[0] = helper.getTick();
+            raisedAt[0] = level.getGameTime();
         });
     }
 
