@@ -3,7 +3,9 @@
   "hosts": {
     "packed_shale": "packed_shale",
     "green_shale": "green_shale",
-    "basalt_core": "basalt_core"
+    "basalt_core": "basalt_core",
+    "hardpan": "hardpan",
+    "black_shale": "black_shale"
   },
   "variants": 10,
   "ends": 4,

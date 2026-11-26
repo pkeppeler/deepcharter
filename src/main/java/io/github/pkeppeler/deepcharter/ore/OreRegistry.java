@@ -37,6 +37,15 @@ public final class OreRegistry {
                     .networkSynchronized(OreWeight.STREAM_CODEC)
                     .build());
 
+    /** The weight of an item that is not ore (the solid fuels): a default component, shown as its tooltip. */
+    public static final DataComponentType<CargoWeight> CARGO_WEIGHT = Registry.register(
+            BuiltInRegistries.DATA_COMPONENT_TYPE,
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cargo_weight"),
+            DataComponentType.<CargoWeight>builder()
+                    .persistent(CargoWeight.CODEC)
+                    .networkSynchronized(CargoWeight.STREAM_CODEC)
+                    .build());
+
     private static final Map<OreType, Item> ITEMS = new EnumMap<>(OreType.class);
     private static final Map<OreType, Block> BLOCKS = new EnumMap<>(OreType.class);
 
@@ -87,6 +96,7 @@ public final class OreRegistry {
     /** Loads the class, which registers everything. */
     public static void register() {
         ItemComponentTooltipProviderRegistry.addFirst(WEIGHT);
+        ItemComponentTooltipProviderRegistry.addFirst(CARGO_WEIGHT);
         HazardBlocks.register();
         SlagBrick.register();
         Registry.register(

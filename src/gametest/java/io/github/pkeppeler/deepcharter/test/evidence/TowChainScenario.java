@@ -101,7 +101,7 @@ public class TowChainScenario extends EvidenceScenario {
             int ticks,
             double distance) {
         two.server().runOnServer(server -> {
-            two.mock().player().setYRot(yaw);
+            TowStage.turn(two, yaw);
             two.mock().setInput(Inputs.FORWARD);
         });
         for (int done = 0; done < ticks; done += TowStage.TICKS_PER_FRAME) {

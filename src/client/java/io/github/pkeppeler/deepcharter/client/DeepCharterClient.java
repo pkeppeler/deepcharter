@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client;
 
 import io.github.pkeppeler.deepcharter.client.beam.BeamClientInit;
 import io.github.pkeppeler.deepcharter.client.charter.CharterClientInit;
+import io.github.pkeppeler.deepcharter.client.continuity.ContinuityClientInit;
 import io.github.pkeppeler.deepcharter.client.creature.CreatureClientInit;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelClientInit;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookClientInit;
@@ -31,6 +32,7 @@ public class DeepCharterClient implements ClientModInitializer {
     public void onInitializeClient() {
         BeamClientInit.init();
         CharterClientInit.init();
+        ContinuityClientInit.init();
         CreatureClientInit.init();
         FuelClientInit.init();
         HandbookClientInit.init();
