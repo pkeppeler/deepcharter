@@ -99,8 +99,8 @@ public final class PodDump {
     }
 
     /**
-     * Whether {@code player} may not pick up {@code item}: a player seated in a pod picks up no ore, since a pack in the
-     * seat carries it weightless, and nothing a pod dumped, which would land back in the seat. An item whose mark
+     * Whether {@code player} may not pick up {@code item}: a player seated in a pod picks up no ore, since a pack in
+     * the seat carries it weightless, and nothing a pod dumped, which would land back in the seat. An item whose mark
      * cannot be read counts as dumped. On foot anyone picks either up.
      */
     public static boolean keepsFromPack(Player player, ItemEntity item) {
