@@ -58,8 +58,9 @@ public class PodHardLandingTest {
     private static final int SHAFT_TICKS = 700;
 
     /**
-     * Pods whose hull reads their touchdown speed: no buffer and 10 hull per block per tick, so the hull lost times 2 is the sink in
-     * blocks a second. The cushion reads its own tuning, not these stats, so it brakes a speedometer as it brakes any pod.
+     * Pods whose hull reads their touchdown speed: no buffer and 10 hull per block per tick, so the hull lost times 2 is
+     * the sink in blocks a second. The cushion reads its own tuning, not these stats, so it brakes a speedometer as it
+     * brakes any pod.
      */
     private static final Set<UUID> SPEEDOMETERS = ConcurrentHashMap.newKeySet();
 
@@ -101,7 +102,10 @@ public class PodHardLandingTest {
         helper.succeed();
     }
 
-    /** A landing 1 block a second over the 14 of the buffer stings; 5 over costs an eighth of the hull; a free fall at terminal speed wrecks. */
+    /**
+     * A landing 1 block a second over the 14 of the buffer stings; 5 over costs an eighth of the hull; a free fall at
+     * terminal speed wrecks.
+     */
     @GameTest
     public void aLandingJustOverTheBufferStingsAndTerminalSpeedWrecks(GameTestHelper helper) {
         PodStats stats = PodStats.base();
@@ -123,7 +127,7 @@ public class PodHardLandingTest {
         helper.succeed();
     }
 
-    /** A free fall reads the same speed as under #319, at 50 hull per block per tick: an uncrewed pod has no cushion. */
+    /** A free fall reads the speed it did under #319, at 50 hull per block per tick: no crew, no cushion. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aFreeFallOfTenBlocksCostsAFifthOfTheHull(GameTestHelper helper) {
         freeFall(helper, SHAFT_X + 200, 10, false, 19f, 25f);
@@ -134,7 +138,7 @@ public class PodHardLandingTest {
         freeFall(helper, SHAFT_X + 250, 20, false, 36f, 44f);
     }
 
-    /** A pilot seated through a hard but survivable landing keeps full health: the hull took it, less what the cushion braked. */
+    /** A pilot seated through a hard but survivable landing keeps full health: the hull took it, less the cushion. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aCrewedHardLandingCostsTheHullAndNotThePilot(GameTestHelper helper) {
         freeFall(helper, SHAFT_X + 300, 12, true, 6f, 15f);
@@ -377,8 +381,9 @@ public class PodHardLandingTest {
     }
 
     /**
-     * Flies a crewed pod from rest {@code blocks} over a shaft's floor with {@code keys}, and checks its hull lost is between {@code min}
-     * and {@code max}. A speedometer pod flies the same keys in the next shaft and logs the touchdown speed in blocks a second.
+     * Flies a crewed pod from rest {@code blocks} over a shaft's floor with {@code keys}, and checks its hull lost is
+     * between {@code min} and {@code max}. A speedometer pod flies the same keys in the next shaft and logs the touchdown
+     * speed in blocks a second.
      */
     private static void pilotedLanding(
             GameTestHelper helper, int x, int blocks, IntFunction<Input> keys, String how, float min, float max) {

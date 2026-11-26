@@ -12,8 +12,9 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Landing damage reads sink speed, not distance fallen (#319), so a rotor-braked descent is safe; a seated rider is shielded and the hull takes the hit.
- * In the last blocks above the ground the rotor's cushion brakes a crewed pod's sink (#1432), so a careful pilot lands soft.
+ * Landing damage reads sink speed, not distance fallen (#319), so a rotor-braked descent is safe; a seated rider is
+ * shielded and the hull takes the hit. In the last blocks above the ground the rotor's cushion brakes a crewed pod's
+ * sink (#1432), so a careful pilot lands soft.
  */
 public final class HardLanding {
     private HardLanding() {}
@@ -51,7 +52,7 @@ public final class HardLanding {
         }
     }
 
-    /** Brakes the sink of a crewed, powered pod with ground within {@link HardLandingTuning#cushionHeight} under its hull. */
+    /** Brakes a crewed, powered pod's sink while ground is within {@link HardLandingTuning#cushionHeight} below. */
     private static void cushion(PodEntity pod) {
         HardLandingTuning tuning = HardLandingTuning.DEFAULT;
         Vec3 motion = pod.getDeltaMovement();

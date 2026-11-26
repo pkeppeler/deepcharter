@@ -22,8 +22,8 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "pod-soft-landing" (#1432): a pilot hovers a pod 7 blocks over a lit floor, lets go of the rotor, and the ground
- * cushion brakes the last blocks of the sink, so the pod lands with its hull unchanged.
+ * Evidence scenario "pod-soft-landing" (#1432): a pilot hovers a pod 7 blocks over a lit floor, lets go of the rotor,
+ * and the ground cushion brakes the last blocks of the sink, so the pod lands with its hull unchanged.
  */
 public class PodSoftLandingScenario extends EvidenceScenario {
     private static final int X = 5250;
