@@ -115,11 +115,15 @@ repositories {
 	}
 }
 
-// Stands in for FAIL_ON_PROJECT_REPOS (see settings.gradle.kts): only Loom's repositories and GeckoLib's may exist.
+// Stands in for FAIL_ON_PROJECT_REPOS (see settings.gradle.kts): only Loom's repositories and GeckoLib's may exist. On GitHub
+// Actions, gradle/ci-central-mirror.init.gradle.kts gives Central's repository the URL of Google's mirror of it (ADR 0101),
+// so there Central itself is refused and only the mirror is allowed: a rewrite that stops matching fails here, not silently.
+// Elsewhere the mirror is refused, so the init script reaching a dev machine fails here too.
+val onGitHubActions = providers.environmentVariable("GITHUB_ACTIONS").orNull == "true"
 val allowedRepositoryUrls = setOf(
 	"https://maven.fabricmc.net/",
 	"https://libraries.minecraft.net/",
-	"https://repo.maven.apache.org/maven2/",
+	if (onGitHubActions) "https://maven-central.storage-download.googleapis.com/maven2/" else "https://repo.maven.apache.org/maven2/",
 	"https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/",
 )
 gradle.projectsEvaluated {
@@ -129,7 +133,8 @@ gradle.projectsEvaluated {
 	}
 	check(unexpected.isEmpty()) {
 		"Project repositories outside Loom's own and GeckoLib's: ${unexpected.map { it.name }}. " +
-			"Declare dependencies from Fabric's, Mojang's or Maven Central only, or audit the new repository and list it here."
+			"Declare dependencies from Fabric's, Mojang's or Maven Central only, or audit the new repository and list it here. " +
+			"On GitHub Actions, Central must be the mirror ADR 0101 names."
 	}
 }
 

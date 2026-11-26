@@ -7,7 +7,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.RepairScreen;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
@@ -80,7 +80,7 @@ public final class TerminalPanelScreens {
             case "upgrade" -> UpgradeScreen.class;
             case "repair" -> RepairStationScreen.class;
             case "pump" -> FuelPumpScreen.class;
-            case GENERIC -> TerminalScreen.class;
+            case GENERIC -> RepairScreen.class;
             default -> ContractScreen.class;
         };
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(at)));
@@ -105,7 +105,7 @@ public final class TerminalPanelScreens {
             case RepairStationScreen repair -> done(repair.typewriter());
             case FuelPumpScreen pump -> done(pump.typewriter());
             case ContractScreen contract -> done(contract.typewriter()) && ContractShown.loaded(contract);
-            case TerminalScreen generic -> done(generic.typewriter());
+            case RepairScreen offline -> done(offline.typewriter());
             default -> false;
         };
     }

@@ -8,6 +8,8 @@
     "ChunkMapAccess",
     "ChunkMapSaveMixin",
     "ChunkMapUnloadMixin",
+    "ChunkTaskPriorityQueueAccess",
+    "ForceSendProbeMixin",
     "GameTestBatchFactoryMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
@@ -17,6 +19,7 @@
     "MinecraftServerAccess",
     "ServerChunkCacheAccess",
     "ServerChunkCacheBlockingLoadMixin",
+    "ServerGamePacketListenerAccess",
     "ServerLevelForcedMixin",
     "TicketAccess",
     "TicketStorageAccess"
