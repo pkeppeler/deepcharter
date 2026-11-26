@@ -811,12 +811,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .map(contents -> ((TranslatableContents) contents).getKey())
                 .collect(Collectors.toSet());
         Set<String> expected = new TreeSet<>(PodStatusHud.KINDS.keySet());
-        // The plain HUD's four lines; the plate shows the same four values as its tally (tally_*).
+        // The plain HUD's four lines; the plate shows the same four values as its tally (tally_*). Pump fuel, the
+        // usual,
+        // gets no row of its own (#1438).
         expected.removeAll(Set.of(
                 "hud.deepcharter.pod.hull",
                 "hud.deepcharter.pod.fuel",
                 "hud.deepcharter.pod.cargo",
-                "hud.deepcharter.pod.depth"));
+                "hud.deepcharter.pod.depth",
+                "hud.deepcharter.pod.burns_pump"));
         // The account line under the tally, a note though not a pod line.
         expected.add(AccountHud.KEY);
         expected.add("hud.deepcharter.pod.signal_failing");
@@ -1050,7 +1053,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         new CockpitHud.Cell(line("tally_depth", -420), CockpitHud.Meter.DEPTH.icon()))),
                 CockpitHud.Row.of(
                         new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0)));
+        // Solid fuel left in the tank, after the fuel's icon under the account (#1438): the widest name, double
+        // figures.
+        CockpitHud.Row solid = new CockpitHud.Row(List.of(new CockpitHud.Cell(
+                line("burns_solid", Component.translatable("deepcharter.fuel.solid"), 12),
+                CockpitHud.Meter.FUEL.icon())));
+        List<CockpitHud.Row> solidHead =
+                Stream.concat(head.stream(), Stream.of(solid)).toList();
         List<List<CockpitHud.Row>> cases = new ArrayList<>();
+        cases.add(solidHead);
         for (PodStatusHud.Line alert : alerts) {
             cases.add(rowsOf(head, List.of(alert)));
         }
@@ -1062,7 +1073,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         cases.add(rowsOf(head, List.of(line("stranded"), line("recovery", 60, 240))));
 
         cases.add(rowsOf(
-                head,
+                solidHead,
                 Stream.concat(
                                 Stream.of(
                                         alerts.get(0),

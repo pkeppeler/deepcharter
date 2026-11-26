@@ -291,10 +291,7 @@ public final class EngineSoot {
         pod.setAttached(
                 STATE,
                 Versioned.of(new State(
-                        soot,
-                        account * kept,
-                        accountSoot * kept,
-                        kept > 0f ? state.solid() : Optional.empty())));
+                        soot, account * kept, accountSoot * kept, kept > 0f ? state.solid() : Optional.empty())));
         if (state.soot() <= grace && soot > grace) {
             explainFirstSoot(pod);
         }

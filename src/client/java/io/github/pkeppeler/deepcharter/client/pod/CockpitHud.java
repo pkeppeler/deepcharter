@@ -57,6 +57,9 @@ import org.jspecify.annotations.Nullable;
  * <p>Each gauge is titled (#1436, a playtester could not tell what H or the plate's coloured numbers were): a tab under its bar, riding the band's lower edge, holds
  * the gauge's icon and its name in the gauge's colour ({@link Meter}). Each number of the plate's tally carries an icon, so the plate needs no words to stay small:
  * hull, fuel and depth their gauge's, and the bay's ore count the {@link Icon#CART}.
+ *
+ * <p>While solid fuel is left in the tank the plate says so on a row of its own, after the fuel's icon (#1438): it burns first, and it is what soots the engine.
+ * Pump fuel, the usual, gets no row: a row across the plate always would take the status past its budget ({@code tools/cockpit_ribbon.py}).
  */
 public final class CockpitHud {
     /** How many warning lamps the Ribbon has: low fuel, low hull, burning, any other warning of the readout, and overloaded. */
@@ -552,7 +555,7 @@ public final class CockpitHud {
         }
     }
 
-    /** One row of the plate: cells drawn side by side, {@link CockpitLook#tallyGap} apart. Only the tally's cells carry icons. */
+    /** One row of the plate: cells drawn side by side, {@link CockpitLook#tallyGap} apart. Only the tally's cells and the solid fuel's carry icons. */
     public record Row(List<Cell> cells) {
         public static Row of(Line line) {
             return new Row(List.of(new Cell(line, null)));
@@ -574,7 +577,8 @@ public final class CockpitHud {
 
     /**
      * The rows of the plate: the tally on one row (hull, fuel and depth each in its gauge's colour after its gauge's icon, and the bay's ore count in the cargo colour
-     * after the {@link Icon#CART}), the account line, and under them every other line of the readout, so the numbers stay where they are as lines come and go.
+     * after the {@link Icon#CART}), the account line, the solid fuel still in the tank after the fuel's icon, and under them every other line of the readout, so the
+     * numbers stay where they are as lines come and go.
      */
     public static List<Row> rows(PodEntity pod, CockpitReading reading, CockpitLook look, List<Line> readout) {
         boolean fuelLow = PodFuel.isLow(pod.fuel());
@@ -606,6 +610,9 @@ public final class CockpitHud {
         AccountHud.text()
                 .ifPresent(
                         text -> rows.add(Row.of(new Line(text, HudLook.current().accountColor()))));
+        PodStatusHud.solidLine(pod)
+                .ifPresent(text ->
+                        rows.add(new Row(List.of(new Cell(new Line(text, look.fuelColor()), Meter.FUEL.icon())))));
         readout.stream().filter(line -> line.kind() != Kind.BASE).map(Row::of).forEach(rows::add);
         return rows;
     }

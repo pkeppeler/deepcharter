@@ -11,12 +11,10 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.ScreenInk;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,7 +22,6 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -79,7 +76,7 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
                             context,
                             "the GUI at scale " + scale,
                             client -> client.getWindow().getGuiScale() == scale && CockpitHud.showsReadout(client));
-                    BufferedImage shot = shot(context, "cockpit-titles-gui" + scale);
+                    BufferedImage shot = ScreenInk.shot(context, "cockpit-titles-gui" + scale);
                     problems.addAll(context.computeOnClient(client -> titleProblems(client, shot, scale)));
                     problems.addAll(context.computeOnClient(client -> tallyProblems(client, shot, scale)));
                     problems.addAll(context.computeOnClient(CockpitTitlesClientTest::keepClearProblems));
@@ -90,17 +87,6 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
             if (!problems.isEmpty()) {
                 throw new AssertionError("The cockpit's titles and the tally's icons: " + problems);
             }
-        }
-    }
-
-    private static BufferedImage shot(ClientGameTestContext context, String name) {
-        context.runOnClient(client -> client.gui.toastManager().clear());
-        context.waitTicks(3); // tick-wait: the frames after the scale change and the cleared toast
-        Path file = context.takeScreenshot(name);
-        try {
-            return ImageIO.read(file.toFile());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
     }
 
@@ -116,9 +102,9 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
             int color = gauge.color(look);
             int iconLeft = box.left() + inset;
             int top = box.top() + inset;
-            int icon = ink(shot, scale, color, iconLeft, top, look.iconWidth(), look.titleTextHeight());
+            int icon = ScreenInk.count(shot, scale, color, iconLeft, top, look.iconWidth(), look.titleTextHeight());
             int textLeft = iconLeft + look.iconWidth() + look.iconGap();
-            int title = ink(
+            int title = ScreenInk.count(
                     shot,
                     scale,
                     color,
@@ -176,7 +162,7 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
         int y = plate.top() + inset.top();
         for (CockpitHud.Cell cell : tally.cells()) {
             PodStatusHud.Line part = cell.line();
-            int icon = ink(shot, scale, part.color(), x, y, look.iconWidth(), look.titleTextHeight());
+            int icon = ScreenInk.count(shot, scale, part.color(), x, y, look.iconWidth(), look.titleTextHeight());
             if (icon < ICON_INK * scale * scale) {
                 problems.add("at GUI scale " + scale + " the tally's "
                         + part.text().getString() + " has " + icon + " screen pixels of icon before it in its colour");
@@ -206,27 +192,5 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
 
     private static String name(CockpitHud.Meter gauge) {
         return gauge.name().toLowerCase(Locale.ROOT);
-    }
-
-    /** How many screen pixels of the GUI rectangle ({@code left}, {@code top}, {@code width} x {@code height}) are near {@code color}. */
-    private static int ink(BufferedImage shot, int scale, int color, int left, int top, int width, int height) {
-        int count = 0;
-        for (int y = top * scale; y < (top + height) * scale; y++) {
-            for (int x = left * scale; x < (left + width) * scale; x++) {
-                if (x >= 0 && y >= 0 && x < shot.getWidth() && y < shot.getHeight() && near(shot.getRGB(x, y), color)) {
-                    count++;
-                }
-            }
-        }
-        return count;
-    }
-
-    private static boolean near(int a, int b) {
-        for (int shift = 0; shift <= 16; shift += 8) {
-            if (Math.abs((a >> shift & 0xFF) - (b >> shift & 0xFF)) > 24) {
-                return false;
-            }
-        }
-        return true;
     }
 }
