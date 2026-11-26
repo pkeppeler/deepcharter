@@ -198,7 +198,7 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
     }
 
     /** A plain toast as vanilla's are: the default size and place, top right, and shown until cleared. */
-    private static final class SlotToast implements Toast {
+    static final class SlotToast implements Toast {
         @Override
         public Visibility getWantedVisibility() {
             return Visibility.SHOW;
