@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
+import io.github.pkeppeler.deepcharter.pod.PodSprint;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
 import java.util.ArrayList;
@@ -92,6 +93,13 @@ public final class PodStatusHud {
                             look.podStatusColor())));
         }
         return lines;
+    }
+
+    /** The line shown, in its own colour, while the pod runs on its sprint boost (#1276): what it adds. */
+    public static Optional<Component> sprintLine(PodEntity pod) {
+        return PodSprint.boosting(pod)
+                ? Optional.of(Component.translatable("hud.deepcharter.pod.sprint", PodSprint.boostPercent()))
+                : Optional.empty();
     }
 
     /** The warning line shown, in its own colour, while lava burns the hull. A heat shield with bricks left soaks the lava: the hull is not burning then, and {@link #glazeLine} says so. */
@@ -248,6 +256,7 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.lining", Kind.INFO),
             Map.entry("hud.deepcharter.pod.soot", Kind.INFO),
             Map.entry("hud.deepcharter.pod.soot_limp", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.sprint", Kind.INFO),
             Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
             Map.entry("hud.deepcharter.pod.burning", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
@@ -288,6 +297,7 @@ public final class PodStatusHud {
     public static List<Line> readout(LocalPlayer player, PodEntity pod) {
         HudLook look = HudLook.current();
         List<Line> readout = new ArrayList<>(statusLines(pod));
+        sprintLine(pod).ifPresent(line -> readout.add(new Line(line, look.podSprintColor())));
         burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         glazeLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
