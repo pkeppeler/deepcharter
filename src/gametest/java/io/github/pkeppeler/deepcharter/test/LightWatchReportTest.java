@@ -15,9 +15,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 
 /**
- * The safety net's report that a watched chunk has waited too long to be sendable (#1297). A chunk is sendable only
- * once it ticks, so a loaded chunk on the rim of the ticking area waits for that, not for the light: it is not reported.
- * A ticking chunk whose send the light holds back is.
+ * The safety net's report that a watched chunk has waited too long to be sendable (#1297). A chunk is sendable
+ * only once it ticks, so a loaded chunk on the rim of the ticking area waits for that, not for the light: it is not
+ * reported. A ticking chunk whose send the light holds back is.
  *
  * <p>One forced chunk ticks with its ring; the ring beyond that is loaded and does not tick. The hold is drawn on a
  * chunk of the first ring, so its 3x3 reaches into the second.

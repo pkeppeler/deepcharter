@@ -183,10 +183,10 @@ public final class ColonyBuilder {
     }
 
     /**
-     * Loads every chunk the box from {@code minX}, {@code minZ} to {@code maxX}, {@code maxZ} touches (block coordinates,
-     * inclusive). Each gets the ticket {@code getChunk} would give it before the first is waited for, so the worker threads
-     * generate them side by side, where {@code getChunk} alone generates one at a time while the server thread waits (#1297).
-     * {@code getChunkFuture} would not do: on the server thread it waits for the chunk too.
+     * Loads every chunk the box from {@code minX}, {@code minZ} to {@code maxX}, {@code maxZ} touches (block
+     * coordinates, inclusive). Each gets the ticket {@code getChunk} would give it before the first is waited for, so
+     * the worker threads generate them side by side, where {@code getChunk} alone generates one at a time while the
+     * server thread waits (#1297). On the server thread, {@code getChunkFuture} waits for its chunk too.
      */
     private static void loadChunks(ServerLevel level, int minX, int minZ, int maxX, int maxZ) {
         ChunkPos min = new ChunkPos(minX >> 4, minZ >> 4);
