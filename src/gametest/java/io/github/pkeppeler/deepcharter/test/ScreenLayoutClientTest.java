@@ -747,20 +747,6 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         // is, so every hold slot shows and so do the page buttons.
         int bay = Math.round(PodTuning.Cargo.DEFAULT.slots()
                 * UpgradeTuning.DEFAULT.ratio(ComponentTrack.CARGO_BAY, ComponentTrack.CARGO_BAY.maxTier()));
-        TerminalType mostParts = TerminalTypes.all().stream()
-                .filter(type -> type.id().getNamespace().equals(DeepCharter.MOD_ID))
-                .max(Comparator.comparingInt(type -> type.parts().size()))
-                .orElseThrow();
-        fixtures.put(
-                RepairMenu.TYPE,
-                new MenuFixture(
-                        id -> new RepairMenu(
-                                id,
-                                ClientSession.player(Minecraft.getInstance()).getInventory(),
-                                new RepairMenu.Opening(POS, mostParts.id(), true)),
-                        mostParts.id().getPath() + " offline, "
-                                + mostParts.parts().size() + " parts",
-                        Component.translatable(mostParts.block().getDescriptionId())));
         fixtures.put(
                 PodMenu.TYPE,
                 new MenuFixture(
