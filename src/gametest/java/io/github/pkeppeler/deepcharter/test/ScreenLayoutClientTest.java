@@ -196,8 +196,9 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
     }
 
     /**
-     * A pod with nothing fitted and a cap below the best tiers: each track offers every tier it sells, the tiers above the cap carry the
-     * longest labels, and a track that waits for its crafted unit shows its locked row and the unit's line.
+     * A pod with nothing fitted and a cap below the best tiers: each track offers every tier it sells, the tiers above
+     * the cap carry the longest labels, and a track that waits for its crafted unit shows its locked row and the unit's
+     * line.
      */
     private static UpgradeView upgradeView() {
         List<UpgradeView.Slot> slots = new ArrayList<>();

@@ -8,9 +8,9 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
- * Which track the upgrade screen shows as chosen. The choice shows as the lit track button ({@code CrtButton.marked}), which the layout
- * that builds the chosen track's rows sets: the test reads the mark from the widget tree, by reflection, so production keeps no member for
- * it. Client thread.
+ * Which track the upgrade screen shows as chosen. The choice shows as the lit track button ({@code CrtButton.marked}),
+ * which the layout that builds the chosen track's rows sets: the test reads the mark from the widget tree, by
+ * reflection, so production keeps no member for it. Client thread.
  */
 public final class UpgradeShown {
     private static final Field MARKED = markedField();

@@ -8,9 +8,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
 /**
- * What the upgrade terminal offers a parked pod on one track (#1440): what is fitted, the tiers it sells, and what locks them. The crafted
- * tier 1 is never offered (ADR 0048, ADR 0053). The server decides every purchase ({@link UpgradeTerminal#buy}); this mirrors its rules so
- * the screen shows only what it would sell.
+ * What the upgrade terminal offers a parked pod on one track (#1440): what is fitted, the tiers it sells, and what
+ * locks them. The crafted tier 1 is never offered (ADR 0048, ADR 0053). The server decides every purchase ({@link
+ * UpgradeTerminal#buy}); this mirrors its rules so the screen shows only what it would sell.
  *
  * @param track the track
  * @param slot  the pod's part on it, as the view carries it
@@ -51,7 +51,9 @@ public record TrackOffer(ComponentTrack track, UpgradeView.Slot slot, int cap) {
         return track.needsFirstTier() ? Lock.FIT_FIRST : Lock.NONE;
     }
 
-    /** The tiers for sale, lowest first: those above the part fitted, never the crafted tier 1, and none while locked. */
+    /**
+     * The tiers for sale, lowest first: those above the part fitted, never the crafted tier 1, and none while locked.
+     */
     public List<Integer> forSale() {
         if (lock() != Lock.NONE) {
             return List.of();
@@ -62,7 +64,10 @@ public record TrackOffer(ComponentTrack track, UpgradeView.Slot slot, int cap) {
                 .toList();
     }
 
-    /** The next purchase: the lowest tier for sale, or tier 2 while it waits for the crafted tier; empty when nothing is left to buy. */
+    /**
+     * The next purchase: the lowest tier for sale, or tier 2 while it waits for the crafted tier; empty when nothing is
+     * left to buy.
+     */
     public Optional<Integer> next() {
         return lock() == Lock.FIT_FIRST ? Optional.of(2) : forSale().stream().findFirst();
     }
@@ -81,8 +86,9 @@ public record TrackOffer(ComponentTrack track, UpgradeView.Slot slot, int cap) {
     }
 
     /**
-     * What the next purchase does, in numbers ({@link UpgradeStat#gains}), against what the pod works at now; that it is no better in this
-     * pod when the cap holds it back; or that the top tier is fitted. Empty while the track is locked.
+     * What the next purchase does, in numbers ({@link UpgradeStat#gains}), against what the pod works at now; that it
+     * is no better in this pod when the cap holds it back; or that the top tier is fitted. Empty while the track is
+     * locked.
      */
     public Optional<Component> nextLine() {
         if (lock() != Lock.NONE) {

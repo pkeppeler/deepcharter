@@ -36,12 +36,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
 /**
- * The online screen of the upgrade terminal. The left column lists the tracks, closing their rows up to fit the screen, with the tier now
- * installed. The right column says what the chosen track does, what the pod has fitted and what the next tier gains in numbers (#1440,
- * {@link TrackOffer}), then lists the tiers for sale with their prices. The crafted tier 1 is not a row: a track that waits for it shows its
- * next purchase locked and a line naming the unit, which opens the unit's recipe. A tier above the pod's cap is marked as working at the
- * cap, so the player pays knowing it. The screen decides nothing: the server checks every purchase, and answers with a new
- * {@link UpgradeView}.
+ * The online screen of the upgrade terminal. The left column lists the tracks, closing their rows up to fit the screen,
+ * with the tier now installed. The right column says what the chosen track does, what the pod has fitted and what the
+ * next tier gains in numbers (#1440, {@link TrackOffer}), then lists the tiers for sale with their prices. The crafted
+ * tier 1 is not a row: a track that waits for it shows its next purchase locked and a line naming the unit, which opens
+ * the unit's recipe. A tier above the pod's cap is marked as working at the cap, so the player pays knowing it. The
+ * screen decides nothing: the server checks every purchase, and answers with a new {@link UpgradeView}.
  *
  * <p>It asks the server for the parked pod when it opens, because the generic {@link TerminalView} carries none.
  */
@@ -220,7 +220,9 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
         }
     }
 
-    /** The y of the first row of the track's tiers: under its description, the fitted part and the next purchase's gain. */
+    /**
+     * The y of the first row of the track's tiers: under its description, the fitted part and the next purchase's gain.
+     */
     private int rowsTop(ComponentTrack track, int tierWidth) {
         return listTop() + (about(track, tierWidth).size() + 2) * lineStep() + TEXT_GAP;
     }

@@ -42,10 +42,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Client GameTest for #73 and #1440: the upgrade screen says what a track does, what is fitted and what the next tier gains, lists the
- * tiers for sale with their prices (never the crafted tier 1), marks the tiers above the Mole's cap and shows the cap, buys through the
- * server, shows the fitted part (and the cap on it), leaves a part the charter cannot pay for dead, and locks a track that waits for its
- * crafted unit, with a line that opens the unit's recipe.
+ * Client GameTest for #73 and #1440: the upgrade screen says what a track does, what is fitted and what the next tier
+ * gains, lists the tiers for sale with their prices (never the crafted tier 1), marks the tiers above the Mole's cap
+ * and shows the cap, buys through the server, shows the fitted part (and the cap on it), leaves a part the charter
+ * cannot pay for dead, and locks a track that waits for its crafted unit, with a line that opens the unit's recipe.
  */
 public class UpgradeTerminalClientTest implements FabricClientGameTest {
     private static final long ACCOUNT = 30_000;
@@ -315,7 +315,10 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                 .orElseThrow());
     }
 
-    /** The lines the screen draws itself: the chosen track's description, fitted part, next gain and note. Client thread. */
+    /**
+     * The lines the screen draws itself: the chosen track's description, fitted part, next gain and note. Client
+     * thread.
+     */
     private static List<String> drawn(UpgradeScreen screen) {
         return DrawnText.of(screen).stream().map(DrawnText.Drawn::text).toList();
     }

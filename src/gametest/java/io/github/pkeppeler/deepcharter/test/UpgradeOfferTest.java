@@ -23,9 +23,9 @@ import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 
 /**
- * Server GameTests for #1440: what the upgrade terminal says about each track. Every track has a description, every stat a track moves
- * has a phrase and a unit, the next tier's gain is the pod's own stat change, the crafted tier 1 is never offered, a track that waits for
- * its crafted tier says so, and the fitted tier is named.
+ * Server GameTests for #1440: what the upgrade terminal says about each track. Every track has a description, every
+ * stat a track moves has a phrase and a unit, the next tier's gain is the pod's own stat change, the crafted tier 1 is
+ * never offered, a track that waits for its crafted tier says so, and the fitted tier is named.
  */
 public class UpgradeOfferTest {
     /** A Mole: parts above tier 2 work as tier 2. */
@@ -68,7 +68,10 @@ public class UpgradeOfferTest {
         helper.succeed();
     }
 
-    /** For each track that moves a pod stat: the gain the terminal shows for tier 2 over tier 1 is what the pod's stats do when the part goes in. */
+    /**
+     * For each track that moves a pod stat: the gain the terminal shows for tier 2 over tier 1 is what the pod's stats
+     * do when the part goes in.
+     */
     @GameTest
     public void theNextTierGainIsThePodsOwnStatChange(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
@@ -126,7 +129,10 @@ public class UpgradeOfferTest {
         helper.succeed();
     }
 
-    /** "LIFT +7%" for a stat shown as a rise, "TANK 15 L -> 25 L" for one shown before and after: the words are the lang file's. */
+    /**
+     * "LIFT +7%" for a stat shown as a rise, "TANK 15 L -> 25 L" for one shown before and after: the words are the lang
+     * file's.
+     */
     private static String expectedGain(PartAxis axis, PodStats before, PodStats after) {
         float from = axis.read(before);
         float to = axis.read(after);
@@ -252,7 +258,10 @@ public class UpgradeOfferTest {
         }
     }
 
-    /** A Mole's view with {@code track} at {@code installed}, working at {@code effective}, and nothing on the other tracks. */
+    /**
+     * A Mole's view with {@code track} at {@code installed}, working at {@code effective}, and nothing on the other
+     * tracks.
+     */
     private static UpgradeView.Pod pod(ComponentTrack track, int installed, int effective) {
         List<UpgradeView.Slot> slots = Arrays.stream(ComponentTrack.values())
                 .map(each -> each == track

@@ -24,10 +24,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Evidence scenario "upgrade-tracks" (#1440): the upgrade terminal with some tracks fitted and some not. The Mole has a crafted drill
- * unit fitted (tier 1) and a bought tier 2 hull; its engine is stock, and it has no scanner and no spoil hopper. The pilot opens the
- * terminal and picks each of those tracks in turn; one still of each ({@code track-<id>}). It clicks only the track buttons, whose
- * labels did not change, so the same scenario records the screen before and after the change.
+ * Evidence scenario "upgrade-tracks" (#1440): the upgrade terminal with some tracks fitted and some not. The Mole has a
+ * crafted drill unit fitted (tier 1) and a bought tier 2 hull; its engine is stock, and it has no scanner and no spoil
+ * hopper. The pilot opens the terminal and picks each of those tracks in turn; one still of each ({@code track-<id>}).
+ * It clicks only the track buttons, whose labels did not change, so the same scenario records the screen before and
+ * after the change.
  */
 public class UpgradeTracksScenario extends EvidenceScenario {
     private static final List<ComponentTrack> SHOWN = List.of(

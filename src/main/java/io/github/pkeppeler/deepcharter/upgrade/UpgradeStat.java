@@ -15,10 +15,10 @@ import net.minecraft.network.chat.MutableComponent;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A number a track's tier sets, as the upgrade terminal shows a tier's gain (#1440). The stats of a track that moves a pod stat
- * are its {@link PodComponents#axes}, read through {@link PodComponents#axisAt}; a track read through its tier has one stat from its
- * own tuning. Each stat has a phrase ({@code screen.deepcharter.upgrade.stat.<id>}) and a unit ({@code screen.deepcharter.upgrade.unit.<unit>}),
- * so a retune changes the numbers shown and never leaves them stale.
+ * A number a track's tier sets, as the upgrade terminal shows a tier's gain (#1440). The stats of a track that moves a
+ * pod stat are its {@link PodComponents#axes}, read through {@link PodComponents#axisAt}; a track read through its tier
+ * has one stat from its own tuning. Each stat has a phrase ({@code screen.deepcharter.upgrade.stat.<id>}) and a unit
+ * ({@code screen.deepcharter.upgrade.unit.<unit>}), so a retune changes the numbers shown and never leaves them stale.
  *
  * <p>The spoil hopper and the brace have no stat: their one tier is crafted, so the terminal sells nothing of them.
  */
@@ -138,7 +138,10 @@ public enum UpgradeStat {
         return unit.key();
     }
 
-    /** The stat with a part of {@code tier} fitted (0: the stock part), or empty where the track has no part at that tier. */
+    /**
+     * The stat with a part of {@code tier} fitted (0: the stock part), or empty where the track has no part at that
+     * tier.
+     */
     public Optional<Float> value(int tier) {
         return Optional.ofNullable(value.apply(tier));
     }

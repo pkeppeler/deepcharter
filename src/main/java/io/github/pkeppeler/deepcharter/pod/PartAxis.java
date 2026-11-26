@@ -4,8 +4,9 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * One stat a part track moves ({@link PodComponents#axes}), and which way is better. A part scales the stat by the tier's ratio against the
- * stock part, so it composes with other listeners. A drill is better when its ticks for each hardness are fewer, so it divides.
+ * One stat a part track moves ({@link PodComponents#axes}), and which way is better. A part scales the stat by the
+ * tier's ratio against the stock part, so it composes with other listeners. A drill is better when its ticks for each
+ * hardness are fewer, so it divides.
  */
 public enum PartAxis {
     DRILL_TIME(PodStats::ticksPerHardness, PodStats::withTicksPerHardness, true),
