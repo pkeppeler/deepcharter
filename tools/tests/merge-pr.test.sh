@@ -636,6 +636,8 @@ refusal "a bad GH_LIST_ATTEMPTS refuses with the reason" "could not read every c
   GH_LIST_ATTEMPTS=x
 refusal "a bad GH_LIST_SLEEP refuses with the reason" "GH_LIST_ATTEMPTS and GH_LIST_SLEEP must be whole numbers" \
   GH_LIST_SLEEP=1.5
+refusal "a leading-zero GH_LIST_SLEEP refuses before a retry could abort the files check" "GH_LIST_ATTEMPTS and GH_LIST_SLEEP must be whole numbers" \
+  GH_LIST_SLEEP=08 STUB_FILES_FAILS=1
 refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/else.git
 
 # A relative $0 (./merge-pr.sh from tools/) must still find tools/lib/adr.sh after the script's cd.

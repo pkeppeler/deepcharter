@@ -42,13 +42,14 @@ pr_mergeable_of() {
 # the pages before it, so a listing that lost a page is never used (#1484). gh's stderr stays out of <var>. A
 # transient error (HTTP 500, 502, 503, 504, a timeout or a reset connection) retries the whole listing:
 # GH_LIST_ATTEMPTS tries (default 3), sleeping GH_LIST_SLEEP seconds (default 5) times the attempt number between them;
-# both must be whole numbers. A rate limit (429, or a secondary-limit 403) is not retried: it refuses at once, closed.
+# both must be whole numbers, with no leading zero (bash arithmetic would read 08 as a bad octal and abort past
+# the caller's `|| refuse`). A rate limit (429, or a secondary-limit 403) is not retried: it refuses at once, closed.
 gh_list() {
   local attempts=${GH_LIST_ATTEMPTS:-3} pause=${GH_LIST_SLEEP:-5} attempt=1 errfile listed
   local transient='HTTP 50[0234]|[Tt]imeout|timed out|deadline exceeded|connection reset|unexpected EOF'
   printf -v "$1" '%s' ''
   gh_list_err=
-  if [[ ! $attempts =~ ^[1-9][0-9]*$ || ! $pause =~ ^[0-9]+$ ]]; then
+  if [[ ! $attempts =~ ^[1-9][0-9]*$ || ! $pause =~ ^(0|[1-9][0-9]*)$ ]]; then
     gh_list_err="GH_LIST_ATTEMPTS and GH_LIST_SLEEP must be whole numbers (attempts at least 1)"
     return 1
   fi
