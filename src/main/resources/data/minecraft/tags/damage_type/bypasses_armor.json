@@ -1,5 +1,6 @@
 {
   "values": [
-    "deepcharter:suit_exposure"
+    "deepcharter:suit_exposure",
+    "deepcharter:hull_loss"
   ]
 }

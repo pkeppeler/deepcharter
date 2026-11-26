@@ -547,7 +547,7 @@ a cell; the area grows with the tier up to tier 4. Source `client/scanner/Scanne
 ### Altimeter
 
 Top centre, always on while in a world: white vanilla text "46 ft." (depth in feet, negative below sea level), which jitters during a breach.
-Source `client/layer/Altimeter.java`, `BreachHud.java`. Visible in every HUD still. Vanilla: **no**.
+Source `layer/Altimeter.java`, `client/layer/BreachHud.java`. Visible in every HUD still. Vanilla: **no**.
 Swap **(c)** `BreachHud.java:27` (colour), `:36-43` (position).
 
 ![hud-altimeter-layer-1-floor](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-altimeter-layer-1-floor.png?raw=true)
@@ -696,7 +696,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 
 ## The design tour
 
-Two runs of one commit give the same stills, apart from two that can differ a little (`colony-aerial-northwest`, `screen-pod-cargo`): see [evidence.md](../../.claude/skills/deepcharter-conventions/evidence.md).
+Two runs of one commit give the same stills, apart from one that can differ a little (`colony-aerial-northwest`): see [evidence.md](../../.claude/skills/deepcharter-conventions/evidence.md).
 
 `design-tour` shoots these stills (name = file name on `pr-media`, under `227/`):
 

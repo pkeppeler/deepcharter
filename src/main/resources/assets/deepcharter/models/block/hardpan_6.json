@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "side": "deepcharter:block/hardpan_6",
+    "end": "deepcharter:block/hardpan_end_2"
+  }
+}
