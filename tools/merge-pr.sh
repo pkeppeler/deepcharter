@@ -59,6 +59,8 @@ source tools/lib/pr-body-checks.sh
 source tools/lib/ci-gate.sh
 # shellcheck source=lib/roadmap.sh
 source tools/lib/roadmap.sh
+# shellcheck source=lib/stacked.sh
+source tools/lib/stacked.sh
 origin=$(git remote get-url origin)
 [[ $origin =~ github\.com[:/]$repo(\.git)?$ ]] \
   || { echo "REFUSED: origin is '$origin', not $repo" >&2; exit 1; }
@@ -194,16 +196,9 @@ $body") || refuse "could not check the title and body for long URLs"
   exit 0
 fi
 
-# Closing a PR whose base branch is gone cannot be reopened (#663), and GitHub deletes the head branch on merge
-# (the repo's delete_branch_on_merge, so this script deletes no ref). Retarget each open PR stacked on this head
-# branch to this PR's base first.
-stacked=$(gh api "repos/$repo/pulls?base=$branch&state=open&per_page=100" --paginate --jq '.[].number') \
-  || refuse "could not list the PRs stacked on $branch"
-for stacked_pr in $stacked; do
-  gh api -X PATCH "repos/$repo/pulls/$stacked_pr" -f base="$base" >/dev/null \
-    || refuse "cannot retarget stacked PR #$stacked_pr to $base (merging would close it)"
-  echo "Retargeted PR #$stacked_pr to $base"
-done
+# GitHub deletes the head branch on merge (the repo's delete_branch_on_merge, so this script deletes no ref). Retarget
+# each open PR stacked on this head branch to this PR's base first (tools/lib/stacked.sh).
+retarget_stacked "$branch" "$base" || refuse "$retarget_err"
 
 # The repo's squash settings are PR_TITLE and PR_BODY: the subject is "<title> (#n)" and the message the body.
 # The merge endpoint is not documented to apply them, so pass both. A merge request can fail after GitHub merged

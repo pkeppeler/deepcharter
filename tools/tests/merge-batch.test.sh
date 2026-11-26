@@ -17,8 +17,8 @@ export ORIGIN="$work/origin.git"
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
 
 # gh: REST only. Reads PR N from $ST: sha.N (the head), branch.N (default N-slug), state.N (default OPEN). A POST to
-# pulls opens batch PR 100, 101, ... and records its head branch in $ST/head.<number>; a successful rebase merge of a
-# batch PR advances the bare origin's main to that branch (as GitHub's rebase merge would), unless $ST/merge_fail.
+# pulls opens batch PR 100, 101, ... and records its head branch in $ST/head.<number>. PRs stacked on branch B are the
+# lines of $ST/stacked.B; the head sha's workflow runs and jobs come from $ST/wfruns and $ST/jobs.<run id>.
 cat >"$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "gh $*" >>"$LOG"
@@ -36,6 +36,17 @@ for a in "$@"; do
 done
 case "$1 $method" in
   "api GET")
+    if [[ $path == *pulls\?base=* ]]; then
+      b=${path#*base=}
+      cat "$ST/stacked.${b%%&*}" 2>/dev/null || true
+      exit 0
+    fi
+    if [[ $path == */actions/runs\?head_sha=* ]]; then cat "$ST/wfruns" 2>/dev/null || true; exit 0; fi
+    if [[ $path == */actions/runs/*/jobs* ]]; then
+      id=${path%/jobs*}
+      cat "$ST/jobs.${id##*/}" 2>/dev/null || true
+      exit 0
+    fi
     n=${path##*/}
     case "$jq" in
       '"\(.merged) \(.state)"')
@@ -56,17 +67,31 @@ case "$1 $method" in
         echo "$head" >"$ST/head.$k"
         echo "$k" ;;
     esac ;;
-  "api PUT")
-    [[ ! -e $ST/merge_fail ]] || { echo "HTTP 405: base branch was modified" >&2; exit 1; }
-    n=${path%/merge}
-    n=${n##*/}
-    git --git-dir="$ORIGIN" update-ref refs/heads/main "$(git --git-dir="$ORIGIN" rev-parse "refs/heads/$(cat "$ST/head.$n")")"
-    echo MERGED >"$ST/state.$n" ;;
   "api PATCH")
     n=${path##*/}
-    echo CLOSED >"$ST/state.$n" ;;
+    [[ " $* " == *" base=main "* ]] || echo CLOSED >"$ST/state.$n" ;;
 esac
 exit 0
+STUB
+
+# git: when $ST/race exists, a push first lands another commit on the origin's main (main moves between the check and
+# the push), so the push is rejected as non-fast-forward. Everything else is real git.
+real_git=$(command -v git)
+cat >"$work/bin/git" <<STUB
+#!/usr/bin/env bash
+if [[ \$1 == push && " \$* " == *":refs/heads/main "* && -e \$ST/race ]]; then
+  k=\$((\$(cat "\$ST/race_n" 2>/dev/null || echo 0) + 1))
+  echo "\$k" >"\$ST/race_n"
+  tmpc=\$(mktemp -d)
+  $real_git clone -q "\$ORIGIN" "\$tmpc/c" 2>/dev/null
+  echo "\$k" >"\$tmpc/c/race\$k.txt"
+  $real_git -C "\$tmpc/c" add -A
+  $real_git -C "\$tmpc/c" commit -q -m "race \$k"
+  $real_git -C "\$tmpc/c" push -q origin HEAD:main 2>/dev/null
+  rm -rf "\$tmpc"
+  echo "race" >>"\$LOG"
+fi
+exec $real_git "\$@"
 STUB
 
 cat >"$work/bin/sleep" <<'STUB'
@@ -101,6 +126,11 @@ case $1 in
     done
     echo "CI OK: PR #$2" ;;
   *)
+    if [[ -e $ST/single_stale.$1 ]]; then
+      rm "$ST/single_stale.$1"
+      echo "REFUSED: PR #$1 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run [stale-base] (the head sha is unchanged)"
+      exit 1
+    fi
     if [[ -e $ST/single_fail.$1 ]]; then echo "REFUSED: PR #$1 is not mergeable"; exit 1; fi
     echo MERGED >"$ST/state.$1"
     echo "Merged PR #$1" ;;
@@ -110,6 +140,13 @@ chmod +x "$work/bin/"* "$work/gate"
 
 # The repo under test: a clone of a bare origin that holds copies of the tools. The dev clone makes PR branches.
 git init -q --bare -b main "$ORIGIN"
+cat >"$ORIGIN/hooks/pre-receive" <<'HOOK'
+#!/usr/bin/env bash
+while read -r _ _ ref; do
+  if [[ $ref == refs/heads/main && -e $ST/push_deny ]]; then echo "push denied by the test hook" >&2; exit 1; fi
+done
+HOOK
+chmod +x "$ORIGIN/hooks/pre-receive"
 git clone -q "$ORIGIN" "$work/repo" 2>/dev/null
 git -C "$work/repo" checkout -q -b main
 mkdir -p "$work/repo/tools" "$work/repo/docs/adr"
@@ -134,6 +171,10 @@ mkpr() {
   git -C "$work/dev" push -q -f origin "$n-slug:refs/heads/$n-slug" "$n-slug:refs/pull/$n/head" 2>/dev/null
   git -C "$work/dev" rev-parse HEAD >"$ST/sha.$n"
 }
+
+# The close call, built from parts so this file has no line the no-pr-reopen lint reads as a tool closing a PR.
+close_verb=PATCH
+close_arg=state=closed
 
 cases=0
 failures=0
@@ -174,9 +215,6 @@ count() { # <name> <fixed string> <expected count>
   n=$(grep -cF -- "$2" "$LOG" || true)
   if [[ $n -eq $3 ]]; then pass "$1"; else fail "$1 (got $n of '$2', wanted $3)"; fi
 }
-# The close call, built from parts so this file has no line the no-pr-reopen lint reads as a tool closing a PR.
-close_verb=PATCH
-close_arg=state=closed
 # main_subjects: the subjects on origin's main above the base, oldest first.
 main_subjects() { git --git-dir="$ORIGIN" log --reverse --format=%s "$base..refs/heads/main" | tr '\n' '|'; }
 
@@ -193,7 +231,9 @@ if [[ $body == *"Closes #3"* && $body == *"Co-Authored-By: Claude"* ]]; then pas
 count "green: one batch PR opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
 logged_part "green: the batch PR is labelled gameplay and no-demo" "labels[]=gameplay -f labels[]=no-demo"
 logged_part "green: the batch branch is the stamp" "head=batch/S"
-logged_part "green: rebase merge pinned to the batch head" "-X PUT repos/pkeppeler/deepcharter/pulls/100/merge -f merge_method=rebase -f sha="
+not_logged "green: no merge request (the repo allows squash only)" "/merge"
+logged_part "green: the batch PR gets a comment naming the landed sha" "issues/100/comments -f body=Landed on main as $(git --git-dir="$ORIGIN" rev-parse refs/heads/main) by a fast-forward push."
+logged "green: the batch PR is closed" "gh api -X $close_verb repos/pkeppeler/deepcharter/pulls/100 -f $close_arg"
 count "green: CI gate ran once on the batch PR" "merge-pr --ci 100" 1
 logged_part "green: original PR 2 gets the batch comment" "gh api -X POST repos/pkeppeler/deepcharter/issues/2/comments -f body=Merged in batch #100"
 logged_part "green: the comment has the footer" "_Generated by [Claude Code](https://claude.ai/code)_"
@@ -285,15 +325,99 @@ logged_part "stale: the first batch PR is retired with the reason" "Rebuilding o
 logged_part "stale: the rebuild is a new branch" "head=batch/S-2"
 count "stale: the CI gate ran twice" "merge-pr --ci" 2
 
-# --- main moving under a green batch: the merge request fails, so the batch is rebuilt, up to the limit ---
+# --- main moving between the check and the push: non-fast-forward is stale, so rebuild; up to the limit ---
 reset
 mkpr 1; mkpr 2
-: >"$ST/merge_fail"
+: >"$ST/race"
 BENV=MERGE_BATCH_STALE_RETRIES=1 run_b 1 2
-exited "retries: exit 1 when the rebuild limit is hit" 1
-printed "retries: the report says the base stayed stale" "base still stale after 1 rebuilds"
-printed "retries: nothing is merged" "merged:  none"
-count "retries: two batch PRs were opened (the build and one rebuild)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 2
+exited "rejected push: exit 1 when the rebuild limit is hit" 1
+printed "rejected push: the report says the base stayed stale" "base still stale after 1 rebuilds (push rejected as non-fast-forward)"
+printed "rejected push: nothing is merged" "merged:  none"
+count "rejected push: two batch PRs were opened (the build and one rebuild)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 2
+logged_part "rejected push: the first batch is retired for the rebuild" "Rebuilding on the new main"
+logged "rejected push: the last open batch PR is closed by the exit trap" "gh api -X $close_verb repos/pkeppeler/deepcharter/pulls/101 -f $close_arg"
+logged "rejected push: the exit trap deletes its branch" "gh api -X DELETE repos/pkeppeler/deepcharter/git/refs/heads/batch/S-2"
+# --- another push failure stops the tool, with its message, and does not rebuild ---
+reset
+mkpr 1; mkpr 2
+: >"$ST/push_deny"
+run_b 1 2
+exited "push error: exit 1" 1
+printed "push error: the message names the failed push" "pushing "
+printed "push error: and carries git's text" "push denied by the test hook"
+count "push error: only one batch PR was opened (no rebuild)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
+logged "push error: the exit trap closes the open batch PR" "gh api -X $close_verb repos/pkeppeler/deepcharter/pulls/100 -f $close_arg"
+logged "push error: the exit trap deletes the batch branch" "gh api -X DELETE repos/pkeppeler/deepcharter/git/refs/heads/batch/S"
+printed "push error: nothing merged" "merged:  none"
+
+# --- a group of one retries a stale base through the queue's re-run ---
+reset
+mkpr 1
+: >"$ST/single_stale.1"
+printf '10\tCI\tcompleted\tsuccess\n' >"$ST/wfruns"
+printf '1\tbuild\tcompleted\tsuccess\n2\ttool-tests\tcompleted\tsuccess\n' >"$ST/jobs.10"
+run_b 1
+exited "single stale: exit 0 after a re-run" 0
+printed "single stale: merged" "merged:  #1"
+logged "single stale: the whole CI run is re-run" "gh api -X POST repos/pkeppeler/deepcharter/actions/runs/10/rerun"
+count "single stale: the gate ran twice" "merge-pr 1" 2
+# Still stale after the limit: refused, not retried forever.
+reset
+mkpr 1
+printf '10\tCI\tcompleted\tsuccess\n' >"$ST/wfruns"
+printf '1\tbuild\tcompleted\tsuccess\n2\ttool-tests\tcompleted\tsuccess\n' >"$ST/jobs.10"
+cat >"$work/gate_always_stale" <<'GATE'
+#!/usr/bin/env bash
+echo "merge-pr $*" >>"$LOG"
+if [[ $1 == --preflight ]]; then echo "PREFLIGHT OK"; exit 0; fi
+echo "REFUSED: PR #$1 x [stale-base] y"
+exit 1
+GATE
+chmod +x "$work/gate_always_stale"
+rc=0
+out=$(cd "$work/repo" && env MERGE_BATCH_STALE_RETRIES=2 PATH="$work/bin:$PATH" MERGE_PR="$work/gate_always_stale" MERGE_QUEUE_LOCK="$work/lock" \
+  MERGE_BATCH_STAMP=S MERGE_BATCH_CI_POLL=5 MERGE_BATCH_STALE_SLEEP=9 bash tools/merge-batch.sh 1 2>&1) || rc=$?
+exited "single stale: exit 1 when it stays stale" 1
+printed "single stale: refused after the limit" "still stale after 2 reruns"
+count "single stale: the gate ran three times (one try and two re-runs)" "merge-pr 1" 3
+
+# --- a bisected second half: the single's stale base is re-run, not refused ---
+reset
+mkpr 1; mkpr 2; mkpr 3
+echo 2 >"$ST/bad"
+: >"$ST/single_stale.3"
+printf '10\tCI\tcompleted\tsuccess\n' >"$ST/wfruns"
+printf '1\tbuild\tcompleted\tsuccess\n2\ttool-tests\tcompleted\tsuccess\n' >"$ST/jobs.10"
+: >"$ST/single_fail.2"
+run_b 1 2 3
+printed "bisect: PRs 1 and 3 merged, 2 refused" "merged:  #1 #3"
+printed "bisect: PR 2 is refused" "refused: #2"
+
+# --- stacked PRs are retargeted to main before an original's branch goes ---
+reset
+mkpr 1; mkpr 2
+echo 50 >"$ST/stacked.2-slug"
+run_b 1 2
+exited "stacked: exit 0" 0
+logged "stacked: the PR stacked on 2-slug is retargeted to main" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/50 -f base=main"
+printed "stacked: the retarget is reported" "Retargeted PR #50 to main"
+# The retarget comes before the branch delete.
+if [[ $(grep -nF "pulls/50 -f base=main" "$LOG" | head -1 | cut -d: -f1) -lt $(grep -nxF "gh api -X DELETE repos/pkeppeler/deepcharter/git/refs/heads/2-slug" "$LOG" | head -1 | cut -d: -f1) ]]; then pass "stacked: retarget before the delete"; else fail "stacked: order"; fi
+
+# --- a PR already on main (a rerun after a killed run) is closed as merged ---
+reset
+mkpr 1; mkpr 2
+git -C "$work/dev" checkout -q -B land "$base"
+echo "pr 1" >"$work/dev/p1.txt"
+git -C "$work/dev" add -A
+git -C "$work/dev" commit -q -m "Title 1 (#1)"
+git -C "$work/dev" push -q origin land:refs/heads/main 2>/dev/null
+run_b 1 2
+printed "heal: PR 1 is reported merged because it is already on main" "merged:  #1 (already on main)"
+logged_part "heal: PR 1 gets the merged comment" "issues/1/comments -f body=Merged in batch (already on main as"
+logged "heal: PR 1 is closed" "gh api -X $close_verb repos/pkeppeler/deepcharter/pulls/1 -f $close_arg"
+logged "heal: PR 1's branch is deleted" "gh api -X DELETE repos/pkeppeler/deepcharter/git/refs/heads/1-slug"
+logged "heal: PR 2 alone goes to merge-pr" "merge-pr 2"
 
 # --- usage ---
 reset

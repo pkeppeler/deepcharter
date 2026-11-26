@@ -13,11 +13,16 @@
 #    since the preflight is dropped and reported. Conflicts are never resolved.
 # 3. CI: the batch is pushed and a PR into main is opened, labelled `gameplay` (so the full client suite runs) and
 #    `no-demo`. CI is read by `merge-pr.sh --ci <batch pr>` (the gate's CI half) after tools/lib/ci-wait.sh's wait.
-# 4. Merge: on green the batch PR is rebase-merged (main gets one commit per PR). Each original PR is closed with a
-#    "Merged in batch #<n>" comment and its branch deleted, then the batch branch is deleted.
-#    A [stale-base] verdict, or a merge request that fails because main moved, rebuilds the batch on the new main and
-#    runs CI again (MERGE_BATCH_STALE_RETRIES, default 3); after that the tool stops with a report. A [client-only]
-#    failure re-runs the whole Client tests run once (MERGE_BATCH_CLIENT_RETRIES, default 1).
+# 4. Merge: the repo allows only squash merges, so on green the CI-verified batch head is pushed to main by a
+#    fast-forward push (no force): main gets one commit per PR. It is pushed only while origin/main is still the batch's
+#    base. Then the batch PR is closed with a comment naming the sha, and each original PR is closed with a
+#    "Merged in batch #<n>" comment (its stacked PRs retargeted to main first) and its branch deleted, then the batch
+#    branch is deleted. A [stale-base] verdict, or a push rejected as non-fast-forward (main moved), rebuilds the batch
+#    on the new main and runs CI again (MERGE_BATCH_STALE_RETRIES, default 3); after that the tool stops with a
+#    report. Any other push failure stops the tool at once. A [client-only] failure re-runs the whole Client tests
+#    run once (MERGE_BATCH_CLIENT_RETRIES, default 1). A PR that gets no commit because its squash is empty and main
+#    already holds a "(#n)" commit is closed as merged (a rerun after a killed run heals itself). The exit trap closes
+#    an open batch PR and deletes its branch unless it was merged.
 # 5. Red: the batch PR is closed, the PRs are split into two halves, and each half is processed the same way, first
 #    half first. A group of one PR falls back to tools/merge-pr.sh <n>.
 # 6. Exit 0 only when every PR was merged. The summary lists merged, dropped, refused and stopped PRs.
@@ -62,6 +67,12 @@ tmp=$(mktemp -d)
 roadmap_tmp=
 build_wt=
 release() {
+  if [[ -n $open_bpr ]]; then
+    comment "$open_bpr" "Closed: the batch tool stopped before this batch merged."$'\n\n'"$footer" || true
+    close_pr "$open_bpr" || true
+    delete_remote_branch "$open_branch"
+    discard_local_branch "$open_branch"
+  fi
   if [[ -n $build_wt ]]; then git worktree remove --force "$build_wt" >/dev/null 2>&1 || true; fi
   roadmap_cleanup
   rm -rf "$tmp"
@@ -79,6 +90,8 @@ source "$root/tools/lib/ci-wait.sh"
 source "$root/tools/lib/merge-cleanup.sh"
 # shellcheck source=lib/roadmap.sh
 source "$root/tools/lib/roadmap.sh"
+# shellcheck source=lib/stacked.sh
+source "$root/tools/lib/stacked.sh"
 # shellcheck source=lib/adr.sh
 source "$root/tools/lib/adr.sh"
 
@@ -88,6 +101,8 @@ refused=()
 stopped=
 not_attempted=()
 build_seq=0
+open_bpr=
+open_branch=
 
 # comment <n> <text>: a comment on an issue or PR.
 comment() { gh api -X POST "repos/$repo/issues/$1/comments" -f body="$2" >/dev/null; }
@@ -118,7 +133,7 @@ adr_duplicates() {
 # build_batch <pr>...: sets $b_branch, $b_sha and the array $included (the PRs squashed onto it); drops the rest.
 # The worktree is removed before it returns. Never resolves a conflict.
 build_batch() {
-  local n head fetched title branch issue msg dup stamp
+  local n head fetched title branch issue msg dup stamp landed
   build_seq=$((build_seq + 1))
   stamp=${MERGE_BATCH_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}
   b_branch=batch/$stamp
@@ -126,6 +141,7 @@ build_batch() {
   included=()
   git fetch origin main >/dev/null 2>&1 || { stopped="could not fetch origin/main"; return 1; }
   build_wt=$tmp/wt-$build_seq
+  b_base=$(git rev-parse origin/main)
   git worktree add -b "$b_branch" "$build_wt" origin/main >/dev/null 2>&1 \
     || { build_wt=; stopped="could not create the batch worktree for $b_branch"; return 1; }
   for n in "$@"; do
@@ -145,7 +161,14 @@ build_batch() {
       continue
     fi
     if git -C "$build_wt" diff --cached --quiet; then
-      drop "$n" "adds nothing to the batch (already on main?)"
+      landed=$(git log -1 --format=%h --fixed-strings --grep="(#$n)" origin/main)
+      if [[ -n $landed ]]; then
+        say "PR #$n is already on main as $landed: closing it as merged"
+        close_original "$n" "Merged in batch (already on main as $landed, from an earlier batch run)"
+        merged+=("#$n (already on main)")
+      else
+        drop "$n" "adds nothing to the batch (already on main?)"
+      fi
       continue
     fi
     dup=$(adr_duplicates "$build_wt")
@@ -181,13 +204,15 @@ open_batch_pr() {
     list+="#$n "
     body+="- #$n $title"$'\n'"  Closes #$issue"$'\n'
   done
-  body="Batch of $# review-passed PRs, squashed one commit each onto main and rebase-merged after one CI run (ADR 0106)."$'\n\n'"What it does:"$'\n\n'"$body"$'\n'
+  body="Batch of $# review-passed PRs, squashed one commit each onto main and landed by a fast-forward push after one CI run (ADR 0106)."$'\n\n'"What it does:"$'\n\n'"$body"$'\n'
   body+="No demo: tooling only; each batched PR carries its own evidence and was reviewed on its own."$'\n'
   body+="No map change: each batched PR carries its own map change."$'\n\n'"$footer"
   git push origin "$b_branch" >/dev/null 2>&1 || { stopped="could not push $b_branch"; return 1; }
   bpr=$(gh api -X POST "repos/$repo/pulls" -f title="Batch: ${list% }" -f head="$b_branch" -f base=main -f body="$body" --jq .number) \
     || { stopped="could not open the batch PR for $b_branch"; return 1; }
   [[ $bpr =~ ^[0-9]+$ ]] || { stopped="the batch PR for $b_branch has no readable number"; return 1; }
+  open_bpr=$bpr
+  open_branch=$b_branch
   gh api -X POST "repos/$repo/issues/$bpr/labels" -f 'labels[]=gameplay' -f 'labels[]=no-demo' >/dev/null \
     || { stopped="could not label batch PR #$bpr (it must carry gameplay and no-demo)"; return 1; }
   say "opened batch PR #$bpr from $b_branch"
@@ -195,55 +220,84 @@ open_batch_pr() {
 
 # retire_batch <bpr> <branch> <why>: close a batch PR that will not merge, delete its branches.
 retire_batch() {
+  open_bpr=
   comment "$1" "$3"$'\n\n'"$footer" || true
   close_pr "$1" || true
   delete_remote_branch "$2"
   discard_local_branch "$2"
 }
 
+# close_original <pr> <comment>: comment on a PR that is on main, close it, retarget the PRs stacked on its branch to
+# main, delete its branch and clean up its worktree.
+close_original() {
+  local n=$1 branch sha
+  branch=$(pr_get "$n" .head.ref 2>/dev/null || true)
+  sha=$(pr_get "$n" .head.sha 2>/dev/null || true)
+  comment "$n" "$2"$'\n\n'"$footer" || say "could not comment on PR #$n"
+  close_pr "$n" || say "could not close PR #$n"
+  [[ -n $branch ]] || return 0
+  if retarget_stacked "$branch" main; then
+    delete_remote_branch "$branch"
+    cleanup_pr "$branch" "$sha"
+  else
+    say "left: branch $branch ($retarget_err)"
+  fi
+}
+
 # finish_originals <batch pr> <pr>...: after the batch merged, close each original and delete its branch.
 finish_originals() {
-  local bpr_n=$1 n branch sha
+  local bpr_n=$1 n
   shift
   for n in "$@"; do
-    branch=$(pr_get "$n" .head.ref 2>/dev/null || true)
-    sha=$(pr_get "$n" .head.sha 2>/dev/null || true)
-    comment "$n" "Merged in batch #$bpr_n"$'\n\n'"$footer" || say "could not comment on PR #$n"
-    close_pr "$n" || say "could not close PR #$n"
-    if [[ -n $branch ]]; then
-      delete_remote_branch "$branch"
-      cleanup_pr "$branch" "$sha"
-    fi
+    close_original "$n" "Merged in batch #$bpr_n"
     merged+=("#$n")
   done
 }
 
-# merge_single <pr>: a group of one goes through the gate alone.
+# merge_single <pr>: a group of one goes through the gate alone, with the queue's stale-base handling.
 merge_single() {
-  local n=$1 branch sha out rc=0 state reason
+  local n=$1 branch sha out rc state reason stale_n=0
   say "PR #$n alone: tools/merge-pr.sh"
   branch=$(pr_get "$n" .head.ref 2>/dev/null || true)
-  sha=$(pr_get "$n" .head.sha 2>/dev/null || true)
-  if [[ -n $branch && -n $sha ]] && ! wait_ci "$branch" "$sha"; then
-    refused+=("#$n (CI on ${sha:0:9} still unfinished after ${ci_max}s)")
-    return 0
-  fi
-  out=$("$merge_pr" "$n" 2>&1) || rc=$?
-  [[ -z $out ]] || echo "$out"
-  state=$(pr_state_of "$n" 2>/dev/null || echo unknown)
-  if [[ $state == MERGED ]]; then
-    merged+=("#$n")
-    [[ -z $branch ]] || cleanup_pr "$branch" "$sha"
-    return 0
-  fi
-  reason=$(grep -m1 -E '^(REFUSED|ERROR):' <<<"$out" || true)
-  [[ -n $reason ]] || reason="the gate exited $rc: $(tail -n 1 <<<"$out")"
-  refused+=("#$n ($reason)")
+  while true; do
+    sha=$(pr_get "$n" .head.sha 2>/dev/null || true)
+    if [[ -n $branch && -n $sha ]] && ! wait_ci "$branch" "$sha"; then
+      refused+=("#$n (CI on ${sha:0:9} still unfinished after ${ci_max}s)")
+      return 0
+    fi
+    rc=0
+    out=$("$merge_pr" "$n" 2>&1) || rc=$?
+    [[ -z $out ]] || echo "$out"
+    state=$(pr_state_of "$n" 2>/dev/null || echo unknown)
+    if [[ $state == MERGED ]]; then
+      merged+=("#$n")
+      [[ -z $branch ]] || cleanup_pr "$branch" "$sha"
+      return 0
+    fi
+    reason=$(grep -m1 -E '^(REFUSED|ERROR):' <<<"$out" || true)
+    [[ -n $reason ]] || reason="the gate exited $rc: $(tail -n 1 <<<"$out")"
+    if [[ $out == *"[stale-base]"* ]]; then
+      if ((stale_n >= stale_max)); then
+        refused+=("#$n ($reason; still stale after $stale_max reruns)")
+        return 0
+      fi
+      stale_n=$((stale_n + 1))
+      say "PR #$n has a stale base; re-running CI ($stale_n of $stale_max)"
+      if ! rerun_ci "$n" "$sha"; then
+        refused+=("#$n ($rerun_err)")
+        return 0
+      fi
+      sleep "$stale_sleep"
+    else
+      refused+=("#$n ($reason)")
+      return 0
+    fi
+  done
 }
 
 # process_group <pr>...: merge them as one batch, or split on red. Sets $stopped when the tool must stop.
 process_group() {
-  local prs=("$@") stale_n=0 client_n=0 pending_n=0 half out rc sha verdict reason merge_out state
+  local prs=("$@") stale_n=0 client_n=0 pending_n=0 half out rc sha verdict reason push_out
   if [[ -n $stopped ]]; then
     not_attempted+=("${prs[@]/#/#}")
     return 0
@@ -269,6 +323,7 @@ process_group() {
     sha=$b_sha
     verdict=
     while [[ -z $verdict ]]; do
+      reason=
       if ! wait_ci "$b_branch" "$sha"; then
         stopped="batch PR #$bpr: CI on ${sha:0:9} still unfinished after ${ci_max}s"
         return 0
@@ -310,13 +365,16 @@ process_group() {
     done
     case $verdict in
       green)
-        if merge_out=$(gh api -X PUT "repos/$repo/pulls/$bpr/merge" -f merge_method=rebase -f sha="$sha" 2>&1); then
-          state=MERGED
-        else
-          state=$(pr_state_of "$bpr" 2>/dev/null || echo unknown)
-        fi
-        if [[ $state == MERGED ]]; then
-          say "merged batch PR #$bpr"
+        git fetch origin main >/dev/null 2>&1 || { stopped="batch PR #$bpr: could not fetch origin/main before landing it"; return 0; }
+        if [[ $(git rev-parse origin/main) != "$b_base" ]]; then
+          say "origin/main moved since the batch was built"
+          verdict=stale
+          reason="origin/main moved"
+        elif push_out=$(git push origin "$sha:refs/heads/main" 2>&1); then
+          say "landed batch PR #$bpr: ${sha:0:9} is origin/main"
+          open_bpr=
+          comment "$bpr" "Landed on main as $sha by a fast-forward push."$'\n\n'"$footer" || say "could not comment on batch PR #$bpr"
+          close_pr "$bpr" || true
           delete_remote_branch "$b_branch"
           discard_local_branch "$b_branch"
           finish_originals "$bpr" "${prs[@]}"
@@ -324,9 +382,14 @@ process_group() {
             stopped="batch PR #$bpr is MERGED, but the roadmap regeneration FAILED"
           fi
           return 0
+        elif [[ $push_out == *"non-fast-forward"* || $push_out == *"fetch first"* ]]; then
+          say "the push of ${sha:0:9} to main was rejected as non-fast-forward (main moved)"
+          verdict=stale
+          reason="push rejected as non-fast-forward"
+        else
+          stopped="batch PR #$bpr: pushing ${sha:0:9} to main failed: $push_out"
+          return 0
         fi
-        say "the merge request for batch PR #$bpr failed (main moved?): $merge_out"
-        verdict=stale
         ;;
     esac
     case $verdict in

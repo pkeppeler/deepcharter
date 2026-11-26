@@ -4,9 +4,10 @@
 # it, and re-running the head's workflow runs (`POST actions/runs/<id>/rerun`) refreshes CI just as well, because
 # every CI job merges the live main (#982, #1094).
 # Scans every text file under tools/ (shell and Python), .githooks/ and .claude/hooks/; backslash-continued lines
-# are joined first, comment lines are skipped, and tools/tests/fixtures is recorded data. A line that ends in
-# `# close-ok: <reason>` is skipped: tools/merge-batch.sh closes a superseded batch PR and each merged original. A hit is a line that has
+# are joined first, comment lines are skipped, and tools/tests/fixtures is recorded data. A hit is a line that has
 # PATCH, a `pulls/` or `issues/` path and `state` together. Line-based, errs toward over-flagging.
+# One exemption: in tools/merge-batch.sh only, a line that sets `state=closed` (never `state=open`) and ends with
+# `# close-ok: <reason>`, because that tool closes a superseded batch PR and each original PR it merged.
 set -euo pipefail
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
@@ -22,7 +23,7 @@ scan() {
       { line = $0; start = NR
         while (line ~ /\\$/ && (getline nxt) > 0) { sub(/\\$/, "", line); line = line nxt }
         if (line ~ /^[[:space:]]*#/) next
-        if (line ~ /# close-ok: [^[:space:]]/) next
+        if (f ~ /(^|\/)tools\/merge-batch\.sh$/ && line ~ /state=closed/ && line !~ /state=open/ && line ~ /# close-ok: [^[:space:]][^#]*$/) next
         if (line ~ /PATCH/ && line ~ /(pulls|issues)\// && line ~ /state/) print f ":" start }
     ' "$f"
   done
@@ -47,10 +48,18 @@ S="state"
   echo "echo gh api -X $P repos/o/r/pulls/7 -f $S=closed # not a comment line"
 } >"$tmp/positive.sh"
 # The continued command is reported at its first line.
-echo "gh api -X $P repos/o/r/pulls/7 -f $S=closed # close-ok: a reason" >"$tmp/marked.sh"
-echo "gh api -X $P repos/o/r/pulls/7 -f $S=closed # close-ok:" >"$tmp/unmarked.sh"
-check "marker: a close-ok line with a reason is skipped" "" "$(scan "$tmp/marked.sh")"
-check "marker: a close-ok line without a reason is caught" "$tmp/unmarked.sh:1" "$(scan "$tmp/unmarked.sh")"
+mkdir -p "$tmp/tools"
+marked="gh api -X $P repos/o/r/pulls/7 -f $S=closed # close-ok: a reason"
+echo "$marked" >"$tmp/tools/merge-batch.sh"
+echo "$marked" >"$tmp/tools/other.sh"
+check "marker: merge-batch.sh with a reason is skipped" "" "$(scan "$tmp/tools/merge-batch.sh")"
+check "marker: another file is still caught" "$tmp/tools/other.sh:1" "$(scan "$tmp/tools/other.sh")"
+mkdir -p "$tmp/o/tools"
+echo "gh api -X $P repos/o/r/pulls/7 -f $S=open # close-ok: a reason" >"$tmp/o/tools/merge-batch.sh"
+check "marker: state=open with the marker is still caught" "$tmp/o/tools/merge-batch.sh:1" "$(scan "$tmp/o/tools/merge-batch.sh")"
+mkdir -p "$tmp/n/tools"
+echo "gh api -X $P repos/o/r/pulls/7 -f $S=closed # close-ok:" >"$tmp/n/tools/merge-batch.sh"
+check "marker: no reason is caught" "$tmp/n/tools/merge-batch.sh:1" "$(scan "$tmp/n/tools/merge-batch.sh")"
 check "positive: every form is caught" "$(printf '%s\n' "$tmp/positive.sh:"{1,2,3,4,6})" "$(scan "$tmp/positive.sh")"
 
 {
