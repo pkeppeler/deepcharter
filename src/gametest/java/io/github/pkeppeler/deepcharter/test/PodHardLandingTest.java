@@ -59,8 +59,8 @@ public class PodHardLandingTest {
 
     /**
      * Pods whose hull reads their touchdown speed: no buffer and 10 hull per block per tick, so the hull lost times 2
-     * is the sink in blocks a second. The cushion reads its own tuning, not these stats, so it brakes a speedometer as it
-     * brakes any pod.
+     * is the sink in blocks a second. The cushion reads its own tuning, not these stats, so it brakes a speedometer
+     * as it brakes any pod.
      */
     private static final Set<UUID> SPEEDOMETERS = ConcurrentHashMap.newKeySet();
 
