@@ -18,7 +18,6 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
-import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -48,8 +47,6 @@ public class BlastingChargeTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 400;
     /** The lowest row the blast clears, under the pod's feet. */
     private static final int BOTTOM = -TUNING.chargeDepth();
-    /** Hull over the guard that a pod sets a charge with when it should just survive it. */
-    private static final float GUARD_MARGIN = 0.05f;
 
     /** What a test checks once the charge has blown, with the pod and the hull it had when the charge was set. */
     private interface Verify {
@@ -251,17 +248,10 @@ public class BlastingChargeTest {
                 level -> {},
                 pod -> {
                     guard[0] = PodCharge.wreckingHull(pod, TUNING, TUNING.chargeDepth());
-                    ChargeUse.refuseAtGuardThenClearIt(helper, pod, Consumable.BLASTING_CHARGE, guard[0], GUARD_MARGIN);
+                    ChargeUse.refuseAtGuardThenClearIt(helper, pod, Consumable.BLASTING_CHARGE, guard[0]);
                 },
                 pod -> {},
                 (helper2, level, pod, pilot, hull) -> {
-                    if (Wrecks.isWreck(pod) || pod.hull() <= 0) {
-                        throw failure(
-                                helper2,
-                                "a pod %.2f over the guard should live, its hull is %.2f",
-                                GUARD_MARGIN,
-                                pod.hull());
-                    }
                     if (guard[0] <= TUNING.chargeDamage()) {
                         throw failure(
                                 helper2,
@@ -269,14 +259,7 @@ public class BlastingChargeTest {
                                 TUNING.chargeDepth(),
                                 guard[0]);
                     }
-                    if (Math.abs(pod.getY() - (FLOOR + BOTTOM)) > 0.01) {
-                        throw failure(
-                                helper2,
-                                "the pod should rest at the bottom of the hole, %d, it is at %.2f",
-                                FLOOR + BOTTOM,
-                                pod.getY());
-                    }
-                    expectHullLost(helper2, pod, hull, guard[0], "the blast and the drop");
+                    ChargeUse.expectSurvivedBlastAndDrop(helper2, pod, hull, guard[0], FLOOR + BOTTOM);
                 });
     }
 

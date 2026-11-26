@@ -37,6 +37,11 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
             float hardLandingSpeed,
             float hullDamagePerSpeed) {
         public static final Movement DEFAULT = new Movement(0.2f, 100f, 0.16f, 0.35f, 0.08f, 0.98f, 0.7f, 70f);
+
+        /** Next tick's vertical speed from {@code vy}, with {@code pull} of gravity and the drag: the one fall rule, for the pod and for HardLanding's sums. */
+        public double fall(double vy, double pull) {
+            return (vy - pull) * verticalDrag;
+        }
     }
 
     /**

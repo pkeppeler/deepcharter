@@ -46,7 +46,7 @@ public final class HardLanding {
         double velocity = 0;
         double fallen = 0;
         while (fallen <= blocks) {
-            velocity = (velocity - tuning.gravity()) * tuning.verticalDrag();
+            velocity = tuning.fall(velocity, tuning.gravity());
             fallen -= velocity;
         }
         return sinkSpeed(velocity);

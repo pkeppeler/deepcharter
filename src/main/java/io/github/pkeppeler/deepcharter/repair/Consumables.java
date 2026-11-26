@@ -97,10 +97,7 @@ final class Consumables {
         }
         play(pod, sound);
         // The blast shakes the roof over anyone on foot near it (#987).
-        CaveIns.blasted(
-                level,
-                new AABB(low.getX(), low.getY(), low.getZ(), high.getX() + 1, high.getY() + 1, high.getZ() + 1),
-                PodCharge.blasterOf(pod));
+        CaveIns.blasted(level, AABB.encapsulatingFullBlocks(low, high), PodCharge.blasterOf(pod));
         return Optional.empty();
     }
 
