@@ -246,7 +246,10 @@ public class PodLoadTest {
         climbs(helper, 3, false);
     }
 
-    /** The climb limit is the real tuning's: half the engine for a stock Mole, whose thrust at full lift is twice gravity. */
+    /**
+     * The climb limit is the real tuning's, against the gravity the pod's own movement pulls it with ({@code gravityPull}): half the engine for a stock Mole,
+     * whose thrust at full lift is twice gravity, and the whole engine for a pod with no gravity, which climbs while it has any lift.
+     */
     @GameTest
     public void theClimbLimitIsWhereThrustPaysGravity(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(1.5, 3, 1.5));
@@ -259,6 +262,12 @@ public class PodLoadTest {
                     stats.enginePower() * (1 - movement.gravity() / stats.thrustAcceleration()),
                     PodLoad.of(pod).climbLimit());
             near(helper, "a stock Mole's climb limit", 50, PodLoad.of(pod).climbLimit());
+            pod.setNoGravity(true);
+            near(
+                    helper,
+                    "the climb limit of a pod with no gravity",
+                    stats.enginePower(),
+                    PodLoad.of(pod).climbLimit());
             helper.succeed();
         } finally {
             pod.discard();

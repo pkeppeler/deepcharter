@@ -351,7 +351,7 @@ def title_box(look):
     puts it."""
     t = look.keys
     inset = look.sprites["plate"].border[0] + SHARED["titleGap"]
-    width = len(LOAD_TITLE) * FONT_W - 1 + 2 * inset
+    width = len(LOAD_TITLE) * FONT_W + 2 * inset  # the game measures a run of text with its last advance
     height = SHARED["titleTextHeight"] + 2 * inset
     gauge = Placed(t[STYLE + "CargoW"], t[STYLE + "CargoH"], t[STYLE + "CargoAnchorX"], t[STYLE + "CargoAnchorY"], t[STYLE + "CargoX"], t[STYLE + "CargoY"])
     band = look.parts["part_a"]
