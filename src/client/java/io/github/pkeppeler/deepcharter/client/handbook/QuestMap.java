@@ -177,7 +177,9 @@ final class QuestMap {
     }
 
     /**
-     * Draws the flowchart with its origin at ({@code originX}, {@code originY}), clipped to {@code clip}, in screen pixels.
+     * Draws the flowchart with its origin at ({@code originX}, {@code originY}), clipped to {@code clip}, in screen
+     * pixels. When {@code clickable}, a click picks a step, so each carries the {@link ClickCue}; step {@code hovered}
+     * (-1 for none) is the one under the mouse.
      */
     static void drawChart(
             GuiGraphicsExtractor graphics,
@@ -188,7 +190,9 @@ final class QuestMap {
             int originY,
             Rect clip,
             @Nullable Component note,
-            Component classified) {
+            Component classified,
+            boolean clickable,
+            int hovered) {
         HandbookScreenTuning t = HandbookScreenTuning.current();
         QuestMapTuning q = QuestMapTuning.current();
         graphics.enableScissor(clip.x(), clip.y(), clip.right(), clip.bottom());
@@ -207,7 +211,7 @@ final class QuestMap {
                                     step.text())
                             .getString()
                     : step.text().getString();
-            stepBox(graphics, font, layout.main().get(i), text, ink);
+            stepBox(graphics, font, layout.main().get(i), text, ink, clickable, i == hovered);
         }
         connect(graphics, layout.main(), layout.columns(), ink);
         HandbookChapter.Entry current = full ? current(model.main()) : null;
@@ -263,12 +267,27 @@ final class QuestMap {
                 t.stampColor());
     }
 
-    /** A step: a one-pixel box in {@code color} with its text, cut with dots after {@link QuestMapTuning#stepMaxLines()} lines. */
-    private static void stepBox(GuiGraphicsExtractor graphics, Font font, Rect box, String text, int color) {
+    /**
+     * A step: a one-pixel box in {@code color} with its text, cut with dots after {@link
+     * QuestMapTuning#stepMaxLines()} lines. A {@code clickable} step carries the {@link ClickCue}, lit when {@code
+     * hovered}, and its text leaves the cue room.
+     */
+    private static void stepBox(
+            GuiGraphicsExtractor graphics,
+            Font font,
+            Rect box,
+            String text,
+            int color,
+            boolean clickable,
+            boolean hovered) {
         QuestMapTuning q = QuestMapTuning.current();
+        if (clickable) {
+            ClickCue.draw(graphics, box.x(), box.y(), box.right(), box.bottom(), hovered);
+        }
         PaperDraw.border(graphics, box.x(), box.y(), box.right(), box.bottom(), Colors.opaque(color));
         int y = box.y() + 2;
-        for (String line : clip(font, text, box.w() - 2 * q.stepTextInset(), q.stepMaxLines())) {
+        int textWidth = box.w() - 2 * q.stepTextInset() - (clickable ? ClickCue.width() : 0);
+        for (String line : clip(font, text, textWidth, q.stepMaxLines())) {
             graphics.text(
                     font,
                     PaperDraw.ink(Component.literal(line), color),
@@ -333,9 +352,11 @@ final class QuestMap {
 
     /**
      * One slot on the card: where its icon sits, how many the step asks for and what the player holds. A slot of
-     * several {@code items} is an any-of: its icon shows each in turn ({@link #shown}) and its count is shared.
+     * several {@code items} is an any-of: its icon shows each in turn ({@link #shown}) and its count is shared. Its
+     * {@code hit} box, which a click and the mouse both answer to, runs from the icon past the count to the end of the
+     * {@link ClickCue}.
      */
-    record CardItem(List<Item> items, Rect box, int have, int need) {
+    record CardItem(List<Item> items, Rect box, Rect hit, int have, int need) {
         /** The item the icon shows {@code ticks} ticks into the screen's life: the alternatives, one per cycle. */
         Item shown(int ticks) {
             return items.get(ticks / Math.max(1, QuestMapTuning.current().cycleTicks()) % items.size());
@@ -348,11 +369,11 @@ final class QuestMap {
 
     /** The index card of a step, in screen pixels: its box, the link to the chapter's page, and each target item. */
     record Card(Rect box, int stepNumber, Rect link, List<CardItem> items) {
-        /** The item under screen point ({@code x}, {@code y}), or null. */
+        /** The item whose hit box holds screen point ({@code x}, {@code y}), or null. */
         @Nullable
         CardItem itemAt(double x, double y) {
             for (CardItem item : items) {
-                if (item.box().contains(x, y)) {
+                if (item.hit().contains(x, y)) {
                     return item;
                 }
             }
@@ -381,25 +402,36 @@ final class QuestMap {
         int textWidth = w - 2 * q.cardInset() - 2;
         int lines = font.split(PaperDraw.ink(step.text(), 0), textWidth).size();
         List<CardItem> items = new ArrayList<>();
-        int perRow = Math.max(1, (w - q.cardItemInset() + q.cardItemPitch() / 2) / q.cardItemPitch());
         int itemsTop = y + q.cardTextTop() + lines * (font.lineHeight + 1) + q.cardItemsGap();
+        int rowStart = x + q.cardItemInset();
+        int rowEnd = x + w - q.cardItemInset();
+        int itemX = rowStart;
+        int rows = 0;
         for (HandbookChapter.TargetSlot target : step.targets()) {
             List<Item> slotItems = target.items();
             if (slotItems.isEmpty()) {
                 continue;
             }
-            int index = items.size();
+            int held = done ? target.count() : slotItems.stream().mapToInt(have).sum();
+            int line = q.itemCountGap() + font.width(countLabel(held, target.count(), 0));
+            if (slotItems.size() > 1) {
+                line += q.anyCueGap() + font.width(anyLabel(0));
+            }
+            int hitWidth = q.itemIconSize() + line + q.itemCountGap() + ClickCue.width();
+            // Items run left to right by their hit boxes, and wrap before one would pass the card's edge.
+            if (rows == 0 || (itemX > rowStart && itemX + hitWidth > rowEnd)) {
+                itemX = rowStart;
+                rows++;
+            }
+            int itemY = itemsTop + (rows - 1) * q.cardItemRow();
             items.add(new CardItem(
                     slotItems,
-                    new Rect(
-                            x + q.cardItemInset() + index % perRow * q.cardItemPitch(),
-                            itemsTop + index / perRow * q.cardItemRow(),
-                            q.itemIconSize(),
-                            q.itemIconSize()),
-                    done ? target.count() : slotItems.stream().mapToInt(have).sum(),
+                    new Rect(itemX, itemY, q.itemIconSize(), q.itemIconSize()),
+                    new Rect(itemX, itemY, hitWidth, q.itemIconSize()),
+                    held,
                     target.count()));
+            itemX += hitWidth + q.cardItemGap();
         }
-        int rows = (items.size() + perRow - 1) / perRow;
         int h = q.cardTextTop() + lines * (font.lineHeight + 1) + rows * q.cardItemRow() + q.cardBottomPad();
         int linkWidth = font.width(PaperDraw.ink(Component.literal(link), 0));
         Rect linkBox =
@@ -407,6 +439,20 @@ final class QuestMap {
         return new Card(new Rect(x, y, w, h), number, linkBox, List.copyOf(items));
     }
 
+    /** An item's count on a card, what the player has of what the step needs, in {@code color}. */
+    private static Component countLabel(int have, int need, int color) {
+        return PaperDraw.ink(Component.literal(have + "/" + need), color);
+    }
+
+    /** The cue after the count of an item any one of several satisfies, in {@code color}. */
+    private static Component anyLabel(int color) {
+        return PaperDraw.ink(Component.translatable("deepcharter.handbook.quest.any"), color);
+    }
+
+    /**
+     * Draws {@code card}. When {@code clickable}, a click on an item opens its recipe, so each item carries the {@link
+     * ClickCue} over its hit box, lit on item {@code hovered}, which is null when the mouse is on none.
+     */
     static void drawCard(
             GuiGraphicsExtractor graphics,
             Font font,
@@ -414,7 +460,9 @@ final class QuestMap {
             HandbookChapter.Entry step,
             Component stepLabel,
             String link,
-            int ticks) {
+            int ticks,
+            boolean clickable,
+            @Nullable CardItem hovered) {
         HandbookScreenTuning t = HandbookScreenTuning.current();
         QuestMapTuning q = QuestMapTuning.current();
         Rect box = card.box();
@@ -461,16 +509,20 @@ final class QuestMap {
                 t.inkColor());
         for (CardItem item : card.items()) {
             Rect icon = item.box();
+            if (clickable) {
+                Rect hit = item.hit();
+                ClickCue.draw(graphics, hit.x(), hit.y(), hit.right(), hit.bottom(), item.equals(hovered));
+            }
             graphics.fakeItem(new ItemStack(item.shown(ticks)), icon.x(), icon.y());
             boolean met = item.have() >= item.need();
             int color = met ? t.faintInkColor() : t.inkColor();
-            Component count = PaperDraw.ink(Component.literal(item.have() + "/" + item.need()), color);
+            Component count = countLabel(item.have(), item.need(), color);
             int textX = icon.right() + q.itemCountGap();
             graphics.text(font, count, textX, icon.y() + q.itemCountTop(), Colors.opaque(color), false);
             if (item.any()) {
                 graphics.text(
                         font,
-                        PaperDraw.ink(Component.translatable("deepcharter.handbook.quest.any"), t.faintInkColor()),
+                        anyLabel(t.faintInkColor()),
                         textX + font.width(count) + q.anyCueGap(),
                         icon.y() + q.itemCountTop(),
                         Colors.opaque(t.faintInkColor()),

@@ -44,12 +44,12 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param cardTextTop distance from the card's top to the step's instruction
  * @param cardRuleTop distance from the card's top to its first ruled line
  * @param cardRuleBottom space kept clear of ruled lines at the card's bottom
- * @param cardItemPitch distance from one needed item to the next in a row on the card
+ * @param cardItemGap space between one needed item's hit box and the next in a row on the card
  * @param cardItemRow height of a row of needed items on the card
  * @param cardItemInset space between the card's left edge and the first needed item
  * @param cardBottomPad space below the last row of needed items
  * @param itemIconSize size of an item icon on the card
- * @param itemCountGap space between an item icon and its count
+ * @param itemCountGap space between an item icon and its count, and between the count and its click cue
  * @param anyCueGap space between an any-of slot's count and its "any" cue
  * @param cycleTicks how long an any-of slot's icon shows each alternative
  * @param itemCountTop distance from the top of an item icon to its count's text
@@ -98,6 +98,9 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param pencilTipGap space between the tip of the dashed pencil line and the arms of the x it points at
  * @param pencilStartGap space between a Note's box and the start of the dashed pencil line
  * @param pencilMarkGap space between the x and the payoff box
+ * @param clickCueSize how far each arm of the chevron on a thing a click opens reaches back from its tip, across and
+ *     up or down ({@link ClickCue})
+ * @param clickCueInset space between the tip of that chevron and the right edge of the thing it marks
  */
 public record QuestMapTuning(
         int chapterTabWidth,
@@ -136,7 +139,7 @@ public record QuestMapTuning(
         int cardTextTop,
         int cardRuleTop,
         int cardRuleBottom,
-        int cardItemPitch,
+        int cardItemGap,
         int cardItemRow,
         int cardItemInset,
         int cardBottomPad,
@@ -188,7 +191,9 @@ public record QuestMapTuning(
         int pencilLineGap,
         int pencilTipGap,
         int pencilStartGap,
-        int pencilMarkGap) {
+        int pencilMarkGap,
+        int clickCueSize,
+        int clickCueInset) {
     public static QuestMapTuning current() {
         return UiTheme.current().questMap();
     }
@@ -231,7 +236,7 @@ public record QuestMapTuning(
                 d.integer("cardTextTop", 0),
                 d.integer("cardRuleTop", 0),
                 d.integer("cardRuleBottom", 0),
-                d.integer("cardItemPitch", 0),
+                d.integer("cardItemGap", 0),
                 d.integer("cardItemRow", 0),
                 d.integer("cardItemInset", 0),
                 d.integer("cardBottomPad", 0),
@@ -283,6 +288,8 @@ public record QuestMapTuning(
                 d.integer("pencilLineGap", 0),
                 d.integer("pencilTipGap", 0),
                 d.integer("pencilStartGap", 0),
-                d.integer("pencilMarkGap", 0));
+                d.integer("pencilMarkGap", 0),
+                d.integer("clickCueSize", 1),
+                d.integer("clickCueInset", 0));
     }
 }
