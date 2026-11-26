@@ -176,8 +176,8 @@ public class PodDrillTest {
     }
 
     /**
-     * The pod faces 35 degrees off east at the wall: it turns to the grid before the bore, then bores straight. W alone,
-     * so it meets the wall still 35 off: a held A would turn it onto the grid itself before it got there.
+     * The pod faces 35 degrees off east at the wall: it turns to the grid before the bore, then bores straight. W
+     * alone, so it meets the wall still 35 off: a held A would turn it onto the grid itself before it got there.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aSidewaysBoreTurnsThePodToTheGridFirst(GameTestHelper helper) {
@@ -187,8 +187,8 @@ public class PodDrillTest {
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         wall(level, x + 2, x + 5, Z, floor, floor + 10);
-        Rig rig = Rig.await(
-                helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST + 35f, "drill-turns-to-grid", FORWARD);
+        Rig rig =
+                Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST + 35f, "drill-turns-to-grid", FORWARD);
         boolean[] turning = {false};
         TestTicks.each(helper, () -> {
             if (!rig.pod.isPresent()) {
