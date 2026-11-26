@@ -67,7 +67,7 @@ public final class DreadBed {
      */
     public static float droneGain() {
         Bed bed = playing;
-        float bedLevel = bed == null || bed.isStopped() ? 0f : bed.getVolume();
+        float bedLevel = bed == null || bed.isStopped() ? 0f : bed.fade();
         return 1f - (1f - SoundTuning.DEFAULT.droneDuck()) * bedLevel;
     }
 
@@ -89,6 +89,11 @@ public final class DreadBed {
         @Override
         public boolean canStartSilent() {
             return true;
+        }
+
+        /** How far the bed has risen, 0 to 1: its own volume, before the sounds.json volume that {@code getVolume} multiplies in. */
+        private float fade() {
+            return volume;
         }
 
         @Override
