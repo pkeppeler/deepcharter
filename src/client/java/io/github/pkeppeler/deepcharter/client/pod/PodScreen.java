@@ -218,8 +218,8 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
         List<Component> lines = new ArrayList<>(super.getTooltipFromContainerItem(stack));
         Slot hovered = hoveredSlot;
         if (hovered != null && menu.isHold(hovered)) {
-            lines.add(Component.translatable(
-                    "screen.deepcharter.pod.dump_tip", minecraft.options.keyDrop.getTranslatedKeyMessage()));
+            Component drop = minecraft.options.keyDrop.getTranslatedKeyMessage();
+            lines.add(Component.translatable("screen.deepcharter.pod.dump_tip", drop, drop));
         }
         if (hovered != null && isPart(hovered)) {
             ComponentItems.trackOf(stack)

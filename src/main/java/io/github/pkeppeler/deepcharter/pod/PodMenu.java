@@ -465,7 +465,8 @@ public final class PodMenu extends SlottedMenu {
             return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.fitted_for_good"));
         }
         if (isHold(slot) && OreRegistry.typeOf(slot.getItem()).isPresent()) {
-            return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.ore_stays"));
+            return Optional.of(
+                    Component.translatable("deepcharter.pod.screen.refusal.ore_stays", Component.keybind("key.drop")));
         }
         return Optional.empty();
     }
@@ -490,9 +491,10 @@ public final class PodMenu extends SlottedMenu {
     }
 
     /**
-     * Q on a hold stack dumps the whole stack under the pod ({@link PodDump}), never into the world at the player:
-     * ore too, since it goes to the ground and not to a pack. The client empties the slot at once; the server, which
-     * the click packet reaches only after {@link #stillValid}, drops it.
+     * Q on a hold stack dumps one of it under the pod ({@link PodDump}), Ctrl+Q the whole stack, as vanilla drops
+     * them, but never into the world at the player: ore too, since it goes to the ground and not to a pack. The client
+     * takes it from the slot at once; the server drops it, checking {@link #stillValid} again though the click packet
+     * already has.
      */
     @Override
     public void clicked(int index, int button, ContainerInput input, Player player) {
@@ -504,20 +506,20 @@ public final class PodMenu extends SlottedMenu {
                 && slot.isActive()
                 && slot.hasItem()
                 && getCarried().isEmpty()) {
-            dump(slot);
+            dump(slot, button == 0 ? 1 : slot.getItem().getCount(), player);
             return;
         }
         super.clicked(index, button, input, player);
     }
 
-    private void dump(RuleSlot slot) {
+    private void dump(RuleSlot slot, int count, Player player) {
         if (server.isEmpty()) {
-            slot.set(ItemStack.EMPTY);
+            slot.remove(count);
             return;
         }
         PodEntity own = server.get().pod();
-        if (!own.isRemoved() && own.cargo().isReadable()) {
-            PodDump.dumpSlot(own, holdIndex(slot.getContainerSlot()));
+        if (stillValid(player) && !own.isRemoved() && own.cargo().isReadable()) {
+            PodDump.dumpSlot(own, holdIndex(slot.getContainerSlot()), count);
         }
     }
 

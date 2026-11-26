@@ -7,6 +7,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.pod.PodCues;
+import io.github.pkeppeler.deepcharter.pod.PodDump;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -15,10 +16,12 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.PodClimb;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -295,8 +298,9 @@ public class PodHazardCuesTest {
         });
     }
 
+    /** Loads the pod to the load at which a held jump stops climbing. */
     private static void overload(Rig rig) {
-        rig.pod.setCargoMass(PodTuning.DEFAULT.movement().enginePower());
+        rig.pod.setCargoMass(PodClimb.limit(rig.pod));
     }
 
     @GameTest(maxTicks = 60)
@@ -314,6 +318,18 @@ public class PodHazardCuesTest {
                         OVERLOAD_SOUND,
                         1,
                         "after one press held for 20 ticks");
+                Object[] args = rig.pilot.actionBarMessages().stream()
+                        .map(Component::getContents)
+                        .filter(contents -> contents instanceof TranslatableContents translatable
+                                && translatable.getKey().equals(OVERLOAD_KEY))
+                        .map(contents -> ((TranslatableContents) contents).getArgs())
+                        .findFirst()
+                        .orElseThrow();
+                expect(
+                        helper,
+                        args.length == 1 && args[0].equals(Component.keybind(PodDump.KEY)),
+                        "the overload line names the dump key as the pilot binds it, args %s",
+                        List.of(args));
                 helper.succeed();
             } finally {
                 rig.finish();
@@ -491,31 +507,31 @@ public class PodHazardCuesTest {
     }
 
     /**
-     * The cue and the rotor read the same lift: with the load that leaves {@code lift} units, the rotor thrusts (the pod is flying) exactly when
-     * the cue stays silent, so a drift of either formula fails here.
+     * The cue and the climb read the same load: with a load {@code under} the climb limit ({@link PodClimb#limit},
+     * where the rotor's thrust no longer beats gravity), carried as cargo or as tow mass, a held jump climbs exactly
+     * when the cue stays silent, so a drift of either formula fails here.
      */
-    private void cueAgreesWithTheRotor(GameTestHelper helper, float cargo, float extra, float lift) {
-        float engine = PodTuning.DEFAULT.movement().enginePower();
-        if (engine - cargo - extra != lift) {
-            throw failure(helper, "the case is wrong: engine %s less %s and %s is not %s", engine, cargo, extra, lift);
-        }
+    private void cueAgreesWithTheClimb(GameTestHelper helper, boolean asCargo, float under, boolean climbs) {
         Rig rig = Rig.build(helper, 0);
-        rig.pod.setCargoMass(cargo);
-        TOWING.put(rig.pod.getUUID(), extra);
+        float load = PodClimb.limit(rig.pod) - under;
+        rig.pod.setCargoMass(asCargo ? load : 0f);
+        TOWING.put(rig.pod.getUUID(), asCargo ? 0f : load);
         rig.pilot.setInput(JUMP);
-        boolean[] flying = {false};
-        helper.runAfterDelay(10, () -> flying[0] = rig.pod.flying());
-        helper.runAfterDelay(20, () -> {
+        double[] settled = {0};
+        helper.runAfterDelay(10, () -> settled[0] = rig.pod.getY());
+        helper.runAfterDelay(30, () -> {
             try {
+                double rose = rig.pod.getY() - settled[0];
                 long cues = messages(rig.pilot, OVERLOAD_KEY) + messages(rig.pilot, OVERLOAD_LOAD_KEY);
-                if (flying[0] != (lift > 0f) || cues != (lift > 0f ? 0 : 1)) {
+                if ((rose > 0.01) != climbs || cues != (climbs ? 0 : 1)) {
                     throw failure(
                             helper,
-                            "with %s lift the rotor should %s and the cue should %s, flying %s and %s cues",
-                            lift,
-                            lift > 0f ? "thrust" : "not thrust",
-                            lift > 0f ? "stay silent" : "fire once",
-                            flying[0],
+                            "with a load of %s as %s the pod should %s and the cue should %s, rose %s and %s cues",
+                            load,
+                            asCargo ? "cargo" : "tow",
+                            climbs ? "climb" : "not climb",
+                            climbs ? "stay silent" : "fire once",
+                            rose,
                             cues);
                 }
                 helper.succeed();
@@ -527,22 +543,22 @@ public class PodHazardCuesTest {
     }
 
     @GameTest(maxTicks = 60)
-    public void cargoLeavingNoLiftStopsTheRotorAndCues(GameTestHelper helper) {
-        cueAgreesWithTheRotor(helper, PodTuning.DEFAULT.movement().enginePower(), 0f, 0f);
+    public void cargoAtTheClimbLimitStopsTheClimbAndCues(GameTestHelper helper) {
+        cueAgreesWithTheClimb(helper, true, 0f, false);
     }
 
     @GameTest(maxTicks = 60)
-    public void cargoLeavingOneUnitOfLiftThrustsAndStaysSilent(GameTestHelper helper) {
-        cueAgreesWithTheRotor(helper, PodTuning.DEFAULT.movement().enginePower() - 1f, 0f, 1f);
+    public void cargoJustUnderTheClimbLimitClimbsAndStaysSilent(GameTestHelper helper) {
+        cueAgreesWithTheClimb(helper, true, 1f, true);
     }
 
     @GameTest(maxTicks = 60)
-    public void towMassLeavingNoLiftStopsTheRotorAndCues(GameTestHelper helper) {
-        cueAgreesWithTheRotor(helper, 0f, PodTuning.DEFAULT.movement().enginePower(), 0f);
+    public void towMassAtTheClimbLimitStopsTheClimbAndCues(GameTestHelper helper) {
+        cueAgreesWithTheClimb(helper, false, 0f, false);
     }
 
     @GameTest(maxTicks = 60)
-    public void towMassLeavingOneUnitOfLiftThrustsAndStaysSilent(GameTestHelper helper) {
-        cueAgreesWithTheRotor(helper, 0f, PodTuning.DEFAULT.movement().enginePower() - 1f, 1f);
+    public void towMassJustUnderTheClimbLimitClimbsAndStaysSilent(GameTestHelper helper) {
+        cueAgreesWithTheClimb(helper, false, 1f, true);
     }
 }

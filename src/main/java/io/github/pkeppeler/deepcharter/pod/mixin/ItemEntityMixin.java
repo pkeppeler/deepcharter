@@ -8,12 +8,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** A player seated in a pod picks up no ore (ADR 0103). */
+/** A player seated in a pod picks up no ore and nothing a pod dumped (ADR 0103). */
 @Mixin(ItemEntity.class)
 public abstract class ItemEntityMixin {
     @Inject(method = "playerTouch", at = @At("HEAD"), cancellable = true)
-    private void deepcharter$noOreIntoASeatedPack(Player player, CallbackInfo ci) {
-        if (PodDump.keepsFromPack(player, ((ItemEntity) (Object) this).getItem())) {
+    private void deepcharter$nothingDumpedIntoASeatedPack(Player player, CallbackInfo ci) {
+        if (PodDump.keepsFromPack(player, (ItemEntity) (Object) this)) {
             ci.cancel();
         }
     }

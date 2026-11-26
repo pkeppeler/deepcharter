@@ -1,28 +1,34 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import java.util.List;
 import java.util.Optional;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Dumping cargo from the seat (#1456, ADR 0103): a stack thrown from the pod screen's hold ({@link PodMenu}), or the
- * whole hold by the dump key held from a seat ({@link PodDumpPayload}), drops as items under the pod, with the jettison
- * sound. It is never destroyed and never goes to a pack: ore leaves the hold only to the ground, and a player seated in
- * a pod picks up no ore ({@link #keepsFromPack}), or the dump would carry it on weightless. The first time a pod is too
- * heavy to lift with a pilot aboard, that pilot is told once how to dump.
+ * Dumping cargo from the seat (#1456, ADR 0103): Q on a stack in the pod screen's hold ({@link PodMenu}), or the
+ * dump key held from a seat for the whole hold ({@link PodDumpPayload}), drops it as items under the pod, with the
+ * jettison sound. It goes to the ground, never to a pack: a player seated in a pod picks up no ore and nothing a pod
+ * dumped ({@link #keepsFromPack}), or the dump would ride on in the seat, ore weightless. On the ground it is an item
+ * like any other: it despawns in time, and over lava it burns. The first time a pod's cargo keeps it from climbing
+ * with a pilot aboard, that pilot is told once how to dump.
  */
 public final class PodDump {
     /** The dump key's binding, which the client registers and the hint names as the player binds it. */
@@ -32,8 +38,22 @@ public final class PodDump {
     public static final Identifier HINT_MARK =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_overload");
 
-    /** How far below the pod's floor a dumped item starts, when the space there is open. */
-    private static final double DROP_BELOW = 0.3;
+    public static final int VERSION = 1;
+
+    /** Whether an item entity was dumped by a pod, so no seated player takes it back. */
+    public record Dumped(boolean dumped) {
+        public static final Dumped NO = new Dumped(false);
+        public static final MapCodec<Dumped> BODY = RecordCodecBuilder.mapCodec(
+                instance -> instance.group(Codec.BOOL.fieldOf("dumped").forGetter(Dumped::dumped))
+                        .apply(instance, Dumped::new));
+    }
+
+    /** The mark on every item a pod dumps, kept with the item through a save. */
+    public static final AttachmentType<Versioned<Dumped>> DUMPED = AttachmentRegistry.create(
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "dumped_by_pod"),
+            builder -> builder.persistent(Versioned.codec(VERSION, Dumped.BODY))
+                    .initializer(() -> Versioned.of(Dumped.NO)));
+
     /** The share of the pod's width the dumped items spread over, centred under it. */
     private static final double SPREAD = 0.8;
     /** The most sideways speed a dumped item starts with, blocks a tick. */
@@ -63,36 +83,35 @@ public final class PodDump {
         if (pod.cargo().occupied() == 0) {
             return Optional.of(Component.translatable("deepcharter.pod.dump.empty"));
         }
-        List<ItemStack> dumped = pod.cargo().takeAll(pod);
-        drop(pod, dumped);
-        return Optional.of(Component.translatable("deepcharter.pod.dump.done", dumped.size()));
+        drop(pod, pod.cargo().takeAll(pod));
+        return Optional.of(Component.translatable("deepcharter.pod.dump.done"));
     }
 
     /**
-     * Server only: dumps the stack in hold slot {@code index} under the pod and returns whether there was one. Whoever
-     * calls this has checked the player may use the hold.
+     * Server only: dumps up to {@code count} of the stack in hold slot {@code index} under the pod. Whoever calls this
+     * has checked the player may use the hold.
      */
-    static boolean dumpSlot(PodEntity pod, int index) {
-        ItemStack stack = pod.cargo().stackAt(index);
-        if (stack.isEmpty()) {
-            return false;
+    static void dumpSlot(PodEntity pod, int index, int count) {
+        ItemStack taken = pod.cargo().removeAt(pod, index, count);
+        if (!taken.isEmpty()) {
+            drop(pod, List.of(taken));
         }
-        pod.cargo().setAt(pod, index, ItemStack.EMPTY);
-        drop(pod, List.of(stack));
-        return true;
     }
 
     /**
-     * Whether {@code player} may not pick up {@code stack}: a player seated in a pod picks up no ore, since ore rides
-     * in the hold and a pack in the seat carries it weightless. On foot anyone picks it up.
+     * Whether {@code player} may not pick up {@code item}: a player seated in a pod picks up no ore, since a pack in the
+     * seat carries it weightless, and nothing a pod dumped, which would land back in the seat. An item whose mark
+     * cannot be read counts as dumped. On foot anyone picks either up.
      */
-    public static boolean keepsFromPack(Player player, ItemStack stack) {
-        return player.getVehicle() instanceof PodEntity && OreEncumbrance.holdsOre(stack);
+    public static boolean keepsFromPack(Player player, ItemEntity item) {
+        return player.getVehicle() instanceof PodEntity
+                && (OreEncumbrance.holdsOre(item.getItem())
+                        || Versioned.readable(item, DUMPED).map(Dumped::dumped).orElse(true));
     }
 
     /**
-     * Spills {@code stacks} as items under the pod: just below its floor if that space is open, else on the ground it
-     * stands on, spread across its width, and sounds the jettison.
+     * Spills {@code stacks} as items at the pod's floor, spread across its width and marked {@link #DUMPED}, and
+     * sounds the jettison.
      */
     private static void drop(PodEntity pod, List<ItemStack> stacks) {
         ServerLevel level = (ServerLevel) pod.level();
@@ -101,20 +120,17 @@ public final class PodDump {
         for (ItemStack stack : stacks) {
             double x = pod.getX() + (random.nextDouble() * 2 - 1) * reach;
             double z = pod.getZ() + (random.nextDouble() * 2 - 1) * reach;
-            double below = pod.getY() - DROP_BELOW;
-            double y = level.noCollision(EntityTypes.ITEM.getDimensions().makeBoundingBox(x, below, z))
-                    ? below
-                    : pod.getY();
             ItemEntity item = new ItemEntity(
                     level,
                     x,
-                    y,
+                    pod.getY(),
                     z,
                     stack,
                     (random.nextDouble() * 2 - 1) * SCATTER_SPEED,
                     0,
                     (random.nextDouble() * 2 - 1) * SCATTER_SPEED);
             item.setDefaultPickUpDelay();
+            item.setAttached(DUMPED, Versioned.of(new Dumped(true)));
             level.addFreshEntity(item);
         }
         level.playSound(null, pod, DeepSound.CARGO_JETTISON.event(), SoundSource.NEUTRAL, 1f, 1f);
@@ -137,20 +153,22 @@ public final class PodDump {
 
     /**
      * Whether the pod cannot climb and dumping would help: the load ({@link PodEntity#cargoMass} and {@link
-     * PodEvents#extraMass}) reaches {@link #climbLimit}, and without the cargo it would not.
+     * PodEvents#extraMass}) reaches {@link #climbLimit}, and without the cargo it would not (which also means the hold
+     * holds something).
      */
     private static boolean overloadedByCargo(PodEntity pod) {
         double limit = climbLimit(pod);
         float extra = PodEvents.extraMass(pod);
-        return pod.cargoMass() > 0f && pod.cargoMass() + extra >= limit && extra < limit;
+        return pod.cargoMass() + extra >= limit && extra < limit;
     }
 
     /**
      * The load at which a held jump no longer climbs. {@link PodMovement#tick} thrusts by {@code thrustAcceleration *
      * lift / enginePower} against the pod's gravity, with lift the power the load leaves, so from {@code enginePower *
-     * (1 - gravity / thrustAcceleration)} up the thrust cannot beat gravity. Private until #1449's load reading lands.
+     * (1 - gravity / thrustAcceleration)} up the thrust cannot beat gravity. {@link PodCues} reads it too. Goes into
+     * #1449's {@code PodLoad} when that lands, as does the tests' {@code PodClimb}.
      */
-    private static double climbLimit(PodEntity pod) {
+    static double climbLimit(PodEntity pod) {
         PodStats stats = PodStats.of(pod);
         double gravity = pod.gravityPull(PodTuning.DEFAULT.movement().gravity());
         return stats.enginePower() * (1 - gravity / stats.thrustAcceleration());

@@ -59,9 +59,10 @@ public final class PodCues {
             return;
         }
         Input input = pilot.getLastClientInput();
-        // The same lift as PodMovement.tick: the engine power that cargo and PodEvents.extraMass leave.
-        float usable = PodStats.of(pod).enginePower() - PodEvents.extraMass(pod);
-        if (!input.jump() || usable - pod.cargoMass() > 0f) {
+        // The load at which PodMovement.tick's thrust no longer beats gravity, as the dump hint reads it.
+        double limit = PodDump.climbLimit(pod);
+        float extra = PodEvents.extraMass(pod);
+        if (!input.jump() || pod.cargoMass() + extra < limit) {
             LAST_CUE.remove(pod);
             return;
         }
@@ -71,8 +72,8 @@ public final class PodCues {
             return;
         }
         LAST_CUE.put(pod, now);
-        // Dumping cargo only helps when the engine could lift something without it: towing alone can take all the lift.
-        boolean dumpHelps = pod.cargoMass() > 0f && usable > 0f;
+        // Dumping cargo only helps when the pod could climb without it: towing alone can hold it down.
+        boolean dumpHelps = pod.cargoMass() > 0f && extra < limit;
         pilot.sendOverlayMessage(
                 dumpHelps
                         ? Component.translatable("deepcharter.pod.overloaded", Component.keybind(PodDump.KEY))

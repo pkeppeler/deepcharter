@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodDump;
 import io.github.pkeppeler.deepcharter.pod.PodDumpPayload;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
@@ -20,8 +21,12 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.PodClimb;
 import io.github.pkeppeler.deepcharter.test.support.TestCharters;
 import io.github.pkeppeler.deepcharter.test.support.TestCleanups;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -32,7 +37,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 
@@ -47,6 +54,13 @@ import net.minecraft.world.phys.AABB;
  */
 public class PodDumpTest {
     private static final AtomicInteger PLAYERS = new AtomicInteger();
+    /** Extra mass, as a tow adds it, on the pods a test marks; a Fabric event cannot be unregistered. */
+    private static final Map<UUID, Float> TOWING = new ConcurrentHashMap<>();
+
+    static {
+        PodEvents.EXTRA_MASS.register(pod -> TOWING.getOrDefault(pod.getUUID(), 0f));
+    }
+
     private static final String HINT_KEY = "deepcharter.pod.dump.hint";
     /** Ticks past an item's pickup delay, so a pack that could take a dumped ore has had the chance. */
     private static final int PICKUP_WAIT = 40;
@@ -64,9 +78,14 @@ public class PodDumpTest {
     }
 
     private static Scene seated(GameTestHelper helper) {
+        return seated(helper, 2);
+    }
+
+    /** A seated scene with its pod at {@code x} in the test structure, so two scenes do not share a spot. */
+    private static Scene seated(GameTestHelper helper, int x) {
         MockPlayer mock = join(helper);
         CharterId charter = TestCharters.found(helper, helper.getLevel().getServer(), mock.player());
-        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 1, 2);
+        PodEntity pod = helper.spawn(PodRegistry.POD, x, 1, 2);
         TestCleanups.onFinish(helper, pod::discard);
         PodComponents.register(pod, charter);
         mock.teleportTo((ServerLevel) pod.level(), pod.position(), 0f, 0f);
@@ -104,6 +123,17 @@ public class PodDumpTest {
                 .filter(item -> OreRegistry.typeOf(item.getItem()).isPresent())
                 .mapToInt(item -> item.getItem().getCount())
                 .sum();
+    }
+
+    private static int lying(PodEntity pod, Item item) {
+        return itemsUnder(pod).stream()
+                .filter(entity -> entity.getItem().is(item))
+                .mapToInt(entity -> entity.getItem().getCount())
+                .sum();
+    }
+
+    private static int held(ServerPlayer player, Item item) {
+        return player.getInventory().countItem(item);
     }
 
     private static int oreHeld(ServerPlayer player) {
@@ -241,6 +271,59 @@ public class PodDumpTest {
         });
     }
 
+    @GameTest(maxTicks = 160)
+    public void dumpedCoalNeverReachesASeatedPackButAPlayerOnFootPicksItUp(GameTestHelper helper) {
+        Scene scene = seated(helper);
+        PodEntity pod = scene.pod();
+        pod.cargo().setAt(pod, 0, new ItemStack(Items.COAL, 16));
+        // Dump on the ground, where the stack lands inside the seated rider's pickup box.
+        helper.runAfterDelay(10, () -> scene.mock().send(new PodDumpPayload()));
+        helper.runAfterDelay(10 + PICKUP_WAIT, () -> {
+            expect(
+                    helper,
+                    held(scene.pilot(), Items.COAL) == 0 && lying(pod, Items.COAL) == 16,
+                    "the seated pilot's pack takes no dumped coal: %s held, %s lying",
+                    held(scene.pilot(), Items.COAL),
+                    lying(pod, Items.COAL));
+            scene.pilot().stopRiding();
+            scene.mock()
+                    .teleportTo(
+                            (ServerLevel) pod.level(),
+                            itemsUnder(pod).getFirst().position(),
+                            0f,
+                            0f);
+        });
+        helper.runAfterDelay(10 + PICKUP_WAIT + 40, () -> {
+            expect(
+                    helper,
+                    held(scene.pilot(), Items.COAL) == 16,
+                    "on foot the pilot picks the dumped coal up, holds %s",
+                    held(scene.pilot(), Items.COAL));
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 80)
+    public void aDumpedItemWhoseMarkCannotBeReadStillStaysOutOfASeatedPack(GameTestHelper helper) {
+        Scene scene = seated(helper);
+        PodEntity pod = scene.pod();
+        pod.cargo().setAt(pod, 0, new ItemStack(Items.COAL, 4));
+        helper.runAfterDelay(10, () -> {
+            scene.mock().send(new PodDumpPayload());
+        });
+        helper.runAfterDelay(
+                12, () -> itemsUnder(pod).forEach(item -> UnreadableChecks.makeUnreadable(item, PodDump.DUMPED)));
+        helper.runAfterDelay(10 + PICKUP_WAIT, () -> {
+            expect(
+                    helper,
+                    held(scene.pilot(), Items.COAL) == 0 && lying(pod, Items.COAL) == 4,
+                    "an unreadable mark counts as dumped: %s held, %s lying",
+                    held(scene.pilot(), Items.COAL),
+                    lying(pod, Items.COAL));
+            helper.succeed();
+        });
+    }
+
     // ---- who may dump ----
 
     @GameTest(maxTicks = 40)
@@ -264,6 +347,50 @@ public class PodDumpTest {
                     oreLying(pod));
             helper.succeed();
         });
+    }
+
+    @GameTest(maxTicks = 40)
+    public void qDumpsOneItemAndCtrlQTheWholeStack(GameTestHelper helper) {
+        Scene scene = seated(helper);
+        PodEntity pod = scene.pod();
+        pod.cargo().setAt(pod, 0, new ItemStack(Items.DIRT, 5));
+        PodMenu menu = open(helper, scene.pilot(), pod);
+        menu.clicked(menu.holdSlot(0).index, 0, ContainerInput.THROW, scene.pilot());
+        expect(
+                helper,
+                pod.cargo().stackAt(0).getCount() == 4 && lying(pod, Items.DIRT) == 1,
+                "Q dumps one: slot holds %s, %s lying",
+                pod.cargo().stackAt(0),
+                lying(pod, Items.DIRT));
+        menu.clicked(menu.holdSlot(0).index, 1, ContainerInput.THROW, scene.pilot());
+        expect(
+                helper,
+                pod.cargo().stackAt(0).isEmpty() && lying(pod, Items.DIRT) == 5,
+                "Ctrl+Q dumps the rest: slot holds %s, %s lying",
+                pod.cargo().stackAt(0),
+                lying(pod, Items.DIRT));
+        scene.pilot().closeContainer();
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 40)
+    public void aScreenOpenedFromTheSeatDumpsNothingOnceThePlayerLeavesIt(GameTestHelper helper) {
+        Scene scene = seated(helper);
+        PodEntity pod = scene.pod();
+        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+        PodMenu menu = open(helper, scene.pilot(), pod);
+        scene.pilot().stopRiding();
+        expect(helper, !menu.stillValid(scene.pilot()), "leaving the seat invalidates a screen opened from it");
+        // The click packet checks stillValid first; the menu checks it again itself.
+        menu.clicked(menu.holdSlot(0).index, 1, ContainerInput.THROW, scene.pilot());
+        expect(
+                helper,
+                pod.cargoUsed() == 1 && oreLying(pod) == 0,
+                "a Q from a screen no longer valid dumps nothing: %s used, %s lying",
+                pod.cargoUsed(),
+                oreLying(pod));
+        scene.pilot().closeContainer();
+        helper.succeed();
     }
 
     // ---- the one-time hint ----
@@ -302,6 +429,26 @@ public class PodDumpTest {
         helper.runAfterDelay(15, () -> scene.pilot().startRiding(pod, true, false));
         helper.runAfterDelay(50, () -> {
             expect(helper, hints(scene.mock()) == 1, "the hint never comes again, told %s times", hints(scene.mock()));
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 60)
+    public void aPodHeldDownByItsTowAloneGivesNoHint(GameTestHelper helper) {
+        Scene light = seated(helper);
+        light.pod().cargo().tryAdd(light.pod(), OreRegistry.stack(OreType.GOLDIUM));
+        Scene empty = seated(helper, 6);
+        for (Scene scene : List.of(light, empty)) {
+            TOWING.put(scene.pod().getUUID(), PodClimb.limit(scene.pod()));
+            TestCleanups.onFinish(helper, () -> TOWING.remove(scene.pod().getUUID()));
+        }
+        helper.runAfterDelay(20, () -> {
+            expect(
+                    helper,
+                    hints(light.mock()) == 0 && hints(empty.mock()) == 0,
+                    "dumping cannot help a pod its tow holds down: told %s with a light hold, %s with an empty one",
+                    hints(light.mock()),
+                    hints(empty.mock()));
             helper.succeed();
         });
     }
