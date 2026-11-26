@@ -5,6 +5,7 @@
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
 # BoreTripsClientTest: one CI run (45741859329, #1418), which added a settle to two of its trips; refresh from CI.
 # PodDriveLateClientTest and PodDriveSmoothClientTest: the mean of three local runs after #1112 split the class; refresh from CI.
+# PodLoadClientTest: one local run (#1449), 24 s, scaled by CockpitHudClientTest's local-to-CI ratio (48 s to 36); refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
 BlockReadoutClientTest 16
@@ -64,6 +65,7 @@ PodHeatShieldClientTest 14
 PodLavaWatchClientTest 16
 PodLinerClientTest 13
 PodLiningClientTest 10
+PodLoadClientTest 18
 PodLookFallbackClientTest 28
 PodMovementClientTest 21
 PodRecoveryHudClientTest 14
