@@ -145,7 +145,7 @@ public final class ScannerHud {
 
     /**
      * Draws the map in the cockpit's scanner window instead of at top right: the cells as large as fit whole in {@code window}, centred in it,
-     * on the air colour. Draws nothing without a slice, that is without a working scanner.
+     * on the air colour, with the rest of the window the out-of-range raster. Draws nothing without a slice, that is without a working scanner.
      */
     public static void drawInWindow(GuiGraphicsExtractor graphics, Minecraft client, Decal window) {
         ScanSlice scanned = slice;
@@ -156,7 +156,19 @@ public final class ScannerHud {
         ScanArea area = scanned.area();
         int windowLeft = window.left(graphics.guiWidth());
         int windowTop = window.top(graphics.guiHeight());
-        graphics.fill(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height(), look.airColor());
+        // The cells are whole GUI pixels, so a tier whose area does not divide the window leaves a margin. It is the
+        // instrument's raster, not
+        // the air colour of an empty cell, so that it never reads as range with nothing in it; the area is drawn over
+        // it.
+        graphics.fill(
+                windowLeft,
+                windowTop,
+                windowLeft + window.width(),
+                windowTop + window.height(),
+                look.outOfRangeColor());
+        for (int y = windowTop + 1; y < windowTop + window.height(); y += 2) {
+            graphics.fill(windowLeft, y, windowLeft + window.width(), y + 1, look.outOfRangeLineColor());
+        }
         // A slice larger than the window (tier 4) is cut at the window's edge, never drawn over the gauges beside it.
         graphics.enableScissor(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height());
         try {
