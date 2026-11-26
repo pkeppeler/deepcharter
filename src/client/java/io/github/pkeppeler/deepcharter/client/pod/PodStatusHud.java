@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
@@ -282,9 +283,14 @@ public final class PodStatusHud {
 
     /** A line of the readout and the colour it is drawn in. */
     public record Line(Component text, int color) {
-        /** The kind of a line from its key in {@link #KINDS}; a line of plain text (the account line) is a note. */
+        /**
+         * The kind of a line from its key in {@link #KINDS}; a line of plain text, and the charter's account line ({@link AccountHud#KEY}), which the cockpit's plate shows
+         * under its tally, are notes. A plate too long for its room drops notes from the end up and asks each row it passes for its kind, so the account line must have one
+         * (#1457: a burning, stranded pod on a 320 wide GUI crashed the game here).
+         */
         public Kind kind() {
-            if (!(text.getContents() instanceof TranslatableContents contents)) {
+            if (!(text.getContents() instanceof TranslatableContents contents)
+                    || contents.getKey().equals(AccountHud.KEY)) {
                 return Kind.INFO;
             }
             Kind kind = KINDS.get(contents.getKey());
