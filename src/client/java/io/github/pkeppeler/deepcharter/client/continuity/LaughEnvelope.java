@@ -27,6 +27,13 @@ record LaughEnvelope(int framesPerSecond, double seconds, float[] values) {
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "continuity/laugh_envelope.json");
     /** What a missing or broken file is read as: a steady laugh of this long, so the sequence still ends in its button. */
     private static final double FALLBACK_SECONDS = 3.68;
+    /**
+     * The longest laugh a pack may ship: nothing can be skipped until it ends, so a longer one is read as broken. {@link
+     * ContinuityScreen} also caps the whole sequence, whatever the data.
+     */
+    static final double MAX_SECONDS = 30.0;
+    /** The most values a second a pack may give: far more than a frame rate, so a bigger number is a mistake. */
+    private static final int MAX_FRAMES_PER_SECOND = 1000;
 
     private static final float FALLBACK_LOUDNESS = 0.5f;
 
@@ -52,14 +59,23 @@ record LaughEnvelope(int framesPerSecond, double seconds, float[] values) {
         try (Reader reader = resource.get().openAsReader()) {
             JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
             JsonArray array = json.getAsJsonArray("values");
+            int rate = json.get("framesPerSecond").getAsInt();
+            // Gson reads leniently: NaN and Infinity load as numbers, so every bound is written to fail for them.
+            double seconds = json.get("seconds").getAsDouble();
+            if (!(rate > 0 && rate <= MAX_FRAMES_PER_SECOND)) {
+                throw new IllegalStateException("framesPerSecond must be from 1 to " + MAX_FRAMES_PER_SECOND);
+            }
+            if (!(seconds > 0 && seconds <= MAX_SECONDS)) {
+                throw new IllegalStateException(
+                        "seconds must be more than 0 and at most " + MAX_SECONDS + ", got " + seconds);
+            }
             float[] values = new float[array.size()];
             for (int i = 0; i < values.length; i++) {
-                values[i] = Math.clamp(array.get(i).getAsFloat(), 0f, 1f);
-            }
-            int rate = json.get("framesPerSecond").getAsInt();
-            double seconds = json.get("seconds").getAsDouble();
-            if (rate <= 0 || seconds <= 0) {
-                throw new IllegalStateException("framesPerSecond and seconds must be positive");
+                float value = array.get(i).getAsFloat();
+                if (!Float.isFinite(value)) {
+                    throw new IllegalStateException("value " + i + " is not a number");
+                }
+                values[i] = Math.clamp(value, 0f, 1f);
             }
             return new LaughEnvelope(rate, seconds, values);
         } catch (IOException | RuntimeException broken) {
