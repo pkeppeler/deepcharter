@@ -228,7 +228,7 @@ public class ThemeLooksTest {
         expect(
                 helper,
                 "readout",
-                new ReadoutLook(14, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
+                new ReadoutLook(77, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
                 ReadoutLook.of(area("readout", null)));
         expect(
                 helper,
@@ -801,6 +801,11 @@ public class ThemeLooksTest {
     @GameTest
     public void theBlockReadoutStaysWithinItsBounds(GameTestHelper helper) {
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"scale\": 3 }")), "scale");
+        rejected(
+                helper,
+                () -> ReadoutLook.of(
+                        area("readout", "{ \"bottomOffset\": " + (ReadoutLook.CLEAR_OF_VANILLA - 1) + " }")),
+                "bottomOffset");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeInTicks\": 0 }")), "fadeInTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeOutTicks\": 41 }")), "fadeOutTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"settleTicks\": -1 }")), "settleTicks");
