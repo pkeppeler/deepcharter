@@ -43,7 +43,7 @@ public class PodControlsScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
     /**
      * The drive legs' ticks come from these distances and the stock drive speed, so the tour stays inside the room
-     * whatever the speed (#1409). The turn legs that drive arc wider as the speed rises; the start leaves room for that.
+     * whatever the speed (#1409). The turn legs that drive arc wider at speed; the start leaves room for that.
      */
     private static final double LEG_BLOCKS = 5;
     /** A first-person drive leg, shorter: the room's west wall is near by then. */
