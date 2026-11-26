@@ -33,6 +33,30 @@ public final class HardLanding {
                 : 0f;
     }
 
+    /**
+     * The sink speed a pod lands at after falling {@code blocks} from rest with nothing braking it: {@link PodMovement}'s gravity and drag,
+     * tick by tick, until a tick's move reaches the floor. That tick's speed is the one {@link #onLanding} reads, since vanilla calls it before
+     * the move's speed is cleared. A fall that ends exactly on the floor's top lands a tick later, so the count goes one tick past it.
+     */
+    public static double freeFallSpeed(double blocks) {
+        if (blocks <= 0) {
+            return 0;
+        }
+        PodTuning.Movement tuning = PodTuning.DEFAULT.movement();
+        double velocity = 0;
+        double fallen = 0;
+        while (fallen <= blocks) {
+            velocity = (velocity - tuning.gravity()) * tuning.verticalDrag();
+            fallen -= velocity;
+        }
+        return sinkSpeed(velocity);
+    }
+
+    /** Hull points a pod with these stats loses dropping {@code blocks} from rest onto plain ground, with no rotor held. */
+    public static float freeFallDamage(PodStats stats, double blocks) {
+        return hullDamage(stats, freeFallSpeed(blocks), 1f);
+    }
+
     /** Called by vanilla when the pod lands, with the speed it ran into still in its motion. */
     static void onLanding(PodEntity pod, float damageMultiplier) {
         if (pod.level().isClientSide()) {

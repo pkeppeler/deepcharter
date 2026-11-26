@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
+import io.github.pkeppeler.deepcharter.pod.PodCharge;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
@@ -17,6 +18,7 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -33,7 +35,7 @@ import org.jspecify.annotations.Nullable;
  * Server GameTests for the blasting charge (#509, ADR 0015): set from the seat on the slab under the pod, a fuse, then a blast that
  * clears Company rock and the natural rock round it, and hurts a pod that is too close. Each test has its own X in layer 1.
  *
- * <p>The scene: a Mole 2 x 2 resting on a stone bed, at {@code (x, FLOOR, Z)}. The blast volume is the bore square, so {@code x - 1 .. x} and {@code Z - 1 .. Z}, the rows {@code FLOOR - 2 .. FLOOR - 1}.
+ * <p>The scene: a Mole 2 x 2 resting on a stone bed, at {@code (x, FLOOR, Z)}. The blast volume is the bore square, so {@code x - 1 .. x} and {@code Z - 1 .. Z}, the rows {@code FLOOR + BOTTOM .. FLOOR - 1}.
  */
 public class BlastingChargeTest {
     private static final RepairTuning TUNING = RepairTuning.DEFAULT;
@@ -46,6 +48,8 @@ public class BlastingChargeTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 400;
     /** The lowest row the blast clears, under the pod's feet. */
     private static final int BOTTOM = -TUNING.chargeDepth();
+    /** Hull over the guard that a pod sets a charge with when it should just survive it. */
+    private static final float GUARD_MARGIN = 0.05f;
 
     /** What a test checks once the charge has blown, with the pod and the hull it had when the charge was set. */
     private interface Verify {
@@ -62,6 +66,17 @@ public class BlastingChargeTest {
      */
     private static void scene(
             GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<PodEntity> afterSet, Verify verify) {
+        scene(helper, x, build, pod -> {}, afterSet, verify);
+    }
+
+    /** As {@link #scene(GameTestHelper, int, Consumer, Consumer, Verify)}, with {@code beforeSet} run on the resting pod just before the charge is set. */
+    private static void scene(
+            GameTestHelper helper,
+            int x,
+            Consumer<ServerLevel> build,
+            Consumer<PodEntity> beforeSet,
+            Consumer<PodEntity> afterSet,
+            Verify verify) {
         ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
@@ -87,6 +102,7 @@ public class BlastingChargeTest {
                 return;
             }
             if (setAt[0] < 0) {
+                beforeSet.accept(pod[0]);
                 hull[0] = pod[0].hull();
                 InteractionResult result = ChargeUse.use(pilot.player(), Consumable.BLASTING_CHARGE);
                 if (!result.consumesAction()) {
@@ -210,8 +226,7 @@ public class BlastingChargeTest {
                 helper,
                 x,
                 // Planks under the rest of the pod (a blast spares them) hold it up, so the hull counts the blast alone
-                // and not
-                // the fall into the hole after it.
+                // and not the fall into the hole after it (aPodJustOverTheGuardSurvivesTheBlastAndTheDrop counts both).
                 level -> {
                     for (BlockPos plank : new BlockPos[] {cell(x - 1, -1, -1), cell(x, -1, -1), cell(x - 1, -1, 0)}) {
                         level.setBlock(plank, Blocks.OAK_PLANKS.defaultBlockState(), 2);
@@ -220,6 +235,49 @@ public class BlastingChargeTest {
                 pod -> {},
                 (helper2, level, pod, pilot, hull) ->
                         expectHullLost(helper2, pod, hull, TUNING.chargeDamage(), "a pod that did not move"));
+    }
+
+    /**
+     * A charge is never a suicide button (#1458): a pod left sitting on a full-depth charge takes the blast and then falls the
+     * {@code chargeDepth} rows unbraked. At exactly that cost the charge is refused; just over it the pod lives through both.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPodJustOverTheGuardSurvivesTheBlastAndTheDrop(GameTestHelper helper) {
+        int x = 3456;
+        float[] guard = new float[1];
+        scene(
+                helper,
+                x,
+                level -> {},
+                pod -> {
+                    guard[0] = PodCharge.wreckingHull(pod, TUNING, TUNING.chargeDepth());
+                    ChargeUse.refuseAtGuardThenClearIt(helper, pod, Consumable.BLASTING_CHARGE, guard[0], GUARD_MARGIN);
+                },
+                pod -> {},
+                (helper2, level, pod, pilot, hull) -> {
+                    if (Wrecks.isWreck(pod) || pod.hull() <= 0) {
+                        throw failure(
+                                helper2,
+                                "a pod %.2f over the guard should live, its hull is %.2f",
+                                GUARD_MARGIN,
+                                pod.hull());
+                    }
+                    if (guard[0] <= TUNING.chargeDamage()) {
+                        throw failure(
+                                helper2,
+                                "the %d row drop should cost hull, the guard is only %.2f",
+                                TUNING.chargeDepth(),
+                                guard[0]);
+                    }
+                    if (Math.abs(pod.getY() - (FLOOR + BOTTOM)) > 0.01) {
+                        throw failure(
+                                helper2,
+                                "the pod should rest at the bottom of the hole, %d, it is at %.2f",
+                                FLOOR + BOTTOM,
+                                pod.getY());
+                    }
+                    expectHullLost(helper2, pod, hull, guard[0], "the blast and the drop");
+                });
     }
 
     @GameTest(maxTicks = MAX_TICKS)
@@ -324,8 +382,9 @@ public class BlastingChargeTest {
                 level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
                 step[0] = 10;
             } else if (step[0] == 10) {
-                pod[0].setHull(TUNING.chargeDamage());
-                pending[0] = expectRefusedAndKept(helper, pilot, "a hull no more than the blast", "charge_hull_low");
+                pod[0].setHull(PodCharge.wreckingHull(pod[0], TUNING, TUNING.chargeDepth()));
+                pending[0] = expectRefusedAndKept(
+                        helper, pilot, "a hull no more than the blast and the drop", "charge_hull_low");
                 pod[0].setHull(pod[0].maxHull());
                 step[0] = 11;
             } else if (step[0] == 11) {
