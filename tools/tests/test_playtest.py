@@ -1,4 +1,5 @@
 """tools/playtest.py (#1400): client and server install, the log watcher, ack. No tmux, network or Prism: Env injects them."""
+import datetime
 import hashlib
 import json
 import os
@@ -76,6 +77,7 @@ class FakeSystem:
             home=root / "home", instances=root / "instances", user_home=root / "user",
             runner=self.runner, download=self.download, is_open=lambda path: self.game_open,
             prism_running=lambda: self.prism, sleep=self.sleep, clock=lambda: self.now,
+            utcnow=lambda: datetime.datetime(2026, 11, 26, 12, 30, 5, tzinfo=datetime.UTC),
         )
 
 
@@ -479,7 +481,7 @@ class Runtime(PlaytestTestCase):
     def test_start_waits_for_done_and_prints_addresses(self):
         self.sys.tailscale_ip = "100.1.2.3"
         self.sys.on_new_session = lambda: self.write("[10:00:00] [Server thread/INFO]: Done (3.2s)! For help, type \"help\"")
-        out = p.server_start(self.env, self.srv, wait=60)
+        out = p.server_start(self.env, self.srv, wait=60, fresh=False)
         new = [c for c in self.sys.calls if c[:2] == ["tmux", "new-session"]][0]
         self.assertEqual(new[2:7], ["-d", "-s", "deepcharter-server", "-c", str(self.srv)])
         self.assertEqual(new[-1], "./start.sh")
@@ -490,33 +492,96 @@ class Runtime(PlaytestTestCase):
         self.write("[09:00:00] [Server thread/INFO]: Done (1s)! old run")
         self.sys.on_new_session = lambda: self.write("[10:00:00] [Server thread/INFO]: Done (3s)!", mode="w")
         self.log.rename(self.srv / "logs" / "old.log")
-        p.server_start(self.env, self.srv, wait=60)
+        p.server_start(self.env, self.srv, wait=60, fresh=False)
 
     def test_start_reports_a_refused_world(self):
         self.sys.on_new_session = lambda: self.write(
             "[10:00:00] [main/ERROR]: Refusing to start this world: saved in format 3, this build reads 5")
         with self.assertRaises(p.Fail) as ctx:
-            p.server_start(self.env, self.srv, wait=60)
+            p.server_start(self.env, self.srv, wait=60, fresh=False)
         self.assertEqual(ctx.exception.code, p.EXIT_REFUSED)
         self.assertIn("format 3", ctx.exception.message)
+
+    def test_a_refused_world_is_archived_and_the_start_retried(self):
+        (self.srv / "world").mkdir()
+        (self.srv / "world" / "level.dat").write_text("old")
+        starts = []
+
+        def on_new_session():
+            starts.append(1)
+            if len(starts) == 1:
+                self.write("[10:00:00] [main/ERROR]: Refusing to start this world: saved in format 3")
+            else:
+                self.write("[10:00:09] [Server thread/INFO]: Done (3s)!")
+
+        self.sys.on_new_session = on_new_session
+        out = p.server_start(self.env, self.srv, wait=60, fresh=False)
+        archive = self.srv / "world-20261126T123005Z"
+        self.assertEqual((archive / "level.dat").read_text(), "old")
+        self.assertFalse((self.srv / "world").exists())
+        self.assertIn(str(archive), out)
+        self.assertIn("ready", out)
+        self.assertEqual(len(starts), 2)
+        self.assertIn(["tmux", "kill-session", "-t", "deepcharter-server"], self.sys.calls)
+
+    def test_a_second_refusal_after_the_archive_is_reported(self):
+        (self.srv / "world").mkdir()
+        self.sys.on_new_session = lambda: self.write("[10:00:00] [main/ERROR]: Refusing to start this world: still bad")
+        with self.assertRaises(p.Fail) as ctx:
+            p.server_start(self.env, self.srv, wait=60, fresh=False)
+        self.assertEqual(ctx.exception.code, p.EXIT_REFUSED)
+        self.assertTrue((self.srv / "world-20261126T123005Z").is_dir())
+
+    def test_a_refusal_with_no_world_to_archive_is_reported(self):
+        self.sys.on_new_session = lambda: self.write("[10:00:00] [main/ERROR]: Refusing to start this world: bad")
+        with self.assertRaises(p.Fail) as ctx:
+            p.server_start(self.env, self.srv, wait=60, fresh=False)
+        self.assertEqual(ctx.exception.code, p.EXIT_REFUSED)
+
+    def test_an_existing_archive_is_never_overwritten(self):
+        (self.srv / "world").mkdir()
+        (self.srv / "world-20261126T123005Z").mkdir()
+        with self.assertRaises(p.Fail):
+            p.archive_world(self.env, self.srv)
+        self.assertTrue((self.srv / "world").is_dir())
+
+    def test_fresh_archives_a_good_world_first_and_keeps_it(self):
+        (self.srv / "world").mkdir()
+        (self.srv / "world" / "level.dat").write_text("good")
+        self.sys.on_new_session = lambda: self.write("[10:00:00] [Server thread/INFO]: Done (3s)!")
+        out = p.server_start(self.env, self.srv, wait=60, fresh=True)
+        self.assertEqual((self.srv / "world-20261126T123005Z" / "level.dat").read_text(), "good")
+        self.assertFalse((self.srv / "world").exists())
+        self.assertIn("archived the old world", out)
+
+    def test_fresh_without_a_world_just_starts(self):
+        self.sys.on_new_session = lambda: self.write("[10:00:00] [Server thread/INFO]: Done (3s)!")
+        self.assertTrue(p.server_start(self.env, self.srv, wait=60, fresh=True).startswith("ready"))
+
+    def test_fresh_refuses_while_the_server_runs_and_keeps_the_world(self):
+        (self.srv / "world").mkdir()
+        self.sys.alive = True
+        with self.assertRaises(p.Fail):
+            p.server_start(self.env, self.srv, wait=60, fresh=True)
+        self.assertTrue((self.srv / "world").is_dir())
 
     def test_start_reports_a_process_that_exits(self):
         def die():
             self.sys.alive = False
         self.sys.on_new_session = lambda: self.sys.script.append(die)
         with self.assertRaises(p.Fail) as ctx:
-            p.server_start(self.env, self.srv, wait=60)
+            p.server_start(self.env, self.srv, wait=60, fresh=False)
         self.assertEqual(ctx.exception.code, p.EXIT_EXITED)
 
     def test_start_times_out(self):
         with self.assertRaises(p.Fail) as ctx:
-            p.server_start(self.env, self.srv, wait=5)
+            p.server_start(self.env, self.srv, wait=5, fresh=False)
         self.assertEqual(ctx.exception.code, p.EXIT_TIMEOUT)
 
     def test_start_without_the_eula_is_refused(self):
         (self.srv / "eula.txt").write_text("eula=false\n")
         with self.assertRaises(p.Fail) as ctx:
-            p.server_start(self.env, self.srv, wait=5)
+            p.server_start(self.env, self.srv, wait=5, fresh=False)
         self.assertEqual(ctx.exception.code, p.EXIT_EULA)
 
     def test_cmd_sends_literally_then_enter_and_returns_new_log_lines(self):
@@ -543,8 +608,9 @@ class Runtime(PlaytestTestCase):
 
     def test_an_error_is_not_swallowed_by_an_earlier_warn_with_the_same_text(self):
         seen: set[str] = set()
-        self.assertEqual(len(p.classify("[10:00:00] [Server thread/WARN]: Boom 1", seen)), 1)
-        [event] = p.classify("[10:00:01] [Server thread/ERROR]: Boom 2", seen)
+        gate = p.ChatGate(frozenset(), lambda: 0.0)
+        self.assertEqual(len(p.classify("[10:00:00] [Server thread/WARN]: Boom 1", seen, gate)), 1)
+        [event] = p.classify("[10:00:01] [Server thread/ERROR]: Boom 2", seen, gate)
         self.assertTrue(event.startswith("ERROR "))
 
     def test_stop_sends_stop_and_waits_for_the_exit(self):
@@ -577,6 +643,37 @@ class Runtime(PlaytestTestCase):
                 p.ack(self.env, player, issue, "Pod is slow", existing=False)
         self.assertEqual(len(self.sys.sent), 2)
 
+    def reply(self, text):
+        self.sys.alive = True
+        self.sys.sent.clear()
+        p.say_claude(self.env, text)
+        return [json.loads(s.removeprefix("tellraw @a ")) for s in self.sys.sent]
+
+    def test_say_claude_prefixes_and_escapes(self):
+        [component] = self.reply('Dig "down" \\ with the {pod} @a')
+        self.assertEqual(component, ["", {"text": "[Claude] ", "color": "aqua"}, {"text": 'Dig "down" \\ with the {pod} @a'}])
+
+    def test_say_claude_strips_control_characters_and_never_forms_a_second_command(self):
+        [component] = self.reply("hi\nstop\x1b[31m\u202e")
+        self.assertNotIn("\n", self.sys.sent[0])
+        self.assertEqual(component[2], {"text": "hi stop [31m"})
+
+    def test_say_claude_splits_long_replies_into_at_most_three_capped_lines(self):
+        lines = self.reply(" ".join(["word"] * 200))
+        self.assertEqual(len(lines), p.REPLY_LINES)
+        for component in lines:
+            self.assertLessEqual(len(component[2]["text"]), p.REPLY_LINE)
+        self.assertEqual(len(self.reply("x" * 1000)), p.REPLY_LINES)
+        self.assertEqual(len(self.reply("two words")), 1)
+
+    def test_say_claude_rejects_an_empty_reply_and_a_stopped_server(self):
+        self.sys.alive = True
+        with self.assertRaises(p.Fail):
+            p.say_claude(self.env, " \n ")
+        self.sys.alive = False
+        with self.assertRaises(p.Fail):
+            p.say_claude(self.env, "hi")
+
     def ack_text(self, title):
         self.sys.alive = True
         self.sys.sent.clear()
@@ -607,36 +704,75 @@ class Runtime(PlaytestTestCase):
         self.assertNotIn("\u2026", exact)
 
 
+def chat(text, player="MeatCups"):
+    return f"[23:19:52] [Server thread/INFO]: <{player}> {text}"
+
+
 class Classify(unittest.TestCase):
+    def setUp(self):
+        self.now = 0.0
+        self.gate = p.ChatGate(frozenset(), lambda: self.now)
+
     def events(self, line, seen=None):
-        return p.classify(line, set() if seen is None else seen)
+        return p.classify(line, set() if seen is None else seen, self.gate)
 
-    def test_feedback_chat(self):
-        for text in ("!feedback the pod is slow", "!FB the pod is slow", "!Feedback  the pod is slow "):
+    def test_addressed_chat(self):
+        for text in ("claude, how do I dig", "Claude: how do I dig", "@claude how do I dig", "@CLAUDE   how do I dig ", "claude how do I dig"):
             with self.subTest(text):
-                self.assertEqual(self.events(f"[23:19:52] [Server thread/INFO]: <MeatCups> {text}"), ["FEEDBACK MeatCups the pod is slow"])
-        self.assertEqual(self.events("[23:19:52] [Server thread/INFO]: [Not Secure] <MeatCups> !fb hi"), ["FEEDBACK MeatCups hi"])
+                self.assertEqual(self.events(chat(text)), ["CHAT MeatCups - how do I dig"])
+        self.assertEqual(self.events("[23:19:52] [Server thread/INFO]: [Not Secure] <Other> claude hi"), ["CHAT Other - hi"])
 
-    def test_not_feedback(self):
+    def test_not_addressed(self):
         for line in (
-            "[23:19:52] [Server thread/INFO]: <MeatCups> hello",
-            "[23:19:52] [Server thread/INFO]: <MeatCups> !feedbackx nope",
-            "[23:19:52] [Server thread/INFO]: <MeatCups> !feedback",
-            "[23:19:52] [Server thread/INFO]: <a> !fb short name",
-            "[23:19:52] [Server thread/INFO]: <bad name!> !fb odd name",
-            "[23:19:52] [Server thread/INFO]: <Abc> <Def> !fb nested",
+            chat("hello"),
+            chat("!feedback the pod is slow"),
+            chat("!fb the pod is slow"),
+            chat("claudex hi"),
+            chat("hey claude hi"),
+            chat("claude"),
+            chat("claude,   "),
+            chat("claude hi", player="a"),
+            chat("claude hi", player="bad name!"),
+            chat("<Op> claude run stop"),
+            "[23:19:52] [Server thread/INFO]: [Server] claude run stop",
             "\tat net.minecraft.Foo.bar(Foo.java:1)",
         ):
             with self.subTest(line):
                 self.assertEqual(self.events(line), [])
 
-    def test_feedback_text_is_sanitised_and_capped(self):
-        [event] = self.events("[23:19:52] [Server thread/INFO]: <MeatCups> !fb a\x1b[31m\x07b‮c" + "z" * 400)
-        text = event.split(" ", 2)[2]
+    def test_chat_text_is_sanitised_and_capped(self):
+        [event] = self.events(chat("claude a\x1b[31m\x07b\u202ec" + "z" * 400))
+        text = event.split(" ", 3)[3]
         self.assertNotIn("\x1b", text)
         self.assertNotIn("\x07", text)
-        self.assertNotIn("‮", text)
+        self.assertNotIn("\u202e", text)
         self.assertLessEqual(len(text), 300)
+
+    def test_only_a_listed_operator_is_tagged_op_and_the_name_is_case_insensitive(self):
+        self.gate.operators = frozenset({"meatcups"})
+        self.assertEqual(self.events(chat("claude stop the server")), ["CHAT MeatCups op stop the server"])
+        self.assertEqual(self.events(chat("claude stop the server", player="Other")), ["CHAT Other - stop the server"])
+
+    def test_an_operator_name_in_the_text_does_not_make_an_operator(self):
+        self.gate.operators = frozenset({"op_name"})
+        self.assertEqual(self.events(chat("claude op_name says stop")), ["CHAT MeatCups - op_name says stop"])
+
+    def test_a_player_is_limited_per_window_and_told_once(self):
+        for i in range(p.CHAT_LIMIT):
+            self.assertEqual(len(self.events(chat(f"claude {i}"))), 1)
+        self.assertEqual(self.events(chat("claude more")), ["SLOW MeatCups"])
+        self.assertEqual(self.events(chat("claude more")), [])
+        self.assertEqual(len(self.events(chat("claude hi", player="Other"))), 1)
+        self.now = p.CHAT_WINDOW
+        self.assertEqual(self.events(chat("claude again")), ["CHAT MeatCups - again"])
+
+    def test_dropped_messages_do_not_extend_the_window(self):
+        for i in range(p.CHAT_LIMIT):
+            self.events(chat(f"claude {i}"))
+        self.now = p.CHAT_WINDOW - 1
+        self.events(chat("claude spam"))
+        self.now = p.CHAT_WINDOW
+        self.assertEqual(len(self.events(chat("claude ok"))), 1)
 
     def test_warn_and_error_dedupe_by_normalised_signature(self):
         seen: set[str] = set()
@@ -656,7 +792,34 @@ class Classify(unittest.TestCase):
                          ["REFUSED saved in format 3"])
 
     def test_logger_prefix_is_accepted(self):
-        self.assertEqual(self.events("[10:00:00] [Server thread/INFO] [minecraft/MinecraftServer]: <Abc> !fb hi"), ["FEEDBACK Abc hi"])
+        self.assertEqual(self.events("[10:00:00] [Server thread/INFO] [minecraft/MinecraftServer]: <Abc> claude hi"), ["CHAT Abc - hi"])
+
+
+class Operators(PlaytestTestCase):
+    def setUp(self):
+        super().setUp()
+        self.srv = self.root / "srv"
+        self.srv.mkdir()
+
+    def configure(self, properties, names="MeatCups\n"):
+        (self.srv / "server.properties").write_text(properties)
+        (self.srv / "claude-operators.txt").write_text(names)
+
+    def test_listed_names_count_only_when_online_mode_is_true(self):
+        self.configure("online-mode=true\n", "# me\nMeatCups\n\n  Friend_2 \nnot a name\n")
+        self.assertEqual(p.operators(self.srv), {"meatcups", "friend_2"})
+        for properties in ("online-mode=false\n", "motd=x\n", ""):
+            with self.subTest(properties):
+                self.configure(properties)
+                self.assertEqual(p.operators(self.srv), frozenset())
+
+    def test_no_list_or_no_properties_means_no_operators(self):
+        self.assertEqual(p.operators(self.srv), frozenset())
+        (self.srv / "server.properties").write_text("online-mode=true\n")
+        self.assertEqual(p.operators(self.srv), frozenset())
+        (self.srv / "server.properties").unlink()
+        (self.srv / "claude-operators.txt").write_text("MeatCups\n")
+        self.assertEqual(p.operators(self.srv), frozenset())
 
 
 class Watch(PlaytestTestCase):
@@ -665,7 +828,7 @@ class Watch(PlaytestTestCase):
         self.srv = self.root / "srv"
         (self.srv / "logs").mkdir(parents=True)
         self.log = self.srv / LOG
-        self.log.write_text("[09:00:00] [Server thread/INFO]: <Old> !fb from before the watch\n")
+        self.log.write_text("[09:00:00] [Server thread/INFO]: <Old> claude from before the watch\n")
         self.out: list[str] = []
 
     def append(self, *lines, mode="a"):
@@ -679,13 +842,36 @@ class Watch(PlaytestTestCase):
     def test_follows_from_the_end_across_a_restart_and_reports_stop(self):
         self.sys.alive = True
         self.sys.script = [
-            lambda: self.append("[10:00:00] [Server thread/INFO]: <Abc> !fb first", "[10:00:01] [Server thread/WARN]: Slow 5"),
+            lambda: self.append("[10:00:00] [Server thread/INFO]: <Abc> claude first", "[10:00:01] [Server thread/WARN]: Slow 5"),
             lambda: self.append("[10:00:02] [Server thread/WARN]: Slow 6"),
-            lambda: (self.log.rename(self.srv / "logs" / "old.log"), self.append("[11:00:00] [Server thread/INFO]: <Def> !fb second")),
+            lambda: (self.log.rename(self.srv / "logs" / "old.log"), self.append("[11:00:00] [Server thread/INFO]: <Def> claude second")),
             lambda: setattr(self.sys, "alive", False),
         ]
         p.watch(self.env, self.srv, self.out.append)
-        self.assertEqual(self.out, ["FEEDBACK Abc first", "WARN Slow 5", "FEEDBACK Def second", "STOPPED"])
+        self.assertEqual(self.out, ["CHAT Abc - first", "WARN Slow 5", "CHAT Def - second", "STOPPED"])
+
+    def test_operator_lines_are_tagged_by_the_watch(self):
+        (self.srv / "server.properties").write_text("online-mode=true\n")
+        (self.srv / "claude-operators.txt").write_text("Abc\n")
+        self.sys.alive = True
+        self.sys.script = [
+            lambda: self.append("[10:00:00] [Server thread/INFO]: <Abc> claude stop", "[10:00:01] [Server thread/INFO]: <Def> claude stop"),
+            lambda: setattr(self.sys, "alive", False),
+        ]
+        p.watch(self.env, self.srv, self.out.append)
+        self.assertEqual(self.out, ["CHAT Abc op stop", "CHAT Def - stop", "STOPPED"])
+
+    def test_a_flood_is_dropped_and_the_player_told_once(self):
+        self.sys.alive = True
+        flood = [f"[10:00:00] [Server thread/INFO]: <Abc> claude {i}" for i in range(p.CHAT_LIMIT + 3)]
+        self.sys.script = [lambda: self.append(*flood), lambda: setattr(self.sys, "alive", False)]
+        p.watch(self.env, self.srv, self.out.append)
+        self.assertEqual(len(self.out), p.CHAT_LIMIT + 1)
+        self.assertEqual(self.out[-1], "STOPPED")
+        self.assertTrue(all(event.startswith("CHAT Abc - ") for event in self.out[:-1]))
+        notes = [s for s in self.sys.sent if s.startswith("tellraw @a")]
+        self.assertEqual(len(notes), 1)
+        self.assertIn("Abc, slow down", notes[0])
 
     def test_not_running_is_reported_at_once(self):
         p.watch(self.env, self.srv, self.out.append)
@@ -693,14 +879,14 @@ class Watch(PlaytestTestCase):
 
     def test_a_partial_line_waits_for_its_newline(self):
         self.sys.alive = True
-        half = "[10:00:00] [Server thread/INFO]: <Abc> !fb hal"
+        half = "[10:00:00] [Server thread/INFO]: <Abc> claude hal"
         self.sys.script = [
             lambda: self.append_raw(half),
             lambda: self.append_raw("f\n"),
             lambda: setattr(self.sys, "alive", False),
         ]
         p.watch(self.env, self.srv, self.out.append)
-        self.assertEqual(self.out, ["FEEDBACK Abc half", "STOPPED"])
+        self.assertEqual(self.out, ["CHAT Abc - half", "STOPPED"])
 
 
 class Build(PlaytestTestCase):
