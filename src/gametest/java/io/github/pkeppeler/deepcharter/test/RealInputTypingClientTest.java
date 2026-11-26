@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import org.lwjgl.sdl.SDLKeyboard;
 
@@ -84,10 +85,10 @@ public class RealInputTypingClientTest implements FabricClientGameTest {
     private static void anHTypedInTheWorldOpensTheHandbook(ClientGameTestContext context, int typesH) {
         context.setScreen(() -> null);
         RealInput.type(context, Character.toString(typesH));
+        Screen screen = context.computeOnClient(client -> client.gui.screen());
         require(
-                context.computeOnClient(client -> client.gui.screen()) instanceof HandbookScreen,
-                Character.toString(typesH) + " typed with no screen open fires the handbook key, got "
-                        + context.computeOnClient(client -> client.gui.screen()));
+                screen instanceof HandbookScreen,
+                Character.toString(typesH) + " typed with no screen open fires the handbook key, got " + screen);
         context.setScreen(() -> null);
     }
 

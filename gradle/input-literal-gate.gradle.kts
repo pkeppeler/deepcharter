@@ -1,7 +1,6 @@
 // Input literal gate (#1304): Minecraft 26.3 runs on SDL, which numbers mouse buttons from 1, so `event.button() == 0` is not the left
 // button, and a raw key code is a key no rebinding or layout reaches. This fails the build on a hand-built literal of either in code
-// under src/client/java and src/gametest/java. It did not catch #1385 (an ASCII code sent as a key, 82 for R where SDL's KEY_R is 21):
-// that code reached the event through a variable. RealInputTypingClientTest's key-mapping case is the guard for #1385.
+// under src/client/java and src/gametest/java.
 //
 // It is a scan of whole statements (a formatter wraps before `==` and `&&`), with no type information, so it keys on the accessors of
 // the input events (`.button()` and `.key()`):
@@ -9,8 +8,8 @@
 //   - `new MouseButtonInfo(` or `new KeyEvent(` with a number or a char literal as its first argument
 // Compare with InputConstants.MOUSE_BUTTON_LEFT / MOUSE_BUTTON_RIGHT / KEY_* instead. A statement that must keep one carries
 // `// input-literal: <reason>` (the reason is required) on a line of the statement or the comment lines above it (`markedNear`).
-// Not seen, the price of no type information: a `switch` on `.button()` or `.key()`, a button number handed through a variable or a
-// field, and a literal compared with a differently named accessor.
+// Not seen, the price of no type information: a `switch` on `.button()` or `.key()`, a button or key number handed through a variable
+// or a field, and a literal compared with a differently named accessor.
 //
 // config/input-literal-gate/Flagged.java.txt must be flagged on every single-tab code line (a continuation line takes two tabs) and
 // Allowed.java.txt on none: `checkInputLiteralGate` scans both before the real scan, so a change that makes the pattern miss fails
