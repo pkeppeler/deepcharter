@@ -65,6 +65,7 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
                             .map(charter -> charter.balance() == TerminalPanelScene.ACCOUNT)
                             .orElse(false),
                     client -> "charter " + ClientCharter.view());
+            TerminalPanelScreens.awaitSceneDirectives(context);
             for (String screen : TerminalPanelScreens.SCENE_SCREENS) {
                 check(context, screen, scene, null, problems);
             }
@@ -92,6 +93,9 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
         Screen open = TerminalPanelScreens.open(context, screen, scene, elsewhere);
         context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
         context.waitTicks(2); // tick-wait: lets the parked cursor un-hover the buttons before the still is taken
+        // A handbook slip draws over the open screen; one over the title read as the glass dimming its first letter
+        // (#1390).
+        context.runOnClient(client -> client.gui.toastManager().clear());
         Shot shot = context.computeOnClient(client -> {
             DrawnText.Drawn title = DrawnText.of(open).stream()
                     .filter(drawn -> !drawn.text().isBlank())
