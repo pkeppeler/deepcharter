@@ -659,7 +659,7 @@ Every band holds after the change. The matter transmitter is the one price that 
 | lets go, 10 blocks up | 22.8 | 30.8 | 15.9 | 4.7 |
 | feathers jump (2 ticks in 5), 10 blocks up | 8.7 | 0 | 6.1 | 0 |
 
-**The buffer is a speed (user decision, 2026-11-25).** A landing is free at or under a sink of 14 blocks a second (`hardLandingSpeed` 0.7 a tick), as before. A speed and not a drop height, because a gauge can show it while the pod falls and the pilot can act on it; a drop height is known only once the pod has landed, and the same drop is soft or hard by how the pilot braked. The cockpit's sink gauge (#1449's ribbon) reads it.
+**The buffer is a speed (user decision, 2026-11-25).** A landing is free at or under a sink of 14 blocks a second (`hardLandingSpeed` 0.7 a tick), as before. A speed and not a drop height, because a gauge can show it while the pod falls and the pilot can act on it; a drop height is known only once the pod has landed, and the same drop is soft or hard by how the pilot braked. The cockpit shows it: while the pod is airborne and sinking, a SINK plate hangs under the ribbon's middle, below the altimeter, with a bar of the sink against the buffer and the buffer marked (the bar runs to 4/3 of it). It is green under three quarters of the buffer, amber (`ribbonWarn`) up to it and red (`lowColor`) past it, and stays up for a second after the sink stops, so a feathered hover does not blink it. It reads the depth gauge's signal, as the altimeter does, so the signal decay darkens it. The plain HUD keeps its "HARD LANDING" line.
 
 **The ground cushion (A).** In the last 3 blocks of air under the hull, a crewed pod with power has its sink braked by 0.12 blocks a tick each tick, down to 0.4 (8 blocks a second) and no slower. It is the rotor's downwash against the ground, and it puffs dust under the pod while it brakes. It is `HardLanding.cushion`, a `PodEvents.AFTER_TICK` listener, so the rotor's own physics (`PodMovement`) are unchanged.
 - Letting go of a hover up to 8 blocks up now lands soft, and from 10 just over the buffer. Feathering the rotor lands soft from any height, as before.
@@ -680,13 +680,13 @@ A crewed free fall wrecks a stock pod from about 110 blocks now, against about 6
 
 **The ladder.** By hand: watch the sink gauge and feather the rotor. The cushion is the stock floor of that skill, not an upgrade. Later: a landing-skid part that deepens the cushion or lifts the buffer (the open question of [Hard landings](#hard-landings-319-a)), and a hull that shrugs off a hard landing.
 
-**Knobs.** `HardLandingTuning` `cushionHeight` (3), `cushionBrake` (0.12), `cushionSink` (0.4); `PodTuning.Movement` `hullDamagePerSpeed` (50).
+**Knobs.** `HardLandingTuning` `cushionHeight` (3), `cushionBrake` (0.12), `cushionSink` (0.4); `PodTuning.Movement` `hullDamagePerSpeed` (50); `theme/cockpit.json` `ribbonWarn`, `sinkWarnShare` (0.75), `sinkBarW`, `sinkBarH`, `sinkSegments` (8), `sinkLimit` (6), `sinkBarGap`, `sinkHoldTicks` (20).
 
 **Trade-offs.** It is easier than main: the default pod lands soft from twice the height, and a hard landing costs 29% less. A pod that is out of fuel or has no pilot falls as before.
 
 **Open questions.**
 - Should a loaded pod get less cushion? The rotor's lift falls with the cargo, and a cushion scaled by lift would give a full bay a cost at every landing. Left out until #1449's load against lift lands.
-- Should the cushion show on the sink gauge (the needle easing in the last 3 blocks), or is the dust enough?
+- Should the SINK plate show the cushion working (the bar easing in the last 3 blocks), or is the dust enough?
 
 ## The void under a broken breach crust (#333, interim)
 

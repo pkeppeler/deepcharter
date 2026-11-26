@@ -31,8 +31,11 @@ import net.minecraft.resources.Identifier;
  * @param scannerTitleGap the space between the scanner window and its title under it
  * @param lampGap the space between two warning lamps
  * @param tallyGap the space between two numbers of the plate's tally
+ * @param titleGap the space between the inside of a gauge title's plate border and its text, on each side
+ * @param titleTextHeight how tall the font's capitals are drawn, which a gauge title's plate holds
  * @param camera the front camera's feed (#448)
  * @param decay what the signal decay (#502) does to the instruments
+ * @param sink the SINK readout (#1432)
  */
 public record CockpitLook(
         boolean enabled,
@@ -54,8 +57,11 @@ public record CockpitLook(
         int scannerTitleGap,
         int lampGap,
         int tallyGap,
+        int titleGap,
+        int titleTextHeight,
         CameraLook camera,
-        DecayLook decay) {
+        DecayLook decay,
+        SinkLook sink) {
     /** How a bar fills: segments lit from its start across, or up. */
     public enum Kind {
         ACROSS,
@@ -332,6 +338,46 @@ public record CockpitLook(
         }
     }
 
+    /**
+     * The SINK readout (#1432): while the pod sinks, a plate under the band's middle holds a SINK title and a bar of the sink against the hard-landing
+     * buffer, with the buffer marked. Title and bar are in the hull gauge's colour, {@code warnColor} near the buffer and {@code lowColor} past it.
+     *
+     * @param warnColor the readout near the buffer ({@code ribbonWarn})
+     * @param warnShare the share of the buffer from which the readout is in {@code warnColor}
+     * @param barWidth the bar's width
+     * @param barHeight the bar's height
+     * @param segments how many segments the bar is cut in
+     * @param limit the segment after which the buffer is marked: the bar runs to {@code segments / limit} of the buffer
+     * @param barGap the space between the title and the bar
+     * @param holdTicks the client ticks the plate stays up after the pod stops sinking, so a hover's feathering does not blink it
+     */
+    public record SinkLook(
+            int warnColor,
+            double warnShare,
+            int barWidth,
+            int barHeight,
+            int segments,
+            int limit,
+            int barGap,
+            int holdTicks) {
+        static SinkLook of(ThemeData d) {
+            int segments = d.integer("sinkSegments", 1, 64);
+            int limit = d.integer("sinkLimit", 1, 63);
+            if (limit >= segments) {
+                throw d.conflict("the sink bar's buffer mark must leave segments past it", "sinkLimit", "sinkSegments");
+            }
+            return new SinkLook(
+                    d.color("ribbonWarn"),
+                    d.decimal("sinkWarnShare", 0, 1),
+                    d.integer("sinkBarW", 1, 256),
+                    d.integer("sinkBarH", 1, 64),
+                    segments,
+                    limit,
+                    d.integer("sinkBarGap", 0, 16),
+                    d.integer("sinkHoldTicks", 0, 200));
+        }
+    }
+
     public static CockpitLook current() {
         return UiTheme.current().cockpit();
     }
@@ -362,7 +408,10 @@ public record CockpitLook(
                 d.integer("scannerTitleGap", 0, 16),
                 d.integer("lampGap", 0, 8),
                 d.integer("tallyGap", 0, 16),
+                d.integer("titleGap", 0, 8),
+                d.integer("titleTextHeight", 1, 32),
                 CameraLook.of(d),
-                DecayLook.of(d));
+                DecayLook.of(d),
+                SinkLook.of(d));
     }
 }

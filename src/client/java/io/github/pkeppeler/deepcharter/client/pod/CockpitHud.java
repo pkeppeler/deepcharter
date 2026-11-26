@@ -45,6 +45,9 @@ import org.jspecify.annotations.Nullable;
  * <p>Every piece goes through {@link #draw}, so the signal decay near the bottom of a layer (#502, {@link CockpitDecay}) wraps one place and not each gauge. It darkens a
  * gauge or the scanner's window, draws static over the scanner, makes a gauge or the plate's numbers jump, and swaps the plate for a tag. It never touches the hull lamp or
  * the burning lamp, which stay true so that a pilot who dies in the dark still sees what killed them, and the scanner's cells are drawn by {@link ScannerHud} unchanged.
+ *
+ * <p>While the pod sinks, a SINK plate hangs under the band's middle (#1432, {@link CockpitReading#sink}): the sink against the hard-landing buffer, marked, in the
+ * hull gauge's colour, {@code ribbonWarn} near the buffer and the warning colour past it. It reads the depth gauge's signal, as the altimeter does.
  */
 public final class CockpitHud {
     /** How many warning lamps the Ribbon has: low fuel, low hull, burning, and any other warning of the readout. */
@@ -86,6 +89,8 @@ public final class CockpitHud {
     }
 
     private static double heat;
+    /** Client ticks the SINK plate stays up: reset while the pod sinks, counted down after. */
+    private static int sinkHold;
 
     private CockpitHud() {}
 
@@ -159,6 +164,10 @@ public final class CockpitHud {
         }
         if (showsReadout(client, guiWidth, guiHeight)) {
             CockpitLook look = CockpitLook.current();
+            if (sinkShown(pod)) {
+                Box sink = sinkBox(client.font, layout, look, guiWidth, guiHeight);
+                into.add(new HudKeepClear.Rect("cockpit sink", sink.left(), sink.top(), sink.width(), sink.height()));
+            }
             List<Row> rows = fitting(
                     rows(pod, CockpitReading.of(pod, heat), look, PodStatusHud.readout(client.player, pod)),
                     roomForRows(client.font, layout, look, guiHeight));
@@ -180,12 +189,20 @@ public final class CockpitHud {
     private static void tick(Minecraft client) {
         if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod)) {
             heat = 0;
+            sinkHold = 0;
             return;
         }
         CockpitLook look = CockpitLook.current();
         heat = pod.hullBurning()
                 ? Math.min(1.0, heat + look.heatRisePerTick())
                 : Math.max(0.0, heat - look.heatFallPerTick());
+        if (pod.onGround()) {
+            sinkHold = 0;
+        } else if (CockpitReading.of(pod, heat).sink() > 0) {
+            sinkHold = look.sink().holdTicks() + 1;
+        } else if (sinkHold > 0) {
+            sinkHold--;
+        }
     }
 
     public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
@@ -265,6 +282,11 @@ public final class CockpitHud {
                 Part.HEAT,
                 layout.heat().area(),
                 () -> gauge(graphics, layout.heat(), decay.shown(Part.HEAT, reading.heat()), look.heatColor(), look));
+        if (sinkShown(pod) && decay.fault(Part.DEPTH) != Fault.DROP) {
+            double bar = Math.min(
+                    1.0, reading.sink() * look.sink().limit() / look.sink().segments());
+            sinkReadout(graphics, client.font, layout, look, decay.shown(Part.DEPTH, bar));
+        }
         draw(
                 graphics,
                 decay,
@@ -364,6 +386,72 @@ public final class CockpitHud {
         return new boolean[] {fuelLow, hullLow, burning, readout.stream().anyMatch(line -> line.kind() == Kind.ALERT)};
     }
 
+    /** Whether the SINK plate is up: the pod is airborne and sank within the last {@link CockpitLook.SinkLook#holdTicks}. */
+    public static boolean sinkShown(PodEntity pod) {
+        return sinkHold > 0 && !pod.onGround();
+    }
+
+    private static Component sinkTitleText() {
+        return Component.translatable("hud.deepcharter.cockpit.sink");
+    }
+
+    /**
+     * Where the SINK plate is: the title and the bar side by side, {@link CockpitLook#titleGap} past the plate sprite's border, as tall as the taller of the
+     * font's capitals and the bar, centred under the band (so under the altimeter's recess) and hung from its lower edge.
+     */
+    public static Box sinkBox(Font font, Layout layout, CockpitLook look, int guiWidth, int guiHeight) {
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        CockpitLook.SinkLook sink = look.sink();
+        int width = font.width(sinkTitleText())
+                + sink.barGap()
+                + sink.barWidth()
+                + border.left()
+                + border.right()
+                + 2 * look.titleGap();
+        int height = Math.max(look.titleTextHeight(), sink.barHeight())
+                + border.top()
+                + border.bottom()
+                + 2 * look.titleGap();
+        Decal band = layout.band();
+        return new Box(
+                band.left(guiWidth) + (band.width() - width) / 2, band.top(guiHeight) + band.height(), width, height);
+    }
+
+    /** The SINK readout's colour at a sink of {@code share} of the buffer: the hull gauge's, {@code ribbonWarn} from the warning share, the warning colour past 1. */
+    public static int sinkColor(double share, CockpitLook look) {
+        if (share > 1.0) {
+            return look.lowColor();
+        }
+        return share >= look.sink().warnShare() ? look.sink().warnColor() : look.hullColor();
+    }
+
+    /**
+     * The SINK plate with its bar at {@code bar} (0 to 1, the full bar {@code segments / limit} of the buffer): its title, and its bar lit to it with the buffer
+     * marked in the warning colour.
+     */
+    private static void sinkReadout(
+            GuiGraphicsExtractor graphics, Font font, Layout layout, CockpitLook look, double bar) {
+        Box box = sinkBox(font, layout, look, graphics.guiWidth(), graphics.guiHeight());
+        CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        CockpitLook.SinkLook sink = look.sink();
+        int color = sinkColor(bar * sink.segments() / sink.limit(), look);
+        int x = box.left() + border.left() + look.titleGap();
+        int y = box.top() + border.top() + look.titleGap();
+        int content = Math.max(look.titleTextHeight(), sink.barHeight());
+        graphics.text(font, sinkTitleText(), x, y + (content - look.titleTextHeight()) / 2, color);
+        int left = x + font.width(sinkTitleText()) + sink.barGap();
+        int top = y + (content - sink.barHeight()) / 2;
+        int lit = (int) Math.ceil(bar * sink.segments() - 1e-9);
+        for (int i = 0; i < sink.segments(); i++) {
+            int from = left + i * sink.barWidth() / sink.segments();
+            int to = left + (i + 1) * sink.barWidth() / sink.segments() - 1;
+            graphics.fill(from, top, to, top + sink.barHeight(), i < lit ? color : look.offColor());
+        }
+        int mark = left + sink.limit() * sink.barWidth() / sink.segments() - 1;
+        graphics.fill(mark, top - 1, mark + 1, top + sink.barHeight() + 1, look.lowColor());
+    }
+
     /** The warning lamps: {@link #LAMPS} squares in a row (a slot wider than it is tall) or a column, each lit in its colour or off. */
     private static void lamps(
             GuiGraphicsExtractor graphics, Decal slot, boolean[] lit, int[] colors, CockpitLook look) {
@@ -450,6 +538,14 @@ public final class CockpitHud {
      * thicker border keeps its text clear of it), and {@link CockpitLook#plateGap} past it. A sprite that is not cut in nine has no border.
      */
     public static GuiSpriteScaling.NineSlice.Border plateInset(Layout layout, CockpitLook look) {
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        int gap = look.plateGap();
+        return new GuiSpriteScaling.NineSlice.Border(
+                border.left() + gap, border.top() + gap, border.right() + gap, border.bottom() + gap);
+    }
+
+    /** The plate sprite's nine-slice border, from the sprite's own metadata; none for a sprite that is not cut in nine. */
+    private static GuiSpriteScaling.NineSlice.Border plateBorder(Layout layout) {
         GuiSpriteScaling scaling = Minecraft.getInstance()
                 .getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.GUI)
@@ -458,13 +554,9 @@ public final class CockpitHud {
                 .getAdditionalMetadata(GuiMetadataSection.TYPE)
                 .orElse(GuiMetadataSection.DEFAULT)
                 .scaling();
-        int gap = look.plateGap();
-        if (scaling instanceof GuiSpriteScaling.NineSlice nine) {
-            GuiSpriteScaling.NineSlice.Border border = nine.border();
-            return new GuiSpriteScaling.NineSlice.Border(
-                    border.left() + gap, border.top() + gap, border.right() + gap, border.bottom() + gap);
-        }
-        return new GuiSpriteScaling.NineSlice.Border(gap, gap, gap, gap);
+        return scaling instanceof GuiSpriteScaling.NineSlice nine
+                ? nine.border()
+                : new GuiSpriteScaling.NineSlice.Border(0, 0, 0, 0);
     }
 
     /** The plate that holds {@code rows}, as big as its longest row and the number of rows, hung from the layout's readout anchor. */

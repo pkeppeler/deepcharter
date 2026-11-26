@@ -53,7 +53,7 @@ SHARED = {
     "enabled": 1, "minGuiWidth": MIN_GUI_W, "minGuiHeight": MIN_GUI_H,
     "fuelColor": "#F0A010", "hullColor": "#58B05A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
     "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "plateGap": 2,
-    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5,
+    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5, "titleGap": 0, "titleTextHeight": 7,
     "cameraInstalled": 0, "cameraStaticPerHull": 4.0, "cameraStaticFallPerTick": 0.03, "cameraStaticDots": 2400, "cameraDotSize": 2,
     "cameraLensHeatPerTick": 0.01, "cameraLensCoolPerTick": 0.02, "cameraLensDead": 1.0, "cameraLensRecover": 0.6,
     "cameraFlickerMaxChance": 0.35, "cameraFlickerMinTicks": 2, "cameraFlickerMaxTicks": 6, "cameraHazeLines": 14, "cameraHazeAlpha": 90, "cameraVeilAlpha": 150, "cameraDotAlphaMin": 80, "cameraTearBands": 6, "cameraTearAlpha": 90,
@@ -63,7 +63,12 @@ SHARED = {
     "decayCellTicks": 3, "decayDeadColor": "#0A0E0D", "decayBaseNoise": 0.7, "decayStaticDots": 400, "decayDotSize": 1, "decayDotAlphaMin": 70, "decayStaticColor": "#B8C4C0",
     "decayTearBands": 3, "decayTearAlpha": 70, "decayTagColor": "#9FB0AB", "decayLostColor": "#FF3A2A",
     "decayCueSlowTicks": 70, "decayCueFastTicks": 12, "decayAlarmTicks": 20,
+    # The SINK readout (#1432): the sink against the hard-landing buffer, the title and a bar on a plate hung under the band's middle while the pod sinks. The bar's
+    # limit mark is after sinkLimit of its segments; it turns ribbonWarn from sinkWarnShare of the buffer and lowColor past it, and stays sinkHoldTicks after the sink.
+    "ribbonWarn": "#FFB02E", "sinkWarnShare": 0.75, "sinkBarW": 16, "sinkBarH": 5, "sinkSegments": 8, "sinkLimit": 6, "sinkBarGap": 2, "sinkHoldTicks": 20,
 }
+# The SINK readout's title, as the game draws it in its own font.
+SINK_TITLE = "SINK"
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -335,6 +340,16 @@ def plate_size(look, state):
     return max(row_width(row) for row in rows) + left + right, len(rows) * 11 - 2 + top + bottom
 
 
+def sink_box(look):
+    """The SINK readout's plate on the 427 x 240 screen, (left, top, width, height), as the client puts it: centred under the band (under the altimeter's recess) and
+    hung from its lower edge. The coverage counts it although it shows only while the pod sinks."""
+    inset = look.sprites["plate"].border[0] + SHARED["titleGap"]
+    width = len(SINK_TITLE) * FONT_W - 1 + SHARED["sinkBarGap"] + SHARED["sinkBarW"] + 2 * inset
+    height = max(SHARED["titleTextHeight"], SHARED["sinkBarH"]) + 2 * inset
+    band = look.parts["part_a"]
+    return band.left(SCREEN_W) + (band.w - width) // 2, band.top(SCREEN_H) + band.h, width, height
+
+
 def coverage(look):
     """The pixels of a 427 x 240 screen the Ribbon makes opaque in the calm state, as (status, scanner): status is the band and the plate, scanner is its bezel and
     window. The sprites count by their opaque pixels, so a chamfer or a round corner does not, and a pixel under two pieces counts once."""
@@ -352,6 +367,8 @@ def coverage(look):
     t = look.keys
     plate = Placed(width, height, t[STYLE + "ReadoutAnchorX"], t[STYLE + "ReadoutAnchorY"], t[STYLE + "ReadoutX"], t[STYLE + "ReadoutY"])
     left, top = plate.left(SCREEN_W), plate.top(SCREEN_H)
+    status |= {(left + i, top + j) for j in range(height) for i in range(width)}
+    left, top, width, height = sink_box(look)
     status |= {(left + i, top + j) for j in range(height) for i in range(width)}
     mark(scanner, look.sprites["cap"].img, look.parts["cap"])
     window = Placed(t[STYLE + "ScannerW"], t[STYLE + "ScannerH"], t[STYLE + "ScannerAnchorX"], t[STYLE + "ScannerAnchorY"], t[STYLE + "ScannerX"], t[STYLE + "ScannerY"])

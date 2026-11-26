@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -23,7 +24,8 @@ import net.minecraft.world.level.block.Blocks;
 
 /**
  * Evidence scenario "pod-soft-landing" (#1432): a pilot hovers a pod 7 blocks over a lit floor, lets go of the rotor,
- * and the ground cushion brakes the last blocks of the sink, so the pod lands with its hull unchanged.
+ * and the ground cushion brakes the last blocks of the sink, so the pod lands with its hull unchanged. The SINK plate
+ * shows under the band while the pod sinks.
  */
 public class PodSoftLandingScenario extends EvidenceScenario {
     private static final int X = 5250;
@@ -91,16 +93,27 @@ public class PodSoftLandingScenario extends EvidenceScenario {
             screenshot(context, "soft-landing-hover");
             float hullBefore = hull(singleplayer);
 
-            // Let go: the pod sinks, and the cushion brakes it in the last 3 blocks.
+            // Let go: the pod sinks under the SINK plate, and the cushion brakes it in the last 3 blocks.
             int ticks = 0;
+            boolean gauged = false;
             while (!podOnGround(singleplayer) && ticks < MAX_SINK_TICKS) {
                 pilot(singleplayer, false);
                 context.waitTicks(1);
                 ticks++;
                 frame(context);
+                if (!gauged
+                        && context.computeOnClient(
+                                client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
+                                        && CockpitHud.sinkShown(pod))) {
+                    gauged = true;
+                    screenshot(context, "soft-landing-sinking");
+                }
             }
             if (!podOnGround(singleplayer)) {
                 throw new AssertionError("The pod did not land within " + MAX_SINK_TICKS + " ticks");
+            }
+            if (!gauged) {
+                throw new AssertionError("The SINK plate never showed while the pod sank");
             }
             for (int i = 0; i < 10; i++) {
                 context.waitTicks(HOVER_TICKS_PER_FRAME);
