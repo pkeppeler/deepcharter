@@ -98,10 +98,10 @@ mergeable=$(pr_mergeable_of "$pr") || refuse "could not read mergeable"
 # label events add a skipped run under the same name as an earlier real one, and
 # the default (latest per name) view would let that skipped run hide a failure.
 # One line per run: name, start time, id, status, conclusion. A run that has not
-# started sorts newest. Runs are ordered by start time, then id (monotonic). A listing not read in full refuses (#1484).
+# started sorts newest. Runs are ordered by start time, then id (monotonic).
 gh_list run_lines "repos/$repo/commits/$sha/check-runs?filter=all&per_page=100" \
   '.check_runs[] | [.name, (.started_at // "9999-12-31T23:59:59Z"), (.id | tostring), .status, (.conclusion // "")] | @tsv' \
-  || refuse "could not read every check run of $sha: $gh_list_err (a lost page could hide a failure)"
+  || refuse "could not read every check run of $sha: $gh_list_err"
 # shellcheck disable=SC2154 # gh_list assigns run_lines by name
 if ! grep -q $'\t' <<<"$run_lines"; then
   refuse "has no checks reported for $sha (zero checks is not a pass)"

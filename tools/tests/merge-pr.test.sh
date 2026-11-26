@@ -54,25 +54,20 @@ for a in "$@"; do
   [[ $a == commit_title=* ]] && printf '%s' "${a#commit_title=}" >"$LOG.title"
   prev=$a
 done
-# fails_first <log> <NAME>: true for the first STUB_<NAME>_FAILS calls of a listing (counted in $LOG.<log>). Such a call
-# prints the first page (STUB_<NAME>_PAGE1) and then STUB_<NAME>_ERR on stderr, exiting 1, as `gh api --paginate` does
-# when a later page fails.
+# fails_first <NAME>: the first STUB_<NAME>_FAILS calls of a listing (counted in $LOG.<NAME>) print the first page
+# (STUB_<NAME>_PAGE1) and then STUB_<NAME>_ERR on stderr and exit 1, as `gh api --paginate` does when a later page fails.
 fails_first() {
-  local n fails_var=STUB_$2_FAILS
+  local n fails=STUB_$1_FAILS page=STUB_$1_PAGE1 err=STUB_$1_ERR
   n=$(cat "$LOG.$1" 2>/dev/null || echo 0)
   echo $((n + 1)) >"$LOG.$1"
-  [[ $n -lt ${!fails_var-0} ]]
-}
-fail_page() {
-  local page_var=STUB_$1_PAGE1 err_var=STUB_$1_ERR
-  [[ -z ${!page_var-} ]] || printf '%s\n' "${!page_var}"
-  echo "${!err_var-gh: Server Error (HTTP 502)}" >&2
+  [[ $n -lt ${!fails-0} ]] || return 0
+  [[ -z ${!page-} ]] || printf '%s\n' "${!page}"
+  echo "${!err-gh: Server Error (HTTP 502)}" >&2
   exit 1
 }
 case "$method $path" in
   "GET "*/pulls/*/files*)
-    [[ ${STUB_FILES_FAIL-0} == 1 ]] && exit 1
-    ! fails_first files FILES || fail_page FILES
+    fails_first FILES
     printf '%s' "${STUB_FILES-}" ;;
   "GET "*/contents/docs/feature-map/map.json*)
     # STUB_MAP_FAIL: 404 (no map at that head) or 500 (unreadable). STUB_MAP_STALE: the lines the gate's --jq prints.
@@ -82,8 +77,7 @@ case "$method $path" in
   "GET "*/check-runs/*/annotations*)
     # The merged-main annotation of run <id>: STUB_FIXTURE_ANNOTATIONS (a recorded response) run through the script's
     # own --jq, else STUB_MERGED_MAIN_<id>, else STUB_MERGED_MAIN, else the default main sha. Empty prints nothing.
-    [[ ${STUB_ANN_FAIL-0} == 1 ]] && exit 1
-    ! fails_first ann ANN || fail_page ANN
+    fails_first ANN
     if [[ -n ${STUB_FIXTURE_ANNOTATIONS-} ]]; then gh_fixture_jq "$STUB_FIXTURE_ANNOTATIONS" "$jq"; exit; fi
     id=${path#*check-runs/}
     id=${id%%/*}
@@ -91,7 +85,7 @@ case "$method $path" in
     recorded=${!var-${STUB_MERGED_MAIN-$MAIN_SHA}}
     [[ -z $recorded ]] || printf '%s\n' "$recorded" ;;
   "GET "*/check-runs*)
-    ! fails_first runs RUNS || fail_page RUNS
+    fails_first RUNS
     echo "${STUB_RUNS-$DEFAULT_RUNS}" ;;
   "GET "*/issues/*/comments*)
     if [[ -n ${STUB_FIXTURE_COMMENTS-} ]]; then gh_fixture_jq "$STUB_FIXTURE_COMMENTS" "$jq"; exit; fi
@@ -243,7 +237,7 @@ rc=0
 pass() { cases=$((cases + 1)); echo "ok   $1"; }
 fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
-reset() { rm -f "$LOG" "$LOG".{merged,push,body,message,title,runs,ann,files}; : >"$LOG"; }
+reset() { rm -f "$LOG" "$LOG".{merged,push,body,message,title,RUNS,ANN,FILES}; : >"$LOG"; }
 
 # run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
@@ -398,7 +392,8 @@ run_script "STUB_FILES=$(files removed:docs/adr/0018-eighteen.md added:docs/adr/
 exited "removed ADR and added ADR of the same number merges" 0
 refusal "next free number counts the PR's own ADRs" "the next free number is 0021" \
   "STUB_FILES=$(files added:docs/adr/0020-mine.md added:docs/adr/0007-new-slug.md)"
-refusal "ADR file list unreadable" "could not read its changed files" STUB_FILES_FAIL=1
+refusal "ADR file list unreadable" "could not read its changed files: gh exited nonzero with no error text" \
+  STUB_FILES_FAILS=1 STUB_FILES_ERR=
 refusal "changed files failing on a later page refuse" "could not read its changed files: gh: Server Error (HTTP 500)" \
   STUB_FILES_FAILS=3 "STUB_FILES_PAGE1=$(files modified:docs/a.md)" "STUB_FILES_ERR=gh: Server Error (HTTP 500)"
 run_script STUB_FILES_FAILS=1 "STUB_FILES=$(files modified:docs/a.md modified:src/main/java/A.java)"
@@ -694,7 +689,8 @@ refusal "refusal names the run, both shas and the moved path" "build run 2 merge
 refusal "a run with no record is stale (a run from before CI recorded it)" "recorded no merged main sha" "STUB_MERGED_MAIN="
 refusal "a run with no record carries the marker" "$stale_hint" "STUB_MERGED_MAIN="
 refusal "a record that is not a sha is stale" "recorded no merged main sha" "STUB_MERGED_MAIN=main"
-refusal "annotations unreadable" "could not read the annotations of build run 2" STUB_ANN_FAIL=1
+refusal "annotations unreadable" "could not read the annotations of build run 2: gh exited nonzero with no error text" \
+  STUB_ANN_FAILS=1 STUB_ANN_ERR=
 refusal "annotations failing on a later page refuse" "could not read the annotations of build run 2: gh: Server Error (HTTP 503)" \
   STUB_ANN_FAILS=3 "STUB_ANN_PAGE1=$MAIN_SHA" "STUB_ANN_ERR=gh: Server Error (HTTP 503)"
 run_script STUB_ANN_FAILS=1
