@@ -45,10 +45,7 @@ public abstract class ChunkTaskPriorityQueueMixin {
         }
     }
 
-    @Inject(
-            method = "resortChunkTasks(ILnet/minecraft/world/level/ChunkPos;I)V",
-            at = @At("HEAD"),
-            cancellable = true)
+    @Inject(method = "resortChunkTasks(ILnet/minecraft/world/level/ChunkPos;I)V", at = @At("HEAD"), cancellable = true)
     private void deepcharter$resortWhereTheListIs(int oldLevel, ChunkPos pos, int newLevel, CallbackInfo ci) {
         if (newLevel < 0 || newLevel >= queuesPerPriority.size()) {
             return; // vanilla's own path, out of range as vanilla is
@@ -88,7 +85,10 @@ public abstract class ChunkTaskPriorityQueueMixin {
             top++;
         }
         if (tasks != null && !tasks.isEmpty()) {
-            queuesPerPriority.get(to).computeIfAbsent(pos, p -> Lists.newArrayList()).addAll(tasks);
+            queuesPerPriority
+                    .get(to)
+                    .computeIfAbsent(pos, p -> Lists.newArrayList())
+                    .addAll(tasks);
             top = Math.min(top, to);
         }
         topPriorityQueueIndex = top;
