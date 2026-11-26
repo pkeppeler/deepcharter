@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -153,7 +154,7 @@ class ClientInstall(PlaytestTestCase):
         target = self.env.instances / "deepcharter"
         mods = target / "minecraft" / "mods"
         self.assertEqual(cfg_value(target / "instance.cfg", "name"), "Deep Charter")
-        self.assertNotEqual(cfg_value(target / "instance.cfg", "uuid"), "old-uuid")
+        self.assertRegex(cfg_value(target / "instance.cfg", "uuid"), r"^[0-9a-f]{32}$")
         self.assertEqual(cfg_value(target / "instance.cfg", "ManagedPackVersionName"), "0.2.0-aaaaaaa")
         self.assertEqual(cfg_value(target / "instance.cfg", "JavaPath"), "/java")
         self.assertEqual((mods / "deepcharter-0.2.0.jar").read_text(), "new deepcharter")
@@ -246,6 +247,94 @@ class ClientInstall(PlaytestTestCase):
         self.sys.prism = True
         p.client_install(self.env, self.pack())
 
+    def victim(self) -> Path:
+        path = self.env.instances / "victim.txt"
+        path.write_text("keep me")
+        return path
+
+    def assert_untouched(self, victim: Path):
+        self.assertEqual(victim.read_text(), "keep me")
+        target = self.env.instances / "deepcharter"
+        self.assertIsNone(cfg_value(target / "instance.cfg", "ManagedPackVersionName"))
+        self.assertTrue((target / "minecraft" / "mods" / "sodium-old.jar").exists())
+
+    def test_a_tampered_stored_index_cannot_delete_outside_the_game_dir(self):
+        target = make_instance(self.env.instances, "deepcharter")
+        victim = self.victim()
+        for evil in ("../../victim.txt", str(victim)):
+            with self.subTest(evil):
+                (target / "mrpack" / "modrinth.index.json").write_text(json.dumps({"files": [{"path": evil}]}))
+                with self.assertRaises(p.Fail):
+                    p.client_install(self.env, self.pack())
+                self.assertEqual(victim.read_text(), "keep me")
+                self.assertIsNone(cfg_value(target / "instance.cfg", "ManagedPackVersionName"))
+
+    def test_a_tampered_stored_overrides_list_cannot_delete_outside_the_game_dir(self):
+        target = make_instance(self.env.instances, "deepcharter")
+        victim = self.victim()
+        for evil in ("../../victim.txt", str(victim)):
+            with self.subTest(evil):
+                (target / "mrpack" / "overrides.txt").write_text(f"mods/deepcharter-0.2.0.jar\n{evil}\n")
+                with self.assertRaises(p.Fail):
+                    p.client_install(self.env, self.pack())
+                self.assert_untouched(victim)
+
+    def test_a_symlinked_mods_dir_cannot_be_deleted_through_or_written_to(self):
+        target = make_instance(self.env.instances, "deepcharter")
+        victim = self.victim()
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "sodium-old.jar").write_text("outside")
+        shutil.rmtree(target / "minecraft" / "mods")
+        (target / "minecraft" / "mods").symlink_to(outside)
+        with self.assertRaises(p.Fail):
+            p.client_install(self.env, self.pack())
+        self.assertEqual((outside / "sodium-old.jar").read_text(), "outside")
+        self.assertEqual(victim.read_text(), "keep me")
+        self.assertIsNone(cfg_value(target / "instance.cfg", "ManagedPackVersionName"))
+
+    def test_a_symlinked_dir_in_the_seed_leaves_no_half_made_instance(self):
+        seed = make_instance(self.env.instances, "deepcharter-friends-0.2.0-aaaaaaa")
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "sodium-old.jar").write_text("outside")
+        shutil.rmtree(seed / "minecraft" / "mods")
+        (seed / "minecraft" / "mods").symlink_to(outside)
+        with self.assertRaises(p.Fail):
+            p.client_install(self.env, self.pack())
+        self.assertFalse((self.env.instances / "deepcharter").exists())
+        self.assertEqual((outside / "sodium-old.jar").read_text(), "outside")
+
+    def test_a_listed_directory_is_refused_before_any_write(self):
+        target = make_instance(self.env.instances, "deepcharter")
+        (target / "mrpack" / "overrides.txt").write_text("saves\n")
+        with self.assertRaises(p.Fail):
+            p.client_install(self.env, self.pack())
+        self.assertTrue((target / "minecraft" / "saves" / "World1" / "level.dat").exists())
+        self.assertIsNone(cfg_value(target / "instance.cfg", "ManagedPackVersionName"))
+
+    def test_options_txt_is_never_written_or_deleted_by_a_pack(self):
+        target = make_instance(self.env.instances, "deepcharter")
+        (target / "mrpack" / "overrides.txt").write_text("options.txt\n")
+        mrpack = make_mrpack(self.root / "o.mrpack", "0.2.0-ddddddd", {}, {"overrides/options.txt": b"fov:0.0\n", "client-overrides/options.txt": b"fov:0.0\n"})
+        p.client_install(self.env, mrpack)
+        self.assertEqual((target / "minecraft" / "options.txt").read_text(), "fov:1.0\nguiScale:4\n")
+        self.assertNotIn("options.txt", (target / "mrpack" / "overrides.txt").read_text())
+
+    def test_mmc_pack_is_left_alone_when_versions_match(self):
+        target = make_instance(self.env.instances, "deepcharter")
+        before = (target / "mmc-pack.json").read_bytes()
+        self.sys.prism = True
+        p.client_install(self.env, self.pack())
+        self.assertEqual((target / "mmc-pack.json").read_bytes(), before)
+
+    def test_a_missing_lsof_is_a_clear_error(self):
+        path = self.root / "latest.log"
+        path.write_text("x")
+        with mock.patch.object(p.subprocess, "run", side_effect=FileNotFoundError("lsof")), self.assertRaises(p.Fail) as ctx:
+            p.real_env().is_open(path)
+        self.assertIn("lsof", ctx.exception.message)
+
     def test_fov_is_degrees(self):
         self.assertEqual(p.fov_degrees("1.0"), 110.0)
         self.assertEqual(p.fov_degrees("0.0"), 70.0)
@@ -329,6 +418,39 @@ class ServerInstall(PlaytestTestCase):
         self.assertEqual(ctx.exception.code, p.EXIT_EULA)
         self.assertTrue((target / "start.sh").exists())
 
+    def test_a_stored_lock_name_that_escapes_mods_deletes_nothing(self):
+        target = self.root / "srv"
+        (target / "mods").mkdir(parents=True)
+        victim = self.root / "victim.txt"
+        victim.write_text("keep me")
+        for evil in ("../../victim.txt", str(victim), "sub/x.jar"):
+            with self.subTest(evil):
+                (target / "mods.lock").write_text(f"h {evil} https://x/o.jar\n")
+                with self.assertRaises(p.Fail):
+                    p.server_install(self.env, self.zip(), target)
+                self.assertEqual(victim.read_text(), "keep me")
+                self.assertFalse((target / "start.sh").exists())
+
+    def test_a_new_lock_name_that_escapes_mods_is_refused(self):
+        with self.assertRaises(p.Fail):
+            p.server_install(self.env, self.zip(lock="h ../x.jar https://x/o.jar\n"), self.root / "srv")
+        self.assertFalse((self.root / "srv" / "start.sh").exists())
+
+    def test_a_nested_mods_entry_in_the_zip_is_refused_cleanly(self):
+        with self.assertRaises(p.Fail):
+            p.server_install(self.env, self.zip(jars={"sub/x.jar": b"x"}), self.root / "srv")
+        self.assertFalse((self.root / "srv").exists())
+
+    def test_a_user_added_jar_survives_and_is_reported(self):
+        target = self.root / "srv"
+        (target / "mods").mkdir(parents=True)
+        (target / "mods" / "mine.jar").write_text("m")
+        (target / "eula.txt").write_text("eula=true\n")
+        warnings = p.server_install(self.env, self.zip(), target)
+        self.assertEqual((target / "mods" / "mine.jar").read_text(), "m")
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("mine.jar", warnings[0])
+
     def test_zip_member_escaping_the_dir_is_refused(self):
         bad = self.root / "bad.zip"
         with zipfile.ZipFile(bad, "w") as z:
@@ -404,7 +526,7 @@ class Runtime(PlaytestTestCase):
         lines = p.server_cmd(self.env, self.srv, "list")
         self.assertEqual(lines, ["[10:00:01] [Server thread/INFO]: There are 0 of a max of 20 players online:"])
         sends = [c for c in self.sys.calls if c[:2] == ["tmux", "send-keys"]]
-        self.assertEqual(sends[0], ["tmux", "send-keys", "-t", "deepcharter-server", "-l", "list"])
+        self.assertEqual(sends[0], ["tmux", "send-keys", "-t", "deepcharter-server", "-l", "--", "list"])
         self.assertEqual(sends[1], ["tmux", "send-keys", "-t", "deepcharter-server", "Enter"])
 
     def test_cmd_rejects_a_multi_line_command_and_a_stopped_server(self):
@@ -413,6 +535,17 @@ class Runtime(PlaytestTestCase):
         self.sys.alive = True
         with self.assertRaises(p.Fail):
             p.server_cmd(self.env, self.srv, "say hi\nstop")
+
+    def test_cmd_text_ending_in_a_semicolon_is_escaped_for_tmux(self):
+        self.sys.alive = True
+        p.server_cmd(self.env, self.srv, "say hi;")
+        self.assertEqual(self.sys.sent, ["say hi\\;"])
+
+    def test_an_error_is_not_swallowed_by_an_earlier_warn_with_the_same_text(self):
+        seen: set[str] = set()
+        self.assertEqual(len(p.classify("[10:00:00] [Server thread/WARN]: Boom 1", seen)), 1)
+        [event] = p.classify("[10:00:01] [Server thread/ERROR]: Boom 2", seen)
+        self.assertTrue(event.startswith("ERROR "))
 
     def test_stop_sends_stop_and_waits_for_the_exit(self):
         self.sys.alive = True

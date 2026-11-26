@@ -1,18 +1,8 @@
 """Playtest helper (#1400): build main, install it into Prism and a dedicated server, run and watch that server.
-
-Usage: tools/py tools/playtest.py <command> [options]
-  build                       fetch origin/main into a reused worktree, build the jar, package the friends build
-  client [--mrpack PATH]      install the mrpack in place into the Prism instance `deepcharter`
-  server-install [--zip PATH] install the server zip in place into the server dir (keeps world, whitelist, EULA)
-  server-start [--wait SEC]   start the server in a detached tmux session and wait until it is ready
-  server-stop | server-status | server-cmd <command...> | server-watch | ack <player> <issue> [--existing]
-Server commands take --dir (default ~/deepcharter-server). Env: DEEPCHARTER_PLAYTEST_HOME (default
-~/.local/share/deepcharter-playtest: build worktree, download cache), DEEPCHARTER_PRISM_INSTANCES.
+`--help` lists the commands; .claude/skills/playtesting/SKILL.md is the procedure.
 
 Everything external (subprocess, downloads, lsof, pgrep, time) goes through `Env`, so the tests need no tmux, network or Prism.
-The tool never edits options.txt, never copies a world, never touches an instance other than `deepcharter`, and accepts
-no download that is not https with a matching sha512. Player chat reaches the caller only through `classify`, which
-sanitises it: the log is untrusted input.
+Player chat reaches the caller only through `classify`, which sanitises it: the log is untrusted input.
 """
 
 from __future__ import annotations
@@ -77,7 +67,10 @@ def _real_download(url: str) -> bytes:
 def _real_is_open(path: Path) -> bool:
     if not path.exists():
         return False
-    return subprocess.run(["lsof", "-t", str(path)], capture_output=True, text=True, check=False).stdout.strip() != ""
+    try:
+        return subprocess.run(["lsof", "-t", str(path)], capture_output=True, text=True, check=False).stdout.strip() != ""
+    except FileNotFoundError:
+        raise Fail("lsof not found on this machine: it tells whether the game or server is running") from None
 
 
 def _real_prism_running() -> bool:
@@ -231,6 +224,33 @@ def _component_updates(pack_json: dict, deps: dict[str, str]) -> bool:
     return changed
 
 
+# Files the player owns: a pack must not write or delete them.
+PROTECTED = frozenset({"options.txt"})
+
+
+def _contained(root: Path, path: Path, *, follow: bool) -> Path:
+    """`path` resolved, which must lie under `root`. A file that is itself a symlink resolves only its parent when
+    `follow` is False, because unlink removes the link, not what it points at."""
+    resolved = path.resolve() if follow else path.parent.resolve() / path.name
+    if resolved != root and root not in resolved.parents:
+        raise Fail(f"refusing {path}: it resolves outside {root}")
+    return resolved
+
+
+def _plan(game: Path, old: list[str], new: list[str]) -> tuple[list[Path], list[Path]]:
+    """The files to delete and write, all resolved and checked under the game dir, before anything is touched."""
+    root = game.resolve()
+    deletes = []
+    for name in old:
+        if _safe_rel(name).as_posix() in PROTECTED:
+            continue
+        path = _contained(root, game / name, follow=False)
+        if path.is_dir() and not path.is_symlink():
+            raise Fail(f"refusing to delete {path}: the old pack lists a directory")
+        deletes.append(path)
+    return deletes, [_contained(root, game / name, follow=True) for name in new]
+
+
 def client_install(env: Env, mrpack: Path | None) -> ClientResult:
     if mrpack is None:
         mrpack = _newest(list((env.home / "build" / "build" / "dist").glob("*.mrpack")))
@@ -243,7 +263,9 @@ def client_install(env: Env, mrpack: Path | None) -> ClientResult:
         for prefix in ("overrides/", "client-overrides/"):
             for name in z.namelist():
                 if name.startswith(prefix) and not name.endswith("/"):
-                    override_files[str(_safe_rel(name[len(prefix):]))] = z.read(name)
+                    rel = _safe_rel(name[len(prefix):]).as_posix()
+                    if rel not in PROTECTED:
+                        override_files[rel] = z.read(name)
     files = [f for f in index["files"] if (f.get("env") or {}).get("client") != "unsupported"]
     for entry in files:
         _safe_rel(entry["path"])
@@ -255,43 +277,44 @@ def client_install(env: Env, mrpack: Path | None) -> ClientResult:
         seed = _newest([d for d in env.instances.glob("deepcharter*") if d.is_dir()])
         if seed is None:
             raise Fail(f"no deepcharter instance in {env.instances} to start from: Import the .mrpack into Prism once, then re-run")
-    base = seed or target
     game = target / "minecraft"
     if seed is None and env.is_open(game / "logs" / "latest.log"):
         raise Fail(f"the game is running in instance {INSTANCE_ID}: close it first")
 
-    pack_path = base / "mmc-pack.json"
-    pack_json = json.loads(pack_path.read_text())
-    if _component_updates(pack_json, index["dependencies"]) and env.prism_running():
+    pack_json = json.loads(((seed or target) / "mmc-pack.json").read_text())
+    pack_changed = _component_updates(pack_json, index["dependencies"])
+    if pack_changed and env.prism_running():
         raise Fail("the pack needs a different Minecraft or loader version: Quit Prism Launcher, then re-run")
 
-    # Everything is checked and downloaded before the first write, so a failure leaves the instance as it was.
+    # Downloads first, then every delete and write is resolved and checked, and only then is anything written.
     payloads = {entry["path"]: _cached_download(env, entry, entry["path"]) for entry in files}
-
     if seed is not None:
         shutil.copytree(seed, target, symlinks=True)
-        cfg = (target / "instance.cfg").read_text()
-        for key, value in (("name", "Deep Charter"), ("uuid", str(uuid.uuid4())), ("ManagedPackName", index.get("name", "Deep Charter"))):
-            cfg = _set_cfg(cfg, key, value)
-        (target / "instance.cfg").write_text(cfg)
-    cfg = _set_cfg((target / "instance.cfg").read_text(), "ManagedPackVersionName", version)
-    (target / "instance.cfg").write_text(cfg)
-    pack_path = target / "mmc-pack.json"
-    pack_path.write_text(json.dumps(pack_json, indent=4) + "\n")
-
     managed = target / "mrpack"
     old = []
-    if (managed / "modrinth.index.json").is_file():
-        old += [f["path"] for f in json.loads((managed / "modrinth.index.json").read_text()).get("files", [])]
-    if (managed / "overrides.txt").is_file():
-        old += [line.strip() for line in (managed / "overrides.txt").read_text().splitlines() if line.strip()]
-    for path in old:
-        (game / _safe_rel(path)).unlink(missing_ok=True)
+    try:
+        if (managed / "modrinth.index.json").is_file():
+            old += [f["path"] for f in json.loads((managed / "modrinth.index.json").read_text()).get("files", [])]
+        if (managed / "overrides.txt").is_file():
+            old += [line.strip() for line in (managed / "overrides.txt").read_text().splitlines() if line.strip()]
+        deletes, writes = _plan(game, old, [*payloads, *override_files])
+    except Fail:
+        if seed is not None:
+            shutil.rmtree(target)  # the copy is ours: leave nothing half-made
+        raise
 
-    for path, data in {**payloads, **override_files}.items():
-        dest = game / path
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(data)
+    cfg = (target / "instance.cfg").read_text()
+    if seed is not None:
+        for key, value in (("name", "Deep Charter"), ("uuid", uuid.uuid4().hex), ("ManagedPackName", index.get("name", "Deep Charter"))):
+            cfg = _set_cfg(cfg, key, value)
+    (target / "instance.cfg").write_text(_set_cfg(cfg, "ManagedPackVersionName", version))
+    if pack_changed:
+        (target / "mmc-pack.json").write_text(json.dumps(pack_json, indent=4) + "\n")
+    for path in deletes:
+        path.unlink(missing_ok=True)
+    for path, data in zip(writes, [*payloads.values(), *override_files.values()], strict=True):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
     managed.mkdir(exist_ok=True)
     (managed / "modrinth.index.json").write_bytes(index_bytes)
     (managed / "overrides.txt").write_text("".join(f"{path}\n" for path in override_files))
@@ -303,9 +326,15 @@ def client_install(env: Env, mrpack: Path | None) -> ClientResult:
 # ---------------------------------------------------------------- server install
 
 
-def _lock_names(lock: Path | str) -> set[str]:
-    text = lock if isinstance(lock, str) else (lock.read_text() if lock.is_file() else "")
-    return {line.split()[1] for line in text.splitlines() if len(line.split()) >= 3 and not line.startswith("#")}
+def _bare_name(name: str) -> str:
+    """A bare file name: the jar names in a lock or zip become paths under mods/, so no separator and no `..`."""
+    if not name or name in (".", "..") or "/" in name or "\\" in name:
+        raise Fail(f"refusing a mods/ name that is not a bare file name: {name!r}")
+    return name
+
+
+def _lock_names(text: str) -> set[str]:
+    return {_bare_name(line.split()[1]) for line in text.splitlines() if len(line.split()) >= 3 and not line.startswith("#")}
 
 
 def _eula_accepted(server_dir: Path) -> bool:
@@ -334,6 +363,11 @@ def server_install(env: Env, zip_path: Path | None, server_dir: Path) -> list[st
             members["/".join(parts[1:])] = z.read(name)
     if "start.sh" not in members:
         raise Fail(f"{zip_path} has no start.sh")
+    # Every name that becomes a path is checked, in the stored lock too (a previous run wrote it), before the first write.
+    ours = {_bare_name(name.removeprefix("mods/")) for name in members if name.startswith("mods/")}
+    new_lock = _lock_names(members["mods.lock"].decode()) if "mods.lock" in members else set()
+    stored_lock = server_dir / "mods.lock"
+    old_lock = _lock_names(stored_lock.read_text()) if stored_lock.is_file() else set()
 
     first_run = not server_dir.is_dir()
     server_dir.mkdir(parents=True, exist_ok=True)
@@ -346,13 +380,11 @@ def server_install(env: Env, zip_path: Path | None, server_dir: Path) -> list[st
 
     mods = server_dir / "mods"
     mods.mkdir(exist_ok=True)
-    old_lock = _lock_names(server_dir / "mods.lock")
-    new_lock = _lock_names(members["mods.lock"].decode()) if "mods.lock" in members else set()
-    ours = {name.removeprefix("mods/") for name in members if name.startswith("mods/") and name.endswith(".jar")}
     for jar in mods.glob("deepcharter-*.jar"):
         jar.unlink()
     for name in old_lock - new_lock:
-        (mods / name).unlink(missing_ok=True)
+        if (mods / name).is_file() or (mods / name).is_symlink():
+            (mods / name).unlink()
     for name in ours:
         (mods / name).write_bytes(members[f"mods/{name}"])
     (server_dir / "start.sh").write_bytes(members["start.sh"])
@@ -475,7 +507,9 @@ def _send(env: Env, text: str) -> None:
         raise Fail("the server is not running")
     if any(ord(c) < 32 or ord(c) == 127 for c in text) or text.startswith("-"):
         raise Fail("refusing a command with control characters or a leading '-'")
-    _run(env, ["tmux", "send-keys", "-t", SESSION, "-l", text])
+    # tmux reads a final ";" argument as a command separator, even with -l; "\\;" sends the literal.
+    literal = text[:-1] + "\\;" if text.endswith(";") else text
+    _run(env, ["tmux", "send-keys", "-t", SESSION, "-l", "--", literal])
     _run(env, ["tmux", "send-keys", "-t", SESSION, "Enter"])
 
 
@@ -554,11 +588,12 @@ def classify(line: str, seen: set[str]) -> list[str]:
         text = _clean(feedback.group(1) or "") if feedback else ""
         return [f"FEEDBACK {chat.group(1)} {text}"] if chat and text else []
     if level in ("WARN", "ERROR", "FATAL"):
-        signature = NUMBER.sub("N", HEX.sub("H", UUID.sub("U", msg)))
+        label = "WARN" if level == "WARN" else "ERROR"
+        signature = f"{label} {NUMBER.sub('N', HEX.sub('H', UUID.sub('U', msg)))}"
         if signature in seen:
             return []
         seen.add(signature)
-        return [f"{'WARN' if level == 'WARN' else 'ERROR'} {_clean(msg)}"]
+        return [f"{label} {_clean(msg)}"]
     return []
 
 
