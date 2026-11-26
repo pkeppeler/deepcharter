@@ -67,6 +67,7 @@ public class RiddenPodTrackingTest {
                         }
                         // The pilot has the pod. Block the sender, and queue the pod's chunk as LightSync does.
                         setUnacknowledged(sender, NEVER_ACKNOWLEDGED);
+                        // sync-load: run.stage waited for the site's chunks to tick, and the pod is held inside them
                         LevelChunk chunk = run.site().one().getChunkAt(pod.blockPosition());
                         sender.markChunkPendingToSend(chunk);
                         markedAt[0] = mock.sequence().size();
