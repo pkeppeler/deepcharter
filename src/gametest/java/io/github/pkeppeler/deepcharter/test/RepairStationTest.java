@@ -690,50 +690,64 @@ public class RepairStationTest {
             ServerLevel level = helper.getLevel();
             PodEntity pod = station.pod();
             BlockPos centre = helper.absolutePos(new BlockPos(0, 12, 8));
-            pod.setPos(Vec3.atBottomCenterOf(centre));
+            // A 2-wide Mole aligned as the drill leaves it sits on a block corner, its footprint the 2 x 2 cells on the
+            // -x/-z
+            // side of centre. The cube is centred on the footprint's +x/+z cell, centre.
+            pod.setPos(centre.getX(), centre.getY(), centre.getZ());
             // The cube sits on the row of the pod's feet (#1478), so it reaches radius rows under the pod. A pod is 2.9
-            // tall: a cube
-            // round its box's middle sits a row higher, and this test then fails on the stone it leaves under the feet.
-            BlockPos middle = centre;
-            fillArena(helper, middle);
+            // tall: a cube round its box's middle sits a row higher, and this test then fails on the stone it leaves
+            // under the feet.
+            fillArena(helper, centre);
             // One of each thing that must survive, at the edge of the blast and inside it.
             Block[] survivors = {HazardBlocks.COMPANY_ROCK, Blocks.LAVA, Blocks.OAK_PLANKS};
             List<BlockPos> kept = new ArrayList<>();
             for (int i = 0; i < survivors.length; i++) {
-                BlockPos inside = middle.offset(radius, i - 1, radius);
+                BlockPos inside = centre.offset(radius, i - 1, radius);
                 level.setBlock(inside, survivors[i].defaultBlockState(), 3);
                 kept.add(inside);
             }
             board(helper, station);
-            if (!useFromHotbar(station, explosive).consumesAction()) {
-                throw helper.assertionException("%s should work while piloting", explosive);
-            }
+            expect(
+                    helper,
+                    useFromHotbar(station, explosive).consumesAction(),
+                    "%s should work while piloting",
+                    explosive);
             for (int dx = -ARENA; dx <= ARENA; dx++) {
                 for (int dy = -ARENA; dy <= ARENA; dy++) {
                     for (int dz = -ARENA; dz <= ARENA; dz++) {
-                        BlockPos pos = middle.offset(dx, dy, dz);
+                        BlockPos pos = centre.offset(dx, dy, dz);
                         boolean inBlast = Math.abs(dx) <= radius && Math.abs(dy) <= radius && Math.abs(dz) <= radius;
                         boolean stone = level.getBlockState(pos).is(Blocks.STONE);
                         if (kept.contains(pos)) {
-                            if (level.getBlockState(pos).isAir()) {
-                                throw helper.assertionException(
-                                        "%s cleared %s at %s, which is not natural rock",
-                                        explosive, pos, level.getBlockState(pos));
-                            }
+                            expect(
+                                    helper,
+                                    !level.getBlockState(pos).isAir(),
+                                    "%s cleared %s at %s, which is not natural rock",
+                                    explosive,
+                                    pos,
+                                    level.getBlockState(pos));
                         } else if (inBlast && stone) {
-                            throw helper.assertionException(
+                            throw failure(
+                                    helper,
                                     "%s left stone at %s inside its %dx%dx%d blast",
-                                    explosive, pos, 2 * radius + 1, 2 * radius + 1, 2 * radius + 1);
+                                    explosive,
+                                    pos,
+                                    2 * radius + 1,
+                                    2 * radius + 1,
+                                    2 * radius + 1);
                         } else if (!inBlast && !stone) {
-                            throw helper.assertionException("%s cleared %s outside its blast", explosive, pos);
+                            throw failure(helper, "%s cleared %s outside its blast", explosive, pos);
                         }
                     }
                 }
             }
             for (BlockPos pos : kept) {
-                if (level.getBlockState(pos).isAir()) {
-                    throw helper.assertionException("%s cleared the block at %s that must survive", explosive, pos);
-                }
+                expect(
+                        helper,
+                        !level.getBlockState(pos).isAir(),
+                        "%s cleared the block at %s that must survive",
+                        explosive,
+                        pos);
             }
             helper.succeed();
         });
@@ -777,44 +791,51 @@ public class RepairStationTest {
                 PodComponents.register(pod, mole.charter().id());
                 Station station = new Station(mole.pos(), mole.pilot(), mole.charter(), pod);
                 float hull = pod.hull();
-                board(helper, station);
-                expect(
-                        helper,
-                        useFromHotbar(station, explosive).consumesAction(),
-                        "%s should work in a %s",
-                        explosive,
-                        chassis.id());
-                for (int x = 0; x < width; x++) {
-                    for (int z = 0; z < width; z++) {
-                        for (int below = 1; below <= rowsUnder + 1; below++) {
-                            BlockPos cell = corner.offset(x, -below, z);
-                            boolean air = level.getBlockState(cell).isAir();
-                            if (below <= rowsUnder && !air) {
-                                throw failure(
-                                        helper,
-                                        "%s in a %s left %s %d rows under its feet at %s",
-                                        explosive,
-                                        chassis.id(),
-                                        level.getBlockState(cell),
-                                        below,
-                                        cell);
-                            }
-                            if (below > rowsUnder && air) {
-                                throw failure(
-                                        helper,
-                                        "%s in a %s cleared %d rows under its feet at %s, past its %d",
-                                        explosive,
-                                        chassis.id(),
-                                        below,
-                                        cell,
-                                        rowsUnder);
+                try {
+                    board(helper, station);
+                    expect(
+                            helper,
+                            useFromHotbar(station, explosive).consumesAction(),
+                            "%s should work in a %s",
+                            explosive,
+                            chassis.id());
+                    for (int x = 0; x < width; x++) {
+                        for (int z = 0; z < width; z++) {
+                            for (int below = 1; below <= rowsUnder + 1; below++) {
+                                BlockPos cell = corner.offset(x, -below, z);
+                                boolean air = level.getBlockState(cell).isAir();
+                                if (below <= rowsUnder && !air) {
+                                    throw failure(
+                                            helper,
+                                            "%s in a %s left %s %d rows under its feet at %s",
+                                            explosive,
+                                            chassis.id(),
+                                            level.getBlockState(cell),
+                                            below,
+                                            cell);
+                                }
+                                if (below > rowsUnder && air) {
+                                    throw failure(
+                                            helper,
+                                            "%s in a %s cleared %d rows under its feet at %s, past its %d",
+                                            explosive,
+                                            chassis.id(),
+                                            below,
+                                            cell,
+                                            rowsUnder);
+                                }
                             }
                         }
                     }
+                    expectHull(
+                            helper,
+                            pod,
+                            hull,
+                            explosive + " clearing gas pockets in a " + chassis.id() + " vents none");
+                } finally {
+                    mole.pilot().player().stopRiding();
+                    pod.discard();
                 }
-                expectHull(helper, pod, hull, explosive + " clearing gas pockets in a " + chassis.id() + " vents none");
-                mole.pilot().player().stopRiding();
-                pod.discard();
             }
         });
         helper.succeed();
@@ -833,6 +854,54 @@ public class RepairStationTest {
             throw failure(helper, "plastic reaches %d rows under the pod, dynamite %d: one more", plastic, dynamite);
         }
         underThePod(helper, Consumable.PLASTIC_EXPLOSIVES, plastic);
+    }
+
+    /**
+     * #1478: the drill lets a pod sit up to its alignment slack ({@code PodDrill.ALIGNED}, 1e-6) off a block boundary. A 2-wide Mole has
+     * no middle cell, so a cube centred on the box's middle rounded to one side or the other with that slack, and dynamite cleared a
+     * pocket beside the pod on one use and missed it on the next. The cube is placed from the footprint, so a Mole nudged either way
+     * clears the same cells.
+     */
+    @GameTest
+    public void moleDynamiteIgnoresTheAlignmentSlack(GameTestHelper helper) {
+        withStation(helper, station -> {
+            ServerLevel level = helper.getLevel();
+            PodEntity pod = station.pod();
+            // The low corner of the Mole's 2 x 2 footprint; its box's middle is on the corner cell's +x/+z edges.
+            BlockPos corner = helper.absolutePos(new BlockPos(0, 12, 8));
+            double nudge = 5e-7;
+            List<List<BlockPos>> cleared = new ArrayList<>();
+            for (double side : new double[] {-nudge, nudge}) {
+                fillArena(helper, corner);
+                pod.setPos(corner.getX() + 1 + side, corner.getY(), corner.getZ() + 1 + side);
+                board(helper, station);
+                try {
+                    expect(
+                            helper,
+                            useFromHotbar(station, Consumable.DYNAMITE).consumesAction(),
+                            "dynamite should work with the Mole %s off the boundary",
+                            side);
+                } finally {
+                    station.pilot().player().stopRiding();
+                }
+                List<BlockPos> air = new ArrayList<>();
+                for (BlockPos pos : BlockPos.betweenClosed(
+                        corner.offset(-ARENA, -ARENA, -ARENA), corner.offset(ARENA, ARENA, ARENA))) {
+                    if (level.getBlockState(pos).isAir()) {
+                        air.add(pos.immutable().subtract(corner));
+                    }
+                }
+                cleared.add(air);
+            }
+            expect(
+                    helper,
+                    cleared.get(0).equals(cleared.get(1)),
+                    "a Mole nudged %s either side of the boundary cleared %s on the low side, %s on the high side",
+                    nudge,
+                    cleared.get(0),
+                    cleared.get(1));
+            helper.succeed();
+        });
     }
 
     @GameTest

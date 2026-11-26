@@ -90,12 +90,13 @@ final class Consumables {
      * stay. The cube sits on the row the pod's feet are in, not on the middle of its box (#1478): a pod is 2.9 blocks tall, so a cube round its
      * middle reached no row under it, and the slab under the pod is what a pilot spends a stick on (a gas pocket the sounder marks, a slab the
      * drill refuses). So it clears {@code radius} slabs under the pod and {@code radius} rows up from its feet row, short of the roof over a
-     * 3-row cab, which stands.
+     * 3-row cab, which stands. Across, the cube is centred on the footprint's middle cell; a 2-wide Mole has no middle cell, so its extra
+     * column is always on the +x and +z side, whichever way the pod sits within the drill's alignment slack.
      */
     private static Optional<Component> blast(PodEntity pod, int radius, DeepSound sound) {
         ServerLevel level = (ServerLevel) pod.level();
-        Vec3 centre = pod.getBoundingBox().getCenter();
-        BlockPos middle = BlockPos.containing(centre.x, PodFootprint.of(pod).feetY(), centre.z);
+        PodFootprint foot = PodFootprint.of(pod);
+        BlockPos middle = new BlockPos(foot.lowX() + foot.width() / 2, foot.feetY(), foot.lowZ() + foot.width() / 2);
         BlockPos low = middle.offset(-radius, -radius, -radius);
         BlockPos high = middle.offset(radius, radius, radius);
         for (BlockPos cell : BlockPos.betweenClosed(low, high)) {
