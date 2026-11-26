@@ -12,9 +12,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Landing damage reads sink speed, not distance fallen (#319), so a rotor-braked descent is safe; a seated rider is
- * shielded and the hull takes the hit. In the last blocks above the ground the rotor's cushion brakes a crewed pod's
- * sink (#1432), so a careful pilot lands soft.
+ * Landing damage reads sink speed, not distance fallen (#319), and the rotor's ground cushion (#1432); a seated rider
+ * is shielded and the hull takes the hit. The rules are in mechanics.md, Hard landings and Soft landings.
  */
 public final class HardLanding {
     private HardLanding() {}

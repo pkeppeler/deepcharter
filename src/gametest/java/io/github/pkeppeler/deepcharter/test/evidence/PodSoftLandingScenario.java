@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
-
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -17,14 +16,14 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "pod-soft-landing" (#1432): a pilot hovers a pod 7 blocks over a lit floor, lets go of the rotor,
- * and the ground cushion brakes the last blocks of the sink, so the pod lands with its hull unchanged. The SINK plate
- * shows under the band while the pod sinks.
+ * Evidence scenario "pod-soft-landing" (#1432): a crewed pod is held still 7 blocks over a lit floor, then let go with
+ * no keys, and the ground cushion brakes the last blocks of the sink, so the pod lands with its hull unchanged. The
+ * SINK plate shows under the band while the pod sinks. On main the same drop lands at about 19 blocks a second and
+ * costs hull.
  */
 public class PodSoftLandingScenario extends EvidenceScenario {
     private static final int X = 5250;
@@ -33,11 +32,21 @@ public class PodSoftLandingScenario extends EvidenceScenario {
     private static final int FLOOR_Y = LAYER_ROOM_Y;
 
     private static final int HOVER_BLOCKS = 7;
+    /** The least height of the hull over the floor at the release that the evidence accepts (#1432's review). */
+    private static final double MIN_RELEASE_BLOCKS = 6;
+
     private static final int ROOM_RADIUS = 5;
     private static final int ROOM_HEIGHT = 14;
-    private static final int HOVER_TICKS = 40;
+    private static final int HOVER_TICKS = 20;
     private static final int HOVER_TICKS_PER_FRAME = 1;
     private static final int MAX_SINK_TICKS = 100;
+    /**
+     * The server's ticks a second while the pod sinks: a slow motion, so the recording, a few frames a second under a
+     * software renderer, holds every tick of the sink and the cushion's brake.
+     */
+    private static final float SINK_TICK_RATE = 2f;
+
+    private static final float NORMAL_TICK_RATE = 20f;
 
     @Override
     protected String name() {
@@ -71,7 +80,7 @@ public class PodSoftLandingScenario extends EvidenceScenario {
                 player.teleportTo(one, X + 0.5, FLOOR_Y + 1 + HOVER_BLOCKS, Z + 0.5, Set.of(), 0, 0, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X + 0.5, FLOOR_Y + 1 + HOVER_BLOCKS, Z + 0.5);
-                // Held still until the client has the room drawn; the hover starts after.
+                // Held still at the hover height until the release, so the drop starts from rest at a known height.
                 pod.setNoGravity(true);
                 one.addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
@@ -86,32 +95,30 @@ public class PodSoftLandingScenario extends EvidenceScenario {
             context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
             ClientWait.until(
                     context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
-            singleplayer
-                    .getServer()
-                    .runOnServer(server -> TestEntities.vehicle(
-                                    server.getPlayerList().getPlayers().getFirst(), PodEntity.class)
-                            .setNoGravity(false));
-
-            // Hover: the pilot taps the rotor whenever the pod sinks.
-            for (int tick = 1; tick <= HOVER_TICKS; tick++) {
-                pilot(singleplayer, true);
-                context.waitTicks(1);
-                if (tick % HOVER_TICKS_PER_FRAME == 0) {
-                    frame(context);
-                }
-            }
+            // The hover: the pod hangs still with the pilot aboard and no keys held.
+            tickFrames(context, HOVER_TICKS);
             screenshot(context, "soft-landing-hover");
             float hullBefore = hull(singleplayer);
+            double released = singleplayer.getServer().computeOnServer(server -> {
+                server.tickRateManager().setTickRate(SINK_TICK_RATE);
+                PodEntity pod =
+                        TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
+                pod.setDeltaMovement(0, 0, 0);
+                pod.setNoGravity(false);
+                return pod.getBoundingBox().minY - (FLOOR_Y + 1);
+            });
+            if (released < MIN_RELEASE_BLOCKS) {
+                throw new AssertionError("The pod should be let go at least " + MIN_RELEASE_BLOCKS
+                        + " blocks over the floor, was " + released);
+            }
+            DeepCharter.LOGGER.info("pod-soft-landing: let go {} blocks over the floor", released);
 
             // Let go: the pod sinks under the SINK plate, and the cushion brakes it in the last 3 blocks.
             int ticks = 0;
             boolean gauged = false;
             while (!podOnGround(singleplayer) && ticks < MAX_SINK_TICKS) {
-                pilot(singleplayer, false);
                 context.waitTicks(1);
                 ticks++;
-                // Two frames a tick: the sink plays at half speed, so the SINK plate and the cushion's brake read.
-                frame(context);
                 frame(context);
                 if (!gauged
                         && context.computeOnClient(
@@ -121,6 +128,9 @@ public class PodSoftLandingScenario extends EvidenceScenario {
                     screenshot(context, "soft-landing-sinking");
                 }
             }
+            singleplayer
+                    .getServer()
+                    .runOnServer(server -> server.tickRateManager().setTickRate(NORMAL_TICK_RATE));
             if (!podOnGround(singleplayer)) {
                 throw new AssertionError("The pod did not land within " + MAX_SINK_TICKS + " ticks");
             }
@@ -133,21 +143,12 @@ public class PodSoftLandingScenario extends EvidenceScenario {
             }
             float hullAfter = hull(singleplayer);
             if (hullAfter != hullBefore) {
-                throw new AssertionError("A pod let sink from a hover " + HOVER_BLOCKS
-                        + " blocks up should land with its hull unchanged, " + hullBefore + " before and " + hullAfter
-                        + " after");
+                throw new AssertionError("A pod let go " + released
+                        + " blocks over the floor should land with its hull unchanged, " + hullBefore + " before and "
+                        + hullAfter + " after");
             }
             screenshot(context, "soft-landing-landed");
         }
-    }
-
-    /** Hovering, taps the rotor while the pod sinks; otherwise gives no keys. */
-    private static void pilot(TestSingleplayerContext singleplayer, boolean hover) {
-        singleplayer.getServer().runOnServer(server -> {
-            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            boolean tap = hover && player.getVehicle() instanceof PodEntity pod && pod.getDeltaMovement().y < 0;
-            player.setLastClientInput(tap ? JUMP : Input.EMPTY);
-        });
     }
 
     private static float hull(TestSingleplayerContext singleplayer) {

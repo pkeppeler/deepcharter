@@ -10,11 +10,7 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param cushionSink   the cushion brakes a sink down to this and no slower, 0 or more
  */
 public record HardLandingTuning(double cushionHeight, double cushionBrake, double cushionSink) {
-    /**
-     * (A) 3 blocks, 0.12 a tick down to 0.4: a pod let sink from a hover 8 blocks up lands under the 0.7 buffer, one
-     * from 10 just over it, and a free fall down a deep shaft spends a tick in the cushion and still wrecks the pod
-     * (mechanics.md, Soft landings).
-     */
+    /** (A) The numbers and what they land are in mechanics.md, Soft landings. */
     public static final HardLandingTuning DEFAULT = new HardLandingTuning(3, 0.12, 0.4);
 
     public HardLandingTuning {

@@ -344,17 +344,20 @@ public record CockpitLook(
      * {@code warnColor} near the buffer and {@code lowColor} past it.
      *
      * @param warnColor the readout near the buffer ({@code ribbonWarn})
+     * @param showShare the share of the buffer the sink must reach to put the plate up, so a short drop (a block bored
+     *     straight down drops the pod one) does not blink it
      * @param warnShare the share of the buffer from which the readout is in {@code warnColor}
      * @param barWidth the bar's width
      * @param barHeight the bar's height
      * @param segments how many segments the bar is cut in
      * @param limit the segment after which the buffer is marked: the bar runs to {@code segments / limit} of the buffer
      * @param barGap the space between the title and the bar
-     * @param holdTicks the client ticks the plate stays up after the pod stops sinking, so a hover's feathering does
-     *     not blink it
+     * @param holdTicks the client ticks the plate stays up after the sink falls under {@code showShare}, so a hover's
+     *     feathering does not blink it
      */
     public record SinkLook(
             int warnColor,
+            double showShare,
             double warnShare,
             int barWidth,
             int barHeight,
@@ -370,6 +373,7 @@ public record CockpitLook(
             }
             return new SinkLook(
                     d.color("ribbonWarn"),
+                    d.decimal("sinkShowShare", 0, 1),
                     d.decimal("sinkWarnShare", 0, 1),
                     d.integer("sinkBarW", 1, 256),
                     d.integer("sinkBarH", 1, 64),

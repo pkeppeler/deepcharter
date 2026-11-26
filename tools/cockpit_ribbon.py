@@ -63,12 +63,13 @@ SHARED = {
     "decayCellTicks": 3, "decayDeadColor": "#0A0E0D", "decayBaseNoise": 0.7, "decayStaticDots": 400, "decayDotSize": 1, "decayDotAlphaMin": 70, "decayStaticColor": "#B8C4C0",
     "decayTearBands": 3, "decayTearAlpha": 70, "decayTagColor": "#9FB0AB", "decayLostColor": "#FF3A2A",
     "decayCueSlowTicks": 70, "decayCueFastTicks": 12, "decayAlarmTicks": 20,
-    # The SINK readout (#1432): the sink against the hard-landing buffer, the title and a bar on a plate hung under the band's middle while the pod sinks. The bar's
-    # limit mark is after sinkLimit of its segments; it turns ribbonWarn from sinkWarnShare of the buffer and lowColor past it, and stays sinkHoldTicks after the sink.
-    "ribbonWarn": "#FFB02E", "sinkWarnShare": 0.75, "sinkBarW": 16, "sinkBarH": 5, "sinkSegments": 8, "sinkLimit": 6, "sinkBarGap": 2, "sinkHoldTicks": 20,
+    # The SINK readout (#1432): the sink against the hard-landing buffer, the title and a bar on a plate hung under the band's middle while the pod sinks past
+    # sinkShowShare of the buffer. The bar's limit mark is after sinkLimit of its segments; it turns ribbonWarn from sinkWarnShare of the buffer and lowColor past
+    # it, and stays sinkHoldTicks after the sink.
+    "ribbonWarn": "#FFB02E", "sinkShowShare": 0.6, "sinkWarnShare": 0.75, "sinkBarW": 12, "sinkBarH": 5, "sinkSegments": 4, "sinkLimit": 3, "sinkBarGap": 2, "sinkHoldTicks": 20,
 }
-# The SINK readout's title, as the game draws it in its own font.
-SINK_TITLE = "SINK"
+# The width of the SINK readout's title, "SINK", as the game's font measures it: its I is narrower than FONT_W.
+SINK_TITLE_W = 22
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -344,7 +345,7 @@ def sink_box(look):
     """The SINK readout's plate on the 427 x 240 screen, (left, top, width, height), as the client puts it: centred under the band (under the altimeter's recess) and
     hung from its lower edge. The coverage counts it although it shows only while the pod sinks."""
     inset = look.sprites["plate"].border[0] + SHARED["titleGap"]
-    width = len(SINK_TITLE) * FONT_W - 1 + SHARED["sinkBarGap"] + SHARED["sinkBarW"] + 2 * inset
+    width = SINK_TITLE_W + SHARED["sinkBarGap"] + SHARED["sinkBarW"] + 2 * inset
     height = max(SHARED["titleTextHeight"], SHARED["sinkBarH"]) + 2 * inset
     band = look.parts["part_a"]
     return band.left(SCREEN_W) + (band.w - width) // 2, band.top(SCREEN_H) + band.h, width, height

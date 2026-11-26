@@ -46,7 +46,7 @@ import org.jspecify.annotations.Nullable;
  * gauge or the scanner's window, draws static over the scanner, makes a gauge or the plate's numbers jump, and swaps the plate for a tag. It never touches the hull lamp or
  * the burning lamp, which stay true so that a pilot who dies in the dark still sees what killed them, and the scanner's cells are drawn by {@link ScannerHud} unchanged.
  *
- * <p>While the pod sinks, a SINK plate hangs under the band's middle (#1432, {@link CockpitReading#sink}): the sink
+ * <p>While the pod sinks fast, a SINK plate hangs under the band's middle (#1432, {@link CockpitReading#sink}): the sink
  * against the hard-landing buffer, marked, in the hull gauge's colour, {@code ribbonWarn} near the buffer and the
  * warning colour past it. It reads the depth gauge's signal, as the altimeter does.
  */
@@ -90,7 +90,7 @@ public final class CockpitHud {
     }
 
     private static double heat;
-    /** Client ticks the SINK plate stays up: reset while the pod sinks, counted down after. */
+    /** Client ticks the SINK plate stays up: reset while the pod sinks past the plate's show share, counted down after. */
     private static int sinkHold;
 
     private CockpitHud() {}
@@ -199,7 +199,7 @@ public final class CockpitHud {
                 : Math.max(0.0, heat - look.heatFallPerTick());
         if (pod.onGround()) {
             sinkHold = 0;
-        } else if (CockpitReading.of(pod, heat).sink() > 0) {
+        } else if (CockpitReading.of(pod, heat).sink() >= look.sink().showShare()) {
             sinkHold = look.sink().holdTicks() + 1;
         } else if (sinkHold > 0) {
             sinkHold--;
@@ -387,7 +387,7 @@ public final class CockpitHud {
         return new boolean[] {fuelLow, hullLow, burning, readout.stream().anyMatch(line -> line.kind() == Kind.ALERT)};
     }
 
-    /** Whether the SINK plate is up: the pod is airborne and sank within the plate's hold time. */
+    /** Whether the SINK plate is up: the pod is airborne and sank past the show share within the plate's hold time. */
     public static boolean sinkShown(PodEntity pod) {
         return sinkHold > 0 && !pod.onGround();
     }

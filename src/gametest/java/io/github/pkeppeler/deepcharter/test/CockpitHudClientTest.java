@@ -114,6 +114,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     private static final int TITLE_OVERHANG = 4;
     /** The pod rises this far over the floor before it is let sink, for the SINK plate. */
     private static final int SINK_DROP = 20;
+    /** A sink share well past the buffer, which the 20-block drop passes with blocks to spare. */
+    private static final double SINK_PAST_BUFFER = 1.2;
     /** How much of the strip the action bar line takes when it is drawn: a few lines of text. */
     private static final double MESSAGE_DRAWN = 0.02;
 
@@ -997,7 +999,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     /**
      * The SINK plate draws while the pod sinks, in the hull gauge's colour, {@code ribbonWarn} near the buffer or the
      * warning colour past it, and is gone once the pod has landed. The pod rises {@link #SINK_DROP} blocks and is let
-     * fall onto the floor.
+     * fall onto the floor. Then a drop of one block, as a block bored straight down gives, never puts it up.
      */
     private void expectTheSinkPlateShowsWhileThePodSinks(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
@@ -1034,13 +1036,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             return new int[] {x, box.top() + box.height() / 2};
         });
         // Shot at once: the pod lands in about a second.
-        BufferedImage sinking;
-        try {
-            sinking = ImageIO.read(context.takeScreenshot("cockpit-sink").toFile());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        int lit = sinking.getRGB(probe[0] * GUI_SCALE, probe[1] * GUI_SCALE) & 0xFFFFFF;
+        int lit = pixel(context, "cockpit-sink", probe);
         Set<Integer> stateColors =
                 Set.of(look.hullColor() & 0xFFFFFF, look.sink().warnColor() & 0xFFFFFF, look.lowColor() & 0xFFFFFF);
         if (!stateColors.contains(lit)) {
@@ -1049,14 +1045,68 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
         ClientWait.until(
                 context,
+                "the pod sinking past " + SINK_PAST_BUFFER + " of the buffer",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && CockpitReading.of(shown, 0).sink() > SINK_PAST_BUFFER);
+        int past = pixel(context, "cockpit-sink-past", probe);
+        if (past != (look.lowColor() & 0xFFFFFF)) {
+            throw new AssertionError("Past the buffer the SINK bar is in the warning colour "
+                    + Integer.toHexString(look.lowColor() & 0xFFFFFF) + ", got " + Integer.toHexString(past));
+        }
+        ClientWait.until(
+                context,
                 "the pod landed and the SINK plate gone",
                 client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
                         && shown.onGround()
                         && !CockpitHud.sinkShown(shown));
+        expectAOneBlockDropKeepsTheSinkPlateDown(context, singleplayer, pod);
         singleplayer.getServer().runOnServer(server -> {
             pod.setNoGravity(true);
             pod.setPos(0.5, FEET_Y, 0.5);
         });
+    }
+
+    /**
+     * A pod held one block over the floor and let go never shows the SINK plate on its way down: a drill-down step
+     * drops the pod a block, and the plate would blink at every block bored.
+     */
+    private static void expectAOneBlockDropKeepsTheSinkPlateDown(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
+        double floor = singleplayer.getServer().computeOnServer(server -> {
+            pod.setNoGravity(true);
+            pod.setDeltaMovement(0, 0, 0);
+            pod.setPos(0.5, pod.getY() + 1, 0.5);
+            return pod.getY() - 1;
+        });
+        ClientWait.until(
+                context,
+                "the pod held a block over the floor",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && !shown.onGround()
+                        && shown.getY() > floor + 0.9);
+        singleplayer.getServer().runOnServer(server -> pod.setNoGravity(false));
+        boolean[] shownOnTheWay = {false};
+        ClientWait.until(context, "the pod down the one block", client -> {
+            if (!(ClientSession.player(client).getVehicle() instanceof PodEntity shown)) {
+                return false;
+            }
+            shownOnTheWay[0] |= CockpitHud.sinkShown(shown);
+            return shown.onGround() && shown.getY() < floor + 0.1;
+        });
+        if (shownOnTheWay[0]) {
+            throw new AssertionError("A drop of one block put the SINK plate up; it should wait for a sink of "
+                    + CockpitLook.current().sink().showShare() + " of the buffer");
+        }
+    }
+
+    /** The colour of the GUI pixel {@code at} in a screenshot taken now. */
+    private static int pixel(ClientGameTestContext context, String name, int[] at) {
+        try {
+            BufferedImage shot = ImageIO.read(context.takeScreenshot(name).toFile());
+            return shot.getRGB(at[0] * GUI_SCALE, at[1] * GUI_SCALE) & 0xFFFFFF;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /** The plates to fit: each warning alone, and every warning a pilot can have at once with every note too. */
