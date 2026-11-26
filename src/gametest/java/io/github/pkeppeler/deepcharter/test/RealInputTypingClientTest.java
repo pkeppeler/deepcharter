@@ -48,10 +48,16 @@ public class RealInputTypingClientTest implements FabricClientGameTest {
         }
     }
 
-    /** The scancode the mapping is bound to now, read from the mapping, so a changed default binding does not change what the test types. */
+    /**
+     * The scancode the mapping is bound to now, read from the mapping, so a changed default binding does not change what the test types.
+     * An unbound or mouse-bound mapping has no scancode to type, so it fails here.
+     */
     private static int boundKey(ClientGameTestContext context, KeyMapping mapping) {
-        return context.computeOnClient(
-                client -> KeyMappingHelper.getBoundKeyOf(mapping).getValue());
+        InputConstants.Key bound = context.computeOnClient(client -> KeyMappingHelper.getBoundKeyOf(mapping));
+        require(
+                bound.getType() == InputConstants.Type.KEYBOARD && bound.getValue() > 0,
+                mapping.getName() + " must be bound to a keyboard key, was " + bound);
+        return bound.getValue();
     }
 
     /** The character the key at {@code scancode} types, unshifted, on the current keyboard layout ('r' for KEY_R on QWERTY). */

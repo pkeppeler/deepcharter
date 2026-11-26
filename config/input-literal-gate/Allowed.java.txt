@@ -24,6 +24,8 @@ class Allowed {
 	String o = "// input-literal: in a string, no marker"; boolean p = event.button() == InputConstants.MOUSE_BUTTON_LEFT;
 	// Object r = context.getInput().typeChars("o"); a commented line
 	String s = "context.getInput().typeChars(o) and screen.charTyped(e) in a string";
+	/** The {@code charTyped} handler and {@code RealInput::typeChars} are named, not called. */
+	// {@code screen::charTyped} in a comment
 	Object t = RealInput.type(context, "o");
 	Object u = context.getInput().typeChars("o"); // input-literal: a runner key press the test needs without its text
 	Object v = screen.charTyped(event); // input-literal: the screen's own handler is the unit under test

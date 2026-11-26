@@ -26,4 +26,7 @@ class Flagged {
 	Object x = screen.charTyped(new CharacterEvent(c));
 	Object y = screen
 			.charTyped(event);
+	Object z = screen::charTyped;
+	list.forEach(screen::charTyped);
+	Object q = RealInput::typeChars;
 }
