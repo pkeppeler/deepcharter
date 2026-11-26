@@ -2002,13 +2002,15 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **The draw.** Each layer's floor is a boundary. One hash of the world seed and the boundary's own Y (the lowest row of its crust) decides it, and about a third come out grained (`grainDecoyChance`). The Y is the identity, not the band's place in the list: the bands are fixed in Y, so a band added anywhere redraws no other boundary, and no chunk is asked: every chunk reaches the same answer. A chunk pass (`GrainedCrustPass`, a placed feature of the unbuilt-depth biome, which every column of the campaign world holds) swaps the breach crust that the material rule lays for the grained crust where the draw says so. The grained crust takes the breach crust's place in the floor rows, so it carries the same hardening (#1110 below): bedrock's blast resistance, immovable, and wither- and dragon-immune.
 
-**Layer data.** A `deepcharter:bands` layer takes `floor_crust`: `draw` (the default), `normal` or `grained`. A seam's layer sets `grained`; the first breach (layer 1 to 2) sets `normal`, because handbook chapter 8 teaches it. Layer 2's floor is `normal` until layer 3's band gives it a boundary to draw for (#1022, waits on #972), so nothing in the live game is a decoy yet.
+**Layer data.** A `deepcharter:bands` layer takes `floor_crust`: `draw` (the default), `normal` or `grained`. A seam's layer sets `grained`; the first breach (layer 1 to 2) sets `normal`, because handbook chapter 8 teaches it. Layers 2 and 3 say nothing of their floors, so both are drawn, and only layer 1's floor is `normal`. No seam's layer data exists yet (seams are #217), so nothing sets `grained` in the shipped data.
+
+**The rules a grained floor keeps.** A grained floor is as hard to get through as a breach crust, or a player could skip the breach by picking through it. A hand tool treats it as a pod-only block at the same cost (`HandBreak`, ADR 0069), a charge does not open it (it is not Company rock or natural rock, and it has bedrock's blast resistance), and the drill refuses the last layer's floor whichever crust it is (`PodDrill`), so the protection never depends on the last floor's layer data. A drill bores a grained floor above the last layer as any rock, with none of the breach crust's hull damage.
 
 **Ladder.** None: a decoy is the same block with the same rules as a seam, so no counterplay tells them apart. A decoy that squeezes less would give the seam away.
 
 **Trade-offs.** A decoy costs the player nothing they would not pay at a seam, but it is a crust that the drill must bore straight down through, and one a pod cannot park on. The drill takes no crust hull damage through a grained crust (that is the breach crust's), only the squeeze if the pod stops. A generated grained crust next to fluid already in the world is not flagged changed (worldgen sends no neighbour update), so it absorbs only once that fluid flows; crust rows are rock-sealed in practice.
 
-**Knobs.** `grainDecoyChance` (1/3). **Open questions.** Whether the crust of the last layer (nothing below it) should be refused to the drill as the breach crust is: a grained one is not, today.
+**Knobs.** `grainDecoyChance` (1/3). **Open questions.** None.
 
 
 ## Company rations (#838, A)

@@ -295,7 +295,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 ## 9. On foot
 
 - Hybrid play: leave the pod to explore caverns, fight and build.
-- **Hardness:** the way through pod-only blocks (the breach crust, Company rock, and rock below layer 1) is a pod drill. Any hand tool (pickaxe, axe, shovel, hoe, sword or spear) can brute-force one, in any layer, at 60 seconds a block and a ruinous cost that Unbreaking and Mending cannot lower: a diamond or better tool pays half its durability, and a lesser tool (wood, stone, iron, gold, copper) is destroyed as the block goes. It drops nothing, and the game says what the player is doing wrong ([ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
+- **Hardness:** the way through pod-only blocks (the breach crust, the grained crust, Company rock, and rock below layer 1) is a pod drill. Any hand tool (pickaxe, axe, shovel, hoe, sword or spear) can brute-force one, in any layer, at 60 seconds a block and a ruinous cost that Unbreaking and Mending cannot lower: a diamond or better tool pays half its durability, and a lesser tool (wood, stone, iron, gold, copper) is destroyed as the block goes. It drops nothing, and the game says what the player is doing wrong ([ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
 - **Environment:** heat, pressure and toxic air outside the pod, worse with depth.
 - **Suit timer:** how long you can stay on foot outside a pod or habitable outpost.
 - **Suit:** upgraded separately: oxygen and toxins, heat, pressure, lamp battery.
