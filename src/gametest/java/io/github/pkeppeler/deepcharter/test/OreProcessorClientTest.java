@@ -28,8 +28,12 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -38,6 +42,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
@@ -49,6 +54,8 @@ import net.minecraft.world.item.ItemStack;
  */
 public class OreProcessorClientTest implements FabricClientGameTest {
     private static final String CHARTER = "Processor Test Charter";
+    /** A price line as {@code screen.deepcharter.processor.price} draws it: the ore's name, two spaces, the dollars. */
+    private static final Pattern PRICE_LINE = Pattern.compile("(.+)  \\$(\\d+)");
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -74,6 +81,13 @@ public class OreProcessorClientTest implements FabricClientGameTest {
                     "the processor screen finished typing",
                     client -> screen.typewriter().done(),
                     client -> "typewriter text '" + screen.typewriter().text() + "'");
+
+            // #1445: the price column lists every ore once, dearest first, as drawn.
+            List<Long> prices = context.computeOnClient(client -> drawnPrices(screen));
+            require(prices.size() == OreType.values().length, "the screen draws a price for each ore, got " + prices);
+            for (int i = 1; i < prices.size(); i++) {
+                require(prices.get(i - 1) >= prices.get(i), "the prices run dearest first, got " + prices);
+            }
 
             long cargo = (long) OreType.GOLDIUM.value() + OreType.PLATINIUM.value();
             context.clickScreenButton("SELL ALL POD CARGO");
@@ -423,6 +437,21 @@ public class OreProcessorClientTest implements FabricClientGameTest {
         return screen.children().stream()
                 .filter(OrderRowButton.class::isInstance)
                 .map(OrderRowButton.class::cast)
+                .toList();
+    }
+
+    /** The dollars of each ore price line the screen draws, top to bottom, read off the drawn text. */
+    private static List<Long> drawnPrices(OreProcessorScreen screen) {
+        List<String> names = Arrays.stream(OreType.values())
+                .map(ore -> Component.translatable(OreRegistry.item(ore).getDescriptionId())
+                        .getString()
+                        .toUpperCase(Locale.ROOT))
+                .toList();
+        return DrawnText.of(screen).stream()
+                .sorted(Comparator.comparingInt(drawn -> drawn.box().y()))
+                .map(drawn -> PRICE_LINE.matcher(drawn.text()))
+                .filter(line -> line.matches() && names.contains(line.group(1)))
+                .map(line -> Long.parseLong(line.group(2)))
                 .toList();
     }
 

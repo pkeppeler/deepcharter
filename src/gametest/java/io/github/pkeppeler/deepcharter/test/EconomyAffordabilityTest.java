@@ -68,8 +68,8 @@ public class EconomyAffordabilityTest {
 
     private static final int RESTORE_RUNS_MAX = 6;
     /**
-     * Cicatrium sells for $1,500. What a run finds of it in the deepest zone is at most this share of the run's other income (it is
-     * about a fifth today). Half is room for a retune of the ore and still a stop for one that makes selling it the main income.
+     * Cicatrium is the dearest ore (#1445), so selling it against keeping it for a restore is a choice. What a run finds of it in the
+     * deepest zone is at most this share of the run's other income (about two fifths at $2,500): a windfall, never the main income.
      */
     private static final double CATALYST_SALE_SHARE = 0.5;
     /** A straight layer 1 shaft, paid in blasting charges, costs this many stock layer 1 runs at most (#509). */
@@ -732,9 +732,10 @@ public class EconomyAffordabilityTest {
         HangarTuning.RestoreCost cost = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR);
         Run run = EarlyRunModel.layerTwoRun(Zone.load("prospectors_run"), EarlyRunModel.mole(2, 2, 2));
         LOGGER.info(
-                "[economy] Prospector restore: {} Cicatrium, {} advanced; from ore alone, at {} per run in the deepest zone, it would take {} runs",
+                "[economy] Prospector restore: {} Cicatrium, {} advanced, ${} if sold; from ore alone, at {} per run in the deepest zone, it would take {} runs",
                 cost.catalysts(),
                 cost.advance(),
+                (long) cost.catalysts() * OreType.CICATRIUM.value(),
                 run.catalysts(),
                 Math.ceil(cost.catalysts() / run.catalysts()));
         if (cost.advance() < cost.catalysts()) {

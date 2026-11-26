@@ -30,6 +30,7 @@ import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.ToLongFunction;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -1334,6 +1335,60 @@ public class OreProcessorTest {
                 bad.discard();
             }
         });
+        helper.succeed();
+    }
+
+    /** #1445: the user's pick, Cicatrium is the most valuable ore, above Einsteinium. */
+    @GameTest
+    public void cicatriumIsTheMostValuableOre(GameTestHelper helper) {
+        for (OreType ore : OreType.values()) {
+            if (ore != OreType.CICATRIUM && ore.value() >= OreType.CICATRIUM.value()) {
+                throw helper.assertionException(
+                        "Cicatrium ($%s) must sell for more than every other ore, but %s sells for $%s",
+                        OreType.CICATRIUM.value(), ore, ore.value());
+            }
+        }
+        helper.succeed();
+    }
+
+    /** #1445: the processor lists the ores dearest first, every ore once. */
+    @GameTest
+    public void theOresByPriceAreDearestFirst(GameTestHelper helper) {
+        List<OreType> listed = OreType.dearestFirst(OreType::value);
+        if (listed.size() != OreType.values().length || !listed.containsAll(List.of(OreType.values()))) {
+            throw helper.assertionException("the price list must hold every ore once, got %s", listed);
+        }
+        for (int i = 1; i < listed.size(); i++) {
+            if (listed.get(i - 1).value() < listed.get(i).value()) {
+                throw helper.assertionException("the price list must run dearest first, got %s", listed);
+            }
+        }
+        helper.succeed();
+    }
+
+    /** #1445: the order comes from the prices, not the enum's order, so a retuned price moves its ore. */
+    @GameTest
+    public void theOrderFollowsThePricesNotTheEnum(GameTestHelper helper) {
+        // Ironium and Einsteinium swap prices: Einsteinium, the cheapest now, must end the list, which neither the
+        // enum's
+        // order nor a sort by the ores' own values does.
+        ToLongFunction<OreType> swapped = ore -> switch (ore) {
+            case IRONIUM -> OreType.EINSTEINIUM.value();
+            case EINSTEINIUM -> OreType.IRONIUM.value();
+            default -> ore.value();
+        };
+        List<OreType> listed = OreType.dearestFirst(swapped);
+        for (int i = 1; i < listed.size(); i++) {
+            if (swapped.applyAsLong(listed.get(i - 1)) < swapped.applyAsLong(listed.get(i))) {
+                throw helper.assertionException(
+                        "with Ironium and Einsteinium's prices swapped, the list must still run dearest first, got %s",
+                        listed);
+            }
+        }
+        if (listed.getLast() != OreType.EINSTEINIUM) {
+            throw helper.assertionException(
+                    "with Ironium and Einsteinium's prices swapped, Einsteinium must end the list, got %s", listed);
+        }
         helper.succeed();
     }
 }

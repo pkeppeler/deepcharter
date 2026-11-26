@@ -598,13 +598,14 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
             Level level = Objects.requireNonNull(
                     Objects.requireNonNull(minecraft, "a screen draws once it is open").level,
                     "a processor screen opens in a world");
-            for (OreType ore : OreType.values()) {
+            int terminalY = view.pos().getY();
+            for (OreType ore : OreType.dearestFirst(type -> OutpostRates.orePrice(level, terminalY, type))) {
                 String price = Component.translatable(
                                 "screen.deepcharter.processor.price",
                                 Component.translatable(OreRegistry.item(ore).getDescriptionId())
                                         .getString()
                                         .toUpperCase(Locale.ROOT),
-                                OutpostRates.orePrice(level, view.pos().getY(), ore))
+                                OutpostRates.orePrice(level, terminalY, ore))
                         .getString();
                 CrtDraw.glowText(graphics, font, price, x, y, PanelLook.dimText(tuning.dimColor()));
                 y += priceStep();

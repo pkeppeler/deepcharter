@@ -10,12 +10,19 @@ Mechanics invented under the creative liberty of the `designing-mechanics` skill
 
 **Why not the others.**
 - A guaranteed source in the world (ore in a wreck bay): it exists once per world, so only the first charter gets it. Every charter has its own onboarding.
-- Tuning the ore rate: 3 in 4 runs needs about 0.0077 per block, 13 times the deepest zone's rate, which makes Cicatrium ($1,500) the best ore to sell.
+- Tuning the ore rate: 3 in 4 runs needs about 0.0077 per block, 13 times the deepest zone's rate, which would make Cicatrium the main income of every run.
 - Lowering the restore's cost: it makes the catalyst a trinket.
 
-**Selling.** There is nothing to sell: the advance is consumed by the restore. The ore's $1,500 value and its catalyst role are unchanged. A test caps what a run's Cicatrium may be worth against its other income.
+**Selling.** There is nothing to sell of the advance: the restore consumes it. Cicatrium dug from the ore is the dearest ore (below) and the catalyst for every later restore. A test caps what a run's Cicatrium may be worth against its other income.
 
-**Knobs.** `HangarTuning.RestoreCost.advance` (3, next to `catalysts`; a test requires advance >= catalysts for the Prospector). The money price. The ore chances in `fill_shift_change.json` and `fill_prospectors_run.json`.
+**Price (#1445, A).** The user picked Cicatrium as the most valuable ore, above Einsteinium's $2,000. It sells for **$2,500** ($2,000 at an outpost's four fifths), so every Cicatrium dug is a choice between a windfall and a kept catalyst:
+- Selling: one is about 5.5 layer 2 runs of a Mole with tier 2 parts ($455 a run), the price of a tier 3 suit part. The restore's three are $7,500, 5.4 times the restore's $1,390 and 16 such runs.
+- Keeping: the advance covers the first Prospector only. A second one (a wrecked Prospector, or a pod for a second pilot) takes three dug Cicatrium, about 37 runs of finding in Prospector's Run. A Prospector with tier 3 parts nets $1,728 a layer 2 run, so a kept three pay back their sale price in about six of its runs over a Mole's.
+- Per trip, from `EarlyRunModel` (a Mole with tier 2 parts in layer 2): Prospector's Run (0.06% of blocks) finds 0.081 a run, $202 at $2,500 (was $121), 38% of the $529 its other ore nets. Shift Change (0.02%) finds a third of that, $67 a run. Selling stays a windfall on top of the run, capped at half its other ore.
+- Not higher: above about $3,280 the deepest zone's Cicatrium is worth over half a run's other income, and the cap test fails. Not just over $2,000: a hair above Einsteinium reads as a tie on the price list.
+- The processor lists ores dearest first, so Cicatrium heads the list. The order is computed from the prices (`OreType.dearestFirst`); the enum's order is unchanged because the network carries an ore by ordinal.
+
+**Knobs.** `HangarTuning.RestoreCost.advance` (3, next to `catalysts`; a test requires advance >= catalysts for the Prospector). The money price. Cicatrium's value in `OreType` ($2,500). The ore chances in `fill_shift_change.json` and `fill_prospectors_run.json`.
 
 **Open questions.**
 - Should a later chassis restore (the Badger) carry an advance too, or is Cicatrium from the ore the intended wait there?
@@ -590,7 +597,7 @@ So a broke pilot scrapes once, makes one slow trip, and pays for a near-full ser
 - **A guest pays the outpost's own prices and the owner takes no cut.** Rates read the level, not the charter (`OutpostRates`), and SPEC section 6 forbids money passing between charters.
 - The shell is sealed against lava and gas before the cut (`RoomSeal`), and the outposts are saved per charter in `OutpostData` (version 1, `Unreadable` fallback).
 
-**What it costs to run.** Prices depend on the level the terminal is in (`OutpostRates`), so every pump and sell terminal underground is an outpost's: a litre costs 2 times the colony's ($2) and ore pays 80 percent of its value (Ironium $24, Bronzium $48, Silverium $80, Goldium $200, Platinium $600, Einsteinium $1,600). SPEC says outposts sell at worse rates, so the surface trip still matters: for the 25 percent that these terms take from a run, for the upgrade, repair and hangar terminals, which stay in the colony, and for the first descent. The screens read the same rates, so what they show is what is charged.
+**What it costs to run.** Prices depend on the level the terminal is in (`OutpostRates`), so every pump and sell terminal underground is an outpost's: a litre costs 2 times the colony's ($2) and ore pays 80 percent of its value (Ironium $24, Bronzium $48, Silverium $80, Goldium $200, Platinium $600, Einsteinium $1,600, Cicatrium $2,000). SPEC says outposts sell at worse rates, so the surface trip still matters: for the 25 percent that these terms take from a run, for the upgrade, repair and hangar terminals, which stay in the colony, and for the first descent. The screens read the same rates, so what they show is what is charged.
 
 **The model.** `EarlyRunModel.layerTwoRun` starts at the outpost with a full tank: no drive down the shaft, a climb of only the slabs bored, and the outpost's prices. The first descent is one braked drive from the surface (2 L).
 
