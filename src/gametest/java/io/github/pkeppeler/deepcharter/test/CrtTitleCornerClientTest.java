@@ -65,7 +65,7 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
                             .map(charter -> charter.balance() == TerminalPanelScene.ACCOUNT)
                             .orElse(false),
                     client -> "charter " + ClientCharter.view());
-            TerminalPanelScreens.awaitSceneDirectives(context);
+            TerminalPanelScreens.dismissSceneSlips(context);
             for (String screen : TerminalPanelScreens.SCENE_SCREENS) {
                 check(context, screen, scene, null, problems);
             }

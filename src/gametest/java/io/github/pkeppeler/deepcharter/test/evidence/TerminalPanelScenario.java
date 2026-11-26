@@ -37,6 +37,7 @@ public class TerminalPanelScenario extends EvidenceScenario {
                             .map(charter -> charter.balance() == TerminalPanelScene.ACCOUNT)
                             .orElse(false),
                     client -> "charter " + ClientCharter.view());
+            TerminalPanelScreens.dismissSceneSlips(context);
             for (String screen : TerminalPanelScreens.SCENE_SCREENS) {
                 shoot(context, screen, scene, null);
             }

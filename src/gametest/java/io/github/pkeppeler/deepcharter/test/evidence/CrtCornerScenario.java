@@ -48,7 +48,7 @@ public class CrtCornerScenario extends EvidenceScenario {
                             .map(charter -> charter.balance() == TerminalPanelScene.ACCOUNT)
                             .orElse(false),
                     client -> "charter " + ClientCharter.view());
-            TerminalPanelScreens.awaitSceneDirectives(context);
+            TerminalPanelScreens.dismissSceneSlips(context);
             for (String screen : TerminalPanelScreens.SCENE_SCREENS) {
                 shoot(context, screen, scene, null, screen.equals("upgrade"));
             }
@@ -104,8 +104,6 @@ public class CrtCornerScenario extends EvidenceScenario {
             boolean corners) {
         Screen open = TerminalPanelScreens.open(context, screen, scene, elsewhere);
         context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
-        // A handbook slip over the terminal would cover the corners the stills show (#1390).
-        context.runOnClient(client -> client.gui.toastManager().clear());
         for (int i = 0; i < HOLD_FRAMES; i++) {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
