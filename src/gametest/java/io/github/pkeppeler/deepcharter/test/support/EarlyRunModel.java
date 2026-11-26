@@ -80,7 +80,8 @@ public final class EarlyRunModel {
 
     /**
      * The ore of a zone: the chance of each sellable ore for one stone block, and apart from them the chance of the catalyst
-     * (Cicatrium). The catalyst is not counted as income: a charter may keep it for the hangar, so the prices are set without it.
+     * (Cicatrium). The catalyst is not counted as income: a charter may keep it for the hangar, so the prices are set
+     * without it.
      */
     public record Zone(Map<OreType, Double> chances, double catalystChance) {
         /** The zone's fill, read from the same JSON that the world generator reads. */

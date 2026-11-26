@@ -9,8 +9,8 @@ import net.minecraft.resources.Identifier;
 
 /**
  * Every ore the mod adds. Value and reference mass are the original game's (dollars, and ore mass in its own unit);
- * {@link #mass()} is the mass in pod units. Cicatrium is the catalyst, and its numbers are invented: it is the dearest ore
- * (#1445), so selling it and keeping it for a restore is a choice (docs/design/mechanics.md, Cicatrium pacing).
+ * {@link #mass()} is the mass in pod units. Cicatrium is the catalyst, and its numbers are invented: it is the dearest
+ * ore (#1445), so selling it and keeping it for a restore is a choice (docs/design/mechanics.md, Cicatrium pacing).
  */
 public enum OreType {
     IRONIUM("ironium", 30, 1),
@@ -32,8 +32,8 @@ public enum OreType {
     }
 
     /**
-     * Every ore, dearest first by {@code price}; ores at one price keep the enum's order. A price list sorts here, never by the
-     * enum's order, which stays fixed because the network carries ores by ordinal.
+     * Every ore, dearest first by {@code price}; ores at one price keep the enum's order. A price list sorts here,
+     * never by the enum's order, which stays fixed because the network carries ores by ordinal.
      */
     public static List<OreType> dearestFirst(ToLongFunction<OreType> price) {
         return Arrays.stream(values())
