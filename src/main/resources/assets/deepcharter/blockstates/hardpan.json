@@ -1,0 +1,36 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "deepcharter:block/hardpan_0"
+      },
+      {
+        "model": "deepcharter:block/hardpan_1"
+      },
+      {
+        "model": "deepcharter:block/hardpan_2"
+      },
+      {
+        "model": "deepcharter:block/hardpan_3"
+      },
+      {
+        "model": "deepcharter:block/hardpan_4"
+      },
+      {
+        "model": "deepcharter:block/hardpan_5"
+      },
+      {
+        "model": "deepcharter:block/hardpan_6"
+      },
+      {
+        "model": "deepcharter:block/hardpan_7"
+      },
+      {
+        "model": "deepcharter:block/hardpan_8"
+      },
+      {
+        "model": "deepcharter:block/hardpan_9"
+      }
+    ]
+  }
+}

@@ -65,6 +65,7 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
                             .map(charter -> charter.balance() == TerminalPanelScene.ACCOUNT)
                             .orElse(false),
                     client -> "charter " + ClientCharter.view());
+            TerminalPanelScreens.dismissSceneSlips(context);
             for (String screen : TerminalPanelScreens.SCENE_SCREENS) {
                 check(context, screen, scene, null, problems);
             }
@@ -92,6 +93,10 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
         Screen open = TerminalPanelScreens.open(context, screen, scene, elsewhere);
         context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
         context.waitTicks(2); // tick-wait: lets the parked cursor un-hover the buttons before the still is taken
+        // A toast draws over the open screen; a slip over the title read as the glass dimming its first letter (#1390).
+        // dismissSceneSlips covers only the first world's repair slips; this also covers the contract and offline
+        // worlds, and any other toast.
+        context.runOnClient(client -> client.gui.toastManager().clear());
         Shot shot = context.computeOnClient(client -> {
             DrawnText.Drawn title = DrawnText.of(open).stream()
                     .filter(drawn -> !drawn.text().isBlank())
