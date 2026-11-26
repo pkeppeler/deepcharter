@@ -65,6 +65,7 @@ public class TetherScenario extends EvidenceScenario {
             UUID[] pods = new UUID[2];
             singleplayer.getServer().runOnServer(TetherScenario::build);
             ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + 3, Z, 38);
+            ClientWait.arrived(context, singleplayer.getServer());
             singleplayer.getServer().runOnServer(server -> place(server, pods));
             ClientWait.until(
                     context,

@@ -384,7 +384,7 @@ public class PodRotorPaintClientTest implements FabricClientGameTest {
 
     private static void frame(PodMotion motion, PodEntity pod, PodGeoRenderState state, float age) {
         state.ageInTicks = age;
-        motion.advance(pod, state, 0f, 1f);
+        motion.advance(pod, state, 0f, 1f, 1f);
     }
 
     private static NativeImage read(Minecraft client, Identifier texture) {
