@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
@@ -29,7 +30,7 @@ import net.minecraft.resources.Identifier;
 /**
  * Client GameTest for #1260's controls pages: they follow the first contents page, every key a line names is the
  * player's binding read at draw time (a rebind changes what the page shows), every named key is on a sheet, and each
- * page fits the default window and the smallest GUI.
+ * page fits the default window and the smallest GUI. The Mole's cockpit sheet names each gauge by its title (#1436).
  */
 public class HandbookControlsClientTest implements FabricClientGameTest {
     private static final int WIDTH = 427;
@@ -45,6 +46,7 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
             aRebindChangesWhatThePageShows(client.options);
             everyControlsPageFitsTheDefaultWindowAndTheSmallestGui();
             everyModKeyAndEveryPodInputKeyIsOnASheet(client.options);
+            theMolesSheetNamesEveryCockpitTitle();
         });
     }
 
@@ -165,6 +167,16 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
                                     + DrawnText.leavesScreen(screen, drawn).orElse(""));
                 }
             }
+        }
+    }
+
+    /** The legend of the cockpit's readouts on the Mole's cockpit sheet names every gauge by the title its tab shows. */
+    private static void theMolesSheetNamesEveryCockpitTitle() {
+        String page = String.join(" ", texts(screenOn(controlsPartOf("cockpit"), WIDTH, HEIGHT)));
+        for (CockpitHud.Part gauge : CockpitHud.GAUGES) {
+            require(
+                    page.contains(gauge.title().getString()),
+                    "the Mole's cockpit sheet names the " + gauge.title().getString() + " gauge: " + page);
         }
     }
 

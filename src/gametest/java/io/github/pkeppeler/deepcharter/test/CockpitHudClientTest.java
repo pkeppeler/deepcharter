@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -848,11 +849,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 GuiSpriteScaling.NineSlice.Border inset = CockpitHud.plateInset(layout, look);
                 int widest = 0;
                 for (CockpitHud.Row row : rows) {
-                    int width = look.tallyGap() * (row.parts().size() - 1);
-                    for (PodStatusHud.Line part : row.parts()) {
-                        width += client.font.width(part.text());
-                    }
-                    widest = Math.max(widest, width);
+                    widest = Math.max(widest, row.width(client.font, look));
                 }
                 int textLeft = box.left() + inset.left();
                 int textTop = box.top() + inset.top();
@@ -928,13 +925,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         if (overlap(pieces.get("band"), pieces.get("bezel"))) {
             problems.add(where + ": the bezel covers the band");
         }
-        CockpitHud.Box title = CockpitHud.loadTitleBox(font, layout, look, guiWidth, guiHeight);
-        pieces.put(
-                "load title",
-                new int[] {title.left(), title.top(), title.left() + title.width(), title.top() + title.height()});
-        if (!inside(pieces.get("load title"), screen) || overlap(pieces.get("load title"), pieces.get("bezel"))) {
-            problems.add(where + ": the load title leaves the screen or covers the bezel");
-        }
+        problems.addAll(titleProblems(font, look, guiWidth, guiHeight, where, bars, pieces));
         if (font.width(LONGEST_ALTIMETER) > ALTIMETER_RECESS_WIDTH
                 || layout.altimeterY() + font.lineHeight > layout.band().height()) {
             problems.add(where + ": the altimeter reading does not fit its recess in the band");
@@ -947,8 +938,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
                         + Arrays.toString(plateBox));
             }
-            for (String piece : List.of("band", "bezel", "load title")) {
-                if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
+            for (String piece : pieces.keySet()) {
+                if (!piece.equals("scanner")
+                        && overlap(
+                                plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
                     problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
                 }
             }
@@ -961,6 +954,61 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             if (alerts != keptAlerts) {
                 problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
             }
+        }
+        return problems;
+    }
+
+    /**
+     * Each gauge's title (#1436) on a GUI {@code guiWidth} x {@code guiHeight}, with the real font: on the screen, centred under its bar and clear of it, riding the
+     * band's lower edge, a pixel or more from the next title, clear of the scanner window and its black gasket, and out of the room under the altimeter's recess,
+     * which is the altimeter's (#1432). Each title is added to {@code pieces}, which the plate must keep clear of.
+     */
+    private static List<String> titleProblems(
+            Font font,
+            CockpitLook look,
+            int guiWidth,
+            int guiHeight,
+            String where,
+            Map<String, int[]> bars,
+            Map<String, int[]> pieces) {
+        List<String> problems = new ArrayList<>();
+        CockpitLook.Layout layout = look.ribbon();
+        int[] band = box(layout.band(), guiWidth, guiHeight);
+        int[] window = box(layout.scanner(), guiWidth, guiHeight);
+        int middle = (band[0] + band[2]) / 2;
+        int[] recess = {middle - ALTIMETER_RECESS_WIDTH / 2, band[1], middle + ALTIMETER_RECESS_WIDTH / 2, guiHeight};
+        int[] gasket = {window[0] - 1, window[1] - 1, window[2] + 1, window[3] + 1};
+        List<int[]> placed = new ArrayList<>();
+        for (CockpitHud.Part gauge : CockpitHud.GAUGES) {
+            String name = gauge.name().toLowerCase(Locale.ROOT);
+            CockpitHud.Box box = CockpitHud.titleBox(font, layout, look, gauge, guiWidth, guiHeight);
+            int[] title = {box.left(), box.top(), box.left() + box.width(), box.top() + box.height()};
+            int[] bar = Objects.requireNonNull(bars.get(name), () -> "no bar for " + name);
+            if (!inside(title, new int[] {0, 0, guiWidth, guiHeight})) {
+                problems.add(where + ": the " + name + " title leaves the screen: " + Arrays.toString(title));
+            }
+            if (Math.abs(title[0] + title[2] - bar[0] - bar[2]) > 1) {
+                problems.add(where + ": the " + name + " title is not centred under its bar");
+            }
+            if (title[1] <= bar[3] || title[1] >= band[3] || title[3] <= band[3]) {
+                problems.add(where + ": the " + name + " title " + Arrays.toString(title)
+                        + " does not ride the band's lower edge clear of its bar " + Arrays.toString(bar));
+            }
+            if (overlap(title, gasket) || overlap(title, recess)) {
+                problems.add(where + ": the " + name + " title " + Arrays.toString(title)
+                        + " covers the scanner window or the room under the altimeter's recess");
+            }
+            if (box.width() - font.width(gauge.title()) < look.iconWidth() + look.iconGap()
+                    || box.height() < look.titleTextHeight()) {
+                problems.add(where + ": the " + name + " title's tab does not hold its icon and title");
+            }
+            for (int[] other : placed) {
+                if (overlap(new int[] {title[0] - 1, title[1], title[2] + 1, title[3]}, other)) {
+                    problems.add(where + ": the " + name + " title touches another title");
+                }
+            }
+            placed.add(title);
+            pieces.put(name + " title", title);
         }
         return problems;
     }

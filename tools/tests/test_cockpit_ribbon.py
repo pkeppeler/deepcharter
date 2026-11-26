@@ -79,16 +79,24 @@ class Theme(unittest.TestCase):
 
     def test_there_is_one_look_and_no_sprite_of_a_style_that_was_dropped(self):
         self.assertEqual({"ribbon"}, {p.name for p in SPRITES.parent.iterdir()})
-        self.assertEqual({"part_a.png", "cap.png", "plate.png", "plate.png.mcmeta"}, {p.name for p in SPRITES.iterdir()})
+        icons = {f"icon_{gauge}.png" for gauge in GAUGES}
+        self.assertEqual({"part_a.png", "cap.png", "plate.png", "plate.png.mcmeta", "tab.png", "tab.png.mcmeta"} | icons, {p.name for p in SPRITES.iterdir()})
 
-    def test_the_plate_is_cut_in_nine(self):
-        path = SPRITES / "plate.png"
-        scaling = json.loads(path.with_name(path.name + ".mcmeta").read_text())["gui"]["scaling"]
-        self.assertEqual("nine_slice", scaling["type"])
-        self.assertEqual((scaling["width"], scaling["height"]), png_size(path))
-        border = scaling["border"]
-        self.assertLess(border["left"] + border["right"], scaling["width"], "a nine-slice needs a middle")
-        self.assertLess(border["top"] + border["bottom"], scaling["height"], "a nine-slice needs a middle")
+    def test_the_plate_and_the_title_tab_are_cut_in_nine(self):
+        for name in ("plate", "tab"):
+            path = SPRITES / f"{name}.png"
+            scaling = json.loads(path.with_name(path.name + ".mcmeta").read_text())["gui"]["scaling"]
+            with self.subTest(sprite=name):
+                self.assertEqual("nine_slice", scaling["type"])
+                self.assertEqual((scaling["width"], scaling["height"]), png_size(path))
+                border = scaling["border"]
+                self.assertLess(border["left"] + border["right"], scaling["width"], "a nine-slice needs a middle")
+                self.assertLess(border["top"] + border["bottom"], scaling["height"], "a nine-slice needs a middle")
+
+    def test_each_icon_is_as_wide_as_the_theme_says_and_as_tall_as_the_capitals(self):
+        for gauge in GAUGES:
+            with self.subTest(gauge=gauge):
+                self.assertEqual((THEME["iconWidth"], THEME["titleTextHeight"]), png_size(SPRITES / f"icon_{gauge}.png"))
 
     def test_every_decal_has_a_sprite_of_its_size(self):
         for slot, camel in SLOTS.items():
@@ -177,18 +185,62 @@ class Load(unittest.TestCase):
         self.assertTrue(0 < limit < segments, "the bar shows a share of load past the limit")
         self.assertEqual(0, limit * THEME[STYLE + "CargoW"] % segments, "the mark sits in the gap between two segments")
 
-    def test_the_load_title_hangs_under_its_gauge_on_screen_and_clear_of_the_plate_and_the_bezel(self):
-        left, top, width, height = cockpit_ribbon.title_box(LOOK)
-        title = (left, top, left + width, top + height)
-        screen = (cockpit_ribbon.SCREEN_W, cockpit_ribbon.SCREEN_H)
-        gauge = rect(STYLE + "Cargo", screen)
-        self.assertTrue(inside(title, (0, 0) + screen))
-        self.assertLessEqual(title[0], gauge[0] + 1)
-        self.assertGreaterEqual(title[2], gauge[2] - 1, "the title is centred under its gauge")
-        self.assertEqual(rect(STYLE + "PartA", screen)[3], title[1], "the title hangs from the band's lower edge")
-        for state in cockpit_ribbon.STATES.values():
-            self.assertFalse(overlap(title, plate_rect(screen, state)))
-        self.assertFalse(overlap(title, rect(STYLE + "Cap", screen)))
+
+
+class Titles(unittest.TestCase):
+    """Each gauge's title (#1436): a tab in the game's font with the gauge's icon, centred under its bar and riding the band's lower edge."""
+
+    def boxes(self, screen):
+        return {g: cockpit_ribbon.title_box(LOOK, g, screen) for g in GAUGES}
+
+    def test_every_gauge_has_a_title_and_the_titles_are_the_lang_files(self):
+        lang = json.loads((ROOT / "src/lang/en_us/pod.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(GAUGES), set(cockpit_ribbon.TITLES))
+        for gauge, title in cockpit_ribbon.TITLES.items():
+            with self.subTest(gauge=gauge):
+                self.assertEqual(lang["hud.deepcharter.cockpit." + cockpit_ribbon.TITLE_KEYS[gauge]], title)
+
+    def test_each_title_is_centred_under_its_bar_and_rides_the_bands_lower_edge_clear_of_the_bar(self):
+        for screen in GUI_SIZES:
+            band = rect(STYLE + "PartA", screen)
+            for gauge, title in self.boxes(screen).items():
+                bar = rect(STYLE + gauge.capitalize(), screen)
+                with self.subTest(screen=screen, gauge=gauge):
+                    self.assertLessEqual(abs((title[0] + title[2]) - (bar[0] + bar[2])), 1, "centred under its bar")
+                    self.assertGreater(title[1], bar[3], "clear of the bar and its lit lower edge")
+                    self.assertLess(title[1], band[3], "rides the band's lower edge")
+                    self.assertGreater(title[3], band[3], "hangs below the band")
+                    self.assertLessEqual(title[1] + THEME["titleTextHeight"], title[3], "holds the capitals")
+
+    def test_no_two_titles_touch_and_none_takes_the_room_under_the_altimeter_recess(self):
+        for screen in GUI_SIZES:
+            band = rect(STYLE + "PartA", screen)
+            middle = (band[0] + band[2]) // 2
+            recess = (middle - cockpit_ribbon.RECESS_W // 2, band[1], middle + cockpit_ribbon.RECESS_W // 2, screen[1])
+            boxes = self.boxes(screen)
+            for a in GAUGES:
+                with self.subTest(screen=screen, gauge=a):
+                    self.assertFalse(overlap(boxes[a], recess), "the room under the altimeter's recess is the altimeter's (#1432)")
+                for b in GAUGES:
+                    if a < b:
+                        grown = (boxes[a][0] - 1, boxes[a][1], boxes[a][2] + 1, boxes[a][3])
+                        self.assertFalse(overlap(grown, boxes[b]), (a, b))
+
+    def test_titles_are_on_screen_and_clear_of_the_plate_and_the_scanner_window(self):
+        # On a narrow GUI the bezel hangs under the band's right half, so the titles there ride the joint of the two, over steel, short of the window's black gasket.
+        for screen in GUI_SIZES:
+            window = rect(STYLE + "Scanner", screen)
+            for gauge, title in self.boxes(screen).items():
+                with self.subTest(screen=screen, gauge=gauge):
+                    self.assertTrue(inside(title, (0, 0) + screen))
+                    self.assertFalse(overlap(title, (window[0] - 1, window[1] - 1, window[2] + 1, window[3] + 1)), "the window and its black gasket")
+                    for state in list(cockpit_ribbon.STATES.values()) + [WIDE_ALERT]:
+                        self.assertFalse(overlap(title, plate_rect(screen, state)))
+
+    def test_each_tally_value_carries_its_gauges_icon(self):
+        tally = cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["calm"])[0]
+        self.assertEqual(["hull", "fuel", "cargo", "depth"], [icon for _, _, icon in tally])
+        self.assertTrue(all(icon is None for row in cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["burning"])[1:] for _, _, icon in row))
 
 
 class Coverage(unittest.TestCase):
