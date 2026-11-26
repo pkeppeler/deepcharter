@@ -6,6 +6,7 @@
 # BoreTripsClientTest: one CI run (45741859329, #1418), which added a settle to two of its trips; refresh from CI.
 # PodDriveLateClientTest and PodDriveSmoothClientTest: the mean of three local runs after #1112 split the class; refresh from CI.
 # PodLoadClientTest: one local run (#1449), 24 s, scaled by CockpitHudClientTest's local-to-CI ratio (48 s to 36); refresh from CI.
+# BurningFuelHudClientTest: one local run (#1438), 23 s, beside CockpitHudClientTest at 45 s, scaled by its CI weight (36): 18; refresh from CI.
 # CockpitTitlesClientTest: two local runs (#1436), 15 and 16 s, beside CockpitHudClientTest at 48 and 49 s, scaled by its CI weight (36): 12; refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
@@ -15,6 +16,7 @@ BreachCrossingClientTest 27
 BreachFadeHoldClientTest 18
 BreachHudTest 21
 BreachVoidClientTest 74
+BurningFuelHudClientTest 18
 CampaignWorldClientTest 78
 CatalogueAnySlotClientTest 21
 CatalogueEffectsClientTest 20
