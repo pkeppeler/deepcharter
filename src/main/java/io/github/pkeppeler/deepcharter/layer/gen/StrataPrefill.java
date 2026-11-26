@@ -35,7 +35,7 @@ public final class StrataPrefill {
         }
     }
 
-    /** The prefill of a generator's settings: the campaign's, when its material rule holds strata; null for any other. */
+    /** The prefill of a generator's settings: the campaign's, when its material rule holds strata; null otherwise. */
     public static @Nullable StrataPrefill of(Holder<NoiseGeneratorSettings> settings) {
         if (!settings.is(CAMPAIGN)) {
             return null;

@@ -22,12 +22,13 @@ import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 
 /**
- * The campaign's noise fill writes layer 1's strata rock in advance ({@link StrataPrefill}, #1472), and the world must not
- * show it. {@code campaign_full} is the shipped generator, which prefills; {@code campaign_sample} has settings of its own
- * (air under the last layer), so it never does. A chunk of each at the same position must hold the same block at every
- * row of layer 1 and of the bands next to it, where a guess left in place or written outside its band would show, and
- * most of layer 1's material writes must find their block already there (SurfaceWrites skips those). Run red: a prefill that writes one row under
- * the band, or into air, fails the comparison; a prefill that never runs fails the count.
+ * The campaign's noise fill writes layer 1's strata rock in advance ({@link StrataPrefill}, #1472), and the world
+ * must not show it. {@code campaign_full} is the shipped generator, which prefills; {@code campaign_sample} has
+ * settings of its own (air under the last layer), so it never does. A chunk of each at the same position must hold
+ * the same block at every row of layer 1 and of the bands next to it, where a guess left in place or written outside
+ * its band would show, and most of layer 1's material writes must find their block already there (SurfaceWrites skips
+ * those). Run red: a prefill that also writes the 16 rows under the band fails the comparison; a prefill that never
+ * runs fails the count.
  */
 public class StrataPrefillTest {
     private static final String FULL = "campaign_full";

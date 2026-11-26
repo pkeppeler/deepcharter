@@ -16,10 +16,10 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Lets the campaign's noise fill write layer 1's strata rock in place of its default block ({@link StrataPrefill}, #1472).
- * Target: {@code NoiseBasedChunkGenerator.doFill(NoiseChunk, ChunkAccess)}, its head (the generator's prefill, once a
- * chunk) and its one call to {@code Aquifer.computeSubstance(IIID)}, whose null is a solid block. Why the world stays
- * the same: ADR 0090's amendment.
+ * Lets the campaign's noise fill write layer 1's strata rock in place of its default block ({@link StrataPrefill},
+ * #1472). Target: {@code NoiseBasedChunkGenerator.doFill(NoiseChunk, ChunkAccess)}, its head (the generator's prefill,
+ * once a chunk) and its one call to {@code Aquifer.computeSubstance(IIID)}, whose null is a solid block. Why the world
+ * stays the same: ADR 0090's amendment.
  */
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class NoiseBasedChunkGeneratorMixin {

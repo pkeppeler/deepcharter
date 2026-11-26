@@ -95,9 +95,9 @@ public final class SurfaceWrites {
     }
 
     /**
-     * What {@code chunk.setBlockState(pos, state)} returns and does, by the cheaper way when that is provably the same. A
-     * neutral write of the block already there changes nothing, so it is skipped: the campaign's noise fill writes
-     * layer 1's strata rock in advance for that ({@code StrataPrefill}, #1472).
+     * What {@code chunk.setBlockState(pos, state)} returns and does, by the cheaper way when that is provably the
+     * same. A neutral write of the block already there changes nothing, so it is skipped: the campaign's noise fill
+     * writes layer 1's strata rock in advance for that ({@code StrataPrefill}, #1472).
      */
     public static @Nullable BlockState set(ChunkAccess chunk, BlockPos pos, BlockState state) {
         BlockState was = enabled ? neutralWas(chunk, pos, state) : null;

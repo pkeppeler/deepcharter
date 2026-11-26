@@ -110,8 +110,8 @@ public record StrataRule(
     }
 
     /**
-     * The rock at {@code y} in a column whose contacts are moved by {@code shift} rows: the upper rock of the first contact
-     * at or under {@code y}, or its bed in the bed's rows, and {@link #bottom} under every contact.
+     * The rock at {@code y} in a column whose contacts are moved by {@code shift} rows: the upper rock of the first
+     * contact at or under {@code y}, or its bed in the bed's rows, and {@link #bottom} under every contact.
      */
     public BlockState rockAt(int y, int shift) {
         for (int i = 0; i < contacts.size(); i++) {

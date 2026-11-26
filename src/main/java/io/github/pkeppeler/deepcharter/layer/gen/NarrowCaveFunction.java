@@ -25,11 +25,12 @@ import net.minecraft.world.level.levelgen.densityfunction.op.InterpolatedFunctio
 import net.minecraft.world.level.levelgen.densityfunction.op.UnaryFunction;
 
 /**
- * A narrow cave term (#1472): {@code clamp((interpolated(width) - max(|interpolated(ridge)|, ...)) * sharpness, 0, 1)}, the
- * same value, float for float, as that expression written in vanilla density functions ({@link #expanded}), at less cost.
- * A narrow term is open only where every ridge is near zero, so most interpolation cells are shut whole: where the
- * corners prove {@code width} under every ridge's magnitude throughout a cell, the cell is 0 without interpolating a
- * block. The other cells repeat vanilla's {@code InterpolatedFunction$Sampler.fillCell} arithmetic in the same order.
+ * A narrow cave term (#1472):
+ * {@code clamp((interpolated(width) - max(|interpolated(ridge)|, ...)) * sharpness, 0, 1)}, the same value, float for
+ * float, as that expression written in vanilla density functions ({@link #expanded}), at less cost. A narrow term is
+ * open only where every ridge is near zero, so most interpolation cells are shut whole: where the corners prove
+ * {@code width} under every ridge's magnitude throughout a cell, the cell is 0 without interpolating a block. The other
+ * cells repeat vanilla's {@code InterpolatedFunction$Sampler.fillCell} arithmetic in the same order.
  *
  * @param width       the width, at most this far from zero a ridge opens; interpolated
  * @param ridges      the ridges, open where all are near zero; each interpolated, then its magnitude taken
@@ -68,7 +69,10 @@ public record NarrowCaveFunction(
                 CODEC);
     }
 
-    /** The vanilla expression this function equals, which it samples for a volume that is not a block grid and for a point. */
+    /**
+     * The vanilla expression this function equals, which it samples for a volume that is not a block grid and for a
+     * point.
+     */
     public DensityFunction expanded() {
         DensityFunction widest = magnitude(ridges.getFirst());
         for (DensityFunction ridge : ridges.subList(1, ridges.size())) {
