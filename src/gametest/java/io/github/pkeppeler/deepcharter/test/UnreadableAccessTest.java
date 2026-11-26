@@ -167,7 +167,7 @@ public class UnreadableAccessTest {
         }
     }
 
-    /** A pilot sprinting with W in a pod whose sprint state is unreadable: no throw, no boost, nothing written over it. */
+    /** A pilot sprinting with W in a pod whose sprint state is unreadable: no throw, no boost, nothing written. */
     @GameTest
     public void anUnreadableSprintStateNeverThrowsFromASprintingPilotAndIsKept(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);

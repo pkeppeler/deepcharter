@@ -28,14 +28,15 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Guard (#1041): a drilling pod never moves further in one server tick than its speed, at any gap between it and the wall it meets.
  * The drive's move and the drill's centring slide could add up on one axis; they do not, because a clipped move leaves the pod flush
- * on the bore's centre. Ten pods that cruise start at offsets along the drive that cover one tick of their travel, so every
- * final-approach gap from 0 to the speed; ten that sprint do the same at the sprint's speed, their bound (#1276).
+ * on the bore's centre. Ten pods that cruise start at offsets along the drive that cover one tick of their travel,
+ * so every final-approach gap from 0 to the speed; ten that sprint do the same at the sprint's speed, their bound
+ * (#1276).
  */
 public class PodDriveStepTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 700;
     /**
-     * Layer 1 columns x 4260-4269, z 2996-3308, all in chunk column 266: no other test stages here. PodDrillTest's nudge test
-     * shared x 4024 and in reverse order ran in one batch (#1178).
+     * Layer 1 columns x 4260-4269, z 2996-3308, all in chunk column 266: no other test stages here. PodDrillTest's
+     * nudge test shared x 4024 and in reverse order ran in one batch (#1178).
      */
     private static final int X = 4264;
 

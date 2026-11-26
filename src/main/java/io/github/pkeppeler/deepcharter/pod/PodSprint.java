@@ -72,8 +72,8 @@ public final class PodSprint {
     }
 
     /**
-     * Whether the pilot's {@code input} boosts the pod: sprint with W and not S, while the pod neither drills nor stands
-     * in a bore as wide as itself, where the drill sets the pace.
+     * Whether the pilot's {@code input} boosts the pod: sprint with W and not S, while the pod neither drills nor
+     * stands in a bore as wide as itself, where the drill sets the pace.
      */
     private static boolean wants(PodEntity pod, Input input) {
         return input.sprint() && input.forward() && !input.backward() && !pod.drilling() && !PodSteering.inBore(pod);
