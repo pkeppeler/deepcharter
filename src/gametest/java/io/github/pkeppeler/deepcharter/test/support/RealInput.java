@@ -37,6 +37,19 @@ public final class RealInput {
     }
 
     /**
+     * Holds {@code key} down for {@code ticks} client ticks, then lets it go and waits one tick: a key that acts while
+     * held ({@code KeyMapping.isDown}) sees it down that long.
+     */
+    public static void hold(ClientGameTestContext context, int key, int ticks) {
+        context.runOnClient(client -> client.keyboardHandler.keyPress(
+                client.getWindow().handle(), InputConstants.PRESS, new KeyEvent(key, 0, 0)));
+        context.waitTicks(ticks);
+        context.runOnClient(client -> client.keyboardHandler.keyPress(
+                client.getWindow().handle(), InputConstants.RELEASE, new KeyEvent(key, 0, 0)));
+        context.waitTicks(1);
+    }
+
+    /**
      * Types {@code text} one letter, digit or space at a time, the way SDL sends it: each key goes down, then {@code
      * KeyboardHandler.textInput} delivers its text (it calls {@code textEditing}, then {@code charTyped} per code point), then the key
      * goes up. The key code of such a character is its upper-case ASCII value.

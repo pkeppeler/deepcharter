@@ -179,8 +179,9 @@ public class PodDumpTest {
         PodEntity pod = scene.pod();
         overload(pod);
         pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
-        scene.mock().send(new PodDumpPayload());
-        helper.runAfterDelay(5, () -> {
+        // An overloaded pod sits on the ground: dump once it has settled there.
+        helper.runAfterDelay(10, () -> scene.mock().send(new PodDumpPayload()));
+        helper.runAfterDelay(15, () -> {
             expect(
                     helper,
                     pod.cargoUsed() == 0 && pod.cargoMass() == 0f,
