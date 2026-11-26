@@ -1,0 +1,21 @@
+{
+  "feature": "deepcharter:claim_shaft",
+  "placement": [
+    {
+      "type": "minecraft:rarity_filter",
+      "chance": 10
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "deepcharter:layer_rows",
+      "layer": 1,
+      "min": 30,
+      "max": 150
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

@@ -51,6 +51,8 @@ group = providers.gradleProperty("maven_group").get()
 
 loom {
 	splitEnvironmentSourceSets()
+	// Widened vanilla members, each with its reason in the file.
+	accessWidenerPath = file("src/main/resources/deepcharter.classtweaker")
 
 	mods {
 		register("deepcharter") {

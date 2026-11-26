@@ -35,10 +35,19 @@ import org.jspecify.annotations.Nullable;
  *
  * Time runs on the client's clock from the moment the screen first opens, so the sounds keep to the beat at any frame rate. The sequence
  * outlives the screen being shown: {@link ContinuityClient} plays it on each tick, hands this same screen back whenever vanilla would
- * show its death screen again, and ends it ({@link #end}) when the respawn swaps the player or the client leaves the world.
+ * show its death screen again, follows the person to the new player a teleport to another dimension gives the client, and ends it
+ * ({@link #end}) when the respawn brings them back alive or the client leaves the world.
  */
 public final class ContinuityScreen extends Screen {
-    private final LocalPlayer dead;
+    /**
+     * The latest RETURN TO WORK can come, in seconds from the screen's opening at the death, whatever the packs say: Esc and DISCONNECT
+     * wait only for the button, so no data can hold a dead person on this screen for longer. The theme's bounds ({@code
+     * ContinuityLook.of}) and the laugh's ({@link LaughEnvelope#MAX_SECONDS}) keep any valid pack well inside it; it is here for whatever
+     * slips past them.
+     */
+    static final double LONGEST_SECONDS = 40.0;
+
+    private LocalPlayer dead;
     private String line;
     private boolean numberKnown;
     private final SkullArt art = new SkullArt();
@@ -78,7 +87,16 @@ public final class ContinuityScreen extends Screen {
                 period *= look.skipShrink();
             }
             double laughStart = passes > 0 ? at - look.skipOverlapSeconds() : look.cutSeconds();
-            return new Plan(last, starts, at, laughStart, laughStart + envelope.seconds(), envelope, look);
+            double laughEnd = laughStart + envelope.seconds();
+            // Written to hold for NaN too: a sum that is not a number ends at the cap.
+            return new Plan(
+                    last,
+                    starts,
+                    at,
+                    laughStart,
+                    laughEnd <= LONGEST_SECONDS ? laughEnd : LONGEST_SECONDS,
+                    envelope,
+                    look);
         }
 
         /** How loud the sequence is at {@code now} for the skull: a pass's knock dying away, or the laugh. */
@@ -114,12 +132,17 @@ public final class ContinuityScreen extends Screen {
         this.numberKnown = number > 0;
     }
 
+    /**
+     * The line the skull's letters cycle through. A pack that blanks it ({@code deepcharter.continuity.skull}) leaves the skull its
+     * numbers: the letters need a line to cycle through.
+     */
     private static String line(int number, int employee) {
         Component numberText = number > 0
                 ? Component.literal(Integer.toString(number))
                 : Component.translatable("deepcharter.continuity.unknown_number");
-        return Component.translatable("deepcharter.continuity.skull", Integer.toString(employee), numberText)
+        String line = Component.translatable("deepcharter.continuity.skull", Integer.toString(employee), numberText)
                 .getString();
+        return line.isEmpty() ? employee + " · " + numberText.getString() + " · " : line;
     }
 
     /** Whether the skull is written in a number of the server's; false when it reads as unknown. */
@@ -185,8 +208,17 @@ public final class ContinuityScreen extends Screen {
         return Objects.requireNonNull(plan, "<made by init() when the screen opens>");
     }
 
-    /** Whether this is {@code player}'s sequence: the respawn gives the client a new player, and the sequence ends with the old one. */
-    boolean belongsTo(LocalPlayer player) {
+    /**
+     * Whether {@code player} carries this sequence on: the player who died, or one the client swapped them for while they are still dead,
+     * whom the sequence then follows. A teleport to another dimension (a command block's {@code /tp}) gives the client a new player that
+     * keeps the old one's health; a respawn's new player is alive, and the sequence ends with the old one. Once RETURN TO WORK is
+     * pressed, no new player carries it on: one that is dead already (a respawn and a death handled in one batch) has died again, and
+     * that is a new death with a sequence of its own.
+     */
+    boolean carriesOn(LocalPlayer player) {
+        if (player != dead && !respawnAsked && player.isDeadOrDying()) {
+            dead = player;
+        }
         return player == dead;
     }
 
@@ -228,8 +260,11 @@ public final class ContinuityScreen extends Screen {
         }
     }
 
+    /** Only the live sequence plays: a screen built anywhere else (a layout test) has no silence and no end to stop its sounds. */
     private void play(SoundInstance sound) {
-        minecraft.getSoundManager().play(sound);
+        if (ContinuityClient.isLive(this)) {
+            minecraft.getSoundManager().play(sound);
+        }
     }
 
     private void stopPass() {
