@@ -63,7 +63,7 @@ public sealed interface HandbookPage {
 
     /**
      * One page of the text of a full chapter, before the chapter's own page of directives. {@code part} counts from 1 of
-     * {@code parts}.
+     * {@code parts}. Text that does not fit one sheet runs on to more ({@link SheetFlow}).
      */
     record ChapterText(int number, Identifier id, HandbookChapter chapter, int part, int parts)
             implements HandbookPage {}
@@ -84,6 +84,9 @@ public sealed interface HandbookPage {
     /** The end page: the end of the official chapters. */
     record Appendix() implements HandbookPage {}
 
-    /** One page of Appendix A, the employment contract, with its redactions. {@code part} counts from 1 of {@code parts}. */
+    /**
+     * One page of Appendix A, the employment contract, with its redactions. {@code part} counts from 1 of {@code parts}. Clauses that
+     * do not fit one sheet run on to more ({@link SheetFlow}).
+     */
     record Contract(int part, int parts) implements HandbookPage {}
 }
