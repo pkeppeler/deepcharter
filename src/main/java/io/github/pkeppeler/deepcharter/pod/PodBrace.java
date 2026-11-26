@@ -23,8 +23,10 @@ import net.minecraft.world.level.Level;
  * row the drill bores, and a pod that came down hurt by gas and lava often has less hull than the crust costs. The warning is for every pod: when the
  * hull that is left would not outlast the crust rows still to be bored, the pilot is told while there is still time to act. The brace is a part that
  * acts: near the crust, while the pod rests, it burns an ore to patch the hull until it outlasts the crust. It never burns an ore that costs more a hull
- * than Hull Nanobots do ({@link #oreValueCap}), so the part is a discount on the nanobots and never a dearer way to the same hull. The warning
- * also prices the landing of a free fall into open space under the crust ({@link VoidBelow}, #1387); the brace patches for the crust alone.
+ * than Hull Nanobots do ({@link #oreValueCap}), so the part is a discount on the nanobots and never a dearer way to the same hull.
+ *
+ * <p>The warning also prices the landing of a free fall into open space under the crust ({@link VoidBelow}, #1387);
+ * the brace patches for the crust alone.
  */
 public final class PodBrace {
     /**
@@ -34,7 +36,7 @@ public final class PodBrace {
      * @param crustSlabs crust rows left to bore
      * @param cost       hull the crust rows left would take from this pod
      * @param hull       hull the pod has
-     * @param drop       hull a free fall into the open space under the crust would take on landing, 0 over solid rock
+     * @param drop       hull the landing of a free fall into the open space under the crust takes, 0 over solid rock
      */
     public record Warning(int slabsAway, int crustSlabs, float cost, float hull, float drop) {}
 
@@ -80,8 +82,8 @@ public final class PodBrace {
     }
 
     /**
-     * The crust rows left and the slabs to them, what they would cost the pod, and what the fall into the open space under them would; empty where there
-     * is no crust to bore or the pod is out of reach of it.
+     * The crust rows left and the slabs to them, what they would cost the pod, and what the fall into the open space
+     * under them would; empty where there is no crust to bore or the pod is out of reach of it.
      */
     private record Ahead(int slabsAway, int crustSlabs, float cost, float drop) {}
 
@@ -108,8 +110,9 @@ public final class PodBrace {
 
     /**
      * The warning for this pod now, empty unless it is in a layer with a crust to bore, within {@link PodBraceTuning#warnSlabs} of the crust or in it, with a hull no
-     * greater than what the crust rows left and the drop under them would take (a hull of exactly that is gone on landing); and what the brace does about it, for
-     * {@code resting} as the caller judges it. Works on both sides, from synced state and the blocks each side has.
+     * greater than what the crust rows left and the drop under them would take (a hull of exactly that is gone on
+     * landing); and what the brace does about it, for {@code resting} as the caller judges it. Works on both sides,
+     * from synced state and the blocks each side has.
      */
     public static Status status(PodEntity pod, boolean resting) {
         Optional<Ahead> crust = ahead(pod);

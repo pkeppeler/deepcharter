@@ -29,15 +29,19 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for the void below (#1387): the price of a free fall into open space under the drill, on the crust warning, and the drill's hollow
- * pitch for the last rows before it breaks through into a drop that lands hard. Layer 1's crust is its lowest 3 rows (local y 0 to 2), and the rows
- * under it are layer 2's rock, where {@link RoomCarver#carvePocketBelow} opens 8 rows of air over a stone bed: a 9-block fall from the last crust row.
+ * Server GameTests for the void below (#1387): the price of a free fall into open space under the drill, on the crust
+ * warning, and the drill's hollow pitch for the last rows before it breaks through into a drop that lands hard. Layer
+ * 1's crust is its lowest 3 rows (local y 0 to 2), and the rows under it are layer 2's rock, where {@link
+ * RoomCarver#carvePocketBelow} opens 8 rows of air over a stone bed: a 9-block fall from the last crust row.
  */
 public class VoidBelowTest {
     private static final int Z = 9150;
     private static final float FULL_CRUST = 24f;
     private static final float ROW = 8f;
-    /** The fall from the last crust row into {@link RoomCarver#carvePocketBelow}'s pocket: its 8 rows of air and the bored row. */
+    /**
+     * The fall from the last crust row into {@link RoomCarver#carvePocketBelow}'s pocket: its 8 rows of air and the
+     * bored row.
+     */
     private static final int POCKET_FALL = 9;
     /** The drill's hollow pitch must start at least a second before the pod breaks through. */
     private static final int MIN_LEAD_TICKS = 20;
@@ -198,7 +202,10 @@ public class VoidBelowTest {
 
     // ---- helpers ----
 
-    /** A Mole with its feet at {@code localY} in layer 1 at {@code x}, on the ground with {@code hull}; not in the world. */
+    /**
+     * A Mole with its feet at {@code localY} in layer 1 at {@code x}, on the ground with {@code hull}; not in the
+     * world.
+     */
     private static PodEntity pod(ServerLevel level, int x, int localY, float hull) {
         PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(x, TestLayers.worldY(1, localY), Z);
@@ -214,7 +221,10 @@ public class VoidBelowTest {
         RoomCarver.carve(level, x - 3, x + 3, floor + 3, floor + 10, Z - 3, Z + 3, Blocks.STONE);
     }
 
-    /** {@link #ROWS} rows of stone down to {@code boreFloor}, under an open room; the Y of the pod's feet on top of them. */
+    /**
+     * {@link #ROWS} rows of stone down to {@code boreFloor}, under an open room; the Y of the pod's feet on top of
+     * them.
+     */
     private static int bore(ServerLevel level, int x, int boreFloor) {
         int top = boreFloor + ROWS;
         RoomCarver.carve(level, x - 3, x + 3, boreFloor, top - 1, Z - 3, Z + 3, Blocks.STONE);
@@ -227,7 +237,9 @@ public class VoidBelowTest {
         boolean done(PodEntity pod, int tick);
     }
 
-    /** A piloted Mole on the stone at {@code x} that holds the drill; {@code watch} reads it each tick until it is done. */
+    /**
+     * A piloted Mole on the stone at {@code x} that holds the drill; {@code watch} reads it each tick until it is done.
+     */
     private static void drill(GameTestHelper helper, ServerLevel level, int x, int top, String name, Watch watch) {
         MockPlayer pilot = MockPlayers.join(helper, name);
         pilot.player().setGameMode(GameType.SURVIVAL);

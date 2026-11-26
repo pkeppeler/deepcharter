@@ -132,8 +132,9 @@ public final class PodStatusHud {
 
     /**
      * The lines shown, in their own colour, about the breach crust (#378), from one look at the crust ahead: when the hull would not outlast it, the slabs to it (or that
-     * the pod is in it), the hull, what the crust rows left would take and, over open space, what the drop under the crust would (#1387); then what a breach brace
-     * does about that, if the pod has one. {@code resting} is whether the pod is on the ground with its pilot giving no input.
+     * the pod is in it), the hull, what the crust rows left would take and, over open space, what the drop under the
+     * crust would (#1387); then what a breach brace does about that, if the pod has one. {@code resting} is whether
+     * the pod is on the ground with its pilot giving no input.
      */
     public static List<Component> crustLines(PodEntity pod, boolean resting) {
         PodBrace.Status status = PodBrace.status(pod, resting);
@@ -149,7 +150,10 @@ public final class PodStatusHud {
         return lines;
     }
 
-    /** The crust warning's line: the slabs down (or that the pod is in the crust), the hull and the crust's price, and the drop's when it costs a hull point or more. */
+    /**
+     * The crust warning's line: the slabs down (or that the pod is in the crust), the hull and the crust's price, and
+     * the drop's when it costs a hull point or more.
+     */
     private static Component crustLine(PodBrace.Warning warning) {
         long drop = Math.round(warning.drop());
         String key = (warning.slabsAway() > 0 ? "hud.deepcharter.pod.crust_ahead" : "hud.deepcharter.pod.crust_in")

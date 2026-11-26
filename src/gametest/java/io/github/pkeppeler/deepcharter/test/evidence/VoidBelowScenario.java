@@ -23,14 +23,16 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "void-below" (#1387): a pilot with 32 hull drills down a shaft of layer 1 towards the breach crust, which takes 8 hull a row, 24 in all.
- * Under the crust is a cave: 8 rows of open space over stone, a 9-block free fall from the last crust row that would land hard for about 27 hull. Before
- * #1387 the HUD showed nothing (32 outlasts 24); now the crust warning adds the drop: {@code CRUST 3 DOWN  HULL 32, IT TAKES 24 + DROP 27}. The pod bores the
- * crust, and as it falls into the cave the pilot holds the rotor whenever the pod sinks faster than half a block a tick, so it lands with the 8 hull the
- * crust left.
+ * Evidence scenario "void-below" (#1387): a pilot with 32 hull drills down a shaft of layer 1 towards the breach crust,
+ * which takes 8 hull a row, 24 in all. Under the crust is a cave: 8 rows of open space over stone, a 9-block free fall
+ * from the last crust row that would land hard for about 27 hull. Before #1387 the HUD showed nothing (32 outlasts 24);
+ * now the crust warning adds the drop: {@code CRUST 3 DOWN HULL 32, IT TAKES 24 + DROP 27}. The pod bores the crust,
+ * and as it falls into the cave the pilot holds the rotor whenever the pod sinks faster than half a block a tick, so it
+ * lands with the 8 hull the crust left.
  *
- * <p>The pod is a Prospector with the tier 3 console, as in {@link PodBraceScenario}: the stock console's plate fails in layer 1's signal-decay band near
- * the floor, and tier 3 never decays. The drill's hollow pitch over the last two rows is sound only, so the recording cannot show it.
+ * <p>The pod is a Prospector with the tier 3 console, as in {@link PodBraceScenario}: the stock console's plate fails
+ * in layer 1's signal-decay band near the floor, and tier 3 never decays. The drill's hollow pitch over the last two
+ * rows is sound only, so the recording cannot show it.
  */
 public class VoidBelowScenario extends EvidenceScenario {
     private static final int X = 4900;
@@ -45,7 +47,9 @@ public class VoidBelowScenario extends EvidenceScenario {
     private static final float FACING_EAST = -90f;
     private static final float HULL = 32f;
     private static final float CRUST = 24f;
-    /** The rotor holds the pod while it sinks faster than this, in blocks a tick: under the hard landing speed of 0.7. */
+    /**
+     * The rotor holds the pod while it sinks faster than this, in blocks a tick: under the hard landing speed of 0.7.
+     */
     private static final double BRAKE_ABOVE_SINK = 0.5;
 
     @Override
@@ -181,7 +185,10 @@ public class VoidBelowScenario extends EvidenceScenario {
         });
     }
 
-    /** A stone bed over three rows of breach crust over a cave, under an open room; lamps down the shaft and in the cave. */
+    /**
+     * A stone bed over three rows of breach crust over a cave, under an open room; lamps down the shaft and in the
+     * cave.
+     */
     private static void build(ServerLevel level) {
         RoomCarver.carve(
                 level,

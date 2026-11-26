@@ -6,17 +6,19 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * The void below (#1387): open space under the rock the drill bores, and what a free fall into it would cost. A braced pod crosses the crust
- * with a few hull to spare, and a cave under the crust lands it hard enough to wreck it; the crust warning prices that fall ({@link PodBrace}),
- * and the drill sounds hollow for the last rows before it breaks through into a fall that lands hard. Both read the blocks under the pod's
- * footprint, so the server and the client agree from the blocks each has; an unloaded block or the bottom of the level ends the read as rock.
+ * The void below (#1387): open space under the rock the drill bores, and what a free fall into it would cost. A braced
+ * pod crosses the crust with a few hull to spare, and a cave under the crust lands it hard enough to wreck it; the
+ * crust warning prices that fall ({@link PodBrace}), and the drill sounds hollow for the last rows before it breaks
+ * through into a fall that lands hard. Both read the blocks under the pod's footprint, so the server and the client
+ * agree from the blocks each has; an unloaded block or the bottom of the level ends the read as rock.
  */
 public final class VoidBelow {
     private VoidBelow() {}
 
     /**
-     * Hull a pod with {@code stats} loses landing after a free fall of {@code blocks} blocks from rest: the sink speed {@link PodMovement} reaches
-     * over that distance, priced by {@link HardLanding#hullDamage}. 0 for a fall that lands under the pod's hard landing speed.
+     * Hull a pod with {@code stats} loses landing after a free fall of {@code blocks} blocks from rest: the sink speed
+     * {@link PodMovement} reaches over that distance, priced by {@link HardLanding#hullDamage}. 0 for a fall that lands
+     * under the pod's hard landing speed.
      */
     public static float dropCost(PodStats stats, int blocks) {
         PodTuning.Movement movement = PodTuning.DEFAULT.movement();
@@ -30,8 +32,9 @@ public final class VoidBelow {
     }
 
     /**
-     * Blocks the pod falls once the drill has bored the row at {@code rowY} under its footprint and stands on it no longer: 1 when the row under
-     * that one is rock, up to {@link VoidBelowTuning#scanBlocks}. The pod lands on the highest rock under any cell of its footprint.
+     * Blocks the pod falls once the drill has bored the row at {@code rowY} under its footprint and stands on it no
+     * longer: 1 when the row under that one is rock, up to {@link VoidBelowTuning#scanBlocks}. The pod lands on the
+     * highest rock under any cell of its footprint.
      */
     static int fallAfter(PodEntity pod, int rowY) {
         Level level = pod.level();
@@ -56,8 +59,9 @@ public final class VoidBelow {
     }
 
     /**
-     * Whether the drill sounds hollow: the pod stands on rock, and within {@link VoidBelowTuning#hollowRows} rows of its feet the drill would
-     * break through into a fall that lands hard. A fall that lands soft, or a gap under a nearer row, leaves it as it is.
+     * Whether the drill sounds hollow: within {@link VoidBelowTuning#hollowRows} rows of the pod's feet, the drill would
+     * break through into a fall that lands hard. A fall that lands soft, or a gap under a nearer row, leaves it as it
+     * is.
      */
     public static boolean hollow(PodEntity pod) {
         int feetY = PodFootprint.of(pod).feetY();
@@ -71,7 +75,10 @@ public final class VoidBelow {
         return false;
     }
 
-    /** Whether the block at {@code pos} stops a falling pod: rock or a fluid, or a block the level cannot read, which is never priced as open. */
+    /**
+     * Whether the block at {@code pos} stops a falling pod: rock or a fluid, or a block the level cannot read, which is
+     * never priced as open.
+     */
     private static boolean holds(Level level, BlockPos pos) {
         if (level.isOutsideBuildHeight(pos) || !LoadedBlocks.isLoaded(level, pos)) {
             return true;

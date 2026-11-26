@@ -3,9 +3,10 @@ package io.github.pkeppeler.deepcharter.pod;
 /**
  * Tunables for the void below (#1387), read as {@code VoidBelowTuning.DEFAULT.thing()}.
  *
- * @param hollowRows  the drill sounds hollow while the row it would break through on is this many rows down or fewer, the row under the pod's feet
- *                    being 1; 1 or more
- * @param scanBlocks  the most blocks of open space read under a row; a deeper fall is priced as a fall of this many blocks, 1 or more
+ * @param hollowRows  the drill sounds hollow while the row it would break through on is this many rows down or fewer,
+ *                    the row under the pod's feet being 1; 1 or more
+ * @param scanBlocks  the most blocks of open space read under a row; a deeper fall is priced as a fall of this many
+ *                    blocks, 1 or more
  * @param hollowPitch the pitch the drill-down loop plays at while it sounds hollow, above 0
  */
 public record VoidBelowTuning(int hollowRows, int scanBlocks, float hollowPitch) {
