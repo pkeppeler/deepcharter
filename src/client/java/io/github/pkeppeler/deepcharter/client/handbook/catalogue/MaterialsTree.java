@@ -229,7 +229,7 @@ public record MaterialsTree(Node root, List<Material> materials) {
 
         private static int take(Map<Item, Integer> from, Item item, int wanted) {
             int held = from.getOrDefault(item, 0);
-            int taken = Math.min(held, Math.max(0, wanted));
+            int taken = Math.min(held, wanted);
             if (taken > 0) {
                 from.put(item, held - taken);
             }

@@ -163,9 +163,7 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
                                 client -> panel.state().found(panel.catalogue()).size())
                         > 1,
                 "the drill head has more than one recipe to step to");
-        // On the console's glass, by the heading: no row and no control.
-        CatalogueScene.hover(
-                context, new Rect(layout.card().right() - 4, layout.card().stationY(), 2, 2));
+        CatalogueScene.hover(context, CatalogueScene.consoleHeading(layout));
         RealInput.scroll(context, -1);
         require(
                 context.computeOnClient(client -> panel.state().materials()
@@ -173,12 +171,7 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
                 "the wheel scrolls the materials, not the recipes");
 
         // A row is an item: its name on hover, and R on it looks it up and shows its recipe.
-        Rect firstRow = new Rect(
-                layout.card().left(),
-                layout.card().gridY(),
-                CatalogueLook.current().slotSize() - 2,
-                CatalogueLook.current().slotSize() - 2);
-        CatalogueScene.hover(context, firstRow);
+        CatalogueScene.hover(context, CatalogueScene.firstMaterialsRow(layout));
         requireDrawn(drawn(context, screen), "RAW IRON", "the first row names its item on hover");
         RealInput.key(context, InputConstants.KEY_R, 0);
         CatalogueState.Lookup now =
@@ -226,9 +219,7 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
         Screen screen = screen(context);
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         CatalogueScene.pressOn(context, panel, Items.LADDER, InputConstants.KEY_R);
-        // On the console's glass, by the heading: no row and no control.
-        Rect heading = new Rect(layout.card().right() - 4, layout.card().stationY(), 2, 2);
-        CatalogueScene.hover(context, heading);
+        CatalogueScene.hover(context, CatalogueScene.consoleHeading(layout));
         RealInput.key(context, InputConstants.KEY_M, 0);
         int rows = (layout.card().needBottom() - layout.card().gridY())
                 / CatalogueLook.current().needRow();

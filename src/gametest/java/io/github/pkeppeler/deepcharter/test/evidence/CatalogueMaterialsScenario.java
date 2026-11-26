@@ -2,10 +2,8 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
-import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
-import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
@@ -63,7 +61,7 @@ public class CatalogueMaterialsScenario extends EvidenceScenario {
         hold(context);
         screenshot(context, "materials-total");
 
-        CatalogueScene.hover(context, firstRow(layout));
+        CatalogueScene.hover(context, CatalogueScene.firstMaterialsRow(layout));
         hold(context);
         screenshot(context, "materials-row");
 
@@ -87,8 +85,7 @@ public class CatalogueMaterialsScenario extends EvidenceScenario {
         CatalogueLayout layout = CatalogueScene.layout(context, panel);
         press(context, panel, Items.LADDER, InputConstants.KEY_R);
         // On the console, by its heading: the wheel there scrolls the rows, and no row is hovered.
-        CatalogueScene.hover(
-                context, new Rect(layout.card().right() - 4, layout.card().stationY(), 2, 2));
+        CatalogueScene.hover(context, CatalogueScene.consoleHeading(layout));
         RealInput.key(context, InputConstants.KEY_M, 0);
         hold(context);
         screenshot(context, "materials-more");
@@ -98,12 +95,6 @@ public class CatalogueMaterialsScenario extends EvidenceScenario {
         }
         screenshot(context, "materials-scrolled");
         context.runOnClient(client -> panel.state().clear());
-    }
-
-    /** The first row of the materials, its icon. */
-    private static Rect firstRow(CatalogueLayout layout) {
-        int icon = CatalogueLook.current().slotSize() - 2;
-        return new Rect(layout.card().left(), layout.card().gridY(), icon, icon);
     }
 
     /** Hovers {@code item}'s cell, rests on it, presses {@code key} and rests on what it shows. */

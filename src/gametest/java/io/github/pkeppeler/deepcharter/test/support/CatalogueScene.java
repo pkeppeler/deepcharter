@@ -177,6 +177,17 @@ public final class CatalogueScene {
         RealInput.key(context, key, 0);
     }
 
+    /** A spot on the recipe console's glass by its heading, over no row and no control. */
+    public static Rect consoleHeading(CatalogueLayout layout) {
+        return new Rect(layout.card().right() - 4, layout.card().stationY(), 2, 2);
+    }
+
+    /** The icon of the first row of the recipe console's total materials. */
+    public static Rect firstMaterialsRow(CatalogueLayout layout) {
+        int icon = CatalogueLook.current().slotSize() - 2;
+        return new Rect(layout.card().left(), layout.card().gridY(), icon, icon);
+    }
+
     /** Empties the search and the lookup. The caller waits a tick or two for the list to follow. */
     public static void clearSearch(ClientGameTestContext context, CataloguePanel panel) {
         context.runOnClient(client -> {
