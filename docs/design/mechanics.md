@@ -2334,7 +2334,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 **Towing.** With the line clipped, using the tether on a second pod hooks that pod to the first with the tow cable's own cable and rules (`PodTowing`, ADR 0022 and 0049): the charter must be allowed at it, it must be in the tow line's reach, and a pod tows one pod. A wreck is towable. Using it on a towed pod frees it. The person need not ride the tower, so a crew can hook a wreck from the ground and then drive off with it.
 
-**Noise.** A hauling winch reports to `PodTether.NOISE` (position and `noiseRadius` 40) every 10 ticks, and plays a clank. Nothing listens yet: `creature/DrawSources` (#990) is not on main, and #1027 moves the winch's noise there and deletes the event.
+**Noise.** A hauling winch plays a clank and sounds a decoy in `creature/DrawSources` (ADR 0078, #1027) at the pod: `noiseRadius` (40) of pull, renewed every `noiseInterval` (10) ticks and lasting two ticks past the next renewal, so it has no gap. A creature drawn to the drill that asks `DrawSources.noiseTarget` while within that radius is sent to the winch instead, the same way as to a thrown decoy. Stopping the winch or unhooking removes its decoy at once, and a snagged or stalled winch (no clank) lapses within the interval. One entry per winch: a renewal replaces the last, since the pod may have moved.
 
 **Ends.** A clip is a session's: it is not saved, and holds only the pod's UUID. It ends on the next tick when the person dies, boards a pod, changes level, or their pod is removed, unloads or is wrecked; a person who reconnects starts free.
 
