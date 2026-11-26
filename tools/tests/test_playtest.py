@@ -566,16 +566,45 @@ class Runtime(PlaytestTestCase):
 
     def test_ack_text_is_fixed_and_validated(self):
         self.sys.alive = True
-        p.ack(self.env, "Meat_Cups", "42", existing=False)
-        p.ack(self.env, "Meat_Cups", "42", existing=True)
+        p.ack(self.env, "Meat_Cups", "42", "Pod is slow", existing=False)
+        p.ack(self.env, "Meat_Cups", "42", "Pod is slow", existing=True)
         first, second = (json.loads(s.split(" ", 2)[2]) for s in self.sys.sent)
         self.assertEqual(self.sys.sent[0].split(" ")[:2], ["tellraw", "Meat_Cups"])
-        self.assertEqual(first, {"text": "[Deep Charter] Thanks! Logged as issue #42.", "color": "gold"})
-        self.assertEqual(second["text"], "[Deep Charter] Thanks! Added to issue #42.")
+        self.assertEqual(first, {"text": "[Deep Charter] Thanks! Logged as issue #42: Pod is slow.", "color": "gold"})
+        self.assertEqual(second["text"], "[Deep Charter] Thanks! Added to issue #42: Pod is slow.")
         for player, issue in (("a b", "1"), ("ab", "1"), ("x" * 17, "1"), ("Abc; stop", "1"), ("Abc", "x"), ("Abc", "0"), ("Abc", "-1"), ("Abc", "1 2")):
             with self.subTest(player=player, issue=issue), self.assertRaises(p.Fail):
-                p.ack(self.env, player, issue, existing=False)
+                p.ack(self.env, player, issue, "Pod is slow", existing=False)
         self.assertEqual(len(self.sys.sent), 2)
+
+    def ack_text(self, title):
+        self.sys.alive = True
+        self.sys.sent.clear()
+        p.ack(self.env, "Abc", "7", title, existing=False)
+        return json.loads(self.sys.sent[0].split(" ", 2)[2])["text"]
+
+    def test_ack_title_is_validated(self):
+        self.sys.alive = True
+        for title in ("", "   ", "\t", "two\nlines", "bell\x07", "del\x7f"):
+            with self.subTest(title=title), self.assertRaises(p.Fail):
+                p.ack(self.env, "Abc", "7", title, existing=False)
+        self.assertEqual(self.sys.sent, [])
+
+    def test_ack_title_punctuation_and_quotes(self):
+        prefix = "[Deep Charter] Thanks! Logged as issue #7: "
+        for title, shown in (("Pod is slow.", "Pod is slow."), ("Why slow?", "Why slow?"), ("Fix it!", "Fix it!"),
+                             ("  padded  ", "padded."), ('Say "hi" \\ there', 'Say "hi" \\ there.')):
+            with self.subTest(title=title):
+                self.assertEqual(self.ack_text(title), prefix + shown)
+
+    def test_ack_long_title_is_cut_with_an_ellipsis(self):
+        text = self.ack_text("word " * 40)
+        title = text.removeprefix("[Deep Charter] Thanks! Logged as issue #7: ")
+        self.assertEqual(len(title), p.ACK_TITLE_MAX)
+        self.assertTrue(title.endswith("\u2026"))
+        exact = self.ack_text("x" * p.ACK_TITLE_MAX)
+        self.assertTrue(exact.endswith("x."))
+        self.assertNotIn("\u2026", exact)
 
 
 class Classify(unittest.TestCase):

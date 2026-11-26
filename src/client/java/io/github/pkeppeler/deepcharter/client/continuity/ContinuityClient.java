@@ -12,8 +12,9 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The sequence outlives its screen. Vanilla builds a new death screen whenever the screen is cleared while the player is dead (a
  * container the server closes, a screen opened over it and shut), and {@code GuiSetScreenMixin} hands it this same screen back each time
- * (ADR 0100), so the laugh and the silence go on and the timeline keeps the wall clock of the death. The sequence ends only when the
- * client has another player (RETURN TO WORK, or any respawn) or leaves the world.
+ * (ADR 0100), so the laugh and the silence go on and the timeline keeps the wall clock of the death. A new player the client is given
+ * while the person is still dead (a teleport to another dimension) carries the same sequence on, until RETURN TO WORK is pressed. It
+ * ends only when the client has a living player again (RETURN TO WORK, or any respawn), has none, or leaves the world.
  */
 public final class ContinuityClient {
     private static @Nullable ContinuityEventPayload pending;
@@ -31,22 +32,27 @@ public final class ContinuityClient {
         end();
     }
 
+    /** Whether {@code screen} is the sequence under way, the only one that plays its sounds. */
+    static boolean isLive(ContinuityScreen screen) {
+        return live == screen;
+    }
+
     /** Whether a Continuity Event is under way: the camera does not tilt for the death meanwhile. */
     public static boolean inSequence() {
         return live != null;
     }
 
     /**
-     * The screen for {@code player}'s death, in place of vanilla's: the live one if it is this player's, so a screen cleared while the
-     * person is dead shows the same sequence where it was; otherwise a new sequence, written in the numbers the server sent. Without them
-     * (a death the server sent no numbers for, or a world joined dead), the number reads as unknown and the employee number is worked out
-     * here, as the server would; numbers that come after the sequence began are written into it at the next call.
+     * The screen for {@code player}'s death, in place of vanilla's: the live one if this player carries it on, so a screen cleared while
+     * the person is dead shows the same sequence where it was; otherwise a new sequence, written in the numbers the server sent. Without
+     * them (a death the server sent no numbers for, or a world joined dead), the number reads as unknown and the employee number is worked
+     * out here, as the server would; numbers that come after the sequence began are written into it at the next call.
      */
     public static ContinuityScreen screenFor(LocalPlayer player) {
         ContinuityScreen screen = live;
-        if (screen != null && screen.belongsTo(player)) {
-            // Begun before the server's numbers came (a screen cleared as the client saw itself dead): they are this
-            // death's.
+        if (screen != null && screen.carriesOn(player)) {
+            // Begun before the server's numbers came (a screen cleared as the client saw itself dead): they are
+            // this death's.
             ContinuityEventPayload numbers = pending;
             if (numbers != null && !screen.numberKnown()) {
                 screen.adopt(numbers.number(), numbers.employee());
@@ -69,7 +75,7 @@ public final class ContinuityClient {
 
     /**
      * Each client tick: the sequence plays on whether or not its screen is the one shown, and ends, closing its screen, once the client
-     * has another player.
+     * has a player that does not carry it on ({@link ContinuityScreen#carriesOn}).
      */
     static void tick(Minecraft client) {
         ContinuityScreen screen = live;
@@ -77,7 +83,7 @@ public final class ContinuityClient {
             return;
         }
         LocalPlayer player = client.player;
-        if (player == null || !screen.belongsTo(player)) {
+        if (player == null || !screen.carriesOn(player)) {
             end();
             if (player != null && client.gui.screen() == screen) {
                 client.gui.setScreen(null);

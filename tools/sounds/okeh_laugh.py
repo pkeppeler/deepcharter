@@ -239,6 +239,7 @@ def build(flac, out, envelope_file, manifest):
         "page": PAGE_URL,
         "md5": hashlib.md5(flac.read_bytes()).hexdigest(),  # noqa: S324 - archive.org publishes md5; it is a name, not a defence
         "sha256": digest,
+        "license": first_sounds.NONE_STATED,
         "tags": first_sounds.read_tags(flac),
     }
     pcm = pcm16(laugh(decode(flac, *LOW), decode(flac, *HIGH)))
@@ -272,9 +273,10 @@ def check(out, manifest, envelope_file=ENVELOPE):
         source.get("url") != SOURCE_URL
         or source.get("sha256") != SOURCE_SHA256
         or source.get("md5") != SOURCE_MD5
+        or source.get("license") != first_sounds.NONE_STATED
         or not re.search(r"archive\.org", source.get("tags", {}).get("comment", ""))
     ):
-        problems.append(f"{manifest.name}: the source's URL, hashes or tags are not recorded as {SOURCE_URL}; run tools/sounds/okeh_laugh.py")
+        problems.append(f"{manifest.name}: the source's URL, hashes, licence or tags are not recorded as {SOURCE_URL}; run tools/sounds/okeh_laugh.py")
     files = known.get("files", {})
     entry = files.get(NAME)
     target = out / f"{NAME}.ogg"

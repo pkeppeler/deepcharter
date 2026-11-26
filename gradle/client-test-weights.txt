@@ -3,11 +3,14 @@
 # A name is simple, or fully qualified when two classes share a simple name (the full name wins). A class not listed counts as 10 s, so a new class needs no entry here and the shards still cover every
 # class; an entry for a class that no longer exists is ignored. Stale numbers only unbalance the shards, never
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
+# BoreTripsClientTest: one CI run (45741859329, #1418), which added a settle to two of its trips; refresh from CI.
 # PodDriveLateClientTest and PodDriveSmoothClientTest: the mean of three local runs after #1112 split the class; refresh from CI.
+# ContinuityPackClientTest: one CI run (#1377, shard 2), from its START line to the next; refresh from CI.
 # RealInputTypingClientTest: one local run (#1385); refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
 BlockReadoutClientTest 16
+BoreTripsClientTest 124
 BreachCrossingClientTest 27
 BreachFadeHoldClientTest 18
 BreachHudTest 21
@@ -21,6 +24,7 @@ CatalogueToggleClientTest 22
 CavernSkyClientTest 49
 CharterCoreClientTest 26
 CockpitHudClientTest 36
+ContinuityPackClientTest 101
 ContractTerminalClientTest 12
 CrtTitleCornerClientTest 68
 CrtUiKitClientTest 4
