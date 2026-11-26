@@ -104,7 +104,10 @@ final class PaperDraw {
         return y + Math.max(1, lines.size()) * redactedPitch(font);
     }
 
-    /** How far down one line of {@link #redacted} text starts below the last: the bars stand a pixel above and below the letters. */
+    /**
+     * How far down one line of {@link #redacted} text starts below the last: the bars stand a pixel above and below the
+     * letters.
+     */
     static int redactedPitch(Font font) {
         return font.lineHeight + 3;
     }

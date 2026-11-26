@@ -13,9 +13,9 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.input.KeyEvent;
 
 /**
- * Evidence scenario "handbook-page-flow" for #1429: the text of chapters 4 and 5 of the shipped handbook, every chapter full, in the default
- * window, turned with Next from the chapter's first text page to its map. Their text ran under Back and Next; it now runs on to the next
- * sheet.
+ * Evidence scenario "handbook-page-flow" for #1429: the text of chapters 4 and 5 of the shipped handbook, every chapter
+ * full, in the default window, turned with Next from the chapter's first text page to its map. Their text ran under
+ * Back and Next; it now runs on to the next sheet.
  */
 public class HandbookPageFlowScenario extends EvidenceScenario {
     private static final int GUI_SCALE = 2;

@@ -26,15 +26,17 @@ import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
 
 /**
- * Client GameTest for #1429: text that does not fit a handbook sheet runs on to the next sheet. The shipped handbook, every chapter full, is
- * walked sheet by sheet with Next at the GUI sizes real windows reach, and no text may end below the top of Back and Next. The sheets of a
- * text page draw its text once, in order, and the page counter, Back, the arrow keys, the contents, the index card's page link and a resize
- * all count the extra sheets. A world is loaded only for the synced chapter registry; the screens are built by hand and read from the text
- * they draw ({@link DrawnText}).
+ * Client GameTest for #1429: text that does not fit a handbook sheet runs on to the next sheet. The shipped handbook,
+ * every chapter full, is walked sheet by sheet with Next at the GUI sizes real windows reach, and no text may end below
+ * the top of Back and Next. The sheets of a text page draw its text once, in order, and the page counter, Back, the
+ * arrow keys, the contents, the index card's page link and a resize all count the extra sheets. A world is loaded only
+ * for the synced chapter registry; the screens are built by hand and read from the text they draw ({@link DrawnText}).
  */
 public class HandbookPageFlowClientTest implements FabricClientGameTest {
     private static final Pattern COUNTER = Pattern.compile("(\\d+) / (\\d+)");
-    /** More Next presses than the smallest sheet needs for the whole book; past it, the walk is going round in circles. */
+    /**
+     * More Next presses than the smallest sheet needs for the whole book; past it, the walk is going round in circles.
+     */
     private static final int MAX_TURNS = 2000;
 
     private static final int LEFT_MOUSE = 1;
@@ -44,8 +46,9 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
     private static final Size DEFAULT = Size.of(854, 480, 2);
 
     /**
-     * The GUI sizes no text may run off the sheet at: the default window; the smallest window GUI scale 4 allows, whose 320 x 240 GUI is the
-     * narrowest sheet any GUI scale reaches; and a 1920 x 1080 window at GUI scales 3 and 4. A wider or taller window draws the default sheet.
+     * The GUI sizes no text may run off the sheet at: the default window; the smallest window GUI scale 4 allows, whose
+     * 320 x 240 GUI is the narrowest sheet any GUI scale reaches; and a 1920 x 1080 window at GUI scales 3 and 4. A
+     * wider or taller window draws the default sheet.
      */
     private static final List<Size> SIZES =
             List.of(DEFAULT, Size.of(1280, 960, 4), Size.of(1920, 1080, 3), Size.of(1920, 1080, 4));
@@ -61,7 +64,10 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
         }
     }
 
-    /** A sheet the walk stopped on: its page's index, the sheet of that page from 0, the counter's number and total, and the text drawn. */
+    /**
+     * A sheet the walk stopped on: its page's index, the sheet of that page from 0, the counter's number and total, and
+     * the text drawn.
+     */
     private record Stop(int page, int sheet, int number, int total, List<Drawn> drawn) {}
 
     // The world is only here for the chapter registry it syncs; the screens do not touch it.
@@ -111,8 +117,8 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The sheets of a chapter's text page, read in order without the label, the title, the counter and the margin note, draw the page's text:
-     * no line twice, none lost.
+     * The sheets of a chapter's text page, read in order without the label, the title, the counter and the margin note,
+     * draw the page's text: no line twice, none lost.
      */
     private static void theSheetsOfATextPageDrawItsTextOnce(List<HandbookPage> pages) {
         for (Size size : withSmallest()) {
@@ -180,7 +186,10 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
         }
     }
 
-    /** From the last sheet, Back visits every sheet Next did, in reverse: onto a page of several sheets it lands on the last. */
+    /**
+     * From the last sheet, Back visits every sheet Next did, in reverse: onto a page of several sheets it lands on the
+     * last.
+     */
     private static void backRetracesNext(List<HandbookPage> pages) {
         HandbookScreen screen = screen(pages, SMALLEST);
         List<Stop> stops = walk(screen);
@@ -249,9 +258,9 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Each chapter map's index card names the number the counter shows on the chapter's first sheet, and opens it. In the default window:
-     * the minimum one puts the card under the chapter tabs. Some chapter's text runs over two sheets there too, so the links after it count
-     * the extra sheet.
+     * Each chapter map's index card names the number the counter shows on the chapter's first sheet, and opens it. In
+     * the default window: the minimum one puts the card under the chapter tabs. Some chapter's text runs over two
+     * sheets there too, so the links after it count the extra sheet.
      */
     private static void thePageLinkOpensAChaptersFirstSheet(List<HandbookPage> pages) {
         HandbookScreen screen = screen(pages, DEFAULT);
@@ -286,7 +295,10 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
         }
     }
 
-    /** On the last sheet of a long page at the minimum sheet, a resize to the default window leaves the screen on that page's last sheet. */
+    /**
+     * On the last sheet of a long page at the minimum sheet, a resize to the default window leaves the screen on that
+     * page's last sheet.
+     */
     private static void aResizeKeepsTheSheetInTheBook(List<HandbookPage> pages) {
         List<Stop> wide = walk(screen(pages, DEFAULT));
         HandbookScreen screen = screen(pages, SMALLEST);
@@ -403,7 +415,9 @@ public class HandbookPageFlowClientTest implements FabricClientGameTest {
         return visibleButton(screen, "deepcharter.handbook.screen.back");
     }
 
-    /** The shown button labelled {@code key}: the Notes tab's Back shares the handbook's label and hides on this tab. */
+    /**
+     * The shown button labelled {@code key}: the Notes tab's Back shares the handbook's label and hides on this tab.
+     */
     private static AbstractWidget visibleButton(HandbookScreen screen, String key) {
         String label = Component.translatable(key).getString();
         return screen.children().stream()

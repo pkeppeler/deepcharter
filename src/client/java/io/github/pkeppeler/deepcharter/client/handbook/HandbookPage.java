@@ -85,8 +85,8 @@ public sealed interface HandbookPage {
     record Appendix() implements HandbookPage {}
 
     /**
-     * One page of Appendix A, the employment contract, with its redactions. {@code part} counts from 1 of {@code parts}. Clauses that
-     * do not fit one sheet run on to more ({@link SheetFlow}).
+     * One page of Appendix A, the employment contract, with its redactions. {@code part} counts from 1 of {@code
+     * parts}. Clauses that do not fit one sheet run on to more ({@link SheetFlow}).
      */
     record Contract(int part, int parts) implements HandbookPage {}
 }

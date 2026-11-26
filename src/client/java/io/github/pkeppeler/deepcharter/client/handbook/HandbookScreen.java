@@ -90,11 +90,17 @@ public final class HandbookScreen extends Screen {
 
     private int page;
     private int previousPage;
-    /** The sheet of the page in view, from 0: a page whose text does not fit one sheet runs on to the next ({@link SheetFlow}). */
+    /**
+     * The sheet of the page in view, from 0: a page whose text does not fit one sheet runs on to the next ({@link
+     * SheetFlow}).
+     */
     private int sheet;
 
     private int previousSheet;
-    /** The first line of each sheet of each page, by page index, as {@link #init} last laid them out; before that, every page has one sheet. */
+    /**
+     * The first line of each sheet of each page, by page index, as {@link #init} last laid them out; before that, every
+     * page has one sheet.
+     */
     private List<List<Integer>> sheetStarts = List.of();
 
     private int flipTicks;
@@ -303,7 +309,10 @@ public final class HandbookScreen extends Screen {
         }
     }
 
-    /** Flips to sheet {@code toSheet} of page {@code index}, both clamped to the book. A new page is remembered and reported. */
+    /**
+     * Flips to sheet {@code toSheet} of page {@code index}, both clamped to the book. A new page is remembered and
+     * reported.
+     */
     private void flipTo(int index, int toSheet) {
         int target = Mth.clamp(index, 0, pages.size() - 1);
         int targetSheet = Mth.clamp(toSheet, 0, sheetsOf(target) - 1);
@@ -940,8 +949,8 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * A sheet of a page of the text of a chapter: its label and title, the lines of the text that fall on this sheet, and on the first sheet
-     * the margin note beside it if the language file has one.
+     * A sheet of a page of the text of a chapter: its label and title, the lines of the text that fall on this sheet,
+     * and on the first sheet the margin note beside it if the language file has one.
      */
     private void drawChapterText(GuiGraphicsExtractor graphics, HandbookPage.ChapterText text, int index, int onSheet) {
         int y = PaperDraw.wrapped(
@@ -1221,8 +1230,8 @@ public final class HandbookScreen extends Screen {
     }
 
     /**
-     * A sheet of a page of Appendix A: its title, and the lines of its clauses that fall on this sheet, one clause a paragraph, with a black
-     * bar over each redacted word.
+     * A sheet of a page of Appendix A: its title, and the lines of its clauses that fall on this sheet, one clause a
+     * paragraph, with a black bar over each redacted word.
      */
     private void drawContract(GuiGraphicsExtractor graphics, HandbookPage.Contract contract, int index, int onSheet) {
         int y = PaperDraw.wrapped(
@@ -1271,7 +1280,9 @@ public final class HandbookScreen extends Screen {
         return lines;
     }
 
-    /** Splits each page's body into the sheets this window holds, and keeps the screen on a sheet that is still there. */
+    /**
+     * Splits each page's body into the sheets this window holds, and keeps the screen on a sheet that is still there.
+     */
     private void layOutSheets() {
         sheetStarts = pages.stream()
                 .map(content -> SheetFlow.starts(bodyLines(content), bodyTop(content), bottom(), font.lineHeight + 1))
@@ -1280,7 +1291,10 @@ public final class HandbookScreen extends Screen {
         previousSheet = Mth.clamp(previousSheet, 0, sheetsOf(previousPage) - 1);
     }
 
-    /** The lines that flow over a page's sheets: a chapter's text, the clauses of a page of Appendix A; none on any other page. */
+    /**
+     * The lines that flow over a page's sheets: a chapter's text, the clauses of a page of Appendix A; none on any
+     * other page.
+     */
     private List<SheetFlow.Line> bodyLines(HandbookPage content) {
         return switch (content) {
             case HandbookPage.ChapterText text -> textLines(text);
@@ -1313,7 +1327,10 @@ public final class HandbookScreen extends Screen {
         return sheetStarts(index).size();
     }
 
-    /** What the page counter shows for sheet {@code onSheet} of page {@code index}: how many sheets come before it, plus one. */
+    /**
+     * What the page counter shows for sheet {@code onSheet} of page {@code index}: how many sheets come before it, plus
+     * one.
+     */
     private int sheetNumber(int index, int onSheet) {
         int number = onSheet + 1;
         for (int before = 0; before < index; before++) {
