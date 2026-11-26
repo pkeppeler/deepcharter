@@ -36,3 +36,39 @@ pr_mergeable_of() {
     *) return 1 ;;
   esac
 }
+
+# gh_list <var> <path> <jq>: every page of a GET listing, through --jq, into <var>; or fails with gh's error in
+# $gh_list_err and leaves <var> empty. `gh api --paginate` exits nonzero when any page fails but has already printed
+# the pages before it, so a listing that lost a page is never used (#1484). gh's stderr stays out of <var>. A
+# transient error (HTTP 500, 502, 503, 504, a timeout or a reset connection) retries the whole listing:
+# GH_LIST_ATTEMPTS tries (default 3), sleeping GH_LIST_SLEEP seconds (default 5) times the attempt number between them;
+# both must be whole numbers, with no leading zero (bash arithmetic would read 08 as a bad octal and abort past
+# the caller's `|| refuse`). A rate limit (429, or a secondary-limit 403) is not retried: it refuses at once, closed.
+gh_list() {
+  local attempts=${GH_LIST_ATTEMPTS:-3} pause=${GH_LIST_SLEEP:-5} attempt=1 errfile listed
+  local transient='HTTP 50[0234]|[Tt]imeout|timed out|deadline exceeded|connection reset|unexpected EOF'
+  printf -v "$1" '%s' ''
+  gh_list_err=
+  if [[ ! $attempts =~ ^[1-9][0-9]*$ || ! $pause =~ ^(0|[1-9][0-9]*)$ ]]; then
+    gh_list_err="GH_LIST_ATTEMPTS and GH_LIST_SLEEP must be whole numbers (attempts at least 1)"
+    return 1
+  fi
+  errfile=$(mktemp) || { gh_list_err="could not create a temporary file"; return 1; }
+  while true; do
+    if listed=$(gh api "$2" --paginate --jq "$3" 2>"$errfile"); then
+      rm -f "$errfile"
+      printf -v "$1" '%s' "$listed"
+      return 0
+    fi
+    gh_list_err=$(tr '\n' ' ' <"$errfile")
+    gh_list_err=${gh_list_err% }
+    [[ -n $gh_list_err ]] || gh_list_err="gh exited nonzero with no error text"
+    if [[ $attempt -ge $attempts || ! $gh_list_err =~ $transient ]]; then
+      rm -f "$errfile"
+      return 1
+    fi
+    echo "gh api $2 failed (attempt $attempt of $attempts, retrying): $gh_list_err" >&2
+    sleep $((pause * attempt))
+    attempt=$((attempt + 1))
+  done
+}

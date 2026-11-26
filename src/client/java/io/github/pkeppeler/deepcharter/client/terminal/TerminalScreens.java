@@ -8,10 +8,12 @@ import java.util.Map;
 import java.util.function.Function;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Which screen a terminal opens. An unrepaired terminal always opens the generic {@link TerminalScreen}, offline. A repaired one
- * opens the screen its feature registered with {@link #register}, or the generic online screen when there is none.
+ * Which screen a working terminal opens: the screen its feature registered with {@link #register}, or the generic
+ * online {@link TerminalScreen} when there is none. An unrepaired terminal sends no view: it opens its {@link
+ * RepairScreen}.
  */
 public final class TerminalScreens {
     private static final Map<TerminalType, Function<TerminalView, ? extends Screen>> ONLINE = new HashMap<>();
@@ -25,6 +27,11 @@ public final class TerminalScreens {
         }
     }
 
+    /** True for any terminal's screen, working ({@link TerminalViewScreen}) or unrepaired ({@link RepairScreen}). */
+    public static boolean isTerminalScreen(@Nullable Screen screen) {
+        return screen instanceof TerminalViewScreen || screen instanceof RepairScreen;
+    }
+
     /** Shows {@code view}: updates the open screen if it accepts the view, or opens a new one. Call on the client thread. */
     static void show(TerminalView view) {
         Minecraft client = Minecraft.getInstance();
@@ -35,10 +42,10 @@ public final class TerminalScreens {
         client.gui.setScreen(create(view));
     }
 
-    /** The screen {@code view} opens: the offline screen when it is not repaired, else the type's online screen. A test builds every screen through this. */
+    /** The screen {@code view} opens: the type's online screen. A test builds every terminal screen through this. */
     public static Screen create(TerminalView view) {
         TerminalType type = TerminalTypes.get(view.type())
                 .orElseThrow(() -> new IllegalStateException("unknown terminal type " + view.type()));
-        return view.repaired() ? ONLINE.getOrDefault(type, TerminalScreen::new).apply(view) : new TerminalScreen(view);
+        return ONLINE.getOrDefault(type, TerminalScreen::new).apply(view);
     }
 }
