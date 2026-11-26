@@ -75,13 +75,13 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
-import net.minecraft.world.inventory.ContainerInput;
-import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -359,7 +359,8 @@ public class HandbookChaptersOneToFiveTest {
      * no server to ask.
      */
     static int shippedSteps(String chapter) {
-        String path = "/data/" + DeepCharter.MOD_ID + "/" + DeepCharter.MOD_ID + "/handbook_chapter/" + chapter + ".json";
+        String path =
+                "/data/" + DeepCharter.MOD_ID + "/" + DeepCharter.MOD_ID + "/handbook_chapter/" + chapter + ".json";
         try (InputStream stream = HandbookChaptersOneToFiveTest.class.getResourceAsStream(path)) {
             return JsonParser.parseReader(new InputStreamReader(
                             Objects.requireNonNull(stream, () -> "no chapter " + path), StandardCharsets.UTF_8))
