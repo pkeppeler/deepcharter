@@ -2495,7 +2495,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 **Outposts.** `OutpostHabitability.of(level, outpost)` reads the hall's shell, its 442 cells less the 405 inside, against the row at the hall's middle: habitable when a row exists and every block of the shell meets it on the suit's axes, heat, pressure and flooding. Quake is not judged: a shortfall there does not leak air, it is a structural risk. A gap (air or a fluid) is not judged; it is the creature rule's exposure ([#926](https://github.com/pkeppeler/deepcharter/issues/926)), which later replaces the box with its flood fill. Inside a hall that holds, the suit refills. Inside one that does not it runs at `leakShare` (0.5), half the outside rate however many blocks fall short, so an unrated hall doubles a person's time, and dripping water shows the seep. No fluid is placed and nothing is destroyed. The kit's hall leaves its crust pit and rock hatch open, so against a row of heat 2 it holds only once they are patched with slag brick.
 
-**The risk line.** One line under the header of the outpost's fuel pump and sell terminal: "SHELL HOLDS: SUIT REFILLS HERE" in phosphor, "SHELL LEAKS: heat, pressure (14 blocks): SUIT RUNS AT 50%" in amber (the share is `leakShare`, so it follows the tuning, and the axes are never quake), or "NOTHING IS RATED AT THIS DEPTH". Hidden where the depth asks nothing, so today it shows only in the unbuilt depth. A guest sees the line the owner does.
+**The risk line.** One line under the header of the outpost's fuel pump and sell terminal: "SHELL HOLDS: SUIT REFILLS HERE" in phosphor, "SHELL LEAKS: heat, pressure (14 blocks): SUIT RUNS AT 50%" in amber (the share is `leakShare`, so it follows the tuning, and the axes are never quake), or "NOTHING IS RATED AT THIS DEPTH". Hidden where the depth asks nothing, so today it shows only in layer 3 and the unbuilt depth. A guest sees the line the owner does.
 
 **Pacing in player units (`SuitPacingTest` prints `[suit-pacing]` lines; whole seconds until the reserve is spent).**
 
@@ -2511,20 +2511,20 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 | A row (2,3,3), submerged | 30 s | modelled |
 | A row (5,3,0), dry | 40 s | modelled |
 
-The test fails if a built row that asks something (from layer 3 on) leaves a stock suit under 60 s dry, and it shows the check refusing a row that does (the unbuilt depth's).
+The test fails if a built row that asks something (from layer 3 on) leaves a stock suit under 60 s dry, and it shows the check refusing a row that does (the unbuilt depth's). [Layer 3's row](#environment-ratings-989-a) gives a stock suit 90 s dry.
 
 **Decisions (A).**
 - The environment is the depth's row, and the suit is rated like a block: one table for what a block and a person must hold.
 - Costs are summed, not maxed; a hall leaks at half, whatever the number of bad blocks; the capacity is 180 s.
 - A hall is judged for the suit on heat, pressure and flooding only. A hall short on quake alone shelters the suit and its risk line says it holds: quake is a structural risk, not a leak, and is left to a later change.
-- The suit is inert in layers 1 and 2 and on the surface, and its breach is harmless where the depth asks nothing. The only place this is harder than before is the unbuilt depth below layer 2, which no early run reaches: the unpacked and the early-game columns are unchanged.
+- The suit is inert in layers 1 and 2 and on the surface, and its breach is harmless where the depth asks nothing. The places this is harder than before are layer 3 and the unbuilt depth below it, which no early run reaches: the unpacked and the early-game columns are unchanged.
 - "Water seeps in" is particles and the drain, with no real water: placing fluid would delete a player's blocks.
 - Flooding is answered by the air track (#1064, "oxygen and toxins"), so the SPEC's four suit tracks stay four.
 - The air holds only where the suit is active, so a swim at the surface is as it was.
 
 **Knobs.** `SuitTuning.DEFAULT` (capacity, base and per-level costs, the stock suit's ratings, the uncharted row, `leakShare`, refill, warning times, breach damage and cadence), `RatingTuning.DEFAULT` (the rows), `theme/suit.json` (the gauge).
 
-**Open questions.** What layer 3 asks (its worldgen's to say, and this test holds it to a minute); whether a hall's leak should grow with its worst axis rather than stay a flat share.
+**Open questions.** Whether a hall's leak should grow with its worst axis rather than stay a flat share.
 
 ## Suit tracks (#1064, A)
 
