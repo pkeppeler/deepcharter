@@ -12,9 +12,9 @@ import net.minecraft.util.RandomSource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The terminal's music: one loop from the tick a terminal screen opens to the tick it closes, a working terminal's or an
- * unrepaired one's ({@link TerminalScreens#isTerminalScreen}). The level's own background music is stopped when it starts,
- * and the level may start its music again while the terminal is open.
+ * The terminal's music: one loop from the tick a terminal screen opens to the tick it closes, a working
+ * terminal's or an unrepaired one's ({@link TerminalScreens#isTerminalScreen}). The level's own background
+ * music is stopped when it starts, and the level may start its music again while the terminal is open.
  */
 public final class TerminalMusic {
     private static @Nullable Music playing;

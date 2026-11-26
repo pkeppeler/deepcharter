@@ -383,7 +383,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
         });
     }
 
-    /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would: its repair screen, a terminal screen. */
+    /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would: its repair screen. */
     private static void openTerminal(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         BlockPos pump = singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();

@@ -27,7 +27,7 @@ public final class TerminalScreens {
         }
     }
 
-    /** True for a terminal's screen, a working one ({@link TerminalViewScreen}) or an unrepaired one ({@link RepairScreen}). */
+    /** True for any terminal's screen, working ({@link TerminalViewScreen}) or unrepaired ({@link RepairScreen}). */
     public static boolean isTerminalScreen(@Nullable Screen screen) {
         return screen instanceof TerminalViewScreen || screen instanceof RepairScreen;
     }
