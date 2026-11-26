@@ -1517,7 +1517,7 @@ The minutes use these (A) assumptions: the player sprints at 5.612 blocks a seco
 
 **The ladder.**
 1. **By hand: crafted.** A unit for each track, from salvage metal and, for the hazard answers, ore withdrawn from the pod's cargo at the ore processor (`recipe/<track>_unit.json`), fitted by using it on the player's own charter's pod ([ADR 0053](../adr/0053-tier-1-of-every-pod-part-is-a-crafted-unit-fitted-by-use-like-the-scanners.md)). The part is a tier 1 `part_<track>`, stamped and numbered like a bought one.
-2. **The pod: bought.** Tier 2 and up are purchases at the upgrade terminal, at the prices they had, with no tier 1 needed (only the scanner needs its tier 1 first).
+2. **The pod: bought.** Tier 2 and up are purchases at the upgrade terminal, at the prices they had, with no tier 1 needed (only the scanner needs its tier 1 first). The terminal shows no row for the crafted tier (#1440): for each track it says what the part does, what is fitted and what the next tier gains, from the stats the track moves (`UpgradeStat`), and a track that waits for its unit, or is crafted only, shows a line naming the unit that opens its recipe.
 3. **Mastery.** Unchanged: a later chassis' higher cap makes the tier 1 and 2 parts a cheaper spare pod's.
 
 **The recipes** (I iron ingot, C copper ingot, R redstone, B block of copper, nine ingots at a bench; N Ironium, Z Bronzium, S Silverium, G Goldium). Metal is the yard's: scrap melts to ingots, and redstone is a crate's. Ore is the dig's: the pod brings it up in its cargo.
