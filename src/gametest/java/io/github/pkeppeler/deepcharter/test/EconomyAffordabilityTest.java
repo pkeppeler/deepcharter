@@ -91,7 +91,7 @@ public class EconomyAffordabilityTest {
             Map.entry(Consumable.QUANTUM_TELEPORTER, new Target(true, 1.5, 2)),
             Map.entry(Consumable.PLASTIC_EXPLOSIVES, new Target(true, 0.25, 1)),
             Map.entry(Consumable.BLASTING_CHARGE, new Target(false, 0.25, 1)),
-            Map.entry(Consumable.SHAPED_CHARGE, new Target(false, 0.25, 1)),
+            Map.entry(Consumable.SHAPED_CHARGE, new Target(true, 0.25, 1)),
             Map.entry(Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1)),
             Map.entry(Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4)),
             // The thrown kit (#985) is a round, not a tool: a flare a tenth of a layer 1 run, a decoy a fifth, a charge

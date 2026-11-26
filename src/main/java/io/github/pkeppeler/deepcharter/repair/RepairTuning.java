@@ -13,10 +13,12 @@ package io.github.pkeppeler.deepcharter.repair;
  * @param plasticRadius     the same for the plastic explosives, so 2 is 5 x 5 x 5
  * @param quantumScatter    blocks, at most, that the Quantum Teleporter lands from the destination ("results may vary")
  * @param chargeFuseTicks   ticks from setting a blasting charge to its blast (3 s: time to climb clear, not time to wait)
- * @param chargeDepth       slab rows below the pod that a blasting charge clears, 2 so that one charge leaves a straight 2-slab step
+ * @param chargeDepth       slab rows below the pod that a blasting charge clears: 4 since issue 1458, deeper than the plastic explosives
+ *                          reach below a pod, and no wider than the bore, because a wider chamber is more air for the liner to ring
  * @param chargeDamage      hull points a pod takes from a blast that touches it; less with distance
  * @param chargeReach       blocks from the blast, at most, that a pod is hurt; the damage falls to 0 there
- * @param shapedDepth       slab rows below the pod, at most, that a shaped charge clears down a Company rock column
+ * @param shapedDepth       slab rows below the pod, at most, that a shaped charge clears down a Company rock column: 12, the three
+ *                          blasting charges it replaces
  */
 public record RepairTuning(
         long repairCostPerHp,
@@ -31,5 +33,5 @@ public record RepairTuning(
         float chargeDamage,
         double chargeReach,
         int shapedDepth) {
-    public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 2, 20f, 3.0, 8);
+    public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 4, 20f, 3.0, 12);
 }

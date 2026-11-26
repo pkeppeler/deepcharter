@@ -26,6 +26,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.BoltDriverTuning;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.test.support.BoltRoom.Corridor;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -58,6 +59,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -733,7 +735,7 @@ public class BoltDriverTest {
                 withPvp(
                         helper.getLevel().getServer(),
                         true,
-                        () -> CaveIns.blasted(level, corridor.stand(5).add(0, 1, 0), Optional.empty()));
+                        () -> CaveIns.blasted(level, point(corridor.stand(5).add(0, 1, 0)), Optional.empty()));
                 startedAt[0] = now;
                 return;
             }
@@ -747,6 +749,64 @@ public class BoltDriverTest {
                 helper.succeed();
             }
         });
+    }
+
+    /**
+     * The shake's reach is counted from the edge of the rock the blast broke, not from its middle (#1458): a plastic explosives blast shakes a
+     * person who is more than {@code shakeReach} from its middle but within it of its edge, and not one beyond it of its edge.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aBiggerBlastShakesFartherBecauseTheReachIsCountedFromItsEdge(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, 20, 44);
+        int radius = RepairTuning.DEFAULT.plasticRadius();
+        int near = 2 + radius + (int) CAVE_IN.shakeReach() - 2;
+        int far = near + 4;
+        walker(helper, corridor, "bolt-edge-near", near, EAST);
+        walker(helper, corridor, "bolt-edge-far", far, EAST);
+        BlockPos middle = corridor.floor(1).above();
+        AABB blast = new AABB(
+                middle.getX() - radius,
+                middle.getY() - radius,
+                middle.getZ() - radius,
+                middle.getX() + radius + 1,
+                middle.getY() + radius + 1,
+                middle.getZ() + radius + 1);
+        if (blast.getCenter().distanceTo(corridor.stand(near)) <= CAVE_IN.shakeReach()) {
+            throw failure(
+                    helper,
+                    "the near person must stand beyond the reach of the blast's middle, or this proves nothing");
+        }
+        long[] startedAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            ServerLevel level = corridor.level();
+            long now = level.getGameTime();
+            if (startedAt[0] < 0) {
+                withPvp(helper.getLevel().getServer(), true, () -> CaveIns.blasted(level, blast, Optional.empty()));
+                startedAt[0] = now;
+                return;
+            }
+            if (now - startedAt[0] == CAVE_IN.warnTicks() + 3) {
+                expect(
+                        helper,
+                        !corridor.standing(near),
+                        "a person within %.0f blocks of a blast's edge is shaken, though farther from its middle",
+                        CAVE_IN.shakeReach());
+                expect(
+                        helper,
+                        corridor.standing(far),
+                        "a person more than %.0f blocks from a blast's edge is not shaken",
+                        CAVE_IN.shakeReach());
+                helper.succeed();
+            }
+        });
+    }
+
+    /** A blast that broke no rock: a point, as a test that only cares where the blast was passes it. */
+    private static AABB point(Vec3 at) {
+        return new AABB(at, at);
     }
 
     @GameTest(maxTicks = MAX_TICKS)
@@ -922,7 +982,7 @@ public class BoltDriverTest {
                         server,
                         false,
                         () -> CaveIns.blasted(
-                                corridor.level(), corridor.stand(7).add(0, 1, 0), Optional.of(mine)));
+                                corridor.level(), point(corridor.stand(7).add(0, 1, 0)), Optional.of(mine)));
                 startedAt[0] = now;
                 return;
             }
@@ -958,7 +1018,7 @@ public class BoltDriverTest {
                         server,
                         true,
                         () -> CaveIns.blasted(
-                                corridor.level(), corridor.stand(7).add(0, 1, 0), Optional.of(mine)));
+                                corridor.level(), point(corridor.stand(7).add(0, 1, 0)), Optional.of(mine)));
                 startedAt[0] = now;
                 return;
             }

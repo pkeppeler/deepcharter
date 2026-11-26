@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.phys.AABB;
 
 /**
  * What each item does (SPEC sections 10 and 11). All of them but the thrown kit work on the pod the player is piloting, and
@@ -87,15 +88,19 @@ final class Consumables {
     private static Optional<Component> blast(PodEntity pod, int radius, DeepSound sound) {
         ServerLevel level = (ServerLevel) pod.level();
         BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
-        for (BlockPos cell : BlockPos.betweenClosed(
-                middle.offset(-radius, -radius, -radius), middle.offset(radius, radius, radius))) {
+        BlockPos low = middle.offset(-radius, -radius, -radius);
+        BlockPos high = middle.offset(radius, radius, radius);
+        for (BlockPos cell : BlockPos.betweenClosed(low, high)) {
             if (level.getBlockState(cell).is(HazardBlocks.NATURAL_ROCK)) {
                 level.destroyBlock(cell.immutable(), false);
             }
         }
         play(pod, sound);
         // The blast shakes the roof over anyone on foot near it (#987).
-        CaveIns.blasted(level, pod.getBoundingBox().getCenter(), PodCharge.blasterOf(pod));
+        CaveIns.blasted(
+                level,
+                new AABB(low.getX(), low.getY(), low.getZ(), high.getX() + 1, high.getY() + 1, high.getZ() + 1),
+                PodCharge.blasterOf(pod));
         return Optional.empty();
     }
 

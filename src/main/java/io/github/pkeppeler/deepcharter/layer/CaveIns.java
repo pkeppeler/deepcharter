@@ -28,7 +28,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * The cave-in (#987, ADR 0081): the roof of natural rock over a person on foot comes down {@link CaveInTuning#warnTicks()} after a creak,
@@ -67,16 +66,17 @@ public final class CaveIns {
     }
 
     /**
-     * A blast went off at {@code centre}: the roof over each person on foot within {@link CaveInTuning#shakeReach()} of it is shaken, if the
-     * server allows PvP or the person is on the charter that set it off ({@code blaster}), so no charter is griefed by another's blast. A
-     * person in a pod is not shaken: the pod's own hull is what the roof falls on.
+     * A blast went off and broke the rock in {@code blast}: the roof over each person on foot within {@link CaveInTuning#shakeReach()} of that
+     * volume's edge is shaken, so a bigger blast shakes farther (#1458). Only if the server allows PvP or the person is on the charter that set
+     * it off ({@code blaster}), so no charter is griefed by another's blast. A person in a pod is not shaken: the pod's own hull is what the
+     * roof falls on.
      */
-    public static void blasted(ServerLevel level, Vec3 centre, Optional<CharterId> blaster) {
+    public static void blasted(ServerLevel level, AABB blast, Optional<CharterId> blaster) {
         double reach = CaveInTuning.DEFAULT.shakeReach();
         boolean pvp = level.getGameRules().get(GameRules.PVP);
         for (ServerPlayer player : level.players()) {
             if (onFoot(player)
-                    && player.position().distanceToSqr(centre) <= reach * reach
+                    && blast.distanceToSqr(player.position()) <= reach * reach
                     && (pvp || onCharter(level, player, blaster))) {
                 shake(level, player.blockPosition());
             }
