@@ -51,11 +51,11 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
 
     /** Where the camera stands: on the trench floor, four blocks from the slab's face and level with its middle. */
     private static Vec3 eye(int layer) {
-        return new Vec3(X, floorY(layer) - 2, Z + 4.5);
+        return TestLayers.vec(layer, X, LIVE_GAUGES_LOCAL_Y - 2, Z + 4.5);
     }
 
     private static BlockPos slabCell(int layer) {
-        return new BlockPos(X, floorY(layer) - 1, Z);
+        return TestLayers.pos(layer, X, LIVE_GAUGES_LOCAL_Y - 1, Z);
     }
 
     @Override
