@@ -21,10 +21,14 @@ public final class PacketJitter {
     private static final int PERIOD = 3;
 
     private static int period;
-    /** The client game time until which every move is held; -1 when no stall is on. */
+    /** The {@link #clientTick} from which a move is no longer held; -1 when no stall is on. */
     private static long stallUntil = -1;
 
-    /** Client ticks since the jitter was first registered: the clock the moveless count runs on. */
+    /**
+     * Client ticks since the jitter was first registered, counted at the start of each: the clock the moveless count and every delay
+     * run on. Never the level's game time, which the server's time sync moves, and a late server is exactly when it does (#1112).
+     * A packet is handled between two ticks, so the next tick is the first one a delay holds it for.
+     */
     private static long clientTick;
 
     /** The client tick the latest entity move was handled on. */
@@ -32,6 +36,12 @@ public final class PacketJitter {
 
     /** The most client ticks in a row without a handled move since {@link #resetMoveless}. */
     private static int movelessTicks;
+
+    /** Client ticks every move is held for, from {@link #lag}; 0 when the connection is as fast as before. */
+    private static int lagTicks;
+
+    /** The {@link #clientTick} each move held by the lag is handed over at, in the order the moves came. */
+    private static final List<Long> LAGGED_DUE = new ArrayList<>();
 
     private static boolean replaying;
     private static boolean registered;
@@ -59,12 +69,32 @@ public final class PacketJitter {
      * the server falls behind and catches up, or the network stalls and delivers. Call it with the jitter off or on.
      */
     public static void stall(int ticks) {
-        ClientLevel level = Minecraft.getInstance().level;
-        if (level == null) {
+        if (Minecraft.getInstance().level == null) {
             throw new IllegalStateException("no client level to stall");
         }
         registerOnce();
-        stallUntil = level.getGameTime() + ticks;
+        stallUntil = clientTick + 1 + ticks;
+    }
+
+    /**
+     * From now on holds every entity move for {@code ticks} client ticks, one by one and in order, so the connection gets slower by
+     * that much and stays so: the pod sees no move for {@code ticks} ticks, then a move a tick, each as stale as the stall was long
+     * (#1112). A stall hands what it held over in one burst; this is a delay that does not catch up. {@link #endLag} ends it.
+     */
+    public static void lag(int ticks) {
+        registerOnce();
+        // A move the jitter holds now is one the server sent: hand it over, never drop it, or the client's position is
+        // a move short for the rest of the drive (a lag that starts right after the skipped tick).
+        replayHeld();
+        LAGGED_DUE.clear();
+        lagTicks = ticks;
+    }
+
+    /** Ends {@link #lag} and hands over every move it still holds. */
+    public static void endLag() {
+        lagTicks = 0;
+        LAGGED_DUE.clear();
+        replayHeld();
     }
 
     /** Starts counting the longest stretch of client ticks with no move of any entity handled from now. */
@@ -85,6 +115,8 @@ public final class PacketJitter {
     public static void stop() {
         period = 0;
         stallUntil = -1;
+        lagTicks = 0;
+        LAGGED_DUE.clear();
         HELD.clear();
     }
 
@@ -98,8 +130,10 @@ public final class PacketJitter {
         if (level == null) {
             return;
         }
-        if (stallUntil >= 0) {
-            if (level.getGameTime() < stallUntil) {
+        if (lagTicks > 0) {
+            replayLagged();
+        } else if (stallUntil >= 0) {
+            if (clientTick < stallUntil) {
                 return;
             }
             stallUntil = -1;
@@ -107,6 +141,37 @@ public final class PacketJitter {
         } else if (period != 0 && level.getGameTime() % period != 1) {
             replayHeld();
         }
+    }
+
+    /** Hands over the moves the lag holds that are due by this tick, in order. */
+    private static void replayLagged() {
+        int due = 0;
+        while (due < LAGGED_DUE.size() && LAGGED_DUE.get(due) <= clientTick) {
+            due++;
+        }
+        if (due == 0) {
+            return;
+        }
+        List<Runnable> replay = List.copyOf(HELD.subList(0, due));
+        HELD.subList(0, due).clear();
+        LAGGED_DUE.subList(0, due).clear();
+        replaying = true;
+        try {
+            replay.forEach(Runnable::run);
+        } finally {
+            replaying = false;
+        }
+    }
+
+    /** Holds {@code handle} for the lag; false when there is none to hold it for. */
+    private static boolean lags(Runnable handle) {
+        Minecraft client = Minecraft.getInstance();
+        if (lagTicks == 0 || replaying || client.level == null || !client.isSameThread()) {
+            return false;
+        }
+        HELD.add(handle);
+        LAGGED_DUE.add(clientTick + 1 + lagTicks);
+        return true;
     }
 
     /** Notes that the client handles an entity move now. */
@@ -128,9 +193,15 @@ public final class PacketJitter {
         }
     }
 
-    /** Whether a stall holds a packet now, to be handled by {@code handle} when the stall ends. Only a stall holds it, never the jitter. */
+    /**
+     * Whether a stall or a lag holds a packet now, to be handled by {@code handle} when it is due, as a late server's packets arrive
+     * together. The jitter's skipped tick never holds it.
+     */
     public static boolean stalls(Runnable handle) {
         Minecraft client = Minecraft.getInstance();
+        if (lags(handle)) {
+            return true;
+        }
         if (stallUntil < 0 || replaying || client.level == null || !client.isSameThread()) {
             return false;
         }
@@ -148,6 +219,9 @@ public final class PacketJitter {
         ClientLevel level = client.level;
         // A packet arrives on the network thread first, and vanilla hands it to the client thread by calling the
         // handler again.
+        if (lags(handle)) {
+            return true;
+        }
         if ((period == 0 && stallUntil < 0) || replaying || level == null || !client.isSameThread()) {
             // A move handled on the client thread, whether it came straight in or was replayed; the network thread's
             // first call is not one.

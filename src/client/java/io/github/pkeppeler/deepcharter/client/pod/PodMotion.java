@@ -10,7 +10,6 @@ import net.minecraft.util.Mth;
  * its speed changes. Client thread only. Rates are per tick; 20 ticks are a second.
  */
 public final class PodMotion {
-    private static final float TURN_DEGREES = 15f;
     private static final float DRILL_SPIN_DEGREES = 40f;
     private static final float MOUNT_DEGREES = 8f;
     private static final float ROTOR_FLYING_DEGREES = 60f;
@@ -37,7 +36,6 @@ public final class PodMotion {
     private float lastAge;
     private double lastX;
     private double lastZ;
-    private float heading;
     private float mountPitch;
     private float drillSpin;
     private float rotorSpeed;
@@ -49,17 +47,19 @@ public final class PodMotion {
     private float walk;
 
     /**
-     * Advances to the state's frame and writes the pose into it. {@code mountRestPitch} is the drill mount's idle angle in the model,
-     * and {@code drillSpinScale} its share of the full drill spin ({@link GeoModel#drillSpinScale(String)}).
+     * Advances to the state's frame and writes the pose into it. {@code mountRestPitch} is the drill mount's idle angle
+     * in the model, and {@code drillSpinScale} its share of the full drill spin ({@link
+     * GeoModel#drillSpinScale(String)}). The pod is drawn facing its entity yaw at {@code partialTick} between ticks:
+     * the server steers it (A and D, the grid), so the model follows.
      */
-    public void advance(PodEntity pod, PodGeoRenderState state, float mountRestPitch, float drillSpinScale) {
+    public void advance(
+            PodEntity pod, PodGeoRenderState state, float mountRestPitch, float drillSpinScale, float partialTick) {
         boolean firstFrame = !started;
         if (firstFrame) {
             started = true;
             lastAge = state.ageInTicks;
             lastX = state.x;
             lastZ = state.z;
-            heading = pod.getYRot();
             mountPitch = mountRestPitch;
         }
         float step = Mth.clamp(state.ageInTicks - lastAge, 0f, MAX_STEP);
@@ -83,14 +83,7 @@ public final class PodMotion {
         Direction drill = pod.drillDirection();
         boolean moving = step > 0f && Math.sqrt(dx * dx + dz * dz) > STILL * step;
 
-        if (drilling && drill.getAxis().isHorizontal()) {
-            heading = Mth.approachDegrees(heading, drill.toYRot(), TURN_DEGREES * step);
-        } else if (moving) {
-            heading = Mth.approachDegrees(heading, (float) (Mth.atan2(-dx, dz) * Mth.RAD_TO_DEG), TURN_DEGREES * step);
-        } else if (!piloted) {
-            // A parked pod faces where it was set down, or where a command turns it.
-            heading = pod.getYRot();
-        }
+        float heading = Mth.rotLerp(partialTick, pod.yRotO, pod.getYRot());
         float facingX = -Mth.sin(heading * Mth.DEG_TO_RAD);
         float facingZ = Mth.cos(heading * Mth.DEG_TO_RAD);
         travel += (float) (dx * facingX + dz * facingZ) * PIXELS_PER_BLOCK;

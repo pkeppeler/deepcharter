@@ -40,11 +40,11 @@ import net.minecraft.world.inventory.Slot;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Client GameTest for #1290: the inventory lists every active effect, Ore-laden among them, with the parts catalogue
+ * Client GameTest for #1290: the inventory lists every active effect, Ore/Fuel among them, with the parts catalogue
  * open at each window size and height, clear of the slots, the panels and the catalogue's button; the row's tooltip
  * names the effect, its level and the time left; a crowded row falls back to bare icons that stay in order inside it;
  * vanilla's own list is not drawn under the panels (and is when they are away); the crafting table keeps its old
- * minimum height; the HUD's top-right icons list Ore-laden with no screen open; and the status draws no swirl
+ * minimum height; the HUD's top-right icons list Ore/Fuel with no screen open; and the status draws no swirl
  * particles, because its icon says it.
  */
 public class CatalogueEffectsClientTest implements FabricClientGameTest {
@@ -58,7 +58,7 @@ public class CatalogueEffectsClientTest implements FabricClientGameTest {
     private static final int EFFECT_ICON = CatalogueLayout.EFFECT_ICON;
 
     private static final int EFFECT_TILE = CatalogueLayout.EFFECT_TILE;
-    /** The effects the player carries besides Ore-laden: the first set. */
+    /** The effects the player carries besides Ore/Fuel: the first set. */
     private static final List<String> OTHERS =
             List.of("speed", "regeneration", "haste", "strength", "jump_boost", "night_vision", "hero_of_the_village");
     /** Twelve more, so the player carries twenty: more than a row of tiles can show. */
@@ -94,7 +94,7 @@ public class CatalogueEffectsClientTest implements FabricClientGameTest {
                             .setItem(0, OreRegistry.stack(OreType.EINSTEINIUM)));
             ClientWait.until(
                     context,
-                    "the Ore-laden status on the client",
+                    "the Ore/Fuel status on the client",
                     client -> ClientSession.player(client).hasEffect(OreRegistry.OVERBURDENED));
 
             theStatusDrawsNoSwirls(context);
@@ -346,7 +346,7 @@ public class CatalogueEffectsClientTest implements FabricClientGameTest {
         resize(context, screen, WIDTH, HEIGHT);
         context.runOnClient(client -> {
             MobEffectInstance effect = Objects.requireNonNull(
-                    ClientSession.player(client).getEffect(OreRegistry.OVERBURDENED), "Ore-laden is active");
+                    ClientSession.player(client).getEffect(OreRegistry.OVERBURDENED), "Ore/Fuel is active");
             Identifier sprite = Hud.getMobEffectSprite(OreRegistry.OVERBURDENED);
             CatalogueLayout layout =
                     Objects.requireNonNull(CatalogueScene.panelNow(client).layout(), "the panels are laid out");
@@ -356,20 +356,21 @@ public class CatalogueEffectsClientTest implements FabricClientGameTest {
                     .map(Drawn::box)
                     .filter(box -> inside(box, row))
                     .findFirst()
-                    .orElseThrow(() -> new AssertionError("the row draws the Ore-laden icon"));
+                    .orElseThrow(() -> new AssertionError("the row draws the Ore/Fuel icon"));
             DrawnSprites.Frame away = DrawnSprites.of(screen, 0, 0);
             require(away.tooltips().isEmpty(), "no effect tooltip with the mouse away, got " + away.tooltips());
             DrawnSprites.Frame over =
                     DrawnSprites.of(screen, icon.x() + icon.width() / 2, icon.y() + icon.height() / 2);
             float rate =
                     client.level == null ? 20f : client.level.tickRateManager().tickrate();
+            String name = OreRegistry.OVERBURDENED.value().getDisplayName().getString();
             require(
                     over.tooltips()
                             .equals(List.of(List.of(
-                                    "Ore-laden IV",
+                                    name + " IV",
                                     MobEffectUtil.formatDuration(effect, 1f, rate)
                                             .getString()))),
-                    "hovering the icon shows the name, level and time left of Ore-laden, got " + over.tooltips());
+                    "hovering the icon shows the name, level and time left of " + name + ", got " + over.tooltips());
             require(
                     Component.translatable("enchantment.level." + (effect.getAmplifier() + 1))
                             .getString()
