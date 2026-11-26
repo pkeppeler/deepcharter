@@ -27,7 +27,7 @@ public class HandbookTaskCueScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 3;
     /** Where the mouse rests, in GUI pixels, when it is off the steps: the screen's top left corner. */
     private static final int AWAY = 0;
-    /** The close-up of the hovered step: a cut of the still this wide and tall, in GUI pixels, with the step a quarter in. */
+    /** The close-up of the hovered step: a cut this wide and tall, in GUI pixels, with the step a quarter in. */
     private static final int ZOOM_WIDTH = 220;
 
     private static final int ZOOM_HEIGHT = 60;
