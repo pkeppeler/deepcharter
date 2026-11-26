@@ -47,7 +47,12 @@ BEZEL_W, MARGIN = 112, 7
 STATUS_BUDGET = 0.09
 
 GAUGES = ("fuel", "hull", "depth", "heat", "cargo")
-LAMPS = 4
+LAMPS = 5
+# The cargo slot's gauge reads the pod's load (#1449): the climb limit is marked after this many of its segments, so each segment under the mark is a tenth of
+# the climb limit and the three past it show how far over the pod is, to 130%.
+LOAD_LIMIT_SEGMENT = 10
+# The load gauge's title, as the game draws it in its own font on a plate cut from the readout plate, hung under the gauge from the band's lower edge.
+LOAD_TITLE = "LOAD"
 KIND = {"across": 0, "up": 1}
 SHARED = {
     "enabled": 1, "minGuiWidth": MIN_GUI_W, "minGuiHeight": MIN_GUI_H,
@@ -227,8 +232,8 @@ def bar_labels(img, x, y, text):
 
 
 def lamp_well(img, x, y):
-    """The recess for the warning lamps: one dark slot that LAMPS lamps of 5 x 5 light in the game. Returns the slot's width."""
-    width = LAMPS * 5 + (LAMPS - 1) * SHARED["lampGap"]
+    """The recess for the warning lamps: one dark slot that LAMPS lamps of 4 x 5 light in the game. Returns the slot's width."""
+    width = LAMPS * 4 + (LAMPS - 1) * SHARED["lampGap"]
     well(img, x, y, width, 5)
     return width
 
@@ -246,10 +251,11 @@ def ribbon():
     w, h, bar_w, bar_h, segments = 320, 14, 26, 5, 13
     band = slab(w, h, (0, 0, 6, 6), random.Random(448_11))
     place = Placed(w, h, 1, 0, 0, 0)
-    for name, ux, text in (("fuel", 8, "F"), ("hull", 46, "H"), ("cargo", 84, "C"), ("depth", 203, "D"), ("heat", 241, "T")):
+    for name, ux, text in (("fuel", 8, "F"), ("hull", 46, "H"), ("cargo", 84, "L"), ("depth", 203, "D"), ("heat", 241, "T")):
         bar_labels(band, ux, 3, text)
         well(band, ux + 7, 4, bar_w, bar_h)
         look.gauge(name, "across", place.inner(ux + 7, 4, bar_w, bar_h), segments)
+    look.keys[STYLE + "CargoLimit"] = LOAD_LIMIT_SEGMENT
     well(band, 124, 2, 72, 10)  # the altimeter's recess
     lamps_w = lamp_well(band, 284, 4)
     look.lamps(place.inner(284, 4, lamps_w, 5))
@@ -302,14 +308,16 @@ def write() -> None:
 
 # The states the stills are shot in: the pod's real values, the numbers the plate shows and the alert lines (the plain readout's lines after the first four).
 STATES = {
-    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "Y150"], "alerts": [], "lamps": [0, 0, 0, 0],
+    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "Y150"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
              "lines": ["Hull 100/100", "Fuel 78%", "Cargo 0", "Y 150"]},
-    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "cargo": 0.25, "tally": ["90/100", "12%", "3", "Y150"], "alerts": [], "lamps": [1, 0, 0, 0],
+    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "cargo": 0.25, "tally": ["90/100", "12%", "3", "Y150"], "alerts": [], "lamps": [1, 0, 0, 0, 0],
                  "lines": ["Hull 90/100", "Fuel 12%", "Cargo 3", "Y 150"]},
     "burning": {"fuel": 0.7, "hull": 0.45, "depth": 0.18, "heat": 1.0, "cargo": 0.25, "tally": ["45/100", "70%", "3", "Y150"], "alerts": ["HULL BURNING"],
-                "lamps": [0, 0, 1, 1], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Y 150", "HULL BURNING"]},
-    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.9, "tally": ["80/100", "50%", "11", "Y-420"], "alerts": [], "lamps": [0, 0, 0, 0],
-             "lines": ["Hull 80/100", "Fuel 50%", "Cargo 11", "Y -420"]},
+                "lamps": [0, 0, 1, 1, 0], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Y 150", "HULL BURNING"]},
+    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.69, "tally": ["80/100", "50%", "5", "Y-420"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
+             "lines": ["Hull 80/100", "Fuel 50%", "Cargo 5", "Y -420"]},
+    "overloaded": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.85, "tally": ["80/100", "50%", "7", "Y-420"], "alerts": ["OVERLOADED"],
+                   "lamps": [0, 0, 0, 1, 1], "lines": ["Hull 80/100", "Fuel 50%", "Cargo 7", "Y -420", "OVERLOADED"]},
 }
 FONT_W = 6  # the preview's glyphs, and the width the coverage assumes for a character of the game's font
 
@@ -351,6 +359,19 @@ def sink_box(look):
     return band.left(SCREEN_W) + (band.w - width) // 2, band.top(SCREEN_H) + band.h, width, height
 
 
+def title_box(look):
+    """The load gauge's title plate on the 427 x 240 screen, (left, top, width, height): centred under the gauge, hung from the band's lower edge, as the client
+    puts it."""
+    t = look.keys
+    inset = look.sprites["plate"].border[0] + SHARED["titleGap"]
+    width = len(LOAD_TITLE) * FONT_W + 2 * inset  # the game measures a run of text with its last advance
+    height = SHARED["titleTextHeight"] + 2 * inset
+    gauge = Placed(t[STYLE + "CargoW"], t[STYLE + "CargoH"], t[STYLE + "CargoAnchorX"], t[STYLE + "CargoAnchorY"], t[STYLE + "CargoX"], t[STYLE + "CargoY"])
+    band = look.parts["part_a"]
+    left = gauge.left(SCREEN_W) + (gauge.w - width) // 2
+    return left, band.top(SCREEN_H) + band.h, width, height
+
+
 def coverage(look):
     """The pixels of a 427 x 240 screen the Ribbon makes opaque in the calm state, as (status, scanner): status is the band and the plate, scanner is its bezel and
     window. The sprites count by their opaque pixels, so a chamfer or a round corner does not, and a pixel under two pieces counts once."""
@@ -369,8 +390,8 @@ def coverage(look):
     plate = Placed(width, height, t[STYLE + "ReadoutAnchorX"], t[STYLE + "ReadoutAnchorY"], t[STYLE + "ReadoutX"], t[STYLE + "ReadoutY"])
     left, top = plate.left(SCREEN_W), plate.top(SCREEN_H)
     status |= {(left + i, top + j) for j in range(height) for i in range(width)}
-    left, top, width, height = sink_box(look)
-    status |= {(left + i, top + j) for j in range(height) for i in range(width)}
+    for left, top, width, height in (sink_box(look), title_box(look)):
+        status |= {(left + i, top + j) for j in range(height) for i in range(width)}
     mark(scanner, look.sprites["cap"].img, look.parts["cap"])
     window = Placed(t[STYLE + "ScannerW"], t[STYLE + "ScannerH"], t[STYLE + "ScannerAnchorX"], t[STYLE + "ScannerAnchorY"], t[STYLE + "ScannerX"], t[STYLE + "ScannerY"])
     scanner |= {(window.left(SCREEN_W) + i, window.top(SCREEN_H) + j) for j in range(window.h) for i in range(window.w)}
@@ -411,7 +432,7 @@ def preview_lamps(img, look, flags):
     place = Placed(t[STYLE + "LampsW"], t[STYLE + "LampsH"], t[STYLE + "LampsAnchorX"], t[STYLE + "LampsAnchorY"], t[STYLE + "LampsX"], t[STYLE + "LampsY"])
     left, top = place.left(SCREEN_W), place.top(SCREEN_H)
     size = (place.w - SHARED["lampGap"] * (LAMPS - 1)) // LAMPS
-    colors = [SHARED["lowColor"], SHARED["lowColor"], SHARED["heatColor"], SHARED["depthColor"]]
+    colors = [SHARED["lowColor"], SHARED["lowColor"], SHARED["heatColor"], SHARED["depthColor"], SHARED["lowColor"]]
     for k in range(LAMPS):
         img.rect(left + k * (size + SHARED["lampGap"]), top, size, place.h, rgb(colors[k]) if flags[k] else rgb(SHARED["offColor"]))
 
@@ -438,8 +459,16 @@ def preview_look(look, state):
     for name in GAUGES:
         value = state[name]
         low = (name == "fuel" and value <= 0.2) or (name == "hull" and value <= SHARED["hullLowFraction"])
+        low = low or (name == "cargo" and value * t[STYLE + "CargoSegments"] >= t[STYLE + "CargoLimit"])
         preview_gauge(img, STYLE + name.capitalize(), look, value, rgb(SHARED["lowColor"] if low else SHARED[name + "Color"]))
     preview_lamps(img, look, state["lamps"])
+    gauge = Placed(t[STYLE + "CargoW"], t[STYLE + "CargoH"], t[STYLE + "CargoAnchorX"], t[STYLE + "CargoAnchorY"], t[STYLE + "CargoX"], t[STYLE + "CargoY"])
+    mark_x = gauge.left(SCREEN_W) + t[STYLE + "CargoLimit"] * gauge.w // t[STYLE + "CargoSegments"] - 1
+    img.rect(mark_x, gauge.top(SCREEN_H) - 1, 1, gauge.h + 2, rgb(SHARED["lowColor"]))
+    tl, tt, tw, th = title_box(look)
+    img.blit(nine_slice(sprites["plate"].img, sprites["plate"].border, tw, th), tl, tt)
+    inset = sprites["plate"].border[0] + SHARED["titleGap"]
+    img.text(tl + inset, tt + inset, LOAD_TITLE, rgb(SHARED["cargoColor"]))
     img.text(SCREEN_W // 2 - text_width("-1,234 ft.") // 2, t[STYLE + "AltimeterY"] + 1, "-1,234 ft.", rgb("#FFFFFF"))
     width, height = plate_size(look, state)
     inset_left, inset_top, _, _ = plate_inset(look)
