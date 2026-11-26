@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
@@ -116,6 +117,7 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         rebind(HandbookKeys.OPEN, InputConstants.KEY_J, 1, "[H]", "[J]");
         rebind(options.keyUp, InputConstants.KEY_I, controlsPartOf("drive"), "[W]", "[I]");
         rebind(options.keySprint, InputConstants.KEY_O, controlsPartOf("dig"), "[Left Control]", "[O]");
+        rebind(CatalogueKeys.SPEC_SHEET, InputConstants.KEY_K, controlsPartOf("lookup"), "[J]", "[K]");
     }
 
     /** Pod sprint (#1276) is on a Mole sheet: one line names sprint held with W, the keys that boost the pod. */
