@@ -36,6 +36,7 @@ public class TerminalPanelUseScenario extends EvidenceScenario {
                             .map(charter -> charter.balance() == TerminalPanelScene.ACCOUNT)
                             .orElse(false),
                     client -> "charter " + ClientCharter.view());
+            TerminalPanelScreens.dismissSceneSlips(context);
             UpgradeScreen upgrade = (UpgradeScreen) TerminalPanelScreens.open(context, "upgrade", scene, null);
             hold(context);
             context.clickScreenButton("HULL  T0");

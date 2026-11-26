@@ -48,8 +48,9 @@ public final class HandbookControls {
                     "lookup",
                     List.of(
                             new Row("look", List.of(options -> CatalogueKeys.RECIPES, options -> CatalogueKeys.USES)),
-                            new Row("star", List.of(options -> CatalogueKeys.FAVOURITE)),
-                            new Row("sheet", List.of(options -> CatalogueKeys.SPEC_SHEET)))),
+                            new Row("star", List.of(options -> CatalogueKeys.FAVOURITE)))),
+            new Sheet("console", List.of(new Row("star"), new Row("back", List.of(options -> CatalogueKeys.BACK)))),
+            new Sheet("spec", List.of(new Row("open", List.of(options -> CatalogueKeys.SPEC_SHEET)))),
             new Sheet("shelf", List.of(new Row("craftable"))),
             new Sheet(
                     "board",

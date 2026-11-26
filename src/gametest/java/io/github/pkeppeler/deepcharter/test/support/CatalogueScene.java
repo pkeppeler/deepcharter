@@ -7,19 +7,35 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
+import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /** Opens the inventory and finds and hovers the parts catalogue's cells, for the catalogue's client test and its evidence scenario. */
 public final class CatalogueScene {
+    /** A small chest: three rows of nine. */
+    private static final int CHEST_SLOTS = 27;
+    /** An item icon, and so a slot's hit area. */
+    private static final int SLOT_ICON = 16;
+
     private CatalogueScene() {}
 
     /** Opens the player's inventory and waits until it is drawn. */
@@ -104,6 +120,18 @@ public final class CatalogueScene {
                 context.computeOnClient(client -> panel.layout()), "the panels are laid out at the window's size");
     }
 
+    /** Where a recipe console on a screen of its own stands: centred on {@code screen}, as the screen lays it out. */
+    public static CatalogueLayout.Console centredConsole(ClientGameTestContext context, Screen screen) {
+        return Objects.requireNonNull(
+                context.computeOnClient(client -> CatalogueLayout.centred(
+                        screen.width,
+                        screen.height,
+                        CatalogueLook.current(),
+                        CrtTuning.current(),
+                        client.font.lineHeight)),
+                "the console fits the window");
+    }
+
     /** The cell of grid position {@code index} on the page shown. */
     public static Rect gridCell(CatalogueLayout layout, int index) {
         CatalogueLayout.Shelf shelf = layout.shelf();
@@ -137,5 +165,41 @@ public final class CatalogueScene {
     /** Moves the cursor onto the centre of {@code cell}. */
     public static void hover(ClientGameTestContext context, Rect cell) {
         ClientCursor.moveTo(context, cell.x() + cell.width() / 2.0, cell.y() + cell.height() / 2.0);
+    }
+
+    /**
+     * Opens a chest's menu on the server, a real one the server keeps open, holding {@code contents} from its first slot, and waits until
+     * its screen is drawn. A chest has no catalogue beside it.
+     */
+    public static ContainerScreen openChest(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, List<ItemStack> contents) {
+        context.setScreen(() -> null);
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            SimpleContainer chest = new SimpleContainer(CHEST_SLOTS);
+            for (int i = 0; i < contents.size(); i++) {
+                chest.setItem(i, contents.get(i).copy());
+            }
+            player.openMenu(new SimpleMenuProvider(
+                    (id, inventory, who) -> ChestMenu.threeRows(id, inventory, chest), Component.literal("Chest")));
+        });
+        ClientWait.screen(context, ContainerScreen.class);
+        context.waitTicks(3);
+        return context.computeOnClient(client -> ClientSession.screen(client, ContainerScreen.class));
+    }
+
+    /** The 16 x 16 cell on the screen of the first slot of {@code screen} that {@code which} picks, for a hover. */
+    public static Rect slotCell(
+            ClientGameTestContext context, AbstractContainerScreen<?> screen, Predicate<Slot> which) {
+        return context.computeOnClient(client -> {
+            int left = ContainerScreenFields.intField(screen, "leftPos");
+            int top = ContainerScreenFields.intField(screen, "topPos");
+            for (Slot slot : screen.getMenu().slots) {
+                if (which.test(slot)) {
+                    return new Rect(left + slot.x, top + slot.y, SLOT_ICON, SLOT_ICON);
+                }
+            }
+            throw new AssertionError("no slot of " + screen.getClass().getSimpleName() + " is the one asked for");
+        });
     }
 }

@@ -151,10 +151,7 @@
                       },
                       "surface_depth_multiplier": 0
                     },
-                    "then_run": {
-                      "type": "minecraft:block",
-                      "result_state": "deepcharter:packed_shale"
-                    }
+                    "then_run": "deepcharter:claim_strata"
                   },
                   {
                     "type": "minecraft:block",
@@ -532,7 +529,11 @@
         }
       },
       "right": {
-        "type": "minecraft:beardifier"
+        "type": "minecraft:add",
+        "left": {
+          "type": "minecraft:beardifier"
+        },
+        "right": "deepcharter:claim_caves"
       }
     },
     "ridges": 0.0,
