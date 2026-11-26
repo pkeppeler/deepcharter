@@ -158,17 +158,14 @@ public final class ScannerHud {
         int windowTop = window.top(graphics.guiHeight());
         // Whole-pixel cells leave a margin at tiers 2 and 3; it is the instrument's raster, not air, and the area is
         // drawn over it.
-        graphics.fill(
-                windowLeft,
-                windowTop,
-                windowLeft + window.width(),
-                windowTop + window.height(),
-                look.outOfRangeColor());
-        for (int y = windowTop + 1; y < windowTop + window.height(); y += 2) {
-            graphics.fill(windowLeft, y, windowLeft + window.width(), y + 1, look.outOfRangeLineColor());
+        int windowRight = windowLeft + window.width();
+        int windowBottom = windowTop + window.height();
+        graphics.fill(windowLeft, windowTop, windowRight, windowBottom, look.outOfRangeColor());
+        for (int y = windowTop + 1; y < windowBottom; y += 2) {
+            graphics.fill(windowLeft, y, windowRight, y + 1, look.outOfRangeLineColor());
         }
         // A slice larger than the window (tier 4) is cut at the window's edge, never drawn over the gauges beside it.
-        graphics.enableScissor(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height());
+        graphics.enableScissor(windowLeft, windowTop, windowRight, windowBottom);
         try {
             drawCells(
                     graphics,

@@ -52,7 +52,7 @@ public class ScannerWindowFillClientTest implements FabricClientGameTest {
      * Seats the first player in a Prospector with a scanner of {@code tier} and waits for the client to ride it and the HUD to rescan. A Mole's
      * parts cap at tier 2, so a tier above that needs the Prospector.
      */
-    public static void ride(ClientGameTestContext context, TestServerContext server, int tier) {
+    private static void ride(ClientGameTestContext context, TestServerContext server, int tier) {
         int fitted = server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, player.level());
@@ -73,7 +73,7 @@ public class ScannerWindowFillClientTest implements FabricClientGameTest {
     }
 
     /** How a drawn window falls short of full, or null when it is full. */
-    static @Nullable String gaps(HudShot shot) {
+    private static @Nullable String gaps(HudShot shot) {
         Decal window = shot.window();
         ScanArea area = shot.area();
         if (window == null) {
