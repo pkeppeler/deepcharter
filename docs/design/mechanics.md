@@ -2592,3 +2592,11 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 **Open questions.**
 - Whether the pod should accelerate to its speed as a boat does. It does not yet: the speed is a stat the client smoothing and the fuel numbers assume.
 - The turn rate is a boat's, 200 degrees a second; a heavy pod might want less. It is one number.
+
+## Pack ore and load (#1446)
+
+**Problem.** The pilot's pack weighed on the pod's lift only for what was not ore (`OreEncumbrance`: "ore rides in the bay, and the pack rides in the seat"), so ore in a seated pilot's pack weighed nothing: free cargo slots. `PodLoadTest.aSeatedPilotsPackOreWeighsOnThePodAndKeepsAHeavyPodDown` showed it: three ironium in the pack added 0 to the pod's extra mass.
+
+**Pick (A): the pack's ore counts.** Everything a seated pilot carries, ore included, weighs on the pod through `PodEvents.EXTRA_MASS`, the same weight it has on foot. Boarding with ore is not refused: a pod that cannot lift its pilot's pack says so on the load gauge (#1449), and the pilot drops the ore or flies light. The bay's ore is the pod's own cargo mass and never in a pack, so nothing is counted twice. An ore stack is heavy (64 ironium is 320, three engines' worth), so a pack of ore keeps a stock Mole on the ground: carry it by hand or in the bay.
+
+**Load-scaled burn: declined.** A playtester asked whether a heavier pod should burn more fuel per second. It does not, and will not for now: the user's call (2026-11-26) is that fuel is right as it is, after [#1437](https://github.com/pkeppeler/deepcharter/issues/1437) (fuel too dear) closed. Mass already costs fuel: it cuts lift, so a heavy pod climbs slower and holds the rotor longer for the same climb, and the burn is per second of rotor. A second, per-second charge for the same mass would make a full bay dearer twice. Reopen it only with a fuel table that makes the light case cheaper, not the full case dearer.

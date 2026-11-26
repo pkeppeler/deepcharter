@@ -60,14 +60,19 @@ public final class OreEncumbrance {
     }
 
     public static void init() {
-        // A pod's lift counts the fuel its pilot carries: ore rides in the bay, and the pack rides in the seat.
+        // The pilot's pack rides in the seat, so all it holds weighs on the pod's lift: ore, fuel and containers
+        // (#1446).
+        // The bay's ore is the pod's own cargo mass and never in a pack, so nothing is counted twice.
         PodEvents.EXTRA_MASS.register(
-                pod -> pod.getControllingPassenger() instanceof ServerPlayer pilot ? carriedLooseMass(pilot) : 0f);
+                pod -> pod.getControllingPassenger() instanceof ServerPlayer pilot ? carriedMass(pilot) : 0f);
         ServerTickEvents.END_SERVER_TICK.register(
                 server -> server.getPlayerList().getPlayers().forEach(OreEncumbrance::apply));
     }
 
-    /** Total mass of the ore the player carries: every inventory slot, the offhand and armor included, and the contents of containers. */
+    /**
+     * Total mass the player carries, ore and every {@link CargoWeight}: every inventory slot, the offhand and armor included, and the
+     * contents of containers.
+     */
     public static float carriedMass(ServerPlayer player) {
         float mass = 0f;
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
@@ -76,40 +81,21 @@ public final class OreEncumbrance {
         return mass;
     }
 
-    /**
-     * The mass the player carries of what is not ore: the weight of solid fuel and of anything else with a {@link
-     * CargoWeight}.
-     */
-    private static float carriedLooseMass(Player player) {
-        float mass = 0f;
-        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
-            mass += massOf(player.getInventory().getItem(slot), false);
-        }
-        return mass;
-    }
-
     /** The mass of a stack's own ore and weighted items, and of everything inside it. */
     static float massOf(ItemStack stack) {
-        return massOf(stack, true);
-    }
-
-    private static float massOf(ItemStack stack, boolean withOre) {
-        float mass = CargoWeight.of(stack);
-        if (withOre) {
-            mass += OreRegistry.typeOf(stack).map(OreType::mass).orElse(0f) * stack.getCount();
-        }
+        float mass = CargoWeight.of(stack)
+                + OreRegistry.typeOf(stack).map(OreType::mass).orElse(0f) * stack.getCount();
         ItemContainerContents container = stack.get(DataComponents.CONTAINER);
         if (container != null) {
             mass += (float) container
                     .nonEmptyItemCopyStream()
-                    .mapToDouble(inside -> massOf(inside, withOre))
+                    .mapToDouble(OreEncumbrance::massOf)
                     .sum();
         }
         BundleContents bundle = stack.get(DataComponents.BUNDLE_CONTENTS);
         if (bundle != null) {
-            mass += (float) bundle.itemCopies()
-                    .mapToDouble(inside -> massOf(inside, withOre))
-                    .sum();
+            mass += (float)
+                    bundle.itemCopies().mapToDouble(OreEncumbrance::massOf).sum();
         }
         return mass;
     }
