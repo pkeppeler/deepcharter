@@ -4,6 +4,7 @@
 # class; an entry for a class that no longer exists is ignored. Stale numbers only unbalance the shards, never
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
 # PodDriveLateClientTest and PodDriveSmoothClientTest: the mean of three local runs after #1112 split the class; refresh from CI.
+# RealInputTypingClientTest: one local run (#1385); refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
 BlockReadoutClientTest 16
@@ -71,6 +72,7 @@ PodShellClientTest 11
 PodSounderClientTest 14
 ProspectorChassisClientTest 18
 QuestMapClientTest 9
+RealInputTypingClientTest 13
 RecipeFillClientTest 20
 RepairStationClientTest 12
 RepairStationFitClientTest 14
