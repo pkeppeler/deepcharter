@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.SavedState;
@@ -22,13 +23,20 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * when it goes dormant. It only records: {@link HandbookProgress} is what the rest of the mod calls.
  *
  * <p>The saved form has a {@link #VERSION}. Data of another version loads as unreadable, is written back unchanged, and every use
- * of it throws, so a newer world is never overwritten by an older build (see ADR 0007).
+ * of it throws, so a newer world is never overwritten by an older build (see ADR 0007). Version 1 has the same shape and is
+ * read through {@link DirectiveCarry#fromVersion1}.
  */
 public final class HandbookProgressData extends SavedData {
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook_progress");
+    private static final MapCodec<List<Entry>> BODY = Entry.CODEC.listOf().fieldOf("progress");
+    private static final MapCodec<List<Entry>> V1_BODY = BODY.xmap(
+            entries -> entries.stream()
+                    .map(entry -> new Entry(entry.charter(), DirectiveCarry.fromVersion1(entry.completed())))
+                    .toList(),
+            entries -> entries);
     private static final Codec<Versioned<List<Entry>>> VERSIONED_CODEC =
-            Versioned.codec(VERSION, Entry.CODEC.listOf().fieldOf("progress"));
+            Versioned.codec(VERSION, BODY, Map.of(1, V1_BODY));
 
     /** The codec of the saved data, which never fails to decode. */
     public static final Codec<HandbookProgressData> CODEC =
@@ -37,26 +45,6 @@ public final class HandbookProgressData extends SavedData {
     // fixers find nothing to fix.
     public static final SavedDataType<HandbookProgressData> TYPE =
             new SavedDataType<>(ID, HandbookProgressData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
-
-    /** A directive whose id changed, by its old id: a charter that completed the old one has completed the new one (ADR 0047). */
-    private static final Map<Identifier, Identifier> RENAMED =
-            Map.of(welcome("mine_iron_ore"), welcome("gather_scrap"));
-
-    /**
-     * A directive added to a chapter after charters had finished it, with the chapter's directives before it was added:
-     * a charter that completed all of those has completed the new one, so the new step never reopens a finished chapter
-     * (#1423).
-     */
-    private static final Map<Identifier, Set<Identifier>> ADDED = Map.of(
-            welcome("smelt_charcoal"),
-            Set.of(
-                    welcome("gather_wood"),
-                    welcome("craft_crafting_table"),
-                    welcome("craft_stone_tools"),
-                    welcome("gather_scrap"),
-                    welcome("smelt_iron"),
-                    welcome("craft_scanner"),
-                    welcome("make_light")));
 
     private final SavedState<Map<CharterId, Set<Identifier>>> state;
 
@@ -67,26 +55,9 @@ public final class HandbookProgressData extends SavedData {
     private HandbookProgressData(Versioned<List<Entry>> loaded) {
         this.state = SavedState.load(ID, VERSION, loaded, entries -> {
             Map<CharterId, Set<Identifier>> progress = new LinkedHashMap<>();
-            entries.forEach(entry -> {
-                Set<Identifier> completed = new LinkedHashSet<>(entry.completed());
-                RENAMED.forEach((old, renamed) -> {
-                    if (completed.contains(old)) {
-                        completed.add(renamed);
-                    }
-                });
-                ADDED.forEach((added, chapter) -> {
-                    if (completed.containsAll(chapter)) {
-                        completed.add(added);
-                    }
-                });
-                progress.put(entry.charter(), completed);
-            });
+            entries.forEach(entry -> progress.put(entry.charter(), DirectiveCarry.renamed(entry.completed())));
             return progress;
         });
-    }
-
-    private static Identifier welcome(String directive) {
-        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/" + directive);
     }
 
     /** The world's handbook progress. Call on the server thread. */

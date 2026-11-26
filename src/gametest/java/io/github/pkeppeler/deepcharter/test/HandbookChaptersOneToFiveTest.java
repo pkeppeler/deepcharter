@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -97,8 +98,8 @@ public class HandbookChaptersOneToFiveTest {
     /**
      * The permanent ids: a world's saved progress names these directives. The one rename since they were pinned is
      * chapter 1's {@code mine_iron_ore}, now {@code gather_scrap} (#245, ADR 0047); {@link HandbookProgressData} reads
-     * the old id as the new one. Chapter 1's {@code smelt_charcoal} was added later (#1423); a charter that had
-     * finished the chapter has it as well.
+     * the old id as the new one. Chapter 1's {@code smelt_charcoal} was added later (#1423); a store saved before it
+     * counts a finished chapter 1 as having done it.
      */
     static final Map<String, List<String>> PINNED = Map.of(
             "deepcharter:welcome",
@@ -181,33 +182,93 @@ public class HandbookChaptersOneToFiveTest {
     }
 
     /**
-     * A world saved before #1423 holds a charter that finished chapter 1 without the charcoal step: it has done that
-     * step too, so the new step does not reopen the chapter. A charter still on chapter 1 has not.
+     * A version 1 store, saved before #1423, holds a charter that finished chapter 1 without the charcoal step: it has
+     * done that step too, so the new step does not reopen the chapter. A charter that lacks any one of the chapter's
+     * earlier steps has not, so the carry asks for exactly those.
      */
     @GameTest
-    public void aCharterThatFinishedChapterOneBeforeTheCharcoalStepHasDoneIt(GameTestHelper helper) {
+    public void aVersionOneCharterThatFinishedChapterOneHasDoneTheCharcoalStep(GameTestHelper helper) {
         Identifier charcoal = id(directive("welcome", "smelt_charcoal"));
-        List<Identifier> before = chapterOne().stream()
-                .map(HandbookChaptersOneToFiveTest::id)
-                .filter(directive -> !directive.equals(charcoal))
-                .toList();
+        List<Identifier> before = chapterOneBeforeCharcoal();
         CharterId finished = new CharterId(UUID.randomUUID());
-        CharterId midway = new CharterId(UUID.randomUUID());
+        Map<Identifier, CharterId> lacking = new LinkedHashMap<>();
         HandbookProgressData saved = new HandbookProgressData();
         before.forEach(directive -> saved.complete(finished, directive));
-        before.subList(0, before.size() - 1).forEach(directive -> saved.complete(midway, directive));
-        Tag tag = HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, saved).getOrThrow();
-        HandbookProgressData loaded =
-                HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow();
+        for (Identifier missing : before) {
+            CharterId charter = new CharterId(UUID.randomUUID());
+            lacking.put(missing, charter);
+            before.stream()
+                    .filter(directive -> !directive.equals(missing))
+                    .forEach(directive -> saved.complete(charter, directive));
+        }
+        HandbookProgressData loaded = reloadAsVersionOne(saved);
         if (!loaded.completed(finished).contains(charcoal)) {
             throw helper.assertionException(
                     "a charter that finished chapter 1 should have done %s, got %s",
                     charcoal, loaded.completed(finished));
         }
-        if (loaded.completed(midway).contains(charcoal)) {
-            throw helper.assertionException("a charter still on chapter 1 should not have done %s", charcoal);
+        lacking.forEach((missing, charter) -> {
+            if (loaded.completed(charter).contains(charcoal)) {
+                throw helper.assertionException(
+                        "a charter without %s is still on chapter 1 and should not have done %s", missing, charcoal);
+            }
+        });
+        helper.succeed();
+    }
+
+    /** The carry runs once: a store of this version that lacks the charcoal step still lacks it after a reload. */
+    @GameTest
+    public void aCurrentCharterThatSkippedTheCharcoalStepStillLacksItAfterAReload(GameTestHelper helper) {
+        Identifier charcoal = id(directive("welcome", "smelt_charcoal"));
+        CharterId charter = new CharterId(UUID.randomUUID());
+        HandbookProgressData saved = new HandbookProgressData();
+        chapterOneBeforeCharcoal().forEach(directive -> saved.complete(charter, directive));
+        Tag tag = HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, saved).getOrThrow();
+        if (!(tag instanceof CompoundTag compound)
+                || compound.getIntOr(Versioned.VERSION_KEY, -1) != HandbookProgressData.VERSION) {
+            throw helper.assertionException(
+                    "the store should save as version %s, got %s", HandbookProgressData.VERSION, tag);
+        }
+        HandbookProgressData loaded =
+                HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow();
+        if (loaded.completed(charter).contains(charcoal)) {
+            throw helper.assertionException("a reload should not give %s, got %s", charcoal, loaded.completed(charter));
         }
         helper.succeed();
+    }
+
+    /** A store saved before #245 holds {@code mine_iron_ore}: it reads as {@code gather_scrap}, and then as the charcoal step. */
+    @GameTest
+    public void aCharterSavedBeforeTheScrapRenameGetsBothTheRenameAndTheCharcoalStep(GameTestHelper helper) {
+        Identifier scrap = id(directive("welcome", "gather_scrap"));
+        Identifier old = id(directive("welcome", "mine_iron_ore"));
+        CharterId charter = new CharterId(UUID.randomUUID());
+        HandbookProgressData saved = new HandbookProgressData();
+        chapterOneBeforeCharcoal().stream()
+                .map(directive -> directive.equals(scrap) ? old : directive)
+                .forEach(directive -> saved.complete(charter, directive));
+        Set<Identifier> completed = reloadAsVersionOne(saved).completed(charter);
+        if (!completed.contains(scrap) || !completed.contains(id(directive("welcome", "smelt_charcoal")))) {
+            throw helper.assertionException(
+                    "a pre-#245 charter should read as having done gather_scrap and smelt_charcoal, got %s", completed);
+        }
+        helper.succeed();
+    }
+
+    /** Chapter 1's pinned directives as they were before the charcoal step. */
+    static List<Identifier> chapterOneBeforeCharcoal() {
+        return chapterOne().stream()
+                .filter(directive -> !directive.equals(directive("welcome", "smelt_charcoal")))
+                .map(HandbookChaptersOneToFiveTest::id)
+                .toList();
+    }
+
+    /** {@code saved} written, its version set to 1 (the shape before #1423 is the same), and read back. */
+    private static HandbookProgressData reloadAsVersionOne(HandbookProgressData saved) {
+        CompoundTag tag = (CompoundTag)
+                HandbookProgressData.CODEC.encodeStart(NbtOps.INSTANCE, saved).getOrThrow();
+        tag.putInt(Versioned.VERSION_KEY, 1);
+        return HandbookProgressData.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow();
     }
 
     /**

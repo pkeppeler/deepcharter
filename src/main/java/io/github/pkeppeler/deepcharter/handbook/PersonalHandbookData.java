@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.SavedState;
@@ -25,13 +26,21 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * It only records: {@link HandbookProgress} and {@link Notes} are what the rest of the mod calls.
  *
  * <p>The saved form has a {@link #VERSION}. Data of another version loads as unreadable, is written back unchanged, and every use
- * of it throws, so a newer world is never overwritten by an older build (see ADR 0007).
+ * of it throws, so a newer world is never overwritten by an older build (see ADR 0007). Version 1 has the same shape and is
+ * read through {@link DirectiveCarry#fromVersion1}.
  */
 public final class PersonalHandbookData extends SavedData {
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook_personal");
+    private static final MapCodec<List<Entry>> BODY = Entry.CODEC.listOf().fieldOf("players");
+    private static final MapCodec<List<Entry>> V1_BODY = BODY.xmap(
+            entries -> entries.stream()
+                    .map(entry ->
+                            new Entry(entry.player(), DirectiveCarry.fromVersion1(entry.directives()), entry.notes()))
+                    .toList(),
+            entries -> entries);
     private static final Codec<Versioned<List<Entry>>> VERSIONED_CODEC =
-            Versioned.codec(VERSION, Entry.CODEC.listOf().fieldOf("players"));
+            Versioned.codec(VERSION, BODY, Map.of(1, V1_BODY));
 
     /** The codec of the saved data, which never fails to decode. */
     public static final Codec<PersonalHandbookData> CODEC =
@@ -52,7 +61,7 @@ public final class PersonalHandbookData extends SavedData {
             Map<UUID, Progress> players = new LinkedHashMap<>();
             entries.forEach(entry -> players.put(
                     entry.player(),
-                    new Progress(new LinkedHashSet<>(entry.directives()), new LinkedHashSet<>(entry.notes()))));
+                    new Progress(DirectiveCarry.renamed(entry.directives()), new LinkedHashSet<>(entry.notes()))));
             return players;
         });
     }
