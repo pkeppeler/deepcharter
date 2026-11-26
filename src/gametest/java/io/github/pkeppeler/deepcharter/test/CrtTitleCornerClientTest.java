@@ -93,8 +93,9 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
         Screen open = TerminalPanelScreens.open(context, screen, scene, elsewhere);
         context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
         context.waitTicks(2); // tick-wait: lets the parked cursor un-hover the buttons before the still is taken
-        // A handbook slip draws over the open screen; one over the title read as the glass dimming its first letter
-        // (#1390).
+        // A toast draws over the open screen; a slip over the title read as the glass dimming its first letter (#1390).
+        // dismissSceneSlips covers only the first world's repair slips; this also covers the contract and offline
+        // worlds, and any other toast.
         context.runOnClient(client -> client.gui.toastManager().clear());
         Shot shot = context.computeOnClient(client -> {
             DrawnText.Drawn title = DrawnText.of(open).stream()
