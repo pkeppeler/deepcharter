@@ -170,14 +170,21 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         }
     }
 
-    /** The legend of the cockpit's readouts on the Mole's cockpit sheet names every gauge by the title its tab shows. */
+    /**
+     * The legend of the cockpit's readouts on the Mole's cockpit sheet names every gauge by the title its tab shows, and
+     * names the plate's cart as the ore in the bay: that number carries no gauge's icon, since it is not the LOAD
+     * gauge's weight.
+     */
     private static void theMolesSheetNamesEveryCockpitTitle() {
         String page = String.join(" ", texts(screenOn(controlsPartOf("cockpit"), WIDTH, HEIGHT)));
-        for (CockpitHud.Part gauge : CockpitHud.GAUGES) {
+        for (CockpitHud.Meter gauge : CockpitHud.Meter.values()) {
             require(
                     page.contains(gauge.title().getString()),
                     "the Mole's cockpit sheet names the " + gauge.title().getString() + " gauge: " + page);
         }
+        require(
+                page.contains("cart is the ore in the bay"),
+                "the Mole's cockpit sheet says the plate's cart is the ore in the bay: " + page);
     }
 
     /**

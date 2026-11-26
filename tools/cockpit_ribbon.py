@@ -58,15 +58,18 @@ _LANG = json.loads((ROOT / "src/lang/en_us/pod.json").read_text(encoding="utf-8"
 TITLES = {gauge: _LANG["hud.deepcharter.cockpit." + key] for gauge, key in TITLE_KEYS.items()}
 # The altimeter's recess at the band's middle. The room under it is the altimeter's (#1432 hangs the sink rate there), so no title takes it.
 RECESS_W = 72
-# Each gauge's icon, which its title and its number on the plate's tally both carry, so a number reads as the gauge it is: white, tinted by the game in the
-# gauge's colour, `iconWidth` wide and as tall as the font's capitals.
+# The icons, white, tinted by the game in the colour of what they mark, `iconWidth` wide and as tall as the font's capitals. Each gauge's title carries its
+# gauge's icon (GAUGE_ICONS), and so does the plate's tally number of the same thing: hull, fuel and depth. The tally's cargo number is the ore in the bay, not
+# the LOAD gauge's weight, so it carries the cart, which no gauge has. Each reads apart from the others by its shape, not only by its colour.
 ICONS = {
-    "fuel": ("..#..", ".###.", ".###.", "#####", "#####", "#####", ".###."),
-    "hull": ("#####", "#####", "#####", "#####", ".###.", ".###.", "..#.."),
-    "cargo": ("#####", "#.#.#", "#.#.#", "#####", "#.#.#", "#.#.#", "#####"),
-    "depth": ("..#..", "..#..", "..#..", "..#..", "#####", ".###.", "..#.."),
-    "heat": (".###.", ".#.#.", ".#.#.", ".#.#.", "#####", "#####", ".###."),
+    "fuel": ("..#..", ".###.", ".###.", "#####", "#####", "#####", ".###."),  # a drop
+    "hull": ("#####", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."),  # a shield's outline
+    "weight": ("..#..", ".#.#.", "..#..", ".###.", ".###.", "#####", "#####"),  # a weight with its ring
+    "depth": ("..#..", "..#..", "..#..", "..#..", "#####", ".###.", "..#.."),  # an arrow down
+    "heat": ("..#..", ".##..", ".###.", "####.", "##.##", "#...#", ".###."),  # a flame
+    "cart": (".....", ".#.##", "#####", "#####", ".###.", ".....", ".#.#."),  # an ore cart, heaped, on its wheels
 }
+GAUGE_ICONS = {"fuel": "fuel", "hull": "hull", "cargo": "weight", "depth": "depth", "heat": "heat"}
 KIND = {"across": 0, "up": 1}
 SHARED = {
     "enabled": 1, "minGuiWidth": MIN_GUI_W, "minGuiHeight": MIN_GUI_H,
@@ -244,7 +247,7 @@ def title_tab():
 
 
 def icon(rows):
-    """A gauge's icon: white where `rows` has a #, for the game to tint."""
+    """An icon: white where `rows` has a #, for the game to tint."""
     img = Img(SHARED["iconWidth"], SHARED["titleTextHeight"])
     img.mask(rows, 0, 0, rgb("#FFFFFF"))
     return Sprite(img)
@@ -306,8 +309,8 @@ def ribbon():
     look = Look()
     look.sprite("plate", readout_plate())
     look.sprite("tab", title_tab())
-    for gauge, rows in ICONS.items():
-        look.sprite(f"icon_{gauge}", icon(rows))
+    for name, rows in ICONS.items():
+        look.sprite(f"icon_{name}", icon(rows))
     look.keys.update(anchor_keys(STYLE + "Readout", 2, 0, 2, 128))
     look.keys[STYLE + "AltimeterY"] = 3
     look.keys[STYLE + "TitleY"] = TITLE_Y
@@ -389,11 +392,12 @@ ACCOUNT = "Scanner Player0  $0"
 
 
 def plate_rows(state):
-    """The rows of the readout plate in `state`, top to bottom, each a list of (text, colour, icon or None): the tally, each value after its gauge's icon, the
-    account line, then every other line of the readout."""
+    """The rows of the readout plate in `state`, top to bottom, each a list of (text, colour, icon or None): the tally, hull, fuel and depth each after its
+    gauge's icon and the bay's ore count after the cart, the account line, then every other line of the readout."""
     account = [[(ACCOUNT, "#6FD99A", None)]]
     alerts = [[(s, "#FF5522", None)] for s in state["alerts"]]
-    tally = [[(text, SHARED[gauge + "Color"], gauge) for text, gauge in zip(state["tally"], ("hull", "fuel", "cargo", "depth"))]]
+    marks = (GAUGE_ICONS["hull"], GAUGE_ICONS["fuel"], "cart", GAUGE_ICONS["depth"])
+    tally = [[(text, SHARED[gauge + "Color"], mark) for text, gauge, mark in zip(state["tally"], ("hull", "fuel", "cargo", "depth"), marks)]]
     return tally + account + alerts
 
 
@@ -523,7 +527,7 @@ def preview_look(look, state):
     for name in GAUGES:
         left, top, right, bottom = title_box(look, name)
         img.blit(nine_slice(sprites["tab"].img, sprites["tab"].border, right - left, bottom - top), left, top)
-        img.mask(ICONS[name], left + inset, top + inset, rgb(SHARED[name + "Color"]))
+        img.mask(ICONS[GAUGE_ICONS[name]], left + inset, top + inset, rgb(SHARED[name + "Color"]))
         img.text(left + inset + SHARED["iconWidth"] + SHARED["iconGap"], top + inset, TITLES[name], rgb(SHARED[name + "Color"]))
     img.text(SCREEN_W // 2 - text_width("-1,234 ft.") // 2, t[STYLE + "AltimeterY"] + 1, "-1,234 ft.", rgb("#FFFFFF"))
     width, height = plate_size(look, state)

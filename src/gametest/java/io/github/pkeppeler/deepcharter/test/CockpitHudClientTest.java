@@ -508,8 +508,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 throw new AssertionError("A stranded pod's warning lights the fourth lamp, the readout is " + readout);
             }
             return CockpitHud.rows(shown, reading, look, readout).stream()
-                    .map(row -> row.parts().stream()
-                            .map(part -> ((TranslatableContents) part.text().getContents()).getKey())
+                    .map(row -> row.cells().stream()
+                            .map(cell ->
+                                    ((TranslatableContents) cell.line().text().getContents()).getKey())
                             .toList())
                     .toList();
         });
@@ -609,7 +610,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 throw new AssertionError("In the blackout the altimeter is dark with the depth gauge");
             }
             CockpitHud.Row tag = CockpitHud.tag(decay, CockpitLook.current());
-            if (!(tag.parts().getFirst().text().getContents() instanceof TranslatableContents contents)
+            if (!(tag.first().text().getContents() instanceof TranslatableContents contents)
                     || !contents.getKey().equals("hud.deepcharter.pod.signal_lost")) {
                 throw new AssertionError(
                         "In the blackout the plate is the tag that says something is on the line, got " + tag);
@@ -804,8 +805,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     private static void expectEveryPlateMessageIsAPlateCase() {
         Set<String> covered = drawnPlates().stream()
                 .flatMap(List::stream)
-                .flatMap(row -> row.parts().stream())
-                .map(part -> part.text().getContents())
+                .flatMap(row -> row.cells().stream())
+                .map(cell -> cell.line().text().getContents())
                 .filter(TranslatableContents.class::isInstance)
                 .map(contents -> ((TranslatableContents) contents).getKey())
                 .collect(Collectors.toSet());
@@ -865,7 +866,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     box.top() + box.height() - border.bottom() - textBottom
                 };
                 if (Arrays.stream(clear).anyMatch(side -> side < look.plateGap())) {
-                    found.add(rows.getLast().parts().getFirst().text().getString() + ": clear by (left, top, right,"
+                    found.add(rows.getLast().first().text().getString() + ": clear by (left, top, right,"
                             + " bottom) " + Arrays.toString(clear) + " in a plate " + box.width() + " x "
                             + box.height() + ", the gap is " + look.plateGap());
                 }
@@ -946,10 +947,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 }
             }
             long alerts = rows.stream()
-                    .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
+                    .filter(row -> row.first().kind() == PodStatusHud.Kind.ALERT)
                     .count();
             long keptAlerts = kept.stream()
-                    .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
+                    .filter(row -> row.first().kind() == PodStatusHud.Kind.ALERT)
                     .count();
             if (alerts != keptAlerts) {
                 problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
@@ -979,7 +980,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         int[] recess = {middle - ALTIMETER_RECESS_WIDTH / 2, band[1], middle + ALTIMETER_RECESS_WIDTH / 2, guiHeight};
         int[] gasket = {window[0] - 1, window[1] - 1, window[2] + 1, window[3] + 1};
         List<int[]> placed = new ArrayList<>();
-        for (CockpitHud.Part gauge : CockpitHud.GAUGES) {
+        for (CockpitHud.Meter gauge : CockpitHud.Meter.values()) {
             String name = gauge.name().toLowerCase(Locale.ROOT);
             CockpitHud.Box box = CockpitHud.titleBox(font, layout, look, gauge, guiWidth, guiHeight);
             int[] title = {box.left(), box.top(), box.left() + box.width(), box.top() + box.height()};
@@ -1042,10 +1043,13 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("lining", 5),
                 line("brace_working"),
                 line("soot", 11, 44, 44));
-        PodStatusHud.Line tally = line("tally_hull", 100, 100);
+        // The tally as the cockpit draws it, each number after its icon.
         List<CockpitHud.Row> head = List.of(
-                new CockpitHud.Row(
-                        List.of(tally, line("tally_fuel", 78), line("tally_cargo", 24), line("tally_depth", -420))),
+                new CockpitHud.Row(List.of(
+                        new CockpitHud.Cell(line("tally_hull", 100, 100), CockpitHud.Meter.HULL.icon()),
+                        new CockpitHud.Cell(line("tally_fuel", 78), CockpitHud.Meter.FUEL.icon()),
+                        new CockpitHud.Cell(line("tally_cargo", 24), CockpitHud.Icon.CART),
+                        new CockpitHud.Cell(line("tally_depth", -420), CockpitHud.Meter.DEPTH.icon()))),
                 CockpitHud.Row.of(
                         new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0)));
         List<List<CockpitHud.Row>> cases = new ArrayList<>();

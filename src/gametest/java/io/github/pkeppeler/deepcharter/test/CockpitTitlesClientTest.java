@@ -18,9 +18,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -46,8 +49,8 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
     private static final int[] GUI_SCALES = {2, 1};
     /** A title in the game's font is some 40 GUI pixels of ink; half of that is the least a drawn title has. */
     private static final int TITLE_INK = 20;
-    /** An icon lights 18 to 29 of its pixels; the least a drawn icon has. */
-    private static final int ICON_INK = 12;
+    /** The least a drawn icon has: the icons light 13 (depth's arrow) to 25 (fuel's drop) of their pixels, so some 60% of the sparsest, and a missing one none. */
+    private static final int ICON_INK = 8;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -110,9 +113,9 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
         int inset = tabBorder(look) + look.titleGap();
-        for (CockpitHud.Part gauge : CockpitHud.GAUGES) {
+        for (CockpitHud.Meter gauge : CockpitHud.Meter.values()) {
             CockpitHud.Box box = CockpitHud.titleBox(client.font, look.ribbon(), look, gauge, width, height);
-            int color = color(look, gauge);
+            int color = gauge.color(look);
             int iconLeft = box.left() + inset;
             int top = box.top() + inset;
             int icon = ink(shot, scale, color, iconLeft, top, look.iconWidth(), look.titleTextHeight());
@@ -133,7 +136,10 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
         return problems;
     }
 
-    /** Each number of the tally comes after its gauge's icon, in the number's colour. */
+    /**
+     * Each number of the tally comes after its icon, in the number's colour: hull, fuel and depth after their gauges' icons, and the bay's ore count, which is not
+     * the LOAD gauge's weight, after the cart, which no gauge carries.
+     */
     private static List<String> tallyProblems(Minecraft client, BufferedImage shot, int scale) {
         List<String> problems = new ArrayList<>();
         CockpitLook look = CockpitLook.current();
@@ -148,18 +154,30 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
                         PodStatusHud.readout(ClientSession.player(client), pod)),
                 CockpitHud.roomForRows(client.font, layout, look, height));
         CockpitHud.Row tally = rows.getFirst();
-        if (!tally.icons()
-                .equals(List.of(
-                        CockpitHud.Part.HULL, CockpitHud.Part.FUEL, CockpitHud.Part.CARGO, CockpitHud.Part.DEPTH))) {
-            problems.add("the tally's hull, fuel, cargo and depth carry their gauges' icons, got " + tally.icons());
+        List<Optional<CockpitHud.Icon>> icons = tally.cells().stream()
+                .map(cell -> Optional.ofNullable(cell.icon()))
+                .toList();
+        List<Optional<CockpitHud.Icon>> want = Stream.of(
+                        CockpitHud.Meter.HULL.icon(),
+                        CockpitHud.Meter.FUEL.icon(),
+                        CockpitHud.Icon.CART,
+                        CockpitHud.Meter.DEPTH.icon())
+                .map(Optional::of)
+                .toList();
+        if (!icons.equals(want)) {
+            problems.add("the tally's hull, fuel and depth carry their gauges' icons and its bay count the cart, got "
+                    + icons);
+        }
+        if (Arrays.stream(CockpitHud.Meter.values()).anyMatch(gauge -> gauge.icon() == CockpitHud.Icon.CART)) {
+            problems.add("the cart marks the bay's ore count and no gauge");
         }
         CockpitHud.Box plate = CockpitHud.plateBox(
                 client.font, layout, look, rows, client.getWindow().getGuiScaledWidth(), height);
         GuiSpriteScaling.NineSlice.Border inset = CockpitHud.plateInset(layout, look);
         int x = plate.left() + inset.left();
         int y = plate.top() + inset.top();
-        for (int i = 0; i < tally.parts().size(); i++) {
-            PodStatusHud.Line part = tally.parts().get(i);
+        for (CockpitHud.Cell cell : tally.cells()) {
+            PodStatusHud.Line part = cell.line();
             int icon = ink(shot, scale, part.color(), x, y, look.iconWidth(), look.titleTextHeight());
             if (icon < ICON_INK * scale * scale) {
                 problems.add("at GUI scale " + scale + " the tally's "
@@ -177,7 +195,7 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
         List<HudKeepClear.Rect> rects = HudKeepClear.rects(client, width, height);
-        for (CockpitHud.Part gauge : CockpitHud.GAUGES) {
+        for (CockpitHud.Meter gauge : CockpitHud.Meter.values()) {
             CockpitHud.Box box = CockpitHud.titleBox(client.font, look.ribbon(), look, gauge, width, height);
             HudKeepClear.Rect want = new HudKeepClear.Rect(
                     "cockpit " + name(gauge) + " title", box.left(), box.top(), box.width(), box.height());
@@ -188,19 +206,8 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
         return problems;
     }
 
-    private static String name(CockpitHud.Part gauge) {
+    private static String name(CockpitHud.Meter gauge) {
         return gauge.name().toLowerCase(Locale.ROOT);
-    }
-
-    private static int color(CockpitLook look, CockpitHud.Part gauge) {
-        return switch (gauge) {
-            case FUEL -> look.fuelColor();
-            case HULL -> look.hullColor();
-            case CARGO -> look.cargoColor();
-            case DEPTH -> look.depthColor();
-            case HEAT -> look.heatColor();
-            default -> throw new AssertionError(gauge + " is not a gauge");
-        };
     }
 
     /** The tab sprite's border, which the tests read from the theme's sprite as the cockpit does: one pixel, a thin steel rim. */

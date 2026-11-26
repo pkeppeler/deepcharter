@@ -120,8 +120,7 @@ public class CockpitTitlesScenario extends EvidenceScenario {
         context.runOnClient(client -> client.options.guiScale().set(scale));
         context.waitTicks(2); // tick-wait: the frame after the scale change lays the GUI out again
         // The first boarding completes a directive whose toast lands some ticks later, over the plate, and the
-        // charter's
-        // welcome transmission covers the middle of the screen.
+        // charter's welcome transmission covers the middle of the screen.
         context.runOnClient(client -> {
             client.gui.toastManager().clear();
             TransmissionOverlay.reset();

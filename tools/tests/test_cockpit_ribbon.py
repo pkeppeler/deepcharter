@@ -79,7 +79,7 @@ class Theme(unittest.TestCase):
 
     def test_there_is_one_look_and_no_sprite_of_a_style_that_was_dropped(self):
         self.assertEqual({"ribbon"}, {p.name for p in SPRITES.parent.iterdir()})
-        icons = {f"icon_{gauge}.png" for gauge in GAUGES}
+        icons = {f"icon_{name}.png" for name in ("fuel", "hull", "weight", "cart", "depth", "heat")}
         self.assertEqual({"part_a.png", "cap.png", "plate.png", "plate.png.mcmeta", "tab.png", "tab.png.mcmeta"} | icons, {p.name for p in SPRITES.iterdir()})
 
     def test_the_plate_and_the_title_tab_are_cut_in_nine(self):
@@ -94,9 +94,9 @@ class Theme(unittest.TestCase):
                 self.assertLess(border["top"] + border["bottom"], scaling["height"], "a nine-slice needs a middle")
 
     def test_each_icon_is_as_wide_as_the_theme_says_and_as_tall_as_the_capitals(self):
-        for gauge in GAUGES:
-            with self.subTest(gauge=gauge):
-                self.assertEqual((THEME["iconWidth"], THEME["titleTextHeight"]), png_size(SPRITES / f"icon_{gauge}.png"))
+        for name in cockpit_ribbon.ICONS:
+            with self.subTest(icon=name):
+                self.assertEqual((THEME["iconWidth"], THEME["titleTextHeight"]), png_size(SPRITES / f"icon_{name}.png"))
 
     def test_every_decal_has_a_sprite_of_its_size(self):
         for slot, camel in SLOTS.items():
@@ -237,9 +237,13 @@ class Titles(unittest.TestCase):
                     for state in list(cockpit_ribbon.STATES.values()) + [WIDE_ALERT]:
                         self.assertFalse(overlap(title, plate_rect(screen, state)))
 
-    def test_each_tally_value_carries_its_gauges_icon(self):
+    def test_the_tallys_hull_fuel_and_depth_carry_their_gauges_icons_and_the_bay_count_the_cart(self):
+        # The tally's cargo number counts the ore in the bay, not the LOAD gauge's weight, so it carries the cart and the LOAD gauge the weight.
         tally = cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["calm"])[0]
-        self.assertEqual(["hull", "fuel", "cargo", "depth"], [icon for _, _, icon in tally])
+        icons = cockpit_ribbon.GAUGE_ICONS
+        self.assertEqual([icons["hull"], icons["fuel"], "cart", icons["depth"]], [icon for _, _, icon in tally])
+        self.assertEqual("weight", icons["cargo"])
+        self.assertNotIn("cart", icons.values())
         self.assertTrue(all(icon is None for row in cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["burning"])[1:] for _, _, icon in row))
 
 

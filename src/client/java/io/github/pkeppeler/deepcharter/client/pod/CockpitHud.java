@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.ToIntFunction;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
@@ -53,7 +55,8 @@ import org.jspecify.annotations.Nullable;
  * {@link Layout#loadLimit} segments, and the bar in that colour at and over it.
  *
  * <p>Each gauge is titled (#1436, a playtester could not tell what H or the plate's coloured numbers were): a tab under its bar, riding the band's lower edge, holds
- * the gauge's icon and its name in the gauge's colour, and each number of the plate's tally carries the icon of its gauge, so the plate needs no words to stay small.
+ * the gauge's icon and its name in the gauge's colour ({@link Meter}). Each number of the plate's tally carries an icon, so the plate needs no words to stay small:
+ * hull, fuel and depth their gauge's, and the bay's ore count the {@link Icon#CART}.
  */
 public final class CockpitHud {
     /** How many warning lamps the Ribbon has: low fuel, low hull, burning, any other warning of the readout, and overloaded. */
@@ -72,46 +75,91 @@ public final class CockpitHud {
             VanillaHudElements.EXPERIENCE_LEVEL,
             VanillaHudElements.HELD_ITEM_TOOLTIP);
 
-    /**
-     * The pieces of the Ribbon that move or can fail, each drawn through {@link #draw}, and the instrument of the signal decay that fails with it. A gauge also has
-     * its title's lang key under {@code hud.deepcharter.cockpit.}; the cargo slot's gauge reads the load (#1449).
-     */
+    /** The pieces of the Ribbon that move or can fail, each drawn through {@link #draw}, and the instrument of the signal decay that fails with it. */
     public enum Part {
-        FUEL(Instrument.FUEL, "fuel"),
-        HULL(Instrument.HULL, "hull"),
-        CARGO(Instrument.CARGO, "load"),
-        DEPTH(Instrument.DEPTH, "depth"),
-        HEAT(Instrument.HEAT, "heat"),
-        LAMPS(Instrument.LAMPS, null),
-        SCANNER(Instrument.SCANNER, null),
-        PLATE(Instrument.PLATE, null);
+        FUEL(Instrument.FUEL),
+        HULL(Instrument.HULL),
+        CARGO(Instrument.CARGO),
+        DEPTH(Instrument.DEPTH),
+        HEAT(Instrument.HEAT),
+        LAMPS(Instrument.LAMPS),
+        SCANNER(Instrument.SCANNER),
+        PLATE(Instrument.PLATE);
 
         private final Instrument instrument;
-        private final @Nullable String title;
 
-        Part(Instrument instrument, @Nullable String title) {
+        Part(Instrument instrument) {
             this.instrument = instrument;
-            this.title = title;
         }
 
         public Instrument instrument() {
             return instrument;
         }
+    }
 
-        /** The gauge's title, as the tab under its bar shows it. */
-        public Component title() {
-            return Component.translatable(
-                    "hud.deepcharter.cockpit." + Objects.requireNonNull(title, () -> this + " is not a gauge"));
-        }
+    /**
+     * The icons a gauge's title and the plate's tally carry, each a GUI sprite {@code icon_<name>} ({@link Layout#sprite}) in white that is drawn tinted. A gauge's
+     * is its {@link Meter#icon}; the {@link #CART} is no gauge's: it marks the tally's count of the ore in the bay, which is not the LOAD gauge's weight.
+     */
+    public enum Icon {
+        FUEL,
+        HULL,
+        WEIGHT,
+        DEPTH,
+        HEAT,
+        CART;
 
-        /** The GUI sprite slot of the gauge's icon ({@link Layout#sprite}). */
-        String icon() {
+        String sprite() {
             return "icon_" + name().toLowerCase(Locale.ROOT);
         }
     }
 
-    /** The gauges, in the order they sit on the band; each has a title under its bar. */
-    public static final List<Part> GAUGES = List.of(Part.FUEL, Part.HULL, Part.CARGO, Part.DEPTH, Part.HEAT);
+    /**
+     * The gauges, in the order they sit on the band: each one's {@link Part}, its title's lang key under {@code hud.deepcharter.cockpit.}, its icon, its colour when
+     * it is not in warning (its title's and its icon's) and its bar. The cargo slot's gauge reads the load (#1449).
+     */
+    public enum Meter {
+        FUEL(Part.FUEL, "fuel", Icon.FUEL, CockpitLook::fuelColor, Layout::fuel),
+        HULL(Part.HULL, "hull", Icon.HULL, CockpitLook::hullColor, Layout::hull),
+        CARGO(Part.CARGO, "load", Icon.WEIGHT, CockpitLook::cargoColor, Layout::cargo),
+        DEPTH(Part.DEPTH, "depth", Icon.DEPTH, CockpitLook::depthColor, Layout::depth),
+        HEAT(Part.HEAT, "heat", Icon.HEAT, CockpitLook::heatColor, Layout::heat);
+
+        private final Part part;
+        private final String title;
+        private final Icon icon;
+        private final ToIntFunction<CockpitLook> color;
+        private final Function<Layout, Gauge> bar;
+
+        Meter(Part part, String title, Icon icon, ToIntFunction<CockpitLook> color, Function<Layout, Gauge> bar) {
+            this.part = part;
+            this.title = title;
+            this.icon = icon;
+            this.color = color;
+            this.bar = bar;
+        }
+
+        public Part part() {
+            return part;
+        }
+
+        /** The gauge's title, as the tab under its bar shows it. */
+        public Component title() {
+            return Component.translatable("hud.deepcharter.cockpit." + title);
+        }
+
+        public Icon icon() {
+            return icon;
+        }
+
+        public int color(CockpitLook look) {
+            return color.applyAsInt(look);
+        }
+
+        public Gauge bar(Layout layout) {
+            return bar.apply(layout);
+        }
+    }
 
     private static double heat;
 
@@ -187,8 +235,8 @@ public final class CockpitHud {
         }
         if (showsReadout(client, guiWidth, guiHeight)) {
             CockpitLook look = CockpitLook.current();
-            for (Part gauge : GAUGES) {
-                if (gauge(layout, gauge).on()) {
+            for (Meter gauge : Meter.values()) {
+                if (gauge.bar(layout).on()) {
                     Box title = titleBox(client.font, layout, look, gauge, guiWidth, guiHeight);
                     into.add(new HudKeepClear.Rect(
                             "cockpit " + gauge.name().toLowerCase(Locale.ROOT) + " title",
@@ -262,47 +310,16 @@ public final class CockpitHud {
         List<Line> lines = PodStatusHud.readout(player, pod);
         boolean fuelLow = PodFuel.isLow(pod.fuel());
         boolean hullLow = reading.hull() <= look.hullLowFraction();
-        draw(
-                graphics,
-                decay,
-                Part.FUEL,
-                layout.fuel().area(),
-                () -> gauge(
-                        graphics,
-                        layout.fuel(),
-                        decay.shown(Part.FUEL, reading.fuel()),
-                        fuelLow ? look.lowColor() : look.fuelColor(),
-                        look));
-        draw(
-                graphics,
-                decay,
-                Part.HULL,
-                layout.hull().area(),
-                () -> gauge(
-                        graphics,
-                        layout.hull(),
-                        decay.shown(Part.HULL, reading.hull()),
-                        hullLow ? look.lowColor() : look.hullColor(),
-                        look));
+        bar(graphics, decay, layout, Meter.FUEL, reading.fuel(), fuelLow ? look.lowColor() : look.fuelColor(), look);
+        bar(graphics, decay, layout, Meter.HULL, reading.hull(), hullLow ? look.lowColor() : look.hullColor(), look);
         draw(
                 graphics,
                 decay,
                 Part.CARGO,
                 layout.cargo().area(),
                 () -> loadGauge(graphics, layout, decay, reading, look));
-        draw(
-                graphics,
-                decay,
-                Part.DEPTH,
-                layout.depth().area(),
-                () -> gauge(
-                        graphics, layout.depth(), decay.shown(Part.DEPTH, reading.depth()), look.depthColor(), look));
-        draw(
-                graphics,
-                decay,
-                Part.HEAT,
-                layout.heat().area(),
-                () -> gauge(graphics, layout.heat(), decay.shown(Part.HEAT, reading.heat()), look.heatColor(), look));
+        bar(graphics, decay, layout, Meter.DEPTH, reading.depth(), look.depthColor(), look);
+        bar(graphics, decay, layout, Meter.HEAT, reading.heat(), look.heatColor(), look);
         titles(graphics, client.font, layout, look);
         draw(
                 graphics,
@@ -372,6 +389,24 @@ public final class CockpitHud {
         }
     }
 
+    /** {@code meter}'s bar at {@code value} in {@code color}, through {@link #draw} in the signal decay's frame. */
+    private static void bar(
+            GuiGraphicsExtractor graphics,
+            CockpitDecay decay,
+            Layout layout,
+            Meter meter,
+            double value,
+            int color,
+            CockpitLook look) {
+        Gauge bar = meter.bar(layout);
+        draw(
+                graphics,
+                decay,
+                meter.part(),
+                bar.area(),
+                () -> gauge(graphics, bar, decay.shown(meter.part(), value), color, look));
+    }
+
     /** Draws one bar gauge at {@code value} (0 to 1): segments of {@code color} lit from its start, at least one when the value is above 0, over unlit ones. */
     private static void gauge(GuiGraphicsExtractor graphics, Gauge gauge, double value, int color, CockpitLook look) {
         if (!gauge.on()) {
@@ -438,36 +473,12 @@ public final class CockpitHud {
         graphics.fill(mark, top - 1, mark + 1, top + gauge.area().height() + 1, look.lowColor());
     }
 
-    /** The bar of {@code gauge}, one of {@link #GAUGES}. */
-    private static Gauge gauge(Layout layout, Part gauge) {
-        return switch (gauge) {
-            case FUEL -> layout.fuel();
-            case HULL -> layout.hull();
-            case CARGO -> layout.cargo();
-            case DEPTH -> layout.depth();
-            case HEAT -> layout.heat();
-            case LAMPS, SCANNER, PLATE -> throw new IllegalArgumentException(gauge + " is not a gauge");
-        };
-    }
-
-    /** The colour of {@code gauge}, one of {@link #GAUGES}, when it is not in warning: its title's and its icon's. */
-    private static int color(CockpitLook look, Part gauge) {
-        return switch (gauge) {
-            case FUEL -> look.fuelColor();
-            case HULL -> look.hullColor();
-            case CARGO -> look.cargoColor();
-            case DEPTH -> look.depthColor();
-            case HEAT -> look.heatColor();
-            case LAMPS, SCANNER, PLATE -> throw new IllegalArgumentException(gauge + " is not a gauge");
-        };
-    }
-
     /**
      * Where {@code gauge}'s title tab is: its icon, {@link CockpitLook#iconGap} and its title in the game's font (the terminal font's 6 pixels read as "I NAD" at GUI
      * scale 1), {@link CockpitLook#titleGap} inside the tab sprite's border, as tall as the font's capitals ({@link CockpitLook#titleTextHeight}); centred under
      * the bar and {@link Layout#titleY} under the band's top, so it rides the band's lower edge (on a narrow GUI, the joint of the band and the scanner's bezel).
      */
-    public static Box titleBox(Font font, Layout layout, CockpitLook look, Part gauge, int guiWidth, int guiHeight) {
+    public static Box titleBox(Font font, Layout layout, CockpitLook look, Meter gauge, int guiWidth, int guiHeight) {
         GuiSpriteScaling.NineSlice.Border border = spriteBorder(layout.sprite("tab"));
         int width = border.left()
                 + border.right()
@@ -476,7 +487,7 @@ public final class CockpitHud {
                 + look.iconGap()
                 + font.width(gauge.title());
         int height = border.top() + border.bottom() + 2 * look.titleGap() + look.titleTextHeight();
-        Decal area = gauge(layout, gauge).area();
+        Decal area = gauge.bar(layout).area();
         int left = area.left(guiWidth) + Math.floorDiv(area.width() - width, 2);
         return new Box(left, layout.band().top(guiHeight) + layout.titleY(), width, height);
     }
@@ -484,26 +495,26 @@ public final class CockpitHud {
     /** Each gauge's title: the cab's labels, not the signal's, so they stay when a gauge goes dark. */
     private static void titles(GuiGraphicsExtractor graphics, Font font, Layout layout, CockpitLook look) {
         GuiSpriteScaling.NineSlice.Border border = spriteBorder(layout.sprite("tab"));
-        for (Part gauge : GAUGES) {
-            if (!gauge(layout, gauge).on()) {
+        for (Meter gauge : Meter.values()) {
+            if (!gauge.bar(layout).on()) {
                 continue;
             }
             Box box = titleBox(font, layout, look, gauge, graphics.guiWidth(), graphics.guiHeight());
             CrtDraw.sprite(graphics, layout.sprite("tab"), box.left(), box.top(), box.width(), box.height());
             int x = box.left() + border.left() + look.titleGap();
             int y = box.top() + border.top() + look.titleGap();
-            int color = color(look, gauge);
-            icon(graphics, layout, look, gauge, x, y, color);
+            int color = gauge.color(look);
+            icon(graphics, layout, look, gauge.icon(), x, y, color);
             graphics.text(font, gauge.title(), x + look.iconWidth() + look.iconGap(), y, color);
         }
     }
 
-    /** {@code gauge}'s icon at ({@code x}, {@code y}), its white tinted {@code color}. */
+    /** {@code icon} at ({@code x}, {@code y}), its white tinted {@code color}. */
     private static void icon(
-            GuiGraphicsExtractor graphics, Layout layout, CockpitLook look, Part gauge, int x, int y, int color) {
+            GuiGraphicsExtractor graphics, Layout layout, CockpitLook look, Icon icon, int x, int y, int color) {
         graphics.blitSprite(
                 RenderPipelines.GUI_TEXTURED,
-                layout.sprite(gauge.icon()),
+                layout.sprite(icon.sprite()),
                 x,
                 y,
                 look.iconWidth(),
@@ -534,60 +545,66 @@ public final class CockpitHud {
         }
     }
 
-    /**
-     * One row of the plate: parts drawn side by side, each in its colour, {@link CockpitLook#tallyGap} apart. The tally's parts each come after the icon of their gauge
-     * ({@code icons}, one a part); any other row has none.
-     */
-    public record Row(List<Line> parts, List<Part> icons) {
-        public Row {
-            if (!icons.isEmpty() && icons.size() != parts.size()) {
-                throw new IllegalArgumentException("a row's icons are one a part, or none: " + icons + " for " + parts);
-            }
+    /** One cell of a plate's row: its line, after {@code icon} when it has one, both in the line's colour. */
+    public record Cell(Line line, @Nullable Icon icon) {
+        /** How wide the cell is drawn. */
+        int width(Font font, CockpitLook look) {
+            return font.width(line.text()) + (icon == null ? 0 : look.iconWidth() + look.iconGap());
         }
+    }
 
-        public Row(List<Line> parts) {
-            this(parts, List.of());
-        }
-
+    /** One row of the plate: cells drawn side by side, {@link CockpitLook#tallyGap} apart. Only the tally's cells carry icons. */
+    public record Row(List<Cell> cells) {
         public static Row of(Line line) {
-            return new Row(List.of(line));
+            return new Row(List.of(new Cell(line, null)));
         }
 
-        /** How wide the row's parts and icons are drawn. */
+        /** The first cell's line, whose kind is the row's. */
+        public Line first() {
+            return cells.getFirst().line();
+        }
+
+        /** How wide the row's cells are drawn. */
         public int width(Font font, CockpitLook look) {
-            int width = look.tallyGap() * (parts.size() - 1) + icons.size() * (look.iconWidth() + look.iconGap());
-            for (Line part : parts) {
-                width += font.width(part.text());
+            int width = look.tallyGap() * (cells.size() - 1);
+            for (Cell cell : cells) {
+                width += cell.width(font, look);
             }
             return width;
         }
     }
 
     /**
-     * The rows of the plate: the tally on one row (hull, fuel, cargo and depth, each in its gauge's colour after its gauge's icon), the account line, and under them every
-     * other line of the readout, so the numbers stay where they are as lines come and go.
+     * The rows of the plate: the tally on one row (hull, fuel and depth each in its gauge's colour after its gauge's icon, and the bay's ore count in the cargo colour
+     * after the {@link Icon#CART}), the account line, and under them every other line of the readout, so the numbers stay where they are as lines come and go.
      */
     public static List<Row> rows(PodEntity pod, CockpitReading reading, CockpitLook look, List<Line> readout) {
         boolean fuelLow = PodFuel.isLow(pod.fuel());
         boolean hullLow = reading.hull() <= look.hullLowFraction();
-        List<Row> rows = new ArrayList<>(List.of(new Row(
-                List.of(
+        List<Row> rows = new ArrayList<>(List.of(new Row(List.of(
+                new Cell(
                         new Line(
                                 Component.translatable(
                                         "hud.deepcharter.pod.tally_hull",
                                         Math.round(pod.hull()),
                                         Math.round(pod.maxHull())),
                                 hullLow ? look.lowColor() : look.hullColor()),
+                        Meter.HULL.icon()),
+                new Cell(
                         new Line(
                                 Component.translatable("hud.deepcharter.pod.tally_fuel", Math.round(pod.fuel())),
                                 fuelLow ? look.lowColor() : look.fuelColor()),
+                        Meter.FUEL.icon()),
+                new Cell(
                         new Line(
                                 Component.translatable("hud.deepcharter.pod.tally_cargo", pod.cargoUsed()),
                                 look.cargoColor()),
+                        Icon.CART),
+                new Cell(
                         new Line(
                                 Component.translatable("hud.deepcharter.pod.tally_depth", Math.round(pod.getY())),
-                                look.depthColor())),
-                List.of(Part.HULL, Part.FUEL, Part.CARGO, Part.DEPTH))));
+                                look.depthColor()),
+                        Meter.DEPTH.icon())))));
         AccountHud.text()
                 .ifPresent(
                         text -> rows.add(Row.of(new Line(text, HudLook.current().accountColor()))));
@@ -602,7 +619,7 @@ public final class CockpitHud {
     public static List<Row> fitting(List<Row> rows, int maxRows) {
         List<Row> kept = new ArrayList<>(rows);
         for (int i = kept.size() - 1; i > 0 && kept.size() > maxRows; i--) {
-            if (kept.get(i).parts().getFirst().kind() == Kind.INFO) {
+            if (kept.get(i).first().kind() == Kind.INFO) {
                 kept.remove(i);
             }
         }
@@ -687,14 +704,15 @@ public final class CockpitHud {
         int y = box.top() + inset.top();
         for (Row row : rows) {
             int x = box.left() + inset.left();
-            for (int i = 0; i < row.parts().size(); i++) {
-                Line part = row.parts().get(i);
-                if (!row.icons().isEmpty()) {
-                    icon(graphics, layout, look, row.icons().get(i), x, y, part.color());
+            for (Cell cell : row.cells()) {
+                Line line = cell.line();
+                Icon icon = cell.icon();
+                if (icon != null) {
+                    icon(graphics, layout, look, icon, x, y, line.color());
                     x += look.iconWidth() + look.iconGap();
                 }
-                graphics.text(font, part.text(), x, y, part.color());
-                x += font.width(part.text()) + look.tallyGap();
+                graphics.text(font, line.text(), x, y, line.color());
+                x += font.width(line.text()) + look.tallyGap();
             }
             y += rowPitch(font);
         }
@@ -716,11 +734,13 @@ public final class CockpitHud {
             return rows;
         }
         return rows.stream()
-                .map(row -> new Row(
-                        row.parts().stream()
-                                .map(part -> new Line(decay.garbled(Part.PLATE, part.text()), part.color()))
-                                .toList(),
-                        row.icons()))
+                .map(row -> new Row(row.cells().stream()
+                        .map(cell -> new Cell(
+                                new Line(
+                                        decay.garbled(Part.PLATE, cell.line().text()),
+                                        cell.line().color()),
+                                cell.icon()))
+                        .toList()))
                 .toList();
     }
 }
