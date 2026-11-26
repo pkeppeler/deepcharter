@@ -316,6 +316,26 @@ exited "shrunk: exit 1 for the dropped PR" 1
 logged "shrunk: the remaining PR goes to merge-pr" "merge-pr 1"
 count "shrunk: no batch PR opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 0
 
+# --- CI not finished yet (queued, in progress) waits; only a completed failure bisects ---
+reset
+mkpr 1; mkpr 2
+printf '1\nREFUSED: PR #100 has a check that is not passing: build (newest non-skipped run: queued)\n' >"$ST/ci.1"
+run_b 1 2
+exited "queued then green: exit 0" 0
+printed "queued then green: merged as one batch" "merged:  #1 #2"
+count "queued then green: the CI gate ran twice" "merge-pr --ci" 2
+count "queued then green: no bisect, one batch PR" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
+not_logged "queued then green: never a single-PR merge" "merge-pr 1"
+
+reset
+mkpr 1; mkpr 2
+printf '1\nREFUSED: PR #100 has a check that is not passing: build (newest non-skipped run: in_progress)\n' >"$ST/ci.1"
+printf '1\nREFUSED: PR #100 has a check that is not passing: build (newest non-skipped run: failure)\n' >"$ST/ci.2"
+run_b 1 2
+logged_part "in progress then red: bisects after the completed failure" "CI is red: splitting this batch in two."
+count "in progress then red: the CI gate ran twice on the first batch" "merge-pr --ci 100" 2
+logged "in progress then red: PR 1 goes to merge-pr alone" "merge-pr 1"
+
 # --- a stale base rebuilds on the new main and runs CI again ---
 reset
 mkpr 1; mkpr 2

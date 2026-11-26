@@ -324,9 +324,10 @@ process_group() {
           fi
           sleep "$stale_sleep"
         fi
-      elif [[ $out == *"has no checks reported"* || $out == *"lacks required check"* || $out == *"only skipped"* ]]; then
+      elif [[ $out == *"has no checks reported"* || $out == *"lacks required check"* || $out == *"only skipped"* \
+        || $out =~ newest\ non-skipped\ run:\ (queued|in_progress|waiting|pending|requested) ]]; then
         if ((pending_n >= pending_max)); then
-          stopped="batch PR #$bpr: CI never reported its checks ($reason)"
+          stopped="batch PR #$bpr: CI did not finish or report its checks after $pending_max waits ($reason)"
           return 0
         fi
         pending_n=$((pending_n + 1))
