@@ -312,6 +312,13 @@ class IconsAreNotGlyphs(unittest.TestCase):
                     with self.subTest(a=a, b=b):
                         self.assertGreaterEqual(pixels_apart(rows_a, rows_b), MIN_PIXELS_APART)
 
+    def test_no_icon_is_a_comb(self):
+        # Three strokes side by side read as the strokes of a letter however far the pixels are: the fire's three tongues on its bed read as "W" ("WHEAT").
+        for name, rows in cockpit_ribbon.ICONS.items():
+            for line in (*rows, *("".join(column) for column in zip(*rows))):
+                with self.subTest(icon=name, line=line):
+                    self.assertLess(len(re.findall("#+", line)), 3)
+
 
 class Coverage(unittest.TestCase):
     def test_the_status_is_under_the_budget_and_smaller_than_the_scanner(self):

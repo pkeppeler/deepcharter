@@ -47,7 +47,7 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
     private static final int[] GUI_SCALES = {2, 1};
     /** A title in the game's font is some 40 GUI pixels of ink; half of that is the least a drawn title has. */
     private static final int TITLE_INK = 20;
-    /** The least a drawn icon has: the icons light 12 (the cart) to 29 (heat's fire) of their pixels, so two thirds of the sparsest, and a missing one none. */
+    /** The least a drawn icon has: the icons light 12 (the cart) to 26 (hull's shield) of their pixels, so two thirds of the sparsest, and a missing one none. */
     private static final int ICON_INK = 8;
 
     @Override
