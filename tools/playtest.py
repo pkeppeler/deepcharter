@@ -403,8 +403,9 @@ def server_install(env: Env, zip_path: Path | None, server_dir: Path) -> list[st
         properties.write_text(template)
     else:
         have = properties.read_text()
-        missing = [line for line in template.splitlines() if "=" in line and line.split("=", 1)[0].strip() not in _properties_keys(have)
-                   and not line.lstrip().startswith("#")]
+        have_keys = _properties_keys(have)
+        missing = [line for line in template.splitlines() if line.split("=", 1)[0].strip() not in have_keys
+                   and "=" in line and not line.lstrip().startswith("#")]
         if missing:
             properties.write_text(have + ("" if have.endswith("\n") or not have else "\n") + "\n".join(missing) + "\n")
     if "eula.txt" in members and not (server_dir / "eula.txt").is_file():
@@ -624,7 +625,7 @@ def main(argv: list[str], env: Env) -> int:
     sub.add_parser("client").add_argument("--mrpack", type=Path)
     sub.add_parser("server-install", parents=[server]).add_argument("--zip", type=Path)
     sub.add_parser("server-start", parents=[server]).add_argument("--wait", type=float, default=600)
-    sub.add_parser("server-stop", parents=[server])
+    sub.add_parser("server-stop")
     sub.add_parser("server-status", parents=[server])
     sub.add_parser("server-cmd", parents=[server]).add_argument("words", nargs="+")
     sub.add_parser("server-watch", parents=[server])
