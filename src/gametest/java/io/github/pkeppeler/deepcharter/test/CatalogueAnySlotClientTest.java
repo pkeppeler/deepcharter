@@ -89,8 +89,8 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
                                     .getInventory()
                                     .getItem(MAIN_INVENTORY_SLOT)
                                     .is(DRILL));
-            // What the server taught from what the player holds is put back to the fixtures, so the unknown item stays
-            // unknown.
+            // What the server taught from what the player holds is put back to the fixtures, so the unknown item
+            // stays unknown.
             ClientWait.until(context, "the recipes the server taught from the iron and the drill head", client -> {
                 PartsCatalogue taught = PartsCatalogue.of(
                         ClientSession.player(client).getRecipeBook(),
@@ -359,8 +359,8 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
             ClientWait.screen(context, CreativeModeInventoryScreen.class);
             CreativeModeInventoryScreen creative =
                     context.computeOnClient(client -> ClientSession.screen(client, CreativeModeInventoryScreen.class));
-            // Outside the search, R over the iron opens its recipes: the case below is the search box's, not a dead
-            // key.
+            // Outside the search, R over the iron opens its recipes: the case below is the search box's, not a
+            // dead key.
             hoverIron(context, creative);
             RealInput.key(context, InputConstants.KEY_R, 0);
             console(context, "R over the creative inventory's hotbar");
