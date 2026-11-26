@@ -107,8 +107,9 @@ public class PodNearLethalLandingTest {
     }
 
     /**
-     * The lost hull of the probe at its landing, then {@code spare} more hull on the subject, which takes the same fall. A
-     * crewed case flies the rider in the probe too, because the ground cushion (#1432) brakes only a crewed pod.
+     * The lost hull of the probe at its landing, then {@code spare} more hull on the subject, which takes the same
+     * fall. A crewed case flies the rider in the probe too, because the ground cushion (#1432) brakes only a crewed
+     * pod.
      */
     private static void drop(GameTestHelper helper, int x, Hit hit, float spare, boolean crewed) {
         ServerLevel level = helper.getLevel();
