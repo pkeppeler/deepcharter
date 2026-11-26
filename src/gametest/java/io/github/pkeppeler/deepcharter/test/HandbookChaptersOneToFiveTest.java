@@ -281,7 +281,7 @@ public class HandbookChaptersOneToFiveTest {
     @GameTest(maxTicks = 600)
     public void smeltingAFungalStalkIntoCharcoalCompletesItsDirective(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        String charcoal = directive("welcome", "smelt_charcoal");
+        Identifier charcoal = id(directive("welcome", "smelt_charcoal"));
         MockPlayer burner = MockPlayers.join(helper, "Burner");
         foundCharter(helper, server, burner);
         ServerPlayer player = burner.player();
@@ -298,7 +298,7 @@ public class HandbookChaptersOneToFiveTest {
                 if (!furnace.getItem(FURNACE_RESULT).is(Items.CHARCOAL)) {
                     throw helper.assertionException("waiting for the stalk to smelt");
                 }
-                if (completedNames(server, player).contains(charcoal)) {
+                if (completed(server, player).contains(charcoal)) {
                     throw helper.assertionException("the step completed before the charcoal was taken");
                 }
                 player.openMenu(furnace);
@@ -310,9 +310,9 @@ public class HandbookChaptersOneToFiveTest {
                         "the charcoal should be in the player's pack; the furnace's output holds %s, the open menu is %s",
                         furnace.getItem(FURNACE_RESULT), player.containerMenu);
             }
-            if (!completedNames(server, player).contains(charcoal)) {
+            if (!completed(server, player).contains(charcoal)) {
                 throw helper.assertionException(
-                        "taking the charcoal should complete %s, got %s", charcoal, completedNames(server, player));
+                        "taking the charcoal should complete %s, got %s", charcoal, completed(server, player));
             }
         });
     }
@@ -322,12 +322,6 @@ public class HandbookChaptersOneToFiveTest {
 
     private static final int FURNACE_FUEL = 1;
     private static final int FURNACE_RESULT = 2;
-
-    private static Set<String> completedNames(MinecraftServer server, ServerPlayer player) {
-        Set<String> names = new HashSet<>();
-        HandbookProgress.completedFor(server, player.getUUID()).forEach(id -> names.add(id.toString()));
-        return names;
-    }
 
     @GameTest
     public void chaptersOneToFiveAndTheirDirectivesArePinnedInOrder(GameTestHelper helper) {
