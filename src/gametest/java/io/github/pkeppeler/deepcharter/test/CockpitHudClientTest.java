@@ -232,6 +232,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "recovery",
                         "crust_ahead",
                         "crust_in",
+                        "crust_ahead_drop",
+                        "crust_in_drop",
                         "brace_waits",
                         "brace_dry",
                         "brace_dear",
@@ -913,7 +915,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("glaze_holding", 12),
                 line("glaze_spent"),
                 line("drifter_alarm", 30),
-                line("soot_limp"));
+                line("soot_limp"),
+                line("crust_ahead_drop", 16, 136, 24, 117),
+                line("crust_in_drop", 136, 24, 117));
         List<PodStatusHud.Line> notes = List.of(
                 line("slag", 12, 8),
                 line("slag_only", 12),
@@ -943,7 +947,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                                 Stream.of(
                                         alerts.get(0),
                                         alerts.get(12),
-                                        alerts.get(2),
+                                        alerts.get(18),
                                         alerts.get(4),
                                         alerts.get(8),
                                         alerts.get(11)),

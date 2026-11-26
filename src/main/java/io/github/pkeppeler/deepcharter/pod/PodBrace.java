@@ -23,7 +23,8 @@ import net.minecraft.world.level.Level;
  * row the drill bores, and a pod that came down hurt by gas and lava often has less hull than the crust costs. The warning is for every pod: when the
  * hull that is left would not outlast the crust rows still to be bored, the pilot is told while there is still time to act. The brace is a part that
  * acts: near the crust, while the pod rests, it burns an ore to patch the hull until it outlasts the crust. It never burns an ore that costs more a hull
- * than Hull Nanobots do ({@link #oreValueCap}), so the part is a discount on the nanobots and never a dearer way to the same hull.
+ * than Hull Nanobots do ({@link #oreValueCap}), so the part is a discount on the nanobots and never a dearer way to the same hull. The warning
+ * also prices the landing of a free fall into open space under the crust ({@link VoidBelow}, #1387); the brace patches for the crust alone.
  */
 public final class PodBrace {
     /**
@@ -33,8 +34,9 @@ public final class PodBrace {
      * @param crustSlabs crust rows left to bore
      * @param cost       hull the crust rows left would take from this pod
      * @param hull       hull the pod has
+     * @param drop       hull a free fall into the open space under the crust would take on landing, 0 over solid rock
      */
-    public record Warning(int slabsAway, int crustSlabs, float cost, float hull) {}
+    public record Warning(int slabsAway, int crustSlabs, float cost, float hull, float drop) {}
 
     /** What the brace is doing now. */
     public enum Patching {
@@ -77,8 +79,11 @@ public final class PodBrace {
                 * PodBraceTuning.DEFAULT.hullPerOre();
     }
 
-    /** The crust rows left and the slabs to them, and what they would cost the pod; empty where there is no crust to bore or the pod is out of reach of it. */
-    private record Ahead(int slabsAway, int crustSlabs, float cost) {}
+    /**
+     * The crust rows left and the slabs to them, what they would cost the pod, and what the fall into the open space under them would; empty where there
+     * is no crust to bore or the pod is out of reach of it.
+     */
+    private record Ahead(int slabsAway, int crustSlabs, float cost, float drop) {}
 
     private static Optional<Ahead> ahead(PodEntity pod) {
         Level level = pod.level();
@@ -94,19 +99,22 @@ public final class PodBrace {
         if (crustSlabs < 1 || slabsAway > PodBraceTuning.DEFAULT.warnSlabs()) {
             return Optional.empty();
         }
-        return Optional.of(
-                new Ahead(slabsAway, crustSlabs, crustSlabs * PodStats.of(pod).crustHullDamage()));
+        return Optional.of(new Ahead(
+                slabsAway,
+                crustSlabs,
+                crustSlabs * PodStats.of(pod).crustHullDamage(),
+                VoidBelow.dropAfter(pod, band.get().minY())));
     }
 
     /**
      * The warning for this pod now, empty unless it is in a layer with a crust to bore, within {@link PodBraceTuning#warnSlabs} of the crust or in it, with a hull no
-     * greater than what the crust rows left would take (a hull of exactly that is gone with the last row); and what the brace does about it, for {@code resting} as the
-     * caller judges it. Works on both sides, from synced state.
+     * greater than what the crust rows left and the drop under them would take (a hull of exactly that is gone on landing); and what the brace does about it, for
+     * {@code resting} as the caller judges it. Works on both sides, from synced state and the blocks each side has.
      */
     public static Status status(PodEntity pod, boolean resting) {
         Optional<Ahead> crust = ahead(pod);
-        Optional<Warning> warning = crust.filter(c -> pod.hull() > 0f && pod.hull() <= c.cost())
-                .map(c -> new Warning(c.slabsAway(), c.crustSlabs(), c.cost(), pod.hull()));
+        Optional<Warning> warning = crust.filter(c -> pod.hull() > 0f && pod.hull() <= c.cost() + c.drop())
+                .map(c -> new Warning(c.slabsAway(), c.crustSlabs(), c.cost(), pod.hull(), c.drop()));
         return new Status(warning, patching(pod, crust, resting));
     }
 
