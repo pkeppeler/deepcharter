@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
 import io.github.pkeppeler.deepcharter.client.pod.LiningKeys;
+import io.github.pkeppeler.deepcharter.client.pod.PodDumpKeys;
 import io.github.pkeppeler.deepcharter.client.pod.PodScreenKeys;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
 import java.util.LinkedHashSet;
@@ -77,7 +78,9 @@ public final class HandbookControls {
                     "pod_screen",
                     List.of(
                             new Row("open", List.of(options -> options.keyShift, options -> options.keyUse)),
-                            new Row("seated", List.of(options -> PodScreenKeys.OPEN)))),
+                            new Row("seated", List.of(options -> PodScreenKeys.OPEN)),
+                            new Row("dump", List.of(options -> PodDumpKeys.DUMP)),
+                            new Row("dump_stack", List.of(options -> options.keyDrop)))),
             new Sheet("scanner", List.of(new Row("map"), new Row("reach"))));
 
     private HandbookControls() {}

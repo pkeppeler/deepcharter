@@ -74,7 +74,9 @@ public final class PodCues {
         // Dumping cargo only helps when the engine could lift something without it: towing alone can take all the lift.
         boolean dumpHelps = pod.cargoMass() > 0f && usable > 0f;
         pilot.sendOverlayMessage(
-                Component.translatable(dumpHelps ? "deepcharter.pod.overloaded" : "deepcharter.pod.overloaded_load"));
+                dumpHelps
+                        ? Component.translatable("deepcharter.pod.overloaded", Component.keybind(PodDump.KEY))
+                        : Component.translatable("deepcharter.pod.overloaded_load"));
         ((ServerLevel) pod.level()).playSound(null, pod, DeepSound.CARGO_FULL.event(), SoundSource.NEUTRAL, 1f, 1f);
     }
 }

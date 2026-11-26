@@ -175,7 +175,8 @@ public final class OreEncumbrance {
         return false;
     }
 
-    private static boolean holdsOre(ItemStack stack) {
+    /** Whether {@code stack} is ore, or a shulker box or bundle with ore in it. */
+    public static boolean holdsOre(ItemStack stack) {
         if (OreRegistry.typeOf(stack).isPresent()) {
             return true;
         }

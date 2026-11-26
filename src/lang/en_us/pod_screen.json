@@ -26,5 +26,6 @@
   "screen.deepcharter.pod.none": "No %s yet",
   "screen.deepcharter.pod.pack": "Pack",
   "screen.deepcharter.pod.spoil": "Spoil %s",
-  "screen.deepcharter.pod.stock": "Stock %s"
+  "screen.deepcharter.pod.stock": "Stock %s",
+  "screen.deepcharter.pod.dump_tip": "%s: dump under the pod"
 }

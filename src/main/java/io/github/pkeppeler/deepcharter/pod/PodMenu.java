@@ -37,8 +37,10 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.SimpleContainerData;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -54,7 +56,8 @@ import net.minecraft.world.item.Items;
  *   <li><b>Fuel.</b> The fuel slot holds one stack of pod fuel ({@link PodFuelSlot}), which feeds the tank as it has
  *       room. The gauge reads the tank.</li>
  *   <li><b>Hold.</b> {@link PodCargo}'s slots, a page at a time; anything moves in and out as with a chest, as far as
- *       the cargo bay's size. The slots are the hold itself, not a copy, so two open screens share them.</li>
+ *       the cargo bay's size. The slots are the hold itself, not a copy, so two open screens share them. Q on a stack
+ *       dumps it under the pod ({@link PodDump}).</li>
  * </ul>
  *
  * <p>The server's menu decides every click; the client's predicts from the data slots the server keeps in step. Walking
@@ -230,7 +233,8 @@ public final class PodMenu extends SlottedMenu {
         return Optional.empty();
     }
 
-    private static boolean mayOpen(ServerPlayer player, PodEntity pod) {
+    /** Whether {@code player} may use the pod's screen and its hold: the rule {@link #open} states. */
+    static boolean mayOpen(ServerPlayer player, PodEntity pod) {
         MinecraftServer server = player.level().getServer();
         if (!Charters.isReadable(server)) {
             return Versioned.readable(pod, PodComponents.STATE).isPresent();
@@ -437,7 +441,8 @@ public final class PodMenu extends SlottedMenu {
         return page() * HOLD_WINDOW + window;
     }
 
-    private boolean isHold(RuleSlot slot) {
+    /** Whether {@code slot} is one of the hold's. */
+    public boolean isHold(Slot slot) {
         return slot.container == hold;
     }
 
@@ -451,8 +456,8 @@ public final class PodMenu extends SlottedMenu {
     }
 
     /**
-     * A fitted part stays for good, and ore stays in the hold until a terminal takes it: in the pack it would ride
-     * weightless and past the bay's size, and skip the spill of a Company recovery.
+     * A fitted part stays for good, and ore leaves the hold only for a terminal or the ground: in the pack it would
+     * ride weightless and past the bay's size, and skip the spill of a Company recovery.
      */
     @Override
     protected Optional<Component> keeps(RuleSlot slot) {
@@ -482,6 +487,38 @@ public final class PodMenu extends SlottedMenu {
         // The unit is spent in the fit: the refresh below shows the part in its place.
         PartFitting.fit(server.get().player(), server.get().pod(), track);
         refresh();
+    }
+
+    /**
+     * Q on a hold stack dumps the whole stack under the pod ({@link PodDump}), never into the world at the player:
+     * ore too, since it goes to the ground and not to a pack. The client empties the slot at once; the server, which
+     * the click packet reaches only after {@link #stillValid}, drops it.
+     */
+    @Override
+    public void clicked(int index, int button, ContainerInput input, Player player) {
+        if (input == ContainerInput.THROW
+                && index >= 0
+                && index < slots.size()
+                && slots.get(index) instanceof RuleSlot slot
+                && isHold(slot)
+                && slot.isActive()
+                && slot.hasItem()
+                && getCarried().isEmpty()) {
+            dump(slot);
+            return;
+        }
+        super.clicked(index, button, input, player);
+    }
+
+    private void dump(RuleSlot slot) {
+        if (server.isEmpty()) {
+            slot.set(ItemStack.EMPTY);
+            return;
+        }
+        PodEntity own = server.get().pod();
+        if (!own.isRemoved() && own.cargo().isReadable()) {
+            PodDump.dumpSlot(own, holdIndex(slot.getContainerSlot()));
+        }
     }
 
     @Override

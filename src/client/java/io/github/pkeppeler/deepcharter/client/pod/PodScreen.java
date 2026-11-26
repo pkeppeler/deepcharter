@@ -25,7 +25,7 @@ import org.jspecify.annotations.Nullable;
  * The pod screen ({@link PodMenu}): the part slots in two rows with each fitted part's tier on it and its condition in
  * the frame's colour, the fuel slot and its gauge, the hold's mass, spoil and bricks, and a page of the hold beside the
  * inventory, with buttons to turn the page when the hold takes more than one. An empty part slot names the stock part
- * or the empty track when the cursor is on it.
+ * or the empty track when the cursor is on it, and a hold stack's tooltip names the key that dumps it.
  */
 public final class PodScreen extends CrtMenuScreen<PodMenu> {
     private static final int SLOT = PodMenu.SLOT_SIZE;
@@ -212,11 +212,15 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
         return slot instanceof SlottedMenu.RuleSlot typed && typed.rule().locks();
     }
 
-    /** A fitted part's tooltip says how it works on this pod. */
+    /** A fitted part's tooltip says how it works on this pod; a hold stack's names the key that dumps it. */
     @Override
     protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
         List<Component> lines = new ArrayList<>(super.getTooltipFromContainerItem(stack));
         Slot hovered = hoveredSlot;
+        if (hovered != null && menu.isHold(hovered)) {
+            lines.add(Component.translatable(
+                    "screen.deepcharter.pod.dump_tip", minecraft.options.keyDrop.getTranslatedKeyMessage()));
+        }
         if (hovered != null && isPart(hovered)) {
             ComponentItems.trackOf(stack)
                     .flatMap(menu::condition)
