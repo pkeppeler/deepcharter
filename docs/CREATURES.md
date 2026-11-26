@@ -85,12 +85,13 @@ Moloch's, drawn to the dark. Built ([ADR 0046](adr/0046-the-retained-are-a-monst
 - **Pod:** clings to a dark pod and drains fuel down to 5 per cent until it is killed.
 - **On foot** (built, [#916](https://github.com/pkeppeler/deepcharter/issues/916), [mechanics.md](design/mechanics.md#the-retained-on-foot-916-a)): comes to a person in the dark (no light in either hand and block light under 3 where they stand; later, a suit lamp that is off). It clings, slows them to a crawl as if they carried ore, and drains hunger down to a floor until struck off. It never deals damage.
 - **Counters:** lights (pod) and a light in hand (on foot) keep one away, but never free a pod or person already held. The cutter or any blow ends a grip.
+- **Heard while it holds** (built, [#1450](https://github.com/pkeppeler/deepcharter/issues/1450), [ADR 0109](adr/0109-a-retaineds-grip-plays-a-dread-bed-to-those-held-and-ducks-the-drone-through-one-mixin.md)): a low dread bed rises and the layer's drone sinks under it, for everyone aboard the held pod or the person held, one bed however many hold on. It fades when the grip ends; a light does not end it, since a light frees no one.
 
 #### Tallies
 
 Moloch's: brass Company counting drones from the Boom. They ride the Conduit's casing wherever it runs and click over ore.
 
-- **Sensed:** clicking; an echo as ore; a small amber eye.
+- **Sensed:** clicking; an echo as ore; a small amber eye. Its take has its own cue ([#1450](https://github.com/pkeppeler/deepcharter/issues/1450)): a counter ticks over, a receipt is stamped, a small bell rings, at the hatch or the pack, and anyone near hears it.
 - **Pod:** one that trails a pod for about 30 seconds clamps to the cargo hatch and takes an ore as a "quality sample". The cutter bites it there.
 - **On foot:** takes an ore you carry. One blow breaks it.
 - **Act 3:** a Tally that sees an unauthorised pod calls the Recovery units. In act 3 the Conduit, your landmark all game, is watched.

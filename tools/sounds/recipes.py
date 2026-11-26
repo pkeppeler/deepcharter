@@ -444,6 +444,134 @@ def lamp_out():
     return dsp.normalize(dsp.Clip(out, list(out)), 0.6)
 
 
+def _place(out, at, signal, level):
+    """Adds `signal` into `out` from `at` seconds, at `level`; what runs past the end of `out` is cut."""
+    start = dsp.seconds(at)
+    for i, v in enumerate(signal[: len(out) - start]):
+        out[start + i] += v * level
+
+
+def _brass(count, base, partials):
+    """A struck piece of brass: (ratio, gain, tau) partials of `base` Hz, each dying away on its own."""
+    return dsp.plus(*[dsp.times(dsp.scale(dsp.sine(count, base * ratio), gain), dsp.decay(count, tau)) for ratio, gain, tau in partials])
+
+
+def _tick(rng, length, band, tau):
+    """One tick of a small mechanism: a bright burst of noise in a narrow band, gone in a few milliseconds."""
+    count = dsp.seconds(length)
+    return dsp.times(dsp.filt(dsp.noise(rng, count), "bp", band, 2.0), dsp.decay(count, tau))
+
+
+def _world(out, tail, wet):
+    """A creature's sound as the game plays it at a place: a small room, then the same signal in both channels (MONO below)."""
+    roomed = dsp.fade(dsp.reverb(out, tail, wet), 0.0, tail / 2)
+    return dsp.normalize(Clip(roomed, list(roomed)), 0.7)
+
+
+# A worn desk bell: its partials are a little out of true, as an old brass bell's are.
+DESK_BELL = ((1.0, 1.0, 0.3), (2.0, 0.45, 0.2), (2.42, 0.35, 0.15), (3.01, 0.2, 0.1), (4.2, 0.12, 0.06))
+
+
+def tally_take():
+    """A Tally takes its quality sample (#1450): the Company's counter ticks over, a receipt is stamped, and a small desk bell rings once,
+    dulled by the dark. Wry, not a threat: it took one ore and it is done."""
+    rng = random.Random(1450)
+    out = [0.0] * dsp.seconds(1.3)
+    # The counter's wheels roll over, the units carrying into the tens and the hundreds: three ticks, each lower and duller.
+    for at, level, band in ((0.0, 1.0, 3400), (0.045, 0.8, 2900), (0.09, 0.65, 2500)):
+        _place(out, at, _tick(rng, 0.05, band, 0.004), level)
+    # The stamp: a rubber face thudding on paper, and the paper's slap.
+    stamp = dsp.seconds(0.25)
+    slap = dsp.times(dsp.filt(dsp.noise(rng, stamp), "bp", 900, 0.8), dsp.decay(stamp, 0.015))
+    _place(out, 0.2, dsp.plus(_thump(rng, stamp, 110, 0.04), dsp.scale(slap, 1.2)), 0.7)
+    # The bell, with a slow beat between its two near partials.
+    ring = dsp.seconds(0.9)
+    bell = dsp.times(_brass(ring, 1180, DESK_BELL), [1 + 0.15 * v for v in dsp.sine(ring, 3.0)])
+    _place(out, 0.36, dsp.fade(dsp.filt(bell, "lp", 3500, 0.7), 0.0, 0.2), 0.5)
+    return _world(out, 0.4, 0.2)
+
+
+def _tally_click(seed, bands):
+    """A Tally counting as it flies: the tick and tock of a brass escapement, with a faint ring of the wheel."""
+    rng = random.Random(seed)
+    out = [0.0] * dsp.seconds(0.15)
+    _place(out, 0.0, _tick(rng, 0.03, bands[0], 0.003), 1.0)
+    _place(out, 0.06, _tick(rng, 0.03, bands[1], 0.003), 0.7)
+    _place(out, 0.0, _brass(dsp.seconds(0.15), 4600, ((1.0, 1.0, 0.01),)), 0.15)
+    return _world(out, 0.15, 0.15)
+
+
+def tally_click_1():
+    return _tally_click(1452, (3000, 2400))
+
+
+def tally_click_2():
+    return _tally_click(1453, (3300, 2600))
+
+
+def tally_clamp():
+    """A Tally clamps on: a catch snaps, and a brass jaw closes on the hatch or the pack with a short clank."""
+    rng = random.Random(1454)
+    out = [0.0] * dsp.seconds(0.45)
+    _place(out, 0.0, _tick(rng, 0.02, 4000, 0.003), 0.8)
+    jaw = dsp.seconds(0.4)
+    _place(out, 0.035, _brass(jaw, 520, ((1.0, 1.0, 0.06), (2.9, 0.6, 0.04), (4.6, 0.4, 0.03), (6.3, 0.25, 0.02))), 0.8)
+    _place(out, 0.035, _thump(rng, jaw, 120, 0.05), 0.6)
+    return _world(out, 0.3, 0.2)
+
+
+def tally_break():
+    """A Tally breaks: a crack, its brass rings out flat and short (cracked: a slow beat runs through it), and its counting wheels and
+    springs fall out in a rattle."""
+    rng = random.Random(1455)
+    out = [0.0] * dsp.seconds(0.9)
+    crack = dsp.seconds(0.1)
+    _place(out, 0.0, dsp.times(dsp.filt(dsp.noise(rng, crack), "hp", 1500, 0.7), dsp.decay(crack, 0.01)), 1.0)
+    _place(out, 0.0, dsp.times(dsp.filt(dsp.noise(rng, crack), "bp", 700, 0.9), dsp.decay(crack, 0.03)), 0.8)
+    ring = dsp.seconds(0.6)
+    cracked = dsp.times(
+        _brass(ring, 760, ((1.0, 1.0, 0.12), (2.3, 0.7, 0.09), (3.7, 0.5, 0.06), (5.1, 0.3, 0.04))),
+        [0.6 + 0.4 * v for v in dsp.sine(ring, 37)],
+    )
+    _place(out, 0.005, cracked, 0.6)
+    pieces = sorted(rng.uniform(0.08, 0.6) for _ in range(9))
+    for n, at in enumerate(pieces):
+        level = 0.5 * (1 - n / len(pieces)) + 0.1
+        _place(out, at, _tick(rng, 0.03, rng.uniform(2000, 5000), 0.004), level)
+        _place(out, at, _brass(dsp.seconds(0.05), rng.uniform(2500, 4200), ((1.0, 1.0, 0.015),)), level * 0.3)
+    return _world(out, 0.4, 0.2)
+
+
+def retained_dread_loop():
+    """While a Retained holds the pod or the person (#1450): a low bed of dread, never a scare. Two low tones a tritone apart (41 and
+    58 Hz), driven so their overtones carry on small speakers; the hull under a weight, a slow double beat 45 times a minute; something
+    dragging on metal, swelling and fading; and high above, two thin tones a semitone apart, barely there. It loops for as long as the
+    grip lasts, and the game fades it in and out (client/sound/DreadBed)."""
+    length = 16.0
+    beat = length / 12
+
+    def voice(count, side):
+        rng = random.Random(1456 + side)
+        swell = [0.75 + 0.25 * v for v in cycles(count, length, 2, 1.7 * side)]
+        tones = dsp.plus(dsp.scale(cycles(count, length, 656, 0.4 * side), 0.35), dsp.scale(cycles(count, length, 928, 1.3 * side), 0.2))
+        held = []
+        for i in range(count):
+            at = (i / RATE) % beat
+            second = at - 0.28
+            # Each beat rises over 20 ms, so it lands soft, not as a click.
+            first = min(1.0, at / 0.02) * math.exp(-at / 0.09)
+            held.append(first + (0.6 * min(1.0, second / 0.02) * math.exp(-second / 0.1) if second >= 0 else 0.0))
+        weight = dsp.times(cycles(count, length, 832), held)
+        low = dsp.shape(dsp.plus(dsp.times(tones, swell), weight), 3.0)
+        drag = dsp.times(dsp.filt(dsp.noise(rng, count), "bp", 310, 6), [0.3 + 0.7 * max(0.0, v) ** 2 for v in cycles(count, length, 4, side)])
+        glass = dsp.times(
+            dsp.plus(cycles(count, length, 16744, side), cycles(count, length, 17739, 0.7)), [0.5 + 0.5 * v for v in cycles(count, length, 3)]
+        )
+        return dsp.plus(low, dsp.scale(drag, 1.5), dsp.scale(glass, 0.012))
+
+    return _loop(length, voice)
+
+
 def rest():
     """Three seconds of silence: the placeholder of the layers' music slots, so the drone beds are all a layer plays until a score is dropped in."""
     count = dsp.seconds(3.0)
@@ -485,11 +613,26 @@ RECIPES = {
     "music/rest": rest,
     "continuity/needle": needle,
     "continuity/lamp_out": lamp_out,
+    "creature/tally_take": tally_take,
+    "creature/tally_click_1": tally_click_1,
+    "creature/tally_click_2": tally_click_2,
+    "creature/tally_clamp": tally_clamp,
+    "creature/tally_break": tally_break,
+    "creature/retained_dread_loop": retained_dread_loop,
 }
 
 # Recipes the game plays at a place in the world: written as mono Vorbis, because Minecraft attenuates and pans mono sounds only. Their
 # recipe makes a Clip whose two channels are the same.
-MONO = frozenset({"continuity/lamp_out"})
+MONO = frozenset(
+    {
+        "continuity/lamp_out",
+        "creature/tally_take",
+        "creature/tally_click_1",
+        "creature/tally_click_2",
+        "creature/tally_clamp",
+        "creature/tally_break",
+    }
+)
 
 
 @cache

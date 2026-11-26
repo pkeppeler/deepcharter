@@ -39,6 +39,30 @@
     "ogg_sha256": "8c099e50f00b575ca4b47acb0187381d5c37ee2797692a849ef10272897a221b",
     "pcm_sha256": "f8d85fa56167ce63c18fd101d1ef1884bce8e3d42327eb9af8f4bfcfcf3e4f24"
   },
+  "creature/retained_dread_loop": {
+    "ogg_sha256": "1853ff14b1c72beb93ce82f12c2f1c4f2f5fffef4a5247b3e36767684846cf4d",
+    "pcm_sha256": "70766d474b49a02a1d1caad6d68d7b9e29e255c99fccce5fe21706ab0e9555d9"
+  },
+  "creature/tally_break": {
+    "ogg_sha256": "ad19cef73f31b5e86bf8b7e0486d4a225237995c55cea9666e4f37321e50e4df",
+    "pcm_sha256": "d86b685277f76e63cd446e1022fbe0e90147cb4b9d6a6d530b1768a269687d80"
+  },
+  "creature/tally_clamp": {
+    "ogg_sha256": "a613fc6189d4ce32dc0b40f1a574de15fa82738c833319bb498005a3854d7e48",
+    "pcm_sha256": "8e3b06c3a0b18fe7f8dd53eee0541a48d015c66caa163b6846da36c30c17abdf"
+  },
+  "creature/tally_click_1": {
+    "ogg_sha256": "a61b2ab3c49fcb20644bf8816446ee4fc30f87aa1e912556410f59766fae2d1e",
+    "pcm_sha256": "550be252a6d8cf22127768cb1d44ca66efceaaa7b986da34ec7ab1a53fd94ca9"
+  },
+  "creature/tally_click_2": {
+    "ogg_sha256": "dc903a34c1b9d84a43a92954472be427829c2cced1011bf8fd8c9cbf4710559a",
+    "pcm_sha256": "5d6be9e88333de9dda101bea442ba242e1a52f76feaac84429291c3d742c4a98"
+  },
+  "creature/tally_take": {
+    "ogg_sha256": "0e85e12b45a16bdf21b5b4a536c89f1793b0885d53cff5ba5e0e23f46a01c5fb",
+    "pcm_sha256": "611324b931a3bb1e61a63db1a95aef088b82998445ba99965fb8f76f9764cc3a"
+  },
   "drill/blocked": {
     "ogg_sha256": "e5f7226dc08b5da5ed91695f7ecc0dbdf4914c97a4a34c3bf9d3b17aca764553",
     "pcm_sha256": "61a2da2ee2cb107a2936482fa55176c8f3117cd272871abe26a843bc509b2f5a"

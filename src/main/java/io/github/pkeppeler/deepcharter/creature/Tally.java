@@ -333,11 +333,15 @@ public final class Tally extends PathfinderMob {
         setYBodyRot(yaw);
     }
 
-    /** Takes one ore, the cheapest in the bay or the pack, tells the owner, and flies off. Takes nothing from an empty bay. */
+    /**
+     * Takes one ore, the cheapest in the bay or the pack, tells the owner, and flies off. Takes nothing from an empty bay. The take has
+     * its own cue (#1450), played where the Tally is, so the person robbed hears it at their hatch or their back, and anyone near hears
+     * what a Tally does: the counter ticks over and a receipt is stamped.
+     */
     private void sample(Entity held) {
         Component name = held instanceof PodEntity pod ? takeFromBay(pod) : takeFromPack((Player) held);
         if (name != null) {
-            level().playSound(null, getX(), getY(), getZ(), DeepSound.CARGO_JETTISON.event(), SoundSource.HOSTILE);
+            level().playSound(null, getX(), getY(), getZ(), DeepSound.CREATURE_TALLY_TAKE.event(), SoundSource.HOSTILE);
             tell(held, Component.translatable("creature.deepcharter.tally_sample", name));
         }
         unclamp();

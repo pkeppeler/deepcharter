@@ -49,6 +49,11 @@ public class SoundEventsTest {
             "continuity.laugh",
             "continuity.needle",
             "continuity.lamp_out",
+            "creature.tally_click",
+            "creature.tally_clamp",
+            "creature.tally_break",
+            "creature.tally_take",
+            "creature.retained_dread",
             "pod.engine_idle",
             "pod.engine_drive",
             "pod.engine_drill_side",
@@ -67,6 +72,9 @@ public class SoundEventsTest {
             "music.terminal",
             "music.layer_1",
             "music.layer_2");
+
+    /** Sounds of ours with no original that share a prefix with sounds that have one. */
+    private static final Set<String> NO_ORIGINAL = Set.of("creature.tally_take", "creature.retained_dread");
 
     @GameTest
     public void everyMappedIdIsRegistered(GameTestHelper helper) throws IOException {
@@ -182,10 +190,12 @@ public class SoundEventsTest {
     /**
      * The drone beds, the Lamp Hymn (#249), the wax cylinders' recordings (#864, made by tools/sounds/first_sounds.py) and the ambience's
      * fragments (#866, tools/sounds/ambience.py) and the two variants of "Au clair de la lune" (#861, {@code song.*}, made by first_sounds.py) and the Continuity Event's laugh, needle and lamp (#1337, {@code continuity.*}) are ours alone: the original game has nothing to map them to.
+     * So are the Tally's take and the Retained's dread bed (#1450): the original has no Tally and no music for a grip.
      */
     private static boolean hasNoOriginal(DeepSound sound) {
         String path = sound.event().location().getPath();
-        return path.startsWith("ambient.")
+        return NO_ORIGINAL.contains(path)
+                || path.startsWith("ambient.")
                 || path.startsWith("hymn.")
                 || path.startsWith("phonograph.")
                 || path.startsWith("song.")

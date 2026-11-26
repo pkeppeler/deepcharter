@@ -46,9 +46,16 @@ import org.jspecify.annotations.Nullable;
  * A lit lamp in the helmet, tiny and dim, shows them from afar. It is not saved: a figure whose chunk unloads is gone, and the level makes another.
  */
 public class LamplessFigure extends PathfinderMob {
-    /** Whether the figure holds a pod's hull. Synced, for the client's pose. */
-    private static final EntityDataAccessor<Boolean> CLINGING =
-            SynchedEntityData.defineId(LamplessFigure.class, EntityDataSerializers.BOOLEAN);
+    /**
+     * The network id of the pod or person the figure holds, {@link #HOLDS_NONE} when it holds none. Synced, for the client's pose and for
+     * the dread bed of whoever is held (#1450).
+     */
+    private static final EntityDataAccessor<Integer> HOLDING =
+            SynchedEntityData.defineId(LamplessFigure.class, EntityDataSerializers.INT);
+
+    private static final int HOLDS_NONE = -1;
+    /** How far from a person {@link #holds} looks for a figure: a figure holds from beside the hull or the person, so a pod's width and a margin. */
+    private static final double HOLD_SEARCH_BLOCKS = 6;
     /** Whether the lamp in the figure's helmet is lit. Synced, for the client's glow. */
     private static final EntityDataAccessor<Boolean> LAMP =
             SynchedEntityData.defineId(LamplessFigure.class, EntityDataSerializers.BOOLEAN);
@@ -105,7 +112,7 @@ public class LamplessFigure extends PathfinderMob {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
-        builder.define(CLINGING, false);
+        builder.define(HOLDING, HOLDS_NONE);
         builder.define(LAMP, false);
     }
 
@@ -209,7 +216,7 @@ public class LamplessFigure extends PathfinderMob {
         getNavigation().stop();
         setNoGravity(true);
         noPhysics = true;
-        entityData.set(CLINGING, true);
+        entityData.set(HOLDING, person.getId());
         FootGrips.take(person, this);
         person.sendOverlayMessage(Component.translatable("creature.deepcharter.foot_grab"));
     }
@@ -300,7 +307,7 @@ public class LamplessFigure extends PathfinderMob {
         getNavigation().stop();
         setNoGravity(true);
         noPhysics = true;
-        entityData.set(CLINGING, true);
+        entityData.set(HOLDING, pod.getId());
         if (pod.getControllingPassenger() instanceof ServerPlayer pilot) {
             pilot.sendOverlayMessage(Component.translatable("creature.deepcharter.grab"));
         }
@@ -364,7 +371,7 @@ public class LamplessFigure extends PathfinderMob {
         grip = null;
         setNoGravity(false);
         noPhysics = false;
-        entityData.set(CLINGING, false);
+        entityData.set(HOLDING, HOLDS_NONE);
     }
 
     /** The nearest pod in sense that this figure would grab, or null. */
@@ -502,9 +509,28 @@ public class LamplessFigure extends PathfinderMob {
         return Math.min(1f, deathTime / (float) DISSOLVE_TICKS);
     }
 
-    /** Whether the figure holds a pod's hull. */
+    /** Whether the figure holds a pod's hull or a person. */
     public boolean isClinging() {
-        return entityData.get(CLINGING);
+        return entityData.get(HOLDING) != HOLDS_NONE;
+    }
+
+    /**
+     * Whether a living figure holds {@code person}, on foot, or the pod they ride (#1450): what the dread bed plays for. It reads the synced
+     * hold, so a client asks it of its own level, and every rider of a held pod is answered yes.
+     */
+    public static boolean holds(Level level, Entity person) {
+        int self = person.getId();
+        int ridden = person.getVehicle() instanceof PodEntity pod ? pod.getId() : HOLDS_NONE;
+        // entity-query: a figure holds from beside the hull or the person (holdTo), so it is within a pod's width of
+        // them, in
+        // their loaded chunks; a figure missed only leaves the bed unplayed for a tick
+        return !level.getEntitiesOfClass(
+                        LamplessFigure.class,
+                        person.getBoundingBox().inflate(HOLD_SEARCH_BLOCKS),
+                        figure -> figure.isAlive()
+                                && (figure.entityData.get(HOLDING) == self
+                                        || (ridden != HOLDS_NONE && figure.entityData.get(HOLDING) == ridden)))
+                .isEmpty();
     }
 
     /** Marks a figure the game's spawner made. */
