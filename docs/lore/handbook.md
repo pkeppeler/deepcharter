@@ -69,7 +69,7 @@ Settled 2026-10-07. Canon and context: [LORE.md](../LORE.md); the handbook's rul
 
 ### 4. Fuel Is Life (fuel, driving, flying and drilling)
 
-> Fuel is the lifeblood of every Colom pod! Your Mole burns fuel whenever she is powered on, faster while moving and fastest while drilling. Drive on her treads, fly with her rotor, and drill down or sideways, but never up. Watch the gauge, listen for the low-fuel tone, and always plan your trip home. A pod that runs dry is **Stranded**: she powers down and goes dark until someone rescues her or she's refuelled from a reserve tank. Don't fret: after one minute of waiting, a Company winch crew hauls her home for a recovery fee of $30 for each layer you are down, taken from your charter's account, or from her hull if the account is bare. Any ore aboard stays where she stopped, so turn for home at the low-fuel tone.
+> Fuel is the lifeblood of every Colom pod! Your Mole burns fuel whenever someone is aboard, faster while moving and fastest while drilling. Parked with nobody inside, she burns none. Drive on her treads, fly with her rotor, and drill down or sideways, but never up. Watch the gauge, listen for the low-fuel tone, and always plan your trip home. A pod that runs dry is **Stranded**: she powers down and goes dark until someone rescues her or she's refuelled from a reserve tank. Don't fret: after one minute of waiting, a Company winch crew hauls her home for a recovery fee of $30 for each layer you are down, taken from your charter's account, or from her hull if the account is bare. Any ore aboard stays where she stopped, so turn for home at the low-fuel tone.
 >
 > *Directives (draft):* Refuel the Mole at the colony pump. · Fly the Mole. · Drill down ten blocks. · Return to the colony.
 >
