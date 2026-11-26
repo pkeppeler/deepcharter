@@ -1172,6 +1172,7 @@ public class DesignTourScenario extends EvidenceScenario {
             view(2, hall, hall.add(1, 0, 0), 60);
             hud(true);
             serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
+            ClientWait.lightSettled(ctx, sp.getServer(), 2, (int) hall.x, (int) hall.z, 6);
             ScannerHudTest.mountFirstPlayer(sp.getServer(), 4);
             ClientWait.until(
                     ctx,

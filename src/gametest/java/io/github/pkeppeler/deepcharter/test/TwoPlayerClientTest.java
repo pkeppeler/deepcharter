@@ -110,6 +110,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
      * and asserts that each ends in layer 2 still riding, with the real client having seen the mock's pod, its bore, and
      * its own breach rumble (no fade, nothing was hidden) and scanner. Calls {@code frame} at a steady pace, and faster during a fade.
      */
+    // seats-pod: teleports the pods and pilots across the seam; call it only after ClientWait.lightSettled once a carve
+    // ran
     public static void crossTogether(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
         CameraType previousCamera = context.computeOnClient(client -> client.options.getCameraType());
         try {

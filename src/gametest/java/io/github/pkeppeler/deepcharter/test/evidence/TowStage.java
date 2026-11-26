@@ -90,6 +90,8 @@ final class TowStage {
     }
 
     /** Seats the mock pilot in a new tower pod at {@code at}, fuelled, and puts a pod on its cable at {@code towedAt}. Returns the two pods' ids. */
+    // seats-pod: adds the tower and towed pods and seats the mock pilot; call it only after ClientWait.lightSettled
+    // once a carve ran
     static UUID[] pair(ServerLevel level, TwoPlayerServer two, Vec3 at, Vec3 towedAt, boolean wreck) {
         two.mock().teleportTo(level, at, SOUTH, 0);
         PodEntity tower = spawn(level, at, "TOWER");

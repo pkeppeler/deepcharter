@@ -220,6 +220,8 @@ public final class PodDrives {
      * Puts both pods on their start, behind a wall when the drive drills, holds the keys, samples every frame of the drive, and asserts
      * what the pilot's camera and the watched pod drew.
      */
+    // seats-pod: rides the rig pod: the pilot is seated before the first frame; call it only after
+    // ClientWait.lightSettled once a carve ran
     public static void drive(ClientGameTestContext context, Rig rig, Drive drive) {
         List<Integer> late = new ArrayList<>();
         for (int attempt = 1; attempt <= DRIVE_ATTEMPTS; attempt++) {

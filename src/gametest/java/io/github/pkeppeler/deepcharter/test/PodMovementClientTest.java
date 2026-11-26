@@ -81,6 +81,8 @@ public class PodMovementClientTest implements FabricClientGameTest {
     private static final double PUSHED_PAST_TOLERANCE = 1e-4;
 
     /** Seat the real player in a new pod, and the mock in another pod beside it. Returns the mock pod's entity id. */
+    // seats-pod: adds both pods and seats the players in them; call it only after ClientWait.lightSettled once a carve
+    // ran
     public static int mountBoth(TwoPlayerServer two) {
         return two.server().computeOnServer(server -> {
             ServerPlayer real = realPlayer(server, two.mock().player().getUUID());

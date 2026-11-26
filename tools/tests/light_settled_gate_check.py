@@ -1,6 +1,7 @@
 """Tests the light-settled gate in gradle/gametest.gradle.kts: a client GameTest or evidence scenario method that carves a room and then seats a pod
 (startRiding, addFreshEntity of a pod, or setPos, teleportTo or teleport on a pod) with no ClientWait.lightSettled between them fails the build (#1303),
-in one server block or split across two, directly or through a same-file helper.
+in one server block or split across two, directly or through a same-file helper, or through a helper in another class that carries
+`// seats-pod:` (an unmarked cross-class helper that seats a pod fails too, #1455).
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
@@ -118,6 +119,45 @@ public class OtherMethodClientTest implements FabricClientGameTest {
     }
 }
 """,
+    "SeatSupport.java": """
+public class SeatSupport {
+    // seats-pod: spawns the new pod and seats the first player
+    static void mountPlayer(TestServerContext server) {
+        server.runOnServer(s -> {
+            level.addFreshEntity(pod);
+            player.startRiding(pod);
+        });
+    }
+
+    static void mountUnmarked(TestServerContext server) {
+        server.runOnServer(s -> player.startRiding(pod));
+    }
+
+    static void lookAround(TestServerContext server) {
+        server.runOnServer(s -> player.setPos(0, 0, 0));
+    }
+}
+""",
+    "CrossSettledClientTest.java": """
+public class CrossSettledClientTest implements FabricClientGameTest {
+    void seat(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR));
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, 3);
+        SeatSupport.mountPlayer(singleplayer.getServer());
+    }
+
+    void noCarve(TestSingleplayerContext singleplayer) {
+        SeatSupport.mountPlayer(singleplayer.getServer());
+        SeatSupport.lookAround(singleplayer.getServer());
+    }
+
+    void markedCall(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR));
+        // light-settled-ok: the carve is in another chunk than the seat
+        SeatSupport.mountPlayer(singleplayer.getServer());
+    }
+}
+""",
     "ServerGameTest.java": """
 public class ServerGameTest {
     @GameTest
@@ -226,6 +266,38 @@ public class SeatsClientTest implements FabricClientGameTest {
 }
 
 
+# label: (a whole client test, the text the gate reports)
+CROSS_VIOLATIONS = {
+    "a cross-class seat after a carve": ("""
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR));
+        SeatSupport.mountPlayer(singleplayer.getServer());
+    }
+}
+""", "SeatsClientTest:5 seats a pod after a RoomCarver carve"),
+    "a cross-class seat through a same-file helper": ("""
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> RoomCarver.carve(one, -3, 3, 0, 6, -3, 3, Blocks.AIR));
+        board(singleplayer);
+    }
+
+    void board(TestSingleplayerContext singleplayer) {
+        SeatSupport.mountPlayer(singleplayer.getServer());
+    }
+}
+""", "SeatsClientTest:5 seats a pod after a RoomCarver carve"),
+    "an unmarked cross-class seat helper": ("""
+public class SeatsClientTest implements FabricClientGameTest {
+    void seat(TestSingleplayerContext singleplayer) {
+        SeatSupport.mountUnmarked(singleplayer.getServer());
+    }
+}
+""", "SeatsClientTest:4 calls SeatSupport.mountUnmarked, which seats a pod and carries no '// seats-pod: <reason>'"),
+}
+
+
 def violating(body: str, call: str) -> str:
     return f"""
 public class SeatsClientTest implements FabricClientGameTest {{
@@ -246,6 +318,7 @@ CASES = {
     "clean": Case(fixture({}), None),
     **{label: Case(fixture({"SeatsClientTest.java": violating(body, "runOnServer")}), None) for label, (body, _) in VIOLATIONS.items()},
     **{label: Case(fixture({"SeatsClientTest.java": source}), None) for label, (source, _) in METHOD_VIOLATIONS.items()},
+    **{label: Case(fixture({"SeatsClientTest.java": source}), None) for label, (source, _) in CROSS_VIOLATIONS.items()},
     "computeOnServer": Case(fixture({"SeatsClientTest.java": violating(VIOLATIONS["startRiding"][0], "computeOnServer")}), None),
 }
 
@@ -272,5 +345,15 @@ class LightSettledGateTest(unittest.TestCase):
                 self.assertIn(f"SeatsClientTest:{line} seats a pod after a RoomCarver carve", result.message)
                 self.assertIn("ClientWait.lightSettled", result.message)
                 self.assertIn("#1303", result.message)
+                for path in CLEAN:
+                    self.assertNotRegex(result.message, rf"(?<!\w){re.escape(PurePosixPath(path).stem)}:\d")
+
+    def test_a_cross_class_seat_helper_needs_its_marker_and_the_wait(self):
+        for label, (_, expected) in CROSS_VIOLATIONS.items():
+            with self.subTest(label):
+                result = outcome(label)
+                self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+                self.assertIn(expected, result.message)
+                self.assertIn("#1455" if "unmarked" in label else "#1303", result.message)
                 for path in CLEAN:
                     self.assertNotRegex(result.message, rf"(?<!\w){re.escape(PurePosixPath(path).stem)}:\d")
