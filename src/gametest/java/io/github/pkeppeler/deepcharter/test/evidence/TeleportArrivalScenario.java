@@ -67,9 +67,8 @@ public class TeleportArrivalScenario extends EvidenceScenario {
         ServerLevel overworld = server.overworld();
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
         BlockPos landing = player.blockPosition().east(AWAY_BLOCKS);
-        // Held from before the move: a pod moved into a chunk whose entities are hidden is not found by id until the
-        // next
-        // tick, which is the drop this scenario shows.
+        // Held from before the move: a pod moved into a chunk whose entities are hidden is not found by id until
+        // the next tick, which is the drop this scenario shows.
         Entity pod = Objects.requireNonNull(overworld.getEntity(podId), "the pod");
         boolean[] used = {false};
         // With no colony built, the transmitter takes the pod to the world spawn: move that far out.
@@ -156,11 +155,8 @@ public class TeleportArrivalScenario extends EvidenceScenario {
             for (int tick = 1; tick <= ARRIVAL_FRAMES; tick++) {
                 context.waitTicks(1); // tick-wait: one frame and one reading a tick, to catch a one-tick drop
                 frame(context);
-                boolean[] state = context.computeOnClient(client -> {
-                    Entity pod = client.level == null ? null : client.level.getEntity(podId);
-                    return new boolean[] {
-                        pod != null, pod != null && ClientSession.player(client).getVehicle() == pod
-                    };
+                boolean[] state = context.computeOnClient(client -> new boolean[] {
+                    client.level != null && client.level.getEntity(podId) != null, ridesPod(client, podId)
                 });
                 int unloads = UNLOADS.get();
                 boolean unloaded = unloads > unloadsSeen;
