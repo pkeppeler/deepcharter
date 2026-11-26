@@ -79,6 +79,7 @@ public class ClaimScannerDescentScenario extends EvidenceScenario {
                 player.teleportTo(level, X + 1.0, rock, Z + 1.0, Set.of(), 0f, 0f, true);
                 return rock;
             });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 1);
             ScannerHudTest.mountFirstPlayer(singleplayer.getServer(), TIER);
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
