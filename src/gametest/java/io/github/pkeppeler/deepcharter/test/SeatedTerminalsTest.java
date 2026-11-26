@@ -88,7 +88,7 @@ public class SeatedTerminalsTest {
         TerminalEvents.REFUSED.register((player, refusal) -> REFUSED.add(new Refused(player.getUUID(), refusal)));
     }
 
-    /** Runs {@code body} with the first {@code repaired} colony terminals repaired, then puts the world's state back. */
+    /** Runs {@code body} with the first {@code repaired} colony terminals repaired, then restores the world's. */
     private static void withRepaired(GameTestHelper helper, int repaired, Runnable body) {
         RepairState fresh = new RepairState();
         for (TerminalType type : COLONY.subList(0, repaired)) {
