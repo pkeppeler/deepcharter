@@ -24,7 +24,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The server-side API of terminals, and the one place a player's request reaches one. Every request is checked first, in this
- * order: the player is within {@link TerminalTuning#maxDistance()} blocks, the block is a terminal, the charter data
+ * order: the player is within reach ({@link #inReach}), the block is a terminal, the charter data
  * and (for a terminal that needs repair) the repair data are readable, the player is on a charter (for a charter-only
  * terminal), and then what the request needs of the repair state. Unreadable saved data is refused as
  * {@code STATE_UNREADABLE}, never thrown.
@@ -122,10 +122,17 @@ public final class Terminals {
                 && pod.position().distanceToSqr(Vec3.atCenterOf(pos)) <= radius * radius;
     }
 
-    /** Whether {@code player} is within reach of the terminal at {@code pos}: the distance a request is served from. */
+    /**
+     * Whether {@code player} is within reach of the terminal at {@code pos}: the distance a request is served from. A
+     * player seated in a pod reaches from the pod's box, in any seat (#1447); one on foot reaches from their eyes.
+     */
     public static boolean inReach(ServerPlayer player, BlockPos pos) {
         double range = TerminalTuning.DEFAULT.maxDistance();
-        return player.getEyePosition().distanceToSqr(Vec3.atCenterOf(pos)) <= range * range;
+        Vec3 centre = Vec3.atCenterOf(pos);
+        double gap = player.getRootVehicle() instanceof PodEntity pod
+                ? pod.getBoundingBox().distanceToSqr(centre)
+                : player.getEyePosition().distanceToSqr(centre);
+        return gap <= range * range;
     }
 
     /**
@@ -264,7 +271,7 @@ public final class Terminals {
         return Optional.empty();
     }
 
-    private static Optional<TerminalRefusal> refuse(ServerPlayer player, TerminalRefusal refusal) {
+    static Optional<TerminalRefusal> refuse(ServerPlayer player, TerminalRefusal refusal) {
         // An action refused by its own handler has told the player already.
         if (refusal != TerminalRefusal.ACTION_REFUSED) {
             player.sendOverlayMessage(refusal.message());
