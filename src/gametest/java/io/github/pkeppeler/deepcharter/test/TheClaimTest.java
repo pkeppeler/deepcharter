@@ -86,8 +86,8 @@ public class TheClaimTest {
 
     /**
      * The fewest positions each feature's last placement step keeps in the sample, so its in-chunk check has positions
-     * to judge (#1401, where the cave stalks kept one while their rows missed most of Topsoil Claims): about half of what
-     * each keeps, measured at #1453.
+     * to judge (#1401, where the cave stalks kept one while their rows missed most of Topsoil Claims): about half of
+     * what each keeps, measured at #1453.
      */
     private static final Map<String, Integer> MIN_KEPT =
             Map.of("claim_shafts", 4, "claim_cave_ores", 200, "claim_salvage_caches", 8, "fungal_stalks_cave", 40);

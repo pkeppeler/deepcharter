@@ -371,11 +371,12 @@ public class CampaignContentTest {
     }
 
     /**
-     * The height range of every placed feature of every biome of the campaign world lies inside the band the biome is in, and a fill
-     * names the layer and zone of its own biome. A range anchored to the dimension's bottom or top (rather than absolute) resolves against
-     * the whole world, so it is read that way. A zone biome's feature that picks layer rows and checks the biome picks only rows of the
-     * zones that list it (#1401, where layer 1's cave stalks picked rows 10 to 150 and Topsoil Claims is 128 to 191): the biome check comes
-     * after the floor scan and the offset, so it drops every try at another zone's row, and those rows only thin the feature out.
+     * The height range of every placed feature of every biome of the campaign world lies inside the band the biome is
+     * in, and a fill names the layer and zone of its own biome. A range anchored to the dimension's bottom or top
+     * (rather than absolute) resolves against the whole world, so it is read that way. A zone biome's feature that
+     * picks layer rows and checks the biome picks only rows of the zones that list it (#1401, where layer 1's cave
+     * stalks picked rows 10 to 150 and Topsoil Claims is 128 to 191): the biome check comes after the floor scan and
+     * the offset, so it drops every try at another zone's row, and those rows only thin the feature out.
      */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void everyPlacedFeaturesHeightRangeIsInsideItsBand(GameTestHelper helper) throws IOException {
@@ -481,8 +482,8 @@ public class CampaignContentTest {
     private record ZoneFeature(JsonObject placed, List<Zones.Span> zones) {}
 
     /**
-     * Checks that each layer rows step of a feature that checks the biome picks only rows of the zones whose biomes list
-     * it; the number of steps checked.
+     * Checks that each layer rows step of a feature that checks the biome picks only rows of the zones whose biomes
+     * list it; the number of steps checked.
      */
     private static int checkZoneRows(GameTestHelper helper, String id, ZoneFeature feature) {
         List<Zones.Span> zones = feature.zones();
@@ -586,10 +587,10 @@ public class CampaignContentTest {
     }
 
     /**
-     * The cave stalks of Topsoil Claims, layer 1's first zone, grow there, and under the surface only there and in the Garden, layer 3's
-     * first zone (#972): the range of each biome's feature is its layer's own rows, so the zone's own rows are where they stand (to a
-     * block, for the offset a stalk takes; a great stalk by the foot of each trunk). Enough of them grow to be a feature of the zone, not
-     * a stray (#1401).
+     * The cave stalks of Topsoil Claims, layer 1's first zone, grow there, and under the surface only there and in the
+     * Garden, layer 3's first zone (#972): the range of each biome's feature is its layer's own rows, so the zone's own
+     * rows are where they stand (to a block, for the offset a stalk takes; a great stalk by the foot of each trunk).
+     * Enough of them grow to be a feature of the zone, not a stray (#1401).
      */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void caveStalksGrowInTheFirstZoneOfLayers1And3Only(GameTestHelper helper) {
