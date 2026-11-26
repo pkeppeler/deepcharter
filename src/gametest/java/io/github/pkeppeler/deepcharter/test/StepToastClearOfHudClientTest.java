@@ -382,7 +382,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
 
     /**
      * Every part of the HUD that is up for the local player on a GUI {@code width} x {@code height}, from the theme and the HUD's
-     * public figures: in the cockpit the ribbon, each gauge, the lamps, the scanner window and bezel and the readout plate; without
+     * public figures: in the cockpit the ribbon, each gauge, the lamps, the scanner window and bezel, the readout plate and vanilla's hotbar; without
      * it the plain pod readout and scanner panel; the altimeter, the account line and a transmission wherever they are drawn. The
      * navigator's sonar scope is the one part read from {@link HudKeepClear}: its layout is private to the HUD, so
      * {@link StepToastClearOfSonarClientTest} checks that rectangle against what the scope draws.
@@ -396,6 +396,9 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         if (seated.isPresent()) {
             Layout ribbon = seated.get();
             hud.put("cockpit ribbon", box(ribbon.band(), width, height));
+            // Vanilla's hotbar, which a seated pilot keeps (#1457): 182 x 22 at the bottom centre, its selection frame
+            // a pixel round it.
+            hud.put("hotbar", new Box(width / 2 - 92, height - 23, 184, 23));
             hud.put("fuel gauge", box(ribbon.fuel().area(), width, height));
             hud.put("hull gauge", box(ribbon.hull().area(), width, height));
             hud.put("cargo gauge", box(ribbon.cargo().area(), width, height));

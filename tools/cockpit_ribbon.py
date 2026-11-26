@@ -8,7 +8,7 @@ resource pack restyles the Ribbon key by key, or turns it off with `enabled` 0 (
     tools/py tools/cockpit_ribbon.py              write the sprites and the theme file
     tools/py tools/cockpit_ribbon.py --check      list the files that differ from what the generator makes (what the test runs)
     tools/py tools/cockpit_ribbon.py --preview D  write a mock of the Ribbon in each state on a 427 x 240 screen into directory D
-    tools/py tools/cockpit_ribbon.py --coverage   print the share of a 427 x 240 screen the Ribbon covers
+    tools/py tools/cockpit_ribbon.py --coverage   print the share of a 427 x 240 screen the Ribbon covers, and vanilla's hotbar beside it
 
 Standard library only. A sprite is the same bytes on every run: the only randomness is `random.Random` with a fixed seed, and every coordinate is a whole number, never
 `round`, which breaks a tie to the even number on one machine and the other way on another.
@@ -360,6 +360,16 @@ def coverage(look):
     return len(status), len(scanner)
 
 
+# Vanilla's hotbar, which a seated pilot keeps (#1457): its 182 x 22 sprite, every pixel of it drawn (the slots are glass, not holes), at the bottom centre,
+# and the top row of the 24 x 23 selection frame, which stands a pixel over the bar. It is not a status panel: it shows what the pilot carries, not the pod.
+HOTBAR_W, HOTBAR_H, FRAME_W = 182, 22, 24
+
+
+def hotbar_coverage():
+    """The pixels of a 427 x 240 screen vanilla's hotbar covers, the selection frame's row over it included. The held item's name over it comes and goes and is not counted."""
+    return HOTBAR_W * HOTBAR_H + FRAME_W
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Preview
 
@@ -457,7 +467,10 @@ def main(argv: list[str]) -> int:
         return 0
     if args.coverage:
         status, scanner = coverage(ribbon())
-        print(f"{STYLE}: status {status / (SCREEN_W * SCREEN_H):.1%}, scanner {scanner / (SCREEN_W * SCREEN_H):.1%}, total {(status + scanner) / (SCREEN_W * SCREEN_H):.1%}")
+        hotbar = hotbar_coverage()
+        screen = SCREEN_W * SCREEN_H
+        print(f"{STYLE}: status {status / screen:.1%}, scanner {scanner / screen:.1%}, total {(status + scanner) / screen:.1%}")
+        print(f"seated with vanilla's hotbar: hotbar {hotbar / screen:.1%}, total {(status + scanner + hotbar) / screen:.1%}")
         return 0
     if args.check:
         stale = check()

@@ -580,7 +580,7 @@ jitter), `BreachHud.java:46-52` (a black `fill()`).
 
 ### Other vanilla UI that shows
 
-The "Press Left Shift to dismount" line (also while seated), the hotbar, health and hunger bars (hidden while seated since #247), the crosshair, and the chat are vanilla. Swap **(a)** vanilla GUI assets.
+The "Press Left Shift to dismount" line (also while seated), the hotbar (shown while seated again since #1457), health and hunger bars (hidden while seated since #247), the crosshair, and the chat are vanilla. Swap **(a)** vanilla GUI assets.
 There are no advancement or recipe toasts (see Advancements below), and the locator bar is off.
 
 ---
