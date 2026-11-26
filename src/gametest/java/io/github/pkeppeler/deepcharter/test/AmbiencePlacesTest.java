@@ -137,7 +137,7 @@ public class AmbiencePlacesTest {
 
     @GameTest
     public void aHornIsFoundAtItsRangeAndNotABlockBeyond(GameTestHelper helper) {
-        BlockPos horn = new BlockPos(40_008, Y, 40_008);
+        BlockPos horn = new BlockPos(40_808, Y, 40_808);
         ServerLevel level = arena(helper, horn);
         int range = AmbienceTuning.DEFAULT.hornRange();
         level.setBlock(horn, AmbienceRegistry.COMPANY_HORN.defaultBlockState(), 3);

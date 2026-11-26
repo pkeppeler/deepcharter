@@ -23,6 +23,13 @@ final class TestSiteTable {
 
         row("AirCanisterTest", UNBUILT, 7805, 7815, 20, 3, 7395, 7405);
 
+        // Each arena is the 7 x 7 chunks round its centre, at x = z.
+        claim("AmbiencePlacesTest", 0, 40160, 40271, 40160, 40271);
+        claim("AmbiencePlacesTest", 0, 40352, 40463, 40352, 40463);
+        claim("AmbiencePlacesTest", 0, 40752, 40863, 40752, 40863);
+        claim("AmbiencePlacesTest", 0, 40960, 41071, 40960, 41071);
+        claim("AmbiencePlacesTest", 0, 41952, 42063, 41952, 42063);
+
         claim("BandFiguresTest", 0, 24059, 24069, 23995, 24005);
         claim("BandFiguresTest", 0, 24255, 24257, 23999, 24001);
         row("BandFiguresTest", 1, 23995, 24005, 128, 3, 23995, 24005);
@@ -123,6 +130,9 @@ final class TestSiteTable {
         claim("EmptySurfaceTest", 1, 25027, 25037, 24995, 25005);
         claim("EmptySurfaceTest", 2, 25059, 25069, 24995, 25005);
 
+        claim("EngineSootPersistenceTest", 1, 34098, 34102, 34098, 34102);
+        claim("EngineSootPersistenceTest", 2, 34098, 34102, 34098, 34102);
+
         claim("EntityQueryAuditTest", 0, 16000, 16015, 16000, 16015);
         claim("EntityQueryAuditTest", 0, 16192, 16207, 16192, 16207);
         claim("EntityQueryAuditTest", 0, 16288, 16303, 16288, 16303);
@@ -136,6 +146,11 @@ final class TestSiteTable {
 
         row("GrainedCrustTest", 1, 4591, 4609, 40, 11, 6191, 6209);
         row("GrainedCrustTest", 1, 5071, 5089, 40, 4, 6191, 6209);
+
+        // One strip per layer: its rooms stand 20 to 100 columns apart along z 7700.
+        claim("HandBreakTest", 1, 7696, 10414, 7695, 7705);
+        claim("HandBreakTest", 2, 7816, 10633, 7695, 7705);
+        claim("HandBreakTest", 3, 7836, 10416, 7695, 7705);
 
         claim("HandbookChaptersSixToNineTest", 0, 7200, 7215, 7200, 7215);
         claim("HandbookChaptersSixToNineTest", 1, 12992, 13007, 12992, 13007);
@@ -162,7 +177,25 @@ final class TestSiteTable {
 
         claim("LayerDimensionsTest", 2, 299999, 300001, 299999, 300001);
 
+        claim("LayerStructuresTest", 0, 44000, 44015, 44000, 44015);
+        // The chunks of the layer structure sites StructureSite places from the seed, forced in layers 1 and 2: both
+        // claimed.
+        claim("LayerStructuresTest", 1, 1280, 1311, 1248, 1295);
+        claim("LayerStructuresTest", 1, 1344, 1359, 1312, 1391);
+        claim("LayerStructuresTest", 1, 1392, 1439, 1200, 1279);
+        claim("LayerStructuresTest", 1, 1472, 1487, 1472, 1487);
+        claim("LayerStructuresTest", 1, 1504, 1519, 1344, 1359);
+        claim("LayerStructuresTest", 2, 1280, 1311, 1248, 1295);
+        claim("LayerStructuresTest", 2, 1344, 1359, 1312, 1391);
+        claim("LayerStructuresTest", 2, 1392, 1439, 1200, 1279);
+        claim("LayerStructuresTest", 2, 1472, 1487, 1472, 1487);
+        claim("LayerStructuresTest", 2, 1504, 1519, 1344, 1359);
+
         claim("LayerTerrainTest", 2, 1795, 1804, 1795, 1804);
+
+        // Chunks only, so the layer is inferred.
+        claim("LightSyncRingHoldTest", 1, -36800, -36641, 40000, 40159);
+        row("LightSyncRingHoldTest", 1, -36048, -35937, 320, 3, 39968, 40047);
 
         row("LightSyncSafetyNetTest", 1, -40048, -39937, 320, 3, 39968, 40047);
         claim("LightSyncSafetyNetTest", 1, -38720, -38705, 40000, 40015);
@@ -242,6 +275,7 @@ final class TestSiteTable {
         claim("PodDrillTest", LAST, 3573, 3579, 2997, 3003);
         claim("PodDrillTest", UNBUILT, 3123, 3134, 2995, 3005);
         claim("PodDrillTest", UNBUILT, 3187, 3198, 2995, 3005);
+        row("PodDrillTest", 1, 9295, 9306, 64, 5, 2995, 3005);
 
         claim("PodDriveStepTest", 1, 4259, 4270, 2995, 3005);
         claim("PodDriveStepTest", 1, 4259, 4270, 3011, 3021);
@@ -280,6 +314,8 @@ final class TestSiteTable {
         claim("PodSonarTest", 1, 8573, 8627, 6973, 7027);
         claim("PodSonarTest", 1, 8637, 8691, 6973, 7027);
         claim("PodSonarTest", 1, 8701, 8773, 6973, 7027);
+        claim("PodSonarTest", 1, 9073, 9127, 6973, 7027);
+        claim("PodSonarTest", 1, 9137, 9225, 6973, 7027);
 
         row("PodSounderTest", 1, 5993, 6007, 48, 21, 3593, 3607);
 
@@ -316,6 +352,7 @@ final class TestSiteTable {
         claim("RetainedOnFootTest", 0, 7424, 7439, 8192, 8207);
         claim("RetainedOnFootTest", 0, 7424, 7439, 8256, 8271);
         claim("RetainedOnFootTest", 0, 7424, 7439, 8320, 8335);
+        claim("RetainedOnFootTest", 0, 7424, 7439, 8384, 8399);
 
         claim("RetainedTest", 0, 6400, 6415, 6400, 6415);
         claim("RetainedTest", 0, 6400, 6415, 6464, 6479);
@@ -386,6 +423,7 @@ final class TestSiteTable {
         claim("TallyTest", 0, 6800, 6815, 7632, 7647);
         claim("TallyTest", 0, 6800, 6815, 7696, 7711);
         claim("TallyTest", 0, 6800, 6815, 7760, 7775);
+        claim("TallyTest", 0, 52000, 52015, 52000, 52015);
 
         row("TetherTest", 1, 16999, 17051, 64, 14, 16999, 17027);
 
@@ -419,6 +457,7 @@ final class TestSiteTable {
                 "stages inside the spawn square, which every test world shares (the colony, the content surveys)";
         exempt("CampaignContentTest", spawn);
         exempt("ColonyInteriorLightTest", spawn);
+        exempt("ColonyPhonographTest", spawn);
         exempt("ColonyPlacementTest", spawn);
         exempt("FoundingMoleHangarTest", spawn);
         exempt("HandbookChaptersOneToFiveTest", spawn);
@@ -426,8 +465,17 @@ final class TestSiteTable {
         exempt("SalvageBootstrapTest", spawn);
         String structure =
                 "stages at its own GameTest structure, which the runner places at a different spot of the world per run";
+        exempt("FlueScrapeTest", structure);
         exempt("PodSyncTest", structure);
         exempt("StalkCollapseTest", structure);
+        exempt(
+                "ObtainableItemsTest",
+                "only reads the layer structure sites the world generates, the chunks LayerStructuresTest claims");
+        String layerDimensions =
+                "stages only in the layer dimensions, which the guards do not check; SeamSite's index keeps"
+                        + " the seam tests' sites apart";
+        exempt("SeamAscentTest", layerDimensions);
+        exempt("SeamSwapTest", layerDimensions);
         exempt(
                 "CampaignCostTest",
                 "measures a world of its own, deepcharter:campaign_layer_1, which no other test stages in");

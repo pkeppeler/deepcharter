@@ -78,7 +78,7 @@ public class TallyTest {
     private static final int FIRST_SLOT_X = 6808;
     private static final int SLOT_Z_SPACING = 64;
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 100);
-    /** (#1237) A column no other test uses, farther than {@link #DESPAWN_BLOCKS} from every arena slot. */
+    /** (#1237) Farther than {@link #DESPAWN_BLOCKS} from every arena slot. */
     private static final BlockPos DESPAWN_SITE = new BlockPos(52_000, FLOOR_Y, 52_000);
     /** The trail (600 ticks), with the flight to the mark (measured up to 83 ticks) and a margin for a loaded runner; an annotation needs a constant, so a test pins it to the tuning. */
     private static final int CLAMP_BUDGET_TICKS = 760;

@@ -67,7 +67,7 @@ public class PodDrillTest {
     private static final int Z = 3000;
     private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final float EAST = -90f;
-    /** The columns of the alignment tests, 64 apart; no other test stages from here. */
+    /** The columns of the alignment tests, 64 apart. */
     private static final int ALIGN_X = 9300;
 
     /**
