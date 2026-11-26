@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.ColonyRations;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.fuel.FuelRegistry;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
@@ -15,6 +16,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalNotices;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -36,9 +38,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -400,6 +404,90 @@ public class FuelPumpTest {
             helper.succeed();
         } finally {
             scene.pod().discard();
+        }
+    }
+
+    /** The lang keys of what the pump's screen shows under its header now (#1438), as the view sent after each press carries. */
+    private static List<String> notices(Scene scene, BlockPos at) {
+        MinecraftServer server = scene.player().level().getServer();
+        return TerminalNotices.collect(
+                        server,
+                        scene.player(),
+                        Charters.charterOfOrThrow(server, scene.player().getUUID()),
+                        at)
+                .stream()
+                .map(line -> line.getContents() instanceof TranslatableContents contents ? contents.getKey() : "")
+                .toList();
+    }
+
+    @GameTest
+    public void thePumpSaysWhenSolidFuelInTheTankBurnsFirstOrTheEngineNeedsAService(GameTestHelper helper) {
+        Scene scene = scene(helper, 100);
+        run(helper, scene, s -> {
+            String first = "notice.deepcharter.fuel.solid_first";
+            String sooted = "notice.deepcharter.fuel.sooted";
+            s.pod().setFuel(30f);
+            expectDone(helper, fill(s), "filling a pod of pump fuel");
+            expectNotices(helper, List.of(), notices(s, s.pump()), "a clean pod of pump fuel");
+            s.pod().setFuel(0f);
+            s.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.CHARCOAL, 3));
+            for (int item = 0; item < 3; item++) {
+                UseEntity.on(s.player(), s.pod().level(), InteractionHand.MAIN_HAND, s.pod());
+            }
+            expectDone(helper, fill(s), "filling a pod with charcoal in its tank");
+            expectNotices(helper, List.of(first), notices(s, s.pump()), "3 L of charcoal still in the tank");
+            // Soot inside the grace costs nothing yet, so the pump says nothing of it; past the grace it does.
+            float grace = FuelTuning.DEFAULT.soot().graceLitres();
+            EngineSoot.State state = Versioned.orThrow(s.pod(), EngineSoot.STATE);
+            s.pod()
+                    .setAttached(
+                            EngineSoot.STATE,
+                            Versioned.of(
+                                    new EngineSoot.State(grace, state.tankLitres(), state.tankSoot(), state.solid())));
+            expectNotices(helper, List.of(first), notices(s, s.pump()), "charcoal and soot at the grace");
+            s.pod()
+                    .setAttached(
+                            EngineSoot.STATE,
+                            Versioned.of(new EngineSoot.State(
+                                    grace + 0.5f, state.tankLitres(), state.tankSoot(), state.solid())));
+            expectNotices(helper, List.of(first, sooted), notices(s, s.pump()), "charcoal and soot past the grace");
+            EngineSoot.burned(s.pod(), 3f);
+            EngineSoot.flush(s.pod());
+            expectNotices(helper, List.of(sooted), notices(s, s.pump()), "soot, and the charcoal burned");
+            EngineSoot.service(s.pod());
+            expectNotices(helper, List.of(), notices(s, s.pump()), "a serviced engine on pump fuel");
+            // Only the pump speaks of the tank: any other terminal's view is not the pump's.
+            EngineSoot.refuelled(s.pod(), 1f, 1f, BuiltInRegistries.ITEM.getKey(Items.COAL));
+            expectNotices(helper, List.of(first), notices(s, s.pump()), "a litre of coal");
+            expectNotices(helper, List.of(), notices(s, s.pump().east()), "beside the pump");
+        });
+    }
+
+    @GameTest
+    public void aPumpSaysNothingToAPlayerWithNoCharter(GameTestHelper helper) {
+        Scene scene = scene(helper, 100);
+        PodEntity unowned = helper.spawn(PodRegistry.POD, new Vec3(4.5, 2, 3.5));
+        run(helper, scene, s -> {
+            unowned.setFuel(0f);
+            s.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.CHARCOAL, 3));
+            for (int item = 0; item < 3; item++) {
+                UseEntity.on(s.player(), unowned.level(), InteractionHand.MAIN_HAND, unowned);
+            }
+            List<String> keys =
+                    TerminalNotices.collect(helper.getLevel().getServer(), s.player(), Optional.empty(), s.pump())
+                            .stream()
+                            .map(line -> line.getContents() instanceof TranslatableContents contents
+                                    ? contents.getKey()
+                                    : "")
+                            .toList();
+            expectNotices(helper, List.of(), keys, "an unowned pod of charcoal and no charter");
+            unowned.discard();
+        });
+    }
+
+    private static void expectNotices(GameTestHelper helper, List<String> expected, List<String> actual, String what) {
+        if (!expected.equals(actual)) {
+            throw helper.assertionException("the pump's notices for %s should be %s, got %s", what, expected, actual);
         }
     }
 

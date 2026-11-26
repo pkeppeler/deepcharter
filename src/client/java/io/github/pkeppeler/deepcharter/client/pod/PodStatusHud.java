@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
@@ -12,6 +13,7 @@ import io.github.pkeppeler.deepcharter.pod.PodHeatShield;
 import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
@@ -44,7 +46,7 @@ public final class PodStatusHud {
     }
 
     /**
-     * The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has, and whether the pod is stranded and how long until the Company's winch crew hauls it home (#963). The hull is shown as points out of
+     * The pod's own lines: the four values and what the engine burns ({@link Kind#BASE}), then the slag the lining has, and whether the pod is stranded and how long until the Company's winch crew hauls it home (#963). The hull is shown as points out of
      * the most the pod's parts allow: the client works the maximum out itself, from the synced component state
      * ({@link io.github.pkeppeler.deepcharter.pod.PodComponents#STATE}).
      */
@@ -56,6 +58,7 @@ public final class PodStatusHud {
                 look.podStatusColor()));
         lines.add(new Line(
                 Component.translatable("hud.deepcharter.pod.fuel", Math.round(pod.fuel())), look.podStatusColor()));
+        burnsLine(pod).ifPresent(line -> lines.add(new Line(line, look.podStatusColor())));
         lines.add(
                 new Line(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()), look.podStatusColor()));
         lines.add(new Line(
@@ -94,6 +97,24 @@ public final class PodStatusHud {
         return lines;
     }
 
+    /**
+     * What the engine burns now (#1438), under the fuel: the solid fuel still in the tank ({@link #solidLine}), which burns first, or else pump fuel; none for an
+     * empty tank.
+     */
+    public static Optional<Component> burnsLine(PodEntity pod) {
+        if (!(pod.fuel() > 0f)) {
+            return Optional.empty();
+        }
+        return solidLine(pod).or(() -> Optional.of(Component.translatable("hud.deepcharter.pod.burns_pump")));
+    }
+
+    /** The solid fuel still in the tank, by name, and its litres rounded up, so the last of it never reads 0; none when the engine burns pump fuel. */
+    public static Optional<Component> solidLine(PodEntity pod) {
+        return EngineSoot.solidLeft(pod)
+                .map(solid -> Component.translatable(
+                        "hud.deepcharter.pod.burns_solid", solid.name(), (int) Math.ceil(solid.litres())));
+    }
+
     /** The warning line shown, in its own colour, while lava burns the hull. A heat shield with bricks left soaks the lava: the hull is not burning then, and {@link #glazeLine} says so. */
     public static Optional<Component> burningLine(PodEntity pod) {
         boolean soaked = PodHeatShield.tier(pod) > 0 && pod.glazeBricks() > 0;
@@ -122,6 +143,16 @@ public final class PodStatusHud {
                 .map(state -> Component.translatable(
                         state.above() ? "hud.deepcharter.pod.lava_above" : "hud.deepcharter.pod.lava_near",
                         state.blocksOff()));
+    }
+
+    /**
+     * The warning line shown, steady, while the load is at or over the climb limit ({@link PodLoad#cannotClimb}, #1449): the held rotor cannot climb, though the pod
+     * still drives. It labels the cockpit's overloaded lamp, and is the plain HUD's only overload cue.
+     */
+    public static Optional<Component> overloadedLine(PodEntity pod) {
+        return PodLoad.of(pod).cannotClimb()
+                ? Optional.of(Component.translatable("hud.deepcharter.pod.overloaded"))
+                : Optional.empty();
     }
 
     /** The warning line shown while the alarm of the pod's zone rings (#973, {@link DrifterAlarm}): the seconds it has left. */
@@ -225,7 +256,10 @@ public final class PodStatusHud {
                 : Optional.empty();
     }
 
-    /** What a line of the readout is: one of the pod's four values, a note, or a warning (a cockpit lights a lamp for a warning). */
+    /**
+     * What a line of the readout is: one of the pod's standing values (the four, and what the engine burns, which the cockpit's plate draws itself and never drops),
+     * a note, or a warning (a cockpit lights a lamp for a warning).
+     */
     public enum Kind {
         BASE,
         INFO,
@@ -238,6 +272,8 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.fuel", Kind.BASE),
             Map.entry("hud.deepcharter.pod.cargo", Kind.BASE),
             Map.entry("hud.deepcharter.pod.depth", Kind.BASE),
+            Map.entry("hud.deepcharter.pod.burns_pump", Kind.BASE),
+            Map.entry("hud.deepcharter.pod.burns_solid", Kind.BASE),
             Map.entry("hud.deepcharter.pod.tally_hull", Kind.BASE),
             Map.entry("hud.deepcharter.pod.tally_fuel", Kind.BASE),
             Map.entry("hud.deepcharter.pod.tally_cargo", Kind.BASE),
@@ -250,6 +286,7 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.soot_limp", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
             Map.entry("hud.deepcharter.pod.burning", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.overloaded", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_spent", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT),
@@ -270,9 +307,14 @@ public final class PodStatusHud {
 
     /** A line of the readout and the colour it is drawn in. */
     public record Line(Component text, int color) {
-        /** The kind of a line from its key in {@link #KINDS}; a line of plain text (the account line) is a note. */
+        /**
+         * The kind of a line from its key in {@link #KINDS}; a line of plain text, and the charter's account line ({@link AccountHud#KEY}), which the cockpit's plate shows
+         * under its tally, are notes. A plate too long for its room drops notes from the end up and asks each row it passes for its kind, so the account line must have one
+         * (#1457: a burning, stranded pod on a 320 wide GUI crashed the game here).
+         */
         public Kind kind() {
-            if (!(text.getContents() instanceof TranslatableContents contents)) {
+            if (!(text.getContents() instanceof TranslatableContents contents)
+                    || contents.getKey().equals(AccountHud.KEY)) {
                 return Kind.INFO;
             }
             Kind kind = KINDS.get(contents.getKey());
@@ -289,6 +331,7 @@ public final class PodStatusHud {
         HudLook look = HudLook.current();
         List<Line> readout = new ArrayList<>(statusLines(pod));
         burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+        overloadedLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         glazeLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         drifterAlarmLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));

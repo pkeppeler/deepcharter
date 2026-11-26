@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
+import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitDecay;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
@@ -41,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -162,6 +164,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
                 expectTheCockpitHidesExactlyTheVanillaBottomCluster();
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
+                expectTheAccountLineIsANote();
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
                 expectEveryPlateMessageIsAPlateCase();
                 expectThePlateHoldsEveryLineClearOfItsBorder(context);
@@ -231,6 +234,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .collect(Collectors.toSet());
         Set<String> expected = Stream.of(
                         "burning",
+                        "overloaded",
                         "stranded",
                         "recovery",
                         "crust_ahead",
@@ -253,19 +257,35 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .collect(Collectors.toSet());
         if (!alerts.equals(expected)) {
             throw new AssertionError(
-                    "The warnings that light the fourth lamp are the burning hull, the glaze that holds or is spent, stranded and the Company winch's countdown, the crust, the brace that cannot work, the seepage, no brick, a hard landing, lava in or above the shaft and the hollows' alarm: got "
+                    "The warnings that light the fourth lamp are the burning hull, overloaded, the glaze that holds or is spent, stranded and the Company winch's countdown, the crust, the brace that cannot work, the seepage, no brick, a hard landing, lava in or above the shaft and the hollows' alarm: got "
                             + alerts);
         }
         PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
         PodStatusHud.Line warning = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.burning"), 0);
-        if (CockpitHud.lampsLit(false, false, false, List.of(note))[3]
-                || !CockpitHud.lampsLit(false, false, false, List.of(note, warning))[3]) {
+        if (CockpitHud.lampsLit(false, false, false, false, List.of(note))[3]
+                || !CockpitHud.lampsLit(false, false, false, false, List.of(note, warning))[3]) {
             throw new AssertionError("The fourth lamp is lit by a warning and not by a note");
         }
-        boolean[] lit = CockpitHud.lampsLit(true, false, true, List.of());
-        if (!lit[0] || lit[1] || !lit[2] || lit[3]) {
-            throw new AssertionError(
-                    "The lamps are low fuel, low hull, burning and any other warning, got " + Arrays.toString(lit));
+        boolean[] lit = CockpitHud.lampsLit(true, false, true, true, List.of());
+        if (!lit[0] || lit[1] || !lit[2] || lit[3] || !lit[4]) {
+            throw new AssertionError("The lamps are low fuel, low hull, burning, any other warning and overloaded, got "
+                    + Arrays.toString(lit));
+        }
+    }
+
+    /**
+     * The account line under the tally is a note: a plate with more rows than room drops it before a warning, and asking its kind does not throw (#1457: it had none, so
+     * a long plate of warnings crashed the game).
+     */
+    private static void expectTheAccountLineIsANote() {
+        CockpitHud.Row tally = CockpitHud.Row.of(line("tally_hull", 100, 100));
+        CockpitHud.Row account = CockpitHud.Row.of(
+                new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0));
+        CockpitHud.Row burning = CockpitHud.Row.of(line("burning"));
+        CockpitHud.Row overloaded = CockpitHud.Row.of(line("overloaded"));
+        List<CockpitHud.Row> kept = CockpitHud.fitting(List.of(tally, account, burning, overloaded), 2);
+        if (!kept.equals(List.of(tally, burning, overloaded))) {
+            throw new AssertionError("A plate with room for two rows keeps the tally and the warnings, got " + kept);
         }
     }
 
@@ -463,7 +483,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     /**
      * The plate keeps every value and line of the plain readout reachable: the four values are the tally, in the order of the gauges, and every other line of the readout
-     * (a warning, the slag, the account) is a row of its own under it. The cargo gauge reads the bay's share.
+     * (a warning, the slag, the account) is a row of its own under it.
      */
     private void expectThePlateKeepsEveryReadout(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
@@ -483,16 +503,14 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             PodEntity shown = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
             CockpitLook look = CockpitLook.current();
             CockpitReading reading = CockpitReading.of(shown, 0);
-            if (Math.abs(reading.cargo() - 1.0) > 1e-9) {
-                throw new AssertionError("A full bay reads 1 on the cargo gauge, got " + reading);
-            }
             List<PodStatusHud.Line> readout = PodStatusHud.readout(ClientSession.player(client), shown);
-            if (!CockpitHud.lampsLit(false, false, false, readout)[3]) {
+            if (!CockpitHud.lampsLit(false, false, false, false, readout)[3]) {
                 throw new AssertionError("A stranded pod's warning lights the fourth lamp, the readout is " + readout);
             }
             return CockpitHud.rows(shown, reading, look, readout).stream()
-                    .map(row -> row.parts().stream()
-                            .map(part -> ((TranslatableContents) part.text().getContents()).getKey())
+                    .map(row -> row.cells().stream()
+                            .map(cell ->
+                                    ((TranslatableContents) cell.line().text().getContents()).getKey())
                             .toList())
                     .toList();
         });
@@ -577,10 +595,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                             + decay.fault(part));
                 }
             }
-            boolean[] truth = {true, true, true, true};
-            if (!Arrays.equals(CockpitHud.decayedLamps(decay, truth), new boolean[] {false, true, true, false})) {
+            boolean[] truth = {true, true, true, true, true};
+            if (!Arrays.equals(CockpitHud.decayedLamps(decay, truth), new boolean[] {false, true, true, false, true})) {
                 throw new AssertionError(
-                        "In the blackout the fuel lamp and the alert lamp are dark and the hull lamp and the burning lamp stay lit, got "
+                        "In the blackout the fuel lamp and the alert lamp are dark and the hull, burning and overloaded lamps stay lit, got "
                                 + Arrays.toString(CockpitHud.decayedLamps(decay, truth)));
             }
             if (CockpitHud.altimeter(
@@ -592,7 +610,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 throw new AssertionError("In the blackout the altimeter is dark with the depth gauge");
             }
             CockpitHud.Row tag = CockpitHud.tag(decay, CockpitLook.current());
-            if (!(tag.parts().getFirst().text().getContents() instanceof TranslatableContents contents)
+            if (!(tag.first().text().getContents() instanceof TranslatableContents contents)
                     || !contents.getKey().equals("hud.deepcharter.pod.signal_lost")) {
                 throw new AssertionError(
                         "In the blackout the plate is the tag that says something is on the line, got " + tag);
@@ -787,18 +805,23 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     private static void expectEveryPlateMessageIsAPlateCase() {
         Set<String> covered = drawnPlates().stream()
                 .flatMap(List::stream)
-                .flatMap(row -> row.parts().stream())
-                .map(part -> part.text().getContents())
+                .flatMap(row -> row.cells().stream())
+                .map(cell -> cell.line().text().getContents())
                 .filter(TranslatableContents.class::isInstance)
                 .map(contents -> ((TranslatableContents) contents).getKey())
                 .collect(Collectors.toSet());
         Set<String> expected = new TreeSet<>(PodStatusHud.KINDS.keySet());
-        // The plain HUD's four lines; the plate shows the same four values as its tally (tally_*).
+        // The plain HUD's four lines; the plate shows the same four values as its tally (tally_*). Pump fuel, the
+        // usual,
+        // gets no row of its own (#1438).
         expected.removeAll(Set.of(
                 "hud.deepcharter.pod.hull",
                 "hud.deepcharter.pod.fuel",
                 "hud.deepcharter.pod.cargo",
-                "hud.deepcharter.pod.depth"));
+                "hud.deepcharter.pod.depth",
+                "hud.deepcharter.pod.burns_pump"));
+        // The account line under the tally, a note though not a pod line.
+        expected.add(AccountHud.KEY);
         expected.add("hud.deepcharter.pod.signal_failing");
         expected.add("hud.deepcharter.pod.signal_lost");
         if (!covered.equals(expected)) {
@@ -830,11 +853,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 GuiSpriteScaling.NineSlice.Border inset = CockpitHud.plateInset(layout, look);
                 int widest = 0;
                 for (CockpitHud.Row row : rows) {
-                    int width = look.tallyGap() * (row.parts().size() - 1);
-                    for (PodStatusHud.Line part : row.parts()) {
-                        width += client.font.width(part.text());
-                    }
-                    widest = Math.max(widest, width);
+                    widest = Math.max(widest, row.width(client.font, look));
                 }
                 int textLeft = box.left() + inset.left();
                 int textTop = box.top() + inset.top();
@@ -850,7 +869,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     box.top() + box.height() - border.bottom() - textBottom
                 };
                 if (Arrays.stream(clear).anyMatch(side -> side < look.plateGap())) {
-                    found.add(rows.getLast().parts().getFirst().text().getString() + ": clear by (left, top, right,"
+                    found.add(rows.getLast().first().text().getString() + ": clear by (left, top, right,"
                             + " bottom) " + Arrays.toString(clear) + " in a plate " + box.width() + " x "
                             + box.height() + ", the gap is " + look.plateGap());
                 }
@@ -910,6 +929,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         if (overlap(pieces.get("band"), pieces.get("bezel"))) {
             problems.add(where + ": the bezel covers the band");
         }
+        problems.addAll(titleProblems(font, look, guiWidth, guiHeight, where, bars, pieces));
         if (font.width(LONGEST_ALTIMETER) > ALTIMETER_RECESS_WIDTH
                 || layout.altimeterY() + font.lineHeight > layout.band().height()) {
             problems.add(where + ": the altimeter reading does not fit its recess in the band");
@@ -922,16 +942,16 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
                         + Arrays.toString(plateBox));
             }
-            for (String piece : List.of("band", "bezel")) {
-                if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
-                    problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
+            for (Map.Entry<String, int[]> piece : pieces.entrySet()) {
+                if (!piece.getKey().equals("scanner") && overlap(plateBox, piece.getValue())) {
+                    problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece.getKey());
                 }
             }
             long alerts = rows.stream()
-                    .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
+                    .filter(row -> row.first().kind() == PodStatusHud.Kind.ALERT)
                     .count();
             long keptAlerts = kept.stream()
-                    .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
+                    .filter(row -> row.first().kind() == PodStatusHud.Kind.ALERT)
                     .count();
             if (alerts != keptAlerts) {
                 problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
@@ -940,10 +960,71 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         return problems;
     }
 
+    /**
+     * Each gauge's title (#1436) on a GUI {@code guiWidth} x {@code guiHeight}, with the real font: on the screen, centred under its bar and clear of it, riding the
+     * band's lower edge, a pixel or more from the next title, clear of the scanner window and its black gasket, and out of the room under the altimeter's recess,
+     * which is the altimeter's (#1432). Each title is added to {@code pieces}, which the plate must keep clear of.
+     */
+    private static List<String> titleProblems(
+            Font font,
+            CockpitLook look,
+            int guiWidth,
+            int guiHeight,
+            String where,
+            Map<String, int[]> bars,
+            Map<String, int[]> pieces) {
+        List<String> problems = new ArrayList<>();
+        CockpitLook.Layout layout = look.ribbon();
+        int[] band = box(layout.band(), guiWidth, guiHeight);
+        int[] window = box(layout.scanner(), guiWidth, guiHeight);
+        int middle = (band[0] + band[2]) / 2;
+        int[] recess = {middle - ALTIMETER_RECESS_WIDTH / 2, band[1], middle + ALTIMETER_RECESS_WIDTH / 2, guiHeight};
+        int[] gasket = {window[0] - 1, window[1] - 1, window[2] + 1, window[3] + 1};
+        List<int[]> placed = new ArrayList<>();
+        for (CockpitHud.Meter gauge : CockpitHud.Meter.values()) {
+            String name = gauge.name().toLowerCase(Locale.ROOT);
+            CockpitHud.Box box = CockpitHud.titleBox(font, layout, look, gauge, guiWidth, guiHeight);
+            int[] title = {box.left(), box.top(), box.left() + box.width(), box.top() + box.height()};
+            int[] bar = Objects.requireNonNull(bars.get(name), () -> "no bar for " + name);
+            if (!inside(title, new int[] {0, 0, guiWidth, guiHeight})) {
+                problems.add(where + ": the " + name + " title leaves the screen: " + Arrays.toString(title));
+            }
+            if (Math.abs(title[0] + title[2] - bar[0] - bar[2]) > 1) {
+                problems.add(where + ": the " + name + " title is not centred under its bar");
+            }
+            if (title[1] <= bar[3] || title[1] >= band[3] || title[3] <= band[3]) {
+                problems.add(where + ": the " + name + " title " + Arrays.toString(title)
+                        + " does not ride the band's lower edge clear of its bar " + Arrays.toString(bar));
+            }
+            if (overlap(title, gasket) || overlap(title, recess)) {
+                problems.add(where + ": the " + name + " title " + Arrays.toString(title)
+                        + " covers the scanner window or the room under the altimeter's recess");
+            }
+            // The FUEL tab names what burns (#1438): it must hold the widest of the titles it can show.
+            List<Component> titles = gauge == CockpitHud.Meter.FUEL ? CockpitHud.fuelTitles() : List.of(gauge.title());
+            for (Component text : titles) {
+                if (box.width() - font.width(text) < look.iconWidth() + look.iconGap()
+                        || box.height() < look.titleTextHeight()) {
+                    problems.add(where + ": the " + name + " title's tab does not hold its icon and '"
+                            + text.getString() + "'");
+                }
+            }
+            for (int[] other : placed) {
+                if (overlap(new int[] {title[0] - 1, title[1], title[2] + 1, title[3]}, other)) {
+                    problems.add(where + ": the " + name + " title touches another title");
+                }
+            }
+            placed.add(title);
+            pieces.put(name + " title", title);
+        }
+        return problems;
+    }
+
     /** The plates to fit: each warning alone, and every warning a pilot can have at once with every note too. */
     private static List<List<CockpitHud.Row>> plateCases() {
         List<PodStatusHud.Line> alerts = List.of(
                 line("burning"),
+                line("overloaded"),
                 line("stranded"),
                 line("crust_ahead", 7, 20, 24),
                 line("crust_in", 20, 24),
@@ -968,12 +1049,24 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("lining", 5),
                 line("brace_working"),
                 line("soot", 11, 44, 44));
-        PodStatusHud.Line tally = line("tally_hull", 100, 100);
+        // The tally as the cockpit draws it, each number after its icon.
         List<CockpitHud.Row> head = List.of(
-                new CockpitHud.Row(
-                        List.of(tally, line("tally_fuel", 78), line("tally_cargo", 24), line("tally_depth", -420))),
-                CockpitHud.Row.of(new PodStatusHud.Line(Component.literal("Scanner Player0  $12,345"), 0)));
+                new CockpitHud.Row(List.of(
+                        new CockpitHud.Cell(line("tally_hull", 100, 100), CockpitHud.Meter.HULL.icon()),
+                        new CockpitHud.Cell(line("tally_fuel", 78), CockpitHud.Meter.FUEL.icon()),
+                        new CockpitHud.Cell(line("tally_cargo", 24), CockpitHud.Icon.CART),
+                        new CockpitHud.Cell(line("tally_depth", -420), CockpitHud.Meter.DEPTH.icon()))),
+                CockpitHud.Row.of(
+                        new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0)));
+        // Solid fuel left in the tank, after the fuel's icon under the account (#1438): the widest name, double
+        // figures.
+        CockpitHud.Row solid = new CockpitHud.Row(List.of(new CockpitHud.Cell(
+                line("burns_solid", Component.translatable("deepcharter.fuel.solid"), 12),
+                CockpitHud.Meter.FUEL.icon())));
+        List<CockpitHud.Row> solidHead =
+                Stream.concat(head.stream(), Stream.of(solid)).toList();
         List<List<CockpitHud.Row>> cases = new ArrayList<>();
+        cases.add(solidHead);
         for (PodStatusHud.Line alert : alerts) {
             cases.add(rowsOf(head, List.of(alert)));
         }
@@ -985,7 +1078,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         cases.add(rowsOf(head, List.of(line("stranded"), line("recovery", 60, 240))));
 
         cases.add(rowsOf(
-                head,
+                solidHead,
                 Stream.concat(
                                 Stream.of(
                                         alerts.get(0),

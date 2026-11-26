@@ -1,19 +1,21 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.LiningKeys;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
 import net.minecraft.network.chat.Component;
 
 /**
  * The controls pages of the handbook (#1260): one sheet each for the handbook, the parts catalogue, the pod and the
- * scanner. Every key a line names is read from the player's own binding when the line is built, so a rebind shows on
+ * scanner, and a legend of the pod's cockpit readouts (#1436). Every key a line names is read from the player's own binding when the line is built, so a rebind shows on
  * the next draw and no key letter is written into the language file. A key the game does not let the player rebind
  * (Ctrl+F, the arrow keys) is written out in the line.
  */
@@ -21,10 +23,15 @@ public final class HandbookControls {
     /**
      * One line of a sheet: its language key under the sheet's, and the bindings its {@code %s} slots show, in order.
      */
-    record Row(String name, List<Function<Options, KeyMapping>> keys) {
+    record Row(String name, List<Function<Options, KeyMapping>> keys, List<String> words) {
+        /** A line that names keys and no words. */
+        Row(String name, List<Function<Options, KeyMapping>> keys) {
+            this(name, keys, List.of());
+        }
+
         /** A line that names no key. */
         Row(String name) {
-            this(name, List.of());
+            this(name, List.of(), List.of());
         }
     }
 
@@ -57,6 +64,8 @@ public final class HandbookControls {
                     List.of(
                             new Row("board", List.of(options -> options.keyUse)),
                             new Row("leave", List.of(options -> options.keyShift)))),
+            new Sheet("cockpit", List.of(new Row("readouts"))),
+            new Sheet("fuel_tab", List.of(new Row("burning"), new Row("names", List.of(), CockpitHud.SHORT_KEYS))),
             new Sheet(
                     "drive",
                     List.of(
@@ -112,12 +121,13 @@ public final class HandbookControls {
     }
 
     private static Component line(Sheet sheet, Row row, Options options) {
-        Object[] keys = row.keys().stream()
-                .map(key -> (Object) Component.literal("[")
+        Stream<Object> keys = row.keys().stream()
+                .map(key -> Component.literal("[")
                         .append(key.apply(options).getTranslatedKeyMessage())
-                        .append("]"))
-                .toArray();
-        return Component.translatable(keyOf(sheet.name(), row.name()), keys);
+                        .append("]"));
+        Stream<Object> words = row.words().stream().map(Component::translatable);
+        return Component.translatable(
+                keyOf(sheet.name(), row.name()), Stream.concat(keys, words).toArray());
     }
 
     private static Sheet sheet(int part) {

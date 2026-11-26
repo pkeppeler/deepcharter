@@ -267,7 +267,7 @@ public class RepairStationTest {
             PodEntity pod = station.pod();
             expectRefused(helper, serviceEngine(station), "servicing a clean engine");
 
-            EngineSoot.refuelled(pod, 12f, 1f);
+            EngineSoot.refuelled(pod, 12f, 1f, Identifier.withDefaultNamespace("charcoal"));
             EngineSoot.burned(pod, 8f);
             EngineSoot.flush(pod);
             long cost = EngineSoot.serviceCost(pod);

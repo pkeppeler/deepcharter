@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.pod;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import java.util.OptionalDouble;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -103,7 +104,10 @@ public final class PodFuel {
         pod.setFuel(Math.min(full, before + added));
         // Only the litres that fit in the tank count towards its soot.
         EngineSoot.refuelled(
-                pod, (float) litres.getAsDouble() * (pod.fuel() - before) / added, PodFuelItems.sootOf(stack));
+                pod,
+                (float) litres.getAsDouble() * (pod.fuel() - before) / added,
+                PodFuelItems.sootOf(stack),
+                BuiltInRegistries.ITEM.getKey(stack.getItem()));
         pod.setStranded(false);
         stack.consume(1, player);
         return InteractionResult.SUCCESS;
