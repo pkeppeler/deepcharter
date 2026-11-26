@@ -11,7 +11,6 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook.Layout;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
-import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
@@ -34,8 +33,6 @@ import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FontDescription;
-import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
@@ -411,15 +408,17 @@ public final class CockpitHud {
         graphics.fill(mark, top - 1, mark + 1, top + gauge.area().height() + 1, look.lowColor());
     }
 
-    /** The load gauge's title, in the terminal font, so the bar reads as the load and not the bay's slots. */
+    /**
+     * The load gauge's title, so the bar reads as the load and not the bay's slots. In the game's own font, as the plate's text is: the terminal font is drawn at
+     * 6 pixels, which a GUI of scale 1 renders as "I NAD".
+     */
     private static Component loadTitleText() {
-        return Component.translatable("hud.deepcharter.pod.load_title")
-                .withStyle(Style.EMPTY.withFont(new FontDescription.Resource(CrtText.FONT)));
+        return Component.translatable("hud.deepcharter.cockpit.load");
     }
 
     /**
-     * Where the load gauge's title plate is: as wide as the title and {@link CockpitLook#titleGap} past the plate sprite's border each side, as tall as the terminal
-     * font's capitals ({@link CockpitLook#titleTextHeight}) the same way, centred under the gauge and hung from the band's lower edge.
+     * Where the load gauge's title plate is: as wide as the title and {@link CockpitLook#titleGap} past the plate sprite's border each side, as tall as the font's
+     * capitals ({@link CockpitLook#titleTextHeight}) the same way, centred under the gauge and hung from the band's lower edge.
      */
     public static Box loadTitleBox(Font font, Layout layout, CockpitLook look, int guiWidth, int guiHeight) {
         GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);

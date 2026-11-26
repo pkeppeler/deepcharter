@@ -51,16 +51,14 @@ LAMPS = 5
 # The cargo slot's gauge reads the pod's load (#1449): the climb limit is marked after this many of its segments, so each segment under the mark is a tenth of
 # the climb limit and the three past it show how far over the pod is, to 130%.
 LOAD_LIMIT_SEGMENT = 10
-# The load gauge's title, as the game draws it in the terminal font (6 pixels a character at its size of 6) on a plate cut from the readout plate, hung under
-# the gauge from the band's lower edge.
+# The load gauge's title, as the game draws it in its own font on a plate cut from the readout plate, hung under the gauge from the band's lower edge.
 LOAD_TITLE = "LOAD"
-TERMINAL_FONT_W = 6
 KIND = {"across": 0, "up": 1}
 SHARED = {
     "enabled": 1, "minGuiWidth": MIN_GUI_W, "minGuiHeight": MIN_GUI_H,
     "fuelColor": "#F0A010", "hullColor": "#58B05A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
     "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "plateGap": 2,
-    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5, "titleGap": 1, "titleTextHeight": 6,
+    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5, "titleGap": 0, "titleTextHeight": 7,
     "cameraInstalled": 0, "cameraStaticPerHull": 4.0, "cameraStaticFallPerTick": 0.03, "cameraStaticDots": 2400, "cameraDotSize": 2,
     "cameraLensHeatPerTick": 0.01, "cameraLensCoolPerTick": 0.02, "cameraLensDead": 1.0, "cameraLensRecover": 0.6,
     "cameraFlickerMaxChance": 0.35, "cameraFlickerMinTicks": 2, "cameraFlickerMaxTicks": 6, "cameraHazeLines": 14, "cameraHazeAlpha": 90, "cameraVeilAlpha": 150, "cameraDotAlphaMin": 80, "cameraTearBands": 6, "cameraTearAlpha": 90,
@@ -353,7 +351,7 @@ def title_box(look):
     puts it."""
     t = look.keys
     inset = look.sprites["plate"].border[0] + SHARED["titleGap"]
-    width = len(LOAD_TITLE) * TERMINAL_FONT_W + 2 * inset
+    width = len(LOAD_TITLE) * FONT_W - 1 + 2 * inset
     height = SHARED["titleTextHeight"] + 2 * inset
     gauge = Placed(t[STYLE + "CargoW"], t[STYLE + "CargoH"], t[STYLE + "CargoAnchorX"], t[STYLE + "CargoAnchorY"], t[STYLE + "CargoX"], t[STYLE + "CargoY"])
     band = look.parts["part_a"]
@@ -457,7 +455,7 @@ def preview_look(look, state):
     tl, tt, tw, th = title_box(look)
     img.blit(nine_slice(sprites["plate"].img, sprites["plate"].border, tw, th), tl, tt)
     inset = sprites["plate"].border[0] + SHARED["titleGap"]
-    img.text(tl + inset, tt + inset - 1, LOAD_TITLE, rgb(SHARED["cargoColor"]))
+    img.text(tl + inset, tt + inset, LOAD_TITLE, rgb(SHARED["cargoColor"]))
     img.text(SCREEN_W // 2 - text_width("-1,234 ft.") // 2, t[STYLE + "AltimeterY"] + 1, "-1,234 ft.", rgb("#FFFFFF"))
     width, height = plate_size(look, state)
     inset_left, inset_top, _, _ = plate_inset(look)

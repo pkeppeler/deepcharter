@@ -33,7 +33,7 @@ import net.minecraft.resources.Identifier;
  * @param lampGap the space between two warning lamps
  * @param tallyGap the space between two numbers of the plate's tally
  * @param titleGap the space between the inside of a gauge title's plate border and its text, on each side
- * @param titleTextHeight how tall the terminal font's capitals are drawn, which a gauge title's plate holds
+ * @param titleTextHeight how tall the font's capitals are drawn, which a gauge title's plate holds
  * @param camera the front camera's feed (#448)
  * @param decay what the signal decay (#502) does to the instruments
  */

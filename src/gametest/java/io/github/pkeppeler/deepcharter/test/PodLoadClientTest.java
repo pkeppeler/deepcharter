@@ -41,6 +41,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodLoadClientTest implements FabricClientGameTest {
     /** High in layer 1, far above the signal decay near its floor. */
     private static final int FEET_Y = TestLayers.worldY(1, 150);
+
     private static final int GUI_SCALE = 2;
     private static final String OVERLOADED = "hud.deepcharter.pod.overloaded";
     /** The lamp the overload lights: the last of the Ribbon's row. */
@@ -56,7 +57,8 @@ public class PodLoadClientTest implements FabricClientGameTest {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                // The floor stays rock: the pod stands on it under gravity, which the climb limit is worked out against.
+                // The floor stays rock: the pod stands on it under gravity, which the climb limit is worked out
+                // against.
                 RoomCarver.carve(one, -4, 4, FEET_Y, FEET_Y + 8, -4, 4, Blocks.AIR);
                 player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
