@@ -101,11 +101,12 @@ public final class PodBrace {
         if (crustSlabs < 1 || slabsAway > PodBraceTuning.DEFAULT.warnSlabs()) {
             return Optional.empty();
         }
+        PodStats stats = PodStats.of(pod);
         return Optional.of(new Ahead(
                 slabsAway,
                 crustSlabs,
-                crustSlabs * PodStats.of(pod).crustHullDamage(),
-                VoidBelow.dropAfter(pod, band.get().minY())));
+                crustSlabs * stats.crustHullDamage(),
+                VoidBelow.dropCost(stats, VoidBelow.fallAfter(pod, band.get().minY()))));
     }
 
     /**

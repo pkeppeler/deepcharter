@@ -53,11 +53,6 @@ public final class VoidBelow {
         return scan;
     }
 
-    /** Hull the landing costs the pod after the drill bores the row at {@code rowY}. */
-    static float dropAfter(PodEntity pod, int rowY) {
-        return dropCost(PodStats.of(pod), fallAfter(pod, rowY));
-    }
-
     /**
      * Whether the drill sounds hollow: within {@link VoidBelowTuning#hollowRows} rows of the pod's feet, the drill
      * would break through into a fall that lands hard. A fall that lands soft, or a gap under a nearer row, leaves the
