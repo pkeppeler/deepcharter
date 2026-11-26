@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
  * The block readout's on-screen state (#859): which readout is up and how opaque it is. The crosshair's block comes in each tick. A readout fades
  * in and, when the crosshair leaves it, out; a different block must hold the crosshair for the look's settle ticks before it replaces the one up,
  * which fades out meanwhile, so a sweep across many blocks never flickers and a run of blocks that read alike never blinks at all. It is the fade of
- * any readout under the crosshair, so a readout is any value with {@code equals}.
+ * any readout above the hotbar, so a readout is any value with {@code equals}.
  */
 public final class ReadoutFade<T> {
     /** Alphas this close to either end snap to it, so a fade of n ticks ends exactly on the nth. */
