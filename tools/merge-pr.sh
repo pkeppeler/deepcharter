@@ -22,6 +22,8 @@
 # Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each client-gametest-shard, when they ran) runs
 # each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
 # from it only by docs/ROADMAP.md or .papercuts.jsonl.
+# A failing-check refusal carries [client-only] when every check that is not passing is a failed, timed-out or cancelled
+# client-gametest or client-gametest-shard <i>, and build and tool-tests passed: the queue re-runs the whole Client tests run.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
 # and regenerates docs/ROADMAP.md. The commit title and message go through tools/merge_message.py first: the merge proxy
 # refuses a long URL there, so it is shortened in the commit only, never in the PR body (#1007); --check warns when it will.
@@ -140,7 +142,7 @@ if [[ -n $first_bad ]]; then
     grep -qxF "pass"$'\t'"$required" <<<"$checks" || client_only=0
   done
   if [[ $client_only -eq 1 ]]; then
-    first_bad+="; only client-suite checks failed: re-run the whole Client tests run holding the head's newest non-skipped client-gametest job [client-only] (never --failed or one job: a re-run shard merges the live main, and the aggregate fails when shards merged different mains)"
+    first_bad+="; only client-suite checks failed: re-run the whole Client tests run holding the head's newest non-skipped client-gametest job [client-only] (never --failed or one job; why: merging.md's client-suite note)"
   fi
   refuse "has a check that is not passing: $first_bad"
 fi
