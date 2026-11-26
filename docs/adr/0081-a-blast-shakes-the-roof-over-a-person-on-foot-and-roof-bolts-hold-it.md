@@ -6,7 +6,7 @@ status: accepted
 
 Issue [#987](https://github.com/pkeppeler/deepcharter/issues/987). SPEC section 10 lists cave-ins as a hazard that blocks a stretch of shaft and never deletes built blocks, and [CREATURES.md](../CREATURES.md#on-foot) gives the on-foot kit "roof bolts against cave-ins". Nothing in the game dropped a roof, so the bolt driver had nothing to answer. The design log is in [mechanics.md](../design/mechanics.md#the-bolt-driver-and-the-cave-in-987-a).
 
-Amended 2026-11-26 (#1458, [mechanics.md](../design/mechanics.md#explosive-tiers-1458-a)): `CaveIns.blasted` takes the volume the blast broke, and `shakeReach` counts from its edge, so a bigger blast shakes farther. The charter and PvP rules stand.
+Amended 2026-11-26 (#1458, [mechanics.md](../design/mechanics.md#explosive-tiers-1458-a)): `CaveIns.blasted` takes the volume the blast broke (for a charge, the box round the cells it cleared), and `shakeReach` counts from its edge, so a bigger blast shakes farther. The charter and PvP rules stand.
 
 ## Decision
 

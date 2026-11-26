@@ -33,8 +33,8 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>The shaped charge (#526) is the same set-up with a directed blast: in each column of the bore square it clears the Company rock from the slab under the
  * pod down to the first block that is not Company rock, at most {@code shapedDepth} rows, and nothing else (stone is the drill's). It will not be set when a
- * column's run ends on lava, because the jet would open it; the blasting charge, whose hole is {@code chargeDepth} rows and no wider than
- * the bore, ends on what it cannot clear and still can. Counterplay for the rest of what
+ * column's run ends on lava, because the jet would open it; the blasting charge, whose hole is {@code chargeDepth} rows deep and no wider than
+ * the bore, still can, and lets the lava flow as a bore does. Counterplay for the rest of what
  * it may open is the pilot's: a gas pocket under the run is not cleared (the sounder is the answer), and a cavern under it is a drop.
  *
  * <p>Rules: only blocks of {@link HazardBlocks#UNDIGGABLE} and {@link HazardBlocks#NATURAL_ROCK} go (so bricks, lining,
