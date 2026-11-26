@@ -691,7 +691,8 @@ public class ThemeLooksTest {
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cellAspect\": 3 }")), "cellAspect");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"jawSteps\": 0 }")), "jawSteps");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"bodySolidTicks\": 21 }")), "bodySolidTicks");
-        // Gson reads NaN and Infinity as numbers: a timing that is not one is refused, or it would hold the button.
+        // Gson reads a bare NaN or Infinity leniently as a string, which the number check refuses: a timing that is not
+        // a number would hold the button.
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cutSeconds\": NaN }")), "cutSeconds");
         rejected(
                 helper,
