@@ -15,9 +15,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "parked-no-fuel" for #1434: a full pod's fuel gauge from the seat, the pilot gets out and leaves it parked for a
- * minute, and the gauge still reads full when they climb back in; then a minute idling with the pilot aboard, which burns. Stills:
- * {@code aboard-full}, {@code parked}, {@code back-after-a-parked-minute}, {@code after-a-minute-aboard}.
+ * Evidence scenario "parked-no-fuel" for #1434: a full pod's fuel gauge from the seat, the pilot gets out and leaves
+ * it parked for a minute, and the gauge still reads full when they climb back in; then a minute idling with the pilot
+ * aboard, which burns. Stills: {@code aboard-full}, {@code parked}, {@code back-after-a-parked-minute} and
+ * {@code after-a-minute-aboard}.
  */
 public class ParkedNoFuelScenario extends EvidenceScenario {
     private static final int MINUTE_TICKS = 1200;

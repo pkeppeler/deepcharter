@@ -49,8 +49,8 @@ public final class PodFuel {
     }
 
     /**
-     * Called every pod tick, on the server only. A pod without power burns no fuel, and nor does a parked one with no player aboard
-     * (#1434), towed or not: its lights and sounder stay powered for free.
+     * Called every pod tick, on the server only. A pod without power burns no fuel, and nor does one with no player
+     * aboard (#1434), towed or not: its lights and sounder stay powered for free.
      */
     static void tick(PodEntity pod, PodStats stats) {
         if (!PodEvents.isPowered(pod) || !pod.hasPassenger(Player.class::isInstance)) {
