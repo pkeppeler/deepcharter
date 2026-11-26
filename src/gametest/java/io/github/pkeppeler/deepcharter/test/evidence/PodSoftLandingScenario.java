@@ -38,7 +38,6 @@ public class PodSoftLandingScenario extends EvidenceScenario {
     private static final int ROOM_RADIUS = 5;
     private static final int ROOM_HEIGHT = 14;
     private static final int HOVER_TICKS = 20;
-    private static final int HOVER_TICKS_PER_FRAME = 1;
     private static final int MAX_SINK_TICKS = 100;
     /**
      * The server's ticks a second while the pod sinks: a slow motion, so the recording, a few frames a second under a
@@ -137,10 +136,7 @@ public class PodSoftLandingScenario extends EvidenceScenario {
             if (!gauged) {
                 throw new AssertionError("The SINK plate never showed while the pod sank");
             }
-            for (int i = 0; i < 10; i++) {
-                context.waitTicks(HOVER_TICKS_PER_FRAME);
-                frame(context);
-            }
+            tickFrames(context, 10);
             float hullAfter = hull(singleplayer);
             if (hullAfter != hullBefore) {
                 throw new AssertionError("A pod let go " + released

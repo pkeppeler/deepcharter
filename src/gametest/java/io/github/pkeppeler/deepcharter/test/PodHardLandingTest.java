@@ -399,7 +399,7 @@ public class PodHardLandingTest {
         }
         FarChunks.awaitEntityTicking(helper, one, starts, index -> {
             Flight flight = flights.get(index);
-            Vec3 start = new Vec3(columns[index] + 0.5, SHAFT_FLOOR_TOP_Y + 1 + blocks, SHAFT_Z + 0.5);
+            Vec3 start = Vec3.atBottomCenterOf(starts.get(index));
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(start);
             if (flight == meter) {
