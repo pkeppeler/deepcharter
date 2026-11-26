@@ -66,7 +66,7 @@ public final class CaveIns {
     }
 
     /**
-     * A blast went off and broke the rock in {@code blast}: the roof over each person on foot within {@link CaveInTuning#shakeReach()} of that
+     * A blast went off over {@code blast} (for a charge, the box round the cells it cleared; for dynamite and plastic, their cube): the roof over each person on foot within {@link CaveInTuning#shakeReach()} of that
      * volume's edge is shaken, so a bigger blast shakes farther (#1458). Only if the server allows PvP or the person is on the charter that set
      * it off ({@code blaster}), so no charter is griefed by another's blast. A person in a pod is not shaken: the pod's own hull is what the
      * roof falls on.

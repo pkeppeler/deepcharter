@@ -43,7 +43,8 @@ import net.minecraft.world.phys.Vec3;
  * flow, as a bore does. Every pod within {@code chargeReach} of the volume takes {@code chargeDamage} less its distance share, the setter's too
  * unless it climbs clear (a wreck takes nothing; another charter's pod in reach is hurt, the risk of a shared shaft). A charge is never a suicide
  * button: a pod cannot set one with no more hull than {@code chargeDamage} plus the hard landing of a free fall to the bottom of the hole it
- * opens ({@link #dropRows}), since a pod left sitting on its charge takes the blast and then drops into the hole. A pilot who holds the rotor
+ * opens ({@link #dropRows}), since a pod left sitting on its charge takes the blast and then drops into the hole (a cavern already below the hole is a
+ * drop of its own, as under the drill's last slab). A pilot who holds the rotor
  * hovers through both.
  * The fuse belongs to the pod and is neither saved nor synced: a pod that is discarded or unloaded before the blast loses it.
  */
