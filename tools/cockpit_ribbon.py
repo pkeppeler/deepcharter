@@ -67,7 +67,7 @@ ICONS = {
     "weight": ("..#..", ".#.#.", "..#..", ".###.", ".###.", "#####", "#####"),  # a weight with its ring
     "depth": ("..#..", "..#..", "..#..", "..#..", "#####", ".###.", "..#.."),  # an arrow down
     "heat": ("..#..", ".##..", ".###.", "####.", "##.##", "#...#", ".###."),  # a flame
-    "cart": (".....", ".#.##", "#####", "#####", ".###.", ".....", ".#.#."),  # an ore cart, heaped, on its wheels
+    "cart": (".....", ".....", "#...#", "#####", ".###.", ".....", ".#.#."),  # a mine cart's tub on its wheels
 }
 GAUGE_ICONS = {"fuel": "fuel", "hull": "hull", "cargo": "weight", "depth": "depth", "heat": "heat"}
 KIND = {"across": 0, "up": 1}
