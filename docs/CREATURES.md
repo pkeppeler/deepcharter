@@ -92,7 +92,7 @@ Moloch's: brass Company counting drones from the Boom. They ride the Conduit's c
 
 - **Sensed:** clicking; an echo as ore; a small amber eye.
 - **Pod:** one that trails a pod for about 30 seconds clamps to the cargo hatch and takes an ore as a "quality sample". The cutter bites it there.
-- **On foot:** takes an ore you carry. One blow breaks it.
+- **On foot:** takes an ore you carry. One blow breaks it. A light in hand keeps one off, but doesn't free a person it has already clamped.
 - **Act 3:** a Tally that sees an unauthorised pod calls the Recovery units. In act 3 the Conduit, your landmark all game, is watched.
 
 ### Layer 2: The Old Workings
