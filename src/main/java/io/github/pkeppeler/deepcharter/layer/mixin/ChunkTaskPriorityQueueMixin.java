@@ -39,6 +39,9 @@ public abstract class ChunkTaskPriorityQueueMixin {
         if (level < 0 || level >= queuesPerPriority.size()) {
             return; // vanilla's own path, out of range as vanilla is
         }
+        if (queuesPerPriority.get(level).containsKey(pos)) {
+            return; // the chunk's one list is at this level already: the common case, no scan
+        }
         int at = deepcharter$levelOf(pos);
         if (at >= 0 && at != level) {
             deepcharter$move(pos, at, level);
@@ -74,8 +77,8 @@ public abstract class ChunkTaskPriorityQueueMixin {
     }
 
     /**
-     * Vanilla's resort, from the level the list is at: the list goes to the end of the new level's order, after any list
-     * the chunk has there, and an empty one is dropped.
+     * Vanilla's resort, from the level the list is at: the list goes to the end of the new level's order, and an empty one
+     * is dropped. The chunk has no list at {@code to} (one list per chunk, and {@code from != to}), so nothing is merged.
      */
     @Unique
     private void deepcharter$move(long pos, int from, int to) {
