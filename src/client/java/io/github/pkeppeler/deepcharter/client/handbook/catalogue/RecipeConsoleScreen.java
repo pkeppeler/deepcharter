@@ -54,7 +54,7 @@ public final class RecipeConsoleScreen extends Screen {
     }
 
     /** Whether a screen {@code width} by {@code height} has room for the console. */
-    static boolean fits(int width, int height) {
+    public static boolean fits(int width, int height) {
         return centred(width, height) != null;
     }
 

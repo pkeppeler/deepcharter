@@ -195,11 +195,14 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return features;
     }
 
-    /** A pod with every track at its best tier and a cap below it, so each row carries the longest label. */
+    /**
+     * A pod with nothing fitted and a cap below the best tiers: each track offers every tier it sells, the tiers above the cap carry the
+     * longest labels, and a track that waits for its crafted unit shows its locked row and the unit's line.
+     */
     private static UpgradeView upgradeView() {
         List<UpgradeView.Slot> slots = new ArrayList<>();
         for (ComponentTrack track : ComponentTrack.values()) {
-            slots.add(new UpgradeView.Slot(track, track.maxTier(), Math.min(track.maxTier(), 3)));
+            slots.add(new UpgradeView.Slot(track, 0, 0));
         }
         return new UpgradeView(Optional.of(new UpgradeView.Pod("PROSPECTOR-9999", 3, slots)), false);
     }
@@ -710,12 +713,12 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         for (ComponentTrack track : ComponentTrack.values()) {
             variants.add(new Variant("track " + track.id() + " chosen", (context, screen) -> {
                 // The screen offers no way to choose a track but its button, whose label is this lang key with the
-                // track's name and installed tier.
+                // track's name and installed tier, none in the fixture.
                 String label = context.computeOnClient(client -> Component.translatable(
                                 "screen.deepcharter.upgrade.track",
                                 Component.translatable("deepcharter.upgrade.track." + track.id())
                                         .getString(),
-                                track.maxTier())
+                                0)
                         .getString());
                 UpgradeScreen upgrade = (UpgradeScreen) screen;
                 context.runOnClient(client -> UpgradeShown.reveal(upgrade, track));

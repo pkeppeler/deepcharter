@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.client.upgrade;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.RecipeConsoleScreen;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
@@ -14,13 +16,18 @@ import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import io.github.pkeppeler.deepcharter.upgrade.PartUnits;
+import io.github.pkeppeler.deepcharter.upgrade.TrackOffer;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.locale.Language;
@@ -29,9 +36,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
 /**
- * The online screen of the upgrade terminal. The left column lists the tracks, closing their rows up to fit the screen, with the tier now installed; the right column
- * lists the parts of the chosen track with their prices. A tier above the pod's cap is marked as working at the cap, so the
- * player pays knowing it. The screen decides nothing: the server checks every purchase, and answers with a new
+ * The online screen of the upgrade terminal. The left column lists the tracks, closing their rows up to fit the screen, with the tier now
+ * installed. The right column says what the chosen track does, what the pod has fitted and what the next tier gains in numbers (#1440,
+ * {@link TrackOffer}), then lists the tiers for sale with their prices. The crafted tier 1 is not a row: a track that waits for it shows its
+ * next purchase locked and a line naming the unit, which opens the unit's recipe. A tier above the pod's cap is marked as working at the
+ * cap, so the player pays knowing it. The screen decides nothing: the server checks every purchase, and answers with a new
  * {@link UpgradeView}.
  *
  * <p>It asks the server for the parked pod when it opens, because the generic {@link TerminalView} carries none.
@@ -55,16 +64,21 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
     private static final int COLUMN_GAP = 6;
     private static final int CLOSE_WIDTH = 70;
 
+    /** Space between the text over the tiers and the first tier. */
+    private static final int TEXT_GAP = 2;
+
+    /** A line the screen draws itself, where the last layout put it. */
+    private record Text(String text, int x, int y) {}
+
     private TerminalView view;
     private ComponentTrack selected = ComponentTrack.values()[0];
     /** Where the scroll hint is drawn, beside Close: set by the last layout. */
     private int hintX;
 
     private int hintY;
-    /** Where the note under the chosen track's tiers is drawn: set by the last layout. */
-    private int noteX;
+    /** The chosen track's description, fitted part, next gain and note: set by the last layout. */
+    private List<Text> texts = List.of();
 
-    private int noteY;
     private final ScrollList scroll = new ScrollList(
             "screen.deepcharter.upgrade.scroll",
             () -> ComponentTrack.values().length,
@@ -111,19 +125,18 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
         int rowHeight = PITCH - rowGap;
         int visible = visibleTracks();
         scroll.beginLayout();
+        texts = new ArrayList<>();
         int trackWidth = Math.max(TRACK_WIDTH, widestTrackLabel() + LABEL_ROOM);
         int tierX = left + trackWidth + COLUMN_GAP;
-        // Close sits under the longest list of tiers, so it stays on the screen however many tracks the left column
-        // holds.
-        int closeY = listTop()
-                + Arrays.stream(ComponentTrack.values())
-                                .mapToInt(ComponentTrack::maxTier)
-                                .max()
-                                .orElse(0)
-                        * PITCH
+        int tierWidth = Math.min(contentRight(MARGIN) - tierX, TIER_MAX_WIDTH);
+        // Close sits under the tallest column a track can have, so it stays put whichever track is chosen and however
+        // many
+        // tracks the left column holds.
+        int closeY = Arrays.stream(ComponentTrack.values())
+                        .mapToInt(track -> rowsTop(track, tierWidth) + Math.max(track.maxTier() - 1, 2) * PITCH)
+                        .max()
+                        .orElse(listTop())
                 + rowGap;
-        noteX = tierX;
-        noteY = listTop() + selected.maxTier() * PITCH + rowGap;
         hintX = tierX + CLOSE_WIDTH + COLUMN_GAP;
         hintY = closeY + (rowHeight - font.lineHeight) / 2;
         addRenderableWidget(new CrtButton(
@@ -138,7 +151,6 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
             return;
         }
         UpgradeView.Pod pod = shownPod.get();
-        int tierWidth = Math.min(contentRight(MARGIN) - tierX, TIER_MAX_WIDTH);
         for (UpgradeView.Slot slot : pod.slots()) {
             ComponentTrack track = slot.track();
             Component label =
@@ -155,43 +167,75 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
                             pressed -> select(track))
                     .marked(track == selected)));
         }
-        UpgradeView.Slot held = slotOf(pod, selected);
+        TrackOffer offer = TrackOffer.of(pod, selected);
+        int y = listTop();
+        for (String line : about(selected, tierWidth)) {
+            texts.add(new Text(line, tierX, y));
+            y += lineStep();
+        }
+        texts.add(new Text(offer.fittedLine().getString(), tierX, y));
+        y += lineStep();
+        Optional<Component> next = offer.nextLine();
+        if (next.isPresent()) {
+            texts.add(new Text(next.get().getString(), tierX, y));
+        }
+        int row = rowsTop(selected, tierWidth);
         long balance = ClientCharter.view().map(charter -> charter.balance()).orElse(0L);
-        for (int tier = 1; tier <= selected.maxTier(); tier++) {
-            int offered = tier;
+        for (int tier : offer.forSale()) {
             long price = UpgradeTuning.DEFAULT.price(selected, tier);
-            boolean counts = held.effective() > 0;
-            boolean here = counts && held.installed() >= tier;
-            // The crafted first tier is not sold (ADR 0048, ADR 0053); on the scanner, the tiers above it wait for it
-            // to be fitted.
-            boolean crafted = tier == 1;
-            boolean needsFirst = selected.needsFirstTier() && tier > 1 && !counts;
-            String capped = tier > pod.cap()
-                    ? Component.translatable("screen.deepcharter.upgrade.capped", pod.cap())
-                            .getString()
-                    : "";
-            Component label = here && held.installed() == tier
-                    ? Component.translatable("screen.deepcharter.upgrade.installed", tier)
-                            .append(capped)
-                    : crafted
-                            ? Component.translatable("screen.deepcharter.upgrade.crafted", tier)
-                            : needsFirst
-                                    ? Component.translatable("screen.deepcharter.upgrade.needs_first", tier, price)
-                                    : Component.translatable("screen.deepcharter.upgrade.buy", tier, price, capped);
-            CrtButton button = addRenderableWidget(new CrtButton(
+            Component label = Component.translatable("screen.deepcharter.upgrade.buy", tier, price, offer.capped(tier));
+            ComponentTrack track = selected;
+            CrtButton button = addRenderableWidget(
+                    new CrtButton(tierX, row, tierWidth, rowHeight, label, pressed -> buy(track, tier)));
+            // An unregistered pod (no serial) takes no parts: they would be void.
+            button.active = balance >= price && !pod.serial().isEmpty();
+            row += PITCH;
+        }
+        if (offer.lock() == TrackOffer.Lock.FIT_FIRST) {
+            int tier = offer.next().orElseThrow();
+            CrtButton locked = addRenderableWidget(new CrtButton(
                     tierX,
-                    listTop() + (tier - 1) * PITCH,
+                    row,
                     tierWidth,
                     rowHeight,
-                    label,
-                    pressed -> buy(selected, offered)));
-            // An unregistered pod (no serial) takes no parts: they would be void.
-            button.active = !here
-                    && !crafted
-                    && !needsFirst
-                    && balance >= price
-                    && !pod.serial().isEmpty();
+                    Component.translatable(
+                            "screen.deepcharter.upgrade.locked", tier, UpgradeTuning.DEFAULT.price(selected, tier)),
+                    pressed -> {}));
+            locked.active = false;
+            row += PITCH;
         }
+        Optional<Component> unlock = offer.lockLine();
+        if (unlock.isPresent()) {
+            ComponentTrack track = selected;
+            CrtButton recipe = addRenderableWidget(
+                    new CrtButton(tierX, row, tierWidth, rowHeight, unlock.get(), pressed -> openRecipe(track)));
+            // The recipe console needs room of its own; a screen too small for it keeps the line as words.
+            recipe.active = RecipeConsoleScreen.fits(width, height);
+            row += PITCH;
+        }
+        int noteY = row + rowGap;
+        for (String line : note()) {
+            texts.add(new Text(line, tierX, noteY));
+            noteY += font.lineHeight;
+        }
+    }
+
+    /** The y of the first row of the track's tiers: under its description, the fitted part and the next purchase's gain. */
+    private int rowsTop(ComponentTrack track, int tierWidth) {
+        return listTop() + (about(track, tierWidth).size() + 2) * lineStep() + TEXT_GAP;
+    }
+
+    /** The track's description, wrapped to the tier column. */
+    private List<String> about(ComponentTrack track, int tierWidth) {
+        return CrtText.wrap(
+                font,
+                Component.translatable("screen.deepcharter.upgrade.about." + track.id())
+                        .getString(),
+                tierWidth);
+    }
+
+    private int lineStep() {
+        return font.lineHeight + CrtTuning.current().lineSpacing();
     }
 
     /** How many tracks fit between the header and the bottom of the content, at least one and at most all of them. */
@@ -231,16 +275,16 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
         return Component.translatable("deepcharter.upgrade.track." + track.id()).getString();
     }
 
-    private static UpgradeView.Slot slotOf(UpgradeView.Pod pod, ComponentTrack track) {
-        return pod.slots().stream()
-                .filter(slot -> slot.track() == track)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("the view has no slot for " + track));
-    }
-
     private void select(ComponentTrack track) {
         selected = track;
         rebuildWidgets();
+    }
+
+    /** Opens the recipe of the track's crafted unit over this screen, which comes back when the console closes. */
+    private void openRecipe(ComponentTrack track) {
+        Minecraft.getInstance()
+                .gui
+                .setScreen(new RecipeConsoleScreen(this, PartUnits.unit(track), CatalogueState.Mode.RECIPES));
     }
 
     private void buy(ComponentTrack track, int tier) {
@@ -268,20 +312,19 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
                 contentWidth(MARGIN));
         CrtDraw.glowText(graphics, font, status(), contentLeft(MARGIN), below, tuning.phosphorColor());
         scroll.hint().ifPresent(hint -> CrtDraw.glowText(graphics, font, hint, hintX, hintY, tuning.phosphorColor()));
-        String[] note = note();
-        for (int line = 0; line < note.length; line++) {
-            CrtDraw.glowText(graphics, font, note[line], noteX, noteY + line * font.lineHeight, tuning.phosphorColor());
+        for (Text text : texts) {
+            CrtDraw.glowText(graphics, font, text.text(), text.x(), text.y(), tuning.phosphorColor());
         }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 
     /** What the chosen track's top tier does that its price does not say, one string for each line; none for a track with no note (#712: the heat shield's pack-first order). */
-    private String[] note() {
+    private List<String> note() {
         String key = "screen.deepcharter.upgrade.note." + selected.id();
         if (!Language.getInstance().has(key)) {
-            return new String[0];
+            return List.of();
         }
-        return Component.translatable(key).getString().split("\n");
+        return List.of(Component.translatable(key).getString().split("\n"));
     }
 
     /** The pod, its tier cap and the account, or why there is no pod. */

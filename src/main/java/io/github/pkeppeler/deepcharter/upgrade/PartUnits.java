@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -42,6 +43,11 @@ public final class PartUnits {
 
     /** Loads the class, which registers the units. */
     public static void register() {}
+
+    /** The crafted unit of {@code track}, whose recipe makes its tier 1. */
+    public static Item unit(ComponentTrack track) {
+        return Objects.requireNonNull(UNITS.get(track), () -> "every track has a unit; " + track.id() + " has none");
+    }
 
     /** The track a stack is the crafted unit of, if it is one. */
     public static Optional<ComponentTrack> trackOf(ItemStack stack) {
