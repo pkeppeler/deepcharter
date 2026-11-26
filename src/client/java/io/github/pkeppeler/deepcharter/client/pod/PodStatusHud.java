@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
@@ -12,6 +13,7 @@ import io.github.pkeppeler.deepcharter.pod.PodHeatShield;
 import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodSprint;
@@ -130,6 +132,16 @@ public final class PodStatusHud {
                 .map(state -> Component.translatable(
                         state.above() ? "hud.deepcharter.pod.lava_above" : "hud.deepcharter.pod.lava_near",
                         state.blocksOff()));
+    }
+
+    /**
+     * The warning line shown, steady, while the load is at or over the climb limit ({@link PodLoad#cannotClimb}, #1449): the held rotor cannot climb, though the pod
+     * still drives. It labels the cockpit's overloaded lamp, and is the plain HUD's only overload cue.
+     */
+    public static Optional<Component> overloadedLine(PodEntity pod) {
+        return PodLoad.of(pod).cannotClimb()
+                ? Optional.of(Component.translatable("hud.deepcharter.pod.overloaded"))
+                : Optional.empty();
     }
 
     /** The warning line shown while the alarm of the pod's zone rings (#973, {@link DrifterAlarm}): the seconds it has left. */
@@ -259,6 +271,7 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.sprint", Kind.INFO),
             Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
             Map.entry("hud.deepcharter.pod.burning", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.overloaded", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_spent", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT),
@@ -279,9 +292,14 @@ public final class PodStatusHud {
 
     /** A line of the readout and the colour it is drawn in. */
     public record Line(Component text, int color) {
-        /** The kind of a line from its key in {@link #KINDS}; a line of plain text (the account line) is a note. */
+        /**
+         * The kind of a line from its key in {@link #KINDS}; a line of plain text, and the charter's account line ({@link AccountHud#KEY}), which the cockpit's plate shows
+         * under its tally, are notes. A plate too long for its room drops notes from the end up and asks each row it passes for its kind, so the account line must have one
+         * (#1457: a burning, stranded pod on a 320 wide GUI crashed the game here).
+         */
         public Kind kind() {
-            if (!(text.getContents() instanceof TranslatableContents contents)) {
+            if (!(text.getContents() instanceof TranslatableContents contents)
+                    || contents.getKey().equals(AccountHud.KEY)) {
                 return Kind.INFO;
             }
             Kind kind = KINDS.get(contents.getKey());
@@ -299,6 +317,7 @@ public final class PodStatusHud {
         List<Line> readout = new ArrayList<>(statusLines(pod));
         sprintLine(pod).ifPresent(line -> readout.add(new Line(line, look.podSprintColor())));
         burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+        overloadedLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         glazeLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         drifterAlarmLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));
