@@ -172,7 +172,7 @@ public class VoidBelowTest {
         helper.succeed();
     }
 
-    /** The pod on the last crust row at {@code x}: the fall after it lands soft, so the drop is 0 and the drill is not hollow. */
+    /** The pod on the last crust row at {@code x}: the fall after it lands soft, so no drop price and no hollow drill. */
     private static void softFloor(GameTestHelper helper, ServerLevel level, int x, String what) {
         expectWarning(helper, pod(level, x, 1, ROW), 0, 1, ROW, 0f, "over " + what + ", with no drop part");
         PodEntity last = pod(level, x, 1, 100f);

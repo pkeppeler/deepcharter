@@ -27,9 +27,9 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Client GameTest for the drop on the crust warning (#1387): a pod 7 slabs above the crust, over a cave that a fall from
- * the last crust row lands hard in, reads the warning with the drop's price from the client's own blocks. Its hull of
- * 32 outlasts the crust's 24, so without the drop there would be no line at all.
+ * Client GameTest for the drop on the crust warning (#1387): a pod 7 slabs above the crust, over a cave that a fall
+ * from the last crust row lands hard in, reads the warning with the drop's price from the client's own blocks. Its
+ * hull of 32 outlasts the crust's 24, so without the drop there would be no line at all.
  */
 public class VoidBelowClientTest implements FabricClientGameTest {
     private static final int CRUST_ROWS = LayerTuning.DEFAULT.crustThickness();
