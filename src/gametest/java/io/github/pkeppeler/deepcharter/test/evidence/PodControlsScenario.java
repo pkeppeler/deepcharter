@@ -3,6 +3,8 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.client.pod.PodChase;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSteeringTuning;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -39,16 +41,26 @@ public class PodControlsScenario extends EvidenceScenario {
     private static final int WALL_DEPTH = 5;
     private static final int LAMP_GAP = 5;
     private static final int TICKS_PER_FRAME = 3;
-    /** A drive leg: 6 blocks at the stock 0.2 a tick, so the legs below stay inside the room. */
-    private static final int LEG_TICKS = 30;
+    /**
+     * The drive legs' ticks come from these distances and the stock drive speed, so the tour stays inside the room
+     * whatever the speed (#1409). The turn legs that drive arc wider as the speed rises; the start leaves room for that.
+     */
+    private static final double LEG_BLOCKS = 5;
     /** A first-person drive leg, shorter: the room's west wall is near by then. */
-    private static final int SHORT_LEG_TICKS = 9;
+    private static final double SHORT_LEG_BLOCKS = 2;
+    /** Backing up is slower than driving, and the camera sits behind the nose: a short leg keeps the pod in frame. */
+    private static final double REVERSE_BLOCKS = 1.5;
+
+    private static final double SPEED = PodTuning.DEFAULT.movement().horizontalSpeed();
+    private static final int LEG_TICKS = ticksFor(LEG_BLOCKS, SPEED);
+    private static final int SHORT_LEG_TICKS = ticksFor(SHORT_LEG_BLOCKS, SPEED);
+    private static final int REVERSE_TICKS = ticksFor(REVERSE_BLOCKS, SPEED * PodSteeringTuning.DEFAULT.reverseShare());
+    private static final double START_X = X + 4.5;
+    private static final double START_Z = Z - 9.5;
     /** A turn leg: a quarter turn at the steady 6 degrees a tick, and not a degree more once the key is let go. */
     private static final int TURN_TICKS = 15;
     /** Ticks the pod stands after a turn in place, to show the turn stopped with the key. */
     private static final int STAND_TICKS = 15;
-    /** Backing up is slower than driving, and the camera sits behind the nose: a short leg keeps the pod in frame. */
-    private static final int REVERSE_TICKS = 18;
 
     private static final int DRILL_TICKS = 360;
     private static final int SLABS_SHOWN = 2;
@@ -98,7 +110,7 @@ public class PodControlsScenario extends EvidenceScenario {
                 }
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                player.teleportTo(one, X + 0.5, FLOOR_Y, Z - 8.5, Set.of(), 0, 0, true);
+                player.teleportTo(one, START_X, FLOOR_Y, START_Z, Set.of(), 0, 0, true);
             });
             ClientWait.until(
                     context,
@@ -113,7 +125,7 @@ public class PodControlsScenario extends EvidenceScenario {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
-                pod.setPos(X + 0.5, FLOOR_Y, Z - 8.5);
+                pod.setPos(START_X, FLOOR_Y, START_Z);
                 one.addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the player could not mount the pod");
@@ -200,6 +212,11 @@ public class PodControlsScenario extends EvidenceScenario {
             context.runOnClient(client -> client.gui.toastManager().clear());
             screenshot(context, "pod-controls-bored-straight");
         }
+    }
+
+    /** Ticks to cover {@code blocks} at {@code speed} blocks a tick. */
+    private static int ticksFor(double blocks, double speed) {
+        return (int) Math.round(blocks / speed);
     }
 
     /** The directive toast of boarding slides over the frame for seconds: clear it, then record the frame. */

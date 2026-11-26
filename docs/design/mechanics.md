@@ -2567,11 +2567,11 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Open questions.** The layer 1 dimension (outside the campaign world) keeps one rock and the old caves. The strata's grain (#1272) and a depth ruler on the scanner come next.
 
-## Pod controls and the chase camera (#1281, #1268, #1442, A)
+## Pod controls and the chase camera (#1281, #1268, A)
 
 **Problem.** The pod read WASD relative to the pilot's view, snapped to four directions, and turned to face where it drove. With a camera behind the pod, pressing back made it turn round and drive at the camera. That is a top-down scheme, and Minecraft players already know the vehicle one ([ADR 0095](../adr/0095-pods-steer-like-a-boat-and-the-pilots-camera-chases-them.md)).
 
-**Rule.** Tank controls, the ground-vehicle convention: a tracked vehicle's skid steer, as tank games and the "tank controls" of third-person games drive. The first version copied the vanilla boat (`AbstractBoat`); the user's friends-server playtest (2026-11-26, #1442) found its carried turn wrong for a vehicle on treads, so the steering half is now tank-style and the camera half stays.
+**Rule.** Tank controls, the ground-vehicle convention: a tracked vehicle's skid steer, as tank games and the "tank controls" of third-person games drive. The first version copied the vanilla boat (`AbstractBoat`); the user's friends-server playtest (2026-11-26, [#1442](https://github.com/pkeppeler/deepcharter/issues/1442)) found its carried turn wrong for a vehicle on treads, so the steering half is now tank-style and the camera half stays.
 
 | Key | Pod | Convention | Note |
 |---|---|---|---|
@@ -2588,7 +2588,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **The grid overrides the steering.** When the drill engages, the pod turns square to the compass at 15 degrees a tick, and the slab's first tick waits until it is square and centred. A sideways bore takes the compass direction nearest the nose, and only while W presses the pod against rock ahead of it. A bore down takes the nearest one too. In a bore as wide as the pod (rock beside it on both sides, on the ground) the pod squares itself and A and D do not steer it, so tunnels stay straight. One press of A or D there, while the pod is roughly square (within 15 degrees), turns it a quarter to the next compass direction (D clockwise), eased at the align rate; a held key is one press. W then drills the branch. A towed pod turns toward the way the line drags it, at 10 degrees a tick. Everything is the server's: the client sends only its keys, as before.
 
-**Knobs.** `PodSteeringTuning`: `turnSpeed` (6 degrees a tick: a quarter turn in 15 ticks, and 120 degrees in a one-second hold, close to the boat steering's 112 in its first second, which players already had in their hands), `reverseShare` (0.4), `alignDegrees` (15), `alignTolerance` (0.5). `PodChase`: `LOOK_HOLD_TICKS` (20), `SETTLE_DEGREES` (4). The chase camera needed no change: it adds the pod's turn to the view each tick, so a turn that stops at once stops the view with it, and the third-person ease-back (4 a tick, under the 6 of the turn) only runs once the mouse is still.
+**Knobs.** `PodSteeringTuning`: `turnSpeed` (6 degrees a tick: a quarter turn in 15 ticks, and 120 degrees in a one-second hold, close to the boat steering's 121 in its first second, which players already had in their hands), `reverseShare` (0.4), `alignDegrees` (15), `alignTolerance` (0.5). `PodChase`: `LOOK_HOLD_TICKS` (20), `SETTLE_DEGREES` (4). The chase camera needed no change: it adds the pod's turn to the view each tick, so a turn that stops at once stops the view with it, and the third-person ease-back (4 a tick, under the 6 of the turn) only runs once the mouse is still.
 
 **Open questions.**
 - Whether the pod should accelerate to its speed. It does not yet: the speed is a stat the client smoothing and the fuel numbers assume.

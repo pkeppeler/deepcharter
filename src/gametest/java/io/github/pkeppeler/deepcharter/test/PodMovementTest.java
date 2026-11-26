@@ -213,6 +213,11 @@ public class PodMovementTest {
         Rig rig = Rig.build(helper, 0, SOUTH);
         rig.pilot.setInput(RIGHT);
         helper.runAfterDelay(20, () -> {
+            float turned = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+            if (turned <= TURN_EPSILON) {
+                rig.finish();
+                throw failure(helper, "a held D should have turned the pod before it was let go, it turned %s", turned);
+            }
             rig.pilot.releaseInput();
             helper.runAfterDelay(2, () -> {
                 float stopped = rig.pod.getYRot();

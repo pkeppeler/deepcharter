@@ -5,7 +5,7 @@ package io.github.pkeppeler.deepcharter.pod;
  * where it drills. It is a record of its own because {@link PodTuning} takes no more changes.
  *
  * @param turnSpeed degrees a tick the pod turns while A or D is held, from the first tick to the last, and 0 once let
- *     go. 6 turns a quarter in under a second, about what the boat steering it replaces turned in its first second
+ *     go
  * @param reverseShare share of the drive speed that S backs up at
  * @param alignDegrees degrees a tick the pod turns to the grid when the drill engages, or in a bore as wide as itself
  * @param alignTolerance degrees from the grid within which the pod counts as square to it and snaps onto it
