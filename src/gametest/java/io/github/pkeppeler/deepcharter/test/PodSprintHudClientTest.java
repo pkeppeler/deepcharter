@@ -50,10 +50,14 @@ public class PodSprintHudClientTest implements FabricClientGameTest {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.setGameMode(GameType.SURVIVAL);
                 RoomCarver.carve(one, -4, 4, FEET_Y - 1, FEET_Y - 1, -2, CORRIDOR, Blocks.STONE);
                 RoomCarver.carve(one, -4, 4, FEET_Y, FEET_Y + 6, -2, CORRIDOR, Blocks.AIR);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, CORRIDOR / 2, CORRIDOR / 2);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, START.x, START.y, START.z, Set.of(), 0f, 0f, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(START);

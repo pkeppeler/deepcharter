@@ -57,8 +57,8 @@ public class NavigatorSonarScenario extends EvidenceScenario {
     private static final int ZOOM_MARGIN = 12;
     private static final int TOAST_SETTLE_TICKS = 30;
     private static final String LONG_STEP =
-            "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
-                    + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
+            "Carry the whole of a very long instruction through the hatch, past the second sump pump and the old tally"
+                    + " board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
 
     @Override
     protected String name() {
