@@ -275,9 +275,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         if (!alerts.equals(expected)) {
             throw new AssertionError(
                     "The warnings that light the fourth lamp are the burning hull, overloaded, the glaze that holds or"
-                        + " is spent, stranded and the Company winch's countdown, the crust, the brace that cannot"
-                        + " work, the seepage, no brick, a hard landing, lava in or above the shaft and the hollows'"
-                        + " alarm: got "
+                            + " is spent, stranded and the Company winch's countdown, the crust, the brace that cannot"
+                            + " work, the seepage, no brick, a hard landing, lava in or above the shaft and the hollows'"
+                            + " alarm: got "
                             + alerts);
         }
         PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
