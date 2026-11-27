@@ -72,7 +72,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
                     account(singleplayer, scene) == START_BALANCE - 10,
                     "10 HP cost $10, the account is $" + account(singleplayer, scene));
 
-            clickRow(context, "BUY DYNAMITE $100");
+            clickRow(context, "BUY DYNAMITE $120");
             ClientWait.until(
                     context,
                     "one dynamite carried",
@@ -80,8 +80,8 @@ public class RepairStationClientTest implements FabricClientGameTest {
                     () -> carried(singleplayer, Consumable.DYNAMITE) + " dynamite, account $"
                             + account(singleplayer, scene));
             require(
-                    account(singleplayer, scene) == START_BALANCE - 10 - 100,
-                    "the dynamite cost $100, the account is $" + account(singleplayer, scene));
+                    account(singleplayer, scene) == START_BALANCE - 10 - 120,
+                    "the dynamite cost $120, the account is $" + account(singleplayer, scene));
 
             clickRow(context, "REPAIR ALL");
             ClientWait.until(
@@ -91,7 +91,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
                     () -> "hull " + hull(singleplayer, scene) + " of "
                             + scene.pod().maxHull() + ", account $" + account(singleplayer, scene));
             require(
-                    account(singleplayer, scene) == START_BALANCE - 10 - 100 - 30 * 1,
+                    account(singleplayer, scene) == START_BALANCE - 10 - 120 - 30 * 1,
                     "the rest of the hull cost $30, the account is $" + account(singleplayer, scene));
             expectTheSootRowsOnlyWhereTheyApply(context, singleplayer, scene);
             expectTheSuitRowsMoveOnAsTiersAreBought(context, singleplayer, scene);
@@ -220,7 +220,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
                 client -> client.player != null
                         && client.player.getAttached(SuitRegistry.TRACKS) instanceof Versioned.Unreadable<SuitTracks>);
         // The list is rebuilt by the server's next answer: a purchase elsewhere on the list asks for one.
-        clickRow(context, "BUY DYNAMITE $100");
+        clickRow(context, "BUY DYNAMITE $120");
         ClientWait.until(
                 context,
                 "the unreadable row",

@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.pod.PodCharge;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
@@ -66,6 +67,17 @@ public class ShapedChargeTest {
 
     private static void scene(
             GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<PodEntity> afterSet, Verify verify) {
+        scene(helper, x, build, pod -> {}, afterSet, verify);
+    }
+
+    /** As {@link #scene(GameTestHelper, int, Consumer, Consumer, Verify)}, with {@code beforeSet} run on the resting pod just before the charge is set. */
+    private static void scene(
+            GameTestHelper helper,
+            int x,
+            Consumer<ServerLevel> build,
+            Consumer<PodEntity> beforeSet,
+            Consumer<PodEntity> afterSet,
+            Verify verify) {
         ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer pilot = MockPlayers.join(helper, "shaped-" + x);
         Vec3 at = new Vec3(x, FLOOR, Z);
@@ -93,6 +105,7 @@ public class ShapedChargeTest {
                 return;
             }
             if (setAt[0] < 0) {
+                beforeSet.accept(pod[0]);
                 hull[0] = pod[0].hull();
                 InteractionResult result = ChargeUse.use(pilot.player(), Consumable.SHAPED_CHARGE);
                 if (!result.consumesAction()) {
@@ -267,6 +280,41 @@ public class ShapedChargeTest {
         });
     }
 
+    /**
+     * A charge is never a suicide button (#1458): a pod left sitting on a shaped charge over a full {@code shapedDepth} column takes the blast
+     * and then falls the whole column, braked only by the ground cushion. At exactly that cost the charge is refused; just over it the pod lives through both.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPodJustOverTheGuardSurvivesTheBlastAndTheDropDownAFullColumn(GameTestHelper helper) {
+        int x = 4464;
+        int depth = TUNING.shapedDepth();
+        float[] guard = new float[1];
+        scene(
+                helper,
+                x,
+                level -> {
+                    for (int dx = -1; dx <= 0; dx++) {
+                        for (int dz = -1; dz <= 0; dz++) {
+                            rock(level, x + dx, dz, depth);
+                        }
+                    }
+                },
+                pod -> {
+                    guard[0] = PodCharge.wreckingHull(pod, TUNING, depth);
+                    if (guard[0] <= TUNING.chargeDamage()) {
+                        throw failure(
+                                helper,
+                                "the %d row drop should cost hull over the cushion, the guard is only %.2f",
+                                depth,
+                                guard[0]);
+                    }
+                    ChargeUse.refuseAtGuardThenClearIt(helper, pod, Consumable.SHAPED_CHARGE, guard[0]);
+                },
+                pod -> {},
+                (helper2, level, pod, hull) ->
+                        ChargeUse.expectSurvivedBlastAndDrop(helper2, pod, hull, guard[0], FLOOR - depth));
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodBeyondTheReachTakesNone(GameTestHelper helper) {
         scene(
@@ -334,10 +382,11 @@ public class ShapedChargeTest {
             } else if (step[0] == 2) {
                 pending[0] = expectRefusedAndKept(helper, pilot, "a run that ends on lava", "charge_opens_lava");
                 level.setBlock(cell(x, -4, 0), Blocks.STONE.defaultBlockState(), 2);
-                pod[0].setHull(TUNING.chargeDamage());
+                pod[0].setHull(PodCharge.wreckingHull(pod[0], TUNING, 3)); // the 3 row run: a drop too short to hurt
                 step[0] = 3;
             } else if (step[0] == 3) {
-                pending[0] = expectRefusedAndKept(helper, pilot, "a hull no more than the blast", "charge_hull_low");
+                pending[0] = expectRefusedAndKept(
+                        helper, pilot, "a hull no more than the blast and the drop", "charge_hull_low");
                 pod[0].setHull(pod[0].maxHull());
                 pod[0].setPos(pod[0].getX(), pod[0].getY() + 3, pod[0].getZ());
                 step[0] = 4;

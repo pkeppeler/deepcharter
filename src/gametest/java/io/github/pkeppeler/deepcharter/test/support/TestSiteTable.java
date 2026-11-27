@@ -196,6 +196,102 @@ final class TestSiteTable {
         claim("LayerStructuresTest", 2, 1392, 1439, 1200, 1279);
         claim("LayerStructuresTest", 2, 1472, 1487, 1472, 1487);
         claim("LayerStructuresTest", 2, 1504, 1519, 1344, 1359);
+        // Sites StructureSite picks by seed lie anywhere in their 384-block cell: a cell is claimed whole, but for
+        // the boxes other tests claim in it.
+        claim("LayerStructuresTest", 1, 1152, 1535, 1152, 1198);
+        claim("LayerStructuresTest", 1, 1152, 1535, 1202, 1398);
+        claim("LayerStructuresTest", 1, 1152, 1535, 1402, 1535);
+        claim("LayerStructuresTest", 1, 1152, 1398, 1399, 1401);
+        claim("LayerStructuresTest", 1, 1402, 1535, 1399, 1401);
+        claim("LayerStructuresTest", 1, 1152, 1198, 1199, 1201);
+        claim("LayerStructuresTest", 1, 1202, 1535, 1199, 1201);
+        claim("LayerStructuresTest", 1, 2304, 2687, 2304, 2397);
+        claim("LayerStructuresTest", 1, 2304, 2687, 2403, 2498);
+        claim("LayerStructuresTest", 1, 2304, 2687, 2502, 2598);
+        claim("LayerStructuresTest", 1, 2304, 2687, 2602, 2687);
+        claim("LayerStructuresTest", 1, 2304, 2598, 2599, 2601);
+        claim("LayerStructuresTest", 1, 2602, 2687, 2599, 2601);
+        claim("LayerStructuresTest", 1, 2304, 2498, 2499, 2501);
+        claim("LayerStructuresTest", 1, 2502, 2687, 2499, 2501);
+        claim("LayerStructuresTest", 1, 2304, 2397, 2398, 2402);
+        claim("LayerStructuresTest", 1, 2403, 2497, 2398, 2402);
+        claim("LayerStructuresTest", 1, 2503, 2547, 2398, 2402);
+        claim("LayerStructuresTest", 1, 2553, 2597, 2398, 2402);
+        claim("LayerStructuresTest", 1, 2603, 2647, 2398, 2402);
+        claim("LayerStructuresTest", 1, 2653, 2687, 2398, 2402);
+        claim("LayerStructuresTest", 1, 2688, 3071, 2688, 2994);
+        claim("LayerStructuresTest", 1, 2688, 3071, 3006, 3006);
+        claim("LayerStructuresTest", 1, 2688, 2994, 2995, 3005);
+        claim("LayerStructuresTest", 1, 3007, 3058, 2995, 3005);
+        claim("LayerStructuresTest", 1, 3071, 3071, 2995, 3005);
+        claim("LayerStructuresTest", 1, 2688, 3071, 3030, 3071);
+        claim("LayerStructuresTest", 1, 2688, 3006, 3007, 3029);
+        claim("LayerStructuresTest", 1, 3072, 3455, 3072, 3194);
+        claim("LayerStructuresTest", 1, 3072, 3455, 3206, 3455);
+        claim("LayerStructuresTest", 1, 3072, 3194, 3195, 3205);
+        claim("LayerStructuresTest", 1, 3207, 3258, 3195, 3205);
+        claim("LayerStructuresTest", 1, 3271, 3322, 3195, 3205);
+        claim("LayerStructuresTest", 1, 3335, 3455, 3195, 3205);
+        claim("LayerStructuresTest", 1, 3456, 3839, 3456, 3497);
+        claim("LayerStructuresTest", 1, 3456, 3839, 3503, 3535);
+        claim("LayerStructuresTest", 1, 3456, 3839, 3552, 3615);
+        claim("LayerStructuresTest", 1, 3456, 3679, 3536, 3551);
+        claim("LayerStructuresTest", 1, 3696, 3839, 3536, 3551);
+        claim("LayerStructuresTest", 1, 3456, 3497, 3498, 3502);
+        claim("LayerStructuresTest", 1, 3503, 3839, 3498, 3502);
+        claim("LayerStructuresTest", 1, 3456, 3839, 3696, 3697);
+        claim("LayerStructuresTest", 1, 3456, 3839, 3703, 3797);
+        claim("LayerStructuresTest", 1, 3456, 3839, 3803, 3839);
+        claim("LayerStructuresTest", 1, 3456, 3797, 3798, 3802);
+        claim("LayerStructuresTest", 1, 3803, 3839, 3798, 3802);
+        claim("LayerStructuresTest", 1, 3456, 3697, 3698, 3702);
+        claim("LayerStructuresTest", 1, 3703, 3839, 3698, 3702);
+        claim("LayerStructuresTest", 1, 3456, 3759, 3616, 3695);
+        claim("LayerStructuresTest", 1, 3776, 3839, 3616, 3695);
+        claim("LayerStructuresTest", 1, 3840, 4223, 3840, 4223);
+        claim("LayerStructuresTest", 1, 4224, 4607, 4224, 4607);
+        claim("LayerStructuresTest", 1, 11520, 11903, 11520, 11903);
+        claim("LayerStructuresTest", 1, 11904, 12287, 11904, 11996);
+        claim("LayerStructuresTest", 1, 11904, 12287, 12004, 12287);
+        claim("LayerStructuresTest", 1, 11904, 11996, 11997, 12003);
+        claim("LayerStructuresTest", 1, 12004, 12096, 11997, 12003);
+        claim("LayerStructuresTest", 1, 12104, 12196, 11997, 12003);
+        claim("LayerStructuresTest", 1, 12204, 12287, 11997, 12003);
+        claim("LayerStructuresTest", 1, 12288, 12671, 12288, 12671);
+        claim("LayerStructuresTest", 1, 12672, 13055, 12672, 12991);
+        claim("LayerStructuresTest", 1, 12672, 13055, 13008, 13055);
+        claim("LayerStructuresTest", 1, 12672, 12991, 12992, 13007);
+        claim("LayerStructuresTest", 1, 13008, 13055, 12992, 13007);
+        claim("LayerStructuresTest", 1, 13056, 13439, 13056, 13439);
+        claim("LayerStructuresTest", 1, 13440, 13823, 13440, 13823);
+        claim("LayerStructuresTest", 2, 1152, 1535, 1152, 1198);
+        claim("LayerStructuresTest", 2, 1152, 1535, 1202, 1398);
+        claim("LayerStructuresTest", 2, 1152, 1535, 1402, 1535);
+        claim("LayerStructuresTest", 2, 1152, 1398, 1399, 1401);
+        claim("LayerStructuresTest", 2, 1402, 1535, 1399, 1401);
+        claim("LayerStructuresTest", 2, 1152, 1198, 1199, 1201);
+        claim("LayerStructuresTest", 2, 1202, 1535, 1199, 1201);
+        claim("LayerStructuresTest", 2, 2304, 2687, 2304, 2399);
+        claim("LayerStructuresTest", 2, 2304, 2687, 2416, 2687);
+        claim("LayerStructuresTest", 2, 2304, 2399, 2400, 2415);
+        claim("LayerStructuresTest", 2, 2416, 2687, 2400, 2415);
+        claim("LayerStructuresTest", 2, 2688, 3071, 2688, 3071);
+        claim("LayerStructuresTest", 2, 3072, 3455, 3072, 3455);
+        claim("LayerStructuresTest", 2, 3456, 3839, 3456, 3839);
+        claim("LayerStructuresTest", 2, 3840, 4223, 3840, 4223);
+        claim("LayerStructuresTest", 2, 4224, 4607, 4224, 4607);
+        claim("LayerStructuresTest", 2, 11520, 11903, 11520, 11903);
+        claim("LayerStructuresTest", 2, 11904, 12287, 11904, 11996);
+        claim("LayerStructuresTest", 2, 11904, 12287, 12004, 12287);
+        claim("LayerStructuresTest", 2, 11904, 12246, 11997, 12003);
+        claim("LayerStructuresTest", 2, 12254, 12287, 11997, 12003);
+        claim("LayerStructuresTest", 2, 12288, 12671, 12288, 12671);
+        claim("LayerStructuresTest", 2, 12672, 13055, 12672, 12991);
+        claim("LayerStructuresTest", 2, 12672, 13055, 13008, 13055);
+        claim("LayerStructuresTest", 2, 12672, 12991, 12992, 13007);
+        claim("LayerStructuresTest", 2, 13008, 13055, 12992, 13007);
+        claim("LayerStructuresTest", 2, 13056, 13439, 13056, 13439);
+        claim("LayerStructuresTest", 2, 13440, 13823, 13440, 13823);
 
         claim("LayerTerrainTest", 2, 1795, 1804, 1795, 1804);
         claim("LayerTerrainTest", 1, 896, 975, 896, 975);
@@ -223,12 +319,14 @@ final class TestSiteTable {
         claim("M2SliceTest", 2, 9296, 9311, 9296, 9311);
 
         row("OddChassisTest", 1, 8992, 9008, 48, 11, 8992, 9008);
+        claim("OddChassisTest", 1, 8992, 9488, 8992, 9008);
 
         row("OreCargoTest", 1, 3195, 3206, 64, 3, 3195, 3205);
 
         claim("OreHostTest", 1, 7399, 7408, 3007, 3009);
         claim("OreHostTest", 2, 7399, 7408, 3015, 3017);
         claim("OreHostTest", 3, 7399, 7408, 3023, 3025);
+        claim("OreHostTest", 1, 7040, 7055, 7040, 7055);
 
         claim("OrePlacementTest", 1, 7088, 7103, 2992, 3007);
         claim("OrePlacementTest", 1, 7792, 7807, 2992, 3007);
@@ -274,6 +372,8 @@ final class TestSiteTable {
         claim("OutpostTest", 1, 8991, 9019, 7191, 7209);
         claim("OutpostTest", 2, 8498, 8503, 7198, 7203);
 
+        claim("OvergrowthTest", 1, 4990, 5900, 6590, 6610);
+        claim("OvergrowthVeneerTest", 1, 4990, 5740, 6890, 6910);
         claim("PodAttachmentTest", 1, 1998, 2002, 1998, 2002);
         claim("PodAttachmentTest", 2, 1998, 2002, 1998, 2002);
 
@@ -359,6 +459,7 @@ final class TestSiteTable {
         claim("ProspectorChassisTest", 1, 3394, 3406, 2994, 3006);
         claim("ProspectorChassisTest", 1, 3698, 3702, 3698, 3702);
         claim("ProspectorChassisTest", 1, 3798, 3802, 3798, 3802);
+        claim("ProspectorChassisTest", 1, 3680, 3695, 3536, 3551);
 
         claim("RepairStationTest", 1, 27392, 27407, 27392, 27407);
         claim("RepairStationTest", 1, 27488, 27503, 27488, 27503);
@@ -404,6 +505,8 @@ final class TestSiteTable {
         claim("RetainedTest", 1, 7204, 7212, 7204, 7212);
         claim("RetainedTest", 2, 7204, 7212, 7204, 7212);
         claim("RetainedTest", 2, 7268, 7276, 7204, 7212);
+        claim("RetainedTest", 1, 6368, 6399, 6592, 6607);
+        claim("RetainedTest", 1, 6368, 6399, 6784, 6799);
 
         claim("RoomCarverSendTest", 1, 26403, 26411, 26403, 26411);
         claim("RoomCarverSendTest", 1, 26803, 26811, 26803, 26811);
@@ -415,6 +518,7 @@ final class TestSiteTable {
         claim("SeamStreamingTest", 1, 43008, 43023, 40000, 40015);
 
         row("ShapedChargeTest", 1, 4001, 4031, 64, 6, 5385, 5415);
+        claim("ShapedChargeTest", 1, 4400, 4415, 5392, 5407);
 
         row("ShippedChassisTest", 1, 10992, 11008, 48, 10, 8992, 9008);
         row("ShippedChassisTest", 1, 11992, 12008, 48, 10, 8992, 9008);
@@ -460,10 +564,13 @@ final class TestSiteTable {
         claim("TallyTest", 0, 6800, 6815, 7696, 7711);
         claim("TallyTest", 0, 6800, 6815, 7760, 7775);
         claim("TallyTest", 0, 52000, 52015, 52000, 52015);
+        claim("TallyTest", 1, 6800, 6815, 7824, 7839);
+        claim("TallyTest", 1, 6800, 6815, 7888, 7903);
 
         claim("TeleportArrivalTest", 0, 13984, 14031, -16, 31);
 
         row("TetherTest", 1, 16999, 17051, 64, 14, 16999, 17027);
+        claim("TetherTest", 1, 17888, 17903, 17008, 17023);
 
         claim("ThrownKitPacingTest", 1, 7751, 7801, 5375, 5425);
         claim("ThrownKitPacingTest", 1, 7815, 7865, 5375, 5425);
@@ -533,12 +640,8 @@ final class TestSiteTable {
         exempt("TheClaimTest", ownDimension);
         exempt("ContinuityEventTest", "stages only in the Nether, which the guards do not check");
         exempt(
-                "LayerStructuresTest",
-                "stages at the sites StructureSite picks by seed inside whole 384-block cells, which other tests' claims share,"
-                        + " so no box can name them without overlapping those claims");
-        exempt(
                 "ObtainableItemsTest",
-                "only reads the layer structure sites the world generates, the chunks LayerStructuresTest claims");
+                "only reads the layer structure sites the world generates, the cells LayerStructuresTest claims");
         String layerDimensions =
                 "stages only in the layer dimensions, which the guards do not check; SeamSite's index keeps"
                         + " the seam tests' sites apart";

@@ -7,6 +7,8 @@ import io.github.pkeppeler.deepcharter.layer.GrainedCrust;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
+import io.github.pkeppeler.deepcharter.layer.Overgrowth;
+import io.github.pkeppeler.deepcharter.layer.OvergrowthTuning;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -114,6 +116,11 @@ public final class PodDrill {
             PodRockBite.heat(pod);
             PodFuel.burnForBite(pod, stats, PodRockBite.fuelMultiplier());
         }
+        if (slab.hasOvergrowth()) {
+            // The growth of an unvisited bore (#974): soft, but it clogs the drill, so every tick of the slab burns
+            // extra fuel.
+            PodFuel.burnForBite(pod, stats, OvergrowthTuning.DEFAULT.drillFuelMultiplier());
+        }
         int ticks = progress != null ? progress.ticks() + 1 : 1;
         // A sounder that bleeds makes the drill wait before it bores a pocket; the blast then costs the pod at most a
         // share of its hull (PodSounder).
@@ -196,6 +203,10 @@ public final class PodDrill {
             return cells.stream().anyMatch(pos -> state(pos).is(HazardBlocks.UNDIGGABLE));
         }
 
+        boolean hasOvergrowth() {
+            return cells.stream().anyMatch(pos -> state(pos).is(LayerBlocks.OVERGROWTH));
+        }
+
         /** A sideways slab with any grained crust in it: the grain runs up and down, so a drill bores along it and never across it. */
         boolean acrossGrain() {
             return direction.getAxis().isHorizontal()
@@ -274,6 +285,9 @@ public final class PodDrill {
                     level.destroyBlock(pos, false);
                     if (state.is(HazardBlocks.GAS_POCKET)) {
                         GasHazard.vent(level, pos, pod, pod.chassis().blastShare(pod.drillDirection()));
+                    }
+                    if (Overgrowth.cutsBore(state)) {
+                        Overgrowth.markBore(level, pos);
                     }
                 }
             }

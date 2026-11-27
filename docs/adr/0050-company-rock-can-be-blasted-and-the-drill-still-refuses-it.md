@@ -8,6 +8,8 @@ Amends [ADR 0015](0015-zones-are-filled-block-by-block-from-the-originals-rows.m
 
 Amended by [ADR 0069](0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md): a hand tool can brute-force Company rock at a ruinous cost, so "a player's hand still cannot break it" no longer holds. The blasting charge and the drill's refusal stand.
 
+Retuned 2026-11-26 (#1458, [mechanics.md](../design/mechanics.md#explosive-tiers-1458-a)): the blasting charge clears 4 rows for $60, and the hull guard counts the blast plus the hard landing of the drop into its own hole, braked by the ground cushion (`PodCharge.wreckingHull`, 20 for a blasting charge), so "no more hull than the damage" below now reads "no more hull than the damage and that drop". The decision stands.
+
 ## Decision
 
 - **Company rock stays hardness -1 and in `deepcharter:undiggable`.** The pod drill still refuses a slab with it and a player's hand still cannot break it. Nothing about the drill or `CompanyRock` changes. What changes is that something else clears it.
