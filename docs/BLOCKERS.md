@@ -129,7 +129,7 @@ SPEC §7 says "later tiers reveal hazards". It does not say how the scanner show
    - the PR has no merge conflict
    The gate found and closed a gap: a later skipped check run could hide a failed one. See [PR #17](https://github.com/pkeppeler/deepcharter/pull/17) and [PR #22](https://github.com/pkeppeler/deepcharter/pull/22).
 4. **PR evidence.** A scripted scene records inside the game and makes a GIF and an MP4 that show in the PR. Nothing outside the game is ever captured. See the GIF in [PR #23](https://github.com/pkeppeler/deepcharter/pull/23).
-5. **The live roadmap.** [docs/ROADMAP.md](ROADMAP.md) is regenerated after each merge.
+5. **The live roadmap.** [docs/ROADMAP.md](ROADMAP.md) is regenerated in each landing (a batch carries it as one commit; the queue adds it after its merge).
 6. **Read-only Fabric source copies** for agents to read. AI instruction files are stripped from them. See [PR #18](https://github.com/pkeppeler/deepcharter/pull/18) and [PR #21](https://github.com/pkeppeler/deepcharter/pull/21).
 
 **What is not done:** the play-test bridge (#4, PR #24). See the entry below.

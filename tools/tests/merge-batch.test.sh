@@ -110,7 +110,7 @@ echo "merge-pr $*" >>"$LOG"
 case $1 in
   --preflight)
     if [[ -e $ST/pre_fail.$2 ]]; then echo "REFUSED: PR #$2 lacks the review-passed label"; exit 1; fi
-    echo "PREFLIGHT OK: PR #$2" ;;
+    echo "PREFLIGHT OK: PR #$2 at $(cat "$ST/sha.$2")" ;;
   --ci)
     k=$(($(cat "$ST/ci_calls" 2>/dev/null || echo 0) + 1))
     echo "$k" >"$ST/ci_calls"
@@ -123,6 +123,15 @@ case $1 in
       git -C "$tmpc/c" commit -q -m "main moved by $(cat "$ST/ci_moves_main")"
       git -C "$tmpc/c" push -q origin HEAD:main 2>/dev/null
       rm -rf "$tmpc" "$ST/ci_moves_main"
+    fi
+    if [[ -e $ST/push_after_ci ]]; then
+      # A push to PR <n> after its preflight: a new commit on its head, as GitHub and the pull ref both show it.
+      n=$(cat "$ST/push_after_ci")
+      old=$(git --git-dir="$ORIGIN" rev-parse "refs/pull/$n/head")
+      new=$(git --git-dir="$ORIGIN" commit-tree "$old^{tree}" -p "$old" -m "pushed after the preflight")
+      git --git-dir="$ORIGIN" update-ref "refs/pull/$n/head" "$new"
+      echo "$new" >"$ST/sha.$n"
+      rm "$ST/push_after_ci"
     fi
     if [[ -e $ST/ci.$k ]]; then
       read -r rc <"$ST/ci.$k"
@@ -296,6 +305,17 @@ printed "conflict drop: the others merged" "merged:  #1 #3"
 if [[ $(main_subjects) == "Title 1 (#1)|Title 3 (#3)|" ]]; then pass "conflict drop: main has the clean PRs"; else fail "conflict drop: $(main_subjects)"; fi
 if git --git-dir="$ORIGIN" grep -q '^<<<<<<<' refs/heads/main -- shared.txt 2>/dev/null; then fail "conflict drop: no markers on main"; else pass "conflict drop: no conflict markers on main"; fi
 not_logged "conflict drop: the dropped PR is not closed" "pulls/2 -f state=closed"
+
+# --- a PR pushed after its preflight is dropped on the rebuild: its review pass covers the old head (W1) ---
+reset
+mkpr 1; mkpr 2
+printf '1\nREFUSED: PR #100 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run [stale-base] (the head sha is unchanged)\n' >"$ST/ci.1"
+echo 2 >"$ST/push_after_ci"
+run_b 1 2
+printed "pushed after preflight: PR 2 is dropped on the rebuild" "dropped: #2 (head moved from "
+printed "pushed after preflight: the reason names the preflight" "(judged at its preflight)"
+printed "pushed after preflight: PR 1 still lands" "merged:  #1"
+if [[ $(main_subjects) == "Title 1 (#1)|" ]]; then pass "pushed after preflight: main has only the unmoved PR"; else fail "pushed after preflight: $(main_subjects)"; fi
 
 # --- a PR whose head moved since the preflight is dropped ---
 reset

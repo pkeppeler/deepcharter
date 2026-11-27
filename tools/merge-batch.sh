@@ -81,6 +81,8 @@ build_seq=0
 # (n's branch merged it); chain_head[n] is the head sha read when the chains were found.
 declare -A chain_prev=()
 declare -A chain_head=()
+# pf_head[n] is the head sha the preflight judged for PR n; a build drops a PR whose head is anything else.
+declare -A pf_head=()
 
 # comment <n> <text>: a comment on an issue or PR.
 comment() { gh api -X POST "repos/$repo/issues/$1/comments" -f body="$2" >/dev/null; }
@@ -216,6 +218,10 @@ build_batch() {
       continue
     fi
     fetched=$(git rev-parse FETCH_HEAD)
+    if [[ $head != "${pf_head[$n]:-}" ]]; then
+      drop "$n" "head moved from ${pf_head[$n]:0:9} (judged at its preflight) to ${head:0:9}; its review pass no longer covers it"
+      continue
+    fi
     if [[ $fetched != "$head" ]]; then
       drop "$n" "head moved from ${head:0:9} to ${fetched:0:9} while building; its review pass no longer covers it"
       continue
@@ -507,7 +513,12 @@ for n in "$@"; do
   rc=0
   out=$("$merge_pr" --preflight "$n" 2>&1) || rc=$?
   if ((rc == 0)); then
-    passing+=("$n")
+    if [[ $out =~ PREFLIGHT\ OK:\ PR\ \#$n\ at\ ([0-9a-f]+) ]]; then
+      pf_head[$n]=${BASH_REMATCH[1]}
+      passing+=("$n")
+    else
+      refused+=("#$n (the preflight did not name the head it judged)")
+    fi
   else
     [[ -z $out ]] || echo "$out"
     reason=$(grep -m1 -E '^(REFUSED|ERROR):' <<<"$out" || true)
