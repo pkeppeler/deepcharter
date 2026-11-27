@@ -15,6 +15,7 @@
   "deepcharter.terminal.refusal.state_unreadable": "This world has terminal data from another version of the mod",
   "deepcharter.terminal.refusal.too_far": "You are too far from the terminal",
   "deepcharter.terminal.refusal.unrepaired": "The terminal is offline",
+  "deepcharter.terminal.refusal.wrong_slot": "That part goes in another slot",
   "hint.deepcharter.right_click_use": "Right-click to use",
   "item.deepcharter.crusher_gear": "Crusher Gear",
   "item.deepcharter.fuel_valve": "Fuel Valve",
@@ -28,9 +29,7 @@
   "item.deepcharter.welding_arm": "Welding Arm",
   "screen.deepcharter.terminal.account": "ACCOUNT $%s",
   "screen.deepcharter.terminal.close": "CLOSE",
-  "screen.deepcharter.terminal.insert": "INSERT %s",
-  "screen.deepcharter.terminal.inserted": "[X] %s",
-  "screen.deepcharter.terminal.offline": "TERMINAL OFFLINE. INSERT EVERY PART TO BRING IT BACK ONLINE.",
+  "screen.deepcharter.terminal.offline": "TERMINAL OFFLINE. INSERT EVERY PART INTO ITS SLOT TO BRING IT BACK ONLINE.",
   "screen.deepcharter.terminal.offline_locked": "TERMINAL OFFLINE. REPAIR THE %s FIRST.",
   "screen.deepcharter.terminal.online": "TERMINAL ONLINE. WELCOME, CHARTER."
 }

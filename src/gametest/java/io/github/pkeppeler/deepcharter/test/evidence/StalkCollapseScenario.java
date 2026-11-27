@@ -9,14 +9,15 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.block.Block;
 
 /**
- * Evidence scenario "stalk-collapse" (#855): a player on foot walks up to the foot of the nearest great stalk the world grew (or, if the
- * survey of the colony's surroundings finds none, the nearest column of fungal stalk at least {@value #TALL_ENOUGH} blocks tall), breaks
- * it bare handed and backs away: everything above the break sags and bursts in a spore puff, layer by layer, and the drops scatter. The
- * stalk is the real generated feature, found by scanning the world, and the collapse is the real server logic. The frames run from the
- * break until the last layer has burst; the camera follows the fall down to the puff at the foot.
+ * Evidence scenario "stalk-collapse" (#855): a player on foot walks up to the foot of the nearest great stalk the world
+ * grew (or, if the survey of the colony's surroundings finds none, the nearest column of fungal stalk at least {@value
+ * #TALL_ENOUGH} blocks tall), breaks it bare handed and backs away: everything above the break bursts at once in a
+ * spore puff, like sugar cane, and the drops scatter. The stalk is the real generated feature, found by scanning the
+ * world, and the collapse is the real server logic. The frames run from the break until the puff and the drops have
+ * settled; the camera drops from the middle of the stalk to the puff at the foot.
  */
 public class StalkCollapseScenario extends EvidenceScenario {
-    /** A great stalk is tall; an ordinary column the scenario falls back to must still have something to sag. */
+    /** A great stalk is tall; an ordinary column the scenario falls back to must still have something to bring down. */
     private static final int TALL_ENOUGH = 4;
 
     private static final int GREAT_HEIGHT = 10;
@@ -26,12 +27,15 @@ public class StalkCollapseScenario extends EvidenceScenario {
     private static final int BACK_AWAY_TICKS = 24;
     /** The quiet walk up to the foot, ending a step inside the reach of a bare hand (about 9.5 blocks from a start 13 away). */
     private static final int APPROACH_TICKS = 44;
-    /** The camera follows the fall down to this many blocks above the foot, where the puff and the drops are, over {@link #FOLLOW_TICKS}. */
+    /**
+     * The camera drops to this many blocks above the foot, where the puff and the drops are, over {@link
+     * #FOLLOW_TICKS}.
+     */
     private static final int LOW_LOOK = 1;
-    /** The ticks the camera takes to follow the fall from the middle of the stalk down to {@link #LOW_LOOK}. */
+    /** The ticks the camera takes to drop from the middle of the stalk down to {@link #LOW_LOOK}. */
     private static final int FOLLOW_TICKS = 12;
-    /** The collapse of the tallest great stalk: its sag, a step for each layer and its cap, and a margin. */
-    private static final int COLLAPSE_TICKS = 100;
+    /** From the break: the collapse is instant, so this is the puff and the scattering drops settling, and a margin. */
+    private static final int COLLAPSE_TICKS = 45;
 
     @Override
     protected String name() {
@@ -63,7 +67,7 @@ public class StalkCollapseScenario extends EvidenceScenario {
         }
     }
 
-    /** The cut: standing, a walk up and the break with no frames, then the sag, the puff and the stalk settled. */
+    /** The cut: standing, a walk up and the break with no frames, then the puff and the stalk gone. */
     private void collapse(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos foot, int height) {
         BlockPos middle = foot.above(height / 2);
@@ -81,12 +85,13 @@ public class StalkCollapseScenario extends EvidenceScenario {
             if (tick == BACK_AWAY_TICKS) {
                 context.getInput().releaseKey(options -> options.keyDown);
             }
-            // The view starts on the middle of the stalk and follows the fall down to the puff at its foot.
+            // The view starts on the middle of the stalk and drops to the puff at its foot.
             int follow = Math.min(tick, FOLLOW_TICKS);
             int aim = height / 2 - (height / 2 - LOW_LOOK) * follow / FOLLOW_TICKS;
             context.getInput().lookAt(foot.above(aim));
             context.waitTicks(
-                    GatherWalk.TICKS_PER_FRAME); // tick-wait: the collapse takes a fixed number of server ticks
+                    GatherWalk
+                            .TICKS_PER_FRAME); // tick-wait: the puff and the drops take a fixed number of server ticks
             clean(context);
             frame(context);
         }

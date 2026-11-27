@@ -66,7 +66,7 @@ The scanner is a side-view map of the rock around your pod, drawn cell by cell, 
 
 ### 5. Ore and selling
 
-![A pod's cargo screen, loaded with ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
+![The pod screen, its hold loaded with ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
 
 Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park by the ore processor in the colony and sell it, and the money goes to your charter's account.
 
