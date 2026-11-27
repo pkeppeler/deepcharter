@@ -350,7 +350,8 @@ mkpr 1; mkpr 2
 run_b 1 2
 if [[ $(roadmap_on_main) == "roadmap --landing 1:1 --landing 2:2 --hide 100" ]]; then pass "roadmap: every landed PR and its issue is named"; else fail "roadmap args: $(roadmap_on_main)"; fi
 count "roadmap: one roadmap commit for the batch" "git push --no-verify origin " 1
-if [[ $(git --git-dir="$ORIGIN" log --format=%s "$base..refs/heads/main" | grep -c '^Regenerate roadmap') -eq 1 ]]; then pass "roadmap: one commit, not one per PR"; else fail "roadmap: commits"; fi
+landed_subjects=$(git --git-dir="$ORIGIN" log --format=%s "$base..refs/heads/main")
+if [[ $(grep -c '^Regenerate roadmap' <<<"$landed_subjects") -eq 1 ]]; then pass "roadmap: one commit, not one per PR"; else fail "roadmap: commits"; fi
 
 # --- a roadmap that cannot be generated does not stop the landing ---
 reset
