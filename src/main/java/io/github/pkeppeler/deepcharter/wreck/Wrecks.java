@@ -168,7 +168,8 @@ public final class Wrecks {
         }
         if (!Charters.isReadable(server)) {
             DeepCharter.LOGGER.error(
-                    "The wreck of pod {} is reported to nobody, because the saved charters cannot be read; the first charters error logged carries the cause",
+                    "The wreck of pod {} is reported to nobody, because the saved charters cannot be read; the first"
+                            + " charters error logged carries the cause",
                     pod.getUUID());
             return charters;
         }

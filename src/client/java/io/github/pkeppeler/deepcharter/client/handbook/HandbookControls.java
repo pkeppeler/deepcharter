@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
 import io.github.pkeppeler.deepcharter.client.pod.LiningKeys;
+import io.github.pkeppeler.deepcharter.client.pod.PodDumpKeys;
 import io.github.pkeppeler.deepcharter.client.pod.PodScreenKeys;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
 import java.util.LinkedHashSet;
@@ -14,9 +15,9 @@ import net.minecraft.network.chat.Component;
 
 /**
  * The controls pages of the handbook (#1260): one sheet each for the handbook, the parts catalogue, the pod, its screen
- * (#1270) and the scanner. Every key a line names is read from the player's own binding when the line is built, so a
- * rebind shows on the next draw and no key letter is written into the language file. A key the game does not let the
- * player rebind (Ctrl+F, the arrow keys) is written out in the line.
+ * (#1270), its cargo (#1456) and the scanner. Every key a line names is read from the player's own binding when the
+ * line is built, so a rebind shows on the next draw and no key letter is written into the language file. A key the
+ * game does not let the player rebind (Ctrl+F, the arrow keys) is written out in the line.
  */
 public final class HandbookControls {
     /**
@@ -90,6 +91,11 @@ public final class HandbookControls {
                     List.of(
                             new Row("open", List.of(options -> options.keyShift, options -> options.keyUse)),
                             new Row("seated", List.of(options -> PodScreenKeys.OPEN)))),
+            new Sheet(
+                    "cargo",
+                    List.of(
+                            new Row("dump", List.of(options -> PodDumpKeys.DUMP)),
+                            new Row("dump_stack", List.of(options -> options.keyDrop)))),
             new Sheet("scanner", List.of(new Row("map"), new Row("reach"))));
 
     private HandbookControls() {}
