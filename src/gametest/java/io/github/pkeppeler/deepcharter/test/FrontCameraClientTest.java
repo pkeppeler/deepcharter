@@ -204,8 +204,6 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         PodEntity[] made = {null};
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel one = TestLayers.level(server, 1);
-            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.setGameMode(GameType.SURVIVAL);
             RoomCarver.carve(
                     one,
                     -ROOM_RADIUS,
@@ -225,6 +223,12 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                             Block.UPDATE_ALL);
                 }
             }
+        });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(0.5, FEET_Y, 0.5);
@@ -284,7 +288,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         if (hiddenInThirdPerson) {
             throw new AssertionError(
-                    "In third person the pod is outside the view and is drawn: the camera hides the cab only from the seat in first person");
+                    "In third person the pod is outside the view and is drawn: the camera hides the cab only from the"
+                            + " seat in first person");
         }
         int[] otherId = {0};
         singleplayer.getServer().runOnServer(server -> {

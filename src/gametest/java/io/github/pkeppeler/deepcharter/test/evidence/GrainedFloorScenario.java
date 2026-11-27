@@ -59,6 +59,10 @@ public class GrainedFloorScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel level = TestLayers.level(server, LAST);
                 build(level);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), LAST, X, Z, HALF + 1);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel level = TestLayers.level(server, LAST);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.setPermanentlyInvulnerable(true);

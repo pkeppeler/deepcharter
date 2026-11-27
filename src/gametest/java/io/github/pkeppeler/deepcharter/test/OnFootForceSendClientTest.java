@@ -217,7 +217,9 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         steps.end("laps");
         int onTheBlocks = ForceSends.total() - before;
 
-        UUID podId = server.computeOnServer(s -> addPodOnALedge(s.overworld(), floor));
+        server.runOnServer(s -> carveTheLedge(s.overworld(), floor));
+        ClientWait.lightSettled(context, server, 1, X, X, ROOM_RADIUS);
+        UUID podId = server.computeOnServer(s -> addPodOnTheLedge(s.overworld(), floor));
         ClientWait.until(context, "the pod on the client", client -> holdsEntity(client, podId));
         for (int trip = 0; trip < TETHER_TRIPS; trip++) {
             clipAtTheMouth(server, floor, podId);
@@ -320,11 +322,8 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
         }
     }
 
-    /**
-     * A pod on the ledge of a room over the bore, which the tether's route follows up and across, and the pit of
-     * {@link #PIT_DX}.
-     */
-    private static UUID addPodOnALedge(ServerLevel level, int floor) {
+    /** The ledge of a room over the bore, which the tether's route follows up and across, and the pit of {@link #PIT_DX}. */
+    private static void carveTheLedge(ServerLevel level, int floor) {
         int ledge = floor + DROP;
         RoomCarver.carve(
                 level, X - ROOM_RADIUS, X + ROOM_RADIUS, ledge, ledge, X - ROOM_RADIUS, X + ROOM_RADIUS, Blocks.STONE);
@@ -340,6 +339,11 @@ public class OnFootForceSendClientTest implements FabricClientGameTest {
                 Blocks.AIR);
         RoomCarver.carve(level, X + PIT_DX, X + PIT_DX, floor - 1, floor - 1, X, X, Blocks.STONE);
         RoomCarver.carve(level, X + PIT_DX, X + PIT_DX, floor, ledge, X, X, Blocks.AIR);
+    }
+
+    /** A pod on the ledge {@link #carveTheLedge} cut. */
+    private static UUID addPodOnTheLedge(ServerLevel level, int floor) {
+        int ledge = floor + DROP;
         PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(X + POD_OFFSET, ledge + 1, X + 0.5);
         level.addFreshEntity(pod);
