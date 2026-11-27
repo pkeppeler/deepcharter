@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests .githooks/pre-push with stub gradlew, uv and shellcheck: skip rules, docs-only pushes skipping Gradle, failure blocking, worktree cwd.
+# Tests .githooks/pre-push (one Gradle run, budget, failing task named) with stub gradlew, uv and shellcheck: skip rules, docs-only pushes skipping Gradle, failure blocking, worktree cwd.
 # Usage: tools/tests/pre-push-hook.test.sh
 set -euo pipefail
 # shellcheck source=/dev/null
@@ -16,7 +16,8 @@ cp "$repo/.githooks/pre-push" "$work/.githooks/pre-push"
 cat >"$work/gradlew" <<'S'
 #!/usr/bin/env bash
 echo "gradlew $*" >>"$STUB_LOG"
-[[ ${STUB_FAIL:-} != gradle ]]
+echo "> Task :compileJava"
+[[ ${STUB_FAIL:-} != gradle ]] || { echo "> Task :spotlessJavaCheck FAILED"; echo "Execution failed for task ':spotlessJavaCheck'."; exit 1; }
 S
 # The hook runs Python through tools/py, which runs uv: the stub uv plays the interpreter.
 cat >"$work/bin/uv" <<'S'
@@ -64,7 +65,10 @@ check "delete plus normal push still runs checks" "0:5" "$(run_hook "(delete) $z
 check "conflict-marker failure blocks, gradle not reached" "1:1" "$(STUB_FAIL=conflict run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "conflict-marker failure message names the reason" "yes" "$(grep -q 'conflict markers failed' "$work/out" && echo yes || echo no)"
 check "gradle failure blocks, tool unit tests not reached" "1:2" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
-check "failure message names the reason" "yes" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
+check "failure message names the failing Gradle task" "yes" "$(grep -q 'pre-push: Gradle task :spotlessJavaCheck failed' "$work/out" && echo yes || echo no)"
+check "the time budget is printed before Gradle runs" "yes" "$(awk '/about [0-9]+ s warm, up to [0-9]+ s on a cold/ {b=NR} /^> Task :compileJava/ {t=NR} END {print (b && t && b < t) ? "yes" : "no"}' "$work/out")"
+check "one Gradle run covers compile, spotless, the gates and check minus the server tests" "gradlew --console=plain compileJava compileClientJava compileGametestJava check -x runGameTest" \
+  "$(STUB_FAIL=none run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null; grep '^gradlew' "$work/calls")"
 check "tool unit test failure blocks" "1:3" "$(STUB_FAIL=unittest run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "tool unit test failure message names the reason" "yes" "$(grep -q 'tool unit tests failed' "$work/out" && echo yes || echo no)"
 STUB_SC_VERSION='' run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
@@ -158,7 +162,8 @@ check "the sacrificial repo has no marker from the test" "none" "$(git --git-dir
 
 # Missing shellcheck: warn, skip it, and let the push through. The PATH holds only the tools the hook needs.
 mkdir -p "$work/nosc"
-for tool in bash env dirname sed; do ln -s "$(command -v "$tool")" "$work/nosc/$tool"; done
+for tool in bash env dirname sed tee mktemp grep head rm; do ln -s "$(command -v "$tool")" "$work/nosc/$tool"; done
+ln -sf /bin/rm "$work/nosc/rm" # the real rm: a sandbox may put a guard wrapper first on PATH
 ln -s "$work/bin/uv" "$work/nosc/uv"
 : >"$work/calls"
 missing_status=0
@@ -232,7 +237,7 @@ if command -v flock >/dev/null; then
   kill "$holder" 2>/dev/null || true
   check "a lock held past the wait limit blocks the push" "1:0" "$status:$(grep -c gradlew "$work/calls" || true)"
   check "the timeout message names the lock and --no-verify" "yes" "$(grep -q "timed out.*$lock.*--no-verify" "$work/out" && echo yes || echo no)"
-  check "the timeout is not reported as a compile failure" "no" "$(grep -q 'compile or checkstyle failed' "$work/out" && echo yes || echo no)"
+  check "the timeout is not reported as a compile failure" "no" "$(grep -q 'Gradle task .* failed' "$work/out" && echo yes || echo no)"
   # A lock file flock cannot open is named as such.
   status=0
   hook_with DEEPCHARTER_GRADLE_LOCK="$work/no/such/dir.lock" || status=$?
@@ -247,7 +252,8 @@ else
 fi
 # No flock on PATH: gradle runs, unlocked. A real holder of the lock would block a locking hook, so the run finishing proves it.
 mkdir -p "$work/noflock"
-for tool in bash env dirname sed git cat; do ln -sf "$(command -v "$tool")" "$work/noflock/$tool"; done
+for tool in bash env dirname sed git cat tee mktemp grep head rm; do ln -sf "$(command -v "$tool")" "$work/noflock/$tool"; done
+ln -sf /bin/rm "$work/noflock/rm"
 ln -sf "$work/bin/uv" "$work/noflock/uv"
 : >"$work/calls"
 status=0
