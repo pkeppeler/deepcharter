@@ -32,7 +32,9 @@ public class StrataTransitionsTest {
     private static final BlockState LOWER = LayerBlocks.PACKED_SHALE.defaultBlockState();
     private static final ResourceKey<NormalNoise> NOISE =
             ResourceKey.create(Registries.NOISE, Identifier.fromNamespaceAndPath("deepcharter", "claim_contact"));
-    /** Columns on a side of the square a share is measured over: about 4,000, so a share is within 0.05 of its chance. */
+    /**
+     * Columns on a side of the square a share is measured over: about 4,000, so a share is within 0.05 of its chance.
+     */
     private static final int SIDE = 64;
 
     private static final double SHARE_TOLERANCE = 0.05;
@@ -49,7 +51,9 @@ public class StrataTransitionsTest {
         return new StrataRule(List.of(new StrataRule.Contact(0, UPPER, style, length)), LOWER, NOISE, 0, 0);
     }
 
-    /** The share of the lower rock in row {@code y} over the square, in columns whose contact is moved by {@code shift}. */
+    /**
+     * The share of the lower rock in row {@code y} over the square, in columns whose contact is moved by {@code shift}.
+     */
     private static double lowerShare(StrataRule rule, int y, int shift) {
         int lower = 0;
         for (int x = 0; x < SIDE; x++) {
@@ -196,8 +200,8 @@ public class StrataTransitionsTest {
 
     /**
      * The cost of a style: a column reads the noise and the surface depth once, however many blocks ask, so a gradient
-     * costs one position hash a block and no sampling beyond what the strata cost before. (The timing against ADR 0086's
-     * bar is {@code CampaignCostTest}'s, which generates the shipped rules.)
+     * costs one position hash a block and no sampling beyond what the strata cost before. (The timing against ADR
+     * 0086's bar is {@code CampaignCostTest}'s, which generates the shipped rules.)
      */
     @GameTest
     public void aColumnReadsItsNoiseOnceWhateverTheStyle(GameTestHelper helper) {

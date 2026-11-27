@@ -84,7 +84,10 @@ public class RockTintTest {
         helper.succeed();
     }
 
-    /** The scanner and the world read the same function, so both show the drift; a rock in its rows is the same colour whichever it is. */
+    /**
+     * The scanner and the world read the same function, so both show the drift; a rock in its rows is the same colour
+     * whichever it is.
+     */
     @GameTest
     public void everyRockOfAGradientHasTheSameColourSoTheDitherShowsNothing(GameTestHelper helper) {
         for (int zone = 0; zone < 2; zone++) {
@@ -125,7 +128,10 @@ public class RockTintTest {
         helper.succeed();
     }
 
-    /** The column shift puts a rock up to a dozen rows outside its nominal gradient: it must still wear the drift colour. */
+    /**
+     * The column shift puts a rock up to a dozen rows outside its nominal gradient: it must still wear the drift
+     * colour.
+     */
     @GameTest
     public void aRockPlacedByAShiftedColumnWearsTheDriftsColour(GameTestHelper helper) {
         for (int shift = -SHIFT; shift <= SHIFT; shift++) {

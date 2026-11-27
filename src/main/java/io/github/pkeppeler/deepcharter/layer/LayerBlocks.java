@@ -195,9 +195,9 @@ public final class LayerBlocks {
     public static final int CLAIM_CONTACT_UNDER_EDGE = 6;
 
     /**
-     * Rows of the long gradient at each of layer 1's two zone contacts (#1551), centred on the contact: the lower rock's
-     * share rises from 0 to 1 over them. It is the height of a zone, so the two gradients lie end to end and the rock
-     * is changing all the way from the hardpan's gradient to the black shale's.
+     * Rows of the long gradient at each of layer 1's two zone contacts (#1551), centred on the contact: the lower
+     * rock's share rises from 0 to 1 over them. It is the height of a zone, so the two gradients lie end to end and the
+     * rock is changing all the way from the hardpan's gradient to the black shale's.
      */
     public static final int CLAIM_GRADIENT_LENGTH = 64;
 
@@ -208,9 +208,9 @@ public final class LayerBlocks {
      * The rock at height {@code y} of {@code band} in the campaign world: in layer 1 Topsoil Claims' hardpan, Stone
      * Benches' packed shale, Deep Claim's black shale and, in the rows over its floor, layer 2's green shale, split at
      * the centres of the strata's contacts before the noise moves them (#1277); in every other layer
-     * {@link #layerGround(int)}. The rule blends the rocks over a gradient round each contact (#1551), so within half of
-     * it of a contact this names the rock that is likelier, not always the block there; {@code StrataRule#possibleAt}
-     * names the rocks a row can hold.
+     * {@link #layerGround(int)}. The rule blends the rocks over a gradient round each contact (#1551), so within half
+     * of it of a contact this names the rock that is likelier, not always the block there;
+     * {@code StrataRule#possibleAt} names the rocks a row can hold.
      */
     public static Block stratum(LayerChain.Band band, int y) {
         if (band.layer() != 1) {

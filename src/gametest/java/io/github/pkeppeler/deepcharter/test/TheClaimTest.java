@@ -75,7 +75,10 @@ public class TheClaimTest {
     /** Rows the contour noise and the surface depth can move a contact either way, with a margin. */
     private static final int SHIFT_REACH = 14;
 
-    /** The most the gradients' dither may be off the straight line of its share against depth, over a few hundred columns. */
+    /**
+     * The most the gradients' dither may be off the straight line of its share against depth, over a few hundred
+     * columns.
+     */
     private static final double SHARE_TOLERANCE = 0.12;
 
     /** The rock of each zone, top first. */

@@ -55,9 +55,9 @@ public final class RockTint {
     }
 
     /**
-     * The tint of {@code state} at height {@code y}: for a tinted rock, or an ore in one, the drift's colour at {@code
-     * y} in layer 1's rows, whichever of the rocks it is (a column's shift puts a rock outside its nominal rows), and its home colour elsewhere; {@link #NEUTRAL} for any other
-     * block.
+     * The tint of {@code state} at height {@code y}: for a tinted rock, or an ore in one, the drift's colour at
+     * {@code y} in layer 1's rows, whichever of the rocks it is (a column's shift puts a rock outside its nominal
+     * rows), and its home colour elsewhere; {@link #NEUTRAL} for any other block.
      */
     public static int of(BlockState state, int y) {
         Block rock = rockOf(state);
@@ -67,7 +67,10 @@ public final class RockTint {
         return y >= LAYER.minY() && y <= LAYER.maxY() ? drift(y) : home(rock);
     }
 
-    /** The home colour of {@code state}'s rock, for a place that has no height (the block as an item, a menu): see {@link #home}. */
+    /**
+     * The home colour of {@code state}'s rock, for a place that has no height (the block as an item, a menu): see
+     * {@link #home}.
+     */
     public static int homeOf(BlockState state) {
         return home(rockOf(state));
     }

@@ -81,7 +81,10 @@ final class ScannerMap {
     /** The model set {@code TILES} was read from; null when no tile has been read. */
     private static @Nullable BlockStateModelSet tilesFrom;
 
-    /** {@code tint} is the colour the first layer is multiplied by ({@link RockTint}), {@link RockTint#NEUTRAL} for none. */
+    /**
+     * {@code tint} is the colour the first layer is multiplied by ({@link RockTint}), {@link RockTint#NEUTRAL} for
+     * none.
+     */
     private record TileKey(List<Identifier> sprites, int pixels, int backdrop, int tint) {}
 
     private ScannerMap() {}
@@ -318,7 +321,10 @@ final class ScannerMap {
                 key -> compose(layers, pixels, backdrop, tint));
     }
 
-    /** The layers over {@code backdrop}; the first (the rock, under an ore's flecks) is multiplied by {@code tint} first. */
+    /**
+     * The layers over {@code backdrop}; the first (the rock, under an ore's flecks) is multiplied by {@code tint}
+     * first.
+     */
     private static Optional<int[]> compose(List<TextureAtlasSprite> layers, int pixels, int backdrop, int tint) {
         int[] tile = new int[pixels * pixels];
         Arrays.fill(tile, OPAQUE | backdrop);
@@ -335,7 +341,10 @@ final class ScannerMap {
         return Optional.of(tile);
     }
 
-    /** {@code rgb} with each channel rounded to a multiple of 4 (255 kept), so the tile cache holds a bounded number of tints. */
+    /**
+     * {@code rgb} with each channel rounded to a multiple of 4 (255 kept), so the tile cache holds a bounded number of
+     * tints.
+     */
     static int quantise(int rgb) {
         int result = 0;
         for (int shift = 0; shift <= 16; shift += 8) {
@@ -344,7 +353,9 @@ final class ScannerMap {
         return result;
     }
 
-    /** {@code argb} with each colour channel multiplied by the same channel of {@code tint} over 255, its alpha kept. */
+    /**
+     * {@code argb} with each colour channel multiplied by the same channel of {@code tint} over 255, its alpha kept.
+     */
     static int multiply(int argb, int tint) {
         if (tint == RockTint.NEUTRAL) {
             return argb;

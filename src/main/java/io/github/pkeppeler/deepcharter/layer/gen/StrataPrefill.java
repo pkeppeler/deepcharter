@@ -16,10 +16,11 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * What the campaign's noise fill writes in layer 1's rows instead of its default block (#1472): the strata's rock for a
- * column with unmoved contacts, at each block's own position so a gradient's dither is guessed as it will be laid (#1551). The material rule writes a block over every solid block of layer 1 (the strata, and the
- * breach crust under them), so the fill's choice never reaches the world; a good guess only makes most of those writes
- * a block over the same block, which {@code SurfaceWrites} skips. A row the guess gets wrong (near a moved contact) is
- * written as before. Why and the target: ADR 0108.
+ * column with unmoved contacts, at each block's own position so a gradient's dither is guessed as it will be laid
+ * (#1551). The material rule writes a block over every solid block of layer 1 (the strata, and the breach crust under
+ * them), so the fill's choice never reaches the world; a good guess only makes most of those writes a block over the
+ * same block, which {@code SurfaceWrites} skips. A row the guess gets wrong (near a moved contact) is written as
+ * before. Why and the target: ADR 0108.
  */
 public final class StrataPrefill {
     private static final ResourceKey<NoiseGeneratorSettings> CAMPAIGN = ResourceKey.create(
@@ -97,13 +98,19 @@ public final class StrataPrefill {
         };
     }
 
-    /** Whether {@code strata} is layer 1's: the campaign has one rule for each layer that has strata, and each starts in its own band. */
+    /**
+     * Whether {@code strata} is layer 1's: the campaign has one rule for each layer that has strata, and each starts in
+     * its own band.
+     */
     private static boolean startsIn(StrataRule strata) {
         int top = strata.contacts().getFirst().y();
         return top >= BAND.minY() && top <= BAND.maxY();
     }
 
-    /** The block for a solid block at ({@code x}, {@code y}, {@code z}), or null outside the band, where the fill keeps its default. */
+    /**
+     * The block for a solid block at ({@code x}, {@code y}, {@code z}), or null outside the band, where the fill keeps
+     * its default.
+     */
     public @Nullable BlockState at(int x, int y, int z) {
         int row = y - BAND.minY();
         if (row < 0 || row >= rows.length) {

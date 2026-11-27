@@ -71,8 +71,8 @@ public class OreHostTest {
     }
 
     /**
-     * The rocks the zone fill finds in {@code layer}: layer 1's strata (#1277) and its floor's green shale (#1551), layer
-     * 3's basalt and the green shale interbedded in its top rows, and elsewhere the layer's one rock.
+     * The rocks the zone fill finds in {@code layer}: layer 1's strata (#1277) and its floor's green shale (#1551),
+     * layer 3's basalt and the green shale interbedded in its top rows, and elsewhere the layer's one rock.
      */
     static Set<Host> generatedHosts(int layer) {
         return switch (layer) {

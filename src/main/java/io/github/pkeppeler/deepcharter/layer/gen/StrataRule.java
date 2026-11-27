@@ -61,13 +61,16 @@ public record StrataRule(
     private static final int BED_PERIOD = 6;
 
     /**
-     * How the rock above a contact gives way to the rock under it. The sharp contact is the strata's first style (a thin
-     * bed of the lower rock above the line); the others take the rows named by {@code length}, centred on the contact.
+     * How the rock above a contact gives way to the rock under it. The sharp contact is the strata's first style (a
+     * thin bed of the lower rock above the line); the others take the rows named by {@code length}, centred on the
+     * contact.
      */
     public enum Style implements StringRepresentable {
         /** A wavy line with a thin bed of the lower rock in the upper rock over it. */
         SHARP(0, 0),
-        /** The chance of the lower rock rises evenly from 0 to 1 over 12 to 20 rows, by the dither of a position hash. */
+        /**
+         * The chance of the lower rock rises evenly from 0 to 1 over 12 to 20 rows, by the dither of a position hash.
+         */
         SHORT_GRADIENT(12, 20),
         /** The same over 48 to 128 rows: the layer's colour drifts with it ({@code RockTint}) so no block shows it. */
         LONG_GRADIENT(48, 128),
@@ -107,8 +110,8 @@ public record StrataRule(
 
     /**
      * One contact: the upper rock starts at {@code y} (before the shifts), and {@code style} and {@code length} say how
-     * it gives way to the rock under it, which is the next contact's upper rock or the rule's {@code bottom}. A gradient
-     * or interbedding is centred on {@code y} and spans {@code length} rows; a sharp contact has no length.
+     * it gives way to the rock under it, which is the next contact's upper rock or the rule's {@code bottom}. A
+     * gradient or interbedding is centred on {@code y} and spans {@code length} rows; a sharp contact has no length.
      */
     public record Contact(int y, BlockState upper, Style style, int length) {
         static final Codec<Contact> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -125,7 +128,10 @@ public record StrataRule(
             }
         }
 
-        /** The row the transition starts under (the upper rock holds it and every row over it) in a column moved by {@code shift}. */
+        /**
+         * The row the transition starts under (the upper rock holds it and every row over it) in a column moved by
+         * {@code shift}.
+         */
         private int top(int shift) {
             return y + shift + length / 2;
         }
@@ -159,7 +165,10 @@ public record StrataRule(
                     ? DataResult.success(rule)
                     : DataResult.error(() -> "a strata rule's contacts " + problem(rule.contacts)));
 
-    /** What is wrong with the order of {@code contacts}, or null: they run top first and their transitions do not overlap. */
+    /**
+     * What is wrong with the order of {@code contacts}, or null: they run top first and their transitions do not
+     * overlap.
+     */
     private static @Nullable String problem(List<Contact> contacts) {
         for (int i = 1; i < contacts.size(); i++) {
             Contact above = contacts.get(i - 1);
@@ -246,7 +255,10 @@ public record StrataRule(
         return bottom;
     }
 
-    /** Whether row {@code depth} below the top of an interbedded transition of {@code length} rows is in a band of the lower rock. */
+    /**
+     * Whether row {@code depth} below the top of an interbedded transition of {@code length} rows is in a band of the
+     * lower rock.
+     */
     private static boolean lowerBand(int depth, int length) {
         int cycle = (depth - 1) / BED_PERIOD;
         int cycles = Math.ceilDiv(length, BED_PERIOD);
@@ -271,8 +283,9 @@ public record StrataRule(
     }
 
     /**
-     * Every rock row {@code y} can hold in a column whose contacts are moved by up to {@code reach} rows either way:
-     * a row inside a gradient or interbedding holds both of its rocks, and a sharp contact's bed rows hold the lower rock.
+     * Every rock row {@code y} can hold in a column whose contacts are moved by up to {@code reach} rows either way: a
+     * row inside a gradient or interbedding holds both of its rocks, and a sharp contact's bed rows hold the lower
+     * rock.
      */
     // test-seam: the tests of the generated wall ask which rocks a row can hold, and nothing else does
     public Set<Block> possibleAt(int y, int reach) {
@@ -309,7 +322,10 @@ public record StrataRule(
         found.add(bottom.getBlock());
     }
 
-    /** A hash of a block position, 0 or more: the dither of a gradient, so a row's lower rock is spread evenly and in no bands. */
+    /**
+     * A hash of a block position, 0 or more: the dither of a gradient, so a row's lower rock is spread evenly and in no
+     * bands.
+     */
     static int jitter(int x, int y, int z) {
         int h = x * 0x1B873593 ^ y * 0xCC9E2D51 ^ z * 0x85EBCA6B;
         h ^= h >>> 16;
