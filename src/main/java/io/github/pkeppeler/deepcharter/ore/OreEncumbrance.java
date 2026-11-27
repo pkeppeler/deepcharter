@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.ore;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import java.util.Locale;
 import java.util.Objects;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
@@ -111,6 +112,21 @@ public final class OreEncumbrance {
                     bundle.itemCopies().mapToDouble(OreEncumbrance::massOf).sum();
         }
         return mass;
+    }
+
+    /** A mass in tenths of a pod unit, rounded: the number the pod screen syncs, and what {@link #shown} writes out. */
+    public static int tenths(float mass) {
+        return Math.round(mass * 10f);
+    }
+
+    /**
+     * A mass as the player reads it, from its {@code tenths}: pod units to a tenth, without a trailing ".0". The pod screen's Mass line
+     * and the tooltip of every heavy item both write it this way, so the numbers a player adds up are the ones the pod's load is made of.
+     */
+    public static String shown(int tenths) {
+        return tenths % 10 == 0
+                ? Integer.toString(tenths / 10)
+                : String.format(Locale.ROOT, "%d.%d", tenths / 10, tenths % 10);
     }
 
     private static void apply(ServerPlayer player) {
