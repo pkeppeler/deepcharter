@@ -80,8 +80,8 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                 BUTTON_HEIGHT,
                 Component.translatable("screen.deepcharter.terminal.close"),
                 button -> onClose()));
-        // The restore prices are text under the restore button, wrapped to the screen, so no price can run off its
-        // edge.
+        // The restore prices are text under the restore button, wrapped to the screen, so no price can run off
+        // its edge.
         String catalyst =
                 OreRegistry.stack(tuning.catalyst()).getHoverName().getString().toUpperCase(Locale.ROOT);
         HangarTuning.RestoreCost mole = tuning.restoreCost(Chassis.MOLE);
@@ -116,8 +116,8 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                 Component.translatable(
                         "screen.deepcharter.hangar.buy", tuning.refurbishedMole(), tuning.registrationFee()),
                 button -> send(HangarTerminal.BUY_MOLE)));
-        // The wreck the server restores is the nearest one, so the lines under the button name the price of each
-        // chassis.
+        // The wreck the server restores is the nearest one, so the lines under the button name the price of
+        // each chassis.
         addRenderableWidget(new CrtButton(
                 left,
                 restoreY,

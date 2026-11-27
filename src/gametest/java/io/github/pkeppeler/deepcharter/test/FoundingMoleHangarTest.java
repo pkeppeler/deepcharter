@@ -604,8 +604,8 @@ public class FoundingMoleHangarTest {
                             "exactly the price empties the account, and T06 pays its bonus into it: it holds %s",
                             balance(helper, buyer));
                     PodEntity bought = madeSince(helper, before).getFirst();
-                    // The refused purchase used no serial: the pod made before it is MOLE-0001, so this one is
-                    // MOLE-0002.
+                    // The refused purchase used no serial: the pod made before it is MOLE-0001, so this one
+                    // is MOLE-0002.
                     expect(
                             helper,
                             PodComponents.registration(bought)
@@ -976,8 +976,8 @@ public class FoundingMoleHangarTest {
                             .getOrThrow();
                     CompoundTag future = ((CompoundTag) current).copy();
                     future.putInt("version", Integer.parseInt(FUTURE_HANGAR));
-                    // Started before the first check of the data: the data logs the first time anything asks if it is
-                    // readable.
+                    // Started before the first check of the data: the data logs the first time anything asks if it
+                    // is readable.
                     LogCapture hangarLog = LogCapture.start(FUTURE_HANGAR);
                     HangarData unreadable =
                             HangarData.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();

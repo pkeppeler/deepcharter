@@ -41,8 +41,8 @@ final class PhonographSound {
         return inRange;
     }
 
-    // Takes a DeepSound, a place and a range, not a Recording: #861's wreck phonograph plays its own sound through this
-    // call.
+    // Takes a DeepSound, a place and a range, not a Recording: #861's wreck phonograph plays its own sound through
+    // this call.
     /** Sends the start to every player in range and returns them: the playback's first listeners. */
     static Set<UUID> start(ServerLevel level, BlockPos pos, DeepSound sound, double range) {
         Set<UUID> listeners = new HashSet<>();

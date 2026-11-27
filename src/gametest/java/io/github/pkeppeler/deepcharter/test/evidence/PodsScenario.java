@@ -508,8 +508,8 @@ public class PodsScenario extends EvidenceScenario {
                                 && shown.getControllingPassenger() == null);
             }
 
-            // ------------------------------------------------------------------------------------------------ the
-            // showcase
+            // ------------------------------------------------------------------------------------------------
+            // the showcase
 
             /** The turntable of {@code subject} and its stills, then its lit still if it can be lit. */
             private void showcase(Subject subject) {
@@ -630,8 +630,8 @@ public class PodsScenario extends EvidenceScenario {
                         shot(subject, "chewing-the-ledge");
                     }
                 }
-                // Back to the open pad, then bore the floor: the cutter swings under the belly and the pod sinks into
-                // its
+                // Back to the open pad, then bore the floor: the cutter swings under the belly and the pod sinks
+                // into its
                 // lamp-lit shaft.
                 releasePilot();
                 Vec3 floor = start.add(0, 0, -6);
@@ -682,8 +682,8 @@ public class PodsScenario extends EvidenceScenario {
                 serverDo(server -> stage.pilot().releaseInput());
             }
 
-            // ------------------------------------------------------------------------------------------------ the
-            // ground
+            // ------------------------------------------------------------------------------------------------
+            // the ground
 
             /** The pads whole again, the last clip's shaft filled, and the ledge put back: the last clip chewed it. */
             private void rebuildGround() {

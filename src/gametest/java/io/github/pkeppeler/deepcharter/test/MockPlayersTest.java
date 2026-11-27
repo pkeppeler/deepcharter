@@ -91,6 +91,7 @@ public class MockPlayersTest {
                             mock.player().position(),
                             spawn);
                 }
+                mock.leave();
                 helper.succeed();
             }
         });

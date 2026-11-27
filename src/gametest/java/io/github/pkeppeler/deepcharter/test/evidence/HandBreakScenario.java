@@ -70,8 +70,8 @@ public class HandBreakScenario extends EvidenceScenario {
                         frame(context);
                     }
                     if (!middle && tick >= MIDDLE_TICKS) {
-                        // The still must show the work, so the scenario fails, naming what is missing, when it does
-                        // not.
+                        // The still must show the work, so the scenario fails, naming what is missing, when it
+                        // does not.
                         HandBreakChecks.requireWorkShows(
                                 context,
                                 tick,

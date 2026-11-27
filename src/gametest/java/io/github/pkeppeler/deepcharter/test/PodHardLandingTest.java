@@ -170,12 +170,14 @@ public class PodHardLandingTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SHAFT_TICKS)
     public void aPodBrakingWithItsRotorSurvivesTheLayerOneShaftAndBurnsFuel(GameTestHelper helper) {
-        ServerLevel one = shaft(helper, SHAFT_X, SHAFT_Z);
+        ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
         Vec3 start = new Vec3(SHAFT_X + 0.5, SHAFT_SPAWN_Y, SHAFT_Z + 0.5);
         MockPlayer pilot = MockPlayers.join(helper, "shaft-braker");
         pilot.player().setGameMode(GameType.SURVIVAL);
         PodEntity[] pod = {null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(start), () -> {
+            // Cut once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaft(helper, SHAFT_X, SHAFT_Z);
             pod[0] = spawn(one, start);
             // The pilot joins once the chunk ticks: a player put in an unloaded column falls out of the layer.
             pilot.teleportTo(one, start, 0f, 0f);
@@ -287,11 +289,13 @@ public class PodHardLandingTest {
      * A pilot, when seated, takes no damage from the landing; at 100 hull lost the pod is a wreck and the crew are dead by its rule.
      */
     private static void freeFall(GameTestHelper helper, int x, int blocks, boolean crewed, float min, float max) {
-        ServerLevel one = shaft(helper, x, SHAFT_Z);
+        ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
         Vec3 start = new Vec3(x + 0.5, SHAFT_FLOOR_TOP_Y + 1 + blocks, SHAFT_Z + 0.5);
         MockPlayer pilot = crewed ? MockPlayers.join(helper, "free-faller-" + x) : null;
         PodEntity[] pod = {null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(start), () -> {
+            // Cut once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaft(helper, x, SHAFT_Z);
             pod[0] = spawn(one, start);
             if (pilot != null) {
                 // The pilot joins once the chunk ticks: a player put in an unloaded column falls out of the layer.

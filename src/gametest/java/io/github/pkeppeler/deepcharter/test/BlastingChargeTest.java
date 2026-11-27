@@ -62,16 +62,19 @@ public class BlastingChargeTest {
     private static void scene(
             GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<PodEntity> afterSet, Verify verify) {
         ServerLevel level = TestLayers.level(helper, 1);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
-        level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
-        build.accept(level);
         MockPlayer pilot = MockPlayers.join(helper, "charge-" + x);
-        pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
-        pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Built once the chunk ticks, so its lava is poured into a ticking chunk (#1089) and RoomSeal's read of the
+            // shell loads nothing on the server thread.
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
+            level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
+            build.accept(level);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, at, 0f, 0f);
+            pilot.player().setGameMode(GameType.SURVIVAL);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
