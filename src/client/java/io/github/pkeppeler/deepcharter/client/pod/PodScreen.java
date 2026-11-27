@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtMenuScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.menu.SlottedMenu;
+import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
 import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -147,7 +148,7 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
     /** The hold's mass, the hopper's spoil and the rack's bricks, and the names over the hold and the pack. */
     private void readouts(GuiGraphicsExtractor graphics, CrtTuning tuning) {
         List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("screen.deepcharter.pod.mass", menu.mass()));
+        lines.add(Component.translatable("screen.deepcharter.pod.mass", OreEncumbrance.shown(menu.massTenths())));
         lines.add(
                 menu.spoil() >= 0
                         ? Component.translatable("screen.deepcharter.pod.spoil", menu.spoil())
