@@ -101,8 +101,8 @@ public class PodControlsScenario extends EvidenceScenario {
                     "the player in layer 1",
                     client -> client.player != null && TestLayers.clientIsIn(client, 1));
             context.waitTicks(30);
-            // The directive toast for boarding is queued some ticks after arrival; let it come and go before the first
-            // frame.
+            // The directive toast for boarding is queued some ticks after arrival; let it come and go before the
+            // first frame.
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 
             singleplayer.getServer().runOnServer(server -> {
@@ -126,8 +126,8 @@ public class PodControlsScenario extends EvidenceScenario {
             context.runOnClient(client -> client.gui.toastManager().clear());
             screenshot(context, "pod-controls-chase-view");
 
-            // Third person: W, then W with D (a short turn: the turn rate builds up and coasts on), then S (backs up
-            // without
+            // Third person: W, then W with D (a short turn: the turn rate builds up and coasts on), then S (backs
+            // up without
             // turning), then W with A.
             leg(context, options -> options.keyUp, null, LEG_TICKS);
             leg(context, options -> options.keyUp, options -> options.keyRight, TURN_TICKS);

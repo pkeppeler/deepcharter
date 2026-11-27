@@ -79,7 +79,8 @@ public class TheClaimTest {
     /** The rock of each zone, top first. */
     private static final List<String> STRATA = List.of("hardpan", "packed_shale", "black_shale");
 
-    private static final List<String> FEATURES = List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches");
+    private static final List<String> FEATURES =
+            List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches", "fungal_stalks_cave");
 
     /**
      * Caves open up with depth. The share of open blocks under each column's rock top grows from the surface band's

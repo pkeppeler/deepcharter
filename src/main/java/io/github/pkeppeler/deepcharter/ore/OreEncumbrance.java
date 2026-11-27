@@ -12,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -60,14 +61,25 @@ public final class OreEncumbrance {
     }
 
     public static void init() {
-        // A pod's lift counts the fuel its pilot carries: ore rides in the bay, and the pack rides in the seat.
-        PodEvents.EXTRA_MASS.register(
-                pod -> pod.getControllingPassenger() instanceof ServerPlayer pilot ? carriedLooseMass(pilot) : 0f);
+        // Every rider's pack rides in a seat, so all it holds weighs on the pod's lift: ore, fuel and containers
+        // (#1446). The bay holds only loose ore, never a pack's items, so nothing is counted twice.
+        PodEvents.EXTRA_MASS.register(pod -> {
+            float mass = 0f;
+            for (Entity rider : pod.getPassengers()) {
+                if (rider instanceof ServerPlayer player) {
+                    mass += carriedMass(player);
+                }
+            }
+            return mass;
+        });
         ServerTickEvents.END_SERVER_TICK.register(
                 server -> server.getPlayerList().getPlayers().forEach(OreEncumbrance::apply));
     }
 
-    /** Total mass of the ore the player carries: every inventory slot, the offhand and armor included, and the contents of containers. */
+    /**
+     * Total mass the player carries, ore and every {@link CargoWeight}: every inventory slot, the offhand and armor included, and the
+     * contents of containers.
+     */
     public static float carriedMass(ServerPlayer player) {
         float mass = 0f;
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
@@ -76,40 +88,21 @@ public final class OreEncumbrance {
         return mass;
     }
 
-    /**
-     * The mass the player carries of what is not ore: the weight of solid fuel and of anything else with a {@link
-     * CargoWeight}.
-     */
-    private static float carriedLooseMass(Player player) {
-        float mass = 0f;
-        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
-            mass += massOf(player.getInventory().getItem(slot), false);
-        }
-        return mass;
-    }
-
     /** The mass of a stack's own ore and weighted items, and of everything inside it. */
     static float massOf(ItemStack stack) {
-        return massOf(stack, true);
-    }
-
-    private static float massOf(ItemStack stack, boolean withOre) {
-        float mass = CargoWeight.of(stack);
-        if (withOre) {
-            mass += OreRegistry.typeOf(stack).map(OreType::mass).orElse(0f) * stack.getCount();
-        }
+        float mass = CargoWeight.of(stack)
+                + OreRegistry.typeOf(stack).map(OreType::mass).orElse(0f) * stack.getCount();
         ItemContainerContents container = stack.get(DataComponents.CONTAINER);
         if (container != null) {
             mass += (float) container
                     .nonEmptyItemCopyStream()
-                    .mapToDouble(inside -> massOf(inside, withOre))
+                    .mapToDouble(OreEncumbrance::massOf)
                     .sum();
         }
         BundleContents bundle = stack.get(DataComponents.BUNDLE_CONTENTS);
         if (bundle != null) {
-            mass += (float) bundle.itemCopies()
-                    .mapToDouble(inside -> massOf(inside, withOre))
-                    .sum();
+            mass += (float)
+                    bundle.itemCopies().mapToDouble(OreEncumbrance::massOf).sum();
         }
         return mass;
     }

@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.PlacementStage;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.test.support.VanillaHudRows;
 import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -32,12 +33,13 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.HitResult;
 
 /**
- * Client GameTest for the placement readout and the spec sheet of #989. Layers 1 and 2 ask nothing, so with a block in hand and the crosshair on a
- * block there, a rated one or not, the readout says nothing and never fades in; a block's tooltip states its ratings; and the longest line the
- * readout can say fits the narrowest GUI the cockpit draws at. What the words are for a depth that asks something is {@code OutpostRatingsTest}'s,
- * checked against an example row. Where a depth has no rated material (the campaign's unbuilt depth, today) the readout is up, and the box {@link HudKeepClear} gives
- * for it is the box its text is drawn in, two lines under the block readout's, so a popup keeps clear of what is drawn; it is gone once the readout
- * is. It otherwise reads the HUD's state, not its pixels.
+ * Client GameTest for the placement readout and the spec sheet of #989. Layers 1 and 2 ask nothing, so with a block in
+ * hand and the crosshair on a block there, a rated one or not, the readout says nothing and never fades in; a block's
+ * tooltip states its ratings; and the longest line the readout can say fits the narrowest GUI the cockpit draws at.
+ * What the words are for a depth that asks something is {@code OutpostRatingsTest}'s, checked against an example row.
+ * Where a depth has no rated material (the campaign's unbuilt depth, today) the readout is up, and the box {@link
+ * HudKeepClear} gives for it is the box its text is drawn in, above the block readout's two lines, so a popup keeps
+ * clear of what is drawn; it is gone once the readout is. It otherwise reads the HUD's state, not its pixels.
  */
 public class PlacementReadoutClientTest implements FabricClientGameTest {
     /** Space the readout leaves each side of its widest line in the narrowest GUI, in GUI pixels. */
@@ -137,9 +139,15 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
                     kept.x() == (width - expectedWidth) / 2 && kept.width() == expectedWidth,
                     "the kept box " + kept + " is centred and as wide as the wider line, " + expectedWidth);
             require(
-                    kept.y() == height / 2 + look.offsetY() + (int) Math.ceil(2 * line * (float) look.scale())
+                    kept.y() == look.placementTop(height, client.font.lineHeight, kept.height())
                             && kept.height() == (int) Math.ceil((client.font.lineHeight + line) * (float) look.scale()),
-                    "the kept box " + kept + " is two lines under the block readout and holds both lines");
+                    "the kept box " + kept + " is above the block readout's two lines and holds both lines");
+            require(
+                    kept.bottom() < look.blockBottom(height) - 2 * client.font.lineHeight,
+                    "the kept box " + kept + " overlaps the two lines the block readout takes");
+            require(
+                    VanillaHudRows.clashes(kept, width, height).isEmpty(),
+                    "the kept box " + kept + " overlaps vanilla's " + VanillaHudRows.clashes(kept, width, height));
             Box box = new Box(kept.x(), kept.y(), kept.width(), kept.height());
             for (Drawn text : drawn(client)) {
                 require(

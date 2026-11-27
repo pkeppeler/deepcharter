@@ -58,16 +58,16 @@ public class CampaignWorldHashTest {
         }
         List<String> lines = new ArrayList<>();
         lines.add("seed " + helper.getLevel().getSeed());
-        // One state's hash is of its string, computed once: the same state hashes alike in every chunk and in every
-        // tree.
+        // One state's hash is of its string, computed once: the same state hashes alike in every chunk and in
+        // every tree.
         Map<BlockState, Long> stateHashes = new HashMap<>();
         int expected = 1;
         for (String world : WORLDS) {
             ServerLevel level = ClientLight.serverLevel(
                     helper.getLevel().getServer(),
                     ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", world)));
-            // level-height: one line per section of the whole level, whatever bands it holds, and one for each chunk's
-            // heightmaps
+            // level-height: one line per section of the whole level, whatever bands it holds, and one for each
+            // chunk's heightmaps
             expected += (level.getSectionsCount() + 1) * PATCH_CORNERS.length * PATCH * PATCH;
             for (int corner : PATCH_CORNERS) {
                 for (int cx = corner; cx < corner + PATCH; cx++) {

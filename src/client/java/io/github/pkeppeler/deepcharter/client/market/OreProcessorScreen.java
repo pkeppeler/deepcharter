@@ -165,8 +165,8 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
                 BUTTON_HEIGHT,
                 Component.translatable("screen.deepcharter.processor.fuse"),
                 button -> sell(OreProcessor.FUSE_SPOIL)));
-        // On the close button's row, between the two: the right column above it holds the prices, the heading and the
-        // pager.
+        // On the close button's row, between the two: the right column above it holds the prices, the heading and
+        // the pager.
         int pressLeft = left + CLOSE_WIDTH + GAP;
         addRenderableWidget(new CrtButton(
                 pressLeft,

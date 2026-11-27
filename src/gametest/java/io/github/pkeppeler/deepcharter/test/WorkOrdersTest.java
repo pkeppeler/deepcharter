@@ -727,8 +727,8 @@ public class WorkOrdersTest {
             if (carried(player, OreType.BRONZIUM) != 10) {
                 throw failure(helper, "a refused delivery must keep the ore");
             }
-            // A body of this version that does not parse (here: more handed in than the order asks) is kept unread, not
-            // dropped.
+            // A body of this version that does not parse (here: more handed in than the order asks) is kept unread,
+            // not dropped.
             CompoundTag entry = new CompoundTag();
             entry.putString("charter", UUID.randomUUID().toString());
             entry.putString("order", "founders_hands");
