@@ -333,7 +333,7 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
                     if (grow(SpireShape.layout(params.get(), ints), wantX, wantZ, floor.get())) {
                         return true;
                     }
-                    params = SpireShape.shorter(params.get(), 3);
+                    params = SpireShape.shorter(params.get());
                 }
             }
             return false;

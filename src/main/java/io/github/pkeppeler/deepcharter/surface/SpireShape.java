@@ -20,6 +20,9 @@ import net.minecraft.core.Direction;
  * one leaves the others standing.
  */
 public final class SpireShape {
+    /** Rows {@link #shorter} takes off every spire. */
+    private static final int SHORTEN_ROWS = 3;
+
     public static final int LEAST_COUNT = 3;
     public static final int MOST_COUNT = 7;
     /** The tallest spire of a cluster with room for it. */
@@ -146,13 +149,13 @@ public final class SpireShape {
     }
 
     /**
-     * The same cluster {@code rows} rows shorter in every spire, for a site whose air does not have room for it; empty
-     * when the tallest would be too short.
+     * The same cluster {@link #SHORTEN_ROWS} rows shorter in every spire, for a site whose air does not have room for
+     * it; empty when the tallest would be too short.
      */
-    public static Optional<Params> shorter(Params params, int rows) {
+    public static Optional<Params> shorter(Params params) {
         List<Spike> spikes = new ArrayList<>();
         for (Spike spike : params.spikes()) {
-            int height = spike.height() - rows;
+            int height = spike.height() - SHORTEN_ROWS;
             if (height < 3) {
                 if (spikes.isEmpty()) {
                     return Optional.empty();
