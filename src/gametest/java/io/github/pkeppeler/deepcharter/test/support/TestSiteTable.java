@@ -250,7 +250,7 @@ final class TestSiteTable {
         claim("OrePlacementTest", 1, 6992, 7007, 2992, 3007);
         claim("OrePlacementTest", 1, 7192, 7207, 2992, 3007);
         claim("OrePlacementTest", 2, 7192, 7207, 2992, 3007);
-        claim("OrePlacementTest", 1, 7492, 7507, 2992, 3007);
+        claim("OrePlacementTest", 1, 7492, 7507, 2992, 3006);
         claim("OrePlacementTest", 1, 6400, 6495, 6400, 6495);
         claim("OrePlacementTest", 2, 6400, 6495, 6400, 6495);
 
