@@ -719,8 +719,8 @@ public class TowingTest {
                 step -> start.add(0.2 * Math.min(step, 100), 0, 0),
                 (tower, towed, age) -> {
                     if (age == 1) {
-                        // The same as a reload for the line: the transient state of the cable is gone and the link is
-                        // not.
+                        // The same as a reload for the line: the transient state of the cable is gone and the link
+                        // is not.
                         PodTowing.detach(towed);
                         PodTowing.attach(tower, towed);
                     }

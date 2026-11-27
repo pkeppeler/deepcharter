@@ -133,8 +133,8 @@ public class SpecSheetScenario extends EvidenceScenario {
         CataloguePanel reopened = CatalogueScene.panel(context);
         context.runOnClient(client -> client.gui.toastManager().clear());
 
-        // The longest sheet there is, a part with a stock tier and six bought ones, the way a player looks one up
-        // later.
+        // The longest sheet there is, a part with a stock tier and six bought ones, the way a player looks one
+        // up later.
         Item drillPart = ComponentItems.item(ComponentTrack.DRILL);
         context.runOnClient(client -> SpecSheetOpener.show(drillPart));
         ClientWait.until(context, "the drill part's sheet", client -> reopened.sheetItem() == drillPart);

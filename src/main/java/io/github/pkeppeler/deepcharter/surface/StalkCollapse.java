@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.surface;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -15,19 +14,16 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.phys.AABB;
 
 /**
- * The collapse of a fungal stalk: breaking any block of one brings everything above it down, in a spore puff. Atmosphere only: it
- * gives a player nothing and takes nothing from one.
+ * The collapse of a fungal stalk: breaking any block of one brings everything above it down at once, as breaking sugar
+ * cane does, in a spore puff. Atmosphere only: it gives a player nothing and takes nothing from one.
  *
  * <p>What falls is what hangs from the break. An ordinary stalk is a column of upright stalk blocks: everything above the break. A great
  * stalk ({@link GreatStalkBlock}, a braid of three thin trunks with shelves, {@link GreatStalkBraid}) is every great block above the break
@@ -37,20 +33,15 @@ import net.minecraft.world.phys.AABB;
  * stand, and so does a shelf held by one. A block that was only joined through the broken cell, sideways (the dog-leg where a trunk
  * steps round the ring, the outer half of a shelf), is no longer joined to the ground and falls too.
  *
- * <p>The collapse is a sag: after {@link SurfaceTuning#collapseDelayTicks()} each step lowers all of it by one block, and its lowest
- * layer bursts instead of moving. The next step is a scheduled tick on the lowest block of what is left that is standing on nothing,
- * so a collapse survives a save and a chunk unload, and a second break above the first starts a second collapse that the first cannot
- * confuse, since every step reads the world.
- *
- * <p>No drop is made here: a burst block drops what {@link Block#getDrops} gives for it, the loot table that breaking it by hand rolls,
- * and every block is removed exactly once (it bursts, or it moves down), so what a collapse drops is what breaking each of its blocks by
- * hand drops, none lost and none twice. The drops fly out from the block instead of popping up from it.
+ * <p>Every block of it bursts in the tick of the break. No drop is made here but the burst's own: a burst block drops
+ * what {@link Block#getDrops} gives for it, the loot table that breaking it by hand rolls, and every block is removed
+ * exactly once, so what a collapse drops is what breaking each of its blocks by hand drops, none lost and none twice.
+ * The drops fly out from the block instead of popping up from it.
  */
 final class StalkCollapse {
-    /** The most blocks one collapse lowers, so that no chain of touching great stalks makes a step cost a lot. */
+    /** The most blocks one collapse takes, so that no chain of touching great stalks makes a collapse cost a lot. */
     private static final int MOST_BLOCKS = 1024;
-    // A great stalk is at most 90 blocks (its yield, tested), far under this, so a walk never reaches it for
-    // one.
+    // A great stalk is at most 90 blocks (its yield, tested), far under this.
 
     private static final Direction[] JOINS = {
         Direction.UP, Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
@@ -61,18 +52,6 @@ final class StalkCollapse {
         Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
     };
 
-    /**
-     * True while a step changes blocks: the blocks it sets to air are removals that must not start a collapse of their own. The server
-     * thread is the only one that changes blocks, so no lock.
-     */
-    private static boolean stepping;
-
-    /**
-     * Set on every great block that a collapse has taken hold of, so that what falls is decided once, when the support breaks, and read
-     * from the world at every step: a block sagging past one that stands beside it is not joined to it.
-     */
-    static final BooleanProperty FALLING = BooleanProperty.create("falling");
-
     private StalkCollapse() {}
 
     /** An upright stalk block, a great stalk block or a cap block: the blocks that fall. */
@@ -82,10 +61,6 @@ final class StalkCollapse {
 
     private static boolean great(BlockState state) {
         return state.getBlock() instanceof GreatStalkBlock;
-    }
-
-    private static boolean falling(BlockState state) {
-        return great(state) && state.getValue(FALLING);
     }
 
     private static boolean ordinary(BlockState state) {
@@ -119,37 +94,22 @@ final class StalkCollapse {
     }
 
     /**
-     * A block of a stalk, {@code removed}, was removed at {@code pos}: what was above it, and what hung from it and has nothing else to
-     * hang from, sags and falls. A great block's removal takes the great block above it (and all that touches that) whatever else holds
-     * it; a block beside or below it falls only if nothing joins it to the ground any more. An upright stalk never holds a great block
-     * up.
+     * A block of a stalk, {@code removed}, was removed at {@code pos}: what was above it, and what hung from it and has
+     * nothing else to hang from, bursts in the same tick. A great block's removal takes the great block above it (and
+     * all that touches that) whatever else holds it; a block beside or below it falls only if nothing joins it to the
+     * ground any more. An upright stalk never holds a great block up.
      */
     static void removed(ServerLevel level, BlockPos pos, BlockState removed) {
-        if (stepping || collapses(level.getBlockState(pos))) {
-            return;
-        }
-        if (falling(removed)) {
-            // A block that was falling was broken by hand: what was joined to it falls on, as two masses if it split
-            // them.
-            for (Direction direction : Direction.values()) {
-                BlockPos next = pos.relative(direction);
-                if (!loaded(level, next)) {
-                    continue;
-                }
-                BlockState state = level.getBlockState(next);
-                if (falling(state)) {
-                    level.scheduleTick(next, state.getBlock(), SurfaceTuning.DEFAULT.collapseStepTicks());
-                }
-            }
+        if (collapses(level.getBlockState(pos))) {
             return;
         }
         List<BlockPos> anchors = new ArrayList<>();
-        Set<BlockPos> claimed = new HashSet<>();
+        Set<BlockPos> claimed = new LinkedHashSet<>();
         BlockPos above = pos.above();
         BlockState up = level.getBlockState(above);
         if (collapses(up) && (great(removed) || !great(up))) {
             anchors.add(above);
-            claimed.addAll(connected(level, above, false));
+            claimed.addAll(connected(level, above));
         }
         if (great(removed)) {
             for (Direction direction : HELD_BY) {
@@ -160,46 +120,27 @@ final class StalkCollapse {
                         && !standsOnSomething(level, next)
                         && !grounded(level, next)) {
                     anchors.add(next);
-                    claimed.addAll(connected(level, next, false));
+                    claimed.addAll(connected(level, next));
                 }
             }
         }
-        if (anchors.isEmpty()) {
+        if (claimed.isEmpty()) {
             return;
         }
-        BlockState first = level.getBlockState(anchors.getFirst());
-        level.playSound(null, pos, SoundEvents.HONEY_BLOCK_SLIDE, SoundSource.BLOCKS, 0.8F, great(first) ? 0.4F : 0.6F);
-        stepping = true;
-        try {
-            for (BlockPos fall : claimed) {
-                BlockState state = level.getBlockState(fall);
-                if (great(state)) {
-                    level.setBlock(fall, state.setValue(FALLING, true), Block.UPDATE_CLIENTS);
-                }
+        boolean great = anchors.stream().anyMatch(anchor -> great(level.getBlockState(anchor)));
+        for (BlockPos fall : claimed) {
+            BlockState state = level.getBlockState(fall);
+            if (collapses(state)) {
+                burst(level, fall, state, great);
             }
-        } finally {
-            stepping = false;
         }
-        for (BlockPos anchor : anchors) {
-            level.scheduleTick(
-                    anchor, level.getBlockState(anchor).getBlock(), SurfaceTuning.DEFAULT.collapseDelayTicks());
-        }
+        cough(level, pos, great);
     }
 
     /**
-     * A great block was placed: one that is falling but that no collapse is carrying (a command placed it, or it was left by a
-     * collapse that a save or a walk's cap cut off) gets a step, so that it never stays in the air. A collapse's own placing is not this.
-     */
-    static void placed(ServerLevel level, BlockPos pos, BlockState state) {
-        if (!stepping && falling(state)) {
-            level.scheduleTick(pos, state.getBlock(), SurfaceTuning.DEFAULT.collapseDelayTicks());
-        }
-    }
-
-    /**
-     * Whether the stalk blocks joined to {@code start}, face to face, stand on the ground: one of them has something solid under it that
-     * is not a stalk block. What it cannot tell (more blocks than a collapse lowers, or a join into a chunk that is not loaded) it
-     * counts as standing.
+     * Whether the stalk blocks joined to {@code start}, face to face, stand on the ground: one of them has something
+     * solid under it that is not a stalk block. What it cannot tell (more blocks than a collapse takes, or a join into
+     * a chunk that is not loaded) it counts as standing.
      */
     private static boolean grounded(ServerLevel level, BlockPos start) {
         Set<BlockPos> found = new HashSet<>();
@@ -225,70 +166,6 @@ final class StalkCollapse {
         return standsOnSomething(level, pos) && !collapses(level.getBlockState(pos.below()));
     }
 
-    /**
-     * One step of the collapse of what {@code anchor}, the block the tick is on, belongs to: the stalk block that was left standing on
-     * nothing when its support broke.
-     */
-    static void step(ServerLevel level, BlockPos anchor) {
-        BlockState anchored = level.getBlockState(anchor);
-        if (!(great(anchored) ? falling(anchored) : ordinary(anchored) && !standsOnSomething(level, anchor))) {
-            return;
-        }
-        List<BlockPos> falling = connected(level, anchor, true);
-        boolean great = falling.stream().anyMatch(pos -> great(level.getBlockState(pos)));
-        List<BlockPos> moved = new ArrayList<>();
-        stepping = true;
-        try {
-            int burst = 0;
-            // Lowest first, so that the block a cell moves into has been emptied: by the layer below it moving, or by
-            // bursting. The anchor's layer and whatever hangs lower burst, so that nothing sags below the break and
-            // alongside the blocks that stand there.
-            for (BlockPos pos : falling) {
-                BlockState state = level.getBlockState(pos);
-                BlockPos target = pos.below();
-                if (pos.getY() <= anchor.getY() || !level.getBlockState(target).isAir() || occupied(level, target)) {
-                    burst(level, pos, state, great);
-                    burst++;
-                } else {
-                    level.setBlock(target, state, Block.UPDATE_CLIENTS);
-                    level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
-                    moved.add(target);
-                }
-            }
-            if (burst > 0) {
-                cough(level, anchor.below(), great);
-            }
-        } finally {
-            stepping = false;
-        }
-        // What is left may have come apart: the next step is a tick on the lowest block of each piece, the anchor's
-        // cell
-        // first, so that a piece that fell into it goes on as it was.
-        moved.addFirst(anchor);
-        Set<BlockPos> ticked = new HashSet<>();
-        for (BlockPos next : moved) {
-            BlockState state = level.getBlockState(next);
-            if (!ticked.contains(next)
-                    && (great(state) ? falling(state) : ordinary(state) && !standsOnSomething(level, next))) {
-                level.scheduleTick(next, state.getBlock(), SurfaceTuning.DEFAULT.collapseStepTicks());
-                ticked.addAll(connected(level, next, true));
-            }
-        }
-    }
-
-    /**
-     * Whether a creature stands in the cell. A block never slides into one: it bursts instead, so the collapse can never smother or crush
-     * anyone (the rim of a great stalk's cap overhangs its trunk and slides down beside it). Items do not count: they are what it throws.
-     */
-    private static boolean occupied(ServerLevel level, BlockPos cell) {
-        // entity-query: the cell is one the collapse is about to fill, in a loaded chunk, so a miss cannot happen
-        return !level.getEntities(
-                        (Entity) null,
-                        new AABB(cell),
-                        entity -> !(entity instanceof ItemEntity) && !entity.isSpectator())
-                .isEmpty();
-    }
-
     /** Whether the block {@code next}, one {@code direction} from the falling {@code state}, is joined to it, as the world stands. */
     private static boolean staticJoin(
             ServerLevel level,
@@ -300,7 +177,7 @@ final class StalkCollapse {
         return switch (direction) {
             case UP -> collapses(nextState);
             case DOWN -> hangs(nextState) && hangsFree(level, next) && pendantOf(level, falling, next);
-            default -> great(state) && great(nextState);
+            case NORTH, SOUTH, WEST, EAST -> great(state) && great(nextState);
         };
     }
 
@@ -337,20 +214,11 @@ final class StalkCollapse {
         return pendant.size() < MOST_BLOCKS;
     }
 
-    /** Whether {@code next} is joined to the falling mass: a great block that a collapse has taken, or an upright stalk standing on it. */
-    private static boolean takenJoin(Direction direction, BlockState nextState) {
-        if (great(nextState)) {
-            return falling(nextState);
-        }
-        return ordinary(nextState) && direction == Direction.UP;
-    }
-
     /**
-     * The blocks that fall with {@code start}, lowest first: up the columns, across between great stalk blocks, and down the cap blocks
-     * that hang free under them. With {@code taken}, the great blocks are those a collapse has marked {@link #FALLING}; without,
-     * all those that touch, which is how a collapse is decided in the first place.
+     * The blocks that fall with {@code start}: up the columns, across between great stalk blocks that touch, and down
+     * the cap blocks that hang free under them.
      */
-    private static List<BlockPos> connected(ServerLevel level, BlockPos start, boolean taken) {
+    private static Set<BlockPos> connected(ServerLevel level, BlockPos start) {
         Set<BlockPos> found = new LinkedHashSet<>();
         Deque<BlockPos> queue = new ArrayDeque<>();
         found.add(start);
@@ -365,15 +233,12 @@ final class StalkCollapse {
                     continue;
                 }
                 BlockState nextState = level.getBlockState(next);
-                boolean joined = taken
-                        ? takenJoin(direction, nextState)
-                        : staticJoin(level, found, direction, state, next, nextState);
-                if (joined && found.add(next)) {
+                if (staticJoin(level, found, direction, state, next, nextState) && found.add(next)) {
                     queue.add(next);
                 }
             }
         }
-        return found.stream().sorted(Comparator.comparingInt(BlockPos::getY)).toList();
+        return found;
     }
 
     /** A block bursts: it turns to a puff and its drops fly out. */
@@ -403,7 +268,7 @@ final class StalkCollapse {
         level.sendParticles(ParticleTypes.WHITE_ASH, x, y, z, great ? 14 : 8, 0.6, 0.5, 0.6, 0.02);
     }
 
-    /** The wet cough of a step: a huff of breath and a slap of something wet, lower for a great stalk. */
+    /** The wet cough of a collapse: a huff of breath and a slap of something wet, lower for a great stalk. */
     private static void cough(ServerLevel level, BlockPos pos, boolean great) {
         RandomSource random = level.getRandom();
         float pitch = great ? 0.5F : 0.8F;

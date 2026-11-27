@@ -781,8 +781,8 @@ public class PodLinerTest {
             MockPlayer pilot = owner(helper);
             Rig rig = new Rig(pilot);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-                // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server
-                // thread.
+                // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the
+                // server thread.
                 build.run();
                 // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
                 pilot.teleportTo(level, at, 0f, 0f);

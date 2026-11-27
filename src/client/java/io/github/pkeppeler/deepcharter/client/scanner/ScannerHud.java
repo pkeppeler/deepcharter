@@ -145,7 +145,7 @@ public final class ScannerHud {
 
     /**
      * Draws the map in the cockpit's scanner window instead of at top right: the cells as large as fit whole in {@code window}, centred in it,
-     * on the air colour. Draws nothing without a slice, that is without a working scanner.
+     * on the air colour, with the rest of the window the out-of-range raster. Draws nothing without a slice, that is without a working scanner.
      */
     public static void drawInWindow(GuiGraphicsExtractor graphics, Minecraft client, Decal window) {
         ScanSlice scanned = slice;
@@ -156,9 +156,16 @@ public final class ScannerHud {
         ScanArea area = scanned.area();
         int windowLeft = window.left(graphics.guiWidth());
         int windowTop = window.top(graphics.guiHeight());
-        graphics.fill(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height(), look.airColor());
+        // Whole-pixel cells leave a margin at tiers 2 and 3; it is the instrument's raster, not air, and the area is
+        // drawn over it.
+        int windowRight = windowLeft + window.width();
+        int windowBottom = windowTop + window.height();
+        graphics.fill(windowLeft, windowTop, windowRight, windowBottom, look.outOfRangeColor());
+        for (int y = windowTop + 1; y < windowBottom; y += 2) {
+            graphics.fill(windowLeft, y, windowRight, y + 1, look.outOfRangeLineColor());
+        }
         // A slice larger than the window (tier 4) is cut at the window's edge, never drawn over the gauges beside it.
-        graphics.enableScissor(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height());
+        graphics.enableScissor(windowLeft, windowTop, windowRight, windowBottom);
         try {
             drawCells(
                     graphics,
@@ -231,13 +238,13 @@ public final class ScannerHud {
                 ? pod.chassis().boreHeight() - 1
                 : 0;
         for (int up = 0; up <= podCellsUp; up++) {
-            fillCell(graphics, area, cell, left, top, 0, up, look.podColor());
+            fillCell(graphics, area, cell, left, top, up, look.podColor());
         }
     }
 
     private static void fillCell(
-            GuiGraphicsExtractor graphics, ScanArea area, int cell, int left, int top, int ahead, int up, int colour) {
-        int x = left + (ahead + area.halfWidth()) * cell;
+            GuiGraphicsExtractor graphics, ScanArea area, int cell, int left, int top, int up, int colour) {
+        int x = left + area.halfWidth() * cell;
         int y = top + (area.up() - up) * cell;
         graphics.fill(x, y, x + cell, y + cell, colour);
     }

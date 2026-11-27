@@ -437,8 +437,8 @@ public class LayerTerrainTest {
             long start = System.nanoTime();
             for (int cx = base; cx < base + side; cx++) {
                 for (int cz = base; cz < base + side; cz++) {
-                    // sync-load: the test times what the generation of a fresh chunk costs, so it must run on this
-                    // thread
+                    // sync-load: the test times what the generation of a fresh chunk costs, so it must run on
+                    // this thread
                     level.getChunk(cx, cz, ChunkStatus.FULL);
                 }
             }

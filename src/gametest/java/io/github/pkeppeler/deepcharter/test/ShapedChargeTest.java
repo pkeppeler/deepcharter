@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -186,6 +187,33 @@ public class ShapedChargeTest {
                             cell(x + 1, -1, 0),
                             HazardBlocks.COMPANY_ROCK,
                             "rock beside the footprint stays");
+                });
+    }
+
+    /** The jet ends on the crust under Company rock, the breach crust or the grained one, and opens neither (#1022). */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aShapedChargeStopsAtTheCrustUnderTheRockAndOpensNeither(GameTestHelper helper) {
+        int x = 4400;
+        scene(
+                helper,
+                x,
+                level -> {
+                    rock(level, x - 1, -1, 2);
+                    level.setBlock(cell(x - 1, -3, -1), LayerBlocks.BREACH_CRUST.defaultBlockState(), 2);
+                    rock(level, x, -1, 2);
+                    level.setBlock(cell(x, -3, -1), LayerBlocks.GRAINED_CRUST.defaultBlockState(), 2);
+                },
+                pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()),
+                (helper2, level, pod, hull) -> {
+                    for (int column = x - 1; column <= x; column++) {
+                        for (int dy = -1; dy >= -2; dy--) {
+                            expectAir(helper2, level, cell(column, dy, -1), "the rock over the crust");
+                        }
+                    }
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x - 1, -3, -1), LayerBlocks.BREACH_CRUST, "breach crust under rock");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x, -3, -1), LayerBlocks.GRAINED_CRUST, "grained crust under rock");
                 });
     }
 

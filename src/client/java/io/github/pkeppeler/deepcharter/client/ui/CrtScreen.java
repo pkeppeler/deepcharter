@@ -10,7 +10,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Base of every retro CRT-terminal screen: a phosphor backdrop, scanlines over everything, and typewriter text.
@@ -35,18 +34,11 @@ import org.jspecify.annotations.Nullable;
 public abstract class CrtScreen extends Screen implements PanelScreen {
     private static final double SECONDS_PER_TICK = 1.0 / 20.0;
 
-    /** A typewriter, its colour, and its wrapped lines, kept until the revealed text or the width changes. */
+    /** A typewriter's wrapped lines, kept until the revealed text or the width changes. */
     private static final class Entry {
-        /** The caller's colour, or null for the theme's phosphor, read at each draw. */
-        private final @Nullable Integer color;
-
         private int cachedRevealed = -1;
         private int cachedWidth = -1;
         private List<String> lines = List.of();
-
-        private Entry(@Nullable Integer color) {
-            this.color = color;
-        }
     }
 
     private final Map<Typewriter, Entry> typewriters = new LinkedHashMap<>();
@@ -70,19 +62,17 @@ public abstract class CrtScreen extends Screen implements PanelScreen {
         }
     }
 
-    /** Starts typing {@code text} in the theme's phosphor colour, which a reload changes while the screen is open. The hook is where a feature plays its letter sound. */
+    /**
+     * Starts typing {@code text} in the theme's phosphor colour, which a reload changes while the screen is open. The
+     * hook is where a feature plays its letter sound. Call from the constructor, never from {@link #layout()}.
+     */
     protected Typewriter typewriter(Component text, Typewriter.LetterHook hook) {
-        return typewriter(text, null, hook);
-    }
-
-    /** Starts typing {@code text} in {@code color} (ARGB), or in the phosphor colour when it is null. Call from the constructor, never from {@link #layout()}. */
-    protected Typewriter typewriter(Component text, @Nullable Integer color, Typewriter.LetterHook hook) {
         if (inLayout) {
             throw new IllegalStateException(
                     "Typewriters made in layout() restart on every resize: make them in the constructor");
         }
         Typewriter writer = new Typewriter(text.getString(), hook);
-        typewriters.put(writer, new Entry(color));
+        typewriters.put(writer, new Entry());
         return writer;
     }
 
@@ -179,7 +169,7 @@ public abstract class CrtScreen extends Screen implements PanelScreen {
             entry.cachedRevealed = writer.revealed();
             entry.cachedWidth = wrapWidth;
         }
-        int color = entry.color != null ? entry.color : tuning.phosphorColor();
+        int color = tuning.phosphorColor();
         int lineY = y;
         int lastX = x;
         int lastY = y;

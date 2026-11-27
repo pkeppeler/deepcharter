@@ -110,6 +110,8 @@ final class QuestMap {
      * of steps when that row is partial (the empty columns beside it hold the note). The redaction bars with their
      * stamp and the note always stay. Nothing is scaled.
      */
+    // const-param: the screen passes font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font);
+    // the parameter keeps the layout tied to the font
     static Layout layout(int mapWidth, int availableHeight, Model model, int lineHeight, int noteLines) {
         Layout below = Objects.requireNonNull(
                 layoutOrNull(mapWidth, model, lineHeight, noteLines, false), "the plain layout always exists");

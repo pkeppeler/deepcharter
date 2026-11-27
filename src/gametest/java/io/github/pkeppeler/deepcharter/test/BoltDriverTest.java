@@ -200,8 +200,8 @@ public class BoltDriverTest {
         Corridor corridor = corridor(helper, LENGTH, 2);
         MockPlayer shooter = walker(helper, corridor, "bolt-range", 0, EAST);
         arm(shooter.player(), 2);
-        // The corridor is 14 long, so the target stands in a second, longer one: the range itself is what is under
-        // test.
+        // The corridor is 14 long, so the target stands in a second, longer one: the range itself is what is
+        // under test.
         int far = (int) Math.ceil(DRIVER.range()) + 4;
         int y = corridor.floor(0).getY();
         int z = corridor.floor(0).getZ();
@@ -333,8 +333,8 @@ public class BoltDriverTest {
                         "the target was never hittable, so no bolt was tried: %s",
                         state(target, shooter.player(), corridor.level()));
             }
-            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a pack
-            // holds.
+            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a
+            // pack holds.
             arm(shooter.player(), 2);
             // A full stomach heals: keep it low, so a loss is the bolt's.
             target.getFoodData().setFoodLevel(6);

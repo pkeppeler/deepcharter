@@ -875,8 +875,8 @@ public class TransmissionsTest {
         MinecraftServer server = server(helper);
         ServerLevel one = TestLayers.level(server, 1);
         ServerLevel two = TestLayers.level(server, 2);
-        // The crew crosses once the arrival area in layer 2 is loaded, so the crossing does not load it on the server
-        // thread.
+        // The crew crosses once the arrival area in layer 2 is loaded, so the crossing does not load it on the
+        // server thread.
         int arrival = (int) BREACH_COLUMN / 16;
         FarChunks.whenBlocksLoaded(
                 helper,
@@ -901,8 +901,8 @@ public class TransmissionsTest {
                 throw helper.assertionException("crossing into layer 2 should send t11, sent %s", delivered);
             }
             // The zone poll may have fired layer 1's zone transmissions on the way down: the account holds each bonus
-            // sent live, once. Founding replayed the repairs other tests fired into the shared world, and a replay pays
-            // nothing.
+            // sent live, once. Founding replayed the repairs other tests fired into the shared world, and a replay
+            // pays nothing.
             long paid = delivered.stream()
                     .map(TransmissionCatalog::require)
                     .filter(transmission -> !transmission.replay())

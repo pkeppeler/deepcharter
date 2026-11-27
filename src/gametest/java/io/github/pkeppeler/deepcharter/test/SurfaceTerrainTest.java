@@ -527,8 +527,8 @@ public class SurfaceTerrainTest {
 
     // The GameTest server bakes its overworld from the flat preset, so the surface is tried in the test pack's copies
     // of the shipped overworld: campaign_full is an exact copy, and campaign_sample, where most tests run, differs
-    // from it in one place (below). This keeps both copies, in the pack and in the preset, equal to the shipped
-    // overworld.
+    // from it in one place (below). This keeps both copies, in the pack and in the preset, equal to the
+    // shipped overworld.
     @GameTest
     public void theSampleDimensionsMatchTheShippedOverworld(GameTestHelper helper) throws IOException {
         JsonElement shipped = read(helper, "/data/minecraft/dimension/overworld.json");

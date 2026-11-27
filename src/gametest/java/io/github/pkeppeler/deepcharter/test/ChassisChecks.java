@@ -208,8 +208,8 @@ final class ChassisChecks {
             if (pod[0] == null) {
                 return;
             }
-            // The slab it bores: the wall's first column, width wide round the pod's middle and height tall from its
-            // feet.
+            // The slab it bores: the wall's first column, width wide round the pod's middle and height tall from
+            // its feet.
             if (count(level, wallX, wallX, FLOOR, FLOOR + height - 1, Z - RADIUS, Z + RADIUS, Blocks.AIR)
                     == width * height) {
                 expect(
@@ -511,14 +511,14 @@ final class ChassisChecks {
         ServerLevel level = TestLayers.level(helper, 1);
         Vec3 start = new Vec3(x - 4, FLOOR + 10, Z);
         PodEntity[] pods = {null, null};
-        // The pods hang and swing over the whole room, which spans two chunks: the towed pod ticks only while its chunk
-        // does.
+        // The pods hang and swing over the whole room, which spans two chunks: the towed pod ticks only while its
+        // chunk does.
         List<BlockPos> chunks = List.of(new BlockPos(x - RADIUS, FLOOR, Z), new BlockPos(x + RADIUS, FLOOR, Z));
         int[] ready = {0};
         FarChunks.awaitEntityTicking(helper, level, chunks, index -> {
             if (++ready[0] == chunks.size()) {
-                // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server
-                // thread.
+                // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the
+                // server thread.
                 site(level, x);
                 pods[0] = spawn(level, start);
                 pods[1] = spawn(level, start.add(-3, 0, 0));

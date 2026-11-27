@@ -18,8 +18,8 @@ public abstract class GameTestTickerMixin {
     @Final
     private Collection<GameTestInfo> testInfos;
 
-    // After every info has ticked, so nothing clears a collection the info is iterating. The ticker drops done infos
-    // next.
+    // After every info has ticked, so nothing clears a collection the info is iterating. The ticker drops done
+    // infos next.
     @Inject(
             method = "tick",
             at = @At(value = "INVOKE", target = "Ljava/util/Collection;removeIf(Ljava/util/function/Predicate;)Z"))

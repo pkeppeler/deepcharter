@@ -103,8 +103,8 @@ public class ColonyTest {
                 SPAWN_AT_START.compareAndSet(null, server.getRespawnData().globalPos()));
         // The Host's displays are entities, found only in chunks that tick. A work order that a test completes puts his
         // hands there, and
-        // the test takes them away again only where they are found: so the pad's chunks tick from the start, for every
-        // test.
+        // the test takes them away again only where they are found: so the pad's chunks tick from the start, for
+        // every test.
         ColonyEvents.BUILT.register((server, colony) -> ColonyChunks.force(server.overworld(), colony));
     }
 
@@ -260,8 +260,8 @@ public class ColonyTest {
                 throw failure(helper, "%s should start offline (unrepaired)", type.id());
             }
         }
-        // The contract terminal is #72's. Until it registers one, its plinth is bare; after, the colony stands one on
-        // it.
+        // The contract terminal is #72's. Until it registers one, its plinth is bare; after, the colony stands one
+        // on it.
         BlockPos contract = TestColony.anchor(placed, ColonyAnchor.CONTRACT_TERMINAL);
         BlockState onPlinth = overworld.getBlockState(contract);
         if (!onPlinth.isAir() && TerminalTypes.of(onPlinth.getBlock()).isEmpty()) {
@@ -624,8 +624,8 @@ public class ColonyTest {
                 throw failure(helper, "waiting for the Conduit's chunks to tick");
             }
             ServerPlayer player = mock.player();
-            // Creative while it waited at the join point inside the colony's foundation, where survival could
-            // suffocate.
+            // Creative while it waited at the join point inside the colony's foundation, where survival
+            // could suffocate.
             player.setGameMode(GameType.SURVIVAL);
             for (int layer = 0; layer <= layers; layer++) {
                 ServerLevel level = TestLayers.level(helper, layer);

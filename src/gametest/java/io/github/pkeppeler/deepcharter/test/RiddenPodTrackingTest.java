@@ -107,8 +107,8 @@ public class RiddenPodTrackingTest {
         return -1;
     }
 
-    // test-seam: vanilla gives no way to make a client slow to acknowledge a chunk batch, which keeps a queued chunk
-    // queued
+    // test-seam: vanilla gives no way to make a client slow to acknowledge a chunk batch, which keeps a queued
+    // chunk queued
     private static void setUnacknowledged(PlayerChunkSender sender, int batches) {
         try {
             Field field = PlayerChunkSender.class.getDeclaredField("unacknowledgedBatches");

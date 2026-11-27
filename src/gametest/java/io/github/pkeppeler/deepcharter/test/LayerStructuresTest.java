@@ -542,8 +542,8 @@ public class LayerStructuresTest {
         // The chunk of the site's centre, stopped before it is full: the zone fill has run, and the structure is not
         // drawn yet.
         ChunkPos chunkPos = ChunkPos.containing(site.origin());
-        // sync-load: the case needs a proto chunk stopped before FULL, which only a synchronous request for that status
-        // gives
+        // sync-load: the case needs a proto chunk stopped before FULL, which only a synchronous request for that
+        // status gives
         ChunkAccess proto = level.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FEATURES);
         if (proto instanceof ImposterProtoChunk) {
             throw failure(

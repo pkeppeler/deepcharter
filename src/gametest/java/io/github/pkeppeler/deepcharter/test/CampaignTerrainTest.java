@@ -61,7 +61,10 @@ public class CampaignTerrainTest {
     /** Every column of the sample in a grid this many blocks apart. */
     private static final int SAMPLE_STEP = 3;
 
-    private static final String CRUST = "deepcharter:breach_crust";
+    private static final String BREACH_CRUST = "deepcharter:breach_crust";
+    /** A floor the seed draws grained holds this where it would hold the breach crust (#216, #1022). */
+    private static final String GRAINED_CRUST = "deepcharter:grained_crust";
+
     private static final String PACKED_SHALE = "deepcharter:packed_shale";
     private static final String GREEN_SHALE = "deepcharter:green_shale";
     private static final String BASALT_CORE = "deepcharter:basalt_core";
@@ -137,6 +140,10 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
+    private static boolean isCrust(String block) {
+        return block.equals(BREACH_CRUST) || block.equals(GRAINED_CRUST);
+    }
+
     @GameTest(
             environment = CampaignEnvironments.D,
             dimension = FULL,
@@ -155,7 +162,7 @@ public class CampaignTerrainTest {
                     String block = idAt(level, column.atY(y));
                     expect(
                             helper,
-                            block.equals(CRUST),
+                            isCrust(block),
                             "%s: expected crust at %d %d %d, found %s",
                             layer.name(),
                             column.getX(),
@@ -166,7 +173,7 @@ public class CampaignTerrainTest {
                 String above = idAt(level, column.atY(layer.minY() + rows));
                 expect(
                         helper,
-                        !above.equals(CRUST),
+                        !isCrust(above),
                         "%s: more than %d rows of crust at %d %d",
                         layer.name(),
                         rows,
@@ -197,7 +204,7 @@ public class CampaignTerrainTest {
         Set<Integer> found = new TreeSet<>();
         for (BlockPos column : sampledColumns()) {
             for (int y = worldMinY(); y < worldTopExclusive(); y++) {
-                if (idAt(level, column.atY(y)).equals(CRUST)) {
+                if (isCrust(idAt(level, column.atY(y)))) {
                     found.add(y);
                 }
             }
@@ -207,7 +214,7 @@ public class CampaignTerrainTest {
                     y++) {
                 expect(
                         helper,
-                        !idAt(level, column.atY(y)).equals(CRUST),
+                        !isCrust(idAt(level, column.atY(y))),
                         "crust under the surface at %d %d %d",
                         column.getX(),
                         y,
@@ -310,8 +317,8 @@ public class CampaignTerrainTest {
             Band layer = CampaignBands.layer(number);
             for (int zone = 0; zone < Zones.COUNT; zone++) {
                 Zones.Span span = Zones.span(layer.minY(), layer.height(), zone);
-                // A cell is 4 blocks, judged by its middle, so a zone edge inside a cell is off by up to 2 blocks
-                // (ZoneBiomeSource).
+                // A cell is 4 blocks, judged by its middle, so a zone edge inside a cell is off by up to 2
+                // blocks (ZoneBiomeSource).
                 for (int y : new int[] {span.low() + 2, (span.low() + span.high()) / 2, span.high() - 2}) {
                     String expected = Zones.of(number, layer.minY(), layer.height(), y)
                             .orElseThrow()
@@ -699,8 +706,8 @@ public class CampaignTerrainTest {
     }
 
     private static String biomeAt(ServerLevel level, BlockPos pos) {
-        // The cell the generator stored, not level.getBiome(pos): that one blurs a band's edge with the cell next to
-        // it.
+        // The cell the generator stored, not level.getBiome(pos): that one blurs a band's edge with the cell next
+        // to it.
         // sync-load: every caller waited for the sample's chunks with FarChunks.whenBlocksLoaded
         Optional<String> key = level.getChunk(pos)
                 .getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2)

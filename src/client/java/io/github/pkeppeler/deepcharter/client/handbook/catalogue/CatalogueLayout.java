@@ -207,6 +207,8 @@ public record CatalogueLayout(
      * bands or too short for them and, when the screen {@code wantsEffects} (draws the player's effects), the smallest
      * row of them over them.
      */
+    // const-param: callers pass font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font); the
+    // parameter keeps the layout tied to the font, and tests pass 9
     public static @Nullable CatalogueLayout of(
             int width, int height, CatalogueLook look, CrtTuning crt, int lineHeight, boolean wantsEffects) {
         int inventoryLeft = (width - IMAGE_WIDTH) / 2;

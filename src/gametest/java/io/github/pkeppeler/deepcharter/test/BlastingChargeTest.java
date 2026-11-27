@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -173,7 +174,7 @@ public class BlastingChargeTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void aChargeSparesWhatIsBuiltFluidsBedrockAndVentsNoGas(GameTestHelper helper) {
+    public void aChargeSparesWhatIsBuiltFluidsBedrockCrustAndVentsNoGas(GameTestHelper helper) {
         int x = 3072;
         scene(
                 helper,
@@ -182,6 +183,8 @@ public class BlastingChargeTest {
                     level.setBlock(cell(x - 1, -2, -1), Blocks.OAK_PLANKS.defaultBlockState(), 2);
                     level.setBlock(cell(x - 1, -1, 0), SlagBrick.BLOCK.defaultBlockState(), 2);
                     level.setBlock(cell(x, -1, -1), Blocks.BEDROCK.defaultBlockState(), 2);
+                    level.setBlock(cell(x - 1, -1, -1), LayerBlocks.BREACH_CRUST.defaultBlockState(), 2);
+                    level.setBlock(cell(x - 1, -2, 0), LayerBlocks.GRAINED_CRUST.defaultBlockState(), 2);
                     level.setBlock(cell(x, -2, -1), Blocks.LAVA.defaultBlockState(), 2);
                     level.setBlock(
                             cell(x, -2, 0), HazardBlocks.GAS_POCKET.defaultBlockState(), 2); // a corner of the volume
@@ -193,6 +196,10 @@ public class BlastingChargeTest {
                     ChargeUse.expectBlock(helper2, level, cell(x - 1, -2, -1), Blocks.OAK_PLANKS, "planks");
                     ChargeUse.expectBlock(helper2, level, cell(x - 1, -1, 0), SlagBrick.BLOCK, "a slag brick");
                     ChargeUse.expectBlock(helper2, level, cell(x, -1, -1), Blocks.BEDROCK, "bedrock");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x - 1, -1, -1), LayerBlocks.BREACH_CRUST, "breach crust");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x - 1, -2, 0), LayerBlocks.GRAINED_CRUST, "grained crust (#1022)");
                     ChargeUse.expectBlock(helper2, level, cell(x, -2, -1), Blocks.LAVA, "lava");
                     expectAir(helper2, level, cell(x, -2, 0), "the gas pocket goes with the blast");
                     ChargeUse.expectBlock(

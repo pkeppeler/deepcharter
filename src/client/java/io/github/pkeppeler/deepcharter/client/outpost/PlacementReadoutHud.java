@@ -29,18 +29,18 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
 /**
- * The placement readout (#989, ADR 0072): while the player holds a block and aims at a block, it says under the crosshair whether that block
- * would hold where it would be placed, HOLDS HERE or WILL NOT HOLD UNATTENDED, and for the last why. What it says is
- * {@link Placements}'; it sits two lines under the block readout of the aimed block ({@code BlockReadoutHud}), in that readout's colours and
- * scale ({@code theme/readout.json}), and fades in and out as the block readout does ({@link ReadoutFade}). Nothing shows where the depth asks nothing (the surface, and for now layers 1 and 2), and none shows while the HUD is hidden (F1), a screen is open or the player spectates.
+ * The placement readout (#989, ADR 0072): while the player holds a block and aims at a block, it says above the hotbar
+ * whether that block would hold where it would be placed, HOLDS HERE or WILL NOT HOLD UNATTENDED, and for the last why.
+ * What it says is {@link Placements}'; it stands above the block readout of the aimed block ({@code BlockReadoutHud}),
+ * over the room of its two lines, in that readout's colours and scale ({@code theme/readout.json}), and fades in and
+ * out as the block readout does ({@link ReadoutFade}). Nothing shows where the depth asks nothing (the surface, and for
+ * now layers 1 and 2), and none shows while the HUD is hidden (F1), a screen is open or the player spectates.
  */
 public final class PlacementReadoutHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "placement_readout");
     private static final ReadoutFade<Readout> FADE = new ReadoutFade<>();
     /** Vanilla text with an alpha of 3 or less is drawn opaque, so a fade ends one step above it. */
     private static final int MIN_ALPHA = 4;
-    /** The block readout takes the first two lines under the crosshair (a name and a hint). */
-    private static final int LINES_BELOW = 2;
 
     private PlacementReadoutHud() {}
 
@@ -52,8 +52,9 @@ public final class PlacementReadoutHud {
     }
 
     /**
-     * The box of the lines on a GUI {@code guiWidth} x {@code guiHeight}, as the scale puts them: as wide as the wider line, the verdict and the
-     * reason under it, starting {@link #LINES_BELOW} lines under the crosshair's anchor. What is drawn and what is kept clear are this one box.
+     * The box of the lines on a GUI {@code guiWidth} x {@code guiHeight}, as the scale puts them: as wide as the wider
+     * line, the verdict and the reason under it, growing upward from {@link
+     * ReadoutLook#placementTop}. What is drawn and what is kept clear are this one box.
      */
     private static HudKeepClear.Rect box(Font font, Readout readout, int guiWidth, int guiHeight) {
         ReadoutLook look = ReadoutLook.current();
@@ -61,12 +62,13 @@ public final class PlacementReadoutHud {
         int widest = widest(font, readout);
         int height = font.lineHeight + (readout.reason().isPresent() ? line : 0);
         int width = (int) Math.ceil(widest * (float) look.scale());
+        int boxHeight = (int) Math.ceil(height * (float) look.scale());
         return new HudKeepClear.Rect(
                 "placement readout",
                 (guiWidth - width) / 2,
-                guiHeight / 2 + look.offsetY() + (int) Math.ceil(LINES_BELOW * line * (float) look.scale()),
+                look.placementTop(guiHeight, font.lineHeight, boxHeight),
                 width,
-                (int) Math.ceil(height * (float) look.scale()));
+                boxHeight);
     }
 
     /** The width, before the scale, of the wider of the two lines. */

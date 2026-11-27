@@ -333,8 +333,8 @@ public class LightSyncSafetyNetTest {
                         }
                         LightBroadcastSuppression.suppress(lampChunk);
                         LightBroadcastSuppression.suppress(beyond);
-                        // The last column of the lamp's chunk: the light spills across the border into the chunk
-                        // beyond.
+                        // The last column of the lamp's chunk: the light spills across the border into the
+                        // chunk beyond.
                         int x = beyond.getMinBlockX() - 1;
                         int z = beyond.getMiddleBlockZ();
                         lamp[0] = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) + 2, z);
@@ -370,8 +370,8 @@ public class LightSyncSafetyNetTest {
                         phase[0] = 5;
                     }
                     case 5 -> {
-                        // The lamp's removal is published: every task queued for it has run and the light has stopped
-                        // changing.
+                        // The lamp's removal is published: every task queued for it has run and the light has
+                        // stopped changing.
                         if (!steady(level, beyond, lampChunk, lamp[0], steady, waited, marker)) {
                             return;
                         }
@@ -577,8 +577,8 @@ public class LightSyncSafetyNetTest {
                         phase[0] = 4;
                     }
                     case 4 -> {
-                        // The light engine runs in wall time, so a tick count after the change may end before it
-                        // publishes.
+                        // The light engine runs in wall time, so a tick count after the change may end before
+                        // it publishes.
                         if (!steady(level, home, lampChunk, lamp[0], steady, waited, marker)) {
                             return;
                         }

@@ -78,8 +78,8 @@ public class SurfaceWritesTest {
                 helper,
                 !SurfaceWrites.neutral(stone, Blocks.GLASS.defaultBlockState()),
                 "glass differs in light and heightmap");
-        // Equal light properties, so only the heightmap branch can refuse this pair: grass is no motion block, glass
-        // is.
+        // Equal light properties, so only the heightmap branch can refuse this pair: grass is no motion block,
+        // glass is.
         BlockState grass = Blocks.SHORT_GRASS.defaultBlockState();
         BlockState glass = Blocks.GLASS.defaultBlockState();
         expect(helper, !LightEngine.hasDifferentLightProperties(grass, glass), "grass and glass light alike");
@@ -117,7 +117,7 @@ public class SurfaceWritesTest {
             expect(helper, live.getBlockState(at) == sandstone, "the far chunk holds sandstone at %s", at);
             expect(
                     helper,
-                    SurfaceWrites.fastSection(imposter, at, GREEN) == null,
+                    SurfaceWrites.neutralWas(imposter, at, GREEN) == null,
                     "an imposter chunk takes the fast path");
             imposter.setBlockState(at, GREEN, 3);
             expect(helper, live.getBlockState(at) == GREEN, "the vanilla write did not reach the live chunk");
@@ -128,12 +128,12 @@ public class SurfaceWritesTest {
             lit.setBlockState(inLit, GREEN, 3);
             expect(
                     helper,
-                    SurfaceWrites.fastSection(lit, inLit, PACKED) != null,
+                    SurfaceWrites.neutralWas(lit, inLit, PACKED) != null,
                     "a proto chunk before the light status does not");
             lit.setPersistedStatus(ChunkStatus.INITIALIZE_LIGHT);
             expect(
                     helper,
-                    SurfaceWrites.fastSection(lit, inLit, PACKED) == null,
+                    SurfaceWrites.neutralWas(lit, inLit, PACKED) == null,
                     "a chunk at the light status takes the fast path");
             helper.succeed();
         });

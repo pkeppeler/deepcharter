@@ -119,8 +119,8 @@ public class AmbiencePlacesTest {
                                 .isEmpty(),
                         "called with no hour");
             }
-            // Then near: the first call is not before the floor, comes from the clock and strikes the world's hour or
-            // another.
+            // Then near: the first call is not before the floor, comes from the clock and strikes the world's hour
+            // or another.
             for (int tick = 0; tick < ClockTuning.DEFAULT.firstMinTicks() - 1; tick++) {
                 expect(
                         helper,
