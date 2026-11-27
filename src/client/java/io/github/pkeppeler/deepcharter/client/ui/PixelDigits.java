@@ -23,6 +23,9 @@ public final class PixelDigits {
     /** The narrow glyphs, in sheet order after the wide ones. */
     static final String NARROW = ",.";
 
+    /** The widest reading the altimeter can show in this game's depth range, which its recess and the scanner panel's clearance are sized for. */
+    public static final String LONGEST_READING = "-12,345 ft.";
+
     private static final char SPACE = ' ';
 
     private PixelDigits() {}
@@ -76,7 +79,7 @@ public final class PixelDigits {
     }
 
     /** The width of the glyph sheet, which its texture must be. */
-    static int sheetWidth(Digits look) {
+    public static int sheetWidth(Digits look) {
         return WIDE.length() * look.width() + NARROW.length() * look.narrowWidth();
     }
 }

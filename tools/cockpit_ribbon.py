@@ -57,12 +57,13 @@ TITLE_KEYS = {"fuel": "fuel", "hull": "hull", "cargo": "load", "depth": "depth",
 _LANG = json.loads((ROOT / "src/lang/en_us/pod.json").read_text(encoding="utf-8"))
 TITLES = {gauge: _LANG["hud.deepcharter.cockpit." + key] for gauge, key in TITLE_KEYS.items()}
 # The altimeter's recess at the band's middle. The room under it is the altimeter's (#1432 hangs the sink rate there), so no title takes it. It holds the longest reading,
-# "-12,345 ft.", drawn in the pixel digits (DIGITS, #1539) with three pixels to spare on each side.
-RECESS_W, RECESS_H, RECESS_Y = 44, 7, 2
+# "-12,345 ft.", drawn in the pixel digits (#1539) and centred, so the recess is that reading's width (LONGEST_READING_W, 37) and a pixel each side, rounded up to the even 38 + 2 = 40.
+RECESS_H, RECESS_Y = 7, 2
 # The altimeter's digits (#1539): a sheet of white glyphs the game tints, drawn at the HUD's pixel scale so they never smooth-scale. WIDE_GLYPHS are DIGIT_W wide and
 # come first in the sheet, then NARROW_GLYPHS, DIGIT_NARROW_W wide; a space is blank and as wide as a narrow glyph, so it takes no room in the sheet. The client reads the
 # same sizes from the theme (digitsW, digitsH, digitsGap, digitsNarrowW) and the glyph order from PixelDigits.
 DIGIT_W, DIGIT_H, DIGIT_GAP, DIGIT_NARROW_W = 3, 5, 1, 1
+LONGEST_READING = "-12,345 ft."
 WIDE_GLYPHS = "0123456789-ft"
 NARROW_GLYPHS = ",."
 DIGITS_SHEET = ASSETS / "textures/gui/cockpit/digits.png"
@@ -234,8 +235,16 @@ def digits_sheet():
 
 def digits_width(text):
     """The width of `text` in the pixel digits, as PixelDigits works it out: a gap between glyphs, a space as wide as a narrow glyph."""
+    unknown = [c for c in text if c != " " and c not in GLYPHS]
+    if unknown:
+        raise ValueError(f"the pixel digits have no glyph for {unknown!r} in {text!r}")
     widths = [DIGIT_W if c in WIDE_GLYPHS else DIGIT_NARROW_W for c in text]
     return sum(widths) + DIGIT_GAP * (len(text) - 1)
+
+
+LONGEST_READING_W = digits_width(LONGEST_READING)
+# A pixel each side, rounded up to an even width: the band is centred on the screen and its bars are even, so an odd recess would move them by a pixel on odd screens.
+RECESS_W = LONGEST_READING_W + 2 + LONGEST_READING_W % 2
 
 
 def draw_digits(img, x, y, text, color):
