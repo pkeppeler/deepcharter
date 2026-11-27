@@ -20,6 +20,7 @@ sys.path.insert(0, str(TOOLS))
 sys.path.insert(0, str(TOOLS / "textures"))
 sys.path.insert(0, str(TOOLS / "layer_concepts"))
 
+import make  # noqa: E402
 import pngio  # noqa: E402
 import seams  # noqa: E402
 import texgen  # noqa: E402
@@ -151,6 +152,12 @@ class TexturePacksTest(unittest.TestCase):
                     for host_texture in (f"{rock}_{index}", f"{rock}_end_{index % body['ends']}"):
                         rock_image = pngio.decode((shipped.out / f"block/{host_texture}.png").read_bytes())
                         pixels = bytearray(rock_image.pixels)
+                        if rock in make.HOME_TINT:
+                            # As the client draws the neutral rock: times the rock's home tint (RockTint, #1551).
+                            tint = make.HOME_TINT[rock]
+                            for at in range(0, len(pixels), 4):
+                                for channel in range(3):
+                                    pixels[at + channel] = round(pixels[at + channel] * ((tint >> (16 - 8 * channel)) & 0xFF) / 255)
                         for at in range(0, len(pixels), 4):
                             if overlay.pixels[at + 3]:
                                 pixels[at:at + 3] = overlay.pixels[at:at + 3]
@@ -174,6 +181,10 @@ class TexturePacksTest(unittest.TestCase):
         for host, rock in body["hosts"].items():
             rock_pixels = [p for index in range(body["variants"]) for p in pixels(f"{rock}_{index}")]
             mean = tuple(sum(p[channel] for p in rock_pixels) / len(rock_pixels) for channel in range(3))
+            if rock in make.HOME_TINT:
+                # The tinted rocks' textures are neutral grey, and the client multiplies them by the rock's tint (RockTint, #1551).
+                tint = make.HOME_TINT[rock]
+                mean = tuple(mean[channel] * ((tint >> (16 - 8 * channel)) & 0xFF) / 255 for channel in range(3))
             for block in body["blocks"]:
                 flecks = [p for index in range(body["textures"]) for p in pixels(f"{block}_overlay_{index}")
                           if p[3] == 255 and p in {colour for layer in shipped.book.recipes[f"block/{block}_overlay_{index}"].layers

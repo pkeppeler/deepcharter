@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * What the campaign's noise fill writes in layer 1's rows instead of its default block (#1472): the strata's rock for a
- * column with unmoved contacts. The material rule writes a block over every solid block of layer 1 (the strata, and the
+ * column with unmoved contacts, at each block's own position so a gradient's dither is guessed as it will be laid (#1551). The material rule writes a block over every solid block of layer 1 (the strata, and the
  * breach crust under them), so the fill's choice never reaches the world; a good guess only makes most of those writes
  * a block over the same block, which {@code SurfaceWrites} skips. A row the guess gets wrong (near a moved contact) is
  * written as before. Why and the target: ADR 0108.
@@ -40,13 +40,15 @@ public final class StrataPrefill {
      */
     private static volatile Known[] known = new Known[0];
 
-    /** The guess for each row of the band, bottom first. */
-    private final BlockState[] rows;
+    private final StrataRule strata;
+    /** The guess for each row of the band, bottom first; null for a row the guess depends on the position in. */
+    private final @Nullable BlockState[] rows;
 
     private StrataPrefill(StrataRule strata) {
+        this.strata = strata;
         rows = new BlockState[BAND.height()];
         for (int i = 0; i < rows.length; i++) {
-            rows[i] = strata.rockAt(BAND.minY() + i, 0);
+            rows[i] = strata.uniformAt(BAND.minY() + i);
         }
     }
 
@@ -79,7 +81,7 @@ public final class StrataPrefill {
 
     private static @Nullable StrataRule find(MaterialRule rule) {
         return switch (rule) {
-            case StrataRule strata -> strata;
+            case StrataRule strata -> startsIn(strata) ? strata : null;
             case MaterialRule.HolderHolder holder -> find(holder.holder().value());
             case ConditionRule condition -> find(condition.thenRun());
             case SequenceRule sequence -> {
@@ -95,9 +97,19 @@ public final class StrataPrefill {
         };
     }
 
-    /** The block for a solid row at {@code y}, or null outside the band, where the fill keeps its default. */
-    public @Nullable BlockState at(int y) {
+    /** Whether {@code strata} is layer 1's: the campaign has one rule for each layer that has strata, and each starts in its own band. */
+    private static boolean startsIn(StrataRule strata) {
+        int top = strata.contacts().getFirst().y();
+        return top >= BAND.minY() && top <= BAND.maxY();
+    }
+
+    /** The block for a solid block at ({@code x}, {@code y}, {@code z}), or null outside the band, where the fill keeps its default. */
+    public @Nullable BlockState at(int x, int y, int z) {
         int row = y - BAND.minY();
-        return row >= 0 && row < rows.length ? rows[row] : null;
+        if (row < 0 || row >= rows.length) {
+            return null;
+        }
+        BlockState uniform = rows[row];
+        return uniform != null ? uniform : strata.rockAt(x, y, z, 0);
     }
 }

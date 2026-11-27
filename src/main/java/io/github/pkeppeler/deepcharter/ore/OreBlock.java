@@ -33,6 +33,11 @@ public final class OreBlock extends Block {
             this.rock = rock;
         }
 
+        /** The rock block of this host. */
+        public Block rock() {
+            return rock;
+        }
+
         /** The host of an ore that replaces {@code rock}. */
         static Host of(BlockState rock) {
             for (Host host : VALUES) {

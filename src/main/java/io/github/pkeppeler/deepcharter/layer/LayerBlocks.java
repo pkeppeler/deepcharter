@@ -188,17 +188,29 @@ public final class LayerBlocks {
     }
 
     /**
-     * Rows under each zone edge of layer 1 where the contact between its strata lies before the contour noise and the
-     * surface depth move it (#1277). {@code worldgen/material_rule/claim_strata.json} lays the same contacts and rocks,
-     * which {@code ClaimFeaturesTest} holds to {@link #stratum}.
+     * Rows under each zone edge of layer 1 where the centre of the contact between its strata lies before the contour
+     * noise and the surface depth move it (#1277). {@code worldgen/material_rule/claim_strata.json} lays the same
+     * contacts and rocks, which {@code ClaimFeaturesTest} holds to {@link #stratum}.
      */
     public static final int CLAIM_CONTACT_UNDER_EDGE = 6;
 
     /**
+     * Rows of the long gradient at each of layer 1's two zone contacts (#1551), centred on the contact: the lower rock's
+     * share rises from 0 to 1 over them. It is the height of a zone, so the two gradients lie end to end and the rock
+     * is changing all the way from the hardpan's gradient to the black shale's.
+     */
+    public static final int CLAIM_GRADIENT_LENGTH = 64;
+
+    /** Rows over layer 1's floor where the centre of the short gradient into layer 2's rock lies (#1551). */
+    public static final int CLAIM_FLOOR_CONTACT_OVER_FLOOR = 11;
+
+    /**
      * The rock at height {@code y} of {@code band} in the campaign world: in layer 1 Topsoil Claims' hardpan, Stone
-     * Benches' packed shale or Deep Claim's black shale, split at the strata's contacts before the noise moves them
-     * (#1277); in every other layer {@link #layerGround(int)}. The rule moves a contact up to a dozen rows, so within
-     * that of a contact this names the rock most of the wall is, not always the block there.
+     * Benches' packed shale, Deep Claim's black shale and, in the rows over its floor, layer 2's green shale, split at
+     * the centres of the strata's contacts before the noise moves them (#1277); in every other layer
+     * {@link #layerGround(int)}. The rule blends the rocks over a gradient round each contact (#1551), so within half of
+     * it of a contact this names the rock that is likelier, not always the block there; {@code StrataRule#possibleAt}
+     * names the rocks a row can hold.
      */
     public static Block stratum(LayerChain.Band band, int y) {
         if (band.layer() != 1) {
@@ -210,7 +222,7 @@ public final class LayerBlocks {
         if (y >= Zones.span(band.minY(), band.height(), 1).low() - CLAIM_CONTACT_UNDER_EDGE) {
             return PACKED_SHALE;
         }
-        return BLACK_SHALE;
+        return y >= band.minY() + CLAIM_FLOOR_CONTACT_OVER_FLOOR ? BLACK_SHALE : GREEN_SHALE;
     }
 
     /**

@@ -21,5 +21,6 @@ public final class LayerClientRegistry {
         SeamClient.init();
         HandBreakClient.init();
         LayerSky.init();
+        RockTints.init();
     }
 }

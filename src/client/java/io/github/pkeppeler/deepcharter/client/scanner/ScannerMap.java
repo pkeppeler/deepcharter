@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.layer.RockTint;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
@@ -80,7 +81,8 @@ final class ScannerMap {
     /** The model set {@code TILES} was read from; null when no tile has been read. */
     private static @Nullable BlockStateModelSet tilesFrom;
 
-    private record TileKey(List<Identifier> sprites, int pixels, int backdrop) {}
+    /** {@code tint} is the colour the first layer is multiplied by ({@link RockTint}), {@link RockTint#NEUTRAL} for none. */
+    private record TileKey(List<Identifier> sprites, int pixels, int backdrop, int tint) {}
 
     private ScannerMap() {}
 
@@ -168,7 +170,11 @@ final class ScannerMap {
                 } else if (small && found instanceof Cell.Ore ore) {
                     fillTile(image, x, y, pixels, oreMark(look, ore));
                 } else {
-                    Optional<int[]> tile = tile(ScannerSprites.of(slice, found, ahead, up), pixels, look.airColor());
+                    // The scanner draws a rock as the world does: the neutral texture times the colour of its depth.
+                    int tint =
+                            RockTint.of(slice.state(ahead, up), slice.origin().getY() + up);
+                    Optional<int[]> tile =
+                            tile(ScannerSprites.of(slice, found, ahead, up), pixels, look.airColor(), tint);
                     if (tile.isEmpty()) {
                         fillTile(image, x, y, pixels, flatColour(look, found));
                     } else {
@@ -302,29 +308,43 @@ final class ScannerMap {
     }
 
     /** The layers laid over each other, bottom first, over {@code backdrop}, each scaled to {@code pixels} square; empty when there are none or one cannot be read. */
-    private static Optional<int[]> tile(List<TextureAtlasSprite> layers, int pixels, int backdrop) {
+    private static Optional<int[]> tile(List<TextureAtlasSprite> layers, int pixels, int backdrop, int tint) {
         if (layers.isEmpty()) {
             return Optional.empty();
         }
         return TILES.computeIfAbsent(
                 new TileKey(
-                        layers.stream().map(sprite -> sprite.contents().name()).toList(), pixels, backdrop),
-                key -> compose(layers, pixels, backdrop));
+                        layers.stream().map(sprite -> sprite.contents().name()).toList(), pixels, backdrop, tint),
+                key -> compose(layers, pixels, backdrop, tint));
     }
 
-    private static Optional<int[]> compose(List<TextureAtlasSprite> layers, int pixels, int backdrop) {
+    /** The layers over {@code backdrop}; the first (the rock, under an ore's flecks) is multiplied by {@code tint} first. */
+    private static Optional<int[]> compose(List<TextureAtlasSprite> layers, int pixels, int backdrop, int tint) {
         int[] tile = new int[pixels * pixels];
         Arrays.fill(tile, OPAQUE | backdrop);
-        for (TextureAtlasSprite layer : layers) {
-            Optional<int[]> scaled = read(layer, pixels);
+        for (int index = 0; index < layers.size(); index++) {
+            Optional<int[]> scaled = read(layers.get(index), pixels);
             if (scaled.isEmpty()) {
                 return Optional.empty();
             }
             for (int i = 0; i < tile.length; i++) {
-                tile[i] = over(scaled.get()[i], tile[i]);
+                int pixel = index == 0 ? multiply(scaled.get()[i], tint) : scaled.get()[i];
+                tile[i] = over(pixel, tile[i]);
             }
         }
         return Optional.of(tile);
+    }
+
+    /** {@code argb} with each colour channel multiplied by the same channel of {@code tint} over 255, its alpha kept. */
+    static int multiply(int argb, int tint) {
+        if (tint == RockTint.NEUTRAL) {
+            return argb;
+        }
+        int result = argb & OPAQUE;
+        for (int shift = 0; shift <= 16; shift += 8) {
+            result |= ((((argb >> shift) & 0xFF) * ((tint >> shift) & 0xFF) + 127) / 255) << shift;
+        }
+        return result;
     }
 
     /** The first frame of the sprite's texture file in the active packs, scaled to {@code pixels} square, with alpha; empty when the file cannot be read. */

@@ -480,7 +480,7 @@ class VariantTest(unittest.TestCase):
         parent = json.loads((assets / "deepcharter/models/block/ore_overlay.json").read_text())
         self.assertEqual(("minecraft:block/block", {"particle": "#side"}), (parent["parent"], parent["textures"]))
         faces = ("down", "up", "north", "south", "west", "east")
-        self.assertEqual([{face: {"texture": "#end" if face in ("down", "up") else "#side", "cullface": face} for face in faces},
+        self.assertEqual([{face: {"texture": "#end" if face in ("down", "up") else "#side", "cullface": face, "tintindex": 0} for face in faces},
                           {face: {"texture": "#overlay", "cullface": face} for face in faces}], [element["faces"] for element in parent["elements"]])
         self.assertEqual([([0, 0, 0], [16, 16, 16])] * 2, [(element["from"], element["to"]) for element in parent["elements"]])
         self.assertEqual(0, run("--variant", "o", "--check")[0])

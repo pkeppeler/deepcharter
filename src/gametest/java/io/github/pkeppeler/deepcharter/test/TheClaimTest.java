@@ -3,9 +3,11 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.ClaimShaftFeature;
+import io.github.pkeppeler.deepcharter.layer.gen.StrataRule;
 import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -13,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -68,17 +72,14 @@ public class TheClaimTest {
     /** Rows under a column's rock top that are not counted: the top's own relief is no cave. */
     private static final int TOP_SKIN = 4;
 
-    /**
-     * Rows either side of a zone's edge where the contact between two strata may lie: the material rule lays it 6 under
-     * the edge, moved 5 down to 6 up by the contact noise and raised by the column's surface depth, and a thin bed of
-     * the lower rock lies up to 4 above it.
-     */
-    private static final int CONTACT_BELOW = 12;
+    /** Rows the contour noise and the surface depth can move a contact either way, with a margin. */
+    private static final int SHIFT_REACH = 14;
 
-    private static final int CONTACT_ABOVE = 12;
+    /** The most the gradients' dither may be off the straight line of its share against depth, over a few hundred columns. */
+    private static final double SHARE_TOLERANCE = 0.12;
 
     /** The rock of each zone, top first. */
-    private static final List<String> STRATA = List.of("hardpan", "packed_shale", "black_shale");
+    private static final List<String> STRATA = List.of("hardpan", "packed_shale", "black_shale", "green_shale");
 
     private static final List<String> FEATURES =
             List.of("claim_shafts", "claim_cave_ores", "claim_salvage_caches", "fungal_stalks_cave");
@@ -151,9 +152,10 @@ public class TheClaimTest {
     }
 
     /**
-     * Each zone has its own rock. Away from the edges, every block of layer rock in a zone, and the host of every ore,
-     * is the zone's stratum; the contact between two strata lies in a band round the zone's edge and waves from column
-     * to column, so it reads as rock and not as a ruled line.
+     * Each zone has its own rock, and the rock changes over a long gradient (#1551). Every block of layer rock, and the
+     * host of every ore, is one the strata rule can lay in its row; above the first gradient it is all hardpan; across
+     * the gradient at the first contact the share of hardpan among the hardpan and packed shale falls with depth; and
+     * the rows over the floor are layer 2's rock.
      */
     @GameTest(
             environment = CampaignEnvironments.C,
@@ -166,75 +168,85 @@ public class TheClaimTest {
 
     private static void eachZoneHasItsOwnRockLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        long[] matching = new long[Zones.COUNT];
-        long[] rock = new long[Zones.COUNT];
+        StrataRule rule = (StrataRule) level.registryAccess()
+                .lookupOrThrow(Registries.MATERIAL_RULE)
+                .getValueOrThrow(ResourceKey.create(
+                        Registries.MATERIAL_RULE, Identifier.fromNamespaceAndPath("deepcharter", "claim_strata")));
+        int firstContact = rule.contacts().getFirst().y();
+        int reach = LayerBlocks.CLAIM_GRADIENT_LENGTH / 4;
+        int[] hardpanAbove = new int[2];
+        int[] hardpanBelow = new int[2];
+        int[] pureHardpan = new int[2];
+        int[] floorRock = new int[2];
         List<String> strays = new ArrayList<>();
-        int edge = Zones.span(LAYER.minY(), LAYER.height(), 0).low();
-        int lowestContact = Integer.MAX_VALUE;
-        int highestContact = Integer.MIN_VALUE;
+        int bottomRow = LAYER.minY() + LayerTuning.DEFAULT.crustThickness();
+        // The rocks each row can hold, worked out once for the rows and not for every block.
+        List<Set<String>> possible = new ArrayList<>();
+        for (int y = bottomRow; y < LAYER.topExclusive(); y++) {
+            possible.add(rule.possibleAt(y, SHIFT_REACH).stream()
+                    .map(block -> BuiltInRegistries.BLOCK.getKey(block).getPath())
+                    .collect(Collectors.toSet()));
+        }
         for (BlockPos column : columns(SAMPLE_CHUNKS)) {
             // sync-load: whenBlocksLoaded loaded the chunks
             ChunkAccess chunk = level.getChunk(column);
-            int lowestHardpan = Integer.MAX_VALUE;
-            for (int y = LAYER.minY() + LayerTuning.DEFAULT.crustThickness(); y < LAYER.topExclusive(); y++) {
+            for (int y = bottomRow; y < LAYER.topExclusive(); y++) {
                 @Nullable String stratum = stratumOf(chunk.getBlockState(column.atY(y)));
                 if (stratum == null) {
                     continue;
                 }
-                // A contact: hardpan straight on packed shale, near the edge (a cave can cut one away).
-                if (stratum.equals(STRATA.getFirst())
-                        && Math.abs(y - edge) <= CONTACT_ABOVE + CONTACT_BELOW
-                        && STRATA.get(1).equals(stratumOf(chunk.getBlockState(column.atY(y - 1))))) {
-                    lowestHardpan = Math.min(lowestHardpan, y);
-                }
-                Optional<Integer> zone = interiorZone(y);
-                if (zone.isEmpty()) {
-                    continue;
-                }
-                rock[zone.get()]++;
-                if (stratum.equals(STRATA.get(zone.get()))) {
-                    matching[zone.get()]++;
-                } else if (strays.size() < 5) {
+                if (!possible.get(y - bottomRow).contains(stratum) && strays.size() < 5) {
                     strays.add(stratum + " at " + column.atY(y).toShortString());
                 }
-            }
-            if (lowestHardpan != Integer.MAX_VALUE) {
-                lowestContact = Math.min(lowestContact, lowestHardpan);
-                highestContact = Math.max(highestContact, lowestHardpan);
+                boolean rockOfFirst = stratum.equals(STRATA.getFirst()) || stratum.equals(STRATA.get(1));
+                if (y == firstContact + reach && rockOfFirst) {
+                    hardpanAbove[1]++;
+                    hardpanAbove[0] += stratum.equals(STRATA.getFirst()) ? 1 : 0;
+                }
+                if (y == firstContact - reach && rockOfFirst) {
+                    hardpanBelow[1]++;
+                    hardpanBelow[0] += stratum.equals(STRATA.getFirst()) ? 1 : 0;
+                }
+                if (y >= firstContact + LayerBlocks.CLAIM_GRADIENT_LENGTH / 2 + SHIFT_REACH) {
+                    pureHardpan[1]++;
+                    pureHardpan[0] += stratum.equals(STRATA.getFirst()) ? 1 : 0;
+                }
+                if (y == bottomRow) {
+                    floorRock[1]++;
+                    floorRock[0] += stratum.equals("green_shale") ? 1 : 0;
+                }
             }
         }
-        for (int zone = 0; zone < Zones.COUNT; zone++) {
-            LOGGER.info(
-                    "[the-claim] zone {}: {} of {} rock blocks are {}",
-                    zone,
-                    matching[zone],
-                    rock[zone],
-                    STRATA.get(zone));
-            expect(helper, rock[zone] > 0, "zone %s has no rock in its interior", zone);
-            expect(
-                    helper,
-                    matching[zone] >= 0.99 * rock[zone],
-                    "zone %s should be %s, but %s of %s rock blocks are, for example %s",
-                    zone,
-                    STRATA.get(zone),
-                    matching[zone],
-                    rock[zone],
-                    strays);
-        }
-        LOGGER.info("[the-claim] the hardpan's contact lies from y={} to y={}", lowestContact, highestContact);
+        expect(helper, strays.isEmpty(), "rock the strata rule cannot lay in its row: %s", strays);
         expect(
                 helper,
-                lowestContact >= edge - CONTACT_BELOW && highestContact <= edge + CONTACT_ABOVE,
-                "the hardpan's contact lies from y=%s to y=%s, outside the band round its zone's edge at y=%s",
-                lowestContact,
-                highestContact,
-                edge);
+                pureHardpan[1] > 0 && pureHardpan[0] >= 0.99 * pureHardpan[1],
+                "above the first gradient %s of %s rock blocks are hardpan",
+                pureHardpan[0],
+                pureHardpan[1]);
+        expect(helper, hardpanAbove[1] > 0 && hardpanBelow[1] > 0, "no hardpan or packed shale on the gradient's rows");
+        double upper = (double) hardpanAbove[0] / hardpanAbove[1];
+        double lower = (double) hardpanBelow[0] / hardpanBelow[1];
+        LOGGER.info(
+                "[the-claim] hardpan's share of the first gradient: {} at {} rows over its centre, {} at {} under",
+                upper,
+                reach,
+                lower,
+                reach);
         expect(
                 helper,
-                highestContact - lowestContact >= 8,
-                "the hardpan's contact is flat, from y=%s to y=%s: a ruled line, not rock",
-                lowestContact,
-                highestContact);
+                upper - lower >= 0.5 - SHARE_TOLERANCE,
+                "the hardpan's share should fall by half from %s rows over the contact to %s under, from %s to %s",
+                reach,
+                reach,
+                upper,
+                lower);
+        expect(
+                helper,
+                floorRock[1] > 0 && floorRock[0] >= 0.8 * floorRock[1],
+                "only %s of %s rock blocks in layer 1's lowest row are layer 2's green shale",
+                floorRock[0],
+                floorRock[1]);
         helper.succeed();
     }
 
@@ -419,20 +431,6 @@ public class TheClaimTest {
                                 .equals("deepcharter")
                 ? id
                 : null;
-    }
-
-    /**
-     * The zone whose interior holds {@code y}, clear of the band round each edge where a contact may lie; empty in a
-     * band.
-     */
-    private static Optional<Integer> interiorZone(int y) {
-        for (int zone = 1; zone < Zones.COUNT; zone++) {
-            int edge = Zones.span(LAYER.minY(), LAYER.height(), zone - 1).low();
-            if (y >= edge - CONTACT_BELOW && y <= edge + CONTACT_ABOVE) {
-                return Optional.empty();
-            }
-        }
-        return Optional.of(Zones.index(LAYER.minY(), LAYER.height(), y));
     }
 
     /**

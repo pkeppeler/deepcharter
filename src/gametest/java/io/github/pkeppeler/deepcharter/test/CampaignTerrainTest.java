@@ -95,10 +95,12 @@ public class CampaignTerrainTest {
             "minecraft:candle");
     /**
      * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the
-     * glowcaps, the surface's own stalks and great stalks, and the giant fungi's parasols and spires (#1202).
+     * glowcaps, the surface's own stalks and great stalks, and the giant fungi's parasols and spires (#1202), and the
+     * green shale that is interbedded with the core in its top rows (#1551).
      */
     private static final Set<String> LAYER_3_BLOCKS = Set.of(
             BASALT_CORE,
+            GREEN_SHALE,
             COLUMNAR_BASALT,
             "deepcharter:glowcap",
             STALK,
@@ -257,8 +259,8 @@ public class CampaignTerrainTest {
                 }
             }
         }
-        Set<String> layer1 =
-                new TreeSet<>(Set.of(PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", STALK));
+        Set<String> layer1 = new TreeSet<>(
+                Set.of(PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", GREEN_SHALE, STALK));
         layer1.addAll(CLAIM_SHAFT_BLOCKS);
         expectOnly(helper, found, CampaignBands.SURFACE, SURFACE_BLOCKS);
         expectOnly(helper, found, CampaignBands.LAYER_1, layer1);

@@ -4,15 +4,23 @@
     {
       "y": -134,
       "upper": "deepcharter:hardpan",
-      "bed": "deepcharter:packed_shale"
+      "style": "long_gradient",
+      "length": 64
     },
     {
       "y": -198,
       "upper": "deepcharter:packed_shale",
-      "bed": "deepcharter:black_shale"
+      "style": "long_gradient",
+      "length": 64
+    },
+    {
+      "y": -245,
+      "upper": "deepcharter:black_shale",
+      "style": "short_gradient",
+      "length": 16
     }
   ],
-  "bottom": "deepcharter:black_shale",
+  "bottom": "deepcharter:green_shale",
   "noise": "deepcharter:claim_contact",
   "amplitude": 10,
   "surface_depth_multiplier": 1

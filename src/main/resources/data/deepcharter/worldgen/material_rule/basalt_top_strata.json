@@ -1,0 +1,15 @@
+{
+  "type": "deepcharter:strata",
+  "contacts": [
+    {
+      "y": -525,
+      "upper": "deepcharter:green_shale",
+      "style": "interbedded",
+      "length": 24
+    }
+  ],
+  "bottom": "deepcharter:basalt_core",
+  "noise": "deepcharter:claim_contact",
+  "amplitude": 4,
+  "surface_depth_multiplier": 0
+}

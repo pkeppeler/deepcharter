@@ -117,12 +117,20 @@ CRUST_SEED = 61
 # mottles both did, so these are the seeds the user saw and picked).
 SHARED_NOISE = {(1, False): 90100, (1, True): 90107, (2, False): 90200, (2, True): 93207, (3, False): 91300, (3, True): 95307}
 
+# The rock of layer 1's strata is drawn in one neutral grey ramp and tinted at render time (#1551): the packed shale, hardpan and black shale
+# multiply it by RockTint's colour for their depth, so the rock drifts from one stratum's colour to the next over a long gradient with no block
+# between. The ramp's middle shade times a rock's home tint is that rock's old middle shade (palette.json, claim_grey).
+CLAIM_GREY = "claim_grey"
+
 # The strata of layer 1 (#1277): each zone of The Claim has a rock of its own, so a descent reads as progress in the wall and on the
 # scanner. Stone Benches keeps the packed shale; over it lies the pale, warm hardpan of Topsoil Claims and under it the cold black shale
 # of Deep Claim, which leads on to layer 2's grey-green. Each is layer 1's Grain in a ramp of its own, as many variants and ends as the
 # packed shale. By block: its ramp, the shared noise of its sides and of its ends (the first seeds from 91100 and 91300 that tile), and
 # the first seed of its variants.
-STRATA = {"hardpan": ("hardpan_rock", 91101, 91102, 1100), "black_shale": ("shale_black", 91300, 91302, 1300)}
+# The tint (0xRRGGBB) that gives each tinted rock its home colour from the grey ramp: its old middle shade over the ramp's, as RockTint.java has
+# it (test_layer_concepts holds the two equal). The scanner and the item model use the same numbers.
+HOME_TINT = {"packed_shale": 0xD2805A, "hardpan": 0xC7EA68, "black_shale": 0x9FAFD4}
+STRATA = {"hardpan": (CLAIM_GREY, 91101, 91102, 1100), "black_shale": (CLAIM_GREY, 91300, 91302, 1300)}
 
 
 def stems(layer: int) -> tuple[str, str]:
@@ -134,13 +142,14 @@ def rock_grids(layer: int) -> dict[str, art.Grid]:
     """Every tiling texture of the rock of one layer, by name: the rock and its end, the rubble and its end."""
     rock, rubble = stems(layer)
     shades, mid = SHADES[layer], MID[layer]
+    rock_shades = art.ramp(CLAIM_GREY, 6) if layer == 1 else shades
     side, end = SHARED_NOISE[layer, False], SHARED_NOISE[layer, True]
     seed = 100 * layer
     out: dict[str, art.Grid] = {}
     for i in range(ROCK_VARIANTS[layer]):
-        out[f"{rock}_{i}"] = fitted(lambda s: art.grained(shades, s, mid, side), seed + i)
+        out[f"{rock}_{i}"] = fitted(lambda s: art.grained(rock_shades, s, mid, side), seed + i)
     for j in range(END_VARIANTS):
-        out[f"{rock}_end_{j}"] = fitted(lambda s: art.grained(shades, s, mid, end), seed + 15 + j)
+        out[f"{rock}_end_{j}"] = fitted(lambda s: art.grained(rock_shades, s, mid, end), seed + 15 + j)
     for i in range(RUBBLE_VARIANTS):
         out[f"{rubble}_{i}"] = fitted(lambda s: art.shards(shades, s), seed + 20 + i, seams.MAX_RUBBLE_INSIDE)
     out[f"{rubble}_end"] = fitted(lambda s: art.shards(shades, s), seed + 22, seams.MAX_RUBBLE_INSIDE)
@@ -242,7 +251,8 @@ def textures(pack: str) -> dict[str, dict]:
 def shipped_models(layer: int) -> dict[str, dict]:
     """The models of the mod's rock and rubble of a layer, by name: plain cubes, each texture with the end texture of the next of its few."""
     rock, rubble = BLOCKS[layer]
-    out = {f"{rock}_{i}": shapes.cube(f"{rock}_{i}", f"{rock}_end_{i % END_VARIANTS}") for i in range(ROCK_VARIANTS[layer])}
+    out = {f"{rock}_{i}": shapes.cube(f"{rock}_{i}", f"{rock}_end_{i % END_VARIANTS}", tinted=rock in HOME_TINT)
+           for i in range(ROCK_VARIANTS[layer])}
     return out | {f"{rubble}_{i}": shapes.cube(f"{rubble}_{i}", f"{rubble}_end") for i in range(RUBBLE_VARIANTS)}
 
 
@@ -307,6 +317,14 @@ def blockstates(pack: str, models: dict[str, dict]) -> dict[str, dict]:
     }
 
 
+def item_model(block: str, model: str) -> dict:
+    """The item definition's model of a block: a tinted rock's item carries its home tint, as the block does where no depth tells (RockTint)."""
+    body: dict = {"type": "minecraft:model", "model": shapes.model_id(model)}
+    if block in HOME_TINT:
+        body["tints"] = [{"type": "minecraft:constant", "value": HOME_TINT[block]}]
+    return body
+
+
 def shipped_files() -> dict[Path, bytes]:
     """The files of the mod's rock blocks of layers 1 to 3 under src/main: the recipes of their textures, and each block's blockstate (a plain cube,
     never turned or mirrored: see the model guard; layer 3's columns are hexagons, turned about the vertical as the Grain pack turns them), its
@@ -319,13 +337,15 @@ def shipped_files() -> dict[Path, bytes]:
         for block in BLOCKS[layer]:
             names = [n for n in models if re.fullmatch(rf"{block}_\d", n)]
             files[MOD_ASSETS / f"deepcharter/blockstates/{block}.json"] = _json({"variants": {"": shapes.variants(names, (0,))}})
-            files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(f"{block}_0")}})
+            files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": item_model(block, f"{block}_0")})
     for block in STRATA:
         names = [f"{block}_{i}" for i in range(ROCK_VARIANTS[1])]
         for i, name in enumerate(names):
-            files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(shapes.cube(name, f"{block}_end_{i % END_VARIANTS}"))
+            files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(
+                shapes.cube(name, f"{block}_end_{i % END_VARIANTS}", tinted=True))
         files[MOD_ASSETS / f"deepcharter/blockstates/{block}.json"] = _json({"variants": {"": shapes.variants(names, (0,))}})
-        files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(names[0])}})
+        files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": item_model(block, names[0])})
+    files[MOD_ASSETS / "deepcharter/models/block/tinted_cube_column.json"] = _json(shapes.tinted_cube_column())
     models = column_models()
     for name, body in models.items():
         files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(body)
