@@ -9,6 +9,5 @@ key.deepcharter.catalogue.toggle  shows or hides the catalogue panels on any inv
 key.deepcharter.catalogue.back  copies EMI's Backspace to return to the recipe shown before; vanilla has no history on a panel and a click would need a button on a cramped panel
 key.deepcharter.catalogue.materials  switches the recipe console between the recipe and its total materials while the pointer is on the recipe; no vanilla key applies
 key.deepcharter.line_slab  the pilot lines the slab or stops lining, in a pod with no screen open; vanilla has no action for it and every click on a pod is already spent
-key.deepcharter.pod_screen  opens the pod screen from a seat for anyone aboard; from outside, sneak and use already opens it, but a rider has no block or entity to use
 key.deepcharter.sonar_ping  the navigator pings the sonar on demand; vanilla has no sonar action and the clicks aboard belong to piloting
 key.deepcharter.sonar_mark  marks or clears the echo being looked at, beside the ping key; vanilla has no equivalent and the clicks aboard belong to piloting
