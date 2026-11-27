@@ -32,24 +32,34 @@ class ToolTestPartsTest(unittest.TestCase):
                 self.assertEqual(1, len(counts), f"the {kind} parts disagree on their count: {entries}")
                 self.assertEqual(list(range(1, counts.pop() + 1)), sorted(i for i, _ in entries))
 
-    def test_the_gate_checks_are_the_last_part_in_a_job_of_their_own_with_the_compiled_build(self):
+    def test_the_gate_checks_are_the_last_two_parts_in_a_job_of_their_own_with_the_compiled_build(self):
         gates = re.search(r"^  tool-gates:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)
         self.assertIsNotNone(gates, "ci.yml has no tool-gates job")
         self.assertIn("needs: compile\n", gates[1])
         self.assertIn("name: compiled-ci", gates[1])
-        self.assertIn(f"name: tool-{len(matrix()) + 1}\n", gates[1])
-        self.assertIn("tools/tests/gate_checks.py", gates[1])
+        self.assertIn("artifact: tool-main-${{ matrix.part }}", gates[1])
+        self.assertIn("tools/tests/gate_checks.py $CHECKS", gates[1])
         self.assertEqual(WORKFLOW.count("tools/tests/gate_checks.py"), 1)
+        parts_of_gates = [int(n) for n in re.findall(r"- \{ part: (\d+), checks:", gates[1])]
+        self.assertEqual([len(matrix()) + 1, len(matrix()) + 2], parts_of_gates)
+
+    def test_the_two_gate_check_jobs_together_run_every_check_once(self):
+        # The first job names the checks it runs, the second runs every check but those: the union is the whole list.
+        gates = re.search(r"^  tool-gates:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)[1]
+        named = re.search(r'checks: "([a-z_ ]+)" \}', gates)[1].split()
+        left_out = re.search(r'checks: "--except ([a-z_ ]+)" \}', gates)[1].split()
+        self.assertEqual(sorted(named), sorted(left_out), "the second job must leave out exactly what the first runs")
+        every = re.search(r"CHECKS = \(([^)]*)\)", (REPO / "tools/tests/gate_checks.py").read_text())[1]
+        self.assertTrue(set(named) <= set(re.findall(r'"(\w+)"', every)), "the first job names a check gate_checks.py does not have")
 
     def test_the_parts_hand_their_main_sha_over_in_artifacts_the_builds_aggregate_does_not_read(self):
         # tools/ci-shard-main.sh (main's copy) counts main-sha-<n> files in one directory, so the parts use their own artifacts.
-        for number in ("${{ matrix.part }}", "8"):
-            self.assertIn(f"artifact: tool-main-{number}", WORKFLOW)
+        self.assertEqual(2, WORKFLOW.count("artifact: tool-main-${{ matrix.part }}"))
         self.assertIn("pattern: tool-main-*", WORKFLOW)
         self.assertNotIn("merged-main-tool", WORKFLOW)
 
     def test_the_aggregate_waits_for_every_part_and_the_gate_checks(self):
-        self.assertIn(f'ci-shard-main.sh "$RUNNER_TEMP/shard-main" {len(matrix()) + 1}', WORKFLOW)
+        self.assertIn(f'ci-shard-main.sh "$RUNNER_TEMP/shard-main" {len(matrix()) + 2}', WORKFLOW)
         self.assertIn("needs: [tool-part, tool-gates]", WORKFLOW)
 
     def test_every_test_file_is_in_exactly_one_part_and_no_part_is_empty(self):
