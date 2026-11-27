@@ -401,9 +401,7 @@ public class ContinuityEventTest {
                 List.of(new FarChunks.At(nether, 0, 0)),
                 () -> helper.startSequence()
                         .thenExecute(() -> {
-                            // fixed-pos: a place in the Nether's own rows, only somewhere that is not the campaign;
-                            // nothing
-                            // reads it
+                            // fixed-pos: a place in the Nether's own rows, not the campaign's; nothing reads it
                             mock.teleportTo(nether, Vec3.atBottomCenterOf(new BlockPos(0, 100, 0)), 0f, 0f);
                             player.hurtServer(nether, nether.damageSources().lava(), 1000f);
                         })
