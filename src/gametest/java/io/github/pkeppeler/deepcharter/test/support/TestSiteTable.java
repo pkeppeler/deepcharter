@@ -196,9 +196,8 @@ final class TestSiteTable {
         claim("LayerStructuresTest", 2, 1392, 1439, 1200, 1279);
         claim("LayerStructuresTest", 2, 1472, 1487, 1472, 1487);
         claim("LayerStructuresTest", 2, 1504, 1519, 1344, 1359);
-        // Sites StructureSite picks by seed lie anywhere in their 384-block cell, so a cell is claimed whole but for
-        // the
-        // boxes other tests claim in it.
+        // Sites StructureSite picks by seed lie anywhere in their 384-block cell: a cell is claimed whole, but for
+        // the boxes other tests claim in it.
         claim("LayerStructuresTest", 1, 1152, 1535, 1152, 1198);
         claim("LayerStructuresTest", 1, 1152, 1535, 1202, 1398);
         claim("LayerStructuresTest", 1, 1152, 1535, 1402, 1535);
@@ -373,6 +372,8 @@ final class TestSiteTable {
         claim("OutpostTest", 1, 8991, 9019, 7191, 7209);
         claim("OutpostTest", 2, 8498, 8503, 7198, 7203);
 
+        claim("OvergrowthTest", 1, 4990, 5900, 6590, 6610);
+        claim("OvergrowthVeneerTest", 1, 4990, 5740, 6890, 6910);
         claim("PodAttachmentTest", 1, 1998, 2002, 1998, 2002);
         claim("PodAttachmentTest", 2, 1998, 2002, 1998, 2002);
 
