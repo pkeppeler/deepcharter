@@ -213,6 +213,12 @@ final class TestSiteTable {
         claim("LayerTerrainTest", 2, 1795, 1804, 1795, 1804);
         claim("LayerTerrainTest", 1, 896, 975, 896, 975);
         claim("LayerTerrainTest", 2, 896, 975, 896, 975);
+        claim("LayerTerrainTest", 1, 700, 747, 700, 747);
+        claim("LayerTerrainTest", 2, 700, 747, 700, 747);
+        claim("LayerTerrainTest", 1, 1695, 1705, 1695, 1705);
+        claim("LayerTerrainTest", 2, 1695, 1705, 1695, 1705);
+        claim("LayerTerrainTest", 1, 1745, 1755, 1745, 1755);
+        claim("LayerTerrainTest", 2, 1745, 1755, 1745, 1755);
 
         // Chunks only, so the layer is inferred.
         claim("LightSyncRingHoldTest", 1, -36800, -36641, 40000, 40159);
@@ -241,6 +247,10 @@ final class TestSiteTable {
         claim("OrePlacementTest", 1, 7792, 7807, 2992, 3007);
         claim("OrePlacementTest", 1, 8995, 9005, 2995, 3005);
         row("OrePlacementTest", 1, 9095, 9105, 32, 3, 2995, 3005);
+        claim("OrePlacementTest", 1, 6992, 7007, 2992, 3007);
+        claim("OrePlacementTest", 1, 7192, 7207, 2992, 3007);
+        claim("OrePlacementTest", 2, 7192, 7207, 2992, 3007);
+        claim("OrePlacementTest", 1, 7492, 7507, 2992, 3007);
         claim("OrePlacementTest", 1, 6400, 6495, 6400, 6495);
         claim("OrePlacementTest", 2, 6400, 6495, 6400, 6495);
 
