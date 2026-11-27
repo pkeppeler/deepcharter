@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_SPRINT;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import java.util.ArrayList;
@@ -182,6 +183,20 @@ public final class PodDrives {
                 String name, int ticks, double speed, boolean steady, boolean wall, @Nullable Lateness late) {
             return new Drive(name, List.of(options -> options.keyUp), FORWARD, ticks, speed, false, steady, wall, late);
         }
+
+        /** A drive with the sprint and forward keys held: the boost (#1276). */
+        public static Drive sprint(String name, int ticks, double speed, boolean steady, @Nullable Lateness late) {
+            return new Drive(
+                    name,
+                    List.of(options -> options.keyUp, options -> options.keySprint),
+                    FORWARD_SPRINT,
+                    ticks,
+                    speed,
+                    false,
+                    steady,
+                    false,
+                    late);
+        }
     }
 
     /** What {@link #expectSmooth} measured: the shortest tick held to the floor, and the ticks at the coast's reach left out. */
@@ -206,6 +221,7 @@ public final class PodDrives {
     public static void releaseAll(ClientGameTestContext context, Rig rig) {
         context.getInput().releaseKey(options -> options.keyUp);
         context.getInput().releaseKey(options -> options.keyJump);
+        context.getInput().releaseKey(options -> options.keySprint);
         rig.two().server().runOnServer(server -> rig.two().mock().releaseInput());
     }
 
@@ -220,6 +236,7 @@ public final class PodDrives {
      * Puts both pods on their start, behind a wall when the drive drills, holds the keys, samples every frame of the drive, and asserts
      * what the pilot's camera and the watched pod drew.
      */
+    // seats-pod: rides the rig pod: the pilot is seated before the first frame
     public static void drive(ClientGameTestContext context, Rig rig, Drive drive) {
         List<Integer> late = new ArrayList<>();
         for (int attempt = 1; attempt <= DRIVE_ATTEMPTS; attempt++) {
@@ -473,6 +490,7 @@ public final class PodDrives {
     }
 
     /** Sets the pod down at {@code at}, still, with no fall behind it. */
+    // seats-pod: moves the pod to a position
     public static void put(ServerLevel level, int podId, Vec3 at) {
         Entity pod = TestEntities.require(level, podId);
         pod.setPos(at);

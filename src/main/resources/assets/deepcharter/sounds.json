@@ -38,8 +38,10 @@
 	"fuel.refuel": { "sounds": [{ "name": "minecraft:item.bucket.fill_lava", "type": "event" }] },
 	"repair.nanobots": { "sounds": [{ "name": "minecraft:block.anvil.use", "type": "event" }] },
 
-	"breach.rumble": { "sounds": [{ "name": "minecraft:entity.ravager.step", "type": "event", "pitch": 0.5 }] },
+	"breach.rumble": { "sounds": [{ "name": "deepcharter:breach/rumble", "volume": 0.7 }], "subtitle": "subtitles.deepcharter.breach.rumble" },
 	"breach.cross": { "sounds": [{ "name": "minecraft:block.portal.travel", "type": "event", "volume": 0.3 }] },
+
+	"cave_in.collapse": { "sounds": [{ "name": "deepcharter:layer/cave_in", "volume": 0.9 }], "subtitle": "subtitles.deepcharter.cave_in.collapse" },
 
 	"scanner.ping": { "sounds": [{ "name": "minecraft:block.note_block.chime", "type": "event" }] },
 	"scanner.sweep": { "sounds": [{ "name": "minecraft:block.sculk_sensor.clicking", "type": "event" }] },
@@ -54,6 +56,7 @@
 	"ui.refused": { "sounds": [{ "name": "deepcharter:ui/refused" }] },
 
 	"terminal.power_on": { "sounds": [{ "name": "deepcharter:terminal/power_on" }] },
+	"terminal.online": { "sounds": [{ "name": "deepcharter:terminal/online" }] },
 	"terminal.teleport": { "sounds": [{ "name": "minecraft:entity.enderman.teleport", "type": "event" }] },
 
 	"transmission.incoming": { "sounds": [{ "name": "minecraft:block.note_block.bit", "type": "event" }] },
@@ -81,6 +84,7 @@
 	"hymn.colony": { "sounds": [{ "name": "deepcharter:hymn/colony", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
 	"hymn.layer_1": { "sounds": [{ "name": "deepcharter:hymn/layer_1", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
 	"hymn.layer_2": { "sounds": [{ "name": "deepcharter:hymn/layer_2", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
+	"hymn.chapter": { "sounds": [{ "name": "deepcharter:hymn/chapter", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
 	"phonograph.gamme_de_la_voix": { "sounds": [{ "name": "deepcharter:phonograph/gamme_de_la_voix", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
 	"phonograph.jeune_jouvencelle": { "sounds": [{ "name": "deepcharter:phonograph/jeune_jouvencelle", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
 	"phonograph.othello": { "sounds": [{ "name": "deepcharter:phonograph/othello", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },

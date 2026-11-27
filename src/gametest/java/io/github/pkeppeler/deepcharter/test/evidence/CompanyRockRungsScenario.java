@@ -85,6 +85,12 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
+        });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 13);
+        ClientWait.arrived(context, singleplayer.getServer());
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(X, FLOOR_Y, Z);
             one.addFreshEntity(pod);
@@ -160,7 +166,8 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
         }
         if (!stopped(singleplayer)) {
             throw new AssertionError(
-                    "the shaped charge should stop at the stone under the column, and leave the Company rock beside it and under the stone");
+                    "the shaped charge should stop at the stone under the column, and leave the Company rock beside it"
+                            + " and under the stone");
         }
         // Back over the hole: the pod sinks down the whole cleared column.
         context.getInput().holdKey(options -> options.keyDown);
@@ -211,6 +218,12 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, BITE_X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), 0, LOOK_DOWN, true);
+        });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, BITE_X, Z, 13);
+        ClientWait.arrived(context, singleplayer.getServer());
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, one);
             pod.setPos(BITE_X + 0.5, FLOOR_Y, Z + 0.5);
             one.addFreshEntity(pod);

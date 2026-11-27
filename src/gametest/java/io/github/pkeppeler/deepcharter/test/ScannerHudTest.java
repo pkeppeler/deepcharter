@@ -83,6 +83,7 @@ public class ScannerHudTest implements FabricClientGameTest {
     }
 
     /** Mounts the first player on a new pod with a scanner of {@code scannerTier}, or with none for 0. */
+    // seats-pod: adds the pod and seats the first player in it
     public static void mountFirstPlayer(TestServerContext server, int scannerTier) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
@@ -103,6 +104,7 @@ public class ScannerHudTest implements FabricClientGameTest {
      * ahead 4 and 6, gold ahead 5, stone ahead 7, all {@link #GOLD_UP} blocks below the pod's feet.
      * Returns once the client has the ore in its chunk data and the HUD has had time to rescan.
      */
+    // seats-pod: mounts the first player through mountFirstPlayer
     public static void rideWithGoldAhead(ClientGameTestContext context, TestServerContext server, int scannerTier) {
         mountFirstPlayer(server, scannerTier);
         ClientWait.until(

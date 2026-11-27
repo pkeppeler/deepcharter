@@ -66,8 +66,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Server GameTests for the readers that key on the band at a Y and not on the level (#799, ADR 0059), in
  * {@code deepcharter:campaign_sample}, where the surface and both layers are Y bands of one level. The layer dimensions keep their own
- * tests: in them the band is the whole level. Columns 23000 to 23999 are this class's; the figures and the structures have their own
- * classes ({@code BandFiguresTest}, {@code BandStructuresTest}).
+ * tests: in them the band is the whole level.  The figures and the structures have their own classes
+ * ({@code BandFiguresTest}, {@code BandStructuresTest}).
  */
 public class BandReadersTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -92,12 +92,16 @@ public class BandReadersTest {
 
         Bore(GameTestHelper helper, int x, int floor, int crustRows, int feetAbove) {
             ServerLevel level = helper.getLevel();
-            RoomCarver.carve(level, x - 2, x + 2, floor, floor + crustRows - 1, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-            RoomCarver.carve(level, x - 2, x + 2, floor + crustRows, floor + crustRows + 7, Z - 2, Z + 2, Blocks.AIR);
             Vec3 at = new Vec3(x, floor + feetAbove, Z);
             pilot = MockPlayers.join(helper, "band-bore-" + Math.abs(floor));
             pilot.teleportTo(level, at, 0f, 0f);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+                // Carved once the column's chunks are loaded: RoomSeal reads the shell, which would load them on the
+                // server thread.
+                RoomCarver.carve(
+                        level, x - 2, x + 2, floor, floor + crustRows - 1, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+                RoomCarver.carve(
+                        level, x - 2, x + 2, floor + crustRows, floor + crustRows + 7, Z - 2, Z + 2, Blocks.AIR);
                 PodEntity made = TestEntities.create(PodRegistry.POD, level);
                 made.setPos(at);
                 level.addFreshEntity(made);
@@ -242,9 +246,11 @@ public class BandReadersTest {
 
     // ---- OutpostRates and OutpostBuilder ----
 
-    /** Carves the hall above {@code floor} and joins a survival player who has founded a charter. */
-    private static MockPlayer foundedBuilderBesideHall(
-            GameTestHelper helper, ServerLevel level, BlockPos floor, String name) {
+    /**
+     * Carves the hall above {@code floor}: RoomSeal reads the shell, which would load the chunks on the server thread
+     * unless they are loaded already.
+     */
+    private static void carveHall(ServerLevel level, BlockPos floor) {
         RoomCarver.carve(
                 level,
                 floor.getX() - 8,
@@ -254,6 +260,13 @@ public class BandReadersTest {
                 Z - 8,
                 Z + 8,
                 Blocks.STONE);
+    }
+
+    /**
+     * Joins a survival player who has founded a charter; the hall is carved by {@link #carveHall} once its chunks are
+     * loaded.
+     */
+    private static MockPlayer foundedBuilderBesideHall(GameTestHelper helper, ServerLevel level, String name) {
         MockPlayer mock = MockPlayers.join(helper, name);
         mock.player().setGameMode(GameType.SURVIVAL);
         if (Charters.found(
@@ -273,7 +286,7 @@ public class BandReadersTest {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         BlockPos floor = new BlockPos(x, ONE.minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
-        MockPlayer mock = foundedBuilderBesideHall(helper, level, floor, "band-outposter");
+        MockPlayer mock = foundedBuilderBesideHall(helper, level, "band-outposter");
         CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID())
                 .orElseThrow()
                 .id();
@@ -287,6 +300,7 @@ public class BandReadersTest {
                             mock.player().isAlive(),
                             "the builder died while it waited at %s for the chunk",
                             helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN));
+                    carveHall(level, floor);
                     // On the build tick, so the far-chunk wait cannot suffocate the builder in the carved rock.
                     mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
                     Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
@@ -340,12 +354,13 @@ public class BandReadersTest {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         BlockPos floor = new BlockPos(x, ONE.minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
-        MockPlayer mock = foundedBuilderBesideHall(helper, level, floor, "band-dying-outposter");
+        MockPlayer mock = foundedBuilderBesideHall(helper, level, "band-dying-outposter");
         FarChunks.awaitEntityTicking(
                 helper,
                 level,
                 floor,
                 () -> WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
+                    carveHall(level, floor);
                     mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
                     mock.player().kill(level);
                     // entity-query: counts what lies in the hall, in the chunk this test forced and waited on

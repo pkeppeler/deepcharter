@@ -3,9 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import io.github.pkeppeler.deepcharter.client.handbook.HandbookKeys;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
-import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
@@ -15,8 +13,6 @@ import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import org.lwjgl.sdl.SDLKeyboard;
@@ -37,27 +33,13 @@ public class RealInputTypingClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the client in the world", client -> client.player != null && client.level != null);
-            int recipesKey = boundKey(context, CatalogueKeys.RECIPES);
-            int handbookKey = boundKey(context, HandbookKeys.OPEN);
-            int typesR = typedBy(context, recipesKey);
-            int typesH = typedBy(context, handbookKey);
-            eachCharacterPressesTheKeyThatTypesIt(context, typesR, recipesKey, typesH, handbookKey);
+            int typesR = typedBy(context, InputConstants.KEY_R);
+            int typesH = typedBy(context, InputConstants.KEY_H);
+            eachCharacterPressesTheKeyThatTypesIt(context, typesR, typesH);
             anHTypedInTheWorldOpensTheHandbook(context, typesH);
             anRTypedOverAnItemShowsItsRecipes(context, singleplayer, typesR);
             context.setScreen(() -> null);
         }
-    }
-
-    /**
-     * The scancode the mapping is bound to now, read from the mapping, so a changed default binding does not change what the test types.
-     * An unbound or mouse-bound mapping has no scancode to type, so it fails here.
-     */
-    private static int boundKey(ClientGameTestContext context, KeyMapping mapping) {
-        InputConstants.Key bound = context.computeOnClient(client -> KeyMappingHelper.getBoundKeyOf(mapping));
-        require(
-                bound.getType() == InputConstants.Type.KEYBOARD && bound.getValue() > 0,
-                mapping.getName() + " must be bound to a keyboard key, was " + bound);
-        return bound.getValue();
     }
 
     /** The character the key at {@code scancode} types, unshifted, on the current keyboard layout ('r' for KEY_R on QWERTY). */
@@ -69,16 +51,15 @@ public class RealInputTypingClientTest implements FabricClientGameTest {
      * The key a character presses is SDL's scancode, as {@code InputConstants.KEY_*} numbers keys, not its ASCII code (82 for R on QWERTY),
      * and its keycode is the character itself.
      */
-    private static void eachCharacterPressesTheKeyThatTypesIt(
-            ClientGameTestContext context, int typesR, int recipesKey, int typesH, int handbookKey) {
-        requireKey(context, typesR, recipesKey);
-        requireKey(context, typesH, handbookKey);
+    private static void eachCharacterPressesTheKeyThatTypesIt(ClientGameTestContext context, int typesR, int typesH) {
+        requireKey(context, typesR, InputConstants.KEY_R);
+        requireKey(context, typesH, InputConstants.KEY_H);
         requireKey(context, ' ', InputConstants.KEY_SPACE);
         // The keycode of a shifted letter depends on SDL's KEYCODE_OPTIONS, so only the key and Shift are pinned.
         KeyEvent upper = context.computeOnClient(client -> RealInput.keyEvent(Character.toUpperCase(typesR)));
         require(
-                upper.key() == recipesKey && (upper.modifiers() & InputConstants.MOD_SHIFT) != 0,
-                "'" + Character.toString(Character.toUpperCase(typesR)) + "' presses key " + recipesKey
+                upper.key() == InputConstants.KEY_R && (upper.modifiers() & InputConstants.MOD_SHIFT) != 0,
+                "'" + Character.toString(Character.toUpperCase(typesR)) + "' presses key " + InputConstants.KEY_R
                         + " with Shift, got " + upper);
         boolean refused = context.computeOnClient(client -> {
             try {

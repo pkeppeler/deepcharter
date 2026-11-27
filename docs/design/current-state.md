@@ -430,7 +430,7 @@ text four times offset by 1 pixel, scanlines every 2 pixels, bloom at the top an
 **Since #246 the screens are physical machine panels** ([terminal-concepts.md](terminal-concepts.md)): the glass is a porthole in the Hatch bulkhead door
 (a riveted frame with a hinge, a dogging wheel, a gauge, stencils and a chrome Company nameplate), the buttons are sprite plates with a rotary knob, and the text is
 set in Unscii (6 pixels a letter). The stills below were shot before #246 and show the plain CRT: boxed buttons, no frame, the vanilla font. A pack can still switch the
-panel off and the screens are drawn as those stills show. The handbook and the pod cargo screen are not terminals and keep their own look. Vanilla: **no**.
+panel off and the screens are drawn as those stills show. The handbook is not a terminal and keeps its own look. Vanilla: **no**.
 **Swap: (a)** the frame, the glass, the buttons and the decals (`assets/deepcharter/textures/gui/sprites/panel/`) and `theme/panel.json`, **(c)** the rest: the colours are `client/ui/CrtTuning.java:36-38`; the draw code is `client/ui/CrtDraw.java:15-43`,
 `CrtButton.java:23`, and `CrtScreen.java:144` (the typewriter cursor block); the layout of each screen is in its own file.
 
@@ -512,14 +512,12 @@ Source `client/charter/terminal/ContractScreen.java`; the one terminal that is o
 
 Swap **(c)**.
 
-### Pod cargo screen
+### Pod screen
 
-Opened by sneaking and using a pod. Source `client/ore/OreCargoScreen.java`. It is not a CRT screen: it draws a grey panel with a dark edge and grey
-slots by `fill()` calls in the colours of vanilla's container background, with no texture. Vanilla: **partly** (the same grey, not the vanilla texture).
+Opened by sneaking and using a pod, or with the pod screen key from a seat (#1270). Source `client/pod/PodScreen.java`, on the CRT menu screen
+(`client/ui/CrtMenuScreen.java`) the terminals' slot screens use: the part slots, the fuel slot and its gauge, and a page of the hold beside the inventory. Vanilla: **no**.
 
-![screen-pod-cargo](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-pod-cargo.png?raw=true)
-
-Swap **(c)** `OreCargoScreen.java:17-44`.
+Swap **(a)** the CRT theme, as for the terminals, **(c)** the layout, `pod/PodMenu.java` and `client/pod/PodScreen.java`.
 
 ### Inventory (vanilla)
 
@@ -580,7 +578,7 @@ jitter), `BreachHud.java:46-52` (a black `fill()`).
 
 ### Other vanilla UI that shows
 
-The "Press Left Shift to dismount" line (also while seated), the hotbar, health and hunger bars (hidden while seated since #247), the crosshair, and the chat are vanilla. Swap **(a)** vanilla GUI assets.
+The "Press Left Shift to dismount" line (also while seated), the hotbar (shown while seated again since #1457), health and hunger bars (hidden while seated since #247), the crosshair, and the chat are vanilla. Swap **(a)** vanilla GUI assets.
 There are no advancement or recipe toasts (see Advancements below), and the locator bar is off.
 
 ---
@@ -607,14 +605,17 @@ Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario 
 Only names and uses are given here. No audio is copied, played into a recording, or published.
 
 - The sound events are in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json`. Since #249 the pod engines and rotor,
-  the drill's dig and blocked, the terminal's power-on and the UI sounds point at OGGs of ours (`assets/deepcharter/sounds/`, each made by a recipe in `tools/sounds/`), the layers' music
+  the drill's dig and blocked, the terminal's power-on and online chord and the UI sounds point at OGGs of ours (`assets/deepcharter/sounds/`, each made by a recipe in `tools/sounds/`), the layers' music
   slots are silent, and the rest are still a **vanilla Minecraft sound** as a placeholder, with pitch or volume tweaks. A private audio pack (built by `tools/build-audio-pack.sh` from files that stay out of the repo) replaces
-  them at play time through `tools/audio-pack-map.txt`; the drone beds and the Lamp Hymn have no original and are not in it. Vanilla: **partly**.
+  them at play time through `tools/audio-pack-map.txt`; the drone beds, the Lamp Hymn and the online chord have no original and are not in it. Vanilla: **partly**.
 - The drone beds (#249) are `ambient_sounds` in each biome: `ambient.surface_loop` with `ambient.surface_groan`, `ambient.layer_1_loop` with its creak and knock, `ambient.layer_2_loop` with its creak and knock. The Lamp Hymn
-  (`hymn.colony`, `hymn.layer_1`, `hymn.layer_2`) plays from `main/sound/HymnMoments.java` on founding or joining a charter, going down a breach and coming up into the colony.
+  (`hymn.colony`, `hymn.layer_1`, `hymn.layer_2`) plays from `main/sound/HymnMoments.java` on founding or joining a charter, going down a breach and coming up into the colony; its first three
+  notes (`hymn.chapter`, about four seconds) play to each online member when a handbook chapter's last directive is done (`handbook/HandbookEvents.CHAPTER_COMPLETED`, fired by
+  `HandbookProgress.sweep`, never for progress already held on joining). The phrase is queued: it plays on the next tick at the earliest, not
+  while a repaired machine's chord rings, and not at all if that player's hymn is still playing then (#1267).
 - Groups and where they play: pod (engine idle, drive, drill side and down, rotor, transform land and launch, crash, explosion, the seep sounder's hiss `pod.seep_hiss`, repeating faster as a gas pocket nears, the heat shield's crackle `pod.glaze_burn` for each brick it burns, the signal decay's crackle `pod.signal_crackle` and heartbeat `pod.signal_lost`, #502), drill (dig, blocked, lava, dynamite,
   plastic), cargo (collect, jettison, full), fuel (low, refuel), repair (nanobots), breach (rumble, cross), scanner (ping, sweep), UI (typewriter, hover, select, confirm,
-  purchase, sale, error, refused), terminal (power on, teleport), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
+  purchase, sale, error, refused), terminal (power on, online chord, teleport; a repair that brings a terminal online plays the power-on and the chord in the world where the repairer stands, `main/sound/TerminalSounds.java`, #1267), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
 - Music: `deepcharter:music.layer_1` plays in layer 1 and `music.layer_2` in layer 2, each every 600 to 1800 ticks, set in the dimension types; the shipped sound is three seconds of
   silence, and the private pack (original `BGM_main` and `BGM_core`) fills them. `music.terminal` loops while a terminal screen is open (`client/sound/TerminalMusic.java`) and plays the terminal's hum (ours). No vanilla music plays on the
   surface or in a layer: a surface biome sets an empty `background_music`. Engine loops are `client/sound/PodLoops.java`; the typewriter click is `client/sound/TypewriterSound.java`;
@@ -663,7 +664,7 @@ Already marked placeholder in code or issues:
 
 Every look that is fixed in Java and cannot be replaced by swapping a resource-pack file or a data value. These block a drop-in reskin.
 
-**Since #226** the UI rows (CRT look and drawing, handbook paper, pod status HUD, scanner HUD, altimeter, account HUD, transmission overlay, breach fade, pod cargo screen) are resource-pack data, no longer fixed in Java: see [skins.md](skins.md). Their `file:line` entries below are as of #227. What stays in Java from those rows: the position and size of each terminal screen's widgets, and the scanner's reach.
+**Since #226** the UI rows (CRT look and drawing, handbook paper, pod status HUD, scanner HUD, altimeter, account HUD, transmission overlay, breach fade) are resource-pack data, no longer fixed in Java: see [skins.md](skins.md). Their `file:line` entries below are as of #227. What stays in Java from those rows: the position and size of each terminal screen's widgets, and the scanner's reach.
 
 | Visual | What is fixed | Where |
 |---|---|---|
@@ -679,7 +680,6 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Account HUD | CRT-green text at the left, half height | `client/market/AccountHud.java:21`, `:41` |
 | Transmission overlay | Panel fill `#EA050A06`, text `#7CFC9A`, relay `#FFC857`, unknown sender `#FF5A4F`, panel size and position, cursor block | `client/transmission/TransmissionOverlay.java:34-40`, `TransmissionHud.java:30-36`, `:52-88` |
 | Breach fade | Black full-screen fill, fade timings (20 ticks: 8 in, 4 black), jitter 3 pixels over 10 ticks | `client/layer/BreachEffects.java:15-20`, `client/layer/BreachHud.java:46-52` |
-| Pod cargo screen | Grey panel `#C6C6C6`, edge `#373737`, slot `#8B8B8B`, text `#404040`, drawn with `fill()` | `client/ore/OreCargoScreen.java:17-44` |
 | Colony layout and buildings | Every building, its size, position and blocks, the paving, the Host and the pipe | `tools/colony/town.py` (then `tools/colony/build.py`), `data/deepcharter/colony/layout.json`, `data/deepcharter/structure/colony/*.nbt`; the ground noise in `main/colony/ColonyBuilder.java`, the Host's hands in `main/colony/FounderStatue.java`, the Conduit in `main/colony/Conduit.java` |
 | Layer structures | The size, blocks and layout of the 7 structures, and where Notes and candles sit | `main/layer/StructureKind.java:21-150` |
 | Pod lights | A vanilla light block at the pod's position; the level comes from the part's tier value; no lamp is drawn | `main/pod/PodLights.java:25-90`, `main/upgrade/UpgradeTuning.java` |
@@ -699,7 +699,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 
 ## The design tour
 
-Two runs of one commit give the same stills, apart from two that can differ a little (`colony-aerial-northwest`, `screen-pod-cargo`): see [evidence.md](../../.claude/skills/deepcharter-conventions/evidence.md).
+Two runs of one commit give the same stills, apart from one that can differ a little (`colony-aerial-northwest`): see [evidence.md](../../.claude/skills/deepcharter-conventions/evidence.md).
 
 `design-tour` shoots these stills (name = file name on `pr-media`, under `227/`):
 

@@ -292,14 +292,14 @@ public class LavaBoreTest {
      */
     private static final int IN_TIME_SLABS = ScannerTuning.DEFAULT.tierOneArea().down() / 4;
 
-    /** Far from every other test's columns. Each bore has a chunk of its own, two chunks apart from the next. */
+    /** Each bore has a chunk of its own, two chunks apart from the next. */
     private static final int FIRST_CHUNK_X = 2500;
 
     private static final int CHUNK_Z = 2600;
     private static final int CHUNK_SPACING = 2;
     private static final int PILOT_WAIT_Y = TestLayers.worldY(1, 150);
 
-    /** The chassis the bot drives, the Mole. Its footprint is as {@code PodFootprint} (package private in the main code) reads it: the bore square. */
+    /** The chassis the bot drives, the Mole. Its footprint is as {@code PodFootprint} reads it: the bore square. */
     private static final Chassis CHASSIS = Chassis.MOLE;
 
     private static final int FOOTPRINT_WIDTH = CHASSIS.boreWidth();
@@ -1086,8 +1086,8 @@ public class LavaBoreTest {
      * and sprints again when the part is done. Returns whether the bot is holding back. With an empty bay it drills on.
      */
     private static boolean braceIfAsked(Bore bore, PodEntity pod) {
-        // A pilot already letting go waits through a dark plate; one who has not let go acts only on a prompt it can
-        // read.
+        // A pilot already letting go waits through a dark plate; one who has not let go acts only on a prompt it
+        // can read.
         boolean asked = PodBrace.status(pod, true).patching() == PodBrace.Patching.WORKING
                 && (bore.bracing || bore.plateReadable);
         if (asked && bore.phase == Phase.DOWN && pod.onGround()) {
@@ -2234,8 +2234,8 @@ public class LavaBoreTest {
                         "bore " + bore.index + ": the thermal scanner showed lava from farther than its reach of "
                                 + thermalReach + " slabs, so the lead is mismeasured"));
             }
-            // The thermal tier's slice contains the tier 1 slice, so it marks every block that tier 1 shows as open
-            // space.
+            // The thermal tier's slice contains the tier 1 slice, so it marks every block that tier 1 shows as
+            // open space.
             if (bore.encounters.stream()
                     .anyMatch(e -> e.thermalContactCellsShownAhead() < e.contactCellsShownAhead())) {
                 throw helper.assertionException(

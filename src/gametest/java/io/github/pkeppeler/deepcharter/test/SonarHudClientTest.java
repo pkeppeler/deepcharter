@@ -72,6 +72,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
             two.server().runOnServer(server -> buildSite(server.overworld(), two));
             // Every chunk of the site must be on the client before anyone boards (#1082).
             ClientWait.chunksAround(context, X, Z, SITE_RADIUS);
+            ClientWait.lightSettled(context, two.server(), TestLayers.SURFACE, X, Z, SITE_RADIUS);
             int podId = two.server().computeOnServer(server -> board(server.overworld(), two));
             ClientWait.until(
                     context,
@@ -297,6 +298,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
     }
 
     /** Seats the mock first and the real player second in a new Prospector at the corner of the cab's cells, facing south. Returns the pod's id. */
+    // seats-pod: adds the Prospector and seats both players
     static int board(ServerLevel level, TwoPlayerServer two) {
         ServerPlayer real = real(level, two);
         PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);

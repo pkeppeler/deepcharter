@@ -8,12 +8,19 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreen
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -28,6 +35,8 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 
 /** Opens the inventory and finds and hovers the parts catalogue's cells, for the catalogue's client test and its evidence scenario. */
 public final class CatalogueScene {
@@ -68,6 +77,115 @@ public final class CatalogueScene {
                         .recipesFor(ScannerRegistry.SCANNER_UNIT)
                         .isEmpty());
         return panel;
+    }
+
+    /**
+     * Empties the player's inventory, gives two iron and two copper, lets the server teach what they teach (ADR 0070), then replaces the
+     * client's recipe book with the {@link CatalogueFixtures} and {@link CatalogueFixtures#sundries()} and starts the catalogue afresh.
+     * Opens the inventory and returns its catalogue, whose recipes and stock a test then knows exactly.
+     */
+    public static CataloguePanel knowFixturesHoldingIronAndCopper(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
+        singleplayer.getServer().runCommand("clear @p");
+        singleplayer.getServer().runCommand("give @p minecraft:iron_ingot 2");
+        singleplayer.getServer().runCommand("give @p minecraft:copper_ingot 2");
+        ClientWait.until(
+                context,
+                "two iron and two copper",
+                client -> ClientSession.player(client).getInventory().countItem(Items.IRON_INGOT) == 2
+                        && ClientSession.player(client).getInventory().countItem(Items.COPPER_INGOT) == 2);
+        openInventory(context);
+        CataloguePanel taught = panel(context);
+        ClientWait.until(
+                context,
+                "the recipes the iron and the copper teach",
+                client -> !taught.catalogue().usesOf(Items.IRON_INGOT).isEmpty()
+                        && !taught.catalogue().usesOf(Items.COPPER_INGOT).isEmpty());
+        bookSettled(context);
+        context.runOnClient(client -> {
+            ClientRecipeBook book = ClientSession.player(client).getRecipeBook();
+            CatalogueFixtures.fill(book);
+            book.add(CatalogueFixtures.sundries());
+            book.rebuildCollections();
+            CatalogueScreens.resetState();
+        });
+        context.setScreen(() -> null);
+        openInventory(context);
+        CataloguePanel panel = panel(context);
+        ClientWait.until(
+                context,
+                "the catalogue of the fixtures",
+                client -> !panel.catalogue().recipesFor(Items.LADDER).isEmpty()
+                        && panel.catalogue().recipesFor(Items.IRON_BLOCK).isEmpty());
+        Set<RecipeDisplayId> fixtures = CatalogueFixtures.entries().stream()
+                .map(RecipeDisplayEntry::id)
+                .collect(Collectors.toCollection(HashSet::new));
+        fixtures.add(CatalogueFixtures.sundries().id());
+        Set<RecipeDisplayId> held = context.computeOnClient(CatalogueScene::bookIds);
+        if (!held.equals(fixtures)) {
+            throw new AssertionError(
+                    "the recipe book holds exactly the fixtures and the sundries: a recipe the server taught late"
+                            + " landed on it; expected " + fixtures + ", got " + held);
+        }
+        return panel;
+    }
+
+    /**
+     * Waits until the client's recipe book has not changed for two of the server's discovery polls ({@code progressPollTicks}), so
+     * whatever the items held teach has arrived and nothing more is coming.
+     */
+    private static void bookSettled(ClientGameTestContext context) {
+        int settle = 2 * HandbookTuning.DEFAULT.progressPollTicks();
+        AtomicReference<Set<RecipeDisplayId>> last =
+                new AtomicReference<>(context.computeOnClient(CatalogueScene::bookIds));
+        AtomicLong since = new AtomicLong(context.computeOnClient(CatalogueScene::gameTime));
+        ClientWait.until(
+                context,
+                "the recipe book to stop changing for " + settle + " ticks",
+                () -> {
+                    Set<RecipeDisplayId> now = context.computeOnClient(CatalogueScene::bookIds);
+                    long time = context.computeOnClient(CatalogueScene::gameTime);
+                    if (!now.equals(last.get())) {
+                        last.set(now);
+                        since.set(time);
+                    }
+                    return time - since.get() >= settle;
+                },
+                () -> last.get().size() + " recipes, unchanged since tick " + since.get());
+    }
+
+    private static long gameTime(Minecraft client) {
+        return Objects.requireNonNull(client.level, "a level").getGameTime();
+    }
+
+    /** The ids of every recipe the client's recipe book holds. */
+    private static Set<RecipeDisplayId> bookIds(Minecraft client) {
+        return ClientSession.player(client).getRecipeBook().getCollections().stream()
+                .flatMap(collection -> collection.getRecipes().stream())
+                .map(RecipeDisplayEntry::id)
+                .collect(Collectors.toSet());
+    }
+
+    /** Hovers {@code item}'s cell in the catalogue's grid, on the page it is on, and presses {@code key}. */
+    public static void pressOn(ClientGameTestContext context, CataloguePanel panel, Item item, int key) {
+        CatalogueLayout layout = layout(context, panel);
+        int perPage = layout.shelf().perPage();
+        int index = indexOf(context, panel, item);
+        showPage(context, panel, perPage, index / perPage);
+        hover(context, gridCell(layout, index % perPage));
+        RealInput.key(context, key, 0);
+    }
+
+    /** A spot on the recipe console's glass by its heading, over no row and no control. */
+    public static Rect consoleHeading(CatalogueLayout layout) {
+        return new Rect(layout.card().right() - 4, layout.card().stationY(), 2, 2);
+    }
+
+    /** The icon of the first row of the recipe console's total materials. */
+    public static Rect firstMaterialsRow(CatalogueLayout layout) {
+        int icon = CatalogueLook.current().slotSize() - 2;
+        return new Rect(layout.card().left(), layout.card().gridY(), icon, icon);
     }
 
     /** Empties the search and the lookup. The caller waits a tick or two for the list to follow. */

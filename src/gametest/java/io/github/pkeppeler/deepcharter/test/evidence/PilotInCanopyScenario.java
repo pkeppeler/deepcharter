@@ -156,6 +156,7 @@ public class PilotInCanopyScenario extends EvidenceScenario {
         PodEntity[] made = {null};
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            // arrived-ok: back to the hall the player arrived in at the start
             player.teleportTo(server.overworld(), X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), POD_YAW, 0f, true);
             PodEntity pod = pod(server.overworld(), subject);
             if (!player.startRiding(pod)) {

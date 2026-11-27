@@ -4,20 +4,26 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
+import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitDecay;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodChase;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.pod.SeatedHotbar;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
+import io.github.pkeppeler.deepcharter.pod.VoidBelow;
+import io.github.pkeppeler.deepcharter.pod.VoidBelowTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
@@ -29,6 +35,7 @@ import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
+import io.github.pkeppeler.deepcharter.test.support.VanillaHudRows;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -39,6 +46,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,14 +70,15 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Client GameTest for the cockpit HUD (#247, the Ribbon): a seated pilot gets the Ribbon by default and the vanilla hotbar, hearts and held item name are not drawn (read from
- * pixels, against a shot of the game with its HUD switched off) while the action bar stays; on foot, with a pack that turns the cockpit off, and on a GUI too small for the
+ * Client GameTest for the cockpit HUD (#247, the Ribbon): a seated pilot gets the Ribbon by default and the vanilla hearts, food and experience are not drawn (read from
+ * pixels, against a shot of the game with its HUD switched off) while the hotbar (#1457) and the action bar stay; on foot, with a pack that turns the cockpit off, and on a GUI too small for the
  * Ribbon the vanilla HUD is back; the gauges read the pod's real fuel, hull and depth; every line of the plain readout is on the plate; and the Ribbon fits the GUI at every
  * GUI scale (1 to 4 and Auto) of every common window, with the longest warnings.
  */
@@ -80,16 +89,17 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     private static final int RISE = 20;
     /** The pod's feet this high over the floor of layer 1 are inside the signal decay's blackout band, above the breach crust. */
     private static final int BLACKOUT_FEET_Y = TestLayers.worldY(1, 4);
-    /** The middle of the bottom of the screen at GUI scale 2 (427 x 240): where the hotbar, the hearts, the held item name and the action bar are, clear of every console. */
-    private static final int[] VANILLA_BOX = {126, 165, 298, 232};
+    /** The rows of the hearts, the food, the armour and the experience bar at GUI scale 2 (427 x 240), between the hotbar and the held item name, clear of every console. */
+    private static final int[] STATUS_BOX = {126, 189, 298, 217};
+    /** The hotbar at GUI scale 2, inside its 182 x 22 sprite. */
+    private static final int[] HOTBAR_BOX = {126, 219, 298, 238};
     /** The rows of the held item name and the action bar (the dismount hint), over the hotbar and the hearts: a leaked line of text is a few percent of the box above but most of this strip. */
     private static final int[] TEXT_STRIP = {126, 170, 298, 190};
 
-    private static final double SAME_TEXT = 0.005;
     private static final int GUI_SCALE = 2;
     /**
-     * How much of the vanilla box may differ between a shot of the cockpit and a shot of the bare game (the pod's idle pose moves a few pixels between shots:
-     * 1.5 % measured), and how much must differ when the vanilla HUD is drawn there (the hotbar and the hearts alone are a third of it).
+     * How much of a vanilla box may differ between a shot of the cockpit and a shot of the bare game (the pod's idle pose moves a few pixels between shots:
+     * 1.5 % measured), and how much must differ when the vanilla HUD is drawn there (the hotbar fills most of its box, the hearts, food and experience bar half of theirs).
      */
     private static final double SAME = 0.03;
 
@@ -105,6 +115,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     private static final int ALTIMETER_RECESS_WIDTH = 72;
 
     private static final String LONGEST_ALTIMETER = "-12,345 ft.";
+    /**
+     * How far past its bar a gauge's title may hang under the band, each side: #1449's LOAD title is 4 pixels wider
+     * than its bar. The SINK plate stays out of every gauge's column, so it never meets a title.
+     */
+    private static final int TITLE_OVERHANG = 4;
+    /** The pod rises this far over the floor before it is let sink, for the SINK plate. */
+    private static final int SINK_DROP = 20;
+    /** A sink share well past the buffer, which the 20-block drop passes with blocks to spare. */
+    private static final double SINK_PAST_BUFFER = 1.2;
     /** How much of the strip the action bar line takes when it is drawn: a few lines of text. */
     private static final double MESSAGE_DRAWN = 0.02;
 
@@ -139,6 +158,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     ServerLevel one = TestLayers.level(server, 1);
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
+                });
+                ClientWait.arrived(context, singleplayer.getServer());
+                singleplayer.getServer().runOnServer(server -> {
+                    ServerLevel one = TestLayers.level(server, 1);
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                     pod.setPos(0.5, FEET_Y, 0.5);
                     pod.setNoGravity(true);
@@ -160,11 +184,13 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         40); // tick-wait: the charter's first transmission arrives a moment after the mount, and is
                 // cleared below
 
-                expectTheCockpitHidesExactlyTheVanillaBottomCluster();
+                expectTheCockpitHidesExactlyTheVanillaBars();
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
+                expectTheAccountLineIsANote();
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
                 expectEveryPlateMessageIsAPlateCase();
                 expectThePlateHoldsEveryLineClearOfItsBorder(context);
+                expectThePlateStopsAboveTheOffHandSlot(context);
                 expectTheRibbonIsTheDefaultSeatedHud(context);
                 expectCockpitHidesTheVanillaHud(context, singleplayer, pod);
                 expectCockpitHidesTheVanillaHudInTheChaseViewToo(context, singleplayer, pod);
@@ -175,27 +201,27 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectTheSignalDecayDarkensTheCockpitAndKeepsTheFairChannels(context, singleplayer, pod);
                 expectAPackCanTurnTheCockpitOff(context);
                 expectASmallGuiGivesBackThePlainHud(context);
+                expectTheSinkPlateShowsWhileThePodSinks(context, singleplayer, pod);
             } finally {
                 EvidencePins.reset();
             }
         }
     }
 
-    private static void expectTheCockpitHidesExactlyTheVanillaBottomCluster() {
+    private static void expectTheCockpitHidesExactlyTheVanillaBars() {
         Set<Identifier> expected = Set.of(
-                VanillaHudElements.HOTBAR,
                 VanillaHudElements.ARMOR_BAR,
                 VanillaHudElements.HEALTH_BAR,
                 VanillaHudElements.FOOD_BAR,
                 VanillaHudElements.AIR_BAR,
                 VanillaHudElements.MOUNT_HEALTH,
                 VanillaHudElements.INFO_BAR,
-                VanillaHudElements.EXPERIENCE_LEVEL,
-                VanillaHudElements.HELD_ITEM_TOOLTIP);
+                VanillaHudElements.EXPERIENCE_LEVEL);
         if (!Set.copyOf(CockpitHud.HIDDEN_WHILE_SEATED).equals(expected)
                 || CockpitHud.HIDDEN_WHILE_SEATED.size() != expected.size()) {
             throw new AssertionError(
-                    "The cockpit hides the hotbar, health, armour, food, air, mount health, experience bar and level and held item name, and leaves the action bar, got "
+                    "The cockpit hides health, armour, food, air, mount health and the experience bar and level, and"
+                            + " leaves the hotbar, the held item name and the action bar, got "
                             + CockpitHud.HIDDEN_WHILE_SEATED);
         }
     }
@@ -231,10 +257,12 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .collect(Collectors.toSet());
         Set<String> expected = Stream.of(
                         "burning",
+                        "overloaded",
                         "stranded",
-                        "recovery",
                         "crust_ahead",
                         "crust_in",
+                        "crust_ahead_drop",
+                        "crust_in_drop",
                         "brace_waits",
                         "brace_dry",
                         "brace_dear",
@@ -253,19 +281,37 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .collect(Collectors.toSet());
         if (!alerts.equals(expected)) {
             throw new AssertionError(
-                    "The warnings that light the fourth lamp are the burning hull, the glaze that holds or is spent, stranded and the Company winch's countdown, the crust, the brace that cannot work, the seepage, no brick, a hard landing, lava in or above the shaft and the hollows' alarm: got "
+                    "The warnings that light the fourth lamp are the burning hull, overloaded, the glaze that holds or"
+                            + " is spent, stranded, the crust, the brace that cannot work, the seepage, no brick, a hard"
+                            + " landing, lava in or above the shaft and the hollows' alarm: got "
                             + alerts);
         }
         PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
         PodStatusHud.Line warning = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.burning"), 0);
-        if (CockpitHud.lampsLit(false, false, false, List.of(note))[3]
-                || !CockpitHud.lampsLit(false, false, false, List.of(note, warning))[3]) {
+        if (CockpitHud.lampsLit(false, false, false, false, List.of(note))[3]
+                || !CockpitHud.lampsLit(false, false, false, false, List.of(note, warning))[3]) {
             throw new AssertionError("The fourth lamp is lit by a warning and not by a note");
         }
-        boolean[] lit = CockpitHud.lampsLit(true, false, true, List.of());
-        if (!lit[0] || lit[1] || !lit[2] || lit[3]) {
-            throw new AssertionError(
-                    "The lamps are low fuel, low hull, burning and any other warning, got " + Arrays.toString(lit));
+        boolean[] lit = CockpitHud.lampsLit(true, false, true, true, List.of());
+        if (!lit[0] || lit[1] || !lit[2] || lit[3] || !lit[4]) {
+            throw new AssertionError("The lamps are low fuel, low hull, burning, any other warning and overloaded, got "
+                    + Arrays.toString(lit));
+        }
+    }
+
+    /**
+     * The account line under the tally is a note: a plate with more rows than room drops it before a warning, and asking its kind does not throw (#1457: it had none, so
+     * a long plate of warnings crashed the game).
+     */
+    private static void expectTheAccountLineIsANote() {
+        CockpitHud.Row tally = CockpitHud.Row.of(line("tally_hull", 100, 100));
+        CockpitHud.Row account = CockpitHud.Row.of(
+                new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0));
+        CockpitHud.Row burning = CockpitHud.Row.of(line("burning"));
+        CockpitHud.Row overloaded = CockpitHud.Row.of(line("overloaded"));
+        List<CockpitHud.Row> kept = CockpitHud.fitting(List.of(tally, account, burning, overloaded), 2);
+        if (!kept.equals(List.of(tally, burning, overloaded))) {
+            throw new AssertionError("A plate with room for two rows keeps the tally and the warnings, got " + kept);
         }
     }
 
@@ -287,16 +333,16 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
         BufferedImage bare = shotOfBareGame(context);
         BufferedImage cockpit = shot(context, "cockpit-seated", false);
-        double seated = differing(bare, cockpit, VANILLA_BOX);
+        double seated = differing(bare, cockpit, STATUS_BOX);
         if (seated > SAME) {
             throw new AssertionError(
-                    "Seated under the cockpit, the vanilla hotbar, hearts and held item name must not be drawn: "
-                            + seated + " of the middle of the bottom of the screen differs from the game with no HUD");
+                    "Seated under the cockpit, the vanilla hearts, food and experience must not be drawn: " + seated
+                            + " of their rows differs from the game with no HUD");
         }
-        double text = differing(bare, cockpit, TEXT_STRIP);
-        if (text > SAME_TEXT) {
-            throw new AssertionError("Seated under the cockpit, no held item name is drawn: " + text
-                    + " of the text rows differs from the game with no HUD");
+        double hotbar = differing(bare, cockpit, HOTBAR_BOX);
+        if (hotbar < DIFFERENT) {
+            throw new AssertionError("Seated under the cockpit, the vanilla hotbar is drawn (#1457), but only " + hotbar
+                    + " of its box differs from the game with no HUD");
         }
         singleplayer
                 .getServer()
@@ -311,11 +357,12 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 "the cockpit gone on foot",
                 client -> CockpitHud.seated(client).isEmpty());
         BufferedImage onFoot = shot(context, "cockpit-on-foot", true);
-        double back = differing(bare, onFoot, VANILLA_BOX);
+        double back = differing(bare, onFoot, STATUS_BOX);
         if (back < DIFFERENT) {
             throw new AssertionError(
-                    "On foot the vanilla HUD is back: the middle of the bottom of the screen should differ from the bare game, but only "
-                            + back + " of it does");
+                    "On foot the vanilla hearts and food are back: their rows should differ from the bare game, but"
+                            + " only "
+                            + back + " of them does");
         }
         singleplayer.getServer().runOnServer(server -> {
             if (!server.getPlayerList().getPlayers().getFirst().startRiding(pod)) {
@@ -330,7 +377,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     /**
      * The shipped default (#1281): taking the pilot seat switches to the third-person chase view, so the Ribbon must
-     * stand and the vanilla hotbar stay hidden there too. The test turns the chase on, boards again, and puts the
+     * stand, the hearts stay hidden and the hotbar shown there too. The test turns the chase on, boards again, and puts the
      * first-person view back.
      */
     private void expectCockpitHidesTheVanillaHudInTheChaseViewToo(
@@ -361,10 +408,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             }
             BufferedImage bare = shotOfBareGame(context);
             BufferedImage chase = shot(context, "cockpit-chase-view", false);
-            double seated = differing(bare, chase, VANILLA_BOX);
+            double seated = differing(bare, chase, STATUS_BOX);
             if (seated > SAME) {
-                throw new AssertionError("In the chase view the vanilla hotbar and hearts must not be drawn either: "
-                        + seated + " of the middle of the bottom of the screen differs from the game with no HUD");
+                throw new AssertionError("In the chase view the vanilla hearts must not be drawn either: " + seated
+                        + " of their rows differs from the game with no HUD");
+            }
+            double hotbar = differing(bare, chase, HOTBAR_BOX);
+            if (hotbar < DIFFERENT) {
+                throw new AssertionError("In the chase view the vanilla hotbar is drawn too, but only " + hotbar
+                        + " of its box differs from the game with no HUD");
             }
         } finally {
             PodChase.setAutomatic(false);
@@ -372,7 +424,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
-    /** A shot with the whole HUD switched off, which is what the vanilla box shows when nothing is drawn in it. */
+    /** A shot with the whole HUD switched off, which is what a vanilla box shows when nothing is drawn in it. */
     private BufferedImage shotOfBareGame(ClientGameTestContext context) {
         BufferedImage[] bare = {null};
         ClientChecks.withHudHidden(context, () -> bare[0] = shot(context, "cockpit-bare", false));
@@ -401,7 +453,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
-    /** The share of the pixels of the vanilla box that differ by more than a few levels between two shots. */
+    /** The share of the pixels of {@code box} that differ by more than a few levels between two shots. */
     private static double differing(BufferedImage a, BufferedImage b, int[] box) {
         int scale = GUI_SCALE;
         int differing = 0;
@@ -463,7 +515,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     /**
      * The plate keeps every value and line of the plain readout reachable: the four values are the tally, in the order of the gauges, and every other line of the readout
-     * (a warning, the slag, the account) is a row of its own under it. The cargo gauge reads the bay's share.
+     * (a warning, the slag, the account) is a row of its own under it.
      */
     private void expectThePlateKeepsEveryReadout(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
@@ -483,11 +535,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             PodEntity shown = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
             CockpitLook look = CockpitLook.current();
             CockpitReading reading = CockpitReading.of(shown, 0);
-            if (Math.abs(reading.cargo() - 1.0) > 1e-9) {
-                throw new AssertionError("A full bay reads 1 on the cargo gauge, got " + reading);
-            }
             List<PodStatusHud.Line> readout = PodStatusHud.readout(ClientSession.player(client), shown);
-            if (!CockpitHud.lampsLit(false, false, false, readout)[3]) {
+            if (!CockpitHud.lampsLit(false, false, false, false, readout)[3]) {
                 throw new AssertionError("A stranded pod's warning lights the fourth lamp, the readout is " + readout);
             }
             return CockpitHud.rows(shown, reading, look, readout).stream()
@@ -577,10 +626,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                             + decay.fault(part));
                 }
             }
-            boolean[] truth = {true, true, true, true};
-            if (!Arrays.equals(CockpitHud.decayedLamps(decay, truth), new boolean[] {false, true, true, false})) {
+            boolean[] truth = {true, true, true, true, true};
+            if (!Arrays.equals(CockpitHud.decayedLamps(decay, truth), new boolean[] {false, true, true, false, true})) {
                 throw new AssertionError(
-                        "In the blackout the fuel lamp and the alert lamp are dark and the hull lamp and the burning lamp stay lit, got "
+                        "In the blackout the fuel lamp and the alert lamp are dark and the hull, burning and"
+                                + " overloaded lamps stay lit, got "
                                 + Arrays.toString(CockpitHud.decayedLamps(decay, truth)));
             }
             if (CockpitHud.altimeter(
@@ -693,7 +743,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
-    /** A pack that sets {@code enabled} to 0 gives the plain HUD back while seated, with the vanilla hotbar. */
+    /** A pack that sets {@code enabled} to 0 gives the plain HUD back while seated, with the vanilla hearts and food. */
     private void expectAPackCanTurnTheCockpitOff(ClientGameTestContext context) {
         ClientPacks.enable(context, TestPacks.COCKPIT_OFF);
         try {
@@ -703,7 +753,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 throw new AssertionError("With the cockpit turned off, a seated pilot gets the plain HUD");
             }
             BufferedImage bare = shotOfBareGame(context);
-            double back = differing(bare, shot(context, "cockpit-off", true), VANILLA_BOX);
+            double back = differing(bare, shot(context, "cockpit-off", true), STATUS_BOX);
             if (back < DIFFERENT) {
                 throw new AssertionError("With the cockpit turned off the vanilla HUD is drawn while seated, but only "
                         + back + " of the bottom differs from the bare game");
@@ -799,6 +849,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 "hud.deepcharter.pod.fuel",
                 "hud.deepcharter.pod.cargo",
                 "hud.deepcharter.pod.depth"));
+        // The account line under the tally, a note though not a pod line.
+        expected.add(AccountHud.KEY);
         expected.add("hud.deepcharter.pod.signal_failing");
         expected.add("hud.deepcharter.pod.signal_lost");
         if (!covered.equals(expected)) {
@@ -875,6 +927,14 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         pieces.put("band", box(layout.band(), guiWidth, guiHeight));
         pieces.put("bezel", box(layout.cap(), guiWidth, guiHeight));
         pieces.put("scanner", box(layout.scanner(), guiWidth, guiHeight));
+        // Vanilla's hotbar, which a seated pilot keeps (#1457): it must not cover the band, the bezel, the scanner or
+        // the plate.
+        pieces.put("hotbar", box(SeatedHotbar.bar(guiWidth, guiHeight)));
+        for (String piece : List.of("band", "bezel", "scanner")) {
+            if (overlap(pieces.get("hotbar"), Objects.requireNonNull(pieces.get(piece), "a piece of the Ribbon"))) {
+                problems.add(where + ": the hotbar covers the " + piece);
+            }
+        }
         Map<String, CockpitLook.Gauge> gauges = Map.of(
                 "fuel",
                 layout.fuel(),
@@ -910,40 +970,291 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         if (overlap(pieces.get("band"), pieces.get("bezel"))) {
             problems.add(where + ": the bezel covers the band");
         }
+        CockpitHud.Box title = CockpitHud.loadTitleBox(font, layout, look, guiWidth, guiHeight);
+        pieces.put(
+                "load title",
+                new int[] {title.left(), title.top(), title.left() + title.width(), title.top() + title.height()});
+        if (!inside(pieces.get("load title"), screen) || overlap(pieces.get("load title"), pieces.get("bezel"))) {
+            problems.add(where + ": the load title leaves the screen or covers the bezel");
+        }
         if (font.width(LONGEST_ALTIMETER) > ALTIMETER_RECESS_WIDTH
                 || layout.altimeterY() + font.lineHeight > layout.band().height()) {
             problems.add(where + ": the altimeter reading does not fit its recess in the band");
         }
+        problems.addAll(sinkProblems(font, layout, look, pieces, gauges, guiWidth, guiHeight, where));
         for (List<CockpitHud.Row> rows : plateCases()) {
-            List<CockpitHud.Row> kept = CockpitHud.fitting(rows, CockpitHud.roomForRows(font, layout, look, guiHeight));
-            CockpitHud.Box plate = CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight);
-            int[] plateBox = {plate.left(), plate.top(), plate.left() + plate.width(), plate.top() + plate.height()};
-            if (!inside(plateBox, screen)) {
-                problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
-                        + Arrays.toString(plateBox));
-            }
-            for (String piece : List.of("band", "bezel")) {
-                if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
-                    problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
-                }
-            }
             long alerts = rows.stream()
                     .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
                     .count();
-            long keptAlerts = kept.stream()
-                    .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
-                    .count();
-            if (alerts != keptAlerts) {
-                problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
+            // Every set of what vanilla draws along the bottom edge: either main arm, with and without an off-hand
+            // item and the hotbar's attack indicator.
+            for (List<HudKeepClear.Rect> slots : slotSets(guiWidth, guiHeight)) {
+                List<CockpitHud.Row> kept = CockpitHud.plateRows(font, layout, look, rows, slots, guiWidth, guiHeight);
+                CockpitHud.Box plate = CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight);
+                int[] plateBox = {plate.left(), plate.top(), plate.left() + plate.width(), plate.top() + plate.height()
+                };
+                if (!inside(plateBox, screen)) {
+                    problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
+                            + Arrays.toString(plateBox));
+                }
+                for (String piece : List.of("band", "bezel", "load title")) {
+                    if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
+                        problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
+                    }
+                }
+                for (HudKeepClear.Rect slot : slots) {
+                    if (overlap(plateBox, box(slot))) {
+                        problems.add(where + ": the plate with " + kept.size() + " rows covers the " + slot.what()
+                                + " of "
+                                + slots.stream().map(HudKeepClear.Rect::what).toList());
+                    }
+                }
+                long keptAlerts = kept.stream()
+                        .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
+                        .count();
+                if (alerts != keptAlerts) {
+                    problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
+                }
             }
         }
         return problems;
     }
 
+    /** What vanilla can draw along the bottom edge of the GUI: for either main arm, with and without an off-hand item and the hotbar's attack indicator. */
+    private static List<List<HudKeepClear.Rect>> slotSets(int guiWidth, int guiHeight) {
+        List<List<HudKeepClear.Rect>> sets = new ArrayList<>();
+        for (HumanoidArm arm : HumanoidArm.values()) {
+            for (boolean offhand : new boolean[] {false, true}) {
+                for (boolean indicator : new boolean[] {false, true}) {
+                    sets.add(SeatedHotbar.slots(arm, offhand, indicator, guiWidth, guiHeight));
+                }
+            }
+        }
+        return sets;
+    }
+
+    /**
+     * A left-handed pilot with an off-hand item has the off-hand slot right of the bar, under the plate's columns: a plate narrow enough to miss the bar but wide enough to
+     * reach over the off-hand slot stops above it. Each GUI has such a plate (a column of notes of one width, found by trying widths), so the check is not vacuous: the
+     * same plate fitted against the bar alone covers the off-hand slot.
+     */
+    private void expectThePlateStopsAboveTheOffHandSlot(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            Font font = client.font;
+            CockpitLook look = CockpitLook.current();
+            CockpitLook.Layout layout = look.ribbon();
+            List<String> found = new ArrayList<>();
+            for (int[] gui : new int[][] {{320, 240}, {427, 240}}) {
+                int width = gui[0];
+                int height = gui[1];
+                List<HudKeepClear.Rect> slots = SeatedHotbar.slots(HumanoidArm.LEFT, true, false, width, height);
+                HudKeepClear.Rect bar = slots.getFirst();
+                HudKeepClear.Rect offhand = slots.getLast();
+                int cases = 0;
+                for (int letters = 1; letters <= 40; letters++) {
+                    Component text = Component.literal("M".repeat(letters));
+                    List<CockpitHud.Row> rows =
+                            Collections.nCopies(20, CockpitHud.Row.of(new PodStatusHud.Line(text, 0)));
+                    HudKeepClear.Rect barOnly = plateRect(font, layout, look, rows, List.of(bar), width, height);
+                    if (barOnly.overlaps(bar) || !barOnly.overlaps(offhand)) {
+                        continue;
+                    }
+                    cases++;
+                    HudKeepClear.Rect plate = plateRect(font, layout, look, rows, slots, width, height);
+                    if (plate.overlaps(offhand) || plate.overlaps(bar)) {
+                        found.add(width + " x " + height + ": the plate " + plate + " covers the off-hand slot "
+                                + offhand + " or the bar " + bar);
+                    }
+                }
+                if (cases == 0) {
+                    found.add(width + " x " + height + ": no plate width misses the bar and meets the off-hand slot "
+                            + offhand);
+                }
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The plate must stop above a left-handed pilot's off-hand slot: " + problems);
+        }
+    }
+
+    private static HudKeepClear.Rect plateRect(
+            Font font,
+            CockpitLook.Layout layout,
+            CockpitLook look,
+            List<CockpitHud.Row> rows,
+            List<HudKeepClear.Rect> slots,
+            int guiWidth,
+            int guiHeight) {
+        List<CockpitHud.Row> kept = CockpitHud.plateRows(font, layout, look, rows, slots, guiWidth, guiHeight);
+        return CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight)
+                .rect("plate");
+    }
+
+    /**
+     * The SINK plate (#1432) on the screen, under the band and touching it, out of every gauge's column (where a
+     * gauge's title hangs), clear of the bezel, of #1449's LOAD title box and of vanilla's rows.
+     */
+    private static List<String> sinkProblems(
+            Font font,
+            CockpitLook.Layout layout,
+            CockpitLook look,
+            Map<String, int[]> pieces,
+            Map<String, CockpitLook.Gauge> gauges,
+            int guiWidth,
+            int guiHeight,
+            String where) {
+        List<String> problems = new ArrayList<>();
+        CockpitHud.Box box = CockpitHud.sinkBox(font, layout, look, guiWidth, guiHeight);
+        int[] sink = {box.left(), box.top(), box.left() + box.width(), box.top() + box.height()};
+        int[] band = Objects.requireNonNull(pieces.get("band"), "the band is a piece");
+        if (!inside(sink, new int[] {0, 0, guiWidth, guiHeight}) || sink[1] != band[3]) {
+            problems.add(where + ": the SINK plate " + Arrays.toString(sink) + " is not hung on screen from the band "
+                    + Arrays.toString(band));
+        }
+        for (String piece : List.of("bezel", "scanner", "load title")) {
+            if (overlap(sink, Objects.requireNonNull(pieces.get(piece), "the piece is placed"))) {
+                problems.add(where + ": the SINK plate covers the " + piece);
+            }
+        }
+        gauges.forEach((name, gauge) -> {
+            int[] bar = box(gauge.area(), guiWidth, guiHeight);
+            int[] column = {bar[0] - TITLE_OVERHANG, sink[1], bar[2] + TITLE_OVERHANG, sink[3]};
+            if (overlap(sink, column)) {
+                problems.add(where + ": the SINK plate " + Arrays.toString(sink) + " is under the " + name
+                        + " gauge, where its title hangs");
+            }
+        });
+        HudKeepClear.Rect rect = new HudKeepClear.Rect("sink", box.left(), box.top(), box.width(), box.height());
+        for (HudKeepClear.Rect row : VanillaHudRows.rects(guiWidth, guiHeight)) {
+            if (rect.overlaps(row)) {
+                problems.add(where + ": the SINK plate runs into vanilla's " + row.what());
+            }
+        }
+        return problems;
+    }
+
+    /**
+     * The SINK plate draws while the pod sinks, in the hull gauge's colour, {@code ribbonWarn} near the buffer or the
+     * warning colour past it, and is gone once the pod has landed. The pod rises {@link #SINK_DROP} blocks and is let
+     * fall onto the floor. Then a drop of one block, as a block bored straight down gives, never puts it up.
+     */
+    private void expectTheSinkPlateShowsWhileThePodSinks(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
+        CockpitLook look = CockpitLook.current();
+        if (CockpitHud.sinkColor(0.5, look) != look.hullColor()
+                || CockpitHud.sinkColor(look.sink().warnShare(), look)
+                        != look.sink().warnColor()
+                || CockpitHud.sinkColor(1.0, look) != look.sink().warnColor()
+                || CockpitHud.sinkColor(1.01, look) != look.lowColor()) {
+            throw new AssertionError(
+                    "The SINK plate is in the hull colour under " + look.sink().warnShare()
+                            + " of the buffer, ribbonWarn up to the buffer and the warning colour past it");
+        }
+        singleplayer.getServer().runOnServer(server -> {
+            pod.setNoGravity(false);
+            pod.setPos(0.5, FEET_Y + SINK_DROP, 0.5);
+            pod.setDeltaMovement(0, 0, 0);
+        });
+        ClientWait.until(
+                context,
+                "the SINK plate up while the pod sinks",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && CockpitHud.sinkShown(shown)
+                        && CockpitReading.of(shown, 0).sink() > 0);
+        int[] probe = context.computeOnClient(client -> {
+            CockpitHud.Box box = CockpitHud.sinkBox(client.font, look.ribbon(), look, 427, 240);
+            // The first segment of the bar, which any sink lights: the bar ends at the plate sprite's right border.
+            int border = CockpitHud.plateInset(look.ribbon(), look).right() - look.plateGap();
+            int x = box.left()
+                    + box.width()
+                    - border
+                    - look.titleGap()
+                    - look.sink().barWidth();
+            return new int[] {x, box.top() + box.height() / 2};
+        });
+        // Shot at once: the pod lands in about a second.
+        int lit = pixel(context, "cockpit-sink", probe);
+        Set<Integer> stateColors =
+                Set.of(look.hullColor() & 0xFFFFFF, look.sink().warnColor() & 0xFFFFFF, look.lowColor() & 0xFFFFFF);
+        if (!stateColors.contains(lit)) {
+            throw new AssertionError("While the pod sinks the SINK bar's first segment is lit in a state colour, got "
+                    + Integer.toHexString(lit));
+        }
+        ClientWait.until(
+                context,
+                "the pod sinking past " + SINK_PAST_BUFFER + " of the buffer",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && CockpitReading.of(shown, 0).sink() > SINK_PAST_BUFFER);
+        int past = pixel(context, "cockpit-sink-past", probe);
+        if (past != (look.lowColor() & 0xFFFFFF)) {
+            throw new AssertionError("Past the buffer the SINK bar is in the warning colour "
+                    + Integer.toHexString(look.lowColor() & 0xFFFFFF) + ", got " + Integer.toHexString(past));
+        }
+        ClientWait.until(
+                context,
+                "the pod landed and the SINK plate gone",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && shown.onGround()
+                        && !CockpitHud.sinkShown(shown));
+        expectAOneBlockDropKeepsTheSinkPlateDown(context, singleplayer, pod);
+        singleplayer.getServer().runOnServer(server -> {
+            pod.setNoGravity(true);
+            pod.setPos(0.5, FEET_Y, 0.5);
+        });
+    }
+
+    /**
+     * A pod held one block over the floor and let go never shows the SINK plate on its way down: a drill-down step
+     * drops the pod a block, and the plate would blink at every block bored.
+     */
+    private static void expectAOneBlockDropKeepsTheSinkPlateDown(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
+        double floor = singleplayer.getServer().computeOnServer(server -> {
+            pod.setNoGravity(true);
+            pod.setDeltaMovement(0, 0, 0);
+            pod.setPos(0.5, pod.getY() + 1, 0.5);
+            return pod.getY() - 1;
+        });
+        ClientWait.until(
+                context,
+                "the pod held a block over the floor",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && !shown.onGround()
+                        && shown.getY() > floor + 0.9);
+        singleplayer.getServer().runOnServer(server -> pod.setNoGravity(false));
+        boolean[] shownOnTheWay = {false};
+        ClientWait.until(context, "the pod down the one block", client -> {
+            if (!(ClientSession.player(client).getVehicle() instanceof PodEntity shown)) {
+                return false;
+            }
+            shownOnTheWay[0] |= CockpitHud.sinkShown(shown);
+            return shown.onGround() && shown.getY() < floor + 0.1;
+        });
+        if (shownOnTheWay[0]) {
+            throw new AssertionError("A drop of one block put the SINK plate up; it should wait for a sink of "
+                    + CockpitLook.current().sink().showShare() + " of the buffer");
+        }
+    }
+
+    /** The colour of the GUI pixel {@code at} in a screenshot taken now. */
+    private static int pixel(ClientGameTestContext context, String name, int[] at) {
+        try {
+            BufferedImage shot = ImageIO.read(context.takeScreenshot(name).toFile());
+            return shot.getRGB(at[0] * GUI_SCALE, at[1] * GUI_SCALE) & 0xFFFFFF;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     /** The plates to fit: each warning alone, and every warning a pilot can have at once with every note too. */
     private static List<List<CockpitHud.Row>> plateCases() {
+        // The longest drop line: the farthest slabs, a three-figure hull and the deepest drop the probe prices.
+        int reach = PodBraceTuning.DEFAULT.warnSlabs();
+        int deepest = Math.round(VoidBelow.dropCost(PodStats.base(), VoidBelowTuning.DEFAULT.scanBlocks()));
         List<PodStatusHud.Line> alerts = List.of(
                 line("burning"),
+                line("overloaded"),
                 line("stranded"),
                 line("crust_ahead", 7, 20, 24),
                 line("crust_in", 20, 24),
@@ -960,19 +1271,23 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("glaze_holding", 12),
                 line("glaze_spent"),
                 line("drifter_alarm", 30),
-                line("soot_limp"));
+                line("soot_limp"),
+                line("crust_ahead_drop", reach, 136, 24, deepest),
+                line("crust_in_drop", 136, 24, deepest));
         List<PodStatusHud.Line> notes = List.of(
                 line("slag", 12, 8),
                 line("slag_only", 12),
                 line("liner", 3),
                 line("lining", 5),
                 line("brace_working"),
-                line("soot", 11, 44, 44));
+                line("soot", 11, 44, 44),
+                line("sprint", 40, 80));
         PodStatusHud.Line tally = line("tally_hull", 100, 100);
         List<CockpitHud.Row> head = List.of(
                 new CockpitHud.Row(
                         List.of(tally, line("tally_fuel", 78), line("tally_cargo", 24), line("tally_depth", -420))),
-                CockpitHud.Row.of(new PodStatusHud.Line(Component.literal("Scanner Player0  $12,345"), 0)));
+                CockpitHud.Row.of(
+                        new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0)));
         List<List<CockpitHud.Row>> cases = new ArrayList<>();
         for (PodStatusHud.Line alert : alerts) {
             cases.add(rowsOf(head, List.of(alert)));
@@ -980,17 +1295,13 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         for (PodStatusHud.Line note : notes) {
             cases.add(rowsOf(head, List.of(note)));
         }
-        // The stranded pod's own pair, as the readout builds it: the warning, then the Company winch's countdown (a
-        // minute, the fee of layer 8).
-        cases.add(rowsOf(head, List.of(line("stranded"), line("recovery", 60, 240))));
-
         cases.add(rowsOf(
                 head,
                 Stream.concat(
                                 Stream.of(
                                         alerts.get(0),
                                         alerts.get(12),
-                                        alerts.get(2),
+                                        alerts.get(18),
                                         alerts.get(4),
                                         alerts.get(8),
                                         alerts.get(11)),
@@ -1017,6 +1328,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     private static PodStatusHud.Line line(String name, Object... args) {
         return new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod." + name, args), 0);
+    }
+
+    private static int[] box(HudKeepClear.Rect rect) {
+        return new int[] {rect.x(), rect.y(), rect.right(), rect.bottom()};
     }
 
     private static int[] box(PanelLook.Decal decal, int guiWidth, int guiHeight) {
@@ -1049,7 +1364,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
         if (!context.computeOnClient(CockpitHud::showsReadout)) {
             throw new AssertionError(
-                    "The pilot's seat shows the readout on the plate, so the plain readout and the account line stay quiet");
+                    "The pilot's seat shows the readout on the plate, so the plain readout and the account line stay"
+                            + " quiet");
         }
     }
 }

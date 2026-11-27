@@ -107,6 +107,7 @@ public final class OutpostScene {
     }
 
     /** A pod of the charter parked in the hall at ({@code dx}, {@code dz}), with {@code fuelPercent} of its tank. */
+    // seats-pod: adds the pod to the level for the hall scene
     public static PodEntity parkPod(MinecraftServer server, Scene scene, double dx, double dz, float fuelPercent) {
         ServerLevel one = TestLayers.level(server, 1);
         PodEntity pod = TestEntities.create(PodRegistry.POD, one);

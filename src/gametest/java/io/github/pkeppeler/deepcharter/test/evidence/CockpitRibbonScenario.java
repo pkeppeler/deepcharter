@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -88,11 +89,12 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                 Room upper = singleplayer.getServer().computeOnServer(server -> {
                     LayerChain.Band band = TestLayers.band(server, 1);
                     return new Room(
-                            TestLayers.dimension(server, 1), band.minY() + band.height() - UPPER_FLOOR_BELOW_TOP);
+                            1, TestLayers.dimension(server, 1), band.minY() + band.height() - UPPER_FLOOR_BELOW_TOP);
                 });
                 Room deep = singleplayer.getServer().computeOnServer(server -> {
                     int last = LayerChain.layerCount(TestLayers.level(server, 1));
                     return new Room(
+                            last,
                             TestLayers.dimension(server, last),
                             TestLayers.band(server, last).minY() + DEEP_FLOOR_ABOVE_MIN);
                 });
@@ -100,6 +102,9 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                     buildRoom(server, upper, ROOM_RADIUS, ROOM_RADIUS);
                     buildRoom(server, deep, ROOM_RADIUS, ROOM_RADIUS);
                 });
+                for (Room room : List.of(upper, deep)) {
+                    ClientWait.lightSettled(context, singleplayer.getServer(), room.layer(), X, Z, ROOM_RADIUS + 1);
+                }
                 PodEntity upperPod = enter(context, singleplayer, upper);
                 upperStates(context, singleplayer, upperPod);
                 guiScales(context, singleplayer, upperPod);
@@ -113,8 +118,8 @@ public class CockpitRibbonScenario extends EvidenceScenario {
         }
     }
 
-    /** A sealed stone room in a layer: where it is and the Y of its floor. */
-    private record Room(ResourceKey<Level> dimension, int floorY) {}
+    /** A sealed stone room in a layer: the layer, its dimension and the Y of its floor. */
+    private record Room(int layer, ResourceKey<Level> dimension, int floorY) {}
 
     /** Calm, low fuel, hull burning with lava under the pod, stranded and burning together, and a message on the action bar. */
     private void upperStates(ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
@@ -183,6 +188,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
     /** A short drive west down a long room: the GIF. */
     private void drive(ClientGameTestContext context, TestSingleplayerContext singleplayer, Room room) {
         singleplayer.getServer().runOnServer(server -> buildRoom(server, room, ROOM_RADIUS, DRIVE_LENGTH));
+        ClientWait.lightSettled(context, singleplayer.getServer(), room.layer(), X, Z, DRIVE_LENGTH + 1);
         PodEntity pod = enter(context, singleplayer, room, DRIVE_LENGTH - 2, FACING_WEST);
         singleplayer.getServer().runOnServer(server -> pod.setFuel(CALM_FUEL));
         context.runOnClient(client -> {
@@ -249,6 +255,11 @@ public class CockpitRibbonScenario extends EvidenceScenario {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(level, X + east + 0.5, room.floorY(), Z + 0.5, Set.of(), yaw, 0f, true);
+        });
+        ClientWait.arrived(context, singleplayer.getServer());
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel level = ClientLight.serverLevel(server, room.dimension());
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(X + east + 0.5, room.floorY(), Z + 0.5);
             pod.setYRot(yaw);

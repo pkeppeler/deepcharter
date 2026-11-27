@@ -90,8 +90,8 @@ public class AirCanisterScenario extends EvidenceScenario {
                     client -> SuitGaugeHud.gauge(client)
                             .filter(gauge -> gauge.fraction() > BAR_SPLIT)
                             .isPresent());
-            // The still comes straight after the jump, before the suit drains it away; the frames that follow show it
-            // drain.
+            // The still comes straight after the jump, before the suit drains it away; the frames that follow show
+            // it drain.
             screenshot(context, "air-canister-2-after-the-bar-jumps");
             hold(context);
 

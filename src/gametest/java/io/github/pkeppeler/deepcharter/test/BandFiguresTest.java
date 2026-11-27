@@ -34,7 +34,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Server GameTests for the lampless figure's natural spawn in the campaign world (#799), in {@code deepcharter:campaign_sample}. A figure
  * keys on the band at its Y: it appears in a layer's band when a player is in that band, with a cap for each band, and never in the surface
- * band, whatever Y the game's spawner picks under a player on the surface. Columns 24000 to 24999 are this class's.
+ * band, whatever Y the game's spawner picks under a player on the surface.
  */
 public class BandFiguresTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -102,8 +102,8 @@ public class BandFiguresTest {
             if (ready[0] < 3) {
                 return;
             }
-            // The light engine runs behind the carve: the light of the ore the room replaced is read until it catches
-            // up.
+            // The light engine runs behind the carve: the light of the ore the room replaced is read until it
+            // catches up.
             boolean dark = Stream.of(one, two, surface)
                     .allMatch(room -> level.getBrightness(LightLayer.BLOCK, room) < TUNING.litBlockLight());
             deadline.await(helper, level, dark, () -> "the light of the old rock did not leave the rooms");

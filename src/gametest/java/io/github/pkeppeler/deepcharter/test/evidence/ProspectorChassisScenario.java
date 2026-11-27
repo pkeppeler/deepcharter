@@ -109,10 +109,19 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                         Z + SLAB_RADIUS,
                         Blocks.AIR);
                 level.setBlock(console, HangarTerminal.TYPE.block().defaultBlockState(), 3);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), TestLayers.SURFACE, X, Z, SLAB_RADIUS);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel level = server.overworld();
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setPermanentlyInvulnerable(true);
                 player.getInventory().clearContent();
                 player.teleportTo(level, X + 0.5, FLOOR_Y, Z - 4.5, Set.of(), 0f, 10f, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel level = server.overworld();
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
                 pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
                 pod.setHull(0f);

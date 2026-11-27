@@ -41,8 +41,8 @@ public enum Consumable {
     THROWN_DECOY("thrown_decoy", 25, Kind.CONSUMED, Use.THROWN),
     THROWN_CHARGE("thrown_charge", 55, Kind.CONSUMED, Use.THROWN),
     // On foot (#986): not used up. A person on foot clips it to a pod's winch, and it is theirs to keep. Priced at
-    // about three quarters of a stock layer 1 run, so the first descent pays for it once and no pod is ever without
-    // one.
+    // about three quarters of a stock layer 1 run, so the first descent pays for it once and no pod is ever
+    // without one.
     TETHER("tether", 90, Kind.TOOL, Use.OWN),
     // On foot (#987): a tool, kept. The driver costs two fifths of a layer 2 run. EconomyAffordabilityTest holds the
     // bands and BoltDriverPacingTest what a fight and a stretch of tunnel cost.

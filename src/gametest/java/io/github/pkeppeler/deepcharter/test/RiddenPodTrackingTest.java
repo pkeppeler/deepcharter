@@ -67,6 +67,7 @@ public class RiddenPodTrackingTest {
                         }
                         // The pilot has the pod. Block the sender, and queue the pod's chunk as LightSync does.
                         setUnacknowledged(sender, NEVER_ACKNOWLEDGED);
+                        // sync-load: run.stage waited for the site's chunks to tick, and the pod is held inside them
                         LevelChunk chunk = run.site().one().getChunkAt(pod.blockPosition());
                         sender.markChunkPendingToSend(chunk);
                         markedAt[0] = mock.sequence().size();
@@ -106,8 +107,8 @@ public class RiddenPodTrackingTest {
         return -1;
     }
 
-    // test-seam: vanilla gives no way to make a client slow to acknowledge a chunk batch, which keeps a queued chunk
-    // queued
+    // test-seam: vanilla gives no way to make a client slow to acknowledge a chunk batch, which keeps a queued
+    // chunk queued
     private static void setUnacknowledged(PlayerChunkSender sender, int batches) {
         try {
             Field field = PlayerChunkSender.class.getDeclaredField("unacknowledgedBatches");

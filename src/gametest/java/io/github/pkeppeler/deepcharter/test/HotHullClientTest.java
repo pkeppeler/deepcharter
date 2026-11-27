@@ -40,12 +40,24 @@ public class HotHullClientTest implements FabricClientGameTest {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.setGameMode(GameType.SURVIVAL);
                 // Hung in a sealed room, in a 2 x 2 pool of lava, as the heat shield's test does.
                 RoomCarver.carve(one, -3, 3, FEET_Y - 1, FEET_Y + 6, -3, 3, Blocks.AIR);
                 RoomCarver.carve(one, -1, 0, FEET_Y, FEET_Y, -1, 0, Blocks.LAVA);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, 3);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                // Creative while it waits for the arrival: it stands in the lava pool until it is seated.
+                player.setGameMode(GameType.CREATIVE);
                 player.teleportTo(one, 0, FEET_Y, 0, Set.of(), 0f, 0f, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                player.setRemainingFireTicks(0);
+                player.setGameMode(GameType.SURVIVAL);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(0, FEET_Y, 0);
                 pod.setNoGravity(true);
@@ -121,11 +133,11 @@ public class HotHullClientTest implements FabricClientGameTest {
                 PodGeoRenderer.load(client.getResourceManager(), pod.chassis()).hot(),
                 "the mod's own look has a hot mask");
         PodLook bare = PodLook.parse("a look with no hot mask", new StringReader("""
-                        {"model": "deepcharter:pod/mole", "texture": "deepcharter:textures/entity/pod/mole_wreck.png",
-                         "glow": "never",
-                         "cutters": {"0": "tricone", "1": "stacked", "2": "fluted", "3": "cluster"},
-                         "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png"}}
-                        """));
+            {"model": "deepcharter:pod/mole", "texture": "deepcharter:textures/entity/pod/mole_wreck.png",
+             "glow": "never",
+             "cutters": {"0": "tricone", "1": "stacked", "2": "fluted", "3": "cluster"},
+             "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png"}}
+            """));
         require(
                 client.getResourceManager().getResource(bare.intact().hotmask()).isEmpty(),
                 "the test's texture has no hot mask, " + bare.intact().hotmask());

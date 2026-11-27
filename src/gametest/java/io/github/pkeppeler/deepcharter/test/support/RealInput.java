@@ -32,12 +32,39 @@ public final class RealInput {
         context.waitTicks(1);
     }
 
+    /** One turn of the wheel at the cursor, up for a positive {@code vertical} and down for a negative one, then one tick. */
+    public static void scroll(ClientGameTestContext context, double vertical) {
+        context.runOnClient(
+                client -> client.mouseHandler.onScroll(client.getWindow().handle(), 0, vertical));
+        context.waitTicks(1);
+    }
+
     /** A key press and release with {@code modifiers}, then one tick. */
     public static void key(ClientGameTestContext context, int key, int modifiers) {
         for (int action : new int[] {InputConstants.PRESS, InputConstants.RELEASE}) {
             context.runOnClient(client -> client.keyboardHandler.keyPress(
                     client.getWindow().handle(), action, new KeyEvent(key, 0, modifiers)));
         }
+        context.waitTicks(1);
+    }
+
+    /** Puts {@code key} down and leaves it there: {@code KeyMapping.isDown} reads it held until {@link #up}. */
+    public static void down(ClientGameTestContext context, int key) {
+        context.runOnClient(client -> client.keyboardHandler.keyPress(
+                client.getWindow().handle(), InputConstants.PRESS, new KeyEvent(key, 0, 0)));
+    }
+
+    /** Lets {@code key} go after {@link #down}. */
+    public static void up(ClientGameTestContext context, int key) {
+        context.runOnClient(client -> client.keyboardHandler.keyPress(
+                client.getWindow().handle(), InputConstants.RELEASE, new KeyEvent(key, 0, 0)));
+    }
+
+    /** Holds {@code key} down for {@code ticks} client ticks, then lets it go and waits one tick. */
+    public static void hold(ClientGameTestContext context, int key, int ticks) {
+        down(context, key);
+        context.waitTicks(ticks);
+        up(context, key);
         context.waitTicks(1);
     }
 

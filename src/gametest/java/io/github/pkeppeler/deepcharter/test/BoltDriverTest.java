@@ -26,6 +26,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.BoltDriverTuning;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.BoltRoom.Corridor;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -74,7 +75,6 @@ public class BoltDriverTest {
     private static final CaveInTuning CAVE_IN = CaveInTuning.DEFAULT;
     private static final BoltDriverTuning DRIVER = BoltDriverTuning.DEFAULT;
     private static final int LENGTH = 14;
-    /** Two corridor slots no other test uses. */
     private static final int SPARE_SLOT = 40;
 
     private static final float EAST = -90f;
@@ -95,6 +95,13 @@ public class BoltDriverTest {
     private static final int ROCK_SETTLES_TICKS = 40;
 
     private static final Identifier CREAK = SoundEvents.CREAKING_TWITCH.location();
+    private static final Identifier CAVE_IN_SOUND =
+            DeepSound.CAVE_IN_COLLAPSE.event().location();
+    private static final Identifier EXPLOSION =
+            SoundEvents.GENERIC_EXPLODE.value().location();
+
+    /** How far from the collapse a sound still counts as the collapse's: the stretch is a few blocks wide. */
+    private static final double COLLAPSE_EARSHOT = 4.0;
 
     @GameTest
     public void theIdsArePermanentAndTheDriverIsKeptNotSpent(GameTestHelper helper) {
@@ -200,8 +207,8 @@ public class BoltDriverTest {
         Corridor corridor = corridor(helper, LENGTH, 2);
         MockPlayer shooter = walker(helper, corridor, "bolt-range", 0, EAST);
         arm(shooter.player(), 2);
-        // The corridor is 14 long, so the target stands in a second, longer one: the range itself is what is under
-        // test.
+        // The corridor is 14 long, so the target stands in a second, longer one: the range itself is what is
+        // under test.
         int far = (int) Math.ceil(DRIVER.range()) + 4;
         int y = corridor.floor(0).getY();
         int z = corridor.floor(0).getZ();
@@ -333,8 +340,8 @@ public class BoltDriverTest {
                         "the target was never hittable, so no bolt was tried: %s",
                         state(target, shooter.player(), corridor.level()));
             }
-            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a pack
-            // holds.
+            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a
+            // pack holds.
             arm(shooter.player(), 2);
             // A full stomach heals: keep it low, so a loss is the bolt's.
             target.getFoodData().setFoodLevel(6);
@@ -608,6 +615,17 @@ public class BoltDriverTest {
                 if (lying == 0) {
                     throw failure(helper, "the roof fell as rock, which lies where it landed: none lies in the tunnel");
                 }
+                Vec3 collapse = Vec3.atCenterOf(corridor.floor(7));
+                List<Identifier> heard = under.soundsHeardAtPlaces().stream()
+                        .filter(sound -> sound.at().distanceTo(collapse) < COLLAPSE_EARSHOT)
+                        .map(MockPlayer.PlacedSound::id)
+                        .toList();
+                expect(
+                        helper,
+                        heard.contains(CAVE_IN_SOUND) && !heard.contains(EXPLOSION),
+                        "the fall sounds as %s and not as an explosion, the person under it heard %s",
+                        CAVE_IN_SOUND,
+                        heard);
                 helper.succeed();
             }
         });

@@ -20,11 +20,10 @@ import net.minecraft.network.codec.StreamCodec;
  * The value type of every versioned attachment: either the current-version value, or the saved data
  * of a version this build cannot read, kept untouched.
  *
- * <p>Fabric loads all of an entity's attachments as one map and, if that map fails to decode,
- * silently drops all of them, and the next save then overwrites the real data. So a versioned
- * codec must never fail. {@link #codec} decodes an unknown or missing version, or a body that does
- * not parse, to {@link Unreadable}, and writes it back unchanged. Nothing is lost, and one feature's
- * bad data never takes another feature's attachments with it.
+ * <p>Fabric skips a saved attachment entry that fails to decode, with one warning, and the next
+ * save omits it, so the real data would be lost. So a versioned codec must never fail. {@link
+ * #codec} decodes an unknown or missing version, or a body that does not parse, to {@link
+ * Unreadable}, and writes it back unchanged. Nothing is lost.
  *
  * <p>Register an attachment as {@code AttachmentType<Versioned<Foo>>} with
  * {@code persistent(Versioned.codec(VERSION, FOO_BODY))} and
@@ -79,6 +78,7 @@ public sealed interface Versioned<T> {
      * {@link Unreadable}, so a pod with bad saved data does not break its trackers. A value of a
      * version other than ours throws, which disconnects the client: the two sides run different builds.
      */
+    // const-param: each attachment states its own VERSION constant per the M2 versioning rule; they coincide at 1 today
     static <T> StreamCodec<ByteBuf, Versioned<T>> streamCodec(int currentVersion, StreamCodec<ByteBuf, T> body) {
         requireValidVersion(currentVersion);
         return new StreamCodec<>() {

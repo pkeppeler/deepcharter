@@ -4,7 +4,7 @@ import io.github.pkeppeler.deepcharter.menu.MenuRefusalPayload;
 
 /**
  * Registers the terminal parts and types (with their blocks, items and block entity), the repair menu with the slotted
- * menus' refusal payload, and the terminal's three payloads.
+ * menus' refusal payload, and the terminal's payloads.
  */
 public final class TerminalRegistry {
     private TerminalRegistry() {}
@@ -16,6 +16,7 @@ public final class TerminalRegistry {
         MenuRefusalPayload.register();
         TerminalViewPayload.register();
         TerminalOpenPayload.register();
+        SeatedTerminalPayload.register();
         TerminalActionPayload.register();
     }
 }

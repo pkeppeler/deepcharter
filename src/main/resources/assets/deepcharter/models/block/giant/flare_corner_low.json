@@ -1,0 +1,79 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "flare": "deepcharter:block/fungal_flare",
+    "particle": "deepcharter:block/fungal_flare"
+  },
+  "elements": [
+    {
+      "from": [
+        -6.4142,
+        -9,
+        -1.4142
+      ],
+      "to": [
+        3.5858,
+        -1,
+        15.8999
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#flare"
+        },
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#flare"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#flare"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#flare"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#flare"
+        }
+      },
+      "rotation": {
+        "origin": [
+          -1.4142,
+          -1,
+          -1.4142
+        ],
+        "x": -19.5718,
+        "y": 45,
+        "z": 0
+      }
+    }
+  ],
+  "ambientocclusion": false
+}

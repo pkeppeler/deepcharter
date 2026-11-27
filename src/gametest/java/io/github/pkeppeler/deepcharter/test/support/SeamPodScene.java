@@ -105,6 +105,7 @@ public final class SeamPodScene {
      * A fresh pod over {@code site} with the mock in its first seat and the real client in its second, pinned at the
      * hold height.
      */
+    // seats-pod: adds the pod and seats the pilot in it
     public static PodEntity seat(
             ClientGameTestContext context, TwoPlayerServer two, UUID clientId, Site site, boolean mockAccepts) {
         MockPlayer mock = two.mock();
@@ -119,8 +120,8 @@ public final class SeamPodScene {
             mock.player().stopRiding();
             mock.teleportTo(site.one(), hold, 0, 0);
             real.teleportTo(site.one(), hold.x, hold.y, hold.z, Set.of(), 0, 0, true);
-            // Held in the air until the pod is there: nothing else would stop a fall through the floor, which is a
-            // crossing.
+            // Held in the air until the pod is there: nothing else would stop a fall through the floor, which is
+            // a crossing.
             mock.player().setNoGravity(true);
             real.setNoGravity(true);
             mock.announceChannel(SeamPreparePayload.TYPE);
@@ -250,6 +251,7 @@ public final class SeamPodScene {
     }
 
     /** Lets the pod go and puts it under the floor, as one tick of a fall at speed would. */
+    // seats-pod: moves the seated pod
     public static void drop(TwoPlayerServer two, Site site, PodEntity pod) {
         two.server().runOnServer(server -> {
             PINS.remove(pod.getUUID());

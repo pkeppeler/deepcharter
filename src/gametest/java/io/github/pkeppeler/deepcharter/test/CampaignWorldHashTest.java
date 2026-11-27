@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,7 +15,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -58,21 +59,23 @@ public class CampaignWorldHashTest {
         }
         List<String> lines = new ArrayList<>();
         lines.add("seed " + helper.getLevel().getSeed());
-        // One state's hash is of its string, computed once: the same state hashes alike in every chunk and in every
-        // tree.
+        // One state's hash is of its string, computed once: the same state hashes alike in every chunk and in
+        // every tree.
         Map<BlockState, Long> stateHashes = new HashMap<>();
         int expected = 1;
         for (String world : WORLDS) {
             ServerLevel level = ClientLight.serverLevel(
                     helper.getLevel().getServer(),
                     ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", world)));
-            // level-height: one line per section of the whole level, whatever bands it holds, and one for each chunk's
-            // heightmaps
+            // level-height: one line per section of the whole level, whatever bands it holds, and one for each
+            // chunk's heightmaps
             expected += (level.getSectionsCount() + 1) * PATCH_CORNERS.length * PATCH * PATCH;
             for (int corner : PATCH_CORNERS) {
                 for (int cx = corner; cx < corner + PATCH; cx++) {
                     for (int cz = corner; cz < corner + PATCH; cz++) {
                         // Generated and read in this one call, on this tick, so nothing needs forcing or waiting on.
+                        // sync-load: a hand-run tool (it returns at once without DEEPCHARTER_WORLD_HASH) that hashes
+                        // the chunks of this very call
                         LevelChunk chunk = level.getChunk(cx, cz);
                         for (int index = 0; index < chunk.getSectionsCount(); index++) {
                             LevelChunkSection section = chunk.getSection(index);
@@ -87,7 +90,7 @@ public class CampaignWorldHashTest {
         }
         Files.writeString(Path.of(OUTPUT), String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
         if (lines.size() != expected) {
-            throw helper.assertionException(Component.literal("wrote " + lines.size() + " lines"));
+            throw failure(helper, "wrote %s lines", lines.size());
         }
         helper.succeed();
     }

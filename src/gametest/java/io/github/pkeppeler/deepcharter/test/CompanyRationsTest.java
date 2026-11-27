@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.colony.ColonyRations;
@@ -19,6 +21,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -40,8 +43,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Company rations (#838): the starting tins, the ore cars' last-shift tins, the canteen dispenser's one ration a day, and the
- * stalk that cooks into a poor meal. Counts are literals on purpose: they are the design, not a copy of the tuning.
+ * Company rations (#838): the starting tins, the ore cars' last-shift tins, the canteen dispenser's ration on every use (#1439),
+ * and the stalk that cooks into a poor meal. Counts are literals on purpose: they are the design, not a copy of the tuning.
  */
 public class CompanyRationsTest {
     private static final int STARTING_RATIONS = 3;
@@ -100,7 +103,7 @@ public class CompanyRationsTest {
 
     private static void awaitStarters(GameTestHelper helper, ServerPlayer player) {
         if (rations(player) != STARTING_RATIONS) {
-            throw helper.assertionException("waiting for the starting rations, the player holds %s", rations(player));
+            throw failure(helper, "waiting for the starting rations, the player holds %s", rations(player));
         }
     }
 
@@ -127,23 +130,25 @@ public class CompanyRationsTest {
     public void theRationIsEdibleFoodWithSensibleNutrition(GameTestHelper helper) {
         FoodProperties food = new ItemStack(item("company_ration")).get(DataComponents.FOOD);
         if (food == null) {
-            throw helper.assertionException("the Company ration is not food");
+            throw failure(helper, "the Company ration is not food");
         }
         if (food.nutrition() < 4 || food.nutrition() > 8) {
-            throw helper.assertionException("a ration restores 4 to 8 hunger, it restores %s", food.nutrition());
+            throw failure(helper, "a ration restores 4 to 8 hunger, it restores %s", food.nutrition());
         }
         FoodProperties meal = new ItemStack(item("stalk_meal")).get(DataComponents.FOOD);
         if (meal == null) {
-            throw helper.assertionException("the stalk meal is not food");
+            throw failure(helper, "the stalk meal is not food");
         }
         if (meal.nutrition() >= food.nutrition() || meal.nutrition() < 2) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "the poor meal restores 2 or more and less than a ration (%s), it restores %s",
-                    food.nutrition(), meal.nutrition());
+                    food.nutrition(),
+                    meal.nutrition());
         }
         if (new ItemStack(item("company_ration")).get(DataComponents.CONSUMABLE) == null
                 || new ItemStack(item("stalk_meal")).get(DataComponents.CONSUMABLE) == null) {
-            throw helper.assertionException("food that cannot be consumed cannot be eaten");
+            throw failure(helper, "food that cannot be consumed cannot be eaten");
         }
         helper.succeed();
     }
@@ -170,7 +175,8 @@ public class CompanyRationsTest {
             }
             found.ensure(helper);
             if (!said(mock, "colony.deepcharter.ore_car.found") || !said(mock, "colony.deepcharter.ore_car.empty")) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the car says what was found, then that it is empty; the player heard %s",
                         mock.actionBarMessages());
             }
@@ -200,7 +206,7 @@ public class CompanyRationsTest {
     }
 
     @GameTest(maxTicks = 100)
-    public void theCanteenGivesOneRationPerPlayerPerDayAndRefusesASecond(GameTestHelper helper) {
+    public void theCanteenGivesARationOnEveryUseWithNoDailyLimit(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "Miner");
         ServerPlayer player = mock.player();
         ServerPlayer other = MockPlayers.join(helper, "Mate").player();
@@ -214,24 +220,25 @@ public class CompanyRationsTest {
                 awaitStarters(helper, other);
                 done[0] = true;
                 helper.getLevel().setBlock(pos, block("canteen").defaultBlockState(), 3);
+                // One paused moment of one day: the limit that went (#1439) was per in-game day.
                 TestClocks.paused(server, overworldClock(server), 5 * DAY_TICKS + 1000, () -> {
+                    use(helper, player, pos);
                     use(helper, player, pos);
                     use(helper, player, pos);
                     use(helper, other, pos);
                 });
-                expectRations(found, player, STARTING_RATIONS + 1, "one ration a day, a second use refused");
-                expectRations(found, other, STARTING_RATIONS + 1, "each player has a ration of their own each day");
-                TestClocks.paused(
-                        server, overworldClock(server), 5 * DAY_TICKS + 20_000, () -> use(helper, player, pos));
-                expectRations(found, player, STARTING_RATIONS + 1, "late the same day is the same day");
-                TestClocks.paused(server, overworldClock(server), 6 * DAY_TICKS + 100, () -> use(helper, player, pos));
-                expectRations(found, player, STARTING_RATIONS + 2, "the next day brings the next ration");
+                expectRations(found, player, STARTING_RATIONS + 3, "each use the same day gives another ration");
+                expectRations(found, other, STARTING_RATIONS + 1, "a crewmate's use gives the crewmate a ration");
             }
             found.ensure(helper);
-            if (!said(mock, "colony.deepcharter.canteen.dispensed")
-                    || !said(mock, "colony.deepcharter.canteen.refused")) {
-                throw helper.assertionException(
-                        "the canteen says what it did, the player heard %s", mock.actionBarMessages());
+            if (mock.actionBarMessages().stream()
+                            .filter(message -> isKey(message, "colony.deepcharter.canteen.dispensed"))
+                            .count()
+                    != 3) {
+                throw failure(
+                        helper,
+                        "the canteen says it dispensed on each of the three uses, the player heard %s",
+                        mock.actionBarMessages());
             }
         });
     }
@@ -248,15 +255,54 @@ public class CompanyRationsTest {
     }
 
     @GameTest(maxTicks = 100)
-    public void theCanteenDayIsRememberedInTheSavedForm(GameTestHelper helper) {
-        RationLedger ledger = new RationLedger(true, 42);
-        Tag saved = RationLedger.CODEC
-                .encodeStart(NbtOps.INSTANCE, Versioned.of(ledger))
-                .getOrThrow();
-        Versioned<RationLedger> value =
-                RationLedger.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
-        if (!value.equals(Versioned.of(ledger))) {
-            throw helper.assertionException("the ledger %s came back as %s", ledger, value);
+    public void theLedgerRoundTripsInTheSavedForm(GameTestHelper helper) {
+        for (RationLedger ledger : new RationLedger[] {new RationLedger(true), new RationLedger(false)}) {
+            Tag saved = RationLedger.CODEC
+                    .encodeStart(NbtOps.INSTANCE, Versioned.of(ledger))
+                    .getOrThrow();
+            Versioned<RationLedger> value =
+                    RationLedger.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+            if (!value.equals(Versioned.of(ledger))) {
+                throw failure(helper, "the ledger %s came back as %s", ledger, value);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A ledger saved before #1439, when the canteen gave one a day: version 1, with the day of the last ration. It loads with its
+     * starting-tins flag and is written back as version 2 without the day. Literal tags on purpose: they are the formats on disk.
+     */
+    @GameTest(maxTicks = 100)
+    public void aVersionOneLedgerWithACanteenDayLoadsAndIsWrittenBackWithoutTheDay(GameTestHelper helper) {
+        if (RationLedger.VERSION != 2) {
+            throw failure(helper, "the ledger is version 2, it is %s", RationLedger.VERSION);
+        }
+        for (boolean starterGiven : new boolean[] {true, false}) {
+            CompoundTag old = new CompoundTag();
+            old.putInt("version", 1);
+            old.putBoolean("starterGiven", starterGiven);
+            old.putLong("canteenDay", 42);
+            Versioned<RationLedger> loaded =
+                    RationLedger.CODEC.parse(NbtOps.INSTANCE, old).getOrThrow();
+            if (!loaded.equals(Versioned.of(new RationLedger(starterGiven)))) {
+                throw failure(helper, "a version 1 ledger with starterGiven %s loaded as %s", starterGiven, loaded);
+            }
+            CompoundTag expected = new CompoundTag();
+            expected.putBoolean("starterGiven", starterGiven);
+            expected.putInt("version", 2);
+            Tag written =
+                    RationLedger.CODEC.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow();
+            if (!written.equals(expected)) {
+                throw failure(
+                        helper, "a loaded version 1 ledger is written back as %s, expected %s", written, expected);
+            }
+        }
+        if (!(RationLedger.CODEC
+                        .parse(NbtOps.INSTANCE, UnreadableChecks.futureData())
+                        .getOrThrow()
+                instanceof Versioned.Unreadable<RationLedger>)) {
+            throw failure(helper, "a version of the future reads as unreadable, never as a failure");
         }
         helper.succeed();
     }
@@ -271,31 +317,34 @@ public class CompanyRationsTest {
         SingleRecipeInput stalk = new SingleRecipeInput(new ItemStack(item("fungal_stalk")));
         var campfire = level.recipeAccess()
                 .getRecipeFor(RecipeType.CAMPFIRE_COOKING, stalk, level)
-                .orElseThrow(() -> helper.assertionException("no campfire recipe takes a fungal stalk"));
+                .orElseThrow(() -> failure(helper, "no campfire recipe takes a fungal stalk"));
         expectMeal(helper, campfire.value().assemble(stalk), "the campfire");
         var smoker = level.recipeAccess()
                 .getRecipeFor(RecipeType.SMOKING, stalk, level)
-                .orElseThrow(() -> helper.assertionException("no smoker recipe takes a fungal stalk"));
+                .orElseThrow(() -> failure(helper, "no smoker recipe takes a fungal stalk"));
         expectMeal(helper, smoker.value().assemble(stalk), "the smoker");
         var furnace = level.recipeAccess()
                 .getRecipeFor(RecipeType.SMELTING, stalk, level)
-                .orElseThrow(() -> helper.assertionException("no furnace recipe takes a fungal stalk"));
+                .orElseThrow(() -> failure(helper, "no furnace recipe takes a fungal stalk"));
         ItemStack smelted = furnace.value().assemble(stalk);
         if (!smelted.is(Items.CHARCOAL)) {
-            throw helper.assertionException("the furnace turns a stalk into %s, expected charcoal", smelted);
+            throw failure(helper, "the furnace turns a stalk into %s, expected charcoal", smelted);
         }
         helper.succeed();
     }
 
     private static void expectMeal(GameTestHelper helper, ItemStack result, String where) {
         if (!result.is(item("stalk_meal")) || result.getCount() != 1) {
-            throw helper.assertionException("%s cooks a stalk into %s, expected one stalk meal", where, result);
+            throw failure(helper, "%s cooks a stalk into %s, expected one stalk meal", where, result);
         }
     }
 
-    /** A ledger this build cannot read: the join and the canteen never throw, give nothing, and leave the data as it was. */
+    /**
+     * A ledger this build cannot read: the join and the canteen never throw, the join gives no starting tins, and the data is left as
+     * it was. The canteen reads no ledger, so it still gives its ration.
+     */
     @GameTest(maxTicks = 100)
-    public void anUnreadableLedgerGivesNothingAndNeverThrows(GameTestHelper helper) {
+    public void anUnreadableLedgerGivesNoStartingTinsAndNeverThrows(GameTestHelper helper) {
         ServerPlayer player = MockPlayers.join(helper, "Stranger").player();
         BlockPos pos = helper.absolutePos(BLOCK);
         boolean[] done = {false};
@@ -322,7 +371,12 @@ public class CompanyRationsTest {
                     found.note(String.valueOf(e.getMessage()));
                 }
             }
-            expectRations(found, player, 0, "an unreadable ledger gives no starting ration and the canteen refuses");
+            // assertNoThrow visits each path twice: two joins that give nothing, two canteen uses that give one each.
+            expectRations(
+                    found,
+                    player,
+                    2,
+                    "an unreadable ledger gives no starting ration, and the canteen still gives one a use");
             if (!(player.getAttached(ColonyRations.LEDGER) instanceof Versioned.Unreadable<?>)) {
                 found.note("unreadable saved data must be left as it is");
             }

@@ -63,7 +63,10 @@ public class TetherScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             UUID[] pods = new UUID[2];
-            singleplayer.getServer().runOnServer(server -> setUp(server, pods));
+            singleplayer.getServer().runOnServer(TetherScenario::build);
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + 3, Z, 38);
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> place(server, pods));
             ClientWait.until(
                     context,
                     "the player in layer 1",
@@ -153,6 +156,7 @@ public class TetherScenario extends EvidenceScenario {
                 PodEntity pod = pod(server, pods[0]);
                 pod.setFuel(100f);
                 // A pod heads where its pilot looks: south, down the length of the shelf.
+                // arrived-ok: turns the player where it stands, so no chunk changes
                 player.teleportTo(level(server), player.getX(), player.getY(), player.getZ(), Set.of(), 0f, 10f, true);
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the person could not climb into the pod");
@@ -199,8 +203,8 @@ public class TetherScenario extends EvidenceScenario {
         return TestEntities.require(level(server), id, PodEntity.class);
     }
 
-    /** A hall in layer 1 with a shelf along its west side and a pit east of it, a pod and a wreck on the shelf, the person beside the pod with a tether. */
-    private static void setUp(net.minecraft.server.MinecraftServer server, UUID[] pods) {
+    /** A hall in layer 1, a shelf along its west side, a pit east of it, and the person on the shelf with a tether. */
+    private static void build(net.minecraft.server.MinecraftServer server) {
         ServerLevel one = level(server);
         RoomCarver.carve(
                 one,
@@ -239,6 +243,11 @@ public class TetherScenario extends EvidenceScenario {
         player.setGameMode(GameType.SURVIVAL);
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(RepairRegistry.item(Consumable.TETHER)));
         player.teleportTo(one, X - 0.5, SHELF_TOP, Z + 0.5, Set.of(), FACING_SOUTH, 0, true);
+    }
+
+    /** A pod and a wreck on the shelf. */
+    private static void place(net.minecraft.server.MinecraftServer server, UUID[] pods) {
+        ServerLevel one = level(server);
         PodEntity pod = TestEntities.create(PodRegistry.POD, one);
         pod.setPos(X - 4.5, SHELF_TOP, Z + 0.5);
         one.addFreshEntity(pod);
