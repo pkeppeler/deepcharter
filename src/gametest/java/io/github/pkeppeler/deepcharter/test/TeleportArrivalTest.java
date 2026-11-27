@@ -48,13 +48,9 @@ import net.minecraft.world.phys.Vec3;
  * as a seam swap's or a tow's arrival does.
  */
 public class TeleportArrivalTest {
-    /**
-     * Ticks past {@code arrivalTicketTicks}, counted from the first tick its countdown shows, by which the arrival
-     * ticket must be gone. The countdown itself starts only once the chunk is ready to save, which takes as long as
-     * the machine's load makes it, so that wait is bounded by a {@link FarChunks.Deadline} instead.
-     */
-    private static final int RELEASE_MARGIN = 20;
-
+    // The countdown counts down only while its chunk is ready to save (vanilla's timed tickets), and that readiness
+    // comes and goes with the machine's load: a run saw 10 to 92 of 100 ticks left 124 ticks after the first tick of
+    // countdown. So neither its start nor its end is a tick count; each is bounded by a FarChunks.Deadline.
     /** Ticks the chunk is watched after the arrival ticket is released, for a lapse at the handover. */
     private static final int AFTER_RELEASE_TICKS = 40;
 
@@ -69,8 +65,8 @@ public class TeleportArrivalTest {
     private static final int ANSWER_DELAY = 5;
 
     // The landing look-up loads the cold chunk synchronously on the server thread, inside a same-tick WorldData.with.
-    // The wait for the countdown, then the boarding, countdown, margin and watch, with room.
-    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    // The waits for the countdown to start and to end, then the boarding and watch, with room.
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theArrivalChunkHoldsUntilTheLatePilotsTicketsArrive(GameTestHelper helper) {
         ServerLevel overworld = helper.getLevel().getServer().overworld();
         int x = 14_000;
@@ -99,6 +95,7 @@ public class TeleportArrivalTest {
         int podId = pod.getId();
         int countdownTicks = RepairTuning.DEFAULT.arrivalTicketTicks();
         FarChunks.Deadline countdownWait = FarChunks.deadline();
+        FarChunks.Deadline releaseWait = FarChunks.deadline();
         long[] sent = {-1};
         boolean[] everLoaded = {false};
         boolean[] everHeld = {false};
@@ -174,15 +171,19 @@ public class TeleportArrivalTest {
             if (!counting) {
                 return;
             }
-            expect(
+            boolean gone = released[0] >= 0;
+            releaseWait.await(
                     helper,
-                    released[0] >= 0 || countdown[0] < 0 || tick <= countdown[0] + countdownTicks + RELEASE_MARGIN,
-                    "the arrival ticket was not released within %d ticks of its countdown starting at tick %d"
-                            + " (tickets now: %s)",
-                    countdownTicks + RELEASE_MARGIN,
-                    countdown[0],
-                    tickets);
-            if (released[0] >= 0 && tick >= released[0] + AFTER_RELEASE_TICKS) {
+                    overworld,
+                    gone,
+                    () -> String.format(
+                            "the arrival ticket was not released after its countdown started at tick %d"
+                                    + " (tickets now: %s)",
+                            countdown[0], tickets));
+            if (!gone) {
+                return;
+            }
+            if (tick >= released[0] + AFTER_RELEASE_TICKS) {
                 DeepCharter.LOGGER.info(
                         "[teleport-arrival] countdown started at tick={}, ticket released at tick={}",
                         countdown[0],
