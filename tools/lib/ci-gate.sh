@@ -12,32 +12,35 @@
 # the `build-shard <i>` jobs and `build-checks` (#1327), which the stale-base rule below also reads.
 REQUIRED_CHECKS=(build tool-tests)
 
-# read_ci_tier <check name> <variable>: sets the variable to `pr` when the deciding run of that check recorded a `ci-tier` notice saying
-# so, else `full` (a notice that says full, or none: CI from before the tiers). Needs $checks_full.
-read_ci_tier() {
+# read_ci_notice <check name> <notice title> <variable>: sets the variable to the first line of the notice the deciding run of that check
+# recorded under that title, or '' when it recorded none; $notice_run_id is that run. Needs $checks_full.
+read_ci_notice() {
   local run_id
   run_id=$(awk -F'\t' -v n="$1" '$2 == n { print $3 }' <<<"$checks_full")
   [[ $run_id =~ ^[0-9]+$ ]] || refuse "has no deciding run id for $1"
-  gh_list ci_tier_note "repos/$repo/check-runs/$run_id/annotations?per_page=100" \
-    '.[] | select(.title == "ci-tier") | .message' \
+  notice_run_id=$run_id
+  gh_list "$3" "repos/$repo/check-runs/$run_id/annotations?per_page=100" \
+    ".[] | select(.title == \"$2\") | .message" \
     || refuse "could not read the annotations of $1 run $run_id: $gh_list_err"
-  ci_tier_note=${ci_tier_note%%$'\n'*}
-  if [[ -z $ci_tier_note ]]; then
-    echo "$1 run $run_id has no ci-tier notice: CI from before the tiers [pre-tier], which ran everything, so it counts as full" >&2
+  printf -v "$3" '%s' "${!3%%$'\n'*}"
+}
+
+# read_ci_tier <check name> <variable>: sets the variable to `pr` when the deciding run of that check recorded a `ci-tier` notice saying
+# so, else `full` (a notice that says full, or none: CI from before the tiers).
+read_ci_tier() {
+  local note
+  read_ci_notice "$1" ci-tier note
+  if [[ -z $note ]]; then
+    echo "$1 run $notice_run_id has no ci-tier notice: CI from before the tiers [pre-tier], which ran everything, so it counts as full" >&2
   fi
-  printf -v "$2" '%s' "$([[ $ci_tier_note == pr ]] && echo pr || echo full)"
+  printf -v "$2" '%s' "$([[ $note == pr ]] && echo pr || echo full)"
 }
 
 # read_ci_gradle: sets $ci_gradle to `skipped` when the `build` run recorded a `ci-gradle` notice saying so (the push changed nothing a Gradle
 # task reads, so CI ran no Gradle job, ADR 0116), else empty.
 read_ci_gradle() {
-  local run_id note
-  run_id=$(awk -F'\t' '$2 == "build" { print $3 }' <<<"$checks_full")
-  [[ $run_id =~ ^[0-9]+$ ]] || refuse "has no deciding run id for build"
-  gh_list note "repos/$repo/check-runs/$run_id/annotations?per_page=100" \
-    '.[] | select(.title == "ci-gradle") | .message' \
-    || refuse "could not read the annotations of build run $run_id: $gh_list_err"
-  note=${note%%$'\n'*}
+  local note
+  read_ci_notice build ci-gradle note
   ci_gradle=
   [[ $note != skipped ]] || ci_gradle=skipped
 }

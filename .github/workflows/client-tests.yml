@@ -64,7 +64,6 @@ jobs:
           # What the PR changed since it left its base branch (main for a PR into main): the same paths as main..merged head.
           git diff --no-renames --name-only "$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
           echo "run=$(tools/ci-client-needed.sh "$GAMEPLAY_LABEL" < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
-      # Which client classes the change can affect, or the whole suite (tools/ci_affected.py, ADR 0116). Unread when `run` is false.
       # Is main's Gradle cache seeded (cache-seed.yml saves a marker)? A cold PR-tier compile does not fit a job's five minutes, so the jobs
       # take the compile job's output instead (ADR 0116). A lookup only: nothing is downloaded.
       - id: seeded
@@ -75,6 +74,7 @@ jobs:
           restore-keys: deepcharter-seed-marker-v1-
           lookup-only: true
       - uses: ./.github/actions/setup-python-uv
+      # Which client classes the change can affect, or the whole suite (tools/ci_affected.py, ADR 0116). Unread when `run` is false.
       - id: plan
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
