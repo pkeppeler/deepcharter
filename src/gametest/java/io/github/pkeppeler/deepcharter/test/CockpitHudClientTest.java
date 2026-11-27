@@ -16,11 +16,14 @@ import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
+import io.github.pkeppeler.deepcharter.pod.VoidBelow;
+import io.github.pkeppeler.deepcharter.pod.VoidBelowTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
@@ -32,6 +35,7 @@ import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
+import io.github.pkeppeler.deepcharter.test.support.VanillaHudRows;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -111,6 +115,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     private static final int ALTIMETER_RECESS_WIDTH = 72;
 
     private static final String LONGEST_ALTIMETER = "-12,345 ft.";
+    /**
+     * How far past its bar a gauge's title may hang under the band, each side: #1449's LOAD title is 4 pixels wider
+     * than its bar. The SINK plate stays out of every gauge's column, so it never meets a title.
+     */
+    private static final int TITLE_OVERHANG = 4;
+    /** The pod rises this far over the floor before it is let sink, for the SINK plate. */
+    private static final int SINK_DROP = 20;
+    /** A sink share well past the buffer, which the 20-block drop passes with blocks to spare. */
+    private static final double SINK_PAST_BUFFER = 1.2;
     /** How much of the strip the action bar line takes when it is drawn: a few lines of text. */
     private static final double MESSAGE_DRAWN = 0.02;
 
@@ -183,6 +196,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectTheSignalDecayDarkensTheCockpitAndKeepsTheFairChannels(context, singleplayer, pod);
                 expectAPackCanTurnTheCockpitOff(context);
                 expectASmallGuiGivesBackThePlainHud(context);
+                expectTheSinkPlateShowsWhileThePodSinks(context, singleplayer, pod);
             } finally {
                 EvidencePins.reset();
             }
@@ -242,6 +256,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "recovery",
                         "crust_ahead",
                         "crust_in",
+                        "crust_ahead_drop",
+                        "crust_in_drop",
                         "brace_waits",
                         "brace_dry",
                         "brace_dear",
@@ -956,6 +972,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 || layout.altimeterY() + font.lineHeight > layout.band().height()) {
             problems.add(where + ": the altimeter reading does not fit its recess in the band");
         }
+        problems.addAll(sinkProblems(font, layout, look, pieces, gauges, guiWidth, guiHeight, where));
         for (List<CockpitHud.Row> rows : plateCases()) {
             long alerts = rows.stream()
                     .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
@@ -1065,8 +1082,167 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .rect("plate");
     }
 
+    /**
+     * The SINK plate (#1432) on the screen, under the band and touching it, out of every gauge's column (where a
+     * gauge's title hangs), clear of the bezel, of #1449's LOAD title box and of vanilla's rows.
+     */
+    private static List<String> sinkProblems(
+            Font font,
+            CockpitLook.Layout layout,
+            CockpitLook look,
+            Map<String, int[]> pieces,
+            Map<String, CockpitLook.Gauge> gauges,
+            int guiWidth,
+            int guiHeight,
+            String where) {
+        List<String> problems = new ArrayList<>();
+        CockpitHud.Box box = CockpitHud.sinkBox(font, layout, look, guiWidth, guiHeight);
+        int[] sink = {box.left(), box.top(), box.left() + box.width(), box.top() + box.height()};
+        int[] band = Objects.requireNonNull(pieces.get("band"), "the band is a piece");
+        if (!inside(sink, new int[] {0, 0, guiWidth, guiHeight}) || sink[1] != band[3]) {
+            problems.add(where + ": the SINK plate " + Arrays.toString(sink) + " is not hung on screen from the band "
+                    + Arrays.toString(band));
+        }
+        for (String piece : List.of("bezel", "scanner", "load title")) {
+            if (overlap(sink, Objects.requireNonNull(pieces.get(piece), "the piece is placed"))) {
+                problems.add(where + ": the SINK plate covers the " + piece);
+            }
+        }
+        gauges.forEach((name, gauge) -> {
+            int[] bar = box(gauge.area(), guiWidth, guiHeight);
+            int[] column = {bar[0] - TITLE_OVERHANG, sink[1], bar[2] + TITLE_OVERHANG, sink[3]};
+            if (overlap(sink, column)) {
+                problems.add(where + ": the SINK plate " + Arrays.toString(sink) + " is under the " + name
+                        + " gauge, where its title hangs");
+            }
+        });
+        HudKeepClear.Rect rect = new HudKeepClear.Rect("sink", box.left(), box.top(), box.width(), box.height());
+        for (HudKeepClear.Rect row : VanillaHudRows.rects(guiWidth, guiHeight)) {
+            if (rect.overlaps(row)) {
+                problems.add(where + ": the SINK plate runs into vanilla's " + row.what());
+            }
+        }
+        return problems;
+    }
+
+    /**
+     * The SINK plate draws while the pod sinks, in the hull gauge's colour, {@code ribbonWarn} near the buffer or the
+     * warning colour past it, and is gone once the pod has landed. The pod rises {@link #SINK_DROP} blocks and is let
+     * fall onto the floor. Then a drop of one block, as a block bored straight down gives, never puts it up.
+     */
+    private void expectTheSinkPlateShowsWhileThePodSinks(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
+        CockpitLook look = CockpitLook.current();
+        if (CockpitHud.sinkColor(0.5, look) != look.hullColor()
+                || CockpitHud.sinkColor(look.sink().warnShare(), look)
+                        != look.sink().warnColor()
+                || CockpitHud.sinkColor(1.0, look) != look.sink().warnColor()
+                || CockpitHud.sinkColor(1.01, look) != look.lowColor()) {
+            throw new AssertionError(
+                    "The SINK plate is in the hull colour under " + look.sink().warnShare()
+                            + " of the buffer, ribbonWarn up to the buffer and the warning colour past it");
+        }
+        singleplayer.getServer().runOnServer(server -> {
+            pod.setNoGravity(false);
+            pod.setPos(0.5, FEET_Y + SINK_DROP, 0.5);
+            pod.setDeltaMovement(0, 0, 0);
+        });
+        ClientWait.until(
+                context,
+                "the SINK plate up while the pod sinks",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && CockpitHud.sinkShown(shown)
+                        && CockpitReading.of(shown, 0).sink() > 0);
+        int[] probe = context.computeOnClient(client -> {
+            CockpitHud.Box box = CockpitHud.sinkBox(client.font, look.ribbon(), look, 427, 240);
+            // The first segment of the bar, which any sink lights: the bar ends at the plate sprite's right border.
+            int border = CockpitHud.plateInset(look.ribbon(), look).right() - look.plateGap();
+            int x = box.left()
+                    + box.width()
+                    - border
+                    - look.titleGap()
+                    - look.sink().barWidth();
+            return new int[] {x, box.top() + box.height() / 2};
+        });
+        // Shot at once: the pod lands in about a second.
+        int lit = pixel(context, "cockpit-sink", probe);
+        Set<Integer> stateColors =
+                Set.of(look.hullColor() & 0xFFFFFF, look.sink().warnColor() & 0xFFFFFF, look.lowColor() & 0xFFFFFF);
+        if (!stateColors.contains(lit)) {
+            throw new AssertionError("While the pod sinks the SINK bar's first segment is lit in a state colour, got "
+                    + Integer.toHexString(lit));
+        }
+        ClientWait.until(
+                context,
+                "the pod sinking past " + SINK_PAST_BUFFER + " of the buffer",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && CockpitReading.of(shown, 0).sink() > SINK_PAST_BUFFER);
+        int past = pixel(context, "cockpit-sink-past", probe);
+        if (past != (look.lowColor() & 0xFFFFFF)) {
+            throw new AssertionError("Past the buffer the SINK bar is in the warning colour "
+                    + Integer.toHexString(look.lowColor() & 0xFFFFFF) + ", got " + Integer.toHexString(past));
+        }
+        ClientWait.until(
+                context,
+                "the pod landed and the SINK plate gone",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && shown.onGround()
+                        && !CockpitHud.sinkShown(shown));
+        expectAOneBlockDropKeepsTheSinkPlateDown(context, singleplayer, pod);
+        singleplayer.getServer().runOnServer(server -> {
+            pod.setNoGravity(true);
+            pod.setPos(0.5, FEET_Y, 0.5);
+        });
+    }
+
+    /**
+     * A pod held one block over the floor and let go never shows the SINK plate on its way down: a drill-down step
+     * drops the pod a block, and the plate would blink at every block bored.
+     */
+    private static void expectAOneBlockDropKeepsTheSinkPlateDown(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
+        double floor = singleplayer.getServer().computeOnServer(server -> {
+            pod.setNoGravity(true);
+            pod.setDeltaMovement(0, 0, 0);
+            pod.setPos(0.5, pod.getY() + 1, 0.5);
+            return pod.getY() - 1;
+        });
+        ClientWait.until(
+                context,
+                "the pod held a block over the floor",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && !shown.onGround()
+                        && shown.getY() > floor + 0.9);
+        singleplayer.getServer().runOnServer(server -> pod.setNoGravity(false));
+        boolean[] shownOnTheWay = {false};
+        ClientWait.until(context, "the pod down the one block", client -> {
+            if (!(ClientSession.player(client).getVehicle() instanceof PodEntity shown)) {
+                return false;
+            }
+            shownOnTheWay[0] |= CockpitHud.sinkShown(shown);
+            return shown.onGround() && shown.getY() < floor + 0.1;
+        });
+        if (shownOnTheWay[0]) {
+            throw new AssertionError("A drop of one block put the SINK plate up; it should wait for a sink of "
+                    + CockpitLook.current().sink().showShare() + " of the buffer");
+        }
+    }
+
+    /** The colour of the GUI pixel {@code at} in a screenshot taken now. */
+    private static int pixel(ClientGameTestContext context, String name, int[] at) {
+        try {
+            BufferedImage shot = ImageIO.read(context.takeScreenshot(name).toFile());
+            return shot.getRGB(at[0] * GUI_SCALE, at[1] * GUI_SCALE) & 0xFFFFFF;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     /** The plates to fit: each warning alone, and every warning a pilot can have at once with every note too. */
     private static List<List<CockpitHud.Row>> plateCases() {
+        // The longest drop line: the farthest slabs, a three-figure hull and the deepest drop the probe prices.
+        int reach = PodBraceTuning.DEFAULT.warnSlabs();
+        int deepest = Math.round(VoidBelow.dropCost(PodStats.base(), VoidBelowTuning.DEFAULT.scanBlocks()));
         List<PodStatusHud.Line> alerts = List.of(
                 line("burning"),
                 line("overloaded"),
@@ -1086,14 +1262,17 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("glaze_holding", 12),
                 line("glaze_spent"),
                 line("drifter_alarm", 30),
-                line("soot_limp"));
+                line("soot_limp"),
+                line("crust_ahead_drop", reach, 136, 24, deepest),
+                line("crust_in_drop", 136, 24, deepest));
         List<PodStatusHud.Line> notes = List.of(
                 line("slag", 12, 8),
                 line("slag_only", 12),
                 line("liner", 3),
                 line("lining", 5),
                 line("brace_working"),
-                line("soot", 11, 44, 44));
+                line("soot", 11, 44, 44),
+                line("sprint", 40, 80));
         PodStatusHud.Line tally = line("tally_hull", 100, 100);
         List<CockpitHud.Row> head = List.of(
                 new CockpitHud.Row(
@@ -1117,7 +1296,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                                 Stream.of(
                                         alerts.get(0),
                                         alerts.get(12),
-                                        alerts.get(2),
+                                        alerts.get(18),
                                         alerts.get(4),
                                         alerts.get(8),
                                         alerts.get(11)),

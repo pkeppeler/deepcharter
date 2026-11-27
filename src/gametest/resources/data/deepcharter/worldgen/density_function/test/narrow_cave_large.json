@@ -1,0 +1,38 @@
+{
+  "type": "deepcharter:narrow_cave",
+  "width": {
+    "type": "minecraft:mul",
+    "left": {
+      "type": "minecraft:noise",
+      "noise": "minecraft:noodle_thickness",
+      "xz_scale": 2.0,
+      "y_scale": 2.0
+    },
+    "right": 10000.0
+  },
+  "ridges": [
+    {
+      "type": "minecraft:mul",
+      "left": {
+        "type": "minecraft:noise",
+        "noise": "minecraft:pillar",
+        "xz_scale": 2.0,
+        "y_scale": 2.0
+      },
+      "right": 10000.0
+    },
+    {
+      "type": "minecraft:mul",
+      "left": {
+        "type": "minecraft:noise",
+        "noise": "minecraft:noodle_ridge_a",
+        "xz_scale": 2.0,
+        "y_scale": 2.0
+      },
+      "right": 10000.0
+    }
+  ],
+  "sharpness": 0.001,
+  "cell_size_xz": 4,
+  "cell_size_y": 8
+}

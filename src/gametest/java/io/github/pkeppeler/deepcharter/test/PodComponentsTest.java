@@ -8,19 +8,18 @@ import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
-import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -33,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -800,35 +800,43 @@ public class PodComponentsTest {
     }
 
     @GameTest
-    public void theCargoMenuHasAsManySlotsAsTheBayStat(GameTestHelper helper) {
-        CharterId charter = charter(helper);
-        PodEntity pod = ownedPod(helper, charter);
+    public void thePodScreensHoldHasAsManySlotsAsTheBayStat(GameTestHelper helper) {
         MockPlayer player = MockPlayers.join(helper, "components-cargo-menu");
+        MinecraftServer server = helper.getLevel().getServer();
+        expectNoRefusal(
+                helper, Charters.found(server, player.player().getUUID(), "Components " + CHARTERS.incrementAndGet()));
+        CharterId charter = Charters.charterOfOrThrow(server, player.player().getUUID())
+                .orElseThrow()
+                .id();
+        PodEntity pod = ownedPod(helper, charter);
         try {
-            OreCargoMenu.open(player.player(), pod);
-            if (!(player.player().containerMenu instanceof OreCargoMenu stock)
-                    || stock.cargoSlots() != PodStats.base().cargoSlots()) {
+            player.teleportTo(helper.getLevel(), pod.position().add(2, 0, 0), 0f, 0f);
+            PodMenu.open(player.player(), pod);
+            if (!(player.player().containerMenu instanceof PodMenu stock)) {
+                throw failure(helper, "the pod screen should open, got %s", player.player().containerMenu);
+            }
+            stock.broadcastChanges();
+            if (stock.capacity() != PodStats.base().cargoSlots()) {
                 throw failure(
                         helper,
-                        "a stock bay's menu should have %d slots, got %s",
+                        "a stock bay's hold should have %d slots, has %d",
                         PodStats.base().cargoSlots(),
-                        player.player().containerMenu);
+                        stock.capacity());
             }
             install(helper, pod, ComponentTrack.CARGO_BAY, 2, charter);
             for (int i = 0; i < 12; i++) {
                 pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
             }
-            OreCargoMenu.open(player.player(), pod);
-            if (!(player.player().containerMenu instanceof OreCargoMenu menu) || menu.cargoSlots() != 25) {
-                throw failure(
-                        helper, "a tier 2 bay's menu should have 25 slots, got %s", player.player().containerMenu);
-            }
-            if (menu.slots.size() != 25 || OreCargoSlots.shown(menu).size() != 12) {
+            stock.broadcastChanges();
+            long shown = IntStream.range(0, PodMenu.HOLD_WINDOW)
+                    .filter(i -> !stock.holdSlot(i).getItem().isEmpty())
+                    .count();
+            if (stock.capacity() != 25 || shown != 12) {
                 throw failure(
                         helper,
-                        "the menu should have 25 slots and show all 12 ore, has %d slots and shows %d",
-                        menu.slots.size(),
-                        OreCargoSlots.shown(menu).size());
+                        "a tier 2 bay's hold should have 25 slots and show all 12 ore, has %d slots and shows %d",
+                        stock.capacity(),
+                        shown);
             }
             helper.succeed();
         } finally {

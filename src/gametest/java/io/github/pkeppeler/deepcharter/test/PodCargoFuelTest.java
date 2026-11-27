@@ -239,7 +239,9 @@ public class PodCargoFuelTest {
             }
             CompoundTag tag = savedPod(level, pod);
             ListTag list = tag.getListOrEmpty("cargo");
-            list.add(list.getFirst().copy());
+            CompoundTag extra = (CompoundTag) list.getFirst().copy();
+            extra.putInt("slot", CARGO.slots());
+            list.add(extra);
             // The bay's size is a stat that other features change (PodStats), so a load does not judge it.
             pod.cargo().load(inputOf(level, tag), pod);
             if (pod.cargoUsed() != CARGO.slots() + 1
@@ -590,17 +592,20 @@ public class PodCargoFuelTest {
     }
 
     private static final int DROP_BLOCKS = 6;
-    /** The distance rule charged 10 hull for a 6-block drop; the speed rule (#319) charges about 14, and a braked drop nothing. */
-    private static final float FREE_DROP_HULL_MIN = 10f;
+    /**
+     * The speed rule (#319) charges about 10 hull for a 6-block drop at #1432's 50 a block per tick, and a braked drop
+     * nothing. The free drop has no pilot, so the ground cushion leaves it alone.
+     */
+    private static final float FREE_DROP_HULL_MIN = 7f;
 
-    private static final float FREE_DROP_HULL_MAX = 18f;
+    private static final float FREE_DROP_HULL_MAX = 13f;
     /** A braked fall holds the rotor on while the pod sinks faster than this, in blocks per tick. */
     private static final double BRAKED_SINK = -0.3;
 
     private static void dropAndCheckHull(GameTestHelper helper, boolean braked) {
         PodEntity pod = spawnPod(helper, DROP_BLOCKS);
-        MockPlayer pilot = seatPilot(helper, pod);
         if (braked) {
+            MockPlayer pilot = seatPilot(helper, pod);
             TestTicks.each(helper, () -> pilot.setInput(pod.getDeltaMovement().y < BRAKED_SINK ? JUMP : Input.EMPTY));
         }
         helper.succeedWhen(() -> {

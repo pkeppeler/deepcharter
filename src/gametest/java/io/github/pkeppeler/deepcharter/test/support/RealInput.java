@@ -1,9 +1,14 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.systems.RenderSystem;
+import java.nio.ShortBuffer;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
+import org.lwjgl.sdl.SDLKeyboard;
+import org.lwjgl.sdl.SDLScancode;
+import org.lwjgl.system.MemoryStack;
 
 /**
  * Clicks and types through {@code MouseHandler.onButton} and {@code KeyboardHandler}, the way the window delivers input (#1304). Minecraft
@@ -27,6 +32,13 @@ public final class RealInput {
         context.waitTicks(1);
     }
 
+    /** One turn of the wheel at the cursor, up for a positive {@code vertical} and down for a negative one, then one tick. */
+    public static void scroll(ClientGameTestContext context, double vertical) {
+        context.runOnClient(
+                client -> client.mouseHandler.onScroll(client.getWindow().handle(), 0, vertical));
+        context.waitTicks(1);
+    }
+
     /** A key press and release with {@code modifiers}, then one tick. */
     public static void key(ClientGameTestContext context, int key, int modifiers) {
         for (int action : new int[] {InputConstants.PRESS, InputConstants.RELEASE}) {
@@ -36,29 +48,62 @@ public final class RealInput {
         context.waitTicks(1);
     }
 
-    /** {@code notches} of the mouse wheel through {@code MouseHandler.onScroll} (positive is up, which in the game picks the slot to the left), then one tick. */
-    public static void scroll(ClientGameTestContext context, double notches) {
-        context.runOnClient(
-                client -> client.mouseHandler.onScroll(client.getWindow().handle(), 0, notches));
+    /** Puts {@code key} down and leaves it there: {@code KeyMapping.isDown} reads it held until {@link #up}. */
+    public static void down(ClientGameTestContext context, int key) {
+        context.runOnClient(client -> client.keyboardHandler.keyPress(
+                client.getWindow().handle(), InputConstants.PRESS, new KeyEvent(key, 0, 0)));
+    }
+
+    /** Lets {@code key} go after {@link #down}. */
+    public static void up(ClientGameTestContext context, int key) {
+        context.runOnClient(client -> client.keyboardHandler.keyPress(
+                client.getWindow().handle(), InputConstants.RELEASE, new KeyEvent(key, 0, 0)));
+    }
+
+    /** Holds {@code key} down for {@code ticks} client ticks, then lets it go and waits one tick. */
+    public static void hold(ClientGameTestContext context, int key, int ticks) {
+        down(context, key);
+        context.waitTicks(ticks);
+        up(context, key);
         context.waitTicks(1);
     }
 
     /**
-     * Types {@code text} one letter, digit or space at a time, the way SDL sends it: each key goes down, then {@code
-     * KeyboardHandler.textInput} delivers its text (it calls {@code textEditing}, then {@code charTyped} per code point), then the key
-     * goes up. The key code of such a character is its upper-case ASCII value.
+     * Types {@code text} one character at a time, the way SDL sends it: the key that types the character goes down ({@link #keyEvent}),
+     * then {@code KeyboardHandler.textInput} delivers its text (it calls {@code textEditing}, then {@code charTyped} per code point), then
+     * the key goes up. So a letter bound to a key mapping fires it, as a typist's would (#1385), and a text box that has the keyboard
+     * must keep the key from its screen. Shift for an upper-case letter is carried in the event's modifiers but is not held, so
+     * {@code InputConstants.isKeyDown} on {@code KEY_LSHIFT} does not see it during {@code type}.
      */
     public static void type(ClientGameTestContext context, String text) {
-        for (int i = 0; i < text.length(); i++) {
-            char character = text.charAt(i);
-            int key = Character.toUpperCase(character);
-            context.runOnClient(client -> {
-                long window = client.getWindow().handle();
-                client.keyboardHandler.keyPress(window, InputConstants.PRESS, new KeyEvent(key, 0, 0));
-                client.keyboardHandler.textInput(window, String.valueOf(character));
-                client.keyboardHandler.keyPress(window, InputConstants.RELEASE, new KeyEvent(key, 0, 0));
-            });
-        }
+        text.codePoints()
+                .forEach(codePoint -> context.runOnClient(client -> {
+                    KeyEvent event = keyEvent(codePoint);
+                    long window = client.getWindow().handle();
+                    client.keyboardHandler.keyPress(window, InputConstants.PRESS, event);
+                    client.keyboardHandler.textInput(window, Character.toString(codePoint));
+                    client.keyboardHandler.keyPress(window, InputConstants.RELEASE, event);
+                }));
         context.waitTicks(1);
+    }
+
+    /**
+     * The key event SDL sends for the key that types {@code codePoint} on the current keyboard layout: its scancode as the key (what
+     * {@code InputConstants.KEY_*} and key mappings number), its SDL keycode, and the modifiers it needs (Shift for an upper-case letter;
+     * SDL's modifier bits are {@code InputConstants.MOD_*}). Call it on the client thread. Throws for a character no key types.
+     */
+    public static KeyEvent keyEvent(int codePoint) {
+        RenderSystem.assertOnRenderThread();
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            ShortBuffer modifiers = stack.mallocShort(1);
+            int scancode = SDLKeyboard.SDL_GetScancodeFromKey(codePoint, modifiers);
+            if (scancode == SDLScancode.SDL_SCANCODE_UNKNOWN) {
+                throw new IllegalArgumentException(
+                        "no key types '" + Character.toString(codePoint) + "' (U+" + Integer.toHexString(codePoint)
+                                + ") on this keyboard layout: type it with RealInput.key and its InputConstants.KEY_*");
+            }
+            short held = modifiers.get(0);
+            return new KeyEvent(scancode, SDLKeyboard.SDL_GetKeyFromScancode(scancode, held, true), held);
+        }
     }
 }

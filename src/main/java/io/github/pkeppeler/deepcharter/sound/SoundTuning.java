@@ -14,6 +14,10 @@ import java.util.List;
  *                                  stops at full volume, so a change of engine state is a crossfade, not a cut
  * @param hymnTicks                 how long each version of the Lamp Hymn plays, in ticks, the colony first (the length of its file, rounded up);
  *                                  a player is not given a hymn while their last one is still playing
+ * @param chapterPhraseTicks        how long the Lamp Hymn's phrase for a finished handbook chapter plays, in ticks (the length of its file,
+ *                                  rounded up); it counts as a hymn for that rule
+ * @param terminalOnlineTicks       how long a machine's online chord plays, in ticks (the length of its file, rounded up); no chapter
+ *                                  phrase starts before it ends
  * @param phonographRange           a phonograph's playback starts for the players within this many blocks of it (the sound's own
  *                                  {@code attenuation_distance} in sounds.json is the same number)
  * @param phonographListenTicks     while a phonograph plays it looks this often for a player who has come into range, and starts the
@@ -31,6 +35,8 @@ public record SoundTuning(
         int movingHoldTicks,
         int engineFadeTicks,
         List<Integer> hymnTicks,
+        int chapterPhraseTicks,
+        int terminalOnlineTicks,
         int phonographRange,
         int phonographListenTicks,
         int wreckSongRange,
@@ -38,5 +44,5 @@ public record SoundTuning(
         int wreckSongTicks,
         int wreckSongRearmTicks) {
     public static final SoundTuning DEFAULT =
-            new SoundTuning(2, 0.02, 10, 10, List.of(218, 322, 468), 24, 20, 16, 14, 435, 6_000);
+            new SoundTuning(2, 0.02, 10, 10, List.of(218, 322, 468), 86, 44, 24, 20, 16, 14, 435, 6_000);
 }

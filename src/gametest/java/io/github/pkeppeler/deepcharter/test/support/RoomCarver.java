@@ -53,9 +53,14 @@ public final class RoomCarver {
      * nothing and the rows under the crust are the next layer's rock.
      */
     public static void carvePocketBelow(ServerLevel level, int layer, int x1, int x2, int z1, int z2) {
+        carvePocketBelow(level, layer, x1, x2, z1, z2, POCKET_HEIGHT);
+    }
+
+    /** As {@link #carvePocketBelow(ServerLevel, int, int, int, int, int)}, with {@code rows} of air over the bed. */
+    public static void carvePocketBelow(ServerLevel level, int layer, int x1, int x2, int z1, int z2, int rows) {
         int floor = TestLayers.band(level, layer).minY();
-        carve(level, x1, x2, floor - POCKET_HEIGHT - 1, floor - POCKET_HEIGHT - 1, z1, z2, Blocks.STONE);
-        carve(level, x1, x2, floor - POCKET_HEIGHT, floor - 1, z1, z2, Blocks.AIR);
+        carve(level, x1, x2, floor - rows - 1, floor - rows - 1, z1, z2, Blocks.STONE);
+        carve(level, x1, x2, floor - rows, floor - 1, z1, z2, Blocks.AIR);
     }
 
     /** The layer 2 arrival point is in lava, which burns a pod seated there; a sealed room of air around the first player keeps it out. */
