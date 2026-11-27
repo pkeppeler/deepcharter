@@ -99,6 +99,7 @@ public class FarChunksTest {
     public void thePadStaysForcedWhenTheRunnerUnforcesEveryChunkAtTheEndOfABatch(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ColonySite.Placed colony = Colony.placed(level.getServer()).orElseThrow();
+        // force-ok: this test exercises the pad pin itself, in the shard that holds it
         ColonyChunks.force(level, colony);
         for (BlockPos pos : ColonyChunks.of(colony)) {
             // force-ok: simulates GameTestRunner$1.testCompleted's raw batch-end unforce; going through FarChunks would
