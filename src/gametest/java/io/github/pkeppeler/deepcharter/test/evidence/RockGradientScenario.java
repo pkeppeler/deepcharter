@@ -130,8 +130,7 @@ public class RockGradientScenario extends EvidenceScenario {
                             && client.player.getVehicle() instanceof PodEntity pod
                             && Math.abs(pod.getY() - target) < 0.1);
             context.waitTicks(2 * ScannerTuning.DEFAULT.rescanTicks() + 2);
-            // A transmission or a toast that arrives on the way down (each zone sends one) would cover the scanner
-            // panel.
+            // A transmission or a toast that came on the way down would cover the scanner panel.
             context.runOnClient(client -> {
                 TransmissionOverlay.reset();
                 client.gui.toastManager().clear();
