@@ -3,7 +3,7 @@
 #
 # Records that the PR's CURRENT head commit passed review: posts the comment
 # `review-passed <sha>` and adds the `review-passed` label. First runs the merge gate's
-# closing-reference, demo and feature-map checks (tools/lib/pr-body-checks.sh) and refuses, naming
+# closing-reference, demo, feature-map and (gameplay PRs) px-reviewed checks (tools/lib/pr-body-checks.sh) and refuses, naming
 # the fix; it does not wait for CI. Refuses when GitHub's head sha differs from origin's branch tip.
 # tools/merge-pr.sh refuses if the head has moved since.
 set -euo pipefail
