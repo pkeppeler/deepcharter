@@ -176,7 +176,7 @@ public final class PodMenu extends SlottedMenu {
             int y = INVENTORY_Y + i / HOLD_COLUMNS * SLOT_SIZE;
             holdSlots[i] = addRuleSlot(hold, i, x, y, holdRule(i));
         }
-        addPlayerInventory(inventory, FRAME, INVENTORY_Y);
+        addPlayerInventory(inventory, INVENTORY_Y);
         refresh();
     }
 
@@ -351,7 +351,7 @@ public final class PodMenu extends SlottedMenu {
                 .checked(stack -> partRefusal(track))
                 .ghost(unit, ghost)
                 .locking()
-                .holding(1);
+                .holdingOne();
     }
 
     private static Component wrongPart(ItemStack stack, ComponentTrack track) {
