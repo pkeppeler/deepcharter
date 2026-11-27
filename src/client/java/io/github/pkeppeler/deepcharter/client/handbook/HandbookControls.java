@@ -64,6 +64,7 @@ public final class HandbookControls {
                             new Row("leave", List.of(options -> options.keyShift)),
                             // The drive sheet is full at the smallest GUI, so the boost is told here (#1276).
                             new Row("sprint", List.of(options -> options.keySprint, options -> options.keyUp)))),
+            new Sheet("seat", List.of(new Row("terminal", List.of(options -> options.keyUse)))),
             new Sheet(
                     "drive",
                     List.of(
