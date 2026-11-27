@@ -368,7 +368,8 @@ public class KellsShaftBoreTest {
         if (run.ticks - run.lastProgressTick > NO_PROGRESS_TICKS || run.ticks > RUN_TICK_BUDGET) {
             BlockPos below = pod.blockPosition().below();
             LOGGER.info(
-                    "[kells-bore] stalled {} at {} ground {} drilling {} sideways {} idle {} fuel {} stranded {} below {}",
+                    "[kells-bore] stalled {} at {} ground {} drilling {} sideways {} idle {} fuel {} stranded {} below"
+                            + " {}",
                     run.column.label,
                     pod.position(),
                     pod.onGround(),
@@ -519,7 +520,8 @@ public class KellsShaftBoreTest {
                 String.format("%.0f", wallSeconds));
         List<Run> bareShafts = byColumn.getOrDefault(Column.SHAFT_BARE, List.of());
         LOGGER.info(
-                "[kells-bore] shafts: depth {} blocks on average, {} gaps on average (counted after the bare runs, which line none)",
+                "[kells-bore] shafts: depth {} blocks on average, {} gaps on average (counted after the bare runs,"
+                        + " which line none)",
                 mean(bareShafts, r -> r.site.height()),
                 mean(bareShafts, r -> gapsLeft(r.level, r.site)));
         for (Map.Entry<Column, List<Run>> entry : byColumn.entrySet()) {
@@ -535,7 +537,9 @@ public class KellsShaftBoreTest {
             long stalled =
                     column.stream().filter(r -> r.outcome == Outcome.STALLED).count();
             LOGGER.info(
-                    "[kells-bore] {}: reached the crust {}/{}, touched lava {}, died in lava {}, died otherwise {}, stalled {}; contacts per run {}, ticks in lava {}, hull lost to lava {}, bricks {}, presses {}, ticks {}",
+                    "[kells-bore] {}: reached the crust {}/{}, touched lava {}, died in lava {}, died otherwise {},"
+                            + " stalled {}; contacts per run {}, ticks in lava {}, hull lost to lava {}, bricks {},"
+                            + " presses {}, ticks {}",
                     entry.getKey().label,
                     reached,
                     column.size(),
@@ -551,7 +555,8 @@ public class KellsShaftBoreTest {
                     mean(column, r -> r.ticks));
             if (entry.getKey().inShaft && entry.getKey().lines) {
                 LOGGER.info(
-                        "[kells-bore] {}: bricks per gap {} (the run's bricks over its gaps), bricks for the first gap {} (largest {})",
+                        "[kells-bore] {}: bricks per gap {} (the run's bricks over its gaps), bricks for the first gap"
+                                + " {} (largest {})",
                         entry.getKey().label,
                         mean(column, r -> (double) r.bricksUsed / StructureKind.kellsGapRows(r.site).length),
                         mean(column, r -> r.firstGapBricks),
@@ -587,7 +592,8 @@ public class KellsShaftBoreTest {
         if (bare.contacts < 1 || bareGaps < 2 || bareGaps > 4) {
             throw failure(
                     helper,
-                    "the bare Mole touched lava %s times and left %s gaps open: the shaft has 2 to 4 gaps and a bare Mole meets each",
+                    "the bare Mole touched lava %s times and left %s gaps open: the shaft has 2 to 4 gaps and a bare"
+                            + " Mole meets each",
                     bare.contacts,
                     bareGaps);
         }
@@ -595,7 +601,8 @@ public class KellsShaftBoreTest {
         if (lined.contacts != 0 || lined.liningPresses < 2 || linedGaps != 0) {
             throw failure(
                     helper,
-                    "the lined Mole touched lava %s times in %s presses and left %s gaps open, expected none touched, at least 2 presses and every gap lined",
+                    "the lined Mole touched lava %s times in %s presses and left %s gaps open, expected none touched,"
+                            + " at least 2 presses and every gap lined",
                     lined.contacts,
                     lined.liningPresses,
                     linedGaps);

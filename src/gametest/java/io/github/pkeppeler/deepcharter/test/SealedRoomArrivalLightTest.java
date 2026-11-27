@@ -101,7 +101,8 @@ public class SealedRoomArrivalLightTest {
                     if (!stale.isEmpty()) {
                         throw failure(
                                 helper,
-                                "the player's client keeps light the server does not store, in the room's chunks:%s packets: %s",
+                                "the player's client keeps light the server does not store, in the room's chunks:%s"
+                                        + " packets: %s",
                                 stale,
                                 String.join("|", mock.clientLight().events()));
                     }

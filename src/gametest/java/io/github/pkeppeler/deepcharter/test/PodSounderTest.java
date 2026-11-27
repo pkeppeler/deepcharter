@@ -530,7 +530,8 @@ public class PodSounderTest {
             if (cost >= bleed.whole() - 1f || Math.abs(bleed.hull() - cost) > 1e-3) {
                 throw failure(
                         helper,
-                        "the blast of %s on %s hull should cost the bled %s (less than the whole, or the test shows nothing); it cost %s",
+                        "the blast of %s on %s hull should cost the bled %s (less than the whole, or the test shows"
+                                + " nothing); it cost %s",
                         bleed.whole(),
                         bleed.maxHull(),
                         cost,
@@ -553,7 +554,8 @@ public class PodSounderTest {
                     || Math.abs(bleed.hull() - bledCost(bleed.whole(), bleed.maxHull())) > 1e-3) {
                 throw failure(
                         helper,
-                        "the driller takes the bled %s and the pod beside it the whole blast of %s; they lost %s and %s",
+                        "the driller takes the bled %s and the pod beside it the whole blast of %s; they lost %s and"
+                                + " %s",
                         bledCost(bleed.whole(), bleed.maxHull()),
                         bleed.whole(),
                         bleed.hull(),
@@ -581,7 +583,8 @@ public class PodSounderTest {
         if (two.maxHull() != 100f || !Arrays.equals(got, new float[] {40f, 40f, 5f, 40f, 50f, 45f})) {
             throw failure(
                     helper,
-                    "a stock pod and a tier 1 sounder take 40 whole; a tier 2 sounder on 100 hull takes 5 for 5, 40 for 40, 50 for 100 and 45 for 60, got %s",
+                    "a stock pod and a tier 1 sounder take 40 whole; a tier 2 sounder on 100 hull takes 5 for 5, 40"
+                            + " for 40, 50 for 100 and 45 for 60, got %s",
                     Arrays.toString(got));
         }
         stock.discard();
@@ -660,7 +663,8 @@ public class PodSounderTest {
                 if (waited < slabTicks + 55) {
                     throw failure(
                             helper,
-                            "a pod that lets go of the drill in the pause starts it again: it took up the hold at tick %s and vented %s ticks later, with the slab at %s ticks",
+                            "a pod that lets go of the drill in the pause starts it again: it took up the hold at tick"
+                                    + " %s and vented %s ticks later, with the slab at %s ticks",
                             back[0],
                             waited,
                             slabTicks);
@@ -693,7 +697,8 @@ public class PodSounderTest {
                 if (waited < slabTicks + 55) {
                     throw failure(
                             helper,
-                            "a pod moved off its slab in the pause starts it again: it was back at tick %s and vented %s ticks later, with the slab at %s ticks",
+                            "a pod moved off its slab in the pause starts it again: it was back at tick %s and vented"
+                                    + " %s ticks later, with the slab at %s ticks",
                             back[0],
                             waited,
                             slabTicks);
@@ -729,7 +734,8 @@ public class PodSounderTest {
                 if (allowed >= 56) {
                     throw failure(
                             helper,
-                            "the slab needs %s ticks and the hold had run %s, so a bore within %s ticks of the vent is no pause",
+                            "the slab needs %s ticks and the hold had run %s, so a bore within %s ticks of the vent is"
+                                    + " no pause",
                             needed[0],
                             ventedAt[0],
                             allowed);
@@ -739,7 +745,8 @@ public class PodSounderTest {
             if (ticks - ventedAt[0] > allowed) {
                 throw failure(
                         helper,
-                        "with the pocket gone the slab bores at its own %s ticks, within %s of the vent at %s; it had not bored at %s",
+                        "with the pocket gone the slab bores at its own %s ticks, within %s of the vent at %s; it had"
+                                + " not bored at %s",
                         needed[0],
                         allowed,
                         ventedAt[0],
@@ -796,7 +803,8 @@ public class PodSounderTest {
         if (one != 0 || two != 1000 || ComponentTrack.SOUNDER.maxTier() != 2) {
             throw failure(
                     helper,
-                    "the sounder's tier 1 is crafted ($0) and its tier 2 costs $1,000 over 2 tiers, it costs $%s and $%s over %s",
+                    "the sounder's tier 1 is crafted ($0) and its tier 2 costs $1,000 over 2 tiers, it costs $%s and"
+                            + " $%s over %s",
                     one,
                     two,
                     ComponentTrack.SOUNDER.maxTier());

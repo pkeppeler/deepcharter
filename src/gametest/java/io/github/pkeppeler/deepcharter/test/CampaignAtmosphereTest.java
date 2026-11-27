@@ -222,8 +222,8 @@ public class CampaignAtmosphereTest {
                     expect(
                             helper,
                             !biome.value().getAttributes().contains(attribute),
-                            "surface biome %s sets %s, which a timeline of the type sets: the biome layer would put it over the timeline in the"
-                                    + " surface band",
+                            "surface biome %s sets %s, which a timeline of the type sets: the biome layer would put it"
+                                    + " over the timeline in the surface band",
                             id(biome),
                             name(attribute));
                 }
@@ -291,15 +291,16 @@ public class CampaignAtmosphereTest {
                         biome.getAttributes().contains(EnvironmentAttributes.SKY_COLOR)
                                 && wanted(biome, EnvironmentAttributes.SKY_COLOR)
                                         .equals(fog),
-                        "underground biome %s: set minecraft:visual/sky_color to its fog colour %s, or the fog takes on the sky's colour",
+                        "underground biome %s: set minecraft:visual/sky_color to its fog colour %s, or the fog takes"
+                                + " on the sky's colour",
                         id,
                         hex(fog));
                 expect(
                         helper,
                         biome.getAttributes().contains(EnvironmentAttributes.SKY_FOG_END_DISTANCE)
                                 && wanted(biome, EnvironmentAttributes.SKY_FOG_END_DISTANCE) == 0f,
-                        "underground biome %s: set minecraft:visual/sky_fog_end_distance to 0.0, so the sky dome and the dark disc under the horizon"
-                                + " are all fog, read %s",
+                        "underground biome %s: set minecraft:visual/sky_fog_end_distance to 0.0, so the sky dome and"
+                                + " the dark disc under the horizon are all fog, read %s",
                         id,
                         wanted(biome, EnvironmentAttributes.SKY_FOG_END_DISTANCE));
                 expect(
@@ -308,7 +309,8 @@ public class CampaignAtmosphereTest {
                                 && wanted(biome, EnvironmentAttributes.SUNRISE_SUNSET_COLOR)
                                                 .w()
                                         == 0f,
-                        "underground biome %s: set minecraft:visual/sunrise_sunset_color to \"#00000000\" (alpha 0), or the dusk glow shows",
+                        "underground biome %s: set minecraft:visual/sunrise_sunset_color to \"#00000000\" (alpha 0),"
+                                + " or the dusk glow shows",
                         id);
                 expect(
                         helper,
@@ -425,13 +427,15 @@ public class CampaignAtmosphereTest {
             expect(
                     helper,
                     fog.x() == 0f || fog.y() == 0f || fog.z() == 0f,
-                    "the unbuilt depth's fog colour %s has no channel of 0, so night vision lifts it to full brightness",
+                    "the unbuilt depth's fog colour %s has no channel of 0, so night vision lifts it to full"
+                            + " brightness",
                     hex(fog));
             Vector3fc waterFog = wanted(unbuilt, EnvironmentAttributes.WATER_FOG_COLOR);
             expect(
                     helper,
                     waterFog.x() == 0f && waterFog.y() == 0f && waterFog.z() == 0f,
-                    "the unbuilt depth's water fog %s is not black, so water within the blend of the last layer's floor turns toward it",
+                    "the unbuilt depth's water fog %s is not black, so water within the blend of the last layer's"
+                            + " floor turns toward it",
                     hex(waterFog));
             float start = wanted(unbuilt, EnvironmentAttributes.FOG_START_DISTANCE);
             float end = wanted(unbuilt, EnvironmentAttributes.FOG_END_DISTANCE);
@@ -472,8 +476,8 @@ public class CampaignAtmosphereTest {
                 expect(
                         helper,
                         UNDERGROUND.contains(attribute) || NOT_UNDERGROUND.containsKey(attribute),
-                        "a timeline of the type sets %s: decide whether a player sees or hears it underground, and list it in UNDERGROUND"
-                                + " (and in the zone biomes) or in NOT_UNDERGROUND",
+                        "a timeline of the type sets %s: decide whether a player sees or hears it underground, and"
+                                + " list it in UNDERGROUND (and in the zone biomes) or in NOT_UNDERGROUND",
                         name(attribute));
             }
         }

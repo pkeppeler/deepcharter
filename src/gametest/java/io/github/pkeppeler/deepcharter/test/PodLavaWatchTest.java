@@ -166,7 +166,8 @@ public class PodLavaWatchTest {
                                 warnedBlocksOff[0]);
                     }
                     LOGGER.info(
-                            "[lava-watch] warned at tick {} with the lava {} blocks off, hull burned at tick {}: {} ticks to act",
+                            "[lava-watch] warned at tick {} with the lava {} blocks off, hull burned at tick {}: {}"
+                                    + " ticks to act",
                             warnedAt[0],
                             warnedBlocksOff[0],
                             ticks,
@@ -204,7 +205,8 @@ public class PodLavaWatchTest {
                     if (!level.getFluidState(new BlockPos(x, plug + 1, Z)).is(FluidTags.LAVA)) {
                         throw failure(
                                 helper,
-                                "the lava should have run down to the plug, so that the test shows a flow the watch does not warn of");
+                                "the lava should have run down to the plug, so that the test shows a flow the watch"
+                                        + " does not warn of");
                     }
                 });
     }
@@ -227,7 +229,8 @@ public class PodLavaWatchTest {
                     if (reading(pod).isPresent() || pod.hull() < startHull[0]) {
                         throw failure(
                                 helper,
-                                "tick %s: the watch reads %s and the hull is %s of %s, and neither lava nor a warning was due",
+                                "tick %s: the watch reads %s and the hull is %s of %s, and neither lava nor a warning"
+                                        + " was due",
                                 ticks,
                                 reading(pod),
                                 pod.hull(),
@@ -277,7 +280,8 @@ public class PodLavaWatchTest {
                     if (!read.equals(expected) || above != expectedAbove) {
                         throw failure(
                                 helper,
-                                "flowing lava %s east and %s up (brick at %s, pilot %s) should read %s%s, it reads %s%s",
+                                "flowing lava %s east and %s up (brick at %s, pilot %s) should read %s%s, it reads"
+                                        + " %s%s",
                                 dx,
                                 dy,
                                 brickDx,
@@ -377,7 +381,8 @@ public class PodLavaWatchTest {
                     if (!now.isQuiet()) {
                         throw failure(
                                 helper,
-                                "the lava settled %s blocks off and has not come nearer for %s looks, the watch should be quiet, it reads %s",
+                                "the lava settled %s blocks off and has not come nearer for %s looks, the watch should"
+                                        + " be quiet, it reads %s",
                                 now.nearest(),
                                 TUNING.quietScans(),
                                 now);
@@ -385,7 +390,8 @@ public class PodLavaWatchTest {
                     if (!level.getFluidState(source.west()).is(FluidTags.LAVA)) {
                         throw failure(
                                 helper,
-                                "the lava should still be flowing in the corridor, so that the test shows a flow the watch has stopped warning of");
+                                "the lava should still be flowing in the corridor, so that the test shows a flow the"
+                                        + " watch has stopped warning of");
                     }
                     return true;
                 });
@@ -411,14 +417,16 @@ public class PodLavaWatchTest {
                     if (now.nearest() > TUNING.nearBand() || now.still() < TUNING.quietScans()) {
                         throw failure(
                                 helper,
-                                "the test needs lava that has settled within the near band of %s blocks, the watch reads %s",
+                                "the test needs lava that has settled within the near band of %s blocks, the watch"
+                                        + " reads %s",
                                 TUNING.nearBand(),
                                 now);
                     }
                     if (now.isQuiet()) {
                         throw failure(
                                 helper,
-                                "lava %s blocks off, settled, is within the near band and should still warn, it reads %s",
+                                "lava %s blocks off, settled, is within the near band and should still warn, it reads"
+                                        + " %s",
                                 now.nearest(),
                                 now);
                     }
@@ -470,7 +478,8 @@ public class PodLavaWatchTest {
                     if (pod.hull() < startHull[0]) {
                         throw failure(
                                 helper,
-                                "the hull burned at tick %s, the cap should have stopped the lava (lining %s, capped at %s)",
+                                "the hull burned at tick %s, the cap should have stopped the lava (lining %s, capped"
+                                        + " at %s)",
                                 ticks,
                                 lining[0],
                                 cappedAt[0]);
@@ -517,7 +526,8 @@ public class PodLavaWatchTest {
                     if (!level.getFluidState(new BlockPos(x, capY + 1, Z)).is(FluidTags.LAVA)) {
                         throw failure(
                                 helper,
-                                "the lava should have run down onto the cap, so that the test shows lava that the cap holds off");
+                                "the lava should have run down onto the cap, so that the test shows lava that the cap"
+                                        + " holds off");
                     }
                     return true;
                 });
