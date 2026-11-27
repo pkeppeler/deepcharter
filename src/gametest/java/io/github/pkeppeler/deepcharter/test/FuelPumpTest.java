@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -38,7 +40,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -100,13 +101,13 @@ public class FuelPumpTest {
         mock.player().setGameMode(GameType.SURVIVAL);
         if (Charters.found(server, mock.player().getUUID(), "Pump Test " + CHARTERS.incrementAndGet())
                 .isPresent()) {
-            throw helper.assertionException("founding the charter should succeed");
+            throw failure(helper, "founding the charter should succeed");
         }
         CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID())
                 .orElseThrow()
                 .id();
         if (balance > 0 && Charters.deposit(server, charter, balance).isPresent()) {
-            throw helper.assertionException("the deposit should succeed");
+            throw failure(helper, "the deposit should succeed");
         }
         Vec3 centre = Vec3.atCenterOf(pump);
         mock.teleportTo(
@@ -158,13 +159,13 @@ public class FuelPumpTest {
             expectEqual(helper, "dollars after buying 4", 96, balance(helper, s.charter()));
             expectEqual(helper, "litres after buying 4", 4f, litres(s.pod()));
             if (s.pod().stranded()) {
-                throw helper.assertionException("fuel in the tank should clear Stranded");
+                throw failure(helper, "fuel in the tank should clear Stranded");
             }
             expectDone(helper, buy(s, 3), "buying 3 more");
             expectEqual(helper, "dollars after buying 7 in all", 93, balance(helper, s.charter()));
             expectEqual(helper, "litres after buying 7 in all", 7f, litres(s.pod()));
             if (TUNING.pricePerLitre() != 1) {
-                throw helper.assertionException("the pump sells at a dollar a litre, not %s", TUNING.pricePerLitre());
+                throw failure(helper, "the pump sells at a dollar a litre, not %s", TUNING.pricePerLitre());
             }
         });
     }
@@ -194,7 +195,7 @@ public class FuelPumpTest {
             expectEqual(helper, "litres after the refusals", 0f, litres(s.pod()));
             expectEqual(helper, "dollars after the refusals", 0, balance(helper, s.charter()));
             if (!s.pod().stranded()) {
-                throw helper.assertionException("a refused purchase must not clear Stranded");
+                throw failure(helper, "a refused purchase must not clear Stranded");
             }
         });
     }
@@ -336,13 +337,13 @@ public class FuelPumpTest {
             UUID founder = UUID.randomUUID();
             if (Charters.found(server, founder, "Dormant Pump Test " + CHARTERS.incrementAndGet())
                     .isPresent()) {
-                throw helper.assertionException("founding the dormant charter should succeed");
+                throw failure(helper, "founding the dormant charter should succeed");
             }
             CharterId dormant =
                     Charters.charterOfOrThrow(server, founder).orElseThrow().id();
             if (Charters.leave(server, founder).isPresent()
                     || !Charters.findOrThrow(server, dormant).orElseThrow().dormant()) {
-                throw helper.assertionException("the only director leaving should make the charter dormant");
+                throw failure(helper, "the only director leaving should make the charter dormant");
             }
             PodEntity orphan = helper.spawn(PodRegistry.POD, new Vec3(3.5, 2, 1.5));
             PodComponents.register(orphan, dormant);
@@ -409,22 +410,21 @@ public class FuelPumpTest {
         Item mash = ColonyRations.STALK_MEAL;
         ItemStack made = craft(helper, List.of(new ItemStack(mash), new ItemStack(mash), new ItemStack(mash)));
         if (!made.is(FuelRegistry.BIOFUEL) || made.getCount() != 1) {
-            throw helper.assertionException("three stalk mash should craft one biofuel, got %s", made);
+            throw failure(helper, "three stalk mash should craft one biofuel, got %s", made);
         }
         ItemStack two = craft(helper, List.of(new ItemStack(mash), new ItemStack(mash)));
         if (!two.isEmpty()) {
-            throw helper.assertionException("two stalk mash should craft nothing, got %s", two);
+            throw failure(helper, "two stalk mash should craft nothing, got %s", two);
         }
         ItemStack wheat = craft(
                 helper, List.of(new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT)));
         if (!wheat.isEmpty()) {
-            throw helper.assertionException(
-                    "the campaign world has no crops: wheat should craft nothing, got %s", wheat);
+            throw failure(helper, "the campaign world has no crops: wheat should craft nothing, got %s", wheat);
         }
 
         var litres = PodFuelItems.litresOf(new ItemStack(FuelRegistry.BIOFUEL));
         if (litres.isEmpty()) {
-            throw helper.assertionException("biofuel should be a pod fuel with a litres entry");
+            throw failure(helper, "biofuel should be a pod fuel with a litres entry");
         }
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "biofuel-user");
@@ -434,11 +434,11 @@ public class FuelPumpTest {
             player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(FuelRegistry.BIOFUEL, 2));
             InteractionResult result = UseEntity.on(player.player(), level, InteractionHand.MAIN_HAND, pod);
             if (!result.consumesAction()) {
-                throw helper.assertionException("using biofuel on a pod should refuel it, got %s", result);
+                throw failure(helper, "using biofuel on a pod should refuel it, got %s", result);
             }
             expectEqual(helper, "litres after one biofuel", (float) litres.getAsDouble(), litres(pod));
             if (pod.stranded()) {
-                throw helper.assertionException("biofuel should clear Stranded");
+                throw failure(helper, "biofuel should clear Stranded");
             }
             helper.succeed();
         } finally {
@@ -454,7 +454,7 @@ public class FuelPumpTest {
             pod.setFuel(60f);
             expectEqual(helper, "stock litres", 6f, litres(pod));
             if (!ReserveTank.install(pod)) {
-                throw helper.assertionException("a reserve tank should install into a pod without one");
+                throw failure(helper, "a reserve tank should install into a pod without one");
             }
             expectEqual(
                     helper,
@@ -464,10 +464,10 @@ public class FuelPumpTest {
             expectEqual(helper, "litres are constant", 6f, litres(pod));
             expectEqual(helper, "the stored percent was rescaled", 6f / (TANK + 25f) * FULL, pod.fuel());
             if (TUNING.reserveLitres() != 25f) {
-                throw helper.assertionException("the reserve adds 25 litres, not %s", TUNING.reserveLitres());
+                throw failure(helper, "the reserve adds 25 litres, not %s", TUNING.reserveLitres());
             }
             if (ReserveTank.install(pod)) {
-                throw helper.assertionException("a pod takes one reserve tank");
+                throw failure(helper, "a pod takes one reserve tank");
             }
             expectEqual(
                     helper,
@@ -521,7 +521,7 @@ public class FuelPumpTest {
             pod.setStranded(true);
             ReserveTank.install(pod);
             if (pod.stranded()) {
-                throw helper.assertionException("the reserve tank should clear Stranded");
+                throw failure(helper, "the reserve tank should clear Stranded");
             }
             expectEqual(helper, "litres in the reserve", TUNING.reserveLitres(), litres(pod));
             helper.succeed();
@@ -541,17 +541,16 @@ public class FuelPumpTest {
             player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(FuelRegistry.RESERVE_TANK, 2));
             InteractionResult result = use(player.player(), pod);
             if (!result.consumesAction() || !ReserveTank.isInstalled(pod) || pod.stranded()) {
-                throw helper.assertionException(
-                        "using the reserve tank should install it and clear Stranded, got %s", result);
+                throw failure(helper, "using the reserve tank should install it and clear Stranded, got %s", result);
             }
             int left = player.player().getItemInHand(InteractionHand.MAIN_HAND).getCount();
             if (left != 1) {
-                throw helper.assertionException("one reserve tank should be used up, %s are left", left);
+                throw failure(helper, "one reserve tank should be used up, %s are left", left);
             }
             use(player.player(), pod);
             left = player.player().getItemInHand(InteractionHand.MAIN_HAND).getCount();
             if (left != 1) {
-                throw helper.assertionException("a pod that has a reserve must not use up another, %s are left", left);
+                throw failure(helper, "a pod that has a reserve must not use up another, %s are left", left);
             }
             helper.succeed();
         } finally {
@@ -571,7 +570,7 @@ public class FuelPumpTest {
             use(player.player(), pod);
             if (ReserveTank.isInstalled(pod)
                     || player.player().getItemInHand(InteractionHand.MAIN_HAND).getCount() != 1) {
-                throw helper.assertionException("a player of another charter must not fit a reserve tank");
+                throw failure(helper, "a player of another charter must not fit a reserve tank");
             }
             helper.succeed();
         } finally {
@@ -590,7 +589,7 @@ public class FuelPumpTest {
         try {
             PodEntity copy = (PodEntity) loaded;
             if (!ReserveTank.isInstalled(copy) || PodStats.of(copy).tankLitres() != before) {
-                throw helper.assertionException("the reserve tank did not survive a reload");
+                throw failure(helper, "the reserve tank did not survive a reload");
             }
             // Version 1 is the first format of this attachment, so there is no earlier format to load. A new
             // version must
@@ -615,22 +614,25 @@ public class FuelPumpTest {
         try {
             PodEntity copy = (PodEntity) loaded;
             if (!(copy.getAttached(ReserveTank.STATE) instanceof Versioned.Unreadable<ReserveTank.State>)) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "version 99 should load as Unreadable, got %s",
                         String.valueOf(copy.getAttached(ReserveTank.STATE)));
             }
             // None of these may throw: they run every tick and on the client.
             if (!PodStats.of(copy).equals(PodStats.base()) || ReserveTank.isInstalled(copy)) {
-                throw helper.assertionException("a pod with an unreadable reserve should run on stock stats");
+                throw failure(helper, "a pod with an unreadable reserve should run on stock stats");
             }
             PodStats.of(copy);
             try {
                 ReserveTank.install(copy);
-                throw helper.assertionException("installing into an unreadable state must fail");
+                throw failure(helper, "installing into an unreadable state must fail");
             } catch (IllegalStateException expected) {
                 if (!String.valueOf(expected.getMessage()).contains(key)) {
-                    throw helper.assertionException(
-                            "the failure should name the attachment, got: %s", String.valueOf(expected.getMessage()));
+                    throw failure(
+                            helper,
+                            "the failure should name the attachment, got: %s",
+                            String.valueOf(expected.getMessage()));
                 }
             }
             TagValueOutput output = TagValueOutput.createWithContext(
@@ -639,13 +641,14 @@ public class FuelPumpTest {
             CompoundTag saved =
                     output.buildResult().getCompound(ATTACHMENTS_KEY).orElseThrow();
             if (!Objects.equals(future, saved.get(key))) {
-                throw helper.assertionException(
-                        "the unreadable data was not written back unchanged: %s", String.valueOf(saved.get(key)));
+                throw failure(
+                        helper,
+                        "the unreadable data was not written back unchanged: %s",
+                        String.valueOf(saved.get(key)));
             }
             long logged = log.errors().size();
             if (logged != 1) {
-                throw helper.assertionException(
-                        "the unreadable reserve should be logged once, was logged %s times", logged);
+                throw failure(helper, "the unreadable reserve should be logged once, was logged %s times", logged);
             }
             helper.succeed();
         } finally {
@@ -662,7 +665,7 @@ public class FuelPumpTest {
         UUID founder = UUID.randomUUID();
         if (Charters.found(server, founder, "Other Pump Test " + CHARTERS.incrementAndGet())
                 .isPresent()) {
-            throw helper.assertionException("founding the other charter should succeed");
+            throw failure(helper, "founding the other charter should succeed");
         }
         return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
     }
@@ -695,33 +698,31 @@ public class FuelPumpTest {
                         TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag),
                         level,
                         EntitySpawnReason.LOAD)
-                .orElseThrow(() -> helper.assertionException("the saved pod did not load"));
+                .orElseThrow(() -> failure(helper, "the saved pod did not load"));
     }
 
     private static void expectEqual(GameTestHelper helper, String what, long expected, long actual) {
         if (expected != actual) {
-            throw helper.assertionException(
-                    Component.literal(String.format("%s: expected %s, got %s", what, expected, actual)));
+            throw failure(helper, "%s: expected %s, got %s", what, expected, actual);
         }
     }
 
     private static void expectEqual(GameTestHelper helper, String what, float expected, float actual) {
         if (Math.abs(expected - actual) > EPSILON) {
-            throw helper.assertionException(
-                    Component.literal(String.format("%s: expected %s, got %s", what, expected, actual)));
+            throw failure(helper, "%s: expected %s, got %s", what, expected, actual);
         }
     }
 
     private static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
         if (refusal.isPresent()) {
-            throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
+            throw failure(helper, "%s should succeed, was refused: %s", what, refusal.get());
         }
     }
 
     private static void expectRefused(
             GameTestHelper helper, TerminalRefusal expected, Optional<TerminalRefusal> actual, String what) {
         if (!actual.equals(Optional.of(expected))) {
-            throw helper.assertionException("%s should be refused with %s, got %s", what, expected, actual);
+            throw failure(helper, "%s should be refused with %s, got %s", what, expected, actual);
         }
     }
 }

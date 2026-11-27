@@ -61,6 +61,11 @@ public class DrifterScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, 0f, true);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + HALL_LENGTH / 2, Z, HALL_LENGTH / 2 + 4);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setYRot(FACING_EAST);
