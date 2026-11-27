@@ -84,6 +84,9 @@ object GametestScan {
 			?.let { "the constant " + it.groupValues[1] }
 	}
 
+	// A pin made by a test class exists only in the shard that holds it (#1482, #1586); outside support/ it is flagged or marked.
+	private val worldPin = Regex("""\bFarChunks\s*\.\s*pin\s*\(|\bColonyChunks\s*\.\s*force\s*\(|\bimport\s+static\s+[\w.]*\b(?:FarChunks\s*\.\s*(?:pin|\*)|ColonyChunks\s*\.\s*(?:force|\*))\s*;""")
+	private val inSupport = Regex("""(?:^|\.)support\.""")
 	// A synchronous chunk load on the server thread (getChunk or getChunkAt, which load or generate the chunk and wait
 	// for it) stalls the one thread that every server GameTest in the batch shares, so a test beside it makes no
 	// progress; the suite spent most of its time there (#1016, #1020). A server test or its support waits with
@@ -717,6 +720,14 @@ object GametestScan {
 					val line = lineOf(text, force.range.first)
 					if (!marked(markedNear, rawLines, line, FORCE_MARKER)) {
 						problems.add("$className:${line + 1} sets a chunk's force directly, which FarChunks cannot count or release when the test ends; use FarChunks.force(helper, level, x, z) and FarChunks.release(helper, level, x, z), or mark a deliberate use with '$FORCE_MARKER <reason>'")
+					}
+				}
+			}
+			if (!inSupport.containsMatchIn(className)) {
+				for (pin in worldPin.findAll(text)) {
+					val line = lineOf(text, pin.range.first)
+					if (!marked(markedNear, rawLines, line, FORCE_MARKER)) {
+						problems.add("$className:${line + 1} pins chunks for the world's life from a test class, and a server shard loads only the test classes it holds, so the pin is missing in every shard that does not hold this class (#1586: the colony pad was unpinned in three of four shards); register it from a test-mod entrypoint in test/support (like ColonyPadPin), which every shard loads, or mark a pin that only this class needs with '$FORCE_MARKER <reason>'")
 					}
 				}
 			}

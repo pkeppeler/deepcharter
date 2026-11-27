@@ -93,12 +93,12 @@ def fixture(extra: dict[str, str]) -> dict[str, str]:
 
 
 CASES = {
-    "clean": Case(fixture({}), None),
-    **{f"violation/{label}": Case(fixture({"UnclaimedTest.java": server_test("UnclaimedTest", statement)}), None)
+    "clean": Case(fixture({}), None, site_table=False),
+    **{f"violation/{label}": Case(fixture({"UnclaimedTest.java": server_test("UnclaimedTest", statement)}), None, site_table=False)
        for label, (statement, _) in VIOLATIONS.items()},
     # A table that names another class does not name this one, even when its name is a prefix of the other.
-    "prefix of a claimed name": Case(fixture({"Claimed.java": server_test("Claimed", STAGES)}), None),
-    "no table": Case({k: v for k, v in fixture({"UnclaimedTest.java": server_test("UnclaimedTest", STAGES)}).items() if k != "support/TestSiteTable.java"}, None),
+    "prefix of a claimed name": Case(fixture({"Claimed.java": server_test("Claimed", STAGES)}), None, site_table=False),
+    "no table": Case({k: v for k, v in fixture({"UnclaimedTest.java": server_test("UnclaimedTest", STAGES)}).items() if k != "support/TestSiteTable.java"}, None, site_table=False),
 }
 
 
