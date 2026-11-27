@@ -102,7 +102,8 @@ public class DrifterTest {
                         arena.pod().position().add(0, 1, 0).subtract(from[0]).normalize();
                 double cosine = moved.normalize().dot(toPod);
                 LOGGER.info(
-                        "[drifter] drifted {} blocks a second toward a drilling pod ({} ticks after the first tell, aimed {})",
+                        "[drifter] drifted {} blocks a second toward a drilling pod ({} ticks after the first tell,"
+                                + " aimed {})",
                         String.format("%.2f", speed * 20),
                         EASE_TICKS,
                         String.format("%.2f", cosine));

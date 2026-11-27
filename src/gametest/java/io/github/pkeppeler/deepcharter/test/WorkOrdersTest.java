@@ -209,7 +209,8 @@ public class WorkOrdersTest {
                     .performPrefixedCommand(
                             server.createCommandSourceStack(),
                             String.format(
-                                    "summon minecraft:block_display %d %d %d {block_state:{id:\"deepcharter:colony_sculpture\",properties:{piece:\"%s\"}}}",
+                                    "summon minecraft:block_display %d %d %d"
+                                        + " {block_state:{id:\"deepcharter:colony_sculpture\",properties:{piece:\"%s\"}}}",
                                     far.getX(), far.getY(), far.getZ(), piece));
         }
         AABB around = new AABB(far).inflate(3);
@@ -266,7 +267,8 @@ public class WorkOrdersTest {
                                     .performPrefixedCommand(
                                             server.createCommandSourceStack(),
                                             String.format(
-                                                    "summon minecraft:block_display %d %d %d {block_state:{id:\"deepcharter:colony_sculpture\",properties:{piece:\"%s\"}}}",
+                                                    "summon minecraft:block_display %d %d %d"
+                                                        + " {block_state:{id:\"deepcharter:colony_sculpture\",properties:{piece:\"%s\"}}}",
                                                     far.getX(), far.getY(), far.getZ(), piece));
                         }
                         phase[0] = 2;
@@ -303,7 +305,8 @@ public class WorkOrdersTest {
                         if (missing[0] > 40) {
                             throw failure(
                                     helper,
-                                    "the chunk's body display loaded again, and the hands that the world owes did not (marker %s)",
+                                    "the chunk's body display loaded again, and the hands that the world owes did not"
+                                            + " (marker %s)",
                                     level.getBlockState(marker));
                         }
                         if (body && !hands) {

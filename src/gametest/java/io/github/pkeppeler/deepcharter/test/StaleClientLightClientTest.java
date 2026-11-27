@@ -390,9 +390,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                         && ClientLight.serverChunksSendable(server, dimension, box)
                         && ClientLight.serverLightIdle(context, server)
                         && server.computeOnServer(s -> s.getAverageTickTimeNanos() <= TICK_BUDGET_NANOS),
-                () ->
-                        "a screen open, chunks missing or unrendered, a server chunk not yet sendable, light pending or the"
-                                + " server behind");
+                () -> "a screen open, chunks missing or unrendered, a server chunk not yet sendable, light pending"
+                        + " or the server behind");
     }
 
     /** Moves the player to {@code at} in {@code dimension} and waits until the client has the chunk, so the player is in range. */
