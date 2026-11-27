@@ -56,12 +56,16 @@ public final class TransmissionCatalog {
                 .toList();
     }
 
-    /** The transmissions that fire when a charter member stands in zone {@code zone} of {@code layer}. */
-    public static List<Transmission> forZone(int layer, int zone) {
+    /**
+     * The transmissions that fire when a charter member stands in zone {@code zone} of {@code layer}: those of the whole zone, and those
+     * of its lower half when {@code lowerHalf}.
+     */
+    public static List<Transmission> forZone(int layer, int zone, boolean lowerHalf) {
         return all().stream()
                 .filter(transmission -> transmission.trigger() instanceof Transmission.Trigger.Zone found
                         && found.layer() == layer
-                        && found.zone() == zone)
+                        && found.zone() == zone
+                        && (lowerHalf || !found.lowerHalf()))
                 .toList();
     }
 

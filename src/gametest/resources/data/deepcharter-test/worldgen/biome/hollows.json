@@ -1,6 +1,25 @@
 {
   "attributes": {
-    "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0
+    "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
+    "minecraft:visual/ambient_light_color": "#090b0c",
+    "minecraft:visual/ambient_particles": [
+      {
+        "particle": {
+          "type": "deepcharter:dust_mote"
+        },
+        "probability": 0.3
+      },
+      {
+        "particle": {
+          "type": "minecraft:glow"
+        },
+        "probability": 0.02
+      }
+    ],
+    "minecraft:visual/fog_color": "#0c1416",
+    "minecraft:visual/fog_end_distance": 20.0,
+    "minecraft:visual/fog_start_distance": 2.0,
+    "minecraft:visual/sky_light_factor": 0.0
   },
   "carvers": [],
   "downfall": 0.0,

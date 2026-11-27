@@ -72,6 +72,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
             two.server().runOnServer(server -> buildSite(server.overworld(), two));
             // Every chunk of the site must be on the client before anyone boards (#1082).
             ClientWait.chunksAround(context, X, Z, SITE_RADIUS);
+            ClientWait.lightSettled(context, two.server(), TestLayers.SURFACE, X, Z, SITE_RADIUS);
             int podId = two.server().computeOnServer(server -> board(server.overworld(), two));
             ClientWait.until(
                     context,

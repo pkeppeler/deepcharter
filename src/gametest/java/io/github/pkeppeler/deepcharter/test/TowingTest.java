@@ -44,6 +44,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -68,6 +69,7 @@ public class TowingTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final double EPSILON = 1e-6;
+    private static final float EAST_YAW = -90f;
     /** Ticks a pod needs, once its chunk ticks, to fall through the shaft and cross. */
     private static final int CROSSING_TICKS = 200;
     /** Entities BreachEvents.CROSSED has fired for. */
@@ -224,6 +226,16 @@ public class TowingTest {
                                 "the towed pod should rest on the floor at y %s, it is at %s",
                                 TOW_FLOOR,
                                 towed.getY());
+                    }
+                    // The tower drives east, so the pod trailing it faces the way it was dragged (yaw -90), not the yaw
+                    // it was left with (#1281).
+                    float off = Mth.wrapDegrees(towed.getYRot() - EAST_YAW);
+                    if (Math.abs(off) > 5f) {
+                        throw failure(
+                                helper,
+                                "a towed pod turns to the way it is dragged (east, yaw %s), its yaw is %s",
+                                EAST_YAW,
+                                towed.getYRot());
                     }
                     if (towed.hull() != hullStart[0]) {
                         throw failure(
@@ -707,8 +719,8 @@ public class TowingTest {
                 step -> start.add(0.2 * Math.min(step, 100), 0, 0),
                 (tower, towed, age) -> {
                     if (age == 1) {
-                        // The same as a reload for the line: the transient state of the cable is gone and the link is
-                        // not.
+                        // The same as a reload for the line: the transient state of the cable is gone and the link
+                        // is not.
                         PodTowing.detach(towed);
                         PodTowing.attach(tower, towed);
                     }
@@ -1306,11 +1318,12 @@ public class TowingTest {
         double z = 2100.5;
         double y = TestLayers.worldY(1, 8);
         ServerLevel one = TestLayers.level(helper, 1);
-        openShaft(one, x, z);
         MockPlayer mock = MockPlayers.join(helper, "towing-crossing");
         mock.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pods = {null, null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, y, z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            openShaft(one, x, z);
             pods[0] = spawn(one, x, y, z);
             pods[1] = spawn(one, x, y + 2, z);
             PodTowing.attach(pods[0], pods[1]);
@@ -1356,13 +1369,14 @@ public class TowingTest {
         double z = 2200.5;
         double y = TestLayers.worldY(1, 8);
         ServerLevel one = TestLayers.level(helper, 1);
-        openShaft(one, x, z);
         MockPlayer pilot = MockPlayers.join(helper, "towing-pilot");
         MockPlayer rider = MockPlayers.join(helper, "towing-rider");
         pilot.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         rider.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
         PodEntity[] pods = {null, null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, y, z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            openShaft(one, x, z);
             pods[0] = spawn(one, x, y, z);
             pods[1] = spawn(one, x, y + 2, z);
             PodTowing.attach(pods[0], pods[1]);

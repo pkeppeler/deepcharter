@@ -9,14 +9,14 @@
   "block.deepcharter.platinium_ore": "Platinium Ore",
   "block.deepcharter.silverium_ore": "Silverium Ore",
   "block.deepcharter.slag_brick": "Slag Brick",
-  "container.deepcharter.cargo": "Cargo bay",
   "deepcharter.ore.company_rock_cutter_hot": "Company rock: the cutter runs hot, repair the hull first",
   "deepcharter.ore.company_rock_refused": "Company rock: can't drill",
+  "deepcharter.ore.first_fuel": "Coal, charcoal and biofuel are heavy too. A pack of them slows you down and cuts your pod's lift. The pump is lighter.",
   "deepcharter.ore.first_pickup": "Ore is heavy. It slows you down and won't stack. Haul it in your pod's cargo bay.",
   "deepcharter.ore.gas_blast": "Gas blast: the hull took %s",
   "deepcharter.ore.tooltip.haul": "Won't stack. Haul it in your pod's cargo bay.",
   "deepcharter.ore.tooltip.heavy": "Heavy: it slows you while you carry it.",
-  "effect.deepcharter.overburdened": "Ore-laden",
+  "effect.deepcharter.overburdened": "Ore/Fuel",
   "hint.deepcharter.company_rock": "Charges, or the best drill",
   "item.deepcharter.bronzium": "Bronzium",
   "item.deepcharter.cicatrium": "Cicatrium",
@@ -24,7 +24,5 @@
   "item.deepcharter.goldium": "Goldium",
   "item.deepcharter.ironium": "Ironium",
   "item.deepcharter.platinium": "Platinium",
-  "item.deepcharter.silverium": "Silverium",
-  "screen.deepcharter.cargo.empty": "Empty",
-  "screen.deepcharter.cargo.mass": "Mass %s"
+  "item.deepcharter.silverium": "Silverium"
 }

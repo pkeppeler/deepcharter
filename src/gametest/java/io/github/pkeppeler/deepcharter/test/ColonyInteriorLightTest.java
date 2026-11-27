@@ -81,6 +81,8 @@ public class ColonyInteriorLightTest {
                         "%s problem(s) in %s interior cell(s):\n  %s",
                         problems.size(), cells, String.join("\n  ", problems));
                 deadline.await(helper, level, false, () -> message);
+                // await-ok: settled is the constant false, so the throw is meant to run; succeedWhen retries it and
+                // await's own failure alike, so await's failure past the deadline is the last exception it reports
                 throw failure(helper, "%s", message);
             }
         });

@@ -3,19 +3,30 @@
 # A name is simple, or fully qualified when two classes share a simple name (the full name wins). A class not listed counts as 10 s, so a new class needs no entry here and the shards still cover every
 # class; an entry for a class that no longer exists is ignored. Stale numbers only unbalance the shards, never
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
+# BoreTripsClientTest: one CI run (45741859329, #1418), which added a settle to two of its trips; refresh from CI.
+# PodDriveLateClientTest and PodDriveSmoothClientTest: the mean over CI runs 45808423857 and 45806374168, not the two runs above.
+# PodLoadClientTest: one local run (#1449), 24 s, scaled by CockpitHudClientTest's local-to-CI ratio (48 s to 36); refresh from CI.
+# ContinuityPackClientTest: one CI run (#1377, shard 2), from its START line to the next; refresh from CI.
+# RealInputTypingClientTest: one local run (#1385); refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
 BlockReadoutClientTest 16
+BoreTripsClientTest 124
 BreachCrossingClientTest 27
 BreachFadeHoldClientTest 18
 BreachHudTest 21
 BreachVoidClientTest 74
 CampaignWorldClientTest 78
+CatalogueAnySlotClientTest 21
 CatalogueEffectsClientTest 20
+CatalogueFavouritesClientTest 12
+CatalogueHistoryClientTest 14
+CatalogueMaterialsClientTest 14
 CatalogueToggleClientTest 22
 CavernSkyClientTest 49
 CharterCoreClientTest 26
 CockpitHudClientTest 36
+ContinuityPackClientTest 101
 ContractTerminalClientTest 12
 CrtTitleCornerClientTest 68
 CrtUiKitClientTest 4
@@ -37,7 +48,6 @@ LayerConceptsClientTest 28
 NoVanillaAdvancementsClientTest 13
 NotesClientTest 14
 OldWorldRefusedClientTest 17
-OreCargoClientTest 12
 OreProcessorClientTest 23
 OutpostClientTest 28
 OverburdenedClientTest 13
@@ -50,22 +60,24 @@ PodAttachmentClientTest 11
 PodBraceClientTest 17
 PodComponentsClientTest 13
 PodDrillClientTest 18
-PodDriveSmoothClientTest 165
+PodDriveLateClientTest 73
+PodDriveSmoothClientTest 121
 PodEngineSoundClientTest 31
 PodGeckoLibClientTest 15
 PodHeatShieldClientTest 14
 PodLavaWatchClientTest 16
 PodLinerClientTest 13
 PodLiningClientTest 10
+PodLoadClientTest 18
 PodLookFallbackClientTest 28
 PodMovementClientTest 21
-PodRecoveryHudClientTest 14
 PodRotorPaintClientTest 13
 PodSeatsClientTest 9
 PodShellClientTest 11
 PodSounderClientTest 14
 ProspectorChassisClientTest 18
 QuestMapClientTest 9
+RealInputTypingClientTest 13
 RecipeFillClientTest 20
 RepairStationClientTest 12
 RepairStationFitClientTest 14
@@ -77,6 +89,7 @@ ScannerMapReleaseClientTest 13
 ScannerOreHostClientTest 16
 ScannerTexturesClientTest 32
 ScannerTiersClientTest 23
+ScannerWindowFillClientTest 21
 ScreenLayoutClientTest 13
 ScrollListClientTest 1
 SeamAdoptionClientTest 25

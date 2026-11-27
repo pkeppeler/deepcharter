@@ -4,7 +4,6 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
-import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.KnownRecipe;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -181,8 +180,10 @@ public class RecipeFillClientTest implements FabricClientGameTest {
                 "and the three iron stay in the inventory");
 
         // An item that teaches new recipes rebuilds the catalogue under the ghost, and the ghost stands.
+        // String, which the world yields (salvage cloth), teaches wool and the bow; an unobtainable item has no
+        // recipes (ADR 0093).
         Object before = context.computeOnClient(client -> panel.catalogue());
-        singleplayer.getServer().runCommand("give @p minecraft:diamond 1");
+        singleplayer.getServer().runCommand("give @p minecraft:string 1");
         ClientWait.until(context, "the catalogue rebuilt", client -> panel.catalogue() != before);
         context.waitTicks(2);
         require(
@@ -250,7 +251,7 @@ public class RecipeFillClientTest implements FabricClientGameTest {
                 context,
                 "the note that a crafting table is needed",
                 client -> "NEEDS A CRAFTING TABLE".equals(panel.fillStatus()));
-        // Another recipe: the stick has more than one, so a step shows a different one.
+        // Another recipe: the stick's.
         FillScenes.showCrafting(context, panel, Items.STICK);
         ClientWait.until(context, "the note gone with the recipe", client -> panel.fillStatus() == null);
 
@@ -272,13 +273,15 @@ public class RecipeFillClientTest implements FabricClientGameTest {
         FillScenes.showCrafting(context, panel, Items.STICK);
         ClientWait.until(context, "the ghost gone with another item's recipe", client -> !panel.ghostShown());
 
-        // Stepping: the same item's next recipe is another recipe.
+        // Stepping: the same item's next recipe is another recipe. The iron ingot has several (from a block, from
+        // nuggets, smelted); the stick has one, as the world has no bamboo (ADR 0093). Three iron fill neither crafting
+        // recipe of the ingot, so its first one shows a ghost.
         FillScenes.showCrafting(context, panel, Items.IRON_BLOCK);
         FillScenes.pressFill(context, panel);
         ClientWait.until(context, "the ghost again", client -> panel.ghostShown());
-        context.runOnClient(client -> panel.state().look(panel.catalogue(), Items.STICK, CatalogueState.Mode.RECIPES));
+        FillScenes.showCrafting(context, panel, Items.IRON_INGOT);
         FillScenes.pressFill(context, panel);
-        ClientWait.until(context, "the stick's ghost", client -> panel.ghostShown());
+        ClientWait.until(context, "the iron ingot's ghost", client -> panel.ghostShown());
         context.runOnClient(client -> panel.state().step(panel.catalogue(), 1));
         ClientWait.until(context, "the ghost gone with a step to the next recipe", client -> !panel.ghostShown());
 
@@ -419,8 +422,8 @@ public class RecipeFillClientTest implements FabricClientGameTest {
     }
 
     private static void aShiftPressFillsTheMost(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-        // Enough iron for two blocks: a plain press puts one in each slot, a shift-press as many as the iron goes
-        // round.
+        // Enough iron for two blocks: a plain press puts one in each slot, a shift-press as many as the iron
+        // goes round.
         CataloguePanel panel = FillScenes.tableHolding(context, singleplayer, 2 * GRID_SLOTS);
         FillScenes.showCrafting(context, panel, Items.IRON_BLOCK);
         FillScenes.pressFill(context, panel, InputConstants.MOD_SHIFT);
@@ -447,8 +450,8 @@ public class RecipeFillClientTest implements FabricClientGameTest {
     private static void aRefusedFillSaysSo(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runCommand("gamemode survival @p");
         CataloguePanel panel = FillScenes.inventoryHolding(context, singleplayer, 1);
-        // Every other slot of the inventory holds a full stack of stone, and the grid holds dirt that has nowhere to
-        // go.
+        // Every other slot of the inventory holds a full stack of stone, and the grid holds dirt that has nowhere
+        // to go.
         for (int slot = 1; slot < 36; slot++) {
             singleplayer
                     .getServer()

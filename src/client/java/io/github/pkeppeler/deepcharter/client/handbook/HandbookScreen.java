@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,7 +32,6 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
 import org.jspecify.annotations.Nullable;
@@ -90,6 +90,19 @@ public final class HandbookScreen extends Screen {
 
     private int page;
     private int previousPage;
+    /**
+     * The sheet of the page in view, from 0: a page whose text does not fit one sheet runs on to the next ({@link
+     * SheetFlow}).
+     */
+    private int sheet;
+
+    private int previousSheet;
+    /**
+     * The first line of each sheet of each page, by page index, as {@link #init} last laid them out; before that, every
+     * page has one sheet.
+     */
+    private List<List<Integer>> sheetStarts;
+
     private int flipTicks;
     private boolean notesTab;
     private @Nullable Identifier openNote;
@@ -117,6 +130,9 @@ public final class HandbookScreen extends Screen {
 
     /** Absent until {@link #init} has built the widgets. */
     private @Nullable Buttons buttons;
+
+    /** Ticks since the screen opened: the clock an any-of slot's icon cycles on. */
+    private int cycleTicks;
 
     /** The screen closing returns to; none returns to the game. */
     private @Nullable Screen parent;
@@ -148,6 +164,7 @@ public final class HandbookScreen extends Screen {
             throw new IllegalArgumentException("the handbook needs at least one page");
         }
         this.pages = List.copyOf(pages);
+        this.sheetStarts = Collections.nCopies(this.pages.size(), List.of(0));
         Map<Integer, Integer> firstPages = new HashMap<>();
         Map<Integer, HandbookPage.Chapter> byNumber = new HashMap<>();
         Map<Integer, Integer> maps = new HashMap<>();
@@ -270,16 +287,54 @@ public final class HandbookScreen extends Screen {
         return page;
     }
 
-    /** Flips to page {@code index}, stopping at the cover and the end page. */
+    /** Flips to the first sheet of page {@code index}, stopping at the cover and the end page. */
     public void goTo(int index) {
+        flipTo(index, 0);
+    }
+
+    /** Next: the page's next sheet, or the next page. */
+    private void forward() {
+        if (sheet < sheetsOf(page) - 1) {
+            flipTo(page, sheet + 1);
+        } else {
+            flipTo(page + 1, 0);
+        }
+    }
+
+    /** Back: the page's sheet before, or the last sheet of the page before. */
+    private void backward() {
+        if (sheet > 0) {
+            flipTo(page, sheet - 1);
+        } else if (page > 0) {
+            flipTo(page - 1, sheetsOf(page - 1) - 1);
+        }
+    }
+
+    /**
+     * Flips to sheet {@code toSheet} of page {@code index}, both clamped to the book. A new page is remembered and
+     * reported.
+     */
+    private void flipTo(int index, int toSheet) {
         int target = Mth.clamp(index, 0, pages.size() - 1);
-        if (target == page) {
+        int targetSheet = Mth.clamp(toSheet, 0, sheetsOf(target) - 1);
+        if (target == page && targetSheet == sheet) {
             return;
         }
+        boolean newPage = target != page;
         previousPage = page;
+        previousSheet = sheet;
         page = target;
-        memory.remember(pages.get(page));
+        sheet = targetSheet;
         flipTicks = tuning().flipTicks();
+        if (newPage) {
+            memory.remember(pages.get(page));
+            reportViewed();
+        }
+        updateButtons();
+    }
+
+    /** Reports the chapter of the page in view, once, if the player may read it in full and has not read it yet. */
+    private void reportViewed() {
         Identifier viewed = switch (pages.get(page)) {
             case HandbookPage.Chapter chapter when chapter.visibility() == HandbookVisibility.FULL -> chapter.id();
             case HandbookPage.ChapterText text -> text.id();
@@ -288,7 +343,6 @@ public final class HandbookScreen extends Screen {
         if (viewed != null && !isRead.test(viewed) && reported.add(viewed)) {
             onViewed.accept(viewed);
         }
-        updateButtons();
     }
 
     public void showNotes() {
@@ -365,8 +419,8 @@ public final class HandbookScreen extends Screen {
                 width
                         - QuestMapTuning.current().windowMargin()
                         - QuestMapTuning.current().chapterTabWidth());
-        // The sheet and the tab above it always fit the window, so in the smallest one the sheet gives up its 100 px
-        // floor.
+        // The sheet and the tab above it always fit the window, so in the smallest one the sheet gives up its 100
+        // px floor.
         paperHeight = Mth.clamp(
                 height - tuning().tabHeight() - 16,
                 Math.min(100, height - tuning().tabHeight()),
@@ -385,6 +439,7 @@ public final class HandbookScreen extends Screen {
                 paperLeft + paperWidth - tuning().padding() - (hasMargin ? marginWidth + tuning().marginGap() : 0);
         textWidth = textRight - textLeft;
         marginLeft = textRight + tuning().marginGap();
+        layOutSheets();
 
         int tabY = paperTop - tuning().tabHeight() + 1;
         int tabX = paperLeft + tuning().bindingWidth() + 4;
@@ -416,7 +471,7 @@ public final class HandbookScreen extends Screen {
                 tuning().buttonWidth(),
                 tuning().buttonHeight(),
                 Component.translatable("deepcharter.handbook.screen.back"),
-                button -> goTo(page - 1)));
+                button -> backward()));
         PaperButton next = addRenderableWidget(new PaperButton(
                 paperLeft + paperWidth - tuning().padding() - tuning().buttonWidth(),
                 buttonY,
@@ -501,7 +556,7 @@ public final class HandbookScreen extends Screen {
                     % notePages(note(Objects.requireNonNull(
                             openNote, "the next button turns Note sheets only while a Note is open"))));
         } else {
-            goTo(page + 1);
+            forward();
         }
     }
 
@@ -526,8 +581,8 @@ public final class HandbookScreen extends Screen {
         }
         built.back().visible = !notesTab;
         built.next().visible = !notesTab || (openNote != null && notePages(note(openNote)) > 1);
-        built.back().active = !notesTab && page > 0;
-        built.next().active = notesTab || page < pages.size() - 1;
+        built.back().active = !notesTab && (page > 0 || sheet > 0);
+        built.next().active = notesTab || page < pages.size() - 1 || sheet < sheetsOf(page) - 1;
         built.noteBack().visible = notesTab && openNote != null;
         int section = section();
         for (int i = 0; i < built.chapterTabs().size(); i++) {
@@ -544,6 +599,7 @@ public final class HandbookScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        cycleTicks++;
         if (flipTicks > 0) {
             flipTicks--;
         }
@@ -561,11 +617,11 @@ public final class HandbookScreen extends Screen {
             return true;
         }
         if (!notesTab && event.isLeft()) {
-            goTo(page - 1);
+            backward();
             return true;
         }
         if (!notesTab && event.isRight()) {
-            goTo(page + 1);
+            forward();
             return true;
         }
         if (notesTab && openNote != null && event.isLeft()) {
@@ -623,7 +679,7 @@ public final class HandbookScreen extends Screen {
             }
             QuestMap.CardItem item = card.itemAt(event.x(), event.y());
             if (item != null) {
-                CatalogueScreens.open(item.item());
+                CatalogueScreens.open(item.shown(cycleTicks));
                 return true;
             }
             if (card.box().contains(event.x(), event.y())) {
@@ -633,13 +689,10 @@ public final class HandbookScreen extends Screen {
         if (!frame.clip().contains(event.x(), event.y())) {
             return false;
         }
-        if (chapter.visibility() == HandbookVisibility.FULL) {
-            int step = mapLayout(chapter).stepAt(event.x() - frame.originX(), event.y() - frame.originY());
-            if (step >= 0) {
-                memory.pick(
-                        chapter.number(),
-                        chapter.chapter().directives().get(step).id());
-            }
+        int step = stepUnder(chapter, event.x(), event.y());
+        if (step >= 0) {
+            memory.pick(
+                    chapter.number(), chapter.chapter().directives().get(step).id());
         }
         return true;
     }
@@ -655,10 +708,12 @@ public final class HandbookScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         int shown = page;
+        int shownSheet = sheet;
         float squeeze = 1;
         if (flipTicks > 0 && !notesTab) {
             float progress = Mth.clamp(1 - (flipTicks - partialTick) / tuning().flipTicks(), 0, 1);
             shown = progress < 0.5f ? previousPage : page;
+            shownSheet = progress < 0.5f ? previousSheet : sheet;
             squeeze = Math.max(0.03f, progress < 0.5f ? 1 - 2 * progress : 2 * progress - 1);
         }
         graphics.pose().pushMatrix();
@@ -669,12 +724,16 @@ public final class HandbookScreen extends Screen {
         if (notesTab) {
             drawNotes(graphics);
         } else {
-            drawPage(graphics, pages.get(shown));
+            int hoveredStep = flipTicks == 0 && pages.get(shown) instanceof HandbookPage.Chapter chapter
+                    ? stepUnder(chapter, mouseX, mouseY)
+                    : -1;
+            drawPage(graphics, shown, shownSheet, hoveredStep);
             Buttons built = widgets();
             PaperDraw.centered(
                     graphics,
                     font,
-                    Component.translatable("deepcharter.handbook.screen.page", shown + 1, pages.size()),
+                    Component.translatable(
+                            "deepcharter.handbook.screen.page", sheetNumber(shown, shownSheet), sheetTotal()),
                     (built.next().getX() + built.back().getRight()) / 2,
                     built.back().getY() + 3,
                     1,
@@ -684,17 +743,22 @@ public final class HandbookScreen extends Screen {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 
-    private void drawPage(GuiGraphicsExtractor graphics, HandbookPage content) {
-        switch (content) {
+    /**
+     * Draws sheet {@code onSheet} (from 0) of page {@code index}; on a chapter's map, step {@code hoveredStep} is under
+     * the mouse.
+     */
+    private void drawPage(GuiGraphicsExtractor graphics, int index, int onSheet, int hoveredStep) {
+        switch (pages.get(index)) {
             case HandbookPage.Cover cover -> drawCover(graphics);
             case HandbookPage.Slip slip -> drawSlip(graphics);
             case HandbookPage.Letter letter -> drawLetter(graphics);
             case HandbookPage.Contents contents -> drawContents(graphics, contents);
-            case HandbookPage.ChapterText text -> drawChapterText(graphics, text);
-            case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
+            case HandbookPage.Controls controls -> drawControls(graphics, controls);
+            case HandbookPage.ChapterText text -> drawFlowing(graphics, chapterTextFlow(text), index, onSheet);
+            case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter, hoveredStep);
             case HandbookPage.Pencil pencil -> drawPencil(graphics, pencil);
             case HandbookPage.Appendix appendix -> drawAppendix(graphics);
-            case HandbookPage.Contract contract -> drawContract(graphics, contract);
+            case HandbookPage.Contract contract -> drawFlowing(graphics, contractFlow(contract), index, onSheet);
         }
     }
 
@@ -863,32 +927,79 @@ public final class HandbookScreen extends Screen {
         };
     }
 
-    /** A page of the text of a chapter: its label and title, the text, and the margin note beside it if the language file has one. */
-    private void drawChapterText(GuiGraphicsExtractor graphics, HandbookPage.ChapterText text) {
-        int y = PaperDraw.wrapped(
+    /** A page of the controls: its label and title, then each line, with the keys the player has bound now. */
+    private void drawControls(GuiGraphicsExtractor graphics, HandbookPage.Controls controls) {
+        int y = SheetFlow.draw(
                 graphics,
-                font,
-                tr("chapter.label", text.number()),
-                textLeft,
-                paperTop + tuning().topMargin(),
-                textWidth,
-                tuning().faintInkColor());
-        y = PaperDraw.wrapped(graphics, font, text.chapter().title(), textLeft, y + 3, textWidth, tuning().inkColor());
-        y = titleRule(graphics, y);
-        PaperDraw.wrapped(
-                graphics,
-                font,
-                Component.translatable(textKey(text.id(), text.part())),
-                textLeft,
-                y,
-                textWidth,
-                tuning().inkColor());
-        margin(graphics, textMarginKey(text.id(), text.part()), paperTop + tuning().contentTop() * 2);
+                heading(
+                        tr("controls.label", controls.part(), controls.parts()),
+                        Component.translatable(HandbookControls.titleKey(controls.part()))),
+                paperTop + tuning().topMargin());
+        for (Component line : HandbookControls.lines(controls.part(), Minecraft.getInstance().options)) {
+            y = PaperDraw.wrapped(graphics, font, line, textLeft, y, textWidth, tuning().inkColor())
+                    + tuning().paragraphGap();
+        }
     }
 
-    private void drawChapter(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter) {
+    /**
+     * What a page that flows is made of: the heading every sheet repeats, the body that runs over the sheets, and the
+     * key of the margin note beside its first sheet.
+     */
+    private record Flow(List<SheetFlow.Line> heading, List<SheetFlow.Line> body, String marginKey) {}
+
+    /** A chapter's text page: the chapter's label and title, then the text. */
+    private Flow chapterTextFlow(HandbookPage.ChapterText text) {
+        return new Flow(
+                heading(tr("chapter.label", text.number()), text.chapter().title()),
+                inked(Component.translatable(textKey(text.id(), text.part())), tuning().inkColor()),
+                textMarginKey(text.id(), text.part()));
+    }
+
+    /**
+     * A sheet of a page that flows: its heading, the lines of its body that fall on this sheet, and on the first sheet
+     * the margin note beside it if the language file has one.
+     */
+    private void drawFlowing(GuiGraphicsExtractor graphics, Flow flow, int index, int onSheet) {
+        int top = SheetFlow.draw(graphics, flow.heading(), paperTop + tuning().topMargin());
+        SheetFlow.draw(graphics, SheetFlow.sheet(flow.body(), sheetStarts.get(index), onSheet), top);
+        if (onSheet == 0) {
+            margin(graphics, flow.marginKey(), paperTop + tuning().contentTop() * 2);
+        }
+    }
+
+    /**
+     * A page's heading as lines, laid out once both to draw it and to find where the text under it starts:
+     * {@code label} in faint ink, then {@code title} in ink if there is one, then a rule across the text column.
+     */
+    private List<SheetFlow.Line> heading(Component label, @Nullable Component title) {
+        List<SheetFlow.Line> lines = new ArrayList<>(inked(label, tuning().faintInkColor()));
+        if (title != null) {
+            if (!lines.isEmpty()) {
+                SheetFlow.Line last = lines.removeLast();
+                lines.add(new SheetFlow.Line(
+                        last.pitch() + QuestMapTuning.current().headingGap(), last.draw()));
+            }
+            lines.addAll(inked(title, tuning().inkColor()));
+        }
+        lines.add(new SheetFlow.Line(
+                tuning().paragraphGap() + 2,
+                (graphics, y) -> graphics.fill(
+                        textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()))));
+        return lines;
+    }
+
+    /** {@code text} in {@code color} ink, wrapped to the text column, a line each. */
+    private List<SheetFlow.Line> inked(Component text, int color) {
+        return font.split(PaperDraw.ink(text, color), textWidth).stream()
+                .map(line -> new SheetFlow.Line(
+                        font.lineHeight + 1,
+                        (graphics, y) -> graphics.text(font, line, textLeft, y, Colors.opaque(color), false)))
+                .toList();
+    }
+
+    private void drawChapter(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter, int hoveredStep) {
         if (chapter.visibility() != HandbookVisibility.CLASSIFIED) {
-            drawMap(graphics, chapter);
+            drawMap(graphics, chapter, hoveredStep);
             return;
         }
         int y = PaperDraw.wrapped(
@@ -987,7 +1098,7 @@ public final class HandbookScreen extends Screen {
     }
 
     private String seePageLink(HandbookPage.Chapter chapter) {
-        return I18n.get("deepcharter.handbook.quest.see_page", firstPageOf(chapter) + 1);
+        return I18n.get("deepcharter.handbook.quest.see_page", sheetNumber(firstPageOf(chapter), 0));
     }
 
     private QuestMap.Card indexCard(HandbookPage.Chapter chapter) {
@@ -1010,7 +1121,7 @@ public final class HandbookScreen extends Screen {
         HandbookPage.Chapter chapter = Objects.requireNonNull(
                 chapters.get(chapterNumber), () -> "chapter " + chapterNumber + " has no chapter page");
         for (QuestMap.CardItem shown : indexCard(chapter).items()) {
-            if (shown.item() == item) {
+            if (shown.items().contains(item)) {
                 return new Rect(
                         shown.box().x(),
                         shown.box().y(),
@@ -1039,8 +1150,28 @@ public final class HandbookScreen extends Screen {
                 () -> "chapter " + chapter.number() + " has no page in the handbook");
     }
 
-    /** A chapter's heading, then its quest map, then the index card of the step the player has picked. */
-    private void drawMap(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter) {
+    /** Whether a click on a step of {@code chapter}'s map picks it: only a chapter in full has steps to pick. */
+    private static boolean pickable(HandbookPage.Chapter chapter) {
+        return chapter.visibility() == HandbookVisibility.FULL;
+    }
+
+    /**
+     * The step of {@code chapter}'s map under screen point ({@code x}, {@code y}), the one a click there picks; -1 off
+     * the steps, under the index card, or on a map that is not {@link #pickable}.
+     */
+    private int stepUnder(HandbookPage.Chapter chapter, double x, double y) {
+        if (!pickable(chapter) || indexCard(chapter).box().contains(x, y)) {
+            return -1;
+        }
+        MapFrame frame = mapFrame(chapter);
+        return frame.clip().contains(x, y) ? mapLayout(chapter).stepAt(x - frame.originX(), y - frame.originY()) : -1;
+    }
+
+    /**
+     * A chapter's heading, then its quest map with step {@code hoveredStep} under the mouse, then the index card of
+     * the step the player has picked.
+     */
+    private void drawMap(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter, int hoveredStep) {
         boolean full = chapter.visibility() == HandbookVisibility.FULL;
         MapFrame frame = mapFrame(chapter);
         int y = PaperDraw.wrapped(
@@ -1067,7 +1198,6 @@ public final class HandbookScreen extends Screen {
                 Colors.opaque(tuning().inkColor()));
         QuestMap.Model model = QuestMap.model(chapters, chapter.number());
         QuestMap.Layout layout = mapLayout(chapter);
-        HandbookPage.Chapter ahead = model.ahead();
         QuestMap.drawChart(
                 graphics,
                 font,
@@ -1078,9 +1208,8 @@ public final class HandbookScreen extends Screen {
                 frame.clip(),
                 mapNote(chapter),
                 tr("chapter.stamp.classified"),
-                ahead == null
-                        ? Component.empty()
-                        : tr("quest.ahead", ahead.number(), ahead.chapter().title()));
+                pickable(chapter),
+                hoveredStep);
         int stampX = textLeft + QuestMapTuning.current().stampLeft();
         int stampY = paperTop + tuning().topMargin() + QuestMapTuning.current().stampTop();
         if (chapter.visibility() == HandbookVisibility.PREVIEW) {
@@ -1091,7 +1220,8 @@ public final class HandbookScreen extends Screen {
         if (full) {
             HandbookChapter.Entry step = QuestMap.shown(chapter, memory.picked(chapter.number()));
             QuestMap.Card card = indexCard(chapter);
-            QuestMap.drawCard(graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter));
+            QuestMap.drawCard(
+                    graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter), cycleTicks);
         }
     }
 
@@ -1137,29 +1267,87 @@ public final class HandbookScreen extends Screen {
         PaperDraw.stamp(graphics, font, tr("appendix.stamp"), centerX(), bottom() - 28, -9, tuning().stampColor());
     }
 
-    /** A page of Appendix A: its title, and the clauses of the page, one a paragraph, with a black bar over each redacted word. */
-    private void drawContract(GuiGraphicsExtractor graphics, HandbookPage.Contract contract) {
-        Component heading = contract.parts() > 1
+    /**
+     * A page of Appendix A: its title, then its clauses, one clause a paragraph, with a black bar over each redacted
+     * word.
+     */
+    private Flow contractFlow(HandbookPage.Contract contract) {
+        return new Flow(
+                heading(contractHeading(contract), null),
+                contractLines(contract),
+                contractKey(contract.part()) + ".margin");
+    }
+
+    private static Component contractHeading(HandbookPage.Contract contract) {
+        return contract.parts() > 1
                 ? tr(
                         "appendix.title.part",
                         Component.translatable("deepcharter.handbook.appendix.title"),
                         contract.part(),
                         contract.parts())
                 : tr("appendix.title");
-        int y = PaperDraw.wrapped(
-                graphics,
-                font,
-                heading,
-                textLeft,
-                paperTop + tuning().topMargin(),
-                textWidth,
-                tuning().faintInkColor());
-        y = titleRule(graphics, y);
+    }
+
+    /** The lines of the clauses of a page of Appendix A, a paragraph gap after each clause. */
+    private List<SheetFlow.Line> contractLines(HandbookPage.Contract contract) {
+        int color = tuning().inkColor();
+        int pitch = PaperDraw.redactedPitch(font);
+        List<SheetFlow.Line> lines = new ArrayList<>();
         for (String clause : I18n.get(contractKey(contract.part())).lines().toList()) {
-            y = PaperDraw.redacted(graphics, font, clause, textLeft, y, textWidth, tuning().inkColor())
-                    + tuning().paragraphGap();
+            List<List<PaperDraw.Piece>> rows = PaperDraw.redactedLines(font, clause, textWidth, color);
+            if (rows.isEmpty()) {
+                lines.add(new SheetFlow.Line(pitch + tuning().paragraphGap(), (graphics, y) -> {}));
+            }
+            for (int row = 0; row < rows.size(); row++) {
+                List<PaperDraw.Piece> pieces = rows.get(row);
+                int gap = row == rows.size() - 1 ? tuning().paragraphGap() : 0;
+                lines.add(new SheetFlow.Line(
+                        pitch + gap,
+                        (graphics, y) -> PaperDraw.redactedLine(graphics, font, pieces, textLeft, y, color)));
+            }
         }
-        margin(graphics, contractKey(contract.part()) + ".margin", paperTop + tuning().contentTop() * 2);
+        return lines;
+    }
+
+    /**
+     * Splits each page's body into the sheets this window holds, and keeps the screen on a sheet that is still there.
+     */
+    private void layOutSheets() {
+        sheetStarts = pages.stream()
+                .map(content -> switch (content) {
+                    case HandbookPage.ChapterText text -> flowStarts(chapterTextFlow(text));
+                    case HandbookPage.Contract contract -> flowStarts(contractFlow(contract));
+                    default -> List.of(0);
+                })
+                .toList();
+        sheet = Mth.clamp(sheet, 0, sheetsOf(page) - 1);
+        previousSheet = Mth.clamp(previousSheet, 0, sheetsOf(previousPage) - 1);
+    }
+
+    /** The first line of each sheet of a page that flows, under the heading every sheet repeats. */
+    private List<Integer> flowStarts(Flow flow) {
+        int bodyTop = paperTop + tuning().topMargin() + SheetFlow.height(flow.heading());
+        return SheetFlow.starts(flow.body(), bodyTop, bodyTop, bottom(), font.lineHeight + 1);
+    }
+
+    private int sheetsOf(int index) {
+        return sheetStarts.get(index).size();
+    }
+
+    /**
+     * What the page counter shows for sheet {@code onSheet} of page {@code index}: how many sheets come before it, plus
+     * one.
+     */
+    private int sheetNumber(int index, int onSheet) {
+        int number = onSheet + 1;
+        for (int before = 0; before < index; before++) {
+            number += sheetsOf(before);
+        }
+        return number;
+    }
+
+    private int sheetTotal() {
+        return sheetNumber(pages.size() - 1, sheetsOf(pages.size() - 1) - 1);
     }
 
     private void drawNotes(GuiGraphicsExtractor graphics) {
@@ -1219,32 +1407,18 @@ public final class HandbookScreen extends Screen {
     }
 
     private void drawNote(GuiGraphicsExtractor graphics, HandbookNote note) {
-        int pitch = font.lineHeight + 1;
-        List<FormattedCharSequence> body = noteBody(note);
-        int first = noteFirstSheetLines(note);
-        int start = notePage == 0 ? 0 : first + (notePage - 1) * noteLaterSheetLines();
-        int top = paperTop + tuning().topMargin();
-        int y = top;
+        List<Integer> starts = noteStarts(note);
+        int y = paperTop + tuning().topMargin();
         if (notePage == 0) {
-            y = PaperDraw.wrapped(
-                    graphics, font, tr("notes.label", label(note)), textLeft, top, textWidth, tuning().faintInkColor());
-            y = PaperDraw.wrapped(graphics, font, note.title(), textLeft, y + 3, textWidth, tuning().inkColor());
-            graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
-            y += tuning().paragraphGap() + 2;
+            y = SheetFlow.draw(graphics, noteHeading(note), y);
         }
-        int count = notePage == 0 ? first : noteLaterSheetLines();
-        for (FormattedCharSequence line :
-                body.subList(Math.min(start, body.size()), Math.min(body.size(), start + count))) {
-            graphics.text(font, line, textLeft, y, Colors.opaque(tuning().marginInkColor()), false);
-            y += pitch;
-        }
-        int sheets = notePages(note);
-        if (sheets > 1) {
+        SheetFlow.draw(graphics, SheetFlow.sheet(noteBody(note), starts, notePage), y);
+        if (starts.size() > 1) {
             Buttons built = widgets();
             PaperDraw.centered(
                     graphics,
                     font,
-                    Component.translatable("deepcharter.handbook.screen.page", notePage + 1, sheets),
+                    Component.translatable("deepcharter.handbook.screen.page", notePage + 1, starts.size()),
                     (built.next().getX() + built.noteBack().getRight()) / 2,
                     built.noteBack().getY() + 3,
                     1,
@@ -1252,46 +1426,27 @@ public final class HandbookScreen extends Screen {
         }
     }
 
-    private List<FormattedCharSequence> noteBody(HandbookNote note) {
-        return font.split(PaperDraw.ink(note.text(), tuning().marginInkColor()), textWidth);
+    private List<SheetFlow.Line> noteHeading(HandbookNote note) {
+        return heading(tr("notes.label", label(note)), note.title());
     }
 
-    /** The y where the text of a Note starts on its first sheet: under the label, the title and the rule. */
-    private int noteBodyTop(HandbookNote note) {
-        int pitch = font.lineHeight + 1;
-        int labelEnd = paperTop
-                + tuning().topMargin()
-                + font.split(PaperDraw.ink(tr("notes.label", label(note)), tuning().faintInkColor()), textWidth)
-                                .size()
-                        * pitch;
-        int titleEnd = labelEnd
-                + 3
-                + font.split(PaperDraw.ink(note.title(), tuning().inkColor()), textWidth)
-                                .size()
-                        * pitch;
-        return titleEnd + tuning().paragraphGap() + 2;
+    private List<SheetFlow.Line> noteBody(HandbookNote note) {
+        return inked(note.text(), tuning().marginInkColor());
     }
 
-    /** How many lines of a Note fit on its first sheet, which also holds the label and the title. At least one. */
-    private int noteFirstSheetLines(HandbookNote note) {
-        return Math.max(1, (bottom() - noteBodyTop(note)) / (font.lineHeight + 1));
-    }
-
-    /** How many lines fit on each later sheet of a Note, which has the whole sheet. At least one. */
-    private int noteLaterSheetLines() {
-        return Math.max(1, (bottom() - (paperTop + tuning().topMargin())) / (font.lineHeight + 1));
+    /**
+     * The first line of each sheet of a Note. Its label and title head the first sheet only: a Note is a loose paper
+     * read on its own, under its own sheet counter, not a page of the book.
+     */
+    private List<Integer> noteStarts(HandbookNote note) {
+        int top = paperTop + tuning().topMargin();
+        return SheetFlow.starts(
+                noteBody(note), top + SheetFlow.height(noteHeading(note)), top, bottom(), font.lineHeight + 1);
     }
 
     /** How many sheets a Note takes, so that none of its text runs past the buttons. */
     private int notePages(HandbookNote note) {
-        int rest = Math.max(0, noteBody(note).size() - noteFirstSheetLines(note));
-        return 1 + (rest + noteLaterSheetLines() - 1) / noteLaterSheetLines();
-    }
-
-    /** Draws the rule under a page title that ends at {@code y}, and returns where the text below it starts. */
-    private int titleRule(GuiGraphicsExtractor graphics, int y) {
-        graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
-        return y + tuning().paragraphGap() + 2;
+        return noteStarts(note).size();
     }
 
     /** A previous miner's note in pencil, in the margin column, if the sheet has one and the language file has a note for it. */

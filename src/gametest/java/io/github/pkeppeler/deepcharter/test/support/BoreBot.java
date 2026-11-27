@@ -4,11 +4,14 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Input;
 
 /**
- * What the bore bots share: the pilot's inputs, the stuck-step constants, the four sides a bot steps to, and the pilot's look at the
- * lining. The pod faces south (yaw 0), so forward is south and left is east.
+ * What the bore bots share: the pilot's inputs, the stuck-step constants, the four sides a bot steps to, and the
+ * pilot's look at the lining. A bot steps to a side by turning the pod to face it and driving forward, as a pilot does
+ * with A and D and W; the turn is staged ({@link Side#face}) and not steered, so the bore tables keep the timing they
+ * were measured with.
  */
 public final class BoreBot {
     private BoreBot() {}
@@ -16,34 +19,35 @@ public final class BoreBot {
     /** The rotor key (the jump key, held in the air). */
     public static final Input ROTOR = Inputs.JUMP;
 
-    private static final Input STRAFE_EAST = new Input(false, false, true, false, false, false, false);
-    private static final Input STRAFE_WEST = new Input(false, false, false, true, false, false, false);
-    private static final Input DRIVE_NORTH = new Input(false, true, false, false, false, false, false);
-
     /** Ticks a pod on the ground that is not drilling, or a sidestep that does not move, waits before the bot gives up on it. */
     public static final int STUCK_TICKS = 12;
     /** How far a sidestep goes, in blocks. */
     public static final int SIDE_STEP = 2;
 
     /**
-     * A way to step aside: the input that drives the pod that way (it faces south), and the axis it moves along. The Kells bot steps
-     * with {@link #nextInDeclarationOrder()}, the Lava bot with {@link #turnedRight()}, {@link #turnedLeft()} and {@link #opposite()};
-     * changing either order moves that bot's measured table.
+     * A way to step aside: the input that drives the pod that way once it faces it, and the axis it moves along. The
+     * Kells bot steps with {@link #nextInDeclarationOrder()}, the Lava bot with {@link #turnedRight()}, {@link
+     * #turnedLeft()} and {@link #opposite()}; changing either order moves that bot's measured table.
      */
     public enum Side {
-        EAST(1, 0, STRAFE_EAST),
-        WEST(-1, 0, STRAFE_WEST),
-        SOUTH(0, 1, Inputs.FORWARD),
-        NORTH(0, -1, DRIVE_NORTH);
+        EAST(1, 0),
+        WEST(-1, 0),
+        SOUTH(0, 1),
+        NORTH(0, -1);
 
         public final int dx;
         public final int dz;
         public final Input input;
 
-        Side(int dx, int dz, Input input) {
+        Side(int dx, int dz) {
             this.dx = dx;
             this.dz = dz;
-            this.input = input;
+            this.input = Inputs.FORWARD;
+        }
+
+        /** Turns the pod to face this side, so that {@link #input} drives it that way. */
+        public void face(PodEntity pod) {
+            pod.setYRot(Mth.wrapDegrees(direction().toYRot()));
         }
 
         /** The compass direction of this side, as the sounder's marks name it. */

@@ -1,0 +1,14 @@
+{
+  "feature": "deepcharter:giant_fungus_garden",
+  "placement": [
+    {
+      "type": "deepcharter:layer_rows",
+      "layer": 3,
+      "min": 171,
+      "max": 255
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

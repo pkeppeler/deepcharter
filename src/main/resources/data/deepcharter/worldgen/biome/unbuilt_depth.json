@@ -1,5 +1,6 @@
 {
   "attributes": {
+    "minecraft:audio/background_music": {},
     "minecraft:gameplay/can_pillager_patrol_spawn": false,
     "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
     "minecraft:visual/ambient_light_color": "#0c0a09",
@@ -14,7 +15,8 @@
     "minecraft:visual/star_brightness": 0.0,
     "minecraft:visual/sun_angle": 180.0,
     "minecraft:visual/sunrise_sunset_color": "#00000000",
-    "minecraft:visual/water_fog_color": "#000000"
+    "minecraft:visual/water_fog_color": "#000000",
+    "minecraft:visual/water_fog_end_distance": 20.0
   },
   "carvers": [],
   "downfall": 0.0,

@@ -23,12 +23,19 @@ import org.jspecify.annotations.Nullable;
  * follow; the Recipes link closes it and shows the item's recipes in the catalogue, over the inventory.
  */
 public final class SpecSheetScreen extends Screen {
+    private final Item item;
     private final SpecSheet sheet;
     private @Nullable Placed placed;
 
     public SpecSheetScreen(Item item) {
         super(Component.translatable("deepcharter.catalogue.spec"));
+        this.item = item;
         this.sheet = SpecSheets.of(item);
+    }
+
+    /** The item whose sheet this screen shows. */
+    Item item() {
+        return item;
     }
 
     @Override
@@ -68,8 +75,8 @@ public final class SpecSheetScreen extends Screen {
         Placed now = Objects.requireNonNull(placed, "<built by init() when the screen opens>");
         switch (SpecSheetView.clickAt(now.layout(), event.x(), event.y())) {
             case RECIPES -> {
-                // A window too small for the catalogue has nothing to show, so the link is dim and a press keeps the
-                // sheet.
+                // A window too small for the catalogue has nothing to show, so the link is dim and a press keeps
+                // the sheet.
                 if (CatalogueScreens.canOpen()) {
                     onClose();
                     CatalogueScreens.open(sheet.item());

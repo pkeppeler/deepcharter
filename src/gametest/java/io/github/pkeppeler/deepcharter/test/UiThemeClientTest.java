@@ -6,7 +6,6 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
-import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
@@ -70,10 +69,6 @@ public class UiThemeClientTest implements FabricClientGameTest {
                 "default fade ticks",
                 20,
                 context.computeOnClient(client -> BreachLook.current()).fadeTicks());
-        expect(
-                "default cargo text",
-                0xFF404040,
-                context.computeOnClient(client -> CargoLook.current()).textColor());
         expect("default screen background pixel", 0x050A06, backgroundPixel(context, "ui-theme-default"));
 
         // A pack that names six keys of one area.

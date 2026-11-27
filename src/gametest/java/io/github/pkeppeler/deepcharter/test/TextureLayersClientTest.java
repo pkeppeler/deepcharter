@@ -69,8 +69,8 @@ public class TextureLayersClientTest implements FabricClientGameTest {
             BlockPos floor = singleplayer
                     .getServer()
                     .computeOnServer(server -> player(server).blockPosition().above(30));
-            // The cabinet's block: its monitor, and the screen the test reads, is the block above, at the camera's eye
-            // level.
+            // The cabinet's block: its monitor, and the screen the test reads, is the block above, at the camera's
+            // eye level.
             BlockPos terminal = floor.offset(0, 1, DISTANCE);
             singleplayer.getServer().runOnServer(server -> build(player(server).level(), floor));
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
@@ -120,8 +120,8 @@ public class TextureLayersClientTest implements FabricClientGameTest {
         ServerPlayer player = player(level.getServer());
         player.getAbilities().flying = true;
         player.onUpdateAbilities();
-        // The eye is level with the middle of the terminal's monitor, its upper half two blocks up: yaw 0 faces south
-        // (+z).
+        // The eye is level with the middle of the terminal's monitor, its upper half two blocks up: yaw 0 faces
+        // south (+z).
         player.teleportTo(
                 level,
                 floor.getX() + 0.5,

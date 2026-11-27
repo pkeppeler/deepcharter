@@ -1,0 +1,148 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "top": "deepcharter:block/parasol_cap_top",
+    "side": "deepcharter:block/parasol_cap_side",
+    "particle": "deepcharter:block/parasol_cap_top"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        2.0,
+        16
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#side"
+        },
+        "north": {
+          "uv": [
+            0,
+            14.0,
+            16,
+            16
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            0,
+            14.0,
+            16,
+            16
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0,
+            14.0,
+            16,
+            16
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            0,
+            14.0,
+            16,
+            16
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "from": [
+        -3.5,
+        8,
+        -2.1163
+      ],
+      "to": [
+        19.5,
+        12,
+        18.1163
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#top"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#side"
+        },
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            4
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            4
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            4
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            4
+          ],
+          "texture": "#side"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          12,
+          8
+        ],
+        "x": -21.8014,
+        "y": 0,
+        "z": 36.8699
+      }
+    }
+  ],
+  "ambientocclusion": false
+}

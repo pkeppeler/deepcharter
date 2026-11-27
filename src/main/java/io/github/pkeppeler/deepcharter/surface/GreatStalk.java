@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Cell;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Part;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -12,6 +13,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * The great stalk, the rare giant of the fungal stalks: a braid of three thin trunks, 13 to 17 blocks tall, twisting round each other
@@ -35,13 +37,22 @@ public final class GreatStalk {
      * stalk never reaches into a neighbour that may be decorated before or after it (#972). Returns whether it grew.
      */
     public static boolean place(WorldGenLevel level, RandomSource random, BlockPos origin, boolean inChunk) {
+        return place(level, random, origin, inChunk, BlockState::isAir);
+    }
+
+    /**
+     * {@link #place(WorldGenLevel, RandomSource, BlockPos, boolean)} where a cell is room for the stalk if it is {@code
+     * open}: the giant fungus mix (#1202) grows a great stalk over the glowcaps and ordinary stalks of a floor, as its
+     * parasols and spires do ({@link GiantFungus#open}), and clears what of an ordinary stalk it grows through.
+     */
+    static boolean place(
+            WorldGenLevel level, RandomSource random, BlockPos origin, boolean inChunk, Predicate<BlockState> open) {
         GreatStalkLayout layout = GreatStalkBraid.layout(random::nextInt);
         Set<Cell> blocked = new HashSet<>();
         ChunkPos home = ChunkPos.containing(origin);
         for (Cell cell : layout.parts().keySet()) {
             BlockPos pos = origin.offset(cell.x(), cell.y(), cell.z());
-            boolean room = (!inChunk || ChunkPos.containing(pos).equals(home))
-                    && level.getBlockState(pos).isAir();
+            boolean room = (!inChunk || ChunkPos.containing(pos).equals(home)) && open.test(level.getBlockState(pos));
             boolean grounded =
                     cell.y() > 0 || level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP);
             if (!room || !grounded) {
@@ -51,12 +62,11 @@ public final class GreatStalk {
                 blocked.add(cell);
             }
         }
-        layout.without(blocked)
-                .parts()
-                .forEach((cell, part) -> level.setBlock(
-                        origin.offset(cell.x(), cell.y(), cell.z()),
-                        (part == Part.TRUNK ? TRUNK : CAP).defaultBlockState(),
-                        Block.UPDATE_CLIENTS));
+        layout.without(blocked).parts().forEach((cell, part) -> {
+            BlockPos pos = origin.offset(cell.x(), cell.y(), cell.z());
+            GiantFungus.clearStalkAbove(level, pos);
+            level.setBlock(pos, (part == Part.TRUNK ? TRUNK : CAP).defaultBlockState(), Block.UPDATE_CLIENTS);
+        });
         return true;
     }
 }

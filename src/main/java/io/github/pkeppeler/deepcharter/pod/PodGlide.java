@@ -18,10 +18,12 @@ import org.jspecify.annotations.Nullable;
  *   <li>With no move to follow, the pod coasts on at the speed the server last reported, for {@link PodGlideTuning#coastTicks()} ticks (the last at
  *       {@link PodGlideTuning#coastTailShare()} of it), so it does not freeze. The coast stops short of any block, so a pod that hit a wall or the ground is never drawn inside it.
  *   <li>When the moves arrive in a burst, the pod catches up at {@link PodGlideTuning#catchUp()} times its speed (and at no less than a
- *       share of its gap), so it does not lunge.
- *   <li>A pod that coasted past where the server put it stays there for {@link PodGlideTuning#settleDelayTicks()} ticks, in case a late move
- *       says it went on, then gives the excess back at {@link PodGlideTuning#settleShare()} of the gap a tick, and ends exactly on the
- *       server's last position. A move that says it stopped there gets the same gentle return at once.
+ *       share of its gap), so it does not lunge, in even steps that close on a target the server moves on, so the last is not a sliver.
+ *   <li>A pod that coasted past where the server put it goes on while the server reports it moving and the moves that come keep
+ *       advancing (a late server), within the coast's reach past the server's position, and stands when that is used up. Once the
+ *       server reports it still, a move that does not advance comes, or {@link PodGlideTuning#settleDelayTicks()} ticks pass with no
+ *       move, it gives the excess back at {@link PodGlideTuning#settleShare()} of the gap a tick and ends exactly on the server's last
+ *       position.
  * </ul>
  *
  * The server stays the authority: the target is only ever a position the server sent, and the coast is a drawn guess that ends.
@@ -29,6 +31,9 @@ import org.jspecify.annotations.Nullable;
 final class PodGlide extends AbstractInterpolationHandler {
     /** Blocks within which the pod counts as having reached its target. */
     private static final double ARRIVED = 1e-4;
+
+    /** The share of the reported speed a move has to advance the target by for the server to count as driving the pod on. */
+    private static final double ADVANCING_SHARE = 0.5;
 
     /** Halvings of the first coast sub-step tried before the coast gives up for the tick. */
     private static final int COAST_CLIP_TRIES = 3;
@@ -49,9 +54,12 @@ final class PodGlide extends AbstractInterpolationHandler {
     /** Whether the glide in progress began further from its target than {@link PodGlideTuning#snapGap()}: it is not eased. */
     private boolean snapping;
 
+    /** Whether the latest move put the target further along the coast than the one before it: the server is still driving the pod on. */
+    private boolean advancing;
+
     private boolean active;
 
-    private PodGlide(Entity pod) {
+    PodGlide(Entity pod) {
         super(pod, PodGlideTuning.DEFAULT.steps());
     }
 
@@ -74,6 +82,12 @@ final class PodGlide extends AbstractInterpolationHandler {
             // A far move is a teleport, not an overshoot to settle back from: a stale coast must not ease it.
             coastDirection = null;
         }
+        // The direction of the coast, the size of the server's speed: the coast's own vector is shrunk by its tail and
+        // by goOn.
+        Vec3 coast = coastDirection;
+        advancing = coast != null
+                && path.endPosition().subtract(target.position()).dot(coast.normalize())
+                        >= ADVANCING_SHARE * entity.getDeltaMovement().length();
         target.set(path.endPosition(), yRot, xRot);
         remaining = interpolationSteps;
         coasted = 0;
@@ -97,7 +111,7 @@ final class PodGlide extends AbstractInterpolationHandler {
         Vec3 gap = target.position().subtract(entity.position());
         double distance = gap.length();
         if (remaining > 0 || distance > ARRIVED) {
-            glide(tuning, gap, distance, reported.length(), moving);
+            glide(tuning, gap, distance, reported, moving);
         } else if (coastOn(tuning, reported, moving)) {
             coasting = true;
         } else {
@@ -107,18 +121,38 @@ final class PodGlide extends AbstractInterpolationHandler {
     }
 
     /** Moves the pod toward the target, by a share of the gap that never lunges, and turns it with it. */
-    private void glide(PodGlideTuning tuning, Vec3 gap, double distance, double speed, boolean moving) {
+    private void glide(PodGlideTuning tuning, Vec3 gap, double distance, Vec3 reported, boolean moving) {
+        double speed = reported.length();
         double share = 1.0 / Math.max(remaining, 1);
         double step;
         if (coastDirection != null && gap.dot(coastDirection) < 0) {
-            // The pod coasted past where the server put it. While the server still reports it moving and no move has
-            // come, a late server may yet say it went on: wait. Once it reports the pod still, or a move arrives,
-            // give the excess back.
-            if (moving && remaining == 0 && sinceMove < tuning.settleDelayTicks()) {
+            // The pod coasted past where the server put it. While the server reports it moving, a late server may
+            // yet say it went on, and a move that arrives advancing is a late move, not a stop: the pod goes on within
+            // the coast's reach and stands when it is used up. Once the server reports the pod still, or a move that
+            // does not advance arrives, give the excess back.
+            boolean late = remaining == 0 ? sinceMove < tuning.settleDelayTicks() : advancing;
+            if (moving && late) {
+                goOn(tuning, reported, distance);
+                if (remaining > 0) {
+                    turn(share);
+                    remaining--;
+                }
                 active = true;
                 return;
             }
             step = distance * tuning.settleShare();
+        } else if (!snapping && moving && advancing && coastDirection != null && distance < speed) {
+            // A pod that has coasted sits within a tick of its target, and the moves keep advancing it. Arriving would
+            // draw less than the speed the server reports (nothing at all, when the gap is a rounding step of the
+            // moves), a hitch in a drive that goes on at speed. It draws the whole tick, and the part past the target
+            // counts against the coast's reach like any other. A move that does not advance (a pushed pod the server
+            // slows faster than the speed it reported) arrives instead: the pod is not dead-reckoned past it.
+            if (coast(reported)) {
+                turn(share);
+                remaining = Math.max(0, remaining - 1);
+                return;
+            }
+            step = distance;
         } else if (snapping) {
             step = distance * share;
         } else {
@@ -127,12 +161,15 @@ final class PodGlide extends AbstractInterpolationHandler {
             // motion, a tick covers at least the reported speed. A pod that never coasted trails by design and keeps
             // the share.
             double flow = moving && coastDirection != null ? speed : 0;
-            step = Math.min(Math.max(distance * share, flow), Math.max(pace, distance / tuning.catchUpTicks()));
+            double cap = Math.max(pace, distance / tuning.catchUpTicks());
+            step = Math.min(Math.max(distance * share, flow), cap);
+            if (moving && step >= cap && distance > cap) {
+                step = splitCatchUp(distance, cap, speed);
+            }
         }
         boolean arrives = distance <= step + ARRIVED;
         entity.setPos(arrives ? target.position() : entity.position().add(gap.scale(step / distance)));
-        entity.setYRot((float) Mth.rotLerp(share, entity.getYRot(), target.yRot()));
-        entity.setXRot((float) Mth.lerp(share, entity.getXRot(), target.xRot()));
+        turn(share);
         remaining = Math.max(0, remaining - 1);
         if (arrives) {
             if (coastDirection != null) {
@@ -145,6 +182,36 @@ final class PodGlide extends AbstractInterpolationHandler {
             snapping = false;
         }
         active = true;
+    }
+
+    /**
+     * A capped catch-up step of a pod {@code distance} behind a target the server moves on by {@code speed} a tick: the even split
+     * against the moving target, held to leave at least a tick of speed and never below the even split against a still one (ADR 0082,
+     * "The even split chases a moving target").
+     */
+    private static double splitCatchUp(double distance, double cap, double speed) {
+        double still = distance / Math.ceil(distance / cap);
+        double steps = Math.ceil((distance - speed) / (cap - speed));
+        double chasing = (distance + (steps - 1) * speed) / steps;
+        return Math.max(still, Math.min(chasing, distance - speed));
+    }
+
+    private void turn(double share) {
+        entity.setYRot((float) Mth.rotLerp(share, entity.getYRot(), target.yRot()));
+        entity.setXRot((float) Mth.lerp(share, entity.getXRot(), target.xRot()));
+    }
+
+    /**
+     * Draws a pod that is {@code distance} ahead of its target on by a tick of the reported speed, or by what is left of the furthest the
+     * coast reaches past the server's position ({@link PodGlideTuning#coastReach()} ticks of speed) when that is less, so it ends
+     * exactly there and stands, never further (ADR 0082).
+     */
+    private void goOn(PodGlideTuning tuning, Vec3 reported, double distance) {
+        double speed = reported.length();
+        double reach = tuning.coastReach() * speed - distance;
+        if (reach > ARRIVED) {
+            coast(reported.scale(Math.min(1, reach / speed)));
+        }
     }
 
     /** Coasts one tick if the server reports the pod moving and the coast has ticks left; false when the pod does not coast. */
@@ -198,6 +265,7 @@ final class PodGlide extends AbstractInterpolationHandler {
     @Override
     public void cancel() {
         remaining = 0;
+        advancing = false;
         coasting = false;
         coastDirection = null;
         snapping = false;
